@@ -5,7 +5,7 @@
 
 use std::env;
 use std::fs;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Component, PathBuf};
 use std::process::Command;
 
 use build_helper::t;
@@ -26,74 +26,63 @@ fn install_sh(
 ) {
     builder.info(&format!("Install {} stage{} ({:?})", package, stage, host));
 
-    let prefix_default = PathBuf::from("/usr/local");
-    let sysconfdir_default = PathBuf::from("/etc");
-    let datadir_default = PathBuf::from("share");
-    let docdir_default = datadir_default.join("doc/rust");
-    let libdir_default = PathBuf::from("lib");
-    let mandir_default = datadir_default.join("man");
-    let prefix = builder.config.prefix.as_ref().unwrap_or(&prefix_default);
-    let sysconfdir = builder.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
-    let datadir = builder.config.datadir.as_ref().unwrap_or(&datadir_default);
-    let docdir = builder.config.docdir.as_ref().unwrap_or(&docdir_default);
-    let bindir = &builder.config.bindir;
-    let libdir = builder.config.libdir.as_ref().unwrap_or(&libdir_default);
-    let mandir = builder.config.mandir.as_ref().unwrap_or(&mandir_default);
-
-    let sysconfdir = prefix.join(sysconfdir);
-    let datadir = prefix.join(datadir);
-    let docdir = prefix.join(docdir);
-    let bindir = prefix.join(bindir);
-    let libdir = prefix.join(libdir);
-    let mandir = prefix.join(mandir);
-
-    let destdir = env::var_os("DESTDIR").map(PathBuf::from);
-
-    let prefix = add_destdir(&prefix, &destdir);
-    let sysconfdir = add_destdir(&sysconfdir, &destdir);
-    let datadir = add_destdir(&datadir, &destdir);
-    let docdir = add_destdir(&docdir, &destdir);
-    let bindir = add_destdir(&bindir, &destdir);
-    let libdir = add_destdir(&libdir, &destdir);
-    let mandir = add_destdir(&mandir, &destdir);
-
-    let prefix = {
-        fs::create_dir_all(&prefix)
-            .unwrap_or_else(|err| panic!("could not create {}: {}", prefix.display(), err));
-        fs::canonicalize(&prefix)
-            .unwrap_or_else(|err| panic!("could not canonicalize {}: {}", prefix.display(), err))
-    };
+    let prefix = default_path(&builder.config.prefix, "/usr/local");
+    let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));
+    let datadir = prefix.join(default_path(&builder.config.datadir, "share"));
+    let docdir = prefix.join(default_path(&builder.config.docdir, "share/doc"));
+    let mandir = prefix.join(default_path(&builder.config.mandir, "share/man"));
+    let libdir = prefix.join(default_path(&builder.config.libdir, "lib"));
+    let bindir = prefix.join(&builder.config.bindir); // Default in config.rs
 
     let empty_dir = builder.out.join("tmp/empty_dir");
-
     t!(fs::create_dir_all(&empty_dir));
 
     let mut cmd = Command::new("sh");
     cmd.current_dir(&empty_dir)
         .arg(sanitize_sh(&tarball.decompressed_output().join("install.sh")))
-        .arg(format!("--prefix={}", sanitize_sh(&prefix)))
-        .arg(format!("--sysconfdir={}", sanitize_sh(&sysconfdir)))
-        .arg(format!("--datadir={}", sanitize_sh(&datadir)))
-        .arg(format!("--docdir={}", sanitize_sh(&docdir)))
-        .arg(format!("--bindir={}", sanitize_sh(&bindir)))
-        .arg(format!("--libdir={}", sanitize_sh(&libdir)))
-        .arg(format!("--mandir={}", sanitize_sh(&mandir)))
+        .arg(format!("--prefix={}", prepare_dir(prefix)))
+        .arg(format!("--sysconfdir={}", prepare_dir(sysconfdir)))
+        .arg(format!("--datadir={}", prepare_dir(datadir)))
+        .arg(format!("--docdir={}", prepare_dir(docdir)))
+        .arg(format!("--bindir={}", prepare_dir(bindir)))
+        .arg(format!("--libdir={}", prepare_dir(libdir)))
+        .arg(format!("--mandir={}", prepare_dir(mandir)))
         .arg("--disable-ldconfig");
     builder.run(&mut cmd);
     t!(fs::remove_dir_all(&empty_dir));
 }
 
-fn add_destdir(path: &Path, destdir: &Option<PathBuf>) -> PathBuf {
-    let mut ret = match *destdir {
-        Some(ref dest) => dest.clone(),
-        None => return path.to_path_buf(),
-    };
-    for part in path.components() {
-        if let Component::Normal(s) = part {
-            ret.push(s)
+fn default_path(config: &Option<PathBuf>, default: &str) -> PathBuf {
+    PathBuf::from(config.as_ref().cloned().unwrap_or_else(|| PathBuf::from(default)))
+}
+
+fn prepare_dir(mut path: PathBuf) -> String {
+    // The DESTDIR environment variable is a standard way to install software in a subdirectory
+    // while keeping the original directory structure, even if the prefix or other directories
+    // contain absolute paths.
+    //
+    // More information on the environment variable is available here:
+    // https://www.gnu.org/prep/standards/html_node/DESTDIR.html
+    if let Some(destdir) = env::var_os("DESTDIR").map(PathBuf::from) {
+        let without_destdir = path.clone();
+        path = destdir;
+        // Custom .join() which ignores disk roots.
+        for part in without_destdir.components() {
+            if let Component::Normal(s) = part {
+                path.push(s)
+            }
         }
     }
-    ret
+
+    // The installation command is not executed from the current directory, but from a temporary
+    // directory. To prevent relative paths from breaking this converts relative paths to absolute
+    // paths. std::fs::canonicalize is not used as that requires the path to actually be present.
+    if path.is_relative() {
+        path = std::env::current_dir().expect("failed to get the current directory").join(path);
+        assert!(path.is_absolute(), "could not make the path relative");
+    }
+
+    sanitize_sh(&path)
 }
 
 macro_rules! install {
