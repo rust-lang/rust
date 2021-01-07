@@ -75,7 +75,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // moving them back to their correct locations.
         'exported_macros: for def in krate.exported_macros {
             // The `def` of a macro in `exported_macros` should correspond to either:
-            //  - a `#[macro-export] macro_rules!` macro,
+            //  - a `#[macro_export] macro_rules!` macro,
             //  - a built-in `derive` (or attribute) macro such as the ones in `::core`,
             //  - a `pub macro`.
             // Only the last two need to be fixed, thus:
@@ -84,17 +84,18 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 continue 'exported_macros;
             }
             let tcx = self.cx.tcx;
-            /* Because of #77828 we cannot do the simpler:
-            let macro_parent_module = tcx.def_path(tcx.parent_module(def.hir_id).to_def_id());
-            // and instead have to do: */
-            let macro_parent_module = tcx.def_path({
+            // Note: this is not the same as `.parent_module()`. Indeed, the latter looks
+            // for the closest module _ancestor_, which is not necessarily a direct parent
+            // (since a direct parent isn't necessarily a module, c.f. #77828).
+            let macro_parent_def_id = {
                 use rustc_middle::ty::DefIdTree;
                 tcx.parent(tcx.hir().local_def_id(def.hir_id).to_def_id()).unwrap()
-            });
+            };
+            let macro_parent_path = tcx.def_path(macro_parent_def_id);
             // HACK: rustdoc has no way to lookup `doctree::Module`s by their HirId. Instead,
             // lookup the module by its name, by looking at each path segment one at a time.
             let mut cur_mod = &mut top_level_module;
-            for path_segment in macro_parent_module.data {
+            for path_segment in macro_parent_path.data {
                 // Path segments may refer to a module (in which case they belong to the type
                 // namespace), which is _necessary_ for the macro to be accessible outside it
                 // (no "associated macros" as of yet). Else we bail with an outer `continue`.
@@ -108,6 +109,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     None => continue 'exported_macros,
                 }
             }
+            let cur_mod_def_id = tcx.hir().local_def_id(cur_mod.id).to_def_id();
+            assert_eq!(cur_mod_def_id, macro_parent_def_id);
             cur_mod.macros.push((def, None));
         }
         self.cx.renderinfo.get_mut().exact_paths = self.exact_paths;
