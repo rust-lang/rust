@@ -2,40 +2,46 @@
 //!
 //! VFS stores all files read by rust-analyzer. Reading file contents from VFS
 //! always returns the same contents, unless VFS was explicitly modified with
-//! `set_file_contents`. All changes to VFS are logged, and can be retrieved via
-//! `take_changes` method. The pack of changes is then pushed to `salsa` and
+//! [`set_file_contents`]. All changes to VFS are logged, and can be retrieved via
+//! [`take_changes`] method. The pack of changes is then pushed to `salsa` and
 //! triggers incremental recomputation.
 //!
-//! Files in VFS are identified with `FileId`s -- interned paths. The notion of
-//! the path, `VfsPath` is somewhat abstract: at the moment, it is represented
-//! as an `std::path::PathBuf` internally, but this is an implementation detail.
+//! Files in VFS are identified with [`FileId`]s -- interned paths. The notion of
+//! the path, [`VfsPath`] is somewhat abstract: at the moment, it is represented
+//! as an [`std::path::PathBuf`] internally, but this is an implementation detail.
 //!
-//! VFS doesn't do IO or file watching itself. For that, see the `loader`
-//! module. `loader::Handle` is an object-safe trait which abstracts both file
-//! loading and file watching. `Handle` is dynamically configured with a set of
-//! directory entries which should be scanned and watched. `Handle` then
+//! VFS doesn't do IO or file watching itself. For that, see the [`loader`]
+//! module. [`loader::Handle`] is an object-safe trait which abstracts both file
+//! loading and file watching. [`Handle`] is dynamically configured with a set of
+//! directory entries which should be scanned and watched. [`Handle`] then
 //! asynchronously pushes file changes. Directory entries are configured in
-//! free-form via list of globs, it's up to the `Handle` to interpret the globs
+//! free-form via list of globs, it's up to the [`Handle`] to interpret the globs
 //! in any specific way.
 //!
-//! VFS stores a flat list of files. `FileSet` can partition this list of files
+//! VFS stores a flat list of files. [`FileSet`] can partition this list of files
 //! into disjoint sets of files. Traversal-like operations (including getting
-//! the neighbor file by the relative path) are handled by the `FileSet`.
-//! `FileSet`s are also pushed to salsa and cause it to re-check `mod foo;`
+//! the neighbor file by the relative path) are handled by the [`FileSet`].
+//! [`FileSet`]s are also pushed to salsa and cause it to re-check `mod foo;`
 //! declarations when files are created or deleted.
 //!
-//! `file_set::FileSet` and `loader::Entry` play similar, but different roles.
+//! [`file_set::FileSet`] and [`loader::Entry`] play similar, but different roles.
 //! Both specify the "set of paths/files", one is geared towards file watching,
-//! the other towards salsa changes. In particular, single `file_set::FileSet`
-//! may correspond to several `loader::Entry`. For example, a crate from
-//! crates.io which uses code generation would have two `Entries` -- for sources
+//! the other towards salsa changes. In particular, single [`file_set::FileSet`]
+//! may correspond to several [`loader::Entry`]. For example, a crate from
+//! crates.io which uses code generation would have two [`Entries`] -- for sources
 //! in `~/.cargo`, and for generated code in `./target/debug/build`. It will
-//! have a single `FileSet` which unions the two sources.
-mod vfs_path;
-mod path_interner;
+//! have a single [`FileSet`] which unions the two sources.
+//!
+//! [`set_file_contents`]: Vfs::set_file_contents
+//! [`take_changes`]: Vfs::take_changes
+//! [`FileSet`]: file_set::FileSet
+//! [`Handle`]: loader::Handle
+//! [`Entries`]: loader::Entry
 mod anchored_path;
 pub mod file_set;
 pub mod loader;
+mod path_interner;
+mod vfs_path;
 
 use std::{fmt, mem};
 
