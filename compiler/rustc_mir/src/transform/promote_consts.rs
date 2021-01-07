@@ -226,12 +226,14 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         self.super_terminator(terminator, location);
 
         match terminator.kind {
-            TerminatorKind::Call { ref func, .. } => {
+            TerminatorKind::Call { ref func, ref args, .. } => {
                 if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).kind() {
                     let fn_sig = self.ccx.tcx.fn_sig(def_id);
                     if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
                         let name = self.ccx.tcx.item_name(def_id);
-                        // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
+                        // FIXME: Find some way to do this without general
+                        // promotion (hard-code array literals, or compile to
+                        // `inline const`).
                         if name.as_str().starts_with("simd_shuffle") {
                             self.candidates
                                 .push(Candidate::Argument { bb: location.block, index: 2 });
@@ -242,7 +244,12 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
                     if let Some(constant_args) = args_required_const(self.ccx.tcx, def_id) {
                         for index in constant_args {
-                            self.candidates.push(Candidate::Argument { bb: location.block, index });
+                            // FIXME perform this check in some more sensible place
+                            if !matches!(args[index], Operand::Constant(_)) {
+                                let span = terminator.source_info.span;
+                                let msg = format!("argument {} is required to be a constant", index + 1);
+                                self.ccx.tcx.sess.span_err(span, &msg);
+                            }
                         }
                     }
                 }
