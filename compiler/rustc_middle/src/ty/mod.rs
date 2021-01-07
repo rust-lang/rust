@@ -1030,7 +1030,7 @@ impl<'tcx> GenericPredicates<'tcx> {
 
 #[derive(Debug)]
 crate struct PredicateInner<'tcx> {
-    binder: Binder<PredicateKind<'tcx>>,
+    kind: Binder<PredicateKind<'tcx>>,
     flags: TypeFlags,
     /// See the comment for the corresponding field of [TyS].
     outer_exclusive_binder: ty::DebruijnIndex,
@@ -1060,21 +1060,21 @@ impl Hash for Predicate<'_> {
 impl<'tcx> Eq for Predicate<'tcx> {}
 
 impl<'tcx> Predicate<'tcx> {
-    /// Converts this to a `Binder<PredicateKind<'tcx>>`. If the value was an
-    /// `Atom`, then it is not allowed to contain escaping bound vars.
+    /// Gets the inner `Binder<PredicateKind<'tcx>>`.
     pub fn kind(self) -> Binder<PredicateKind<'tcx>> {
-        self.inner.binder
+        self.inner.kind
     }
 
-    pub fn kind_ref(self) -> &'tcx Binder<PredicateKind<'tcx>> {
-        &self.inner.binder
+    /// Like `kind` but returns a reference. Only needed because of encoding.
+    pub(super) fn kind_ref(self) -> &'tcx Binder<PredicateKind<'tcx>> {
+        &self.inner.kind
     }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let PredicateInner {
-            ref binder,
+            ref kind,
 
             // The other fields just provide fast access to information that is
             // also contained in `kind`, so no need to hash them.
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
             outer_exclusive_binder: _,
         } = self.inner;
 
-        binder.hash_stable(hcx, hasher);
+        kind.hash_stable(hcx, hasher);
     }
 }
 
@@ -1221,7 +1221,7 @@ impl<'tcx> Predicate<'tcx> {
         let substs = trait_ref.skip_binder().substs;
         let pred = self.kind().skip_binder();
         let new = pred.subst(tcx, substs);
-        if new != pred { ty::Binder::bind(new).to_predicate(tcx) } else { self }
+        tcx.reuse_or_mk_predicate(self, ty::Binder::bind(new))
     }
 }
 
@@ -1352,7 +1352,6 @@ impl ToPredicate<'tcx> for Binder<PredicateKind<'tcx>> {
 impl ToPredicate<'tcx> for PredicateKind<'tcx> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        debug_assert!(!self.has_escaping_bound_vars(), "escaping bound vars for {:?}", self);
         tcx.mk_predicate(Binder::dummy(self))
     }
 }

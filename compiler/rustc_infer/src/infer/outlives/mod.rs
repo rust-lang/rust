@@ -6,7 +6,6 @@ pub mod verify;
 
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty;
-use rustc_middle::ty::fold::TypeFoldable;
 
 pub fn explicit_outlives_bounds<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
@@ -16,9 +15,8 @@ pub fn explicit_outlives_bounds<'tcx>(
         .caller_bounds()
         .into_iter()
         .map(ty::Predicate::kind)
-        .map(ty::Binder::skip_binder)
-        .filter(|atom| !atom.has_escaping_bound_vars())
-        .filter_map(move |atom| match atom {
+        .filter_map(ty::Binder::no_bound_vars)
+        .filter_map(move |kind| match kind {
             ty::PredicateKind::Projection(..)
             | ty::PredicateKind::Trait(..)
             | ty::PredicateKind::Subtype(..)

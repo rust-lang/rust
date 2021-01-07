@@ -133,13 +133,13 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 
     #[inline(never)]
-    fn intern_predicate(&self, binder: Binder<PredicateKind<'tcx>>) -> &'tcx PredicateInner<'tcx> {
+    fn intern_predicate(&self, kind: Binder<PredicateKind<'tcx>>) -> &'tcx PredicateInner<'tcx> {
         self.predicate
-            .intern(binder, |binder| {
-                let flags = super::flags::FlagComputation::for_predicate(binder);
+            .intern(kind, |kind| {
+                let flags = super::flags::FlagComputation::for_predicate(kind);
 
                 let predicate_struct = PredicateInner {
-                    binder,
+                    kind,
                     flags: flags.flags,
                     outer_exclusive_binder: flags.outer_exclusive_binder,
                 };
@@ -1936,7 +1936,7 @@ impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
 // N.B., an `Interned<PredicateInner>` compares and hashes as a `PredicateKind`.
 impl<'tcx> PartialEq for Interned<'tcx, PredicateInner<'tcx>> {
     fn eq(&self, other: &Interned<'tcx, PredicateInner<'tcx>>) -> bool {
-        self.0.binder == other.0.binder
+        self.0.kind == other.0.kind
     }
 }
 
@@ -1944,13 +1944,13 @@ impl<'tcx> Eq for Interned<'tcx, PredicateInner<'tcx>> {}
 
 impl<'tcx> Hash for Interned<'tcx, PredicateInner<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.0.binder.hash(s)
+        self.0.kind.hash(s)
     }
 }
 
 impl<'tcx> Borrow<Binder<PredicateKind<'tcx>>> for Interned<'tcx, PredicateInner<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a Binder<PredicateKind<'tcx>> {
-        &self.0.binder
+        &self.0.kind
     }
 }
 

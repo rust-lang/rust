@@ -1684,8 +1684,6 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let mut bounds = bounds
                     .iter()
                     .filter_map(|bound| {
-                        // Note: The substs of opaque types can contain unbound variables,
-                        // meaning that we have to use `ignore_quantifiers_with_unbound_vars` here.
                         let bound_predicate = bound.kind();
                         let trait_ref = match bound_predicate.skip_binder() {
                             ty::PredicateKind::Trait(tr, _constness) => {

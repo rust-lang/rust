@@ -623,10 +623,6 @@ pub trait PrettyPrinter<'tcx>:
                     p!("impl");
                     for (predicate, _) in bounds {
                         let predicate = predicate.subst(self.tcx(), substs);
-                        // Note: We can't use `to_opt_poly_trait_ref` here as `predicate`
-                        // may contain unbound variables. We therefore do this manually.
-                        //
-                        // FIXME(lcnr): Find out why exactly this is the case :)
                         let bound_predicate = predicate.kind();
                         if let ty::PredicateKind::Trait(pred, _) = bound_predicate.skip_binder() {
                             let trait_ref = bound_predicate.rebind(pred.trait_ref);
