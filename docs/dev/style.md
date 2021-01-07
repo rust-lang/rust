@@ -435,7 +435,7 @@ Avoid local `use MyEnum::*` imports.
 
 Prefer `use crate::foo::bar` to `use super::bar`.
 
-When implementing `Debug` or `Display`, import `std::fmt`:
+When implementing traits from `std::fmt` or `std::ops`, import the module:
 
 ```rust
 // Good
@@ -448,6 +448,14 @@ impl fmt::Display for RenameError {
 // Not as good
 impl std::fmt::Display for RenameError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { .. }
+}
+
+// Not as good
+use std::ops::Deref;
+
+impl Deref for Widget {
+    type Target = str;
+    fn deref(&self) -> &str { .. }
 }
 ```
 
