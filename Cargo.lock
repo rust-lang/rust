@@ -666,9 +666,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.36"
+version = "0.1.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cd0782e0a7da7598164153173e5a5d4d9b1da094473c98dce0ff91406112369"
+checksum = "3748f82c7d366a0b4950257d19db685d4958d2fa27c6d164a3f069fec42b748b"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -5344,7 +5344,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.9.0",
+ "parking_lot 0.11.0",
  "regex",
  "serde",
  "serde_json",
