@@ -844,8 +844,7 @@ impl<T: ?Sized> Arc<T> {
             let offset = data_offset(ptr);
 
             // Reverse the offset to find the original ArcInner.
-            let fake_ptr = ptr as *mut ArcInner<T>;
-            let arc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
+            let arc_ptr = (ptr as *mut ArcInner<T>).set_ptr_value((ptr as *mut u8).offset(-offset));
 
             Self::from_ptr(arc_ptr)
         }
@@ -1129,7 +1128,7 @@ impl<T: ?Sized> Arc<T> {
             Self::allocate_for_layout(
                 Layout::for_value(&*ptr),
                 |layout| Global.allocate(layout),
-                |mem| set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>,
+                |mem| (ptr as *mut ArcInner<T>).set_ptr_value(mem) as *mut ArcInner<T>,
             )
         }
     }
@@ -1168,20 +1167,7 @@ impl<T> Arc<[T]> {
             )
         }
     }
-}
 
-/// Sets the data pointer of a `?Sized` raw pointer.
-///
-/// For a slice/trait object, this sets the `data` field and leaves the rest
-/// unchanged. For a sized raw pointer, this simply sets the pointer.
-unsafe fn set_data_ptr<T: ?Sized, U>(mut ptr: *mut T, data: *mut U) -> *mut T {
-    unsafe {
-        ptr::write(&mut ptr as *mut _ as *mut *mut u8, data as *mut u8);
-    }
-    ptr
-}
-
-impl<T> Arc<[T]> {
     /// Copy elements from slice into newly allocated Arc<\[T\]>
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`.

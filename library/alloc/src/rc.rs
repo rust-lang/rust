@@ -827,8 +827,8 @@ impl<T: ?Sized> Rc<T> {
         let offset = unsafe { data_offset(ptr) };
 
         // Reverse the offset to find the original RcBox.
-        let fake_ptr = ptr as *mut RcBox<T>;
-        let rc_ptr = unsafe { set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset)) };
+        let rc_ptr =
+            unsafe { (ptr as *mut RcBox<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) };
 
         unsafe { Self::from_ptr(rc_ptr) }
     }
@@ -1154,7 +1154,7 @@ impl<T: ?Sized> Rc<T> {
             Self::allocate_for_layout(
                 Layout::for_value(&*ptr),
                 |layout| Global.allocate(layout),
-                |mem| set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>,
+                |mem| (ptr as *mut RcBox<T>).set_ptr_value(mem),
             )
         }
     }
@@ -1193,20 +1193,7 @@ impl<T> Rc<[T]> {
             )
         }
     }
-}
 
-/// Sets the data pointer of a `?Sized` raw pointer.
-///
-/// For a slice/trait object, this sets the `data` field and leaves the rest
-/// unchanged. For a sized raw pointer, this simply sets the pointer.
-unsafe fn set_data_ptr<T: ?Sized, U>(mut ptr: *mut T, data: *mut U) -> *mut T {
-    unsafe {
-        ptr::write(&mut ptr as *mut _ as *mut *mut u8, data as *mut u8);
-    }
-    ptr
-}
-
-impl<T> Rc<[T]> {
     /// Copy elements from slice into newly allocated Rc<\[T\]>
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`
