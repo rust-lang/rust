@@ -18,15 +18,15 @@
 //! free-form via list of globs, it's up to the [`Handle`] to interpret the globs
 //! in any specific way.
 //!
-//! VFS stores a flat list of files. [`FileSet`] can partition this list of files
-//! into disjoint sets of files. Traversal-like operations (including getting
-//! the neighbor file by the relative path) are handled by the [`FileSet`].
+//! VFS stores a flat list of files. [`file_set::FileSet`] can partition this list
+//! of files into disjoint sets of files. Traversal-like operations (including
+//! getting the neighbor file by the relative path) are handled by the [`FileSet`].
 //! [`FileSet`]s are also pushed to salsa and cause it to re-check `mod foo;`
 //! declarations when files are created or deleted.
 //!
-//! [`file_set::FileSet`] and [`loader::Entry`] play similar, but different roles.
+//! [`FileSet`] and [`loader::Entry`] play similar, but different roles.
 //! Both specify the "set of paths/files", one is geared towards file watching,
-//! the other towards salsa changes. In particular, single [`file_set::FileSet`]
+//! the other towards salsa changes. In particular, single [`FileSet`]
 //! may correspond to several [`loader::Entry`]. For example, a crate from
 //! crates.io which uses code generation would have two [`Entries`] -- for sources
 //! in `~/.cargo`, and for generated code in `./target/debug/build`. It will
