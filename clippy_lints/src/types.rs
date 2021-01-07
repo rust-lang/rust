@@ -1637,12 +1637,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             return;
         }
         if let ExprKind::Cast(ref ex, cast_to) = expr.kind {
-            if let TyKind::Path(QPath::Resolved(_, path)) = cast_to.kind {
-                if let Res::Def(_, def_id) = path.res {
-                    if cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr) {
-                        return;
-                    }
-                }
+            if is_hir_ty_cfg_dependant(cx, cast_to) {
+                return;
             }
             let (cast_from, cast_to) = (cx.typeck_results().expr_ty(ex), cx.typeck_results().expr_ty(expr));
             lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
@@ -1692,6 +1688,21 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             }
 
             lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
+        } else if let ExprKind::MethodCall(method_path, _, args, _) = expr.kind {
+            if method_path.ident.name != sym!(cast) {
+                return;
+            }
+            if_chain! {
+                if let Some(generic_args) = method_path.args;
+                if let [GenericArg::Type(cast_to)] = generic_args.args;
+                // There probably is no obvious reason to do this, just to be consistent with `as` cases.
+                if is_hir_ty_cfg_dependant(cx, cast_to);
+                then {
+                    return;
+                }
+            }
+            let (cast_from, cast_to) = (cx.typeck_results().expr_ty(&args[0]), cx.typeck_results().expr_ty(expr));
+            lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
         }
     }
 }
@@ -1711,6 +1722,18 @@ fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<&'e Lit> {
             }
         },
         _ => None,
+    }
+}
+
+fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
+    if_chain! {
+        if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
+        if let Res::Def(_, def_id) = path.res;
+        then {
+            cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr)
+        } else {
+            false
+        }
     }
 }
 
