@@ -2175,7 +2175,7 @@ impl str {
     /// helps the inference algorithm understand specifically which type
     /// you're trying to parse into.
     ///
-    /// `parse` can parse any type that implements the [`FromStr`] trait.
+    /// `parse` can parse into any type that implements the [`FromStr`] trait.
 
     ///
     /// # Errors
