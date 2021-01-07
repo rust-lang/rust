@@ -1697,7 +1697,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if let ty::Opaque(def_id, _) = *ret_ty.kind() {
                 // one of the associated types must be Self
                 for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
-                    if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
+                    if let ty::PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
                         // walk the associated type and check for Self
                         if contains_ty(projection_predicate.ty, self_ty) {
                             return;

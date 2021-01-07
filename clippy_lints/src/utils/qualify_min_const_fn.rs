@@ -19,18 +19,18 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>) -> McfResult {
     loop {
         let predicates = tcx.predicates_of(current);
         for (predicate, _) in predicates.predicates {
-            match predicate.skip_binders() {
-                ty::PredicateAtom::RegionOutlives(_)
-                | ty::PredicateAtom::TypeOutlives(_)
-                | ty::PredicateAtom::WellFormed(_)
-                | ty::PredicateAtom::Projection(_)
-                | ty::PredicateAtom::ConstEvaluatable(..)
-                | ty::PredicateAtom::ConstEquate(..)
-                | ty::PredicateAtom::TypeWellFormedFromEnv(..) => continue,
-                ty::PredicateAtom::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
-                ty::PredicateAtom::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
-                ty::PredicateAtom::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
-                ty::PredicateAtom::Trait(pred, _) => {
+            match predicate.kind().skip_binder() {
+                ty::PredicateKind::RegionOutlives(_)
+                | ty::PredicateKind::TypeOutlives(_)
+                | ty::PredicateKind::WellFormed(_)
+                | ty::PredicateKind::Projection(_)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
+                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
+                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
+                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
+                ty::PredicateKind::Trait(pred, _) => {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }
