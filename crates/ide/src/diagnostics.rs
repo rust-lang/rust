@@ -315,7 +315,7 @@ fn div(x: i32, y: i32) -> Option<i32> {
     if y == 0 {
         return None;
     }
-    x / y<|>
+    x / y$0
 }
 //- /core/lib.rs crate:core
 pub mod result {
