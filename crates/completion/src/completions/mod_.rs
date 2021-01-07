@@ -1,5 +1,7 @@
 //! Completes mod declarations.
 
+use std::iter;
+
 use hir::{Module, ModuleSource};
 use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use ide_db::RootDatabase;
@@ -12,9 +14,8 @@ use crate::{context::CompletionContext, item::CompletionKind, Completions};
 /// Complete mod declaration, i.e. `mod $0 ;`
 pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let mod_under_caret = match &ctx.mod_declaration_under_caret {
-        Some(mod_under_caret) if mod_under_caret.item_list().is_some() => return None,
-        Some(mod_under_caret) => mod_under_caret,
-        None => return None,
+        Some(mod_under_caret) if mod_under_caret.item_list().is_none() => mod_under_caret,
+        _ => return None,
     };
 
     let _p = profile::span("completion::complete_mod");
@@ -49,9 +50,13 @@ pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
         .filter_map(|submodule_file| {
             let submodule_path = source_root.path_for_file(&submodule_file)?;
             let directory_with_submodule = submodule_path.parent()?;
-            match submodule_path.name_and_extension()? {
-                ("lib", Some("rs")) | ("main", Some("rs")) => None,
-                ("mod", Some("rs")) => {
+            let (name, ext) = submodule_path.name_and_extension()?;
+            if ext != Some("rs") {
+                return None;
+            }
+            match name {
+                "lib" | "main" => None,
+                "mod" => {
                     if directory_with_submodule.parent()? == directory_to_look_for_submodules {
                         match directory_with_submodule.name_and_extension()? {
                             (directory_name, None) => Some(directory_name.to_owned()),
@@ -61,9 +66,7 @@ pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
                         None
                     }
                 }
-                (file_name, Some("rs"))
-                    if directory_with_submodule == directory_to_look_for_submodules =>
-                {
+                file_name if directory_with_submodule == directory_to_look_for_submodules => {
                     Some(file_name.to_owned())
                 }
                 _ => None,
@@ -73,7 +76,7 @@ pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
         .for_each(|submodule_name| {
             let mut label = submodule_name;
             if mod_under_caret.semicolon_token().is_none() {
-                label.push(';')
+                label.push(';');
             }
             CompletionItem::new(CompletionKind::Magic, ctx.source_range(), &label)
                 .kind(CompletionItemKind::Module)
@@ -89,11 +92,13 @@ fn directory_to_look_for_submodules(
     module_file_path: &VfsPath,
 ) -> Option<VfsPath> {
     let directory_with_module_path = module_file_path.parent()?;
-    let base_directory = match module_file_path.name_and_extension()? {
-        ("mod", Some("rs")) | ("lib", Some("rs")) | ("main", Some("rs")) => {
-            Some(directory_with_module_path)
-        }
-        (regular_rust_file_name, Some("rs")) => {
+    let (name, ext) = module_file_path.name_and_extension()?;
+    if ext != Some("rs") {
+        return None;
+    }
+    let base_directory = match name {
+        "mod" | "lib" | "main" => Some(directory_with_module_path),
+        regular_rust_file_name => {
             if matches!(
                 (
                     directory_with_module_path
@@ -110,37 +115,25 @@ fn directory_to_look_for_submodules(
                 directory_with_module_path.join(regular_rust_file_name)
             }
         }
-        _ => None,
     }?;
 
-    let mut resulting_path = base_directory;
-    for module in module_chain_to_containing_module_file(module, db) {
-        if let Some(name) = module.name(db) {
-            resulting_path = resulting_path.join(&name.to_string())?;
-        }
-    }
-
-    Some(resulting_path)
+    module_chain_to_containing_module_file(module, db)
+        .into_iter()
+        .filter_map(|module| module.name(db))
+        .try_fold(base_directory, |path, name| path.join(&name.to_string()))
 }
 
 fn module_chain_to_containing_module_file(
     current_module: Module,
     db: &RootDatabase,
 ) -> Vec<Module> {
-    let mut path = Vec::new();
-
-    let mut current_module = Some(current_module);
-    while let Some(ModuleSource::Module(_)) =
-        current_module.map(|module| module.definition_source(db).value)
-    {
-        if let Some(module) = current_module {
-            path.insert(0, module);
-            current_module = module.parent(db);
-        } else {
-            current_module = None;
-        }
-    }
-
+    let mut path =
+        iter::successors(Some(current_module), |current_module| current_module.parent(db))
+            .take_while(|current_module| {
+                matches!(current_module.definition_source(db).value, ModuleSource::Module(_))
+            })
+            .collect::<Vec<_>>();
+    path.reverse();
     path
 }
 
