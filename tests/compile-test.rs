@@ -254,7 +254,7 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
 
 fn prepare_env() {
     set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
-    set_var("CLIPPY_TESTS", "true");
+    set_var("__CLIPPY_INTERNAL_TESTS", "true");
     //set_var("RUST_BACKTRACE", "0");
 }
 
