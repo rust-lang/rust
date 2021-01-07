@@ -22,6 +22,7 @@ use crate::{
     global_state::{file_id_to_url, url_to_file_id, GlobalState, Status},
     handlers, lsp_ext,
     lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
+    reload::ProjectWorkspaceProgress,
     Result,
 };
 
@@ -63,6 +64,7 @@ pub(crate) enum Task {
     Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     Workspaces(Vec<anyhow::Result<ProjectWorkspace>>),
     PrimeCaches(PrimeCachesProgress),
+    FetchWorkspace(ProjectWorkspaceProgress),
 }
 
 impl fmt::Debug for Event {
@@ -216,6 +218,16 @@ impl GlobalState {
                             }
                             PrimeCachesProgress::Finished => prime_caches_progress.push(progress),
                         },
+                        Task::FetchWorkspace(progress) => {
+                            let (state, msg) = match progress {
+                                ProjectWorkspaceProgress::Begin => (Progress::Begin, None),
+                                ProjectWorkspaceProgress::Report(msg) => {
+                                    (Progress::Report, Some(msg))
+                                }
+                                ProjectWorkspaceProgress::End => (Progress::End, None),
+                            };
+                            self.report_progress("fetching", state, msg, None);
+                        }
                     }
                     // Coalesce multiple task events into one loop turn
                     task = match self.task_pool.receiver.try_recv() {

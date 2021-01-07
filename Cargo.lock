@@ -427,6 +427,7 @@ dependencies = [
  "jod-thread",
  "log",
  "serde_json",
+ "stdx",
  "toolchain",
 ]
 
