@@ -8,6 +8,7 @@ macro_rules! impl_op_test {
                 test_helpers::test_unary_elementwise(
                     <$vector as core::ops::$trait>::$fn,
                     <$scalar as core::ops::$trait>::$fn,
+                    |_| true,
                 );
             }
         }
@@ -21,6 +22,7 @@ macro_rules! impl_op_test {
                     test_helpers::test_binary_elementwise(
                         <$vector as core::ops::$trait>::$fn,
                         <$scalar as core::ops::$trait>::$fn,
+                        |_, _| true,
                     );
                 }
 
@@ -28,6 +30,7 @@ macro_rules! impl_op_test {
                     test_helpers::test_binary_scalar_rhs_elementwise(
                         <$vector as core::ops::$trait<$scalar>>::$fn,
                         <$scalar as core::ops::$trait>::$fn,
+                        |_, _| true,
                     );
                 }
 
@@ -35,6 +38,7 @@ macro_rules! impl_op_test {
                     test_helpers::test_binary_scalar_lhs_elementwise(
                         <$scalar as core::ops::$trait<$vector>>::$fn,
                         <$scalar as core::ops::$trait>::$fn,
+                        |_, _| true,
                     );
                 }
 
@@ -42,6 +46,7 @@ macro_rules! impl_op_test {
                     test_helpers::test_binary_elementwise(
                         |mut a, b| { <$vector as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
                         |mut a, b| { <$scalar as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
+                        |_, _| true,
                     )
                 }
 
@@ -49,6 +54,7 @@ macro_rules! impl_op_test {
                     test_helpers::test_binary_scalar_rhs_elementwise(
                         |mut a, b| { <$vector as core::ops::$trait_assign<$scalar>>::$fn_assign(&mut a, b); a },
                         |mut a, b| { <$scalar as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
+                        |_, _| true,
                     )
                 }
             }
@@ -62,7 +68,7 @@ macro_rules! impl_tests {
             type Vector<const LANES: usize> = core_simd::$vector<LANES>;
             type Scalar = $scalar;
             type IntScalar = $int_scalar;
-            
+
             impl_op_test! { unary, Vector<LANES>, Scalar, Neg::neg }
             impl_op_test! { binary, Vector<LANES>, Scalar, Add::add, AddAssign::add_assign }
             impl_op_test! { binary, Vector<LANES>, Scalar, Sub::sub, SubAssign::sub_assign }
@@ -75,6 +81,7 @@ macro_rules! impl_tests {
                     test_helpers::test_unary_elementwise(
                         Vector::<LANES>::abs,
                         Scalar::abs,
+                        |_| true,
                     )
                 }
 
@@ -82,6 +89,7 @@ macro_rules! impl_tests {
                     test_helpers::test_unary_elementwise(
                         Vector::<LANES>::ceil,
                         Scalar::ceil,
+                        |_| true,
                     )
                 }
 
@@ -89,6 +97,7 @@ macro_rules! impl_tests {
                     test_helpers::test_unary_elementwise(
                         Vector::<LANES>::floor,
                         Scalar::floor,
+                        |_| true,
                     )
                 }
 
@@ -96,6 +105,7 @@ macro_rules! impl_tests {
                     test_helpers::test_unary_elementwise(
                         Vector::<LANES>::round_from_int,
                         |x| x as Scalar,
+                        |_| true,
                     )
                 }
 

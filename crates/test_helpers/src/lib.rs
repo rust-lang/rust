@@ -62,6 +62,7 @@ pub fn test_2<A: core::fmt::Debug + DefaultStrategy, B: core::fmt::Debug + Defau
 pub fn test_unary_elementwise<Scalar, ScalarResult, Vector, VectorResult, const LANES: usize>(
     fv: impl Fn(Vector) -> VectorResult,
     fs: impl Fn(Scalar) -> ScalarResult,
+    check: impl Fn([Scalar; LANES]) -> bool,
 ) where
     Scalar: Copy + Default + core::fmt::Debug + DefaultStrategy,
     ScalarResult: Copy + Default + biteq::BitEq + core::fmt::Debug + DefaultStrategy,
@@ -69,6 +70,7 @@ pub fn test_unary_elementwise<Scalar, ScalarResult, Vector, VectorResult, const 
     VectorResult: Into<[ScalarResult; LANES]> + From<[ScalarResult; LANES]> + Copy,
 {
     test_1(|x: [Scalar; LANES]| {
+        proptest::prop_assume!(check(x));
         let result_1: [ScalarResult; LANES] = fv(x.into()).into();
         let result_2: [ScalarResult; LANES] = {
             let mut result = [ScalarResult::default(); LANES];
@@ -93,6 +95,7 @@ pub fn test_binary_elementwise<
 >(
     fv: impl Fn(Vector1, Vector2) -> VectorResult,
     fs: impl Fn(Scalar1, Scalar2) -> ScalarResult,
+    check: impl Fn([Scalar1; LANES], [Scalar2; LANES]) -> bool,
 ) where
     Scalar1: Copy + Default + core::fmt::Debug + DefaultStrategy,
     Scalar2: Copy + Default + core::fmt::Debug + DefaultStrategy,
@@ -102,6 +105,7 @@ pub fn test_binary_elementwise<
     VectorResult: Into<[ScalarResult; LANES]> + From<[ScalarResult; LANES]> + Copy,
 {
     test_2(|x: [Scalar1; LANES], y: [Scalar2; LANES]| {
+        proptest::prop_assume!(check(x, y));
         let result_1: [ScalarResult; LANES] = fv(x.into(), y.into()).into();
         let result_2: [ScalarResult; LANES] = {
             let mut result = [ScalarResult::default(); LANES];
@@ -125,6 +129,7 @@ pub fn test_binary_scalar_rhs_elementwise<
 >(
     fv: impl Fn(Vector, Scalar2) -> VectorResult,
     fs: impl Fn(Scalar1, Scalar2) -> ScalarResult,
+    check: impl Fn([Scalar1; LANES], Scalar2) -> bool,
 ) where
     Scalar1: Copy + Default + core::fmt::Debug + DefaultStrategy,
     Scalar2: Copy + Default + core::fmt::Debug + DefaultStrategy,
@@ -133,6 +138,7 @@ pub fn test_binary_scalar_rhs_elementwise<
     VectorResult: Into<[ScalarResult; LANES]> + From<[ScalarResult; LANES]> + Copy,
 {
     test_2(|x: [Scalar1; LANES], y: Scalar2| {
+        proptest::prop_assume!(check(x, y));
         let result_1: [ScalarResult; LANES] = fv(x.into(), y).into();
         let result_2: [ScalarResult; LANES] = {
             let mut result = [ScalarResult::default(); LANES];
@@ -156,6 +162,7 @@ pub fn test_binary_scalar_lhs_elementwise<
 >(
     fv: impl Fn(Scalar1, Vector) -> VectorResult,
     fs: impl Fn(Scalar1, Scalar2) -> ScalarResult,
+    check: impl Fn(Scalar1, [Scalar2; LANES]) -> bool,
 ) where
     Scalar1: Copy + Default + core::fmt::Debug + DefaultStrategy,
     Scalar2: Copy + Default + core::fmt::Debug + DefaultStrategy,
@@ -164,6 +171,7 @@ pub fn test_binary_scalar_lhs_elementwise<
     VectorResult: Into<[ScalarResult; LANES]> + From<[ScalarResult; LANES]> + Copy,
 {
     test_2(|x: Scalar1, y: [Scalar2; LANES]| {
+        proptest::prop_assume!(check(x, y));
         let result_1: [ScalarResult; LANES] = fv(x, y.into()).into();
         let result_2: [ScalarResult; LANES] = {
             let mut result = [ScalarResult::default(); LANES];
@@ -215,9 +223,6 @@ macro_rules! test_lanes {
             lanes_8 => 8,
             lanes_16 => 16,
             lanes_32 => 32,
-            lanes_64 => 64,
-            lanes_128 => 128,
-            lanes_256 => 256,
         }
         )*
     }
