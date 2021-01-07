@@ -94,6 +94,30 @@ error[E0745]: cannot take address of a temporary
 LL |     let ascribe_index_ref = &raw mut (ARRAY[0]: i32);
    |                                      ^^^^^^^^^^^^^^^ temporary value
 
-error: aborting due to 16 previous errors
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/raw-ref-temp.rs:26:34
+   |
+LL |     let ref_ascribe = &raw const (2: i32);
+   |                                  ^^^^^^^^
+
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/raw-ref-temp.rs:27:36
+   |
+LL |     let mut_ref_ascribe = &raw mut (3: i32);
+   |                                    ^^^^^^^^
+
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/raw-ref-temp.rs:29:40
+   |
+LL |     let ascribe_field_ref = &raw const (PAIR.0: i32);
+   |                                        ^^^^^^^^^^^^^
+
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/raw-ref-temp.rs:30:38
+   |
+LL |     let ascribe_index_ref = &raw mut (ARRAY[0]: i32);
+   |                                      ^^^^^^^^^^^^^^^
+
+error: aborting due to 20 previous errors
 
 For more information about this error, try `rustc --explain E0745`.

@@ -1,0 +1,24 @@
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/automatic_reborrows.rs:15:22
+   |
+LL |   let foo = Foo {a : (r : &[u32]) };
+   |                      ^^^^^^^^^^^^
+   |
+help: try to use the type ascription when creating the local variable
+   |
+LL | let r: &[u32] = &arr;
+   | ^^^^^^^^^^^^^
+
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/automatic_reborrows.rs:19:18
+   |
+LL |   fooer.foo_that(r : &[u32]);
+   |                  ^^^^^^^^^^
+   |
+help: try to use the type ascription when creating the local variable
+   |
+LL | let r: &[u32] = &arr;
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

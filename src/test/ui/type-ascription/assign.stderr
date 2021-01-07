@@ -1,0 +1,8 @@
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/assign.rs:7:3
+   |
+LL |   x : &[u32] = &arr2;
+   |   ^^^^^^^^^^
+
+error: aborting due to previous error
+

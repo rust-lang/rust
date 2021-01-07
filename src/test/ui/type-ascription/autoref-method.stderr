@@ -1,0 +1,13 @@
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/autoref-method.rs:12:3
+   |
+LL |   (x : &Foo).foo(); 
+   |   ^^^^^^^^^^
+   |
+help: try to use the type ascription when creating the local variable
+   |
+LL | let x: &Foo = &mut fooer;
+   | ^^^^^^^^^^^
+
+error: aborting due to previous error
+

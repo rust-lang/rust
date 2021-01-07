@@ -1,0 +1,8 @@
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/unsound-type-ascription-coercion.rs:10:16
+   |
+LL |   let p = &mut (arg1 : &'b u32);
+   |                ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

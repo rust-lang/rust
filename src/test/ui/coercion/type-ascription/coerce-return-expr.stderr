@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/coerce-return-expr.rs:4:3
+   |
+LL |   arg : (u32, (u32, &[u32]))
+   |   ^^^ expected slice `[u32]`, found array `[u32; 3]`
+   |
+   = note: expected tuple `(_, (_, &[u32]))`
+              found tuple `(_, (_, &'a [u32; 3]))`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
