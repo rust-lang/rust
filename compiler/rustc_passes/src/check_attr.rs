@@ -359,7 +359,7 @@ impl CheckAttrVisitor<'tcx> {
             return false;
         }
         let item_name = self.tcx.hir().name(hir_id);
-        if item_name.to_string() == doc_alias {
+        if &*item_name.as_str() == doc_alias {
             self.tcx
                 .sess
                 .struct_span_err(
