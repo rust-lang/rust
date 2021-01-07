@@ -650,6 +650,20 @@ impl Span {
             self.with_ctxt(data.apply_mark(SyntaxContext::root(), expn_id, transparency))
         })
     }
+
+    /// Reuses the span but adds information like the kind of the desugaring and features that are
+    /// allowed inside this span.
+    pub fn mark_with_reason(
+        self,
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+        reason: DesugaringKind,
+        edition: Edition,
+    ) -> Span {
+        self.fresh_expansion(ExpnData {
+            allow_internal_unstable,
+            ..ExpnData::default(ExpnKind::Desugaring(reason), self, edition, None)
+        })
+    }
 }
 
 /// A subset of properties from both macro definition and macro call available through global data.
@@ -699,7 +713,7 @@ pub struct ExpnData {
     /// created locally - when our serialized metadata is decoded,
     /// foreign `ExpnId`s will have their `ExpnData` looked up
     /// from the crate specified by `Crate
-    pub krate: CrateNum,
+    krate: CrateNum,
     /// The raw that this `ExpnData` had in its original crate.
     /// An `ExpnData` can be created before being assigned an `ExpnId`,
     /// so this might be `None` until `set_expn_data` is called
@@ -707,13 +721,39 @@ pub struct ExpnData {
     // two `ExpnData`s that differ only in their `orig_id` should
     // be considered equivalent.
     #[stable_hasher(ignore)]
-    pub orig_id: Option<u32>,
+    orig_id: Option<u32>,
 }
 
 // This would require special handling of `orig_id` and `parent`
 impl !PartialEq for ExpnData {}
 
 impl ExpnData {
+    pub fn new(
+        kind: ExpnKind,
+        parent: ExpnId,
+        call_site: Span,
+        def_site: Span,
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+        allow_internal_unsafe: bool,
+        local_inner_macros: bool,
+        edition: Edition,
+        macro_def_id: Option<DefId>,
+    ) -> ExpnData {
+        ExpnData {
+            kind,
+            parent,
+            call_site,
+            def_site,
+            allow_internal_unstable,
+            allow_internal_unsafe,
+            local_inner_macros,
+            edition,
+            macro_def_id,
+            krate: LOCAL_CRATE,
+            orig_id: None,
+        }
+    }
+
     /// Constructs expansion data with default properties.
     pub fn default(
         kind: ExpnKind,
