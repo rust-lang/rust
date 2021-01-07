@@ -50,7 +50,10 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 
-            Ok(ty::Binder::bind(result))
+            // We related `a_prime` and `b_prime`, which just had any bound vars
+            // replaced with placeholders or infer vars, respectively. Relating
+            // them should not introduce new bound vars.
+            Ok(ty::Binder::dummy(result))
         })
     }
 }

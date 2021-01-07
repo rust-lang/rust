@@ -1090,7 +1090,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let late_bound_in_trait_ref =
                     tcx.collect_constrained_late_bound_regions(&projection_ty);
                 let late_bound_in_ty =
-                    tcx.collect_referenced_late_bound_regions(&ty::Binder::bind(ty));
+                    tcx.collect_referenced_late_bound_regions(&trait_ref.rebind(ty));
                 debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
                 debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
 

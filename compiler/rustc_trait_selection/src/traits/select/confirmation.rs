@@ -748,7 +748,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     cause,
                     obligation.recursion_depth + 1,
                     obligation.param_env,
-                    ty::Binder::bind(outlives).to_predicate(tcx),
+                    obligation.predicate.rebind(outlives).to_predicate(tcx),
                 ));
             }
 

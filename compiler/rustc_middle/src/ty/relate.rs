@@ -619,10 +619,9 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'
         let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
             use crate::ty::ExistentialPredicate::*;
             match (ep_a.skip_binder(), ep_b.skip_binder()) {
-                (Trait(a), Trait(b)) => Ok(ty::Binder::bind(Trait(
-                    relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
-                ))),
-                (Projection(a), Projection(b)) => Ok(ty::Binder::bind(Projection(
+                (Trait(a), Trait(b)) => Ok(ep_a
+                    .rebind(Trait(relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder()))),
+                (Projection(a), Projection(b)) => Ok(ep_a.rebind(Projection(
                     relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
                 ))),
                 (AutoTrait(a), AutoTrait(b)) if a == b => Ok(ep_a.rebind(AutoTrait(a))),
