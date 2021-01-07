@@ -119,6 +119,70 @@ public:
     return f->second;
   }
 
+  Value *getOrInsertTotalMultiplicativeProduct(Value *val, LoopContext &lc) {
+    // TODO optimize if val is invariant to loopContext
+    assert(val->getType()->isFPOrFPVectorTy());
+    for (auto &I : *lc.header) {
+      if (auto PN = dyn_cast<PHINode>(&I)) {
+        if (PN->getType() != val->getType())
+          continue;
+        Value *ival = PN->getIncomingValueForBlock(lc.preheader);
+        if (auto CDV = dyn_cast<ConstantDataVector>(ival)) {
+          if (CDV->isSplat())
+            ival = CDV->getSplatValue();
+        }
+        if (auto C = dyn_cast<ConstantFP>(ival)) {
+          if (!C->isExactlyValue(
+                  APFloat(C->getType()->getFltSemantics(), "1"))) {
+            continue;
+          }
+        } else
+          continue;
+        for (auto IB : PN->blocks()) {
+          if (IB == lc.preheader)
+            continue;
+
+          if (auto BO =
+                  dyn_cast<BinaryOperator>(PN->getIncomingValueForBlock(IB))) {
+            if (BO->getOpcode() != BinaryOperator::FMul)
+              goto continueOutermost;
+            if (BO->getOperand(0) == PN && BO->getOperand(1) == val)
+              return BO;
+            if (BO->getOperand(1) == PN && BO->getOperand(0) == val)
+              return BO;
+          } else
+            goto continueOutermost;
+        }
+      } else
+        break;
+    continueOutermost:;
+    }
+
+    IRBuilder<> lbuilder(lc.header, lc.header->begin());
+    auto PN = lbuilder.CreatePHI(val->getType(), 2);
+    Constant *One = ConstantFP::get(val->getType()->getScalarType(), "1");
+    if (VectorType *VTy = dyn_cast<VectorType>(val->getType())) {
+#if LLVM_VERSION_MAJOR >= 11
+      One = ConstantVector::getSplat(VTy->getElementCount(), One);
+#else
+      One = ConstantVector::getSplat(VTy->getNumElements(), One);
+#endif
+    }
+    PN->addIncoming(One, lc.preheader);
+    lbuilder.SetInsertPoint(lc.header->getFirstNonPHI());
+    if (auto inst = dyn_cast<Instruction>(val)) {
+      if (DT.dominates(PN, inst))
+        lbuilder.SetInsertPoint(inst->getNextNode());
+    }
+    Value *red = lbuilder.CreateFMul(PN, val);
+    for (auto pred : predecessors(lc.header)) {
+      if (pred == lc.preheader)
+        continue;
+      PN->addIncoming(red, pred);
+    }
+    return red;
+  }
+
   void setupOMPFor() {
     for (auto &BB : *oldFunc) {
       for (auto &I : BB) {
@@ -217,6 +281,9 @@ public:
   Instruction *getNewFromOriginal(const Instruction *newinst) const {
     return cast<Instruction>(getNewFromOriginal((Value *)newinst));
   }
+  BasicBlock *getNewFromOriginal(const BasicBlock *newinst) const {
+    return cast<BasicBlock>(getNewFromOriginal((Value *)newinst));
+  }
 
   Value *hasUninverted(const Value *inverted) const {
     for (auto v : invertedPointers) {
@@ -224,6 +291,17 @@ public:
         return const_cast<Value *>(v.first);
     }
     return nullptr;
+  }
+  BasicBlock *getOriginalFromNew(const BasicBlock *newinst) const {
+    assert(newinst->getParent() == newFunc);
+    for (auto &B : *oldFunc) {
+
+      auto f = originalToNewFn.find(&B);
+      assert(f != originalToNewFn.end());
+      if (f->second == newinst)
+        return &B;
+    }
+    llvm_unreachable("could not find original block");
   }
 
   Value *isOriginal(const Value *newinst) const {
@@ -257,8 +335,7 @@ private:
 public:
   bool legalRecompute(const Value *val,
                       const ValueToValueMapTy &available) const;
-  bool shouldRecompute(const Value *val,
-                       const ValueToValueMapTy &available) const;
+  bool shouldRecompute(const Value *val, const ValueToValueMapTy &available);
 
   void replaceAWithB(Value *A, Value *B, bool storeInCache = false) override {
     for (unsigned i = 0; i < addedTapeVals.size(); ++i) {
@@ -1209,7 +1286,7 @@ public:
         LLVMContext::MD_dereferenceable,
         MDNode::get(forfree->getContext(),
                     {ConstantAsMetadata::get(byteSizeOfType)}));
-    forfree->setName("forfreegutils.h");
+    forfree->setName("forfree");
     unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
     if ((bsize & (bsize - 1)) == 0) {
 #if LLVM_VERSION_MAJOR >= 10
@@ -1245,22 +1322,23 @@ public:
   llvm::errs() << "Origptr: " << *origptr << "\n";
   llvm::errs() << "Diff: " << *dif << "\n";
 } assert(origptr->getType()->isPointerTy());
-assert(cast<PointerType>(origptr->getType())->getElementType() == dif->getType());
+assert(cast<PointerType>(origptr->getType())->getElementType() ==
+       dif->getType());
 
 assert(origptr->getType()->isPointerTy());
-assert(cast<PointerType>(origptr->getType())->getElementType() == dif->getType());
+assert(cast<PointerType>(origptr->getType())->getElementType() ==
+       dif->getType());
 
 // const SCEV *S = SE.getSCEV(PN);
 // if (SE.getCouldNotCompute() == S)
 //  continue;
 
-
 Value *ptr = invertPointerM(origptr, BuilderM);
 assert(ptr);
 
-    auto TmpOrig =
+auto TmpOrig =
 #if LLVM_VERSION_MAJOR >= 12
-        getUnderlyingObject(origptr, 100);
+    getUnderlyingObject(origptr, 100);
 #else
         GetUnderlyingObject(origptr, oldFunc->getParent()->getDataLayout(),
                             100);
@@ -1270,12 +1348,13 @@ assert(ptr);
 bool Atomic = AtomicAdd;
 
 // No need to do atomic on local memory for CUDA since it can't be raced upon
-if (isa<AllocaInst>(TmpOrig) && (llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
-          Triple::nvptx ||
-      llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
-          Triple::nvptx64)) {
-    Atomic = false;
-  }
+if (isa<AllocaInst>(TmpOrig) &&
+    (llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
+         Triple::nvptx ||
+     llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
+         Triple::nvptx64)) {
+  Atomic = false;
+}
 
 if (Atomic) {
   /*

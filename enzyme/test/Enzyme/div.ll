@@ -18,8 +18,8 @@ declare double @__enzyme_autodiff(double (double, double)*, ...)
 
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @diffetester(double %x, double %y, double %[[differet:.+]])
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[diffex:.+]] = fdiv fast double %[[differet]], %y
 ; CHECK-NEXT:   %[[xdivy:.+]] = fdiv fast double %x, %y
+; CHECK-NEXT:   %[[diffex:.+]] = fdiv fast double %[[differet]], %y
 ; CHECK-NEXT:   %[[xdivydret:.+]] = fmul fast double %[[xdivy]], %[[diffex]]
 ; CHECK-NEXT:   %[[mxdivy2:.+]] = {{(fsub fast double 0.000000e\+00,|fneg fast double)}} %[[xdivydret]]
 ; CHECK-NEXT:   %[[res1:.+]] = insertvalue { double, double } undef, double %[[diffex]], 0

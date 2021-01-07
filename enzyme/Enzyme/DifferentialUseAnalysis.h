@@ -44,6 +44,17 @@ bool is_value_needed_in_reverse(
   // Inductively claim we aren't needed (and try to find contradiction)
   seen[idx] = false;
 
+  if (VT != Shadow) {
+    if (auto op = dyn_cast<BinaryOperator>(inst)) {
+      if (op->getOpcode() == Instruction::FDiv) {
+        if (!gutils->isConstantValue(const_cast<Value *>(inst)) &&
+            !gutils->isConstantValue(op->getOperand(1))) {
+          return seen[idx] = true;
+        }
+      }
+    }
+  }
+
   // Consider all users of this value, do any of them need this in the reverse?
   for (auto use : inst->users()) {
     if (use == inst)

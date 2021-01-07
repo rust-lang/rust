@@ -994,8 +994,8 @@ Function *CloneFunctionWithReturns(
   return NewF;
 }
 
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
   {
     DominatorTree DT(*F);

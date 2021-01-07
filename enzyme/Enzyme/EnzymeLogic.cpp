@@ -139,14 +139,16 @@ bool is_value_mustcache_from_origin(
     } else if (isa<AllocaInst>(obj)) {
       // No change to modref if alloca
     } else if (isa<GlobalVariable>(obj)) {
-      // In the absense of more fine-grained global info, assume object is written to
-      // in a subseqent call unless this is "topLevel";
-      if (!topLevel) mustcache = true;
+      // In the absense of more fine-grained global info, assume object is
+      // written to in a subseqent call unless this is "topLevel";
+      if (!topLevel)
+        mustcache = true;
     } else if (auto sli = dyn_cast<LoadInst>(obj)) {
       // If obj is from a load instruction conservatively consider it
       // uncacheable if that load itself cannot be cached
-      mustcache = is_load_uncacheable(
-          *sli, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args, topLevel);
+      mustcache =
+          is_load_uncacheable(*sli, AA, gutils, TLI, unnecessaryInstructions,
+                              uncacheable_args, topLevel);
     } else {
       // In absence of more information, assume that the underlying object for
       // pointer operand is uncacheable in caller.
@@ -171,8 +173,9 @@ bool is_load_uncacheable(
                           gutils->oldFunc->getParent()->getDataLayout(), 100);
 #endif
 
-  bool can_modref = is_value_mustcache_from_origin(
-      obj, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args, topLevel);
+  bool can_modref = is_value_mustcache_from_origin(obj, AA, gutils, TLI,
+                                                   unnecessaryInstructions,
+                                                   uncacheable_args, topLevel);
 
   if (!can_modref) {
     allFollowersOf(&li, [&](Instruction *inst2) {
@@ -230,8 +233,9 @@ std::map<Instruction *, bool> compute_uncacheable_load_map(
     Instruction *inst = &*I;
     // For each load instruction, determine if it is uncacheable.
     if (auto op = dyn_cast<LoadInst>(inst)) {
-      can_modref_map[inst] = is_load_uncacheable(
-          *op, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args, topLevel);
+      can_modref_map[inst] =
+          is_load_uncacheable(*op, AA, gutils, TLI, unnecessaryInstructions,
+                              uncacheable_args, topLevel);
     }
   }
   return can_modref_map;
@@ -267,7 +271,8 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
 #endif
 
     bool init_safe = !is_value_mustcache_from_origin(
-        obj, AA, gutils, TLI, unnecessaryInstructions, parent_uncacheable_args, topLevel);
+        obj, AA, gutils, TLI, unnecessaryInstructions, parent_uncacheable_args,
+        topLevel);
     args_safe.push_back(init_safe);
   }
 
@@ -1246,11 +1251,11 @@ const AugmentedReturn &CreateAugmentedPrimal(
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map = compute_uncacheable_args_for_callsites(
           gutils->oldFunc, gutils->DT, TLI, unnecessaryInstructions, AA, gutils,
-          _uncacheable_argsPP, /*topLevel*/false);
+          _uncacheable_argsPP, /*topLevel*/ false);
 
   const std::map<Instruction *, bool> can_modref_map =
       compute_uncacheable_load_map(gutils, AA, TLI, unnecessaryInstructions,
-                                   _uncacheable_argsPP, /*topLevel*/false);
+                                   _uncacheable_argsPP, /*topLevel*/ false);
 
   insert_or_assign(cachedfunctions, tup,
                    AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping,
@@ -1837,9 +1842,6 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
           orig->getType()->isPointerTy())
         continue;
 
-      auto prediff = gutils->diffe(orig, Builder);
-      gutils->setDiffe(orig, Constant::getNullValue(orig->getType()), Builder);
-
       Type *PNfloatType = PNtype.isFloat();
       if (!PNfloatType) {
         llvm::errs() << *gutils->oldFunc->getParent() << "\n";
@@ -1852,33 +1854,104 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
       assert(PNfloatType);
       TR.intType(size, orig, /*necessary*/ true);
 
-      for (BasicBlock *opred : predecessors(oBB)) {
-        auto oval = orig->getIncomingValueForBlock(opred);
-        if (gutils->isConstantValue(oval)) {
-          continue;
-        }
+      auto prediff = gutils->diffe(orig, Builder);
 
-        if (orig->getNumIncomingValues() == 1) {
-          gutils->addToDiffe(oval, prediff, Builder, PNfloatType);
-        } else {
-          BasicBlock *pred =
-              cast<BasicBlock>(gutils->getNewFromOriginal(opred));
-          if (replacePHIs.find(pred) == replacePHIs.end()) {
-            replacePHIs[pred] = Builder.CreatePHI(
-                Type::getInt1Ty(pred->getContext()), 1, "replacePHI");
-            if (!setphi) {
-              phibuilder.SetInsertPoint(replacePHIs[pred]);
-              setphi = true;
+      bool handled = false;
+
+      if (orig->getNumUses() == 1 && inLoop &&
+          gutils->getNewFromOriginal(orig->getParent()) == loopContext.header &&
+          loopContext.exitBlocks.size() == 1) {
+        if (auto BO = dyn_cast<BinaryOperator>(orig->user_back())) {
+          SmallVector<BasicBlock *, 1> Latches;
+          gutils->OrigLI.getLoopFor(orig->getParent())->getLoopLatches(Latches);
+          bool allIncoming = true;
+          for (auto Latch : Latches) {
+            if (BO != orig->getIncomingValueForBlock(Latch)) {
+              allIncoming = false;
+              break;
             }
           }
-          SelectInst *dif = cast<SelectInst>(
-              Builder.CreateSelect(replacePHIs[pred], prediff,
-                                   Constant::getNullValue(prediff->getType())));
-          auto addedSelects =
-              gutils->addToDiffe(oval, dif, Builder, PNfloatType);
+          if (allIncoming && BO->getOpcode() == Instruction::FDiv &&
+              BO->getOperand(0) == orig) {
 
-          for (auto select : addedSelects)
-            selects.emplace_back(select);
+            auto oval = orig->getIncomingValueForBlock(
+                gutils->getOriginalFromNew(loopContext.preheader));
+            BasicBlock *pred = loopContext.preheader;
+            if (replacePHIs.find(pred) == replacePHIs.end()) {
+              replacePHIs[pred] = Builder.CreatePHI(
+                  Type::getInt1Ty(pred->getContext()), 1, "replacePHI");
+              if (!setphi) {
+                phibuilder.SetInsertPoint(replacePHIs[pred]);
+                setphi = true;
+              }
+            }
+
+            auto ddiff = gutils->diffe(BO, Builder);
+            gutils->setDiffe(
+                BO,
+                Builder.CreateSelect(replacePHIs[pred],
+                                     Constant::getNullValue(prediff->getType()),
+                                     ddiff),
+                Builder);
+            handled = true;
+
+            if (!gutils->isConstantValue(oval)) {
+
+              BasicBlock *REB =
+                  gutils->reverseBlocks[*loopContext.exitBlocks.begin()];
+              IRBuilder<> EB(REB);
+              if (REB->getTerminator())
+                EB.SetInsertPoint(REB->getTerminator());
+
+              auto product = gutils->getOrInsertTotalMultiplicativeProduct(
+                  gutils->getNewFromOriginal(BO->getOperand(1)), loopContext);
+
+              SelectInst *dif = cast<SelectInst>(Builder.CreateSelect(
+                  replacePHIs[pred],
+                  Builder.CreateFDiv(ddiff, gutils->lookupM(product, EB)),
+                  Constant::getNullValue(prediff->getType())));
+              auto addedSelects =
+                  gutils->addToDiffe(oval, dif, Builder, PNfloatType);
+
+              for (auto select : addedSelects)
+                selects.emplace_back(select);
+            }
+          }
+        }
+      }
+
+      if (!handled) {
+        gutils->setDiffe(orig, Constant::getNullValue(orig->getType()),
+                         Builder);
+
+        for (BasicBlock *opred : predecessors(oBB)) {
+          auto oval = orig->getIncomingValueForBlock(opred);
+          if (gutils->isConstantValue(oval)) {
+            continue;
+          }
+
+          if (orig->getNumIncomingValues() == 1) {
+            gutils->addToDiffe(oval, prediff, Builder, PNfloatType);
+          } else {
+            BasicBlock *pred =
+                cast<BasicBlock>(gutils->getNewFromOriginal(opred));
+            if (replacePHIs.find(pred) == replacePHIs.end()) {
+              replacePHIs[pred] = Builder.CreatePHI(
+                  Type::getInt1Ty(pred->getContext()), 1, "replacePHI");
+              if (!setphi) {
+                phibuilder.SetInsertPoint(replacePHIs[pred]);
+                setphi = true;
+              }
+            }
+            SelectInst *dif = cast<SelectInst>(Builder.CreateSelect(
+                replacePHIs[pred], prediff,
+                Constant::getNullValue(prediff->getType())));
+            auto addedSelects =
+                gutils->addToDiffe(oval, dif, Builder, PNfloatType);
+
+            for (auto select : addedSelects)
+              selects.emplace_back(select);
+          }
         }
       }
     } else
@@ -2232,10 +2305,11 @@ Function *CreatePrimalAndGradient(
                     AA, gutils, _uncacheable_argsPP, topLevel);
 
   const std::map<Instruction *, bool> can_modref_map =
-      augmenteddata ? augmenteddata->can_modref_map
-                    : compute_uncacheable_load_map(gutils, AA, TLI,
-                                                   unnecessaryInstructions,
-                                                   _uncacheable_argsPP, topLevel);
+      augmenteddata
+          ? augmenteddata->can_modref_map
+          : compute_uncacheable_load_map(gutils, AA, TLI,
+                                         unnecessaryInstructions,
+                                         _uncacheable_argsPP, topLevel);
 
   gutils->can_modref_map = &can_modref_map;
 

@@ -932,7 +932,7 @@ bool GradientUtils::legalRecompute(const Value *val,
 //! Given the option to recompute a value or re-use an old one, return true if
 //! it is faster to recompute this value from scratch
 bool GradientUtils::shouldRecompute(const Value *val,
-                                    const ValueToValueMapTy &available) const {
+                                    const ValueToValueMapTy &available) {
   if (available.count(val))
     return true;
   // TODO: remake such that this returns whether a load to a cache is more
@@ -961,7 +961,23 @@ bool GradientUtils::shouldRecompute(const Value *val,
       if (isa<LoadInst>(op) && CacheLookups.count(cast<LoadInst>(op)))
         continue;
 
-      // If a plcaeholder phi for inversion (and we know from above not
+      // If a previously cached this operand, don't let it trigger the
+      // heuristic for caching this value instead.
+      if (scopeMap.find(op) != scopeMap.end())
+        continue;
+
+      // If the actually uncacheable operand is in a different loop scope
+      // don't cache this value instead as it may require more memory
+      LoopContext lc1;
+      LoopContext lc2;
+      bool inLoop1 =
+          getContext(const_cast<Instruction *>(inst)->getParent(), lc1);
+      bool inLoop2 = getContext(cast<Instruction>(op)->getParent(), lc2);
+      if (inLoop1 != inLoop2 || (inLoop1 && (lc1.header != lc2.header))) {
+        continue;
+      }
+
+      // If a placeholder phi for inversion (and we know from above not
       // recomputable)
       if (!isa<PHINode>(op) && dyn_cast_or_null<LoadInst>(hasUninverted(op))) {
         goto forceCache;
@@ -999,8 +1015,9 @@ bool GradientUtils::shouldRecompute(const Value *val,
           }
         }
       }
-
     forceCache:;
+      // llvm::errs() << "shouldn't recompute " << *inst << "because of illegal
+      // redo op: " << *op << "\n";
       return false;
     }
   }
@@ -1708,8 +1725,10 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     return available[inst];
 
   // TODO consider call as part of
-  if (tryLegalRecomputeCheck && legalRecompute(prelcssaInst, available)) {
-    if (shouldRecompute(prelcssaInst, available)) {
+  bool lrc = false, src = false;
+  if (tryLegalRecomputeCheck &&
+      (lrc = legalRecompute(prelcssaInst, available))) {
+    if (src = shouldRecompute(prelcssaInst, available)) {
       auto op = unwrapM(prelcssaInst, BuilderM, available,
                         UnwrapMode::AttemptSingleUnwrap);
       if (op) {
@@ -1735,6 +1754,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     }
   }
 
+  // llvm::errs() << "forcing cache of " << *inst << "lrc: " << lrc << " src: "
+  // << src << "\n";
   if (auto origInst = isOriginal(inst))
     if (auto li = dyn_cast<LoadInst>(inst)) {
 #if LLVM_VERSION_MAJOR >= 12

@@ -80,7 +80,7 @@ attributes #14 = { nounwind }
 ; CHECK: define internal { double } @diffejulia_num2num_3(double %x, double %differeturn)
 ; CHECK-NEXT: top:
 ; CHECK-NEXT:   %[[x2:.+]] = fadd double %x, %x
-; CHECK-NEXT:   %[[subret:.+]] = fneg fast double %differeturn
+; CHECK-NEXT:   %[[subret:.+]] = {{(fsub fast double \-?0.000000e\+00,|fneg fast double)}} %differeturn
 ; CHECK-NEXT:   %[[pow:.+]] = call fast double @llvm.pow.f64(double 1.031000e+01, double %[[x2]])
 ; CHECK-NEXT:   %[[dmul:.+]] = fmul fast double %differeturn, %[[pow]]
 ; CHECK-NEXT:   %[[cmul:.+]] = fmul fast double %[[dmul]], 0x4002AA37D43EE973

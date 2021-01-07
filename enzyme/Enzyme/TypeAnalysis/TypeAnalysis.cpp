@@ -50,59 +50,65 @@
 
 #include "TBAA.h"
 
-const std::map<std::string,llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
-  {"cos",Intrinsic::cos},
-  {"sin",Intrinsic::sin},
-  {"tan",Intrinsic::not_intrinsic},
-  {"acos",Intrinsic::not_intrinsic},
-  {"asin",Intrinsic::not_intrinsic},
-  {"atan",Intrinsic::not_intrinsic},
-  {"atan2",Intrinsic::not_intrinsic},
-  {"cosh",Intrinsic::not_intrinsic},
-  {"sinh",Intrinsic::not_intrinsic},
-  {"tanh",Intrinsic::not_intrinsic},
-  {"acosh",Intrinsic::not_intrinsic},
-  {"asinh",Intrinsic::not_intrinsic},
-  {"atanh",Intrinsic::not_intrinsic},
-  {"exp",Intrinsic::exp},
-  {"log",Intrinsic::log},
-  {"log10",Intrinsic::log10},
-  {"exp2",Intrinsic::exp2},
-  {"expm1",Intrinsic::not_intrinsic},
-  {"log1p",Intrinsic::not_intrinsic},
-  {"log2",Intrinsic::log2},
-  {"logb",Intrinsic::not_intrinsic},
-  {"pow",Intrinsic::pow},
-  {"sqrt",Intrinsic::sqrt},
-  {"cbrt",Intrinsic::not_intrinsic},
-  {"hypot",Intrinsic::not_intrinsic},
-  {"erf",Intrinsic::not_intrinsic},
-  {"erfc",Intrinsic::not_intrinsic},
-  {"tgamma",Intrinsic::not_intrinsic},
-  {"lgamma",Intrinsic::not_intrinsic},
-  {"ceil",Intrinsic::ceil},
-  {"floor",Intrinsic::floor},
-  {"fmod",Intrinsic::not_intrinsic},
-  {"trunc",Intrinsic::trunc},
-  {"round",Intrinsic::round},
-  {"rint",Intrinsic::rint},
-  {"remainder",Intrinsic::not_intrinsic},
-  {"copysign",Intrinsic::copysign},
-  {"nextafter",Intrinsic::not_intrinsic},
-  {"nexttoward",Intrinsic::not_intrinsic},
-  {"fdim",Intrinsic::not_intrinsic},
-  {"fmax",Intrinsic::maxnum},
-  {"fmin",Intrinsic::minnum},
-  {"fabs",Intrinsic::fabs},
-  {"fma",Intrinsic::fma},
-  {"ilogb",Intrinsic::not_intrinsic},
-  {"scalbn",Intrinsic::not_intrinsic},
-  {"lround",Intrinsic::lround},
-  {"llround",Intrinsic::llround},
-  {"lrint",Intrinsic::lrint},
-  {"llrint",Intrinsic::llrint}
+const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
+    {"cos", Intrinsic::cos},
+    {"sin", Intrinsic::sin},
+    {"tan", Intrinsic::not_intrinsic},
+    {"acos", Intrinsic::not_intrinsic},
+    {"asin", Intrinsic::not_intrinsic},
+    {"atan", Intrinsic::not_intrinsic},
+    {"atan2", Intrinsic::not_intrinsic},
+    {"cosh", Intrinsic::not_intrinsic},
+    {"sinh", Intrinsic::not_intrinsic},
+    {"tanh", Intrinsic::not_intrinsic},
+    {"acosh", Intrinsic::not_intrinsic},
+    {"asinh", Intrinsic::not_intrinsic},
+    {"atanh", Intrinsic::not_intrinsic},
+    {"exp", Intrinsic::exp},
+    {"log", Intrinsic::log},
+    {"log10", Intrinsic::log10},
+    {"exp2", Intrinsic::exp2},
+    {"expm1", Intrinsic::not_intrinsic},
+    {"log1p", Intrinsic::not_intrinsic},
+    {"log2", Intrinsic::log2},
+    {"logb", Intrinsic::not_intrinsic},
+    {"pow", Intrinsic::pow},
+    {"sqrt", Intrinsic::sqrt},
+    {"cbrt", Intrinsic::not_intrinsic},
+    {"hypot", Intrinsic::not_intrinsic},
+    {"erf", Intrinsic::not_intrinsic},
+    {"erfc", Intrinsic::not_intrinsic},
+    {"tgamma", Intrinsic::not_intrinsic},
+    {"lgamma", Intrinsic::not_intrinsic},
+    {"ceil", Intrinsic::ceil},
+    {"floor", Intrinsic::floor},
+    {"fmod", Intrinsic::not_intrinsic},
+    {"trunc", Intrinsic::trunc},
+    {"round", Intrinsic::round},
+    {"rint", Intrinsic::rint},
+    {"remainder", Intrinsic::not_intrinsic},
+    {"copysign", Intrinsic::copysign},
+    {"nextafter", Intrinsic::not_intrinsic},
+    {"nexttoward", Intrinsic::not_intrinsic},
+    {"fdim", Intrinsic::not_intrinsic},
+    {"fmax", Intrinsic::maxnum},
+    {"fmin", Intrinsic::minnum},
+    {"fabs", Intrinsic::fabs},
+    {"fma", Intrinsic::fma},
+    {"ilogb", Intrinsic::not_intrinsic},
+    {"scalbn", Intrinsic::not_intrinsic},
+#if LLVM_VERSION_MAJOR >= 9
+    {"lround", Intrinsic::lround},
+    {"llround", Intrinsic::llround},
+    {"lrint", Intrinsic::lrint},
+    {"llrint", Intrinsic::llrint}
+#else
+    {"lround", Intrinsic::not_intrinsic},
+    {"llround", Intrinsic::not_intrinsic},
+    {"lrint", Intrinsic::not_intrinsic},
+    {"llrint", Intrinsic::not_intrinsic}
+#endif
 };
-
 
 llvm::cl::opt<bool> PrintType("enzyme-print-type", cl::init(false), cl::Hidden,
                               cl::desc("Print type analysis algorithm"));
@@ -2660,35 +2666,28 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 
     if (isMemFreeLibMFunction(ci->getName())) {
       for (size_t i = 0; i < call.getNumArgOperands(); ++i) {
-        Type* T = call.getArgOperand(i)->getType();
+        Type *T = call.getArgOperand(i)->getType();
         if (T->isFloatingPointTy()) {
           updateAnalysis(
               call.getArgOperand(i),
               TypeTree(ConcreteType(call.getArgOperand(i)->getType())).Only(-1),
               &call);
         } else if (T->isIntegerTy()) {
-          updateAnalysis(
-              call.getArgOperand(i),
-              TypeTree(BaseType::Integer).Only(-1),
-              &call);
+          updateAnalysis(call.getArgOperand(i),
+                         TypeTree(BaseType::Integer).Only(-1), &call);
         } else {
           llvm::errs() << *T << " - " << call << "\n";
           llvm_unreachable("Unknown type for libm");
         }
       }
-      Type* T = call.getType();
+      Type *T = call.getType();
       if (T->isFloatingPointTy()) {
-        updateAnalysis(
-            &call,
-            TypeTree(ConcreteType(call.getType())).Only(-1),
-            &call);
+        updateAnalysis(&call, TypeTree(ConcreteType(call.getType())).Only(-1),
+                       &call);
       } else if (T->isIntegerTy()) {
-        updateAnalysis(
-            &call,
-            TypeTree(BaseType::Integer).Only(-1),
-            &call);
+        updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       } else if (T->isVoidTy()) {
-        
+
       } else {
         llvm::errs() << *T << " - " << call << "\n";
         llvm_unreachable("Unknown type for libm");

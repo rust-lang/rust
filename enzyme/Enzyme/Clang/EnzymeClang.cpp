@@ -52,7 +52,7 @@ static RegisterStandardPasses
 #if LLVM_VERSION_MAJOR >= 9
 
 static void loadLTOPass(const PassManagerBuilder &Builder,
-                     legacy::PassManagerBase &PM) {
+                        legacy::PassManagerBase &PM) {
   loadPass(Builder, PM);
   PassManagerBuilder Builder2 = Builder;
   Builder2.Inliner = nullptr;
@@ -65,7 +65,7 @@ static void loadLTOPass(const PassManagerBuilder &Builder,
   Builder2.DisableUnrollLoops = true;
   Builder2.RerollLoops = true;
   */
-  const_cast<PassManagerBuilder&>(Builder2).populateModulePassManager(PM);
+  const_cast<PassManagerBuilder &>(Builder2).populateModulePassManager(PM);
 }
 
 static RegisterStandardPasses
