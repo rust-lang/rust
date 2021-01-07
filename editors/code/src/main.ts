@@ -167,6 +167,7 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
         }
         return;
     };
+    if (serverPath(config) !== null) return;
 
     const now = Date.now();
     if (config.package.releaseTag === NIGHTLY_TAG) {
@@ -278,7 +279,7 @@ async function patchelf(dest: PathLike): Promise<void> {
 }
 
 async function getServer(config: Config, state: PersistentState): Promise<string | undefined> {
-    const explicitPath = process.env.__RA_LSP_SERVER_DEBUG ?? config.serverPath;
+    const explicitPath = serverPath(config);
     if (explicitPath) {
         if (explicitPath.startsWith("~/")) {
             return os.homedir() + explicitPath.slice("~".length);
@@ -349,6 +350,10 @@ async function getServer(config: Config, state: PersistentState): Promise<string
 
     await state.updateServerVersion(config.package.version);
     return dest;
+}
+
+function serverPath(config: Config): string | null {
+    return process.env.__RA_LSP_SERVER_DEBUG ?? config.serverPath;
 }
 
 async function isNixOs(): Promise<boolean> {
