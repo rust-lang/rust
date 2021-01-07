@@ -18,9 +18,6 @@
 //! free-form via list of globs, it's up to the `Handle` to interpret the globs
 //! in any specific way.
 //!
-//! A simple `WalkdirLoaderHandle` is provided, which doesn't implement watching
-//! and just scans the directory using walkdir.
-//!
 //! VFS stores a flat list of files. `FileSet` can partition this list of files
 //! into disjoint sets of files. Traversal-like operations (including getting
 //! the neighbor file by the relative path) are handled by the `FileSet`.
