@@ -1194,6 +1194,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     ObligationCauseCode::ItemObligation(_)
                         | ObligationCauseCode::BindingObligation(_, _)
                         | ObligationCauseCode::ObjectCastObligation(_)
+                        | ObligationCauseCode::OpaqueType
                 );
 
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(

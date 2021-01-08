@@ -323,6 +323,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
+
+    /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
+    OpaqueType,
 }
 
 impl ObligationCauseCode<'_> {
