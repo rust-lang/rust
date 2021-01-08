@@ -1,6 +1,6 @@
 use hir::{
-    Adt, AsAssocItem, AssocItemContainer, FieldSource, HasAttrs, HasSource, HirDisplay, Module,
-    ModuleDef, ModuleSource, Semantics,
+    Adt, AsAssocItem, AssocItemContainer, FieldSource, GenericParam, HasAttrs, HasSource,
+    HirDisplay, Module, ModuleDef, ModuleSource, Semantics,
 };
 use ide_db::base_db::SourceDatabase;
 use ide_db::{
@@ -220,12 +220,12 @@ fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
         }
     };
 
-    if let Definition::TypeParam(it) = def {
+    if let Definition::GenericParam(GenericParam::TypeParam(it)) = def {
         it.trait_bounds(db).into_iter().for_each(|it| push_new_def(it.into()));
     } else {
         let ty = match def {
             Definition::Local(it) => it.ty(db),
-            Definition::ConstParam(it) => it.ty(db),
+            Definition::GenericParam(GenericParam::ConstParam(it)) => it.ty(db),
             _ => return None,
         };
 
@@ -357,9 +357,11 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
             })
         }
         Definition::Label(it) => Some(Markup::fenced_block(&it.name(db))),
-        Definition::LifetimeParam(it) => Some(Markup::fenced_block(&it.name(db))),
-        Definition::TypeParam(type_param) => Some(Markup::fenced_block(&type_param.display(db))),
-        Definition::ConstParam(it) => from_def_source(db, it, None),
+        Definition::GenericParam(it) => match it {
+            GenericParam::TypeParam(it) => Some(Markup::fenced_block(&it.display(db))),
+            GenericParam::LifetimeParam(it) => Some(Markup::fenced_block(&it.name(db))),
+            GenericParam::ConstParam(it) => from_def_source(db, it, None),
+        },
     };
 
     fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>

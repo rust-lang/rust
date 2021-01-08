@@ -1263,6 +1263,24 @@ pub enum GenericParam {
 }
 impl_from!(TypeParam, LifetimeParam, ConstParam for GenericParam);
 
+impl GenericParam {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        match self {
+            GenericParam::TypeParam(it) => it.module(db),
+            GenericParam::LifetimeParam(it) => it.module(db),
+            GenericParam::ConstParam(it) => it.module(db),
+        }
+    }
+
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        match self {
+            GenericParam::TypeParam(it) => it.name(db),
+            GenericParam::LifetimeParam(it) => it.name(db),
+            GenericParam::ConstParam(it) => it.name(db),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TypeParam {
     pub(crate) id: TypeParamId,

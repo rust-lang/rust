@@ -6,8 +6,8 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    db::HirDatabase, ConstParam, Crate, Field, HasVisibility, Impl, Label, LifetimeParam, Local,
-    MacroDef, Module, ModuleDef, Name, PathResolution, Semantics, TypeParam, Visibility,
+    db::HirDatabase, Crate, Field, GenericParam, HasVisibility, Impl, Label, Local, MacroDef,
+    Module, ModuleDef, Name, PathResolution, Semantics, Visibility,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -24,9 +24,7 @@ pub enum Definition {
     ModuleDef(ModuleDef),
     SelfType(Impl),
     Local(Local),
-    TypeParam(TypeParam),
-    LifetimeParam(LifetimeParam),
-    ConstParam(ConstParam),
+    GenericParam(GenericParam),
     Label(Label),
 }
 
@@ -38,9 +36,7 @@ impl Definition {
             Definition::ModuleDef(it) => it.module(db),
             Definition::SelfType(it) => Some(it.module(db)),
             Definition::Local(it) => Some(it.module(db)),
-            Definition::TypeParam(it) => Some(it.module(db)),
-            Definition::LifetimeParam(it) => Some(it.module(db)),
-            Definition::ConstParam(it) => Some(it.module(db)),
+            Definition::GenericParam(it) => Some(it.module(db)),
             Definition::Label(it) => Some(it.module(db)),
         }
     }
@@ -52,9 +48,7 @@ impl Definition {
             Definition::ModuleDef(def) => def.definition_visibility(db),
             Definition::SelfType(_) => None,
             Definition::Local(_) => None,
-            Definition::TypeParam(_) => None,
-            Definition::LifetimeParam(_) => None,
-            Definition::ConstParam(_) => None,
+            Definition::GenericParam(_) => None,
             Definition::Label(_) => None,
         }
     }
@@ -80,9 +74,7 @@ impl Definition {
             },
             Definition::SelfType(_) => return None,
             Definition::Local(it) => it.name(db)?,
-            Definition::TypeParam(it) => it.name(db),
-            Definition::LifetimeParam(it) => it.name(db),
-            Definition::ConstParam(it) => it.name(db),
+            Definition::GenericParam(it) => it.name(db),
             Definition::Label(it) => it.name(db),
         };
         Some(name)
@@ -235,11 +227,11 @@ impl NameClass {
                 },
                 ast::TypeParam(it) => {
                     let def = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::TypeParam(def)))
+                    Some(NameClass::Definition(Definition::GenericParam(def.into())))
                 },
                 ast::ConstParam(it) => {
                     let def = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::ConstParam(def)))
+                    Some(NameClass::Definition(Definition::GenericParam(def.into())))
                 },
                 _ => None,
             }
@@ -257,7 +249,7 @@ impl NameClass {
             match parent {
                 ast::LifetimeParam(it) => {
                     let def = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::LifetimeParam(def)))
+                    Some(NameClass::Definition(Definition::GenericParam(def.into())))
                 },
                 ast::Label(it) => {
                     let def = sema.to_def(&it)?;
@@ -393,7 +385,8 @@ impl NameRefClass {
             | SyntaxKind::WHERE_PRED
             | SyntaxKind::REF_TYPE => sema
                 .resolve_lifetime_param(lifetime)
-                .map(Definition::LifetimeParam)
+                .map(GenericParam::LifetimeParam)
+                .map(Definition::GenericParam)
                 .map(NameRefClass::Definition),
             // lifetime bounds, as in the 'b in 'a: 'b aren't wrapped in TypeBound nodes so we gotta check
             // if our lifetime is in a LifetimeParam without being the constrained lifetime
@@ -401,7 +394,8 @@ impl NameRefClass {
                 != Some(lifetime) =>
             {
                 sema.resolve_lifetime_param(lifetime)
-                    .map(Definition::LifetimeParam)
+                    .map(GenericParam::LifetimeParam)
+                    .map(Definition::GenericParam)
                     .map(NameRefClass::Definition)
             }
             _ => None,
@@ -422,10 +416,10 @@ impl From<PathResolution> for Definition {
                 Definition::ModuleDef(def)
             }
             PathResolution::Local(local) => Definition::Local(local),
-            PathResolution::TypeParam(par) => Definition::TypeParam(par),
+            PathResolution::TypeParam(par) => Definition::GenericParam(par.into()),
             PathResolution::Macro(def) => Definition::Macro(def),
             PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
-            PathResolution::ConstParam(par) => Definition::ConstParam(par),
+            PathResolution::ConstParam(par) => Definition::GenericParam(par.into()),
         }
     }
 }

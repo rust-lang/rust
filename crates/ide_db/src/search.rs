@@ -136,7 +136,7 @@ impl Definition {
             return SearchScope::new(res);
         }
 
-        if let Definition::LifetimeParam(param) = self {
+        if let Definition::GenericParam(hir::GenericParam::LifetimeParam(param)) = self {
             let range = match param.parent(db) {
                 hir::GenericDef::Function(it) => {
                     it.source(db).and_then(|src| Some(src.value.syntax().text_range()))

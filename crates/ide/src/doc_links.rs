@@ -216,9 +216,7 @@ fn rewrite_intra_doc_link(
         Definition::Field(it) => it.resolve_doc_path(db, link, ns),
         Definition::SelfType(_)
         | Definition::Local(_)
-        | Definition::TypeParam(_)
-        | Definition::ConstParam(_)
-        | Definition::LifetimeParam(_)
+        | Definition::GenericParam(_)
         | Definition::Label(_) => return None,
     }?;
     let krate = resolved.module(db)?.krate();
