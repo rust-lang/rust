@@ -4,7 +4,7 @@
 //! The lib-proc-macro server backend is `TokenStream`-agnostic, such that
 //! we could provide any TokenStream implementation.
 //! The original idea from fedochet is using proc-macro2 as backend,
-//! we use tt instead for better intergation with RA.
+//! we use tt instead for better integration with RA.
 //!
 //! FIXME: No span and source file information is implemented yet
 

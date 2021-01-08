@@ -149,7 +149,7 @@ impl TokenMap {
     }
 
     fn remove_delim(&mut self, idx: usize) {
-        // FIXME: This could be accidently quadratic
+        // FIXME: This could be accidentally quadratic
         self.entries.remove(idx);
     }
 }

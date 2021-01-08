@@ -1,4 +1,4 @@
-//! This module contains an import search funcionality that is provided to the assists module.
+//! This module contains an import search functionality that is provided to the assists module.
 //! Later, this should be moved away to a separate crate that is accessible from the assists module.
 
 use hir::{import_map, AsAssocItem, Crate, MacroDef, ModuleDef, Semantics};

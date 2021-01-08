@@ -1,6 +1,6 @@
 //! This module describes hir-level representation of expressions.
 //!
-//! This representaion is:
+//! This representation is:
 //!
 //! 1. Identity-based. Each expression has an `id`, so we can distinguish
 //!    between different `1` in `1 + 1`.

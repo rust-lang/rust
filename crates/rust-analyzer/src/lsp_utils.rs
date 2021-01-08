@@ -130,7 +130,7 @@ pub(crate) fn apply_document_changes(
 }
 
 /// Checks that the edits inside the completion and the additional edits do not overlap.
-/// LSP explicitly forbits the additional edits to overlap both with the main edit and themselves.
+/// LSP explicitly forbids the additional edits to overlap both with the main edit and themselves.
 pub(crate) fn all_edits_are_disjoint(
     completion: &lsp_types::CompletionItem,
     additional_edits: &[lsp_types::TextEdit],
