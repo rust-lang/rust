@@ -1014,10 +1014,14 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     /// // But they are unique objects
     /// assert_ne!(&*x as *const i32, &*y as *const i32);
     /// ```
-    #[rustfmt::skip]
     #[inline]
     fn clone(&self) -> Self {
-        Self::new_in((**self).clone(), self.1.clone())
+        // Pre-allocate memory to allow writing the cloned value directly.
+        let mut boxed = Self::new_uninit_in(self.1.clone());
+        unsafe {
+            (**self).write_clone_into_raw(boxed.as_mut_ptr());
+            boxed.assume_init()
+        }
     }
 
     /// Copies `source`'s contents into `self` without creating a new allocation.
@@ -1040,6 +1044,28 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     #[inline]
     fn clone_from(&mut self, source: &Self) {
         (**self).clone_from(&(**source));
+    }
+}
+
+/// Specialize clones into pre-allocated, uninitialized memory.
+pub(crate) trait WriteCloneIntoRaw: Sized {
+    unsafe fn write_clone_into_raw(&self, target: *mut Self);
+}
+
+impl<T: Clone> WriteCloneIntoRaw for T {
+    #[inline]
+    default unsafe fn write_clone_into_raw(&self, target: *mut Self) {
+        // Having allocated *first* may allow the optimizer to create
+        // the cloned value in-place, skipping the local and move.
+        unsafe { target.write(self.clone()) };
+    }
+}
+
+impl<T: Copy> WriteCloneIntoRaw for T {
+    #[inline]
+    unsafe fn write_clone_into_raw(&self, target: *mut Self) {
+        // We can always copy in-place, without ever involving a local value.
+        unsafe { target.copy_from_nonoverlapping(self, 1) };
     }
 }
 
