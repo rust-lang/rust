@@ -82,7 +82,7 @@ crate struct Item {
     crate source: Span,
     /// Not everything has a name. E.g., impls
     crate name: Option<Symbol>,
-    crate attrs: Attributes,
+    crate attrs: Box<Attributes>,
     crate visibility: Visibility,
     crate kind: Box<ItemKind>,
     crate def_id: DefId,
@@ -90,7 +90,7 @@ crate struct Item {
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Item, 136);
+rustc_data_structures::static_assert_size!(Item, 48);
 
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -159,7 +159,7 @@ impl Item {
             kind: box kind,
             name,
             source: source.clean(cx),
-            attrs: cx.tcx.get_attrs(def_id).clean(cx),
+            attrs: box cx.tcx.get_attrs(def_id).clean(cx),
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }
     }

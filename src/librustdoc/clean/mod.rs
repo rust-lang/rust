@@ -2169,7 +2169,7 @@ fn clean_extern_crate(
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: None,
-        attrs: krate.attrs.clean(cx),
+        attrs: box krate.attrs.clean(cx),
         source: krate.span.clean(cx),
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
@@ -2251,7 +2251,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                 ) {
                     items.push(Item {
                         name: None,
-                        attrs: self.attrs.clean(cx),
+                        attrs: box self.attrs.clean(cx),
                         source: self.span.clean(cx),
                         def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
                         visibility: self.vis.clean(cx),
@@ -2269,7 +2269,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
 
         vec![Item {
             name: None,
-            attrs: self.attrs.clean(cx),
+            attrs: box self.attrs.clean(cx),
             source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
