@@ -604,8 +604,6 @@ impl<'p, 'tcx> MatrixEntry<'p, 'tcx> {
 
 #[derive(Clone)]
 enum UndoKind {
-    FilterRows,
-    PopLastCol,
     Specialize { ctor_arity: usize },
     ExpandOrPats,
 }
@@ -748,39 +746,6 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.selected_rows_history.pop_iter();
     }
 
-    /// Keep the rows that match the predicate.
-    fn filter_rows<'a>(&'a mut self, mut f: impl FnMut(&'a MatrixEntry<'p, 'tcx>) -> bool) {
-        self.save_selected_rows();
-        let last_col = self.columns.last().unwrap();
-        self.selected_rows.retain(|&row_id| f(&last_col[row_id]));
-        self.history.push(UndoKind::FilterRows);
-    }
-
-    /// Remove the last column and adjust indices accordingly.
-    fn pop_last_col(&mut self) {
-        if self.columns.is_empty() {
-            return;
-        }
-        self.save_last_col();
-        self.save_selected_rows();
-        let last_col = self.last_col_history.last().unwrap();
-        for row_id in self.selected_rows.iter_mut() {
-            *row_id = last_col[*row_id].next_row_id;
-        }
-        self.history.push(UndoKind::PopLastCol);
-    }
-
-    /// Push a new column filled with the input pattern.
-    fn push_wildcard_column(&mut self, wild: &'p Pat<'tcx>) {
-        let mut col = Vec::with_capacity(self.selected_rows.len());
-        for (new_row_id, old_row_id) in self.selected_rows.iter_mut().enumerate() {
-            col.push(MatrixEntry { pat: wild, next_row_id: *old_row_id, ctor: OnceCell::new() });
-            // Make `row_id` point to the entry just added.
-            *old_row_id = new_row_id;
-        }
-        self.columns.push(col);
-    }
-
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize<'a>(
         &'a mut self,
@@ -792,17 +757,35 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         let old_col_count = self.column_count();
 
         // We keep rows that match this ctor.
-        self.filter_rows(|e| ctor.is_covered_by(pcx, e.head_ctor(pcx.cx)));
+        self.save_selected_rows();
+        let last_col = self.columns.last().unwrap();
+        self.selected_rows
+            .retain(|&row_id| ctor.is_covered_by(pcx, last_col[row_id].head_ctor(pcx.cx)));
 
         // Remove the last column.
-        self.pop_last_col();
+        self.save_last_col();
+        self.save_selected_rows();
+        let last_col = self.last_col_history.last().unwrap();
+        for row_id in self.selected_rows.iter_mut() {
+            *row_id = last_col[*row_id].next_row_id;
+        }
 
         // We add new columns filled with wildcards of the appropriate type.
         self.columns.reserve(ctor_wild_subpatterns.len());
         let wildcards = ctor_wild_subpatterns.clone().into_patterns();
         // Note: the fields are in the natural left-to-right order but the columns are not.
         for &wild in wildcards.iter().rev() {
-            self.push_wildcard_column(wild);
+            let mut col = Vec::with_capacity(self.selected_rows.len());
+            for (new_row_id, old_row_id) in self.selected_rows.iter_mut().enumerate() {
+                col.push(MatrixEntry {
+                    pat: wild,
+                    next_row_id: *old_row_id,
+                    ctor: OnceCell::new(),
+                });
+                // Make `row_id` point to the entry just added.
+                *old_row_id = new_row_id;
+            }
+            self.columns.push(col);
         }
 
         // We extract fields from the arguments of the head of each row and put them in the
@@ -861,21 +844,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Undo the last specialization or or-pattern expansion. Panics if nothing to undo.
     fn undo(&mut self) {
         match self.history.pop().unwrap() {
-            UndoKind::FilterRows => {
-                self.restore_selected_rows();
-            }
-            UndoKind::PopLastCol => {
-                self.restore_last_col();
-                self.restore_selected_rows();
-            }
             UndoKind::Specialize { ctor_arity } => {
                 for _ in 0..ctor_arity {
                     self.columns.pop().unwrap();
                 }
-                assert!(matches!(self.history.pop().unwrap(), UndoKind::PopLastCol));
                 self.restore_last_col();
                 self.restore_selected_rows();
-                assert!(matches!(self.history.pop().unwrap(), UndoKind::FilterRows));
                 self.restore_selected_rows();
             }
             UndoKind::ExpandOrPats => {
