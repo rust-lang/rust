@@ -324,39 +324,60 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     }
 }
 
-#[unstable(feature = "cow_replace", issue = "none")]
-impl<'a, B: ?Sized> Cow<'a, B>
-where
-    B: ToOwned,
-    <B as ToOwned>::Owned: PartialEq<B>,
-{
-    /// Replaces an owned value with the given borrowed value if they are
-    /// equal, and returns the owned value if any.
-    ///
-    /// This is a no-op if the contained value is not owned.
-    #[unstable(feature = "cow_replace", issue = "none")]
-    pub fn replace_if_eq<'b: 'a>(&mut self, sub: &'b B) -> Option<<B as ToOwned>::Owned> {
-        self.replace_if(sub, |o, b| o == b)
-    }
-
-    /// Replaces an owned value with the given borrowed value if they satisfy a
-    /// condition, and returns the owned value if any.
+#[unstable(feature = "cow_disown", issue = "none")]
+impl<'a, B: ?Sized + ToOwned> Cow<'a, B> {
+    /// Replaces an owned value with the given borrowed value if it satisfies a
+    /// condition. Returns the owned value if any.
     ///
     /// If `func` returns `true`, the owned value is replaced with `sub` and
     /// returned. Otherwise, `None` is returned.
-    #[unstable(feature = "cow_replace", issue = "none")]
-    pub fn replace_if<'b: 'a>(
+    ///
+    /// # Example
+    /// Replace an owned string if its lowercase form is equal to `"moo"`.
+    /// ```
+    /// let mut cow = Cow::Owned(String::from("Moo"));
+    /// let moo = "moo";
+    /// assert_eq!(cow.replace_if(moo, |o| o.to_lowercase() == moo), Some(String::from("Moo")));
+    /// assert_eq!(cow.replace_if(moo, |o| o.to_lowercase() == moo), None);
+    /// assert_eq!(cow, Cow::Borrowed("moo"));
+    /// ```
+    #[unstable(feature = "cow_disown", issue = "none")]
+    pub fn disown_if<'b: 'a>(
         &mut self,
         sub: &'b B,
-        func: impl FnOnce(&<B as ToOwned>::Owned, &B) -> bool,
+        func: impl FnOnce(&<B as ToOwned>::Owned) -> bool,
     ) -> Option<<B as ToOwned>::Owned> {
         match self {
-            Owned(o) if func(o, sub) => {
+            Owned(o) if func(o) => {
                 use core::mem;
                 Some(mem::replace(self, Borrowed(sub)).into_owned())
             }
             _ => None,
         }
+    }
+}
+
+#[unstable(feature = "cow_disown", issue = "none")]
+impl<'a, B: ?Sized> Cow<'a, B>
+where
+    B: ToOwned,
+    <B as ToOwned>::Owned: PartialEq<B>,
+{
+
+    /// Replaces an owned value with the given borrowed value if they are
+    /// equal. Returns the owned value if any.
+    ///
+    /// # Example
+    /// Replace an owned string if it's equal to `"moo"`.
+    /// ```
+    /// let mut cow = Cow::Owned(String::from("moo"));
+    /// let moo = "moo";
+    /// assert_eq!(cow.replace_if_eq(moo), Some(moo.to_string()));
+    /// assert_eq!(cow, Cow::Borrowed("moo"));
+    /// ```
+    #[unstable(feature = "cow_disown", issue = "none")]
+    pub fn disown_if_eq<'b: 'a>(&mut self, sub: &'b B) -> Option<<B as ToOwned>::Owned> {
+        self.disown_if(sub, |o| o == sub)
     }
 }
 
