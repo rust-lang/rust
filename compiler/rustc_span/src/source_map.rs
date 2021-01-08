@@ -671,7 +671,9 @@ impl SourceMap {
             let pat = pat.to_owned() + ws;
             if let Ok(prev_source) = self.span_to_prev_source(sp) {
                 let prev_source = prev_source.rsplit(&pat).next().unwrap_or("").trim_start();
-                if !prev_source.is_empty() && (!prev_source.contains('\n') || accept_newlines) {
+                if prev_source.is_empty() && sp.lo().0 != 0 {
+                    return sp.with_lo(BytePos(sp.lo().0 - 1));
+                } else if !prev_source.contains('\n') || accept_newlines {
                     return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
                 }
             }
