@@ -70,11 +70,13 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                             .iter()
                             .any(|s| cx.tcx.is_diagnostic_item(*s, i.def_id()))
                             {
-                                let span = expr.span;
+                                let expr_span = expr.span;
 
-                                cx.struct_span_lint(NOOP_METHOD_CALL, span, |lint| {
-                                    let message = "call to noop method";
-                                    lint.build(&message).emit()
+                                cx.struct_span_lint(NOOP_METHOD_CALL, expr_span, |lint| {
+                                    let message = "call to method that does nothing";
+                                    lint.build(&message)
+                                        .span_label(expr_span, "unnecessary method call")
+                                        .emit()
                                 });
                             }
                         }
