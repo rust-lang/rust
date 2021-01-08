@@ -335,6 +335,7 @@ impl<'a, B: ?Sized + ToOwned> Cow<'a, B> {
     /// # Example
     /// Replace an owned string if its lowercase form is equal to `"moo"`.
     /// ```
+    /// # use std::borrow::Cow;
     /// let mut cow = Cow::Owned(String::from("Moo"));
     /// let moo = "moo";
     /// assert_eq!(cow.replace_if(moo, |o| o.to_lowercase() == moo), Some(String::from("Moo")));
@@ -369,6 +370,7 @@ where
     /// # Example
     /// Replace an owned string if it's equal to `"moo"`.
     /// ```
+    /// # use std::borrow::Cow;
     /// let mut cow = Cow::Owned(String::from("moo"));
     /// let moo = "moo";
     /// assert_eq!(cow.replace_if_eq(moo), Some(moo.to_string()));
