@@ -604,8 +604,7 @@ impl<'p, 'tcx> MatrixEntry<'p, 'tcx> {
 
 #[derive(Clone)]
 enum UndoKind {
-    Specialize { ctor_arity: usize },
-    ExpandOrPats,
+    Specialize { ctor_arity: usize, any_or_pats: bool },
 }
 
 /// A 2D matrix.
@@ -788,12 +787,15 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             }
         }
 
-        self.history.push(UndoKind::Specialize { ctor_arity: ctor_wild_subpatterns.len() });
-
+        let mut any_or_pats = false;
         // Expand any or-patterns present in the new last column.
         if !self.columns.is_empty() && self.last_col().any(|e| e.pat.is_or_pat()) {
+            any_or_pats = true;
             self.expand_or_patterns();
         }
+
+        self.history
+            .push(UndoKind::Specialize { ctor_arity: ctor_wild_subpatterns.len(), any_or_pats });
     }
 
     /// Expands or-patterns in the last column of the matrix. Panics if the matrix has no columns.
@@ -822,33 +824,20 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.selected_rows.clear();
         self.selected_rows.extend(0..new_last_col.len());
         self.columns.push(new_last_col);
-        self.history.push(UndoKind::ExpandOrPats);
     }
 
-    /// Undo the last specialization or or-pattern expansion. Panics if nothing to undo.
-    fn undo(&mut self) {
-        match self.history.pop().unwrap() {
-            UndoKind::Specialize { ctor_arity } => {
-                for _ in 0..ctor_arity {
-                    self.columns.pop().unwrap();
-                }
-                self.restore_last_col();
-            }
-            UndoKind::ExpandOrPats => {
-                self.columns.pop().unwrap();
-                self.restore_last_col();
-            }
-        }
-    }
-
-    /// Undo the last specialization, possibly also undoing an or-pattern expansion if there is one
-    /// before.
+    /// Undo the last specialization, possibly also undoing an or-pattern expansion if there was
+    /// one.
     fn unspecialize(&mut self) {
-        if matches!(self.history.last().unwrap(), UndoKind::ExpandOrPats) {
-            self.undo();
+        let UndoKind::Specialize { ctor_arity, any_or_pats } = self.history.pop().unwrap();
+        if any_or_pats {
+            self.columns.pop().unwrap();
+            self.restore_last_col();
         }
-        assert!(matches!(self.history.last().unwrap(), UndoKind::Specialize {..}));
-        self.undo();
+        for _ in 0..ctor_arity {
+            self.columns.pop().unwrap();
+        }
+        self.restore_last_col();
     }
 }
 
