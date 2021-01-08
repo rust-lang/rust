@@ -648,14 +648,9 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
     /// Keep the rows that match the predicate.
     fn filter_rows<'a>(&'a mut self, mut f: impl FnMut(&'a MatrixEntry<'p, 'tcx>) -> bool) {
+        self.selected_rows_history.push(self.selected_rows.clone());
         let last_col = self.columns.last().unwrap();
-        let old_selected_rows = std::mem::replace(&mut self.selected_rows, Vec::new());
-        for &row_id in &old_selected_rows {
-            if f(&last_col[row_id]) {
-                self.selected_rows.push(row_id);
-            }
-        }
-        self.selected_rows_history.push(old_selected_rows);
+        self.selected_rows.retain(|&row_id| f(&last_col[row_id]));
         self.history.push(UndoKind::FilterRows);
     }
 
