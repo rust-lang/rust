@@ -754,53 +754,39 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) {
         assert!(self.column_count() >= 1);
-        let old_col_count = self.column_count();
 
-        // We keep rows that match this ctor.
-        self.save_selected_rows();
-        let last_col = self.columns.last().unwrap();
-        self.selected_rows
-            .retain(|&row_id| ctor.is_covered_by(pcx, last_col[row_id].head_ctor(pcx.cx)));
-
-        // Remove the last column.
+        // Remove and save the last column and its selected rows.
         self.save_last_col();
         self.save_selected_rows();
-        let last_col = self.last_col_history.last().unwrap();
-        for row_id in self.selected_rows.iter_mut() {
-            *row_id = last_col[*row_id].next_row_id;
-        }
+        let old_last_col = self.last_col_history.last().unwrap();
 
-        // We add new columns filled with wildcards of the appropriate type.
+        // Prepare new columns for the arguments of the patterns we are specializing.
+        let old_col_count = self.column_count();
         self.columns.reserve(ctor_wild_subpatterns.len());
-        let wildcards = ctor_wild_subpatterns.clone().into_patterns();
-        // Note: the fields are in the natural left-to-right order but the columns are not.
-        for &wild in wildcards.iter().rev() {
-            let mut col = Vec::with_capacity(self.selected_rows.len());
-            for (new_row_id, old_row_id) in self.selected_rows.iter_mut().enumerate() {
-                col.push(MatrixEntry {
-                    pat: wild,
-                    next_row_id: *old_row_id,
-                    ctor: OnceCell::new(),
-                });
-                // Make `row_id` point to the entry just added.
-                *old_row_id = new_row_id;
-            }
-            self.columns.push(col);
+        for _ in 0..ctor_wild_subpatterns.len() {
+            self.columns.push(Vec::new());
         }
+        let new_columns = &mut self.columns[old_col_count..];
 
-        // We extract fields from the arguments of the head of each row and put them in the
-        // corresponding columns.
-        let new_columns = &mut self.columns[old_col_count - 1..];
-        let last_col = self.last_col_history.last().unwrap();
-        let selected_rows = self.selected_rows_history.last().unwrap();
-        for (new_row_id, old_row_id) in selected_rows.iter().enumerate() {
-            let head_entry = &last_col[*old_row_id];
+        // Keep only rows that match this ctor.
+        self.selected_rows
+            .retain(|&row_id| ctor.is_covered_by(pcx, old_last_col[row_id].head_ctor(pcx.cx)));
+
+        // For each row that we want to specialize.
+        for row_id in self.selected_rows.iter_mut() {
+            let head_entry = &old_last_col[*row_id];
+            // Extract fields from the arguments of the head of each row.
             let new_fields = ctor_wild_subpatterns
                 .replace_with_pattern_arguments(head_entry.pat)
                 .into_patterns();
-            // The fields are in the natural left-to-right order but the columns are not.
-            for (col, pat) in new_columns.iter_mut().rev().zip(new_fields) {
-                col[new_row_id].pat = pat;
+            // The rest of the row starts at `row_id`.
+            *row_id = head_entry.next_row_id;
+            // Note: the fields are in the natural left-to-right order but the columns are not.
+            // We need to start from the last field to get the `next_row_id`s right.
+            for (col, &pat) in new_columns.iter_mut().zip(new_fields.iter().rev()) {
+                col.push(MatrixEntry { pat, next_row_id: *row_id, ctor: OnceCell::new() });
+                // Make `row_id` point to the entry just added.
+                *row_id = col.len() - 1;
             }
         }
 
@@ -816,10 +802,10 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     fn expand_or_patterns(&mut self) {
         self.save_selected_rows();
         self.save_last_col();
-        let last_col = self.last_col_history.last().unwrap();
+        let old_last_col = self.last_col_history.last().unwrap();
         let mut new_last_col = Vec::new();
         for &row_id in &self.selected_rows {
-            let entry = &last_col[row_id];
+            let entry = &old_last_col[row_id];
             if entry.pat.is_or_pat() {
                 for pat in entry.pat.expand_or_pat() {
                     // All subpatterns point to the same row in the next column.
@@ -836,7 +822,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 new_last_col.push(entry);
             }
         }
-        self.selected_rows = (0..new_last_col.len()).collect();
+        self.selected_rows.clear();
+        self.selected_rows.extend(0..new_last_col.len());
         self.columns.push(new_last_col);
         self.history.push(UndoKind::ExpandOrPats);
     }
@@ -849,7 +836,6 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                     self.columns.pop().unwrap();
                 }
                 self.restore_last_col();
-                self.restore_selected_rows();
                 self.restore_selected_rows();
             }
             UndoKind::ExpandOrPats => {
