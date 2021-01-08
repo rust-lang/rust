@@ -119,11 +119,10 @@ fn expand_subtree(
 }
 
 fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr, id: tt::TokenId) -> ExpandResult<Fragment> {
-    if v == "crate" {
-        // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.
-        let tt = tt::Leaf::from(tt::Ident { text: "$crate".into(), id }).into();
-        ExpandResult::ok(Fragment::Tokens(tt))
-    } else if !ctx.bindings.contains(v) {
+    // We already handle $crate case in mbe parser
+    debug_assert!(v != "crate");
+
+    if !ctx.bindings.contains(v) {
         // Note that it is possible to have a `$var` inside a macro which is not bound.
         // For example:
         // ```

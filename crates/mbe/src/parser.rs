@@ -109,6 +109,10 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
                         let id = punct.id;
                         Op::Var { name, kind, id }
                     }
+                    tt::Leaf::Ident(ident) if ident.text == "crate" => {
+                        // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.
+                        Op::Leaf(tt::Leaf::from(tt::Ident { text: "$crate".into(), id: ident.id }))
+                    }
                     tt::Leaf::Ident(ident) => {
                         let name = ident.text.clone();
                         let kind = eat_fragment_kind(src, mode)?;

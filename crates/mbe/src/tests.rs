@@ -1080,6 +1080,19 @@ fn test_vertical_bar_with_pat() {
 }
 
 #[test]
+fn test_dollar_crate_lhs_is_not_meta() {
+    parse_macro(
+        r#"
+macro_rules! foo {
+    ($crate) => {};
+    () => {0};
+}
+    "#,
+    )
+    .assert_expand_items(r#"foo!{}"#, r#"0"#);
+}
+
+#[test]
 fn test_lifetime() {
     parse_macro(
         r#"
