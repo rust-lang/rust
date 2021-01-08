@@ -24,7 +24,7 @@ use crate::{
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
     Expected(String),
-    RepetitionEmtpyTokenTree,
+    RepetitionEmptyTokenTree,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -270,7 +270,7 @@ fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
                         }
                         false
                     }) {
-                        return Err(ParseError::RepetitionEmtpyTokenTree);
+                        return Err(ParseError::RepetitionEmptyTokenTree);
                     }
                 }
                 validate(subtree)?
