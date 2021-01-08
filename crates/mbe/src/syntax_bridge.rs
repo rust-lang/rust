@@ -476,14 +476,14 @@ impl Convertor {
 
 #[derive(Debug)]
 enum SynToken {
-    Ordiniary(SyntaxToken),
+    Ordinary(SyntaxToken),
     Punch(SyntaxToken, TextSize),
 }
 
 impl SynToken {
     fn token(&self) -> &SyntaxToken {
         match self {
-            SynToken::Ordiniary(it) => it,
+            SynToken::Ordinary(it) => it,
             SynToken::Punch(it, _) => it,
         }
     }
@@ -495,7 +495,7 @@ impl SrcToken for SynToken {
     }
     fn to_char(&self) -> Option<char> {
         match self {
-            SynToken::Ordiniary(_) => None,
+            SynToken::Ordinary(_) => None,
             SynToken::Punch(it, i) => it.text().chars().nth((*i).into()),
         }
     }
@@ -535,7 +535,7 @@ impl TokenConvertor for Convertor {
         } else {
             self.punct_offset = None;
             let range = curr.text_range();
-            (SynToken::Ordiniary(curr), range)
+            (SynToken::Ordinary(curr), range)
         };
 
         Some(token)
@@ -557,7 +557,7 @@ impl TokenConvertor for Convertor {
         let token = if curr.kind().is_punct() {
             SynToken::Punch(curr, 0.into())
         } else {
-            SynToken::Ordiniary(curr)
+            SynToken::Ordinary(curr)
         };
         Some(token)
     }
