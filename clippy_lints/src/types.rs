@@ -8,7 +8,6 @@ use if_chain::if_chain;
 use rustc_ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericBounds, GenericParamKind, HirId,
@@ -33,9 +32,9 @@ use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_type_diagnostic_item,
-    last_path_segment, match_def_path, match_path, meets_msrv, method_chain_args, multispan_sugg,
-    numeric_literal::NumericLiteral, qpath_res, reindent_multiline, sext, snippet, snippet_opt,
+    clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_hir_ty_cfg_dependant,
+    is_type_diagnostic_item, last_path_segment, match_def_path, match_path, meets_msrv, method_chain_args,
+    multispan_sugg, numeric_literal::NumericLiteral, qpath_res, reindent_multiline, sext, snippet, snippet_opt,
     snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
     span_lint_and_then, unsext,
 };
@@ -1282,8 +1281,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts from a less-strictly-aligned pointer to a
-    /// more-strictly-aligned pointer
+    /// **What it does:** Checks for casts, using `as` or `pointer::cast`,
+    /// from a less-strictly-aligned pointer to a more-strictly-aligned pointer
     ///
     /// **Why is this bad?** Dereferencing the resulting pointer may be undefined
     /// behavior.
@@ -1296,6 +1295,9 @@ declare_clippy_lint! {
     /// ```rust
     /// let _ = (&1u8 as *const u8) as *const u16;
     /// let _ = (&mut 1u8 as *mut u8) as *mut u16;
+    ///
+    /// (&1u8 as *const u8).cast::<u16>();
+    /// (&mut 1u8 as *mut u8).cast::<u16>();
     /// ```
     pub CAST_PTR_ALIGNMENT,
     pedantic,
@@ -1722,18 +1724,6 @@ fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<&'e Lit> {
             }
         },
         _ => None,
-    }
-}
-
-fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
-    if_chain! {
-        if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
-        if let Res::Def(_, def_id) = path.res;
-        then {
-            cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr)
-        } else {
-            false
-        }
     }
 }
 
