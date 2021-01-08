@@ -179,11 +179,7 @@ fn expand_repeat(
 
         counter += 1;
         if counter == limit {
-            log::warn!(
-                "expand_tt excced in repeat pattern exceed limit => {:#?}\n{:#?}",
-                template,
-                ctx
-            );
+            log::warn!("expand_tt in repeat pattern exceed limit => {:#?}\n{:#?}", template, ctx);
             break;
         }
 
