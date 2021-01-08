@@ -158,7 +158,7 @@ fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Op
             ExprKind::Path(QPath::TypeRelative(ty, name))
                 if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::vec_type) =>
             {
-                if name.ident.name.as_str() == "new" {
+                if name.ident.name == sym::new {
                     return Some(VecInitKind::New);
                 } else if name.ident.name.as_str() == "with_capacity" {
                     return args.get(0).and_then(|arg| {
