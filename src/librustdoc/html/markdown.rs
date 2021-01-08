@@ -1322,7 +1322,6 @@ fn init_id_map() -> FxHashMap<String, usize> {
     map.insert("trait-implementations".to_owned(), 1);
     map.insert("synthetic-implementations".to_owned(), 1);
     map.insert("blanket-implementations".to_owned(), 1);
-    map.insert("deref-methods".to_owned(), 1);
     map
 }
 
