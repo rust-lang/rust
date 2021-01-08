@@ -54,7 +54,7 @@ pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 pub fn mutable_borrow(_: &mut i32) {
 }
 
-// CHECK: @indirect_struct(%S* noalias nocapture dereferenceable(32) %_1)
+// CHECK: @indirect_struct(%S* noalias nocapture align 4 dereferenceable(32) %_1)
 #[no_mangle]
 pub fn indirect_struct(_: S) {
 }
@@ -73,7 +73,7 @@ pub fn _box(x: Box<i32>) -> Box<i32> {
   x
 }
 
-// CHECK: @struct_return(%S* noalias nocapture sret dereferenceable(32){{( %0)?}})
+// CHECK: @struct_return(%S* noalias nocapture sret align 4 dereferenceable(32){{( %0)?}})
 #[no_mangle]
 pub fn struct_return() -> S {
   S {

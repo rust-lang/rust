@@ -449,9 +449,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         // program-invisible so can't possibly capture
         attrs.set(ArgAttribute::NoAlias).set(ArgAttribute::NoCapture).set(ArgAttribute::NonNull);
         attrs.pointee_size = self.layout.size;
-        // FIXME(eddyb) We should be doing this, but at least on
-        // i686-pc-windows-msvc, it results in wrong stack offsets.
-        // attrs.pointee_align = Some(self.layout.align.abi);
+        attrs.pointee_align = Some(self.layout.align.abi);
 
         let extra_attrs = self.layout.is_unsized().then_some(ArgAttributes::new());
 
