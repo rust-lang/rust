@@ -901,7 +901,7 @@ function defocusSearchBar() {
                 // Names didn't match so let's check if one of the generic types could.
                 if (literalSearch === true) {
                      if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
-                        return onEach(obj[GENERICS_DATA],
+                        return obj[GENERICS_DATA].some(
                             function(name) {
                                 return name === val.name;
                             });
