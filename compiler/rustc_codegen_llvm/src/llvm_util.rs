@@ -228,14 +228,25 @@ pub fn handle_native_features(sess: &Session) -> Vec<String> {
                 return vec![];
             }
 
-            let ptr = unsafe { llvm::LLVMGetHostCPUFeatures() };
-            let str = unsafe { CStr::from_ptr(ptr).to_string_lossy() };
+            let features_string = unsafe {
+                let ptr = llvm::LLVMGetHostCPUFeatures();
+                let features_string = if !ptr.is_null() {
+                    CStr::from_ptr(ptr)
+                        .to_str()
+                        .unwrap_or_else(|e| {
+                            bug!("LLVM returned a non-utf8 features string: {}", e);
+                        })
+                        .to_owned()
+                } else {
+                    bug!("could not allocate host CPU features, LLVM returned a `null` string");
+                };
 
-            let features = str.split(",").map(|s| s.to_owned()).collect();
+                llvm::LLVMDisposeMessage(ptr);
 
-            unsafe { llvm::LLVMDisposeMessage(ptr) };
+                features_string
+            };
 
-            features
+            features_string.split(",").map(|s| s.to_owned()).collect()
         }
         None => vec![],
     }
