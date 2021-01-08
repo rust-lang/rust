@@ -8,9 +8,9 @@ use parser::FragmentKind;
 use syntax::{algo::diff, ast::NameOwner, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
-    ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallLoc, EagerMacroId,
-    HirFileId, HirFileIdRepr, LazyMacroId, MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind,
-    MacroFile, ProcMacroExpander,
+    ast_id_map::AstIdMap, hygiene::HygieneFrame, BuiltinDeriveExpander, BuiltinFnLikeExpander,
+    EagerCallLoc, EagerMacroId, HirFileId, HirFileIdRepr, LazyMacroId, MacroCallId, MacroCallLoc,
+    MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -94,6 +94,8 @@ pub trait AstDatabase: SourceDatabase {
     fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
 
     fn expand_proc_macro(&self, call: MacroCallId) -> Result<tt::Subtree, mbe::ExpandError>;
+
+    fn hygiene_frame(&self, file_id: HirFileId) -> Arc<HygieneFrame>;
 }
 
 /// This expands the given macro call, but with different arguments. This is
@@ -367,6 +369,10 @@ fn parse_macro_with_arg(
         }
         None => ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: None },
     }
+}
+
+fn hygiene_frame(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<HygieneFrame> {
+    Arc::new(HygieneFrame::new(db, file_id))
 }
 
 /// Given a `MacroCallId`, return what `FragmentKind` it belongs to.

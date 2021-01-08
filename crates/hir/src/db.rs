@@ -10,8 +10,8 @@ pub use hir_def::db::{
     TypeAliasDataQuery, UnionDataQuery,
 };
 pub use hir_expand::db::{
-    AstDatabase, AstDatabaseStorage, AstIdMapQuery, InternEagerExpansionQuery, InternMacroQuery,
-    MacroArgTextQuery, MacroDefQuery, MacroExpandQuery, ParseMacroExpansionQuery,
+    AstDatabase, AstDatabaseStorage, AstIdMapQuery, HygieneFrameQuery, InternEagerExpansionQuery,
+    InternMacroQuery, MacroArgTextQuery, MacroDefQuery, MacroExpandQuery, ParseMacroExpansionQuery,
 };
 pub use hir_ty::db::*;
 
