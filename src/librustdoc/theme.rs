@@ -70,7 +70,10 @@ impl Events {
     }
 
     fn is_comment(&self) -> bool {
-        matches!(self, Events::StartLineComment(_) | Events::StartComment(_) | Events::EndComment(_))
+        matches!(
+            self,
+            Events::StartLineComment(_) | Events::StartComment(_) | Events::EndComment(_)
+        )
     }
 }
 

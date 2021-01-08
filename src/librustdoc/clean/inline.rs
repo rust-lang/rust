@@ -428,7 +428,7 @@ crate fn build_impl(
             trait_,
             for_,
             items: trait_items,
-            polarity: Some(polarity.clean(cx)),
+            negative_polarity: polarity.clean(cx),
             synthetic: false,
             blanket_impl: None,
         }),
