@@ -104,7 +104,6 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
 
   for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
     Value *res = CI->getArgOperand(i);
-    llvm::errs() << *CI << " - res " << *res << " truei: " << truei << "\n";
     assert(truei < FT->getNumParams());
     auto PTy = FT->getParamType(truei);
     DIFFE_TYPE ty = DIFFE_TYPE::CONSTANT;
@@ -201,15 +200,9 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
       } else {
         ty = whatType(PTy);
       }
-    } else if (isa<ConstantExpr>(res) &&
-               cast<ConstantExpr>(res)
-                   ->isCast() &&
-               isa<GlobalVariable>(
-                   cast<ConstantExpr>(res)
-                       ->getOperand(0))) {
-      auto gv = cast<GlobalVariable>(
-          cast<ConstantExpr>(res)
-              ->getOperand(0));
+    } else if (isa<ConstantExpr>(res) && cast<ConstantExpr>(res)->isCast() &&
+               isa<GlobalVariable>(cast<ConstantExpr>(res)->getOperand(0))) {
+      auto gv = cast<GlobalVariable>(cast<ConstantExpr>(res)->getOperand(0));
       auto MS = gv->getName();
       if (MS == "enzyme_dup") {
         ty = DIFFE_TYPE::DUP_ARG;

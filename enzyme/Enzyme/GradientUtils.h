@@ -183,6 +183,71 @@ public:
     return red;
   }
 
+  Value *getOrInsertConditionalIndex(Value *val, LoopContext &lc,
+                                     bool pickTrue) {
+    assert(val->getType()->isIntOrIntVectorTy(1));
+    // TODO optimize if val is invariant to loopContext
+    for (auto &I : *lc.header) {
+      if (auto PN = dyn_cast<PHINode>(&I)) {
+        if (PN->getType() != lc.incvar->getType())
+          continue;
+        Value *ival = PN->getIncomingValueForBlock(lc.preheader);
+        if (auto C = dyn_cast<Constant>(ival)) {
+          if (!C->isNullValue()) {
+            continue;
+          }
+        } else
+          continue;
+        for (auto IB : PN->blocks()) {
+          if (IB == lc.preheader)
+            continue;
+
+          if (auto SI =
+                  dyn_cast<SelectInst>(PN->getIncomingValueForBlock(IB))) {
+            if (SI->getCondition() != val)
+              goto continueOutermost;
+            if (pickTrue && SI->getFalseValue() == PN) {
+              // TODO handle vector of
+              if (SI->getTrueValue() == lc.incvar)
+                return SI;
+            }
+            if (!pickTrue && SI->getTrueValue() == PN) {
+              // TODO handle vector of
+              if (SI->getFalseValue() == lc.incvar)
+                return SI;
+            }
+          } else
+            goto continueOutermost;
+        }
+      } else
+        break;
+    continueOutermost:;
+    }
+
+    IRBuilder<> lbuilder(lc.header, lc.header->begin());
+    auto PN = lbuilder.CreatePHI(lc.incvar->getType(), 2);
+    Constant *Zero =
+        Constant::getNullValue(lc.incvar->getType()->getScalarType());
+    PN->addIncoming(Zero, lc.preheader);
+    lbuilder.SetInsertPoint(lc.incvar->getNextNode());
+    Value *red = lc.incvar;
+    if (VectorType *VTy = dyn_cast<VectorType>(val->getType())) {
+      red = lbuilder.CreateVectorSplat(VTy->getNumElements(), red);
+    }
+    if (auto inst = dyn_cast<Instruction>(val)) {
+      if (DT.dominates(PN, inst))
+        lbuilder.SetInsertPoint(inst->getNextNode());
+    }
+    assert(red->getType() == PN->getType());
+    red = lbuilder.CreateSelect(val, pickTrue ? red : PN, pickTrue ? PN : red);
+    for (auto pred : predecessors(lc.header)) {
+      if (pred == lc.preheader)
+        continue;
+      PN->addIncoming(red, pred);
+    }
+    return red;
+  }
+
   void setupOMPFor() {
     for (auto &BB : *oldFunc) {
       for (auto &I : BB) {

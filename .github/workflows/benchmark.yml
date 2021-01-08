@@ -19,7 +19,7 @@ jobs:
         llvm: ["7",  "8", "9", "10", "11"]
         build: ["Release", "Debug"] # "RelWithDebInfo"
         os: [self-hosted]
-    timeout-minutes: 90 
+    timeout-minutes: 120 
     steps:
     - name: add llvm 
       run: |

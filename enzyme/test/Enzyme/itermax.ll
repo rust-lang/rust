@@ -67,55 +67,49 @@ attributes #2 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-
-; CHECK: define internal {{(dso_local )?}}void @diffeiterA(double* noalias nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn)
+; CHECK: define internal void @diffeiterA(double* noalias nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %exitcond11 = icmp eq i64 %n, 0
 ; CHECK-NEXT:   br i1 %exitcond11, label %invertentry, label %for.body.for.body_crit_edge.preheader
 
 ; CHECK: for.body.for.body_crit_edge.preheader:            ; preds = %entry
 ; CHECK-NEXT:   %0 = load double, double* %x, align 8, !tbaa !2
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %n)
-; CHECK-NEXT:   %cmp.i_malloccache = bitcast i8* %malloccall to i1*
 ; CHECK-NEXT:   br label %for.body.for.body_crit_edge
 
 ; CHECK: for.body.for.body_crit_edge:                      ; preds = %for.body.for.body_crit_edge, %for.body.for.body_crit_edge.preheader
-; CHECK-NEXT:   %[[indvar:.+]] = phi i64 [ %[[added:.+]], %for.body.for.body_crit_edge ], [ 0, %for.body.for.body_crit_edge.preheader ]
-; CHECK-NEXT:   %cond.i12 = phi double [ %cond.i, %for.body.for.body_crit_edge ], [ %0, %for.body.for.body_crit_edge.preheader ]
-; CHECK-NEXT:   %[[added]] = add nuw nsw i64 %[[indvar]], 1
-; CHECK-NEXT:   %arrayidx2.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %[[added]]
+; CHECK-NEXT:   %1 = phi i64 [ 0, %for.body.for.body_crit_edge.preheader ], [ %2, %for.body.for.body_crit_edge ]
+; CHECK-NEXT:   %iv = phi i64 [ 0, %for.body.for.body_crit_edge.preheader ], [ %iv.next, %for.body.for.body_crit_edge ]
+; CHECK-NEXT:   %cond.i12 = phi double [ %0, %for.body.for.body_crit_edge.preheader ], [ %cond.i, %for.body.for.body_crit_edge ]
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
+; CHECK-NEXT:   %arrayidx2.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %iv.next
 ; CHECK-NEXT:   %.pre = load double, double* %arrayidx2.phi.trans.insert, align 8, !tbaa !2
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %cond.i12, %.pre
-; CHECK-NEXT:   %[[ptrstore:.+]] = getelementptr inbounds i8, i8* %malloccall, i64 %[[indvar]]
-; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %[[ptrstore]] to i1*
-; CHECK-NEXT:   store i1 %cmp.i, i1* %[[storeloc]]
+; CHECK-NEXT:   %2 = select i1 %cmp.i, i64 %1, i64 %iv.next
 ; CHECK-NEXT:   %cond.i = select i1 %cmp.i, double %cond.i12, double %.pre
-; CHECK-NEXT:   %[[exitcond:.+]] = icmp eq i64 %[[added]], %n
-; CHECK-NEXT:   br i1 %[[exitcond]], label %[[thelabel:.+]], label %for.body.for.body_crit_edge
+; CHECK-NEXT:   %exitcond = icmp eq i64 %iv.next, %n
+; CHECK-NEXT:   br i1 %exitcond, label %invertfor.body.for.body_crit_edge, label %for.body.for.body_crit_edge
 
-; CHECK: invertentry:
-; CHECK-NEXT:   %[[ientryde:.+]] = phi double [ %[[diffecond:.+]], %[[thelabel2:.+]] ], [ %differeturn, %entry ]
-; CHECK-NEXT:   %[[xppre:.+]] = load double, double* %"x'"
-; CHECK-NEXT:   %[[xpstore:.+]] = fadd fast double %[[xppre]], %[[ientryde]]
-; CHECK-NEXT:   store double %[[xpstore]], double* %"x'"
-; CHECK-NEXT:   ret
+; CHECK: invertentry:                                      ; preds = %entry, %invertfor.body.for.body_crit_edge.preheader
+; CHECK-NEXT:   %"'de.0" = phi double [ %6, %invertfor.body.for.body_crit_edge.preheader ], [ %differeturn, %entry ]
+; CHECK-NEXT:   %3 = load double, double* %"x'", align 8
+; CHECK-NEXT:   %4 = fadd fast double %3, %"'de.0"
+; CHECK-NEXT:   store double %4, double* %"x'", align 8
+; CHECK-NEXT:   ret void
 
-; CHECK: [[thelabel2]]:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
+; CHECK: invertfor.body.for.body_crit_edge.preheader:      ; preds = %invertfor.body.for.body_crit_edge
+; CHECK-NEXT:   %5 = icmp eq i64 %2, 0
+; CHECK-NEXT:   %6 = select{{( fast)?}} i1 %5, double %differeturn, double 0.000000e+00
 ; CHECK-NEXT:   br label %invertentry
 
-; CHECK: [[thelabel]]:
-; CHECK-NEXT:   %[[iforde:.+]] = phi double [ %[[diffecond]], %[[thelabel]] ], [ %differeturn, %for.body.for.body_crit_edge ]
-; CHECK-NEXT:   %[[iin:.+]] = phi i64 [ %[[isub:.+]], %[[thelabel]] ], [ %n, %for.body.for.body_crit_edge ]
-; CHECK-NEXT:   %[[isub]] = add i64 %[[iin]], -1
-; CHECK-NEXT:   %[[cmpcache:.+]] = getelementptr inbounds i1, i1* %cmp.i_malloccache, i64 %[[isub]]
-; CHECK-NEXT:   %[[toselect:.+]] = load i1, i1* %[[cmpcache]]
-; CHECK-NEXT:   %[[diffecond]] = select{{( fast)?}} i1 %[[toselect]], double %[[iforde]], double 0.000000e+00
-; CHECK-NEXT:   %[[diffepre:.+]] = select{{( fast)?}} i1 %[[toselect]], double 0.000000e+00, double %[[iforde]]
-; CHECK-NEXT:   %[[arrayidx2phitransinsertipg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[iin]]
-; CHECK-NEXT:   %[[prear:.+]] = load double, double* %[[arrayidx2phitransinsertipg]]
-; CHECK-NEXT:   %[[arradd:.+]] = fadd fast double %[[prear]], %[[diffepre]]
-; CHECK-NEXT:   store double %[[arradd]], double* %[[arrayidx2phitransinsertipg]]
-; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %[[isub]], 0
-; CHECK-NEXT:   br i1 %[[lcmp]], label %[[thelabel2]], label %[[thelabel]]
+; CHECK: invertfor.body.for.body_crit_edge:                ; preds = %for.body.for.body_crit_edge, %invertfor.body.for.body_crit_edge
+; CHECK-NEXT:   %"iv'ac.0.in" = phi i64 [ %"iv'ac.0", %invertfor.body.for.body_crit_edge ], [ %n, %for.body.for.body_crit_edge ]
+; CHECK-NEXT:   %"iv'ac.0" = add i64 %"iv'ac.0.in", -1
+; CHECK-NEXT:   %7 = icmp eq i64 %2, %"iv'ac.0.in"
+; CHECK-NEXT:   %8 = select{{( fast)?}} i1 %7, double %differeturn, double 0.000000e+00
+; CHECK-NEXT:   %"arrayidx2.phi.trans.insert'ipg_unwrap" = getelementptr inbounds double, double* %"x'", i64 %"iv'ac.0.in"
+; CHECK-NEXT:   %9 = load double, double* %"arrayidx2.phi.trans.insert'ipg_unwrap", align 8
+; CHECK-NEXT:   %10 = fadd fast double %9, %8
+; CHECK-NEXT:   store double %10, double* %"arrayidx2.phi.trans.insert'ipg_unwrap", align 8
+; CHECK-NEXT:   %11 = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %11, label %invertfor.body.for.body_crit_edge.preheader, label %invertfor.body.for.body_crit_edge
 ; CHECK-NEXT: }

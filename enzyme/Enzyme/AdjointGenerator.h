@@ -47,6 +47,7 @@ private:
 
   GradientUtils *const gutils;
   const std::vector<DIFFE_TYPE> &constant_args;
+  DIFFE_TYPE retType;
   TypeResults &TR;
   std::function<unsigned(Instruction *, CacheType)> getIndex;
   const std::map<CallInst *, const std::map<Argument *, bool>>
@@ -64,7 +65,8 @@ private:
 public:
   AdjointGenerator(
       DerivativeMode Mode, GradientUtils *gutils,
-      const std::vector<DIFFE_TYPE> &constant_args, TypeResults &TR,
+      const std::vector<DIFFE_TYPE> &constant_args, DIFFE_TYPE retType,
+      TypeResults &TR,
       std::function<unsigned(Instruction *, CacheType)> getIndex,
       const std::map<CallInst *, const std::map<Argument *, bool>>
           uncacheable_args_map,
@@ -76,10 +78,11 @@ public:
       const SmallPtrSetImpl<const Instruction *> &unnecessaryStores,
       const SmallPtrSetImpl<BasicBlock *> &oldUnreachable,
       AllocaInst *dretAlloca)
-      : Mode(Mode), gutils(gutils), constant_args(constant_args), TR(TR),
-        getIndex(getIndex), uncacheable_args_map(uncacheable_args_map),
-        returnuses(returnuses), augmentedReturn(augmentedReturn),
-        replacedReturns(replacedReturns), unnecessaryValues(unnecessaryValues),
+      : Mode(Mode), gutils(gutils), constant_args(constant_args),
+        retType(retType), TR(TR), getIndex(getIndex),
+        uncacheable_args_map(uncacheable_args_map), returnuses(returnuses),
+        augmentedReturn(augmentedReturn), replacedReturns(replacedReturns),
+        unnecessaryValues(unnecessaryValues),
         unnecessaryInstructions(unnecessaryInstructions),
         unnecessaryStores(unnecessaryStores), oldUnreachable(oldUnreachable),
         dretAlloca(dretAlloca) {
@@ -608,6 +611,64 @@ public:
     Value *dif1 = nullptr;
     Value *dif2 = nullptr;
 
+    size_t size = 1;
+    if (orig_op1->getType()->isSized())
+      size = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
+                  orig_op1->getType()) +
+              7) /
+             8;
+    // Required loopy phi = [in, BO, BO, ..., BO]
+    //  1) phi is only used in this B0
+    //  2) BO dominates all latches
+    //  3) phi == B0 whenever not coming from preheader [implies 2]
+    //  4) [optional but done for ease] one exit to make it easier to
+    //  calculation the product at that point
+    for (int i = 0; i < 2; i++)
+      if (auto P0 = dyn_cast<PHINode>(SI.getOperand(i + 1))) {
+        LoopContext lc;
+        SmallVector<Instruction *, 4> activeUses;
+        for (auto u : P0->users()) {
+          if (!gutils->isConstantInstruction(cast<Instruction>(u))) {
+            activeUses.push_back(cast<Instruction>(u));
+          } else if (retType == DIFFE_TYPE::OUT_DIFF && isa<ReturnInst>(u))
+            activeUses.push_back(cast<Instruction>(u));
+        }
+        if (activeUses.size() == 1 && activeUses[0] == &SI &&
+            gutils->getContext(gutils->getNewFromOriginal(P0->getParent()),
+                               lc) &&
+            gutils->getNewFromOriginal(P0->getParent()) == lc.header) {
+          SmallVector<BasicBlock *, 1> Latches;
+          gutils->OrigLI.getLoopFor(P0->getParent())->getLoopLatches(Latches);
+          bool allIncoming = true;
+          for (auto Latch : Latches) {
+            if (&SI != P0->getIncomingValueForBlock(Latch)) {
+              allIncoming = false;
+              break;
+            }
+          }
+          if (allIncoming && lc.exitBlocks.size() == 1) {
+            if (!gutils->isConstantValue(SI.getOperand(2 - i))) {
+
+              auto index = gutils->getOrInsertConditionalIndex(
+                  gutils->getNewFromOriginal(SI.getOperand(0)), lc, i == 1);
+              IRBuilder<> EB(*lc.exitBlocks.begin());
+              getReverseBuilder(EB, /*original=*/false);
+              Value *inc = lookup(lc.incvar, Builder2);
+              if (VectorType *VTy =
+                      dyn_cast<VectorType>(SI.getOperand(0)->getType())) {
+                inc = Builder2.CreateVectorSplat(VTy->getNumElements(), inc);
+              }
+              Value *dif = Builder2.CreateSelect(
+                  Builder2.CreateICmpEQ(gutils->lookupM(index, EB), inc),
+                  diffe(&SI, Builder2), Constant::getNullValue(op1->getType()));
+              addToDiffe(SI.getOperand(2 - i), dif, Builder2,
+                         TR.addingType(size, SI.getOperand(2 - i)));
+            }
+            return;
+          }
+        }
+      }
+
     if (!gutils->isConstantValue(orig_op1))
       dif1 = Builder2.CreateSelect(lookup(op0, Builder2), diffe(&SI, Builder2),
                                    Constant::getNullValue(op1->getType()),
@@ -616,13 +677,6 @@ public:
       dif2 = Builder2.CreateSelect(
           lookup(op0, Builder2), Constant::getNullValue(op2->getType()),
           diffe(&SI, Builder2), "diffe" + op2->getName());
-
-    size_t size = 1;
-    if (orig_op1->getType()->isSized())
-      size = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-                  orig_op1->getType()) +
-              7) /
-             8;
 
     setDiffe(&SI, Constant::getNullValue(SI.getType()), Builder2);
     if (dif1)
@@ -962,7 +1016,14 @@ public:
       //  calculation the product at that point
       if (auto P0 = dyn_cast<PHINode>(orig_op0)) {
         LoopContext lc;
-        if (P0->getNumUses() == 1 &&
+        SmallVector<Instruction *, 4> activeUses;
+        for (auto u : P0->users()) {
+          if (!gutils->isConstantInstruction(cast<Instruction>(u))) {
+            activeUses.push_back(cast<Instruction>(u));
+          } else if (retType == DIFFE_TYPE::OUT_DIFF && isa<ReturnInst>(u))
+            activeUses.push_back(cast<Instruction>(u));
+        }
+        if (activeUses.size() == 1 && activeUses[0] == &BO &&
             gutils->getContext(gutils->getNewFromOriginal(P0->getParent()),
                                lc) &&
             gutils->getNewFromOriginal(P0->getParent()) == lc.header) {
@@ -1013,13 +1074,8 @@ public:
             idiff, lookup(gutils->getNewFromOriginal(orig_op1), Builder2),
             "d0diffe" + orig_op0->getName());
       if (!constantval1) {
-        // Value *lop0 = lookup(gutils->getNewFromOriginal(orig_op0), Builder2);
         Value *lop1 = lookup(gutils->getNewFromOriginal(orig_op1), Builder2);
         Value *lastdiv = lookup(gutils->getNewFromOriginal(&BO), Builder2);
-        // Builder2.CreateFDiv(lop0, lop1);
-        // if (auto newi = dyn_cast<Instruction>(lastdiv))
-        //  newi->copyIRFlags(&BO);
-
         dif1 = Builder2.CreateFNeg(
             Builder2.CreateFMul(lastdiv, Builder2.CreateFDiv(idiff, lop1)));
       }
