@@ -731,16 +731,15 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         })
     }
 
+    /// Stores the last column and the currently selected rows into history. The last column is
+    /// removed from `self.columns`. `selected_rows` is kept as is.
     fn save_last_col(&mut self) {
         self.last_col_history.push_vec(self.columns.pop().unwrap());
-    }
-    fn restore_last_col(&mut self) {
-        self.columns.push(self.last_col_history.pop_vec().unwrap());
-    }
-    fn save_selected_rows(&mut self) {
         self.selected_rows_history.push_slice(&self.selected_rows);
     }
-    fn restore_selected_rows(&mut self) {
+    /// Restores the last column and the selected rows from history.
+    fn restore_last_col(&mut self) {
+        self.columns.push(self.last_col_history.pop_vec().unwrap());
         self.selected_rows.clear();
         self.selected_rows.extend_from_slice(self.selected_rows_history.last().unwrap());
         self.selected_rows_history.pop_iter();
@@ -757,7 +756,6 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
         // Remove and save the last column and its selected rows.
         self.save_last_col();
-        self.save_selected_rows();
         let old_last_col = self.last_col_history.last().unwrap();
 
         // Prepare new columns for the arguments of the patterns we are specializing.
@@ -800,7 +798,6 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
     /// Expands or-patterns in the last column of the matrix. Panics if the matrix has no columns.
     fn expand_or_patterns(&mut self) {
-        self.save_selected_rows();
         self.save_last_col();
         let old_last_col = self.last_col_history.last().unwrap();
         let mut new_last_col = Vec::new();
@@ -836,12 +833,10 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                     self.columns.pop().unwrap();
                 }
                 self.restore_last_col();
-                self.restore_selected_rows();
             }
             UndoKind::ExpandOrPats => {
                 self.columns.pop().unwrap();
                 self.restore_last_col();
-                self.restore_selected_rows();
             }
         }
     }
