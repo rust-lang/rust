@@ -413,7 +413,7 @@ class RustBuild(object):
             lib_dir = "{}/lib".format(self.bin_root())
             for lib in os.listdir(lib_dir):
                 if lib.endswith(".so"):
-                    self.fix_bin_or_dylib("{}/{}".format(lib_dir, lib))
+                    self.fix_bin_or_dylib(os.path.join(lib_dir, lib), rpath_libz=True)
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(self.date)
 
@@ -451,10 +451,15 @@ class RustBuild(object):
                 "{}/src/bootstrap/download-ci-llvm-stamp".format(top_level),
             ]).decode(sys.getdefaultencoding()).strip()
             llvm_assertions = self.get_toml('assertions', 'llvm') == 'true'
+            llvm_root = self.llvm_root()
+            llvm_lib = os.path.join(llvm_root, "lib")
             if self.program_out_of_date(self.llvm_stamp(), llvm_sha + str(llvm_assertions)):
                 self._download_ci_llvm(llvm_sha, llvm_assertions)
                 for binary in ["llvm-config", "FileCheck"]:
-                    self.fix_bin_or_dylib("{}/bin/{}".format(self.llvm_root(), binary))
+                    self.fix_bin_or_dylib(os.path.join(llvm_root, "bin", binary), rpath_libz=True)
+                for lib in os.listdir(llvm_lib):
+                    if lib.endswith(".so"):
+                        self.fix_bin_or_dylib(os.path.join(llvm_lib, lib), rpath_libz=True)
                 with output(self.llvm_stamp()) as llvm_stamp:
                     llvm_stamp.write(llvm_sha + str(llvm_assertions))
 
@@ -501,7 +506,7 @@ class RustBuild(object):
                 match="rust-dev",
                 verbose=self.verbose)
 
-    def fix_bin_or_dylib(self, fname):
+    def fix_bin_or_dylib(self, fname, rpath_libz=False):
         """Modifies the interpreter section of 'fname' to fix the dynamic linker,
         or the RPATH section, to fix the dynamic library search path
 
@@ -571,20 +576,22 @@ class RustBuild(object):
             self.nix_deps_dir = nix_deps_dir
 
         patchelf = "{}/patchelf/bin/patchelf".format(nix_deps_dir)
+        patchelf_args = []
 
-        if fname.endswith(".so"):
-            # Dynamic library, patch RPATH to point to system dependencies.
+        if rpath_libz:
+            # Patch RPATH to add `zlib` dependency that stems from LLVM
             dylib_deps = ["zlib"]
             rpath_entries = [
                 # Relative default, all binary and dynamic libraries we ship
                 # appear to have this (even when `../lib` is redundant).
                 "$ORIGIN/../lib",
             ] + ["{}/{}/lib".format(nix_deps_dir, dep) for dep in dylib_deps]
-            patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
-        else:
+            patchelf_args += ["--set-rpath", ":".join(rpath_entries)]
+        if not fname.endswith(".so"):
+            # Finally, set the corret .interp for binaries
             bintools_dir = "{}/stdenv.cc.bintools".format(nix_deps_dir)
             with open("{}/nix-support/dynamic-linker".format(bintools_dir)) as dynamic_linker:
-                patchelf_args = ["--set-interpreter", dynamic_linker.read().rstrip()]
+                patchelf_args += ["--set-interpreter", dynamic_linker.read().rstrip()]
 
         try:
             subprocess.check_output([patchelf] + patchelf_args + [fname])
