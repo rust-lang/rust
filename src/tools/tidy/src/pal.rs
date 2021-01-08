@@ -53,6 +53,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/std/src/path.rs",
     "library/std/src/f32.rs",
     "library/std/src/f64.rs",
+    "library/std/src/collections/hash/map.rs", // constant hash map seed for `wasm32-unknown-unknown`
     // Integration test for platform-specific run-time feature detection:
     "library/std/tests/run-time-detect.rs",
     "library/std/src/net/test.rs",
@@ -86,8 +87,6 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/librustdoc",
     "src/librustc_ast",
     "src/bootstrap",
-    // constant hash map seed for `wasm32-unknown-unknown`
-    "src/libstd/collections/hash/map.rs",
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
