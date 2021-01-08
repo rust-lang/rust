@@ -218,7 +218,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             if self.fn_self_span_reported.insert(self_arg.span) {
                                 err.span_note(
                                     self_arg.span,
-                                    &format!("this function consumes the receiver `self` by taking ownership of it, which moves {}", place_name)
+                                    &format!("this function takes ownership of the receiver `self`, which moves {}", place_name)
                                 );
                             }
                         }

@@ -18,7 +18,7 @@ LL |         for j in a {
    |                  `a` moved due to this implicit call to `.into_iter()`, in previous iteration of loop
    |                  help: consider borrowing to avoid moving into the for loop: `&a`
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `a`
+note: this function takes ownership of the receiver `self`, which moves `a`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
