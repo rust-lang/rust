@@ -51,7 +51,7 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 /// Basic usage:
 ///
 /// ```
-/// // First, we declare a type which has `iter` method to get the `Iter` struct (&[usize here]):
+/// // First, we declare a type which has `iter` method to get the `Iter` struct (`&[usize]` here):
 /// let slice = &[1, 2, 3];
 ///
 /// // Then, we iterate over it:
@@ -112,7 +112,7 @@ impl<'a, T> Iter<'a, T> {
     ///
     /// ```
     /// // First, we declare a type which has the `iter` method to get the `Iter`
-    /// // struct (&[usize here]):
+    /// // struct (`&[usize]` here):
     /// let slice = &[1, 2, 3];
     ///
     /// // Then, we get the iterator:
@@ -167,7 +167,7 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 ///
 /// ```
 /// // First, we declare a type which has `iter_mut` method to get the `IterMut`
-/// // struct (&[usize here]):
+/// // struct (`&[usize]` here):
 /// let mut slice = &mut [1, 2, 3];
 ///
 /// // Then, we iterate over it and increment each element value:
@@ -246,7 +246,7 @@ impl<'a, T> IterMut<'a, T> {
     ///
     /// ```
     /// // First, we declare a type which has `iter_mut` method to get the `IterMut`
-    /// // struct (&[usize here]):
+    /// // struct (`&[usize]` here):
     /// let mut slice = &mut [1, 2, 3];
     ///
     /// {
