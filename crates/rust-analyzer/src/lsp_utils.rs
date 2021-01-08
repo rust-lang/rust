@@ -290,7 +290,7 @@ mod tests {
             Some(vec![disjoint_edit.clone(), joint_edit.clone()]);
         assert!(
             !all_edits_are_disjoint(&completion_with_joint_edits, &[]),
-            "Completion with disjoint edits fails the validaton even with empty extra edits"
+            "Completion with disjoint edits fails the validation even with empty extra edits"
         );
 
         completion_with_joint_edits.text_edit =
@@ -298,7 +298,7 @@ mod tests {
         completion_with_joint_edits.additional_text_edits = Some(vec![joint_edit.clone()]);
         assert!(
             !all_edits_are_disjoint(&completion_with_joint_edits, &[]),
-            "Completion with disjoint edits fails the validaton even with empty extra edits"
+            "Completion with disjoint edits fails the validation even with empty extra edits"
         );
 
         completion_with_joint_edits.text_edit =
@@ -310,7 +310,7 @@ mod tests {
         completion_with_joint_edits.additional_text_edits = None;
         assert!(
             !all_edits_are_disjoint(&completion_with_joint_edits, &[]),
-            "Completion with disjoint edits fails the validaton even with empty extra edits"
+            "Completion with disjoint edits fails the validation even with empty extra edits"
         );
 
         completion_with_joint_edits.text_edit =
@@ -322,7 +322,7 @@ mod tests {
         completion_with_joint_edits.additional_text_edits = Some(vec![joint_edit]);
         assert!(
             !all_edits_are_disjoint(&completion_with_joint_edits, &[]),
-            "Completion with disjoint edits fails the validaton even with empty extra edits"
+            "Completion with disjoint edits fails the validation even with empty extra edits"
         );
     }
 
