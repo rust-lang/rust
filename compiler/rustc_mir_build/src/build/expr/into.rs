@@ -63,7 +63,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                 })
             }
-            ExprKind::Block { body: ast_block } => {
+            ExprKind::Block { body: ast_block } => { // This will handle the destructure pattern
                 this.ast_block(destination, scope, block, ast_block, source_info)
             }
             ExprKind::Match { scrutinee, arms } => {
@@ -335,6 +335,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let field_names = this.hir.all_fields(adt_def, variant_index);
 
+                // ROX: This is probably here the function record/struct update pattern is done.
                 let fields: Vec<_> = if let Some(FruInfo { base, field_types }) = base {
                     let base = unpack!(block = this.as_place(block, base));
 

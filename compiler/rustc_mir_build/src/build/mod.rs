@@ -1,5 +1,6 @@
 use crate::build;
 use crate::build::scope::DropKind;
+use crate::build::expr::as_place::PlaceBuilder;
 use crate::thir::cx::Cx;
 use crate::thir::{BindingMode, LintLevel, PatKind};
 use rustc_attr::{self as attr, UnwindAttr};
@@ -950,7 +951,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             matches::ArmHasGuard(false),
                             Some((Some(&place), span)),
                         );
-                        unpack!(block = self.place_into_pattern(block, pattern, place, false));
+                        let place_builder = PlaceBuilder::from(local);
+                        unpack!(block = self.place_into_pattern(block, pattern, place_builder, false));
                     }
                 }
                 self.source_scope = original_source_scope;

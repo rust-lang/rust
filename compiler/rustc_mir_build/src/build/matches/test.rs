@@ -7,6 +7,7 @@
 
 use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
 use crate::build::Builder;
+// use crate::build::expr::as_place::PlaceBuilder;
 use crate::thir::pattern::compare_const_vals;
 use crate::thir::*;
 use rustc_data_structures::fx::FxIndexMap;
@@ -153,6 +154,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test: &Test<'tcx>,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
     ) {
+        // let place = place_builder.clone().into_place(self.hir.tcx(), self.hir.typeck_results());
         debug!(
             "perform_test({:?}, {:?}: {:?}, {:?})",
             block,
@@ -477,7 +479,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// FIXME(#29623). In some cases, we have some tricky choices to make.  for
     /// example, if we are testing that `x == 22`, but the candidate is `x @
-    /// 13..55`, what should we do? In the event that the test is true, we know
+    /// 13..55`, what should we do? In the event thast the test is true, we know
     /// that the candidate applies, but in the event of false, we don't know
     /// that it *doesn't* apply. For now, we return false, indicate that the
     /// test does not apply to this candidate, but it might be we can get
@@ -741,9 +743,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             variant_index,
         );
         let downcast_place = tcx.mk_place_elem(match_pair.place, elem); // `(x as Variant)`
+        // let downcast_place = match_pair.place.project(elem); // `(x as Variant)`
         let consequent_match_pairs = subpatterns.iter().map(|subpattern| {
             // e.g., `(x as Variant).0`
             let place = tcx.mk_place_field(downcast_place, subpattern.field, subpattern.pattern.ty);
+            // let place = downcast_place.clone().field(subpattern.field, subpattern.pattern.ty);
             // e.g., `(x as Variant).0 @ P1`
             MatchPair::new(place, &subpattern.pattern)
         });

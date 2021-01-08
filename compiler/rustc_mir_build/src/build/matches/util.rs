@@ -1,5 +1,6 @@
 use crate::build::matches::MatchPair;
 use crate::build::Builder;
+// use crate::build::expr::as_place::PlaceBuilder;
 use crate::thir::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty;
@@ -15,6 +16,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         subpatterns
             .iter()
             .map(|fieldpat| {
+                // let place = place.clone().field(fieldpat.field, fieldpat.pattern.ty);
                 let place =
                     self.hir.tcx().mk_place_field(place, fieldpat.field, fieldpat.pattern.ty);
                 MatchPair::new(place, &fieldpat.pattern)
@@ -42,11 +44,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let elem =
                 ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
             let place = tcx.mk_place_elem(*place, elem);
+            // let place = place.clone().project(elem);
             MatchPair::new(place, subpattern)
         }));
 
         if let Some(subslice_pat) = opt_slice {
             let suffix_len = suffix.len() as u64;
+            // let subslice = place.clone().project(
             let subslice = tcx.mk_place_elem(
                 *place,
                 ProjectionElem::Subslice {
@@ -65,6 +69,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 min_length,
                 from_end: !exact_size,
             };
+            // let place = place.clone().project(elem);
             let place = tcx.mk_place_elem(*place, elem);
             MatchPair::new(place, subpattern)
         }));

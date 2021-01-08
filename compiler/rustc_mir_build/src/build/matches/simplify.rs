@@ -14,6 +14,7 @@
 
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
+// use crate::build::expr::as_place::PlaceBuilder;
 use crate::thir::{self, *};
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::RangeEnd;
@@ -73,7 +74,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             {
                 existing_bindings.extend_from_slice(&new_bindings);
                 mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
+                candidate.subcandidates = self.create_or_subcandidates(candidate, place.clone(), pats);
                 return true;
             }
 
@@ -131,7 +132,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
             .map(|pat| {
-                let mut candidate = Candidate::new(place, pat, candidate.has_guard);
+                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard);
                 self.simplify_candidate(&mut candidate);
                 candidate
             })
@@ -149,6 +150,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.hir.tcx();
+        // Generate place to be used in Ascription
+        // Generate place to be used in Binding
+        // let place = match_pair.place.clone().into_place(self.hir.tcx(), self.hir.typeck_results());
         match *match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
@@ -265,6 +269,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }) && (adt_def.did.is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
+                    // let place = match_pair.place.downcast(adt_def, variant_index);
                     let place = tcx.mk_place_downcast(match_pair.place, adt_def, variant_index);
                     candidate.match_pairs.extend(self.field_match_pairs(place, subpatterns));
                     Ok(())
@@ -291,6 +296,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Deref { ref subpattern } => {
+                // let place = match_pair.place.deref();
                 let place = tcx.mk_place_deref(match_pair.place);
                 candidate.match_pairs.push(MatchPair::new(place, subpattern));
                 Ok(())
