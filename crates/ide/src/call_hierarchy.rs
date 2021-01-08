@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use hir::Semantics;
 use ide_db::call_info::FnCallNode;
 use ide_db::RootDatabase;
-use syntax::{ast, match_ast, AstNode, TextRange};
+use syntax::{ast, AstNode, TextRange};
 
 use crate::{
     display::TryToNav, goto_definition, references, FilePosition, NavigationTarget, RangeInfo,
@@ -57,15 +57,9 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
 
         // This target is the containing function
         if let Some(nav) = syntax.ancestors().find_map(|node| {
-            match_ast! {
-                match node {
-                    ast::Fn(it) => {
-                        let def = sema.to_def(&it)?;
-                        def.try_to_nav(sema.db)
-                    },
-                    _ => None,
-                }
-            }
+            let fn_ = ast::Fn::cast(node)?;
+            let def = sema.to_def(&fn_)?;
+            def.try_to_nav(sema.db)
         }) {
             let relative_range = reference.file_range.range;
             calls.add(&nav, relative_range);
@@ -91,17 +85,12 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
         .filter_map(|node| FnCallNode::with_node_exact(&node))
         .filter_map(|call_node| {
             let name_ref = call_node.name_ref()?;
-
-            if let Some(func_target) = match &call_node {
+            let func_target = match call_node {
                 FnCallNode::CallExpr(expr) => {
                     //FIXME: Type::as_callable is broken
                     let callable = sema.type_of_expr(&expr.expr()?)?.as_callable(db)?;
                     match callable.kind() {
-                        hir::CallableKind::Function(it) => {
-                            let fn_def: hir::Function = it.into();
-                            let nav = fn_def.try_to_nav(db)?;
-                            Some(nav)
-                        }
+                        hir::CallableKind::Function(it) => it.try_to_nav(db),
                         _ => None,
                     }
                 }
@@ -109,11 +98,8 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                     let function = sema.resolve_method_call(&expr)?;
                     function.try_to_nav(db)
                 }
-            } {
-                Some((func_target, name_ref.syntax().text_range()))
-            } else {
-                None
-            }
+            }?;
+            Some((func_target, name_ref.syntax().text_range()))
         })
         .for_each(|(nav, range)| calls.add(&nav, range));
 
