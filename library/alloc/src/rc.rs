@@ -265,6 +265,7 @@ use core::slice::from_raw_parts_mut;
 
 use crate::alloc::{box_free, handle_alloc_error, AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
+use crate::boxed::WriteCloneIntoRaw;
 use crate::string::String;
 use crate::vec::Vec;
 
@@ -1037,8 +1038,14 @@ impl<T: Clone> Rc<T> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
         if Rc::strong_count(this) != 1 {
-            // Gotta clone the data, there are other Rcs
-            *this = Rc::new((**this).clone())
+            // Gotta clone the data, there are other Rcs.
+            // Pre-allocate memory to allow writing the cloned value directly.
+            let mut rc = Self::new_uninit();
+            unsafe {
+                let data = Rc::get_mut_unchecked(&mut rc);
+                (**this).write_clone_into_raw(data.as_mut_ptr());
+                *this = rc.assume_init();
+            }
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
             unsafe {

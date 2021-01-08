@@ -24,7 +24,7 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
 use crate::alloc::{box_free, handle_alloc_error, AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
-use crate::boxed::Box;
+use crate::boxed::{Box, WriteCloneIntoRaw};
 use crate::rc::is_dangling;
 use crate::string::String;
 use crate::vec::Vec;
@@ -1369,8 +1369,14 @@ impl<T: Clone> Arc<T> {
         // weak count, there's no chance the ArcInner itself could be
         // deallocated.
         if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
-            // Another strong pointer exists; clone
-            *this = Arc::new((**this).clone());
+            // Another strong pointer exists, so we must clone.
+            // Pre-allocate memory to allow writing the cloned value directly.
+            let mut arc = Self::new_uninit();
+            unsafe {
+                let data = Arc::get_mut_unchecked(&mut arc);
+                (**this).write_clone_into_raw(data.as_mut_ptr());
+                *this = arc.assume_init();
+            }
         } else if this.inner().weak.load(Relaxed) != 1 {
             // Relaxed suffices in the above because this is fundamentally an
             // optimization: we are always racing with weak pointers being
