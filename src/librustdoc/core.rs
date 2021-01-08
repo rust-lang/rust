@@ -434,16 +434,15 @@ crate fn create_resolver<'a>(
         sess.time("load_extern_crates", || {
             for extern_name in &extern_names {
                 debug!("loading extern crate {}", extern_name);
-                resolver
+                if let Err(()) = resolver
                     .resolve_str_path_error(
                         DUMMY_SP,
                         extern_name,
                         TypeNS,
                         LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
-                    )
-                    .unwrap_or_else(|()| {
-                        panic!("Unable to resolve external crate {}", extern_name)
-                    });
+                  ) {
+                    warn!("unable to resolve external crate {} (do you have an unused `--extern` crate?)", extern_name)
+                  }
             }
         });
     });

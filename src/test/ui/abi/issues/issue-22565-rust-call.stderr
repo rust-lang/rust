@@ -4,5 +4,23 @@ error: A function with the "rust-call" ABI must take a single non-self argument 
 LL | extern "rust-call" fn b(_i: i32) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: A function with the "rust-call" ABI must take a single non-self argument that is a tuple
+  --> $DIR/issue-22565-rust-call.rs:9:5
+   |
+LL |     extern "rust-call" fn b() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: A function with the "rust-call" ABI must take a single non-self argument that is a tuple
+  --> $DIR/issue-22565-rust-call.rs:16:5
+   |
+LL |     extern "rust-call" fn bar() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: A function with the "rust-call" ABI must take a single non-self argument that is a tuple
+  --> $DIR/issue-22565-rust-call.rs:21:5
+   |
+LL |     extern "rust-call" fn a() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 

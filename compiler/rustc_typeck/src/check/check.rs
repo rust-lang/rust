@@ -103,6 +103,10 @@ pub(super) fn check_fn<'a, 'tcx>(
                 Node::ImplItem(hir::ImplItem {
                     kind: hir::ImplItemKind::Fn(header, ..), ..
                 }) => Some(header),
+                Node::TraitItem(hir::TraitItem {
+                    kind: hir::TraitItemKind::Fn(header, ..),
+                    ..
+                }) => Some(header),
                 // Closures are RustCall, but they tuple their arguments, so shouldn't be checked
                 Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => None,
                 node => bug!("Item being checked wasn't a function/closure: {:?}", node),

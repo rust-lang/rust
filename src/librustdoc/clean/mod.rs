@@ -942,7 +942,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
                 .iter()
                 .enumerate()
                 .map(|(i, ty)| {
-                    let mut name = self.1.get(i).map(|ident| ident.name).unwrap_or(kw::Empty);
+                    let mut name = self.1.get(i).map_or(kw::Empty, |ident| ident.name);
                     if name.is_empty() {
                         name = kw::Underscore;
                     }
@@ -963,7 +963,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
                 .iter()
                 .enumerate()
                 .map(|(i, ty)| Argument {
-                    name: name_from_pat(&body.params[i].pat),
+                    name: Symbol::intern(&rustc_hir_pretty::param_to_string(&body.params[i])),
                     type_: ty.clean(cx),
                 })
                 .collect(),
@@ -1001,7 +1001,7 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
                     .iter()
                     .map(|t| Argument {
                         type_: t.clean(cx),
-                        name: names.next().map(|i| i.name).unwrap_or(kw::Empty),
+                        name: names.next().map_or(kw::Empty, |i| i.name),
                     })
                     .collect(),
             },

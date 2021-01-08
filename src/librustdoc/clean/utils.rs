@@ -314,25 +314,6 @@ crate fn strip_path(path: &Path) -> Path {
     Path { global: path.global, res: path.res, segments }
 }
 
-crate fn qpath_to_string(p: &hir::QPath<'_>) -> String {
-    let segments = match *p {
-        hir::QPath::Resolved(_, ref path) => &path.segments,
-        hir::QPath::TypeRelative(_, ref segment) => return segment.ident.to_string(),
-        hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
-    };
-
-    let mut s = String::new();
-    for (i, seg) in segments.iter().enumerate() {
-        if i > 0 {
-            s.push_str("::");
-        }
-        if seg.ident.name != kw::PathRoot {
-            s.push_str(&seg.ident.as_str());
-        }
-    }
-    s
-}
-
 crate fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut Vec<Item>) {
     let tcx = cx.tcx;
 
@@ -374,57 +355,6 @@ impl ToSource for rustc_span::Span {
         debug!("got snippet {}", sn);
         sn
     }
-}
-
-crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
-    use rustc_hir::*;
-    debug!("trying to get a name from pattern: {:?}", p);
-
-    Symbol::intern(&match p.kind {
-        PatKind::Wild => return kw::Underscore,
-        PatKind::Binding(_, _, ident, _) => return ident.name,
-        PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
-        PatKind::Struct(ref name, ref fields, etc) => format!(
-            "{} {{ {}{} }}",
-            qpath_to_string(name),
-            fields
-                .iter()
-                .map(|fp| format!("{}: {}", fp.ident, name_from_pat(&fp.pat)))
-                .collect::<Vec<String>>()
-                .join(", "),
-            if etc { ", .." } else { "" }
-        ),
-        PatKind::Or(ref pats) => pats
-            .iter()
-            .map(|p| name_from_pat(&**p).to_string())
-            .collect::<Vec<String>>()
-            .join(" | "),
-        PatKind::Tuple(ref elts, _) => format!(
-            "({})",
-            elts.iter()
-                .map(|p| name_from_pat(&**p).to_string())
-                .collect::<Vec<String>>()
-                .join(", ")
-        ),
-        PatKind::Box(ref p) => return name_from_pat(&**p),
-        PatKind::Ref(ref p, _) => return name_from_pat(&**p),
-        PatKind::Lit(..) => {
-            warn!(
-                "tried to get argument name from PatKind::Lit, which is silly in function arguments"
-            );
-            return Symbol::intern("()");
-        }
-        PatKind::Range(..) => panic!(
-            "tried to get argument name from PatKind::Range, \
-             which is not allowed in function arguments"
-        ),
-        PatKind::Slice(ref begin, ref mid, ref end) => {
-            let begin = begin.iter().map(|p| name_from_pat(&**p).to_string());
-            let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();
-            let end = end.iter().map(|p| name_from_pat(&**p).to_string());
-            format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
-        }
-    })
 }
 
 crate fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
