@@ -319,6 +319,42 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     }
 }
 
+#[unstable(feature = "cow_replace", issue = "none")]
+impl<'a, B: ?Sized> Cow<'a, B>
+where
+	B: ToOwned,
+	<B as ToOwned>::Owned: PartialEq<B>,
+{
+	/// Replaces an owned value with the given borrowed value if they are
+	/// equal, and returns the owned value if any.
+	/// 
+	/// This is a no-op if the contained value is not owned.
+	#[unstable(feature = "cow_replace", issue = "none")]
+	pub fn replace_if_eq<'b: 'a>(&mut self, sub: &'b B) -> Option<<B as ToOwned>::Owned> {
+		self.replace_if(sub, |o, b| o == b)
+	}
+	
+	/// Replaces an owned value with the given borrowed value if they satisfy a
+	/// condition, and returns the owned value if any.
+	/// 
+	/// If `func` returns `true`, the owned value is replaced with `sub` and
+	/// returned. Otherwise, `None` is returned.
+	#[unstable(feature = "cow_replace", issue = "none")]
+	pub fn replace_if<'b: 'a>(
+		&mut self,
+		sub: &'b B,
+		func: impl FnOnce(&<B as ToOwned>::Owned, &B) -> bool
+	) -> Option<<B as ToOwned>::Owned> {
+		match self {
+			Owned(o) if func(o, sub) => {
+				use core::mem;
+				Some(mem::replace(self, Borrowed(sub)).into_owned())
+			}
+			_ => None
+		}
+	}
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: ?Sized + ToOwned> Deref for Cow<'_, B> {
     type Target = B;
