@@ -363,7 +363,6 @@ where
     B: ToOwned,
     <B as ToOwned>::Owned: PartialEq<B>,
 {
-
     /// Replaces an owned value with the given borrowed value if they are
     /// equal. Returns the owned value if any.
     ///
