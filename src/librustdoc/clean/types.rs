@@ -1226,6 +1226,7 @@ crate enum Type {
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
     Slice(Box<Type>),
+    /// The `String` field is about the size or the constant representing the array's length.
     Array(Box<Type>, String),
     Never,
     RawPointer(Mutability, Box<Type>),
