@@ -1,7 +1,6 @@
 use crate::dep_graph::{DepConstructor, DepNode, WorkProduct, WorkProductId};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
-use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -79,14 +78,6 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
-        let generate_cgu_internal_copies = tcx
-            .sess
-            .opts
-            .debugging_opts
-            .inline_in_all_cgus
-            .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
-            && !tcx.sess.link_dead_code();
-
         match *self {
             MonoItem::Fn(ref instance) => {
                 let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
@@ -99,21 +90,26 @@ impl<'tcx> MonoItem<'tcx> {
                     return InstantiationMode::GloballyShared { may_conflict: false };
                 }
 
-                // At this point we don't have explicit linkage and we're an
-                // inlined function. If we're inlining into all CGUs then we'll
-                // be creating a local copy per CGU.
-                if generate_cgu_internal_copies {
-                    return InstantiationMode::LocalCopy;
-                }
+                let generate_cgu_internal_copies = tcx
+                    .sess
+                    .opts
+                    .debugging_opts
+                    .inline_in_all_cgus
+                    .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
+                    && !tcx.sess.link_dead_code();
 
-                // Finally, if this is `#[inline(always)]` we're sure to respect
-                // that with an inline copy per CGU, but otherwise we'll be
-                // creating one copy of this `#[inline]` function which may
-                // conflict with upstream crates as it could be an exported
-                // symbol.
-                match tcx.codegen_fn_attrs(instance.def_id()).inline {
-                    InlineAttr::Always => InstantiationMode::LocalCopy,
-                    _ => InstantiationMode::GloballyShared { may_conflict: true },
+                // At this point we don't have explicit linkage and we're an
+                // inlined function. If we should generate local copies for each CGU,
+                // then return `LocalCopy`, otherwise we'll just generate one copy
+                // and share it with all CGUs in this crate.
+                if generate_cgu_internal_copies {
+                    InstantiationMode::LocalCopy
+                } else {
+                    // Finally, if we've reached this point, then we should optimize for
+                    // compilation speed. In that regard, we will ignore any `#[inline]`
+                    // annotations on the function and simply codegen it as usual. This could
+                    // conflict with upstream crates as it could be an exported symbol.
+                    InstantiationMode::GloballyShared { may_conflict: true }
                 }
             }
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => {
