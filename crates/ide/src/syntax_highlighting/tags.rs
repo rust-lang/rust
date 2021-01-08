@@ -94,13 +94,13 @@ impl HighlightTag {
             HighlightTag::Comment => "comment",
             HighlightTag::EscapeSequence => "escape_sequence",
             HighlightTag::FormatSpecifier => "format_specifier",
-            HighlightTag::Dummy => "dummy",
             HighlightTag::Keyword => "keyword",
             HighlightTag::Punctuation => "punctuation",
             HighlightTag::NumericLiteral => "numeric_literal",
             HighlightTag::Operator => "operator",
             HighlightTag::StringLiteral => "string_literal",
             HighlightTag::UnresolvedReference => "unresolved_reference",
+            HighlightTag::Dummy => "dummy",
         }
     }
 }
@@ -172,6 +172,9 @@ impl From<HighlightTag> for Highlight {
 impl Highlight {
     pub(crate) fn new(tag: HighlightTag) -> Highlight {
         Highlight { tag, modifiers: HighlightModifiers::default() }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.tag == HighlightTag::Dummy && self.modifiers == HighlightModifiers::default()
     }
 }
 

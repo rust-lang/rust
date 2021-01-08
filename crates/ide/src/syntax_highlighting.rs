@@ -1,3 +1,6 @@
+mod highlights;
+mod injector;
+
 mod format;
 mod html;
 mod injection;
@@ -69,9 +72,7 @@ pub(crate) fn highlight(
     };
 
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
-    // We use a stack for the DFS traversal below.
-    // When we leave a node, the we use it to flatten the highlighted ranges.
-    let mut stack = HighlightedRangeStack::new();
+    let mut stack = highlights::Highlights::new(range_to_highlight);
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
     let mut current_macro_rules: Option<ast::MacroRules> = None;
@@ -82,14 +83,8 @@ pub(crate) fn highlight(
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
     for event in root.preorder_with_tokens() {
-        match &event {
-            WalkEvent::Enter(_) => stack.push(),
-            WalkEvent::Leave(_) => stack.pop(),
-        };
-
         let event_range = match &event {
-            WalkEvent::Enter(it) => it.text_range(),
-            WalkEvent::Leave(it) => it.text_range(),
+            WalkEvent::Enter(it) | WalkEvent::Leave(it) => it.text_range(),
         };
 
         // Element outside of the viewport, no need to highlight
@@ -138,15 +133,8 @@ pub(crate) fn highlight(
                 if ast::Attr::can_cast(node.kind()) {
                     inside_attribute = false
                 }
-                if let Some((doctest, range_mapping, new_comments)) =
-                    injection::extract_doc_comments(node)
-                {
-                    injection::highlight_doc_comment(
-                        doctest,
-                        range_mapping,
-                        new_comments,
-                        &mut stack,
-                    );
+                if let Some((new_comments, inj)) = injection::extract_doc_comments(node) {
+                    injection::highlight_doc_comment(new_comments, inj, &mut stack);
                 }
             }
             WalkEvent::Enter(NodeOrToken::Node(node)) if ast::Attr::can_cast(node.kind()) => {
@@ -217,7 +205,6 @@ pub(crate) fn highlight(
                 format_string_highlighter.highlight_format_string(&mut stack, &string, range);
                 // Highlight escape sequences
                 if let Some(char_ranges) = string.char_ranges() {
-                    stack.push();
                     for (piece_range, _) in char_ranges.iter().filter(|(_, char)| char.is_ok()) {
                         if string.text()[piece_range.start().into()..].starts_with('\\') {
                             stack.add(HighlightedRange {
@@ -227,177 +214,12 @@ pub(crate) fn highlight(
                             });
                         }
                     }
-                    stack.pop_and_inject(None);
                 }
             }
         }
     }
 
-    stack.flattened()
-}
-
-#[derive(Debug)]
-struct HighlightedRangeStack {
-    stack: Vec<Vec<HighlightedRange>>,
-}
-
-/// We use a stack to implement the flattening logic for the highlighted
-/// syntax ranges.
-impl HighlightedRangeStack {
-    fn new() -> Self {
-        Self { stack: vec![Vec::new()] }
-    }
-
-    fn push(&mut self) {
-        self.stack.push(Vec::new());
-    }
-
-    /// Flattens the highlighted ranges.
-    ///
-    /// For example `#[cfg(feature = "foo")]` contains the nested ranges:
-    /// 1) parent-range: Attribute [0, 23)
-    /// 2) child-range: String [16, 21)
-    ///
-    /// The following code implements the flattening, for our example this results to:
-    /// `[Attribute [0, 16), String [16, 21), Attribute [21, 23)]`
-    fn pop(&mut self) {
-        let children = self.stack.pop().unwrap();
-        let prev = self.stack.last_mut().unwrap();
-        let needs_flattening = !children.is_empty()
-            && !prev.is_empty()
-            && prev.last().unwrap().range.contains_range(children.first().unwrap().range);
-        if !needs_flattening {
-            prev.extend(children);
-        } else {
-            let mut parent = prev.pop().unwrap();
-            for ele in children {
-                assert!(parent.range.contains_range(ele.range));
-
-                let cloned = Self::intersect(&mut parent, &ele);
-                if !parent.range.is_empty() {
-                    prev.push(parent);
-                }
-                prev.push(ele);
-                parent = cloned;
-            }
-            if !parent.range.is_empty() {
-                prev.push(parent);
-            }
-        }
-    }
-
-    /// Intersects the `HighlightedRange` `parent` with `child`.
-    /// `parent` is mutated in place, becoming the range before `child`.
-    /// Returns the range (of the same type as `parent`) *after* `child`.
-    fn intersect(parent: &mut HighlightedRange, child: &HighlightedRange) -> HighlightedRange {
-        assert!(parent.range.contains_range(child.range));
-
-        let mut cloned = parent.clone();
-        parent.range = TextRange::new(parent.range.start(), child.range.start());
-        cloned.range = TextRange::new(child.range.end(), cloned.range.end());
-
-        cloned
-    }
-
-    /// Remove the `HighlightRange` of `parent` that's currently covered by `child`.
-    fn intersect_partial(parent: &mut HighlightedRange, child: &HighlightedRange) {
-        assert!(
-            parent.range.start() <= child.range.start()
-                && parent.range.end() >= child.range.start()
-                && child.range.end() > parent.range.end()
-        );
-
-        parent.range = TextRange::new(parent.range.start(), child.range.start());
-    }
-
-    /// Similar to `pop`, but can modify arbitrary prior ranges (where `pop`)
-    /// can only modify the last range currently on the stack.
-    /// Can be used to do injections that span multiple ranges, like the
-    /// doctest injection below.
-    /// If `overwrite_parent` is non-optional, the highlighting of the parent range
-    /// is overwritten with the argument.
-    ///
-    /// Note that `pop` can be simulated by `pop_and_inject(false)` but the
-    /// latter is computationally more expensive.
-    fn pop_and_inject(&mut self, overwrite_parent: Option<Highlight>) {
-        let mut children = self.stack.pop().unwrap();
-        let prev = self.stack.last_mut().unwrap();
-        children.sort_by_key(|range| range.range.start());
-        prev.sort_by_key(|range| range.range.start());
-
-        for child in children {
-            if let Some(idx) =
-                prev.iter().position(|parent| parent.range.contains_range(child.range))
-            {
-                if let Some(tag) = overwrite_parent {
-                    prev[idx].highlight = tag;
-                }
-
-                let cloned = Self::intersect(&mut prev[idx], &child);
-                let insert_idx = if prev[idx].range.is_empty() {
-                    prev.remove(idx);
-                    idx
-                } else {
-                    idx + 1
-                };
-                prev.insert(insert_idx, child);
-                if !cloned.range.is_empty() {
-                    prev.insert(insert_idx + 1, cloned);
-                }
-            } else {
-                let maybe_idx =
-                    prev.iter().position(|parent| parent.range.contains(child.range.start()));
-                match (overwrite_parent, maybe_idx) {
-                    (Some(_), Some(idx)) => {
-                        Self::intersect_partial(&mut prev[idx], &child);
-                        let insert_idx = if prev[idx].range.is_empty() {
-                            prev.remove(idx);
-                            idx
-                        } else {
-                            idx + 1
-                        };
-                        prev.insert(insert_idx, child);
-                    }
-                    (_, None) => {
-                        let idx = prev
-                            .binary_search_by_key(&child.range.start(), |range| range.range.start())
-                            .unwrap_or_else(|x| x);
-                        prev.insert(idx, child);
-                    }
-                    _ => {
-                        unreachable!("child range should be completely contained in parent range");
-                    }
-                }
-            }
-        }
-    }
-
-    fn add(&mut self, range: HighlightedRange) {
-        self.stack
-            .last_mut()
-            .expect("during DFS traversal, the stack must not be empty")
-            .push(range)
-    }
-
-    fn flattened(mut self) -> Vec<HighlightedRange> {
-        assert_eq!(
-            self.stack.len(),
-            1,
-            "after DFS traversal, the stack should only contain a single element"
-        );
-        let mut res = self.stack.pop().unwrap();
-        res.sort_by_key(|range| range.range.start());
-        // Check that ranges are sorted and disjoint
-        for (left, right) in res.iter().zip(res.iter().skip(1)) {
-            assert!(
-                left.range.end() <= right.range.start(),
-                "left: {:#?}, right: {:#?}",
-                left,
-                right
-            );
-        }
-        res
-    }
+    stack.to_vec()
 }
 
 fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {

@@ -37,13 +37,18 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
 <pre><code><span class="comment documentation">/// ```</span>
-<span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="dummy injected"> </span><span class="punctuation injected">_</span><span class="dummy injected"> </span><span class="operator injected">=</span><span class="dummy injected"> </span><span class="string_literal injected">"early doctests should not go boom"</span><span class="punctuation injected">;</span><span class="punctuation injected">
-</span><span class="comment documentation">/// ```</span>
+<span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="dummy injected"> </span><span class="punctuation injected">_</span><span class="dummy injected"> </span><span class="operator injected">=</span><span class="dummy injected"> </span><span class="string_literal injected">"early doctests should not go boom"</span><span class="punctuation injected">;</span>
+<span class="comment documentation">/// ```</span>
 <span class="keyword">struct</span> <span class="struct declaration">Foo</span> <span class="punctuation">{</span>
     <span class="field declaration">bar</span><span class="punctuation">:</span> <span class="builtin_type">bool</span><span class="punctuation">,</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">impl</span> <span class="struct">Foo</span> <span class="punctuation">{</span>
+    <span class="comment documentation">/// ```</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="dummy injected"> </span><span class="punctuation injected">_</span><span class="dummy injected"> </span><span class="operator injected">=</span><span class="dummy injected"> </span><span class="string_literal injected">"Call me</span>
+    <span class="comment">//    KILLER WHALE</span>
+    <span class="comment documentation">/// </span><span class="string_literal injected">    Ishmael."</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// ```</span>
     <span class="keyword">pub</span> <span class="keyword">const</span> <span class="constant declaration associated">bar</span><span class="punctuation">:</span> <span class="builtin_type">bool</span> <span class="operator">=</span> <span class="bool_literal">true</span><span class="punctuation">;</span>
 
     <span class="comment documentation">/// Constructs a new `Foo`.</span>
@@ -52,8 +57,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```</span>
     <span class="comment documentation">/// #</span><span class="dummy injected"> </span><span class="attribute attribute injected">#</span><span class="attribute attribute injected">!</span><span class="attribute attribute injected">[</span><span class="function attribute injected">allow</span><span class="punctuation attribute injected">(</span><span class="attribute attribute injected">unused_mut</span><span class="punctuation attribute injected">)</span><span class="attribute attribute injected">]</span>
-    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="dummy injected"> </span><span class="keyword injected">mut</span><span class="dummy injected"> </span><span class="variable declaration injected mutable">foo</span><span class="punctuation injected">:</span><span class="dummy injected"> </span><span class="struct injected">Foo</span><span class="dummy injected"> </span><span class="operator injected">=</span><span class="dummy injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span><span class="punctuation injected">
-</span>    <span class="comment documentation">/// ```</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="dummy injected"> </span><span class="keyword injected">mut</span><span class="dummy injected"> </span><span class="variable declaration injected mutable">foo</span><span class="punctuation injected">:</span><span class="dummy injected"> </span><span class="struct injected">Foo</span><span class="dummy injected"> </span><span class="operator injected">=</span><span class="dummy injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// ```</span>
     <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function declaration static associated">new</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="struct">Foo</span> <span class="punctuation">{</span>
         <span class="struct">Foo</span> <span class="punctuation">{</span> <span class="field">bar</span><span class="punctuation">:</span> <span class="bool_literal">true</span> <span class="punctuation">}</span>
     <span class="punctuation">}</span>
@@ -72,18 +77,18 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="dummy injected"> </span><span class="variable declaration injected">bar</span><span class="dummy injected"> </span><span class="operator injected">=</span><span class="dummy injected"> </span><span class="variable injected">foo</span><span class="operator injected">.</span><span class="field injected">bar</span><span class="dummy injected"> </span><span class="operator injected">||</span><span class="dummy injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="constant injected">bar</span><span class="punctuation injected">;</span>
     <span class="comment documentation">///</span>
-    <span class="comment documentation">/// </span><span class="comment injected">/* multi-line
-    </span><span class="comment documentation">/// </span><span class="comment injected">       comment */</span>
+    <span class="comment documentation">/// </span><span class="comment injected">/* multi-line</span>
+    <span class="comment documentation">/// </span><span class="comment injected">       comment */</span>
     <span class="comment documentation">///</span>
-    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="dummy injected"> </span><span class="variable declaration injected">multi_line_string</span><span class="dummy injected"> </span><span class="operator injected">=</span><span class="dummy injected"> </span><span class="string_literal injected">"Foo
-    </span><span class="comment documentation">/// </span><span class="string_literal injected">  bar
-    </span><span class="comment documentation">/// </span><span class="string_literal injected">         "</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="dummy injected"> </span><span class="variable declaration injected">multi_line_string</span><span class="dummy injected"> </span><span class="operator injected">=</span><span class="dummy injected"> </span><span class="string_literal injected">"Foo</span>
+    <span class="comment documentation">/// </span><span class="string_literal injected">  bar</span>
+    <span class="comment documentation">/// </span><span class="string_literal injected">         "</span><span class="punctuation injected">;</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```rust,no_run</span>
-    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="dummy injected"> </span><span class="variable declaration injected">foobar</span><span class="dummy injected"> </span><span class="operator injected">=</span><span class="dummy injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="operator injected">.</span><span class="function injected">bar</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span><span class="punctuation injected">
-</span>    <span class="comment documentation">/// ```</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="dummy injected"> </span><span class="variable declaration injected">foobar</span><span class="dummy injected"> </span><span class="operator injected">=</span><span class="dummy injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="operator injected">.</span><span class="function injected">bar</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// ```</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```sh</span>
     <span class="comment documentation">/// echo 1</span>
@@ -94,8 +99,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="punctuation">}</span>
 
 <span class="comment documentation">/// ```</span>
-<span class="comment documentation">/// </span><span class="macro injected">noop!</span><span class="punctuation injected">(</span><span class="numeric_literal injected">1</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span><span class="punctuation injected">
-</span><span class="comment documentation">/// ```</span>
+<span class="comment documentation">/// </span><span class="macro injected">noop!</span><span class="punctuation injected">(</span><span class="numeric_literal injected">1</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span>
+<span class="comment documentation">/// ```</span>
 <span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">noop</span> <span class="punctuation">{</span>
     <span class="punctuation">(</span><span class="punctuation">$</span>expr<span class="punctuation">:</span>expr<span class="punctuation">)</span> <span class="operator">=</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
         <span class="punctuation">$</span>expr

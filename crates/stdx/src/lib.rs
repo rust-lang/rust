@@ -1,5 +1,5 @@
 //! Missing batteries for standard libraries.
-use std::{ops, process, time::Instant};
+use std::{cmp::Ordering, ops, process, time::Instant};
 
 mod macros;
 pub mod panic_context;
@@ -117,7 +117,12 @@ impl<'a> Iterator for LinesWithEnds<'a> {
     }
 }
 
-// https://github.com/rust-lang/rust/issues/73831
+/// Returns `idx` such that:
+///
+///     ∀ x in slice[..idx]:  pred(x)
+///  && ∀ x in slice[idx..]: !pred(x)
+///
+/// https://github.com/rust-lang/rust/issues/73831
 pub fn partition_point<T, P>(slice: &[T], mut pred: P) -> usize
 where
     P: FnMut(&T) -> bool,
@@ -145,6 +150,15 @@ where
     }
 
     left
+}
+
+pub fn equal_range_by<T, F>(slice: &[T], mut key: F) -> (usize, usize)
+where
+    F: FnMut(&T) -> Ordering,
+{
+    let start = partition_point(slice, |it| key(it) == Ordering::Less);
+    let len = partition_point(&slice[start..], |it| key(it) == Ordering::Equal);
+    (start, len)
 }
 
 pub struct JodChild(pub process::Child);
