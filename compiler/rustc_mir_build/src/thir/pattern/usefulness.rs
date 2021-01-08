@@ -298,8 +298,8 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
 use smallvec::{smallvec, SmallVec};
+use std::fmt;
 use std::iter::{FromIterator, IntoIterator};
-use std::{fmt, mem};
 
 crate struct MatchCheckCtxt<'a, 'tcx> {
     crate tcx: TyCtxt<'tcx>,
@@ -646,9 +646,22 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         })
     }
 
+    fn save_last_col(&mut self) {
+        self.last_col_history.push(self.columns.pop().unwrap());
+    }
+    fn restore_last_col(&mut self) {
+        self.columns.push(self.last_col_history.pop().unwrap());
+    }
+    fn save_selected_rows(&mut self) {
+        self.selected_rows_history.push(self.selected_rows.clone());
+    }
+    fn restore_selected_rows(&mut self) {
+        self.selected_rows = self.selected_rows_history.pop().unwrap();
+    }
+
     /// Keep the rows that match the predicate.
     fn filter_rows<'a>(&'a mut self, mut f: impl FnMut(&'a MatrixEntry<'p, 'tcx>) -> bool) {
-        self.selected_rows_history.push(self.selected_rows.clone());
+        self.save_selected_rows();
         let last_col = self.columns.last().unwrap();
         self.selected_rows.retain(|&row_id| f(&last_col[row_id]));
         self.history.push(UndoKind::FilterRows);
@@ -659,12 +672,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         if self.columns.is_empty() {
             return;
         }
-        let last_col = self.columns.pop().unwrap();
-        self.selected_rows_history.push(self.selected_rows.clone());
+        self.save_last_col();
+        self.save_selected_rows();
+        let last_col = self.last_col_history.last().unwrap();
         for row_id in self.selected_rows.iter_mut() {
             *row_id = last_col[*row_id].next_row_id;
         }
-        self.last_col_history.push(last_col);
         self.history.push(UndoKind::PopLastCol);
     }
 
@@ -728,7 +741,9 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
     /// Expands or-patterns in the last column of the matrix. Panics if the matrix has no columns.
     fn expand_or_patterns(&mut self) {
-        let last_col = self.columns.pop().unwrap();
+        self.save_selected_rows();
+        self.save_last_col();
+        let last_col = self.last_col_history.last().unwrap();
         let mut new_last_col = Vec::new();
         for &row_id in &self.selected_rows {
             let entry = &last_col[row_id];
@@ -748,11 +763,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 new_last_col.push(entry);
             }
         }
-        let new_selected_rows = (0..new_last_col.len()).collect();
+        self.selected_rows = (0..new_last_col.len()).collect();
         self.columns.push(new_last_col);
-
-        self.last_col_history.push(last_col);
-        self.selected_rows_history.push(mem::replace(&mut self.selected_rows, new_selected_rows));
         self.history.push(UndoKind::ExpandOrPats);
     }
 
@@ -760,25 +772,26 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     fn undo(&mut self) {
         match self.history.pop().unwrap() {
             UndoKind::FilterRows => {
-                self.selected_rows = self.selected_rows_history.pop().unwrap();
+                self.restore_selected_rows();
             }
             UndoKind::PopLastCol => {
-                self.columns.push(self.last_col_history.pop().unwrap());
-                self.selected_rows = self.selected_rows_history.pop().unwrap();
+                self.restore_last_col();
+                self.restore_selected_rows();
             }
             UndoKind::Specialize { ctor_arity } => {
                 for _ in 0..ctor_arity {
                     self.columns.pop().unwrap();
                 }
-                assert!(matches!(self.history.last().unwrap(), UndoKind::PopLastCol));
-                self.undo();
-                assert!(matches!(self.history.last().unwrap(), UndoKind::FilterRows));
-                self.undo();
+                assert!(matches!(self.history.pop().unwrap(), UndoKind::PopLastCol));
+                self.restore_last_col();
+                self.restore_selected_rows();
+                assert!(matches!(self.history.pop().unwrap(), UndoKind::FilterRows));
+                self.restore_selected_rows();
             }
             UndoKind::ExpandOrPats => {
                 self.columns.pop().unwrap();
-                self.columns.push(self.last_col_history.pop().unwrap());
-                self.selected_rows = self.selected_rows_history.pop().unwrap();
+                self.restore_last_col();
+                self.restore_selected_rows();
             }
         }
     }
