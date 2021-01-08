@@ -236,7 +236,6 @@ pub fn parse_in<'a, T>(
 pub fn nt_to_tokenstream(
     nt: &Nonterminal,
     sess: &ParseSess,
-    span: Span,
     synthesize_tokens: CanSynthesizeMissingTokens,
 ) -> TokenStream {
     // A `Nonterminal` is often a parsed AST item. At this point we now
@@ -256,11 +255,9 @@ pub fn nt_to_tokenstream(
         |tokens: Option<&LazyTokenStream>| tokens.as_ref().map(|t| t.create_token_stream());
 
     let tokens = match *nt {
-        Nonterminal::NtItem(ref item) => {
-            prepend_attrs(sess, &item.attrs, nt, span, item.tokens.as_ref())
-        }
+        Nonterminal::NtItem(ref item) => prepend_attrs(sess, &item.attrs, nt, item.tokens.as_ref()),
         Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.as_ref()),
-        Nonterminal::NtStmt(ref stmt) => prepend_attrs(sess, stmt.attrs(), nt, span, stmt.tokens()),
+        Nonterminal::NtStmt(ref stmt) => prepend_attrs(sess, stmt.attrs(), nt, stmt.tokens()),
         Nonterminal::NtPat(ref pat) => convert_tokens(pat.tokens.as_ref()),
         Nonterminal::NtTy(ref ty) => convert_tokens(ty.tokens.as_ref()),
         Nonterminal::NtIdent(ident, is_raw) => {
@@ -277,31 +274,29 @@ pub fn nt_to_tokenstream(
             if expr.tokens.is_none() {
                 debug!("missing tokens for expr {:?}", expr);
             }
-            prepend_attrs(sess, &expr.attrs, nt, span, expr.tokens.as_ref())
+            prepend_attrs(sess, &expr.attrs, nt, expr.tokens.as_ref())
         }
     };
 
     if let Some(tokens) = tokens {
         return tokens;
     } else if matches!(synthesize_tokens, CanSynthesizeMissingTokens::Yes) {
-        return fake_token_stream(sess, nt, span);
+        return fake_token_stream(sess, nt);
     } else {
-        let pretty = rustc_ast_pretty::pprust::nonterminal_to_string_no_extra_parens(&nt);
-        panic!("Missing tokens at {:?} for nt {:?}", span, pretty);
+        panic!("Missing tokens for nt {:?}", pprust::nonterminal_to_string(nt));
     }
 }
 
-pub fn fake_token_stream(sess: &ParseSess, nt: &Nonterminal, span: Span) -> TokenStream {
+pub fn fake_token_stream(sess: &ParseSess, nt: &Nonterminal) -> TokenStream {
     let source = pprust::nonterminal_to_string(nt);
     let filename = FileName::macro_expansion_source_code(&source);
-    parse_stream_from_source_str(filename, source, sess, Some(span))
+    parse_stream_from_source_str(filename, source, sess, Some(nt.span()))
 }
 
 fn prepend_attrs(
     sess: &ParseSess,
     attrs: &[ast::Attribute],
     nt: &Nonterminal,
-    span: Span,
     tokens: Option<&tokenstream::LazyTokenStream>,
 ) -> Option<tokenstream::TokenStream> {
     if attrs.is_empty() {
@@ -312,7 +307,7 @@ fn prepend_attrs(
         // FIXME: Correctly handle tokens for inner attributes.
         // For now, we fall back to reparsing the original AST node
         if attr.style == ast::AttrStyle::Inner {
-            return Some(fake_token_stream(sess, nt, span));
+            return Some(fake_token_stream(sess, nt));
         }
         builder.push(attr.tokens());
     }

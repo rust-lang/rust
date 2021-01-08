@@ -8,6 +8,7 @@ use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder, Finger
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
@@ -87,7 +88,7 @@ pub struct OnDiskCache<'sess> {
     // compilation session. This is used as an initial 'guess' when
     // we try to map a `DefPathHash` to its `DefId` in the current compilation
     // session.
-    foreign_def_path_hashes: FxHashMap<DefPathHash, RawDefId>,
+    foreign_def_path_hashes: UnhashMap<DefPathHash, RawDefId>,
 
     // The *next* compilation sessison's `foreign_def_path_hashes` - at
     // the end of our current compilation session, this will get written
@@ -95,19 +96,19 @@ pub struct OnDiskCache<'sess> {
     // will become `foreign_def_path_hashes` of the next compilation session.
     // This stores any `DefPathHash` that we may need to map to a `DefId`
     // during the next compilation session.
-    latest_foreign_def_path_hashes: Lock<FxHashMap<DefPathHash, RawDefId>>,
+    latest_foreign_def_path_hashes: Lock<UnhashMap<DefPathHash, RawDefId>>,
 
     // Maps `DefPathHashes` to their corresponding `LocalDefId`s for all
     // local items in the current compilation session. This is only populated
     // when we are in incremental mode and have loaded a pre-existing cache
     // from disk, since this map is only used when deserializing a `DefPathHash`
     // from the incremental cache.
-    local_def_path_hash_to_def_id: FxHashMap<DefPathHash, LocalDefId>,
+    local_def_path_hash_to_def_id: UnhashMap<DefPathHash, LocalDefId>,
     // Caches all lookups of `DefPathHashes`, both for local and foreign
     // definitions. A definition from the previous compilation session
     // may no longer exist in the current compilation session, so
     // we use `Option<DefId>` so that we can cache a lookup failure.
-    def_path_hash_to_def_id_cache: Lock<FxHashMap<DefPathHash, Option<DefId>>>,
+    def_path_hash_to_def_id_cache: Lock<UnhashMap<DefPathHash, Option<DefId>>>,
 }
 
 // This type is used only for serialization and deserialization.
@@ -123,7 +124,7 @@ struct Footer {
     syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
     // See `OnDiskCache.expn_data`
     expn_data: FxHashMap<u32, AbsoluteBytePos>,
-    foreign_def_path_hashes: FxHashMap<DefPathHash, RawDefId>,
+    foreign_def_path_hashes: UnhashMap<DefPathHash, RawDefId>,
 }
 
 type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
@@ -160,8 +161,8 @@ crate struct RawDefId {
     pub index: u32,
 }
 
-fn make_local_def_path_hash_map(definitions: &Definitions) -> FxHashMap<DefPathHash, LocalDefId> {
-    FxHashMap::from_iter(
+fn make_local_def_path_hash_map(definitions: &Definitions) -> UnhashMap<DefPathHash, LocalDefId> {
+    UnhashMap::from_iter(
         definitions
             .def_path_table()
             .all_def_path_hashes_and_def_ids(LOCAL_CRATE)
@@ -973,7 +974,7 @@ struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
     source_map: CachingSourceMapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
     hygiene_context: &'a HygieneEncodeContext,
-    latest_foreign_def_path_hashes: FxHashMap<DefPathHash, RawDefId>,
+    latest_foreign_def_path_hashes: UnhashMap<DefPathHash, RawDefId>,
 }
 
 impl<'a, 'tcx, E> CacheEncoder<'a, 'tcx, E>

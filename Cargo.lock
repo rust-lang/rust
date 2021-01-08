@@ -295,7 +295,7 @@ checksum = "81a18687293a1546b67c246452202bbbf143d239cb43494cc163da14979082da"
 
 [[package]]
 name = "cargo"
-version = "0.51.0"
+version = "0.52.0"
 dependencies = [
  "anyhow",
  "atty",
@@ -666,9 +666,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.36"
+version = "0.1.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cd0782e0a7da7598164153173e5a5d4d9b1da094473c98dce0ff91406112369"
+checksum = "3748f82c7d366a0b4950257d19db685d4958d2fa27c6d164a3f069fec42b748b"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -1973,9 +1973,9 @@ dependencies = [
 
 [[package]]
 name = "mdbook"
-version = "0.4.3"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29be448fcafb00c5a8966c4020c2a5ffbbc333e5b96d0bb5ef54b5bd0524d9ff"
+checksum = "21251d3eb9ca5e8ac5b73384ddaa483a9bbc7d7dcd656b1fa8f266634810334a"
 dependencies = [
  "ammonia",
  "anyhow",
@@ -3745,6 +3745,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_ast",
  "rustc_data_structures",
+ "rustc_feature",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
@@ -5343,7 +5344,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.9.0",
+ "parking_lot 0.11.0",
  "regex",
  "serde",
  "serde_json",

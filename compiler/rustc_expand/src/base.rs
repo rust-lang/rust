@@ -12,7 +12,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session};
-use rustc_span::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
 use rustc_span::source_map::SourceMap;
@@ -141,7 +141,7 @@ impl Annotatable {
     }
 
     crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
-        nt_to_tokenstream(&self.into_nonterminal(), sess, DUMMY_SP, CanSynthesizeMissingTokens::No)
+        nt_to_tokenstream(&self.into_nonterminal(), sess, CanSynthesizeMissingTokens::No)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
@@ -842,19 +842,17 @@ impl SyntaxExtension {
         descr: Symbol,
         macro_def_id: Option<DefId>,
     ) -> ExpnData {
-        ExpnData {
-            kind: ExpnKind::Macro(self.macro_kind(), descr),
+        ExpnData::new(
+            ExpnKind::Macro(self.macro_kind(), descr),
             parent,
             call_site,
-            def_site: self.span,
-            allow_internal_unstable: self.allow_internal_unstable.clone(),
-            allow_internal_unsafe: self.allow_internal_unsafe,
-            local_inner_macros: self.local_inner_macros,
-            edition: self.edition,
+            self.span,
+            self.allow_internal_unstable.clone(),
+            self.allow_internal_unsafe,
+            self.local_inner_macros,
+            self.edition,
             macro_def_id,
-            krate: LOCAL_CRATE,
-            orig_id: None,
-        }
+        )
     }
 }
 

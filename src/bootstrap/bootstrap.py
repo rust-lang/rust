@@ -393,7 +393,7 @@ class RustBuild(object):
 
         if self.rustc().startswith(self.bin_root()) and \
                 (not os.path.exists(self.rustc()) or
-                 self.program_out_of_date(self.rustc_stamp())):
+                 self.program_out_of_date(self.rustc_stamp(), self.date)):
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
@@ -429,7 +429,7 @@ class RustBuild(object):
                 self.fix_bin_or_dylib("{}/bin/rustfmt".format(self.bin_root()))
                 self.fix_bin_or_dylib("{}/bin/cargo-fmt".format(self.bin_root()))
                 with output(self.rustfmt_stamp()) as rustfmt_stamp:
-                    rustfmt_stamp.write(self.date + self.rustfmt_channel)
+                    rustfmt_stamp.write(self.rustfmt_channel)
 
         if self.downloading_llvm():
             # We want the most recent LLVM submodule update to avoid downloading
@@ -456,7 +456,7 @@ class RustBuild(object):
                 for binary in ["llvm-config", "FileCheck"]:
                     self.fix_bin_or_dylib("{}/bin/{}".format(self.llvm_root(), binary))
                 with output(self.llvm_stamp()) as llvm_stamp:
-                    llvm_stamp.write(self.date + llvm_sha + str(llvm_assertions))
+                    llvm_stamp.write(llvm_sha + str(llvm_assertions))
 
     def downloading_llvm(self):
         opt = self.get_toml('download-ci-llvm', 'llvm')
@@ -623,12 +623,12 @@ class RustBuild(object):
         return os.path.join(self.llvm_root(), '.llvm-stamp')
 
 
-    def program_out_of_date(self, stamp_path, extra=""):
+    def program_out_of_date(self, stamp_path, key):
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
             return True
         with open(stamp_path, 'r') as stamp:
-            return (self.date + extra) != stamp.read()
+            return key != stamp.read()
 
     def bin_root(self):
         """Return the binary root directory

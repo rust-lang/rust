@@ -88,13 +88,6 @@ pub struct State<'a> {
     comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn + 'a),
     is_expanded: bool,
-    // If `true`, additional parenthesis (separate from `ExprKind::Paren`)
-    // are inserted to ensure that proper precedence is preserved
-    // in the pretty-printed output.
-    //
-    // This is usually `true`, except when performing the pretty-print/reparse
-    // check in `nt_to_tokenstream`
-    insert_extra_parens: bool,
 }
 
 crate const INDENT_UNIT: usize = 4;
@@ -115,7 +108,6 @@ pub fn print_crate<'a>(
         comments: Some(Comments::new(sm, filename, input)),
         ann,
         is_expanded,
-        insert_extra_parens: true,
     };
 
     if is_expanded && !krate.attrs.iter().any(|attr| attr.has_name(sym::no_core)) {
@@ -235,7 +227,6 @@ impl std::ops::DerefMut for State<'_> {
 }
 
 pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::DerefMut {
-    fn insert_extra_parens(&self) -> bool;
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
     fn print_ident(&mut self, ident: Ident);
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
@@ -819,16 +810,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn to_string(&self, f: impl FnOnce(&mut State<'_>)) -> String {
         let mut printer = State::new();
-        printer.insert_extra_parens = self.insert_extra_parens();
         f(&mut printer);
         printer.s.eof()
     }
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn insert_extra_parens(&self) -> bool {
-        self.insert_extra_parens
-    }
     fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
     }
@@ -865,17 +852,7 @@ impl<'a> PrintState<'a> for State<'a> {
 
 impl<'a> State<'a> {
     pub fn new() -> State<'a> {
-        State {
-            s: pp::mk_printer(),
-            comments: None,
-            ann: &NoAnn,
-            is_expanded: false,
-            insert_extra_parens: true,
-        }
-    }
-
-    pub(super) fn without_insert_extra_parens() -> State<'a> {
-        State { insert_extra_parens: false, ..State::new() }
+        State { s: pp::mk_printer(), comments: None, ann: &NoAnn, is_expanded: false }
     }
 
     // Synthesizes a comment that was not textually present in the original source
@@ -1680,8 +1657,7 @@ impl<'a> State<'a> {
     }
 
     /// Prints `expr` or `(expr)` when `needs_par` holds.
-    fn print_expr_cond_paren(&mut self, expr: &ast::Expr, mut needs_par: bool) {
-        needs_par &= self.insert_extra_parens;
+    fn print_expr_cond_paren(&mut self, expr: &ast::Expr, needs_par: bool) {
         if needs_par {
             self.popen();
         }

@@ -398,12 +398,18 @@ impl<'a> Resolver<'a> {
                 err.help("use the `|| { ... }` closure form instead");
                 err
             }
-            ResolutionError::AttemptToUseNonConstantValueInConstant => {
+            ResolutionError::AttemptToUseNonConstantValueInConstant(ident, sugg) => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
                     E0435,
                     "attempt to use a non-constant value in a constant"
+                );
+                err.span_suggestion(
+                    ident.span,
+                    &sugg,
+                    "".to_string(),
+                    Applicability::MaybeIncorrect,
                 );
                 err.span_label(span, "non-constant value");
                 err

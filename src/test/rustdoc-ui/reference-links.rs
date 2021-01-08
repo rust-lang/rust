@@ -4,4 +4,3 @@
 //!
 //! [a]: std::process::Comman
 //~^ ERROR unresolved
-//~| ERROR unresolved

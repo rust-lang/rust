@@ -10,11 +10,5 @@ note: the lint level is defined here
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
-error: unresolved link to `std::process::Comman`
-  --> $DIR/reference-links.rs:5:10
-   |
-LL | //! [a]: std::process::Comman
-   |          ^^^^^^^^^^^^^^^^^^^^ no item named `Comman` in module `process`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

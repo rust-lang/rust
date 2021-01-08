@@ -91,7 +91,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// };
 ///
 /// // Back on our current thread, we wait for the value to be set
-/// while live.load(Ordering::Acquire) {
+/// while !live.load(Ordering::Acquire) {
 ///     // The spin loop is a hint to the CPU that we're waiting, but probably
 ///     // not for very long
 ///     hint::spin_loop();

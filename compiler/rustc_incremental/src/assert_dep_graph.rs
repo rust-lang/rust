@@ -310,13 +310,13 @@ fn filter_nodes<'q>(
     sources: &Option<FxHashSet<&'q DepNode>>,
     targets: &Option<FxHashSet<&'q DepNode>>,
 ) -> FxHashSet<&'q DepNode> {
-    if let &Some(ref sources) = sources {
-        if let &Some(ref targets) = targets {
+    if let Some(sources) = sources {
+        if let Some(targets) = targets {
             walk_between(query, sources, targets)
         } else {
             walk_nodes(query, sources, OUTGOING)
         }
-    } else if let &Some(ref targets) = targets {
+    } else if let Some(targets) = targets {
         walk_nodes(query, targets, INCOMING)
     } else {
         query.nodes().into_iter().collect()

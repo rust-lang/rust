@@ -37,7 +37,9 @@ use crate::doctest;
 use crate::html::highlight;
 use crate::html::toc::TocBuilder;
 
-use pulldown_cmark::{html, BrokenLink, CodeBlockKind, CowStr, Event, Options, Parser, Tag};
+use pulldown_cmark::{
+    html, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag,
+};
 
 #[cfg(test)]
 mod tests;
@@ -327,8 +329,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
     type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        use pulldown_cmark::LinkType;
-
         let mut event = self.inner.next();
 
         // Replace intra-doc links and remove disambiguators from shortcut links (`[fn@f]`).
@@ -1123,7 +1123,13 @@ crate fn plain_text_summary(md: &str) -> String {
     s
 }
 
-crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
+crate struct MarkdownLink {
+    pub kind: LinkType,
+    pub link: String,
+    pub range: Range<usize>,
+}
+
+crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
     if md.is_empty() {
         return vec![];
     }
@@ -1163,7 +1169,11 @@ crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
 
     let mut push = |link: BrokenLink<'_>| {
         let span = span_for_link(&CowStr::Borrowed(link.reference), link.span);
-        links.borrow_mut().push((link.reference.to_owned(), span));
+        links.borrow_mut().push(MarkdownLink {
+            kind: LinkType::ShortcutUnknown,
+            link: link.reference.to_owned(),
+            range: span,
+        });
         None
     };
     let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut push)).into_offset_iter();
@@ -1174,10 +1184,10 @@ crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
     let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids));
 
     for ev in iter {
-        if let Event::Start(Tag::Link(_, dest, _)) = ev.0 {
+        if let Event::Start(Tag::Link(kind, dest, _)) = ev.0 {
             debug!("found link: {}", dest);
             let span = span_for_link(&dest, ev.1);
-            links.borrow_mut().push((dest.into_string(), span));
+            links.borrow_mut().push(MarkdownLink { kind, link: dest.into_string(), range: span });
         }
     }
 
@@ -1193,6 +1203,7 @@ crate struct RustCodeBlock {
     crate code: Range<usize>,
     crate is_fenced: bool,
     crate syntax: Option<String>,
+    crate is_ignore: bool,
 }
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
@@ -1208,7 +1219,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
 
     while let Some((event, offset)) = p.next() {
         if let Event::Start(Tag::CodeBlock(syntax)) = event {
-            let (syntax, code_start, code_end, range, is_fenced) = match syntax {
+            let (syntax, code_start, code_end, range, is_fenced, is_ignore) = match syntax {
                 CodeBlockKind::Fenced(syntax) => {
                     let syntax = syntax.as_ref();
                     let lang_string = if syntax.is_empty() {
@@ -1219,6 +1230,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                     if !lang_string.rust {
                         continue;
                     }
+                    let is_ignore = lang_string.ignore != Ignore::None;
                     let syntax = if syntax.is_empty() { None } else { Some(syntax.to_owned()) };
                     let (code_start, mut code_end) = match p.next() {
                         Some((Event::Text(_), offset)) => (offset.start, offset.end),
@@ -1229,6 +1241,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                                 range: offset,
                                 code,
                                 syntax,
+                                is_ignore,
                             });
                             continue;
                         }
@@ -1239,6 +1252,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                                 range: offset,
                                 code,
                                 syntax,
+                                is_ignore,
                             });
                             continue;
                         }
@@ -1246,7 +1260,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                     while let Some((Event::Text(_), offset)) = p.next() {
                         code_end = offset.end;
                     }
-                    (syntax, code_start, code_end, offset, true)
+                    (syntax, code_start, code_end, offset, true, is_ignore)
                 }
                 CodeBlockKind::Indented => {
                     // The ending of the offset goes too far sometime so we reduce it by one in
@@ -1258,9 +1272,10 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                             offset.end,
                             Range { start: offset.start, end: offset.end - 1 },
                             false,
+                            false,
                         )
                     } else {
-                        (None, offset.start, offset.end, offset, false)
+                        (None, offset.start, offset.end, offset, false, false)
                     }
                 }
             };
@@ -1270,6 +1285,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                 range,
                 code: Range { start: code_start, end: code_end },
                 syntax,
+                is_ignore,
             });
         }
     }

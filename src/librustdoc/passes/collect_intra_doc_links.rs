@@ -25,6 +25,8 @@ use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
 
+use pulldown_cmark::LinkType;
+
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::convert::{TryFrom, TryInto};
@@ -34,7 +36,7 @@ use std::ops::Range;
 use crate::clean::{self, utils::find_nearest_parent_module, Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use crate::html::markdown::markdown_links;
+use crate::html::markdown::{markdown_links, MarkdownLink};
 use crate::passes::Pass;
 
 use super::span_of_attrs;
@@ -265,8 +267,9 @@ struct LinkCollector<'a, 'tcx> {
     /// because `clean` and the disambiguator code expect them to be different.
     /// See the code for associated items on inherent impls for details.
     kind_side_channel: Cell<Option<(DefKind, DefId)>>,
-    /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link
-    visited_links: FxHashMap<ResolutionInfo, CachedLink>,
+    /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
+    /// The link will be `None` if it could not be resolved (i.e. the error was cached).
+    visited_links: FxHashMap<ResolutionInfo, Option<CachedLink>>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -391,10 +394,14 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         ns,
                         impl_,
                     )
-                    .map(|item| match item.kind {
-                        ty::AssocKind::Fn => "method",
-                        ty::AssocKind::Const => "associatedconstant",
-                        ty::AssocKind::Type => "associatedtype",
+                    .map(|item| {
+                        let kind = item.kind;
+                        self.kind_side_channel.set(Some((kind.as_def_kind(), item.def_id)));
+                        match kind {
+                            ty::AssocKind::Fn => "method",
+                            ty::AssocKind::Const => "associatedconstant",
+                            ty::AssocKind::Type => "associatedtype",
+                        }
                     })
                     .map(|out| {
                         (
@@ -891,43 +898,18 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
-        let mut attrs = item.attrs.doc_strings.iter().peekable();
-        while let Some(attr) = attrs.next() {
-            // `collapse_docs` does not have the behavior we want:
-            // we want `///` and `#[doc]` to count as the same attribute,
-            // but currently it will treat them as separate.
-            // As a workaround, combine all attributes with the same parent module into the same attribute.
-            let mut combined_docs = attr.doc.clone();
-            loop {
-                match attrs.peek() {
-                    Some(next) if next.parent_module == attr.parent_module => {
-                        combined_docs.push('\n');
-                        combined_docs.push_str(&attrs.next().unwrap().doc);
-                    }
-                    _ => break,
-                }
-            }
-            debug!("combined_docs={}", combined_docs);
+        for (parent_module, doc) in item.attrs.collapsed_doc_value_by_module_level() {
+            debug!("combined_docs={}", doc);
 
-            let (krate, parent_node) = if let Some(id) = attr.parent_module {
-                trace!("docs {:?} came from {:?}", attr.doc, id);
+            let (krate, parent_node) = if let Some(id) = parent_module {
                 (id.krate, Some(id))
             } else {
-                trace!("no parent found for {:?}", attr.doc);
                 (item.def_id.krate, parent_node)
             };
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
-            for (ori_link, link_range) in markdown_links(&combined_docs) {
-                let link = self.resolve_link(
-                    &item,
-                    &combined_docs,
-                    &self_name,
-                    parent_node,
-                    krate,
-                    ori_link,
-                    link_range,
-                );
+            for md_link in markdown_links(&doc) {
+                let link = self.resolve_link(&item, &doc, &self_name, parent_node, krate, md_link);
                 if let Some(link) = link {
                     item.attrs.links.push(link);
                 }
@@ -959,27 +941,26 @@ impl LinkCollector<'_, '_> {
         self_name: &Option<String>,
         parent_node: Option<DefId>,
         krate: CrateNum,
-        ori_link: String,
-        link_range: Range<usize>,
+        ori_link: MarkdownLink,
     ) -> Option<ItemLink> {
-        trace!("considering link '{}'", ori_link);
+        trace!("considering link '{}'", ori_link.link);
 
         // Bail early for real links.
-        if ori_link.contains('/') {
+        if ori_link.link.contains('/') {
             return None;
         }
 
         // [] is mostly likely not supposed to be a link
-        if ori_link.is_empty() {
+        if ori_link.link.is_empty() {
             return None;
         }
 
         let cx = self.cx;
-        let link = ori_link.replace("`", "");
+        let link = ori_link.link.replace("`", "");
         let parts = link.split('#').collect::<Vec<_>>();
         let (link, extra_fragment) = if parts.len() > 2 {
             // A valid link can't have multiple #'s
-            anchor_failure(cx, &item, &link, dox, link_range, AnchorFailure::MultipleAnchors);
+            anchor_failure(cx, &item, &link, dox, ori_link.range, AnchorFailure::MultipleAnchors);
             return None;
         } else if parts.len() == 2 {
             if parts[0].trim().is_empty() {
@@ -1035,7 +1016,7 @@ impl LinkCollector<'_, '_> {
                 path_str,
                 disambiguator,
                 dox,
-                link_range,
+                ori_link.range,
                 smallvec![ResolutionFailure::NoParentItem],
             );
             return None;
@@ -1075,7 +1056,7 @@ impl LinkCollector<'_, '_> {
                         path_str,
                         disambiguator,
                         dox,
-                        link_range,
+                        ori_link.range,
                         smallvec![err_kind],
                     );
                     return None;
@@ -1091,15 +1072,22 @@ impl LinkCollector<'_, '_> {
             return None;
         }
 
-        let key = ResolutionInfo {
-            module_id,
-            dis: disambiguator,
-            path_str: path_str.to_owned(),
-            extra_fragment,
+        let diag_info = DiagnosticInfo {
+            item,
+            dox,
+            ori_link: &ori_link.link,
+            link_range: ori_link.range.clone(),
         };
-        let diag =
-            DiagnosticInfo { item, dox, ori_link: &ori_link, link_range: link_range.clone() };
-        let (mut res, mut fragment) = self.resolve_with_disambiguator_cached(key, diag)?;
+        let (mut res, mut fragment) = self.resolve_with_disambiguator_cached(
+            ResolutionInfo {
+                module_id,
+                dis: disambiguator,
+                path_str: path_str.to_owned(),
+                extra_fragment,
+            },
+            diag_info,
+            matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
+        )?;
 
         // Check for a primitive which might conflict with a module
         // Report the ambiguity and require that the user specify which one they meant.
@@ -1118,7 +1106,7 @@ impl LinkCollector<'_, '_> {
                             &item,
                             path_str,
                             dox,
-                            link_range,
+                            ori_link.range,
                             AnchorFailure::RustdocAnchorConflict(prim),
                         );
                         return None;
@@ -1128,7 +1116,7 @@ impl LinkCollector<'_, '_> {
                 } else {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![res, prim];
-                    ambiguity_error(cx, &item, path_str, dox, link_range, candidates);
+                    ambiguity_error(cx, &item, path_str, dox, ori_link.range, candidates);
                     return None;
                 }
             }
@@ -1146,61 +1134,89 @@ impl LinkCollector<'_, '_> {
                     specified.descr()
                 );
                 diag.note(&note);
-                suggest_disambiguator(resolved, diag, path_str, dox, sp, &link_range);
+                suggest_disambiguator(resolved, diag, path_str, dox, sp, &ori_link.range);
             };
-            report_diagnostic(cx, BROKEN_INTRA_DOC_LINKS, &msg, &item, dox, &link_range, callback);
+            report_diagnostic(
+                cx,
+                BROKEN_INTRA_DOC_LINKS,
+                &msg,
+                &item,
+                dox,
+                &ori_link.range,
+                callback,
+            );
         };
-        match res {
-            Res::Primitive(_) => match disambiguator {
-                Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
-                    Some(ItemLink { link: ori_link, link_text, did: None, fragment })
-                }
-                Some(other) => {
-                    report_mismatch(other, Disambiguator::Primitive);
-                    None
-                }
-            },
-            Res::Def(kind, id) => {
-                debug!("intra-doc link to {} resolved to {:?}", path_str, res);
 
-                // Disallow e.g. linking to enums with `struct@`
-                debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
-                match (self.kind_side_channel.take().map(|(kind, _)| kind).unwrap_or(kind), disambiguator) {
-                    | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
-                    // NOTE: this allows 'method' to mean both normal functions and associated functions
-                    // This can't cause ambiguity because both are in the same namespace.
-                    | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
-                    // These are namespaces; allow anything in the namespace to match
-                    | (_, Some(Disambiguator::Namespace(_)))
-                    // If no disambiguator given, allow anything
-                    | (_, None)
-                    // All of these are valid, so do nothing
-                    => {}
-                    (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
-                    (_, Some(specified @ Disambiguator::Kind(_) | specified @ Disambiguator::Primitive)) => {
-                        report_mismatch(specified, Disambiguator::Kind(kind));
-                        return None;
-                    }
-                }
+        let verify = |kind: DefKind, id: DefId| {
+            debug!("intra-doc link to {} resolved to {:?}", path_str, res);
 
-                // item can be non-local e.g. when using #[doc(primitive = "pointer")]
-                if let Some((src_id, dst_id)) = id
-                    .as_local()
-                    .and_then(|dst_id| item.def_id.as_local().map(|src_id| (src_id, dst_id)))
+            // Disallow e.g. linking to enums with `struct@`
+            debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
+            match (self.kind_side_channel.take().map(|(kind, _)| kind).unwrap_or(kind), disambiguator) {
+                | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
+                // NOTE: this allows 'method' to mean both normal functions and associated functions
+                // This can't cause ambiguity because both are in the same namespace.
+                | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
+                // These are namespaces; allow anything in the namespace to match
+                | (_, Some(Disambiguator::Namespace(_)))
+                // If no disambiguator given, allow anything
+                | (_, None)
+                // All of these are valid, so do nothing
+                => {}
+                (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
+                (_, Some(specified @ Disambiguator::Kind(_) | specified @ Disambiguator::Primitive)) => {
+                    report_mismatch(specified, Disambiguator::Kind(kind));
+                    return None;
+                }
+            }
+
+            // item can be non-local e.g. when using #[doc(primitive = "pointer")]
+            if let Some((src_id, dst_id)) = id
+                .as_local()
+                .and_then(|dst_id| item.def_id.as_local().map(|src_id| (src_id, dst_id)))
+            {
+                use rustc_hir::def_id::LOCAL_CRATE;
+
+                let hir_src = self.cx.tcx.hir().local_def_id_to_hir_id(src_id);
+                let hir_dst = self.cx.tcx.hir().local_def_id_to_hir_id(dst_id);
+
+                if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
+                    && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
                 {
-                    use rustc_hir::def_id::LOCAL_CRATE;
+                    privacy_error(cx, &item, &path_str, dox, &ori_link);
+                }
+            }
 
-                    let hir_src = self.cx.tcx.hir().local_def_id_to_hir_id(src_id);
-                    let hir_dst = self.cx.tcx.hir().local_def_id_to_hir_id(dst_id);
+            Some((kind, id))
+        };
 
-                    if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
-                        && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
-                    {
-                        privacy_error(cx, &item, &path_str, dox, link_range);
+        match res {
+            Res::Primitive(_) => {
+                if let Some((kind, id)) = self.kind_side_channel.take() {
+                    // We're actually resolving an associated item of a primitive, so we need to
+                    // verify the disambiguator (if any) matches the type of the associated item.
+                    // This case should really follow the same flow as the `Res::Def` branch below,
+                    // but attempting to add a call to `clean::register_res` causes an ICE. @jyn514
+                    // thinks `register_res` is only needed for cross-crate re-exports, but Rust
+                    // doesn't allow statements like `use str::trim;`, making this a (hopefully)
+                    // valid omission. See https://github.com/rust-lang/rust/pull/80660#discussion_r551585677
+                    // for discussion on the matter.
+                    verify(kind, id)?;
+                } else {
+                    match disambiguator {
+                        Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {}
+                        Some(other) => {
+                            report_mismatch(other, Disambiguator::Primitive);
+                            return None;
+                        }
                     }
                 }
+                Some(ItemLink { link: ori_link.link, link_text, did: None, fragment })
+            }
+            Res::Def(kind, id) => {
+                let (kind, id) = verify(kind, id)?;
                 let id = clean::register_res(cx, rustc_hir::def::Res::Def(kind, id));
-                Some(ItemLink { link: ori_link, link_text, did: Some(id), fragment })
+                Some(ItemLink { link: ori_link.link, link_text, did: Some(id), fragment })
             }
         }
     }
@@ -1209,28 +1225,47 @@ impl LinkCollector<'_, '_> {
         &mut self,
         key: ResolutionInfo,
         diag: DiagnosticInfo<'_>,
+        cache_resolution_failure: bool,
     ) -> Option<(Res, Option<String>)> {
         // Try to look up both the result and the corresponding side channel value
         if let Some(ref cached) = self.visited_links.get(&key) {
-            self.kind_side_channel.set(cached.side_channel);
-            return Some(cached.res.clone());
+            match cached {
+                Some(cached) => {
+                    self.kind_side_channel.set(cached.side_channel.clone());
+                    return Some(cached.res.clone());
+                }
+                None if cache_resolution_failure => return None,
+                None => {
+                    // Although we hit the cache and found a resolution error, this link isn't
+                    // supposed to cache those. Run link resolution again to emit the expected
+                    // resolution error.
+                }
+            }
         }
 
         let res = self.resolve_with_disambiguator(&key, diag);
 
         // Cache only if resolved successfully - don't silence duplicate errors
-        if let Some(res) = &res {
+        if let Some(res) = res {
             // Store result for the actual namespace
             self.visited_links.insert(
                 key,
-                CachedLink {
+                Some(CachedLink {
                     res: res.clone(),
                     side_channel: self.kind_side_channel.clone().into_inner(),
-                },
+                }),
             );
-        }
 
-        res
+            Some(res)
+        } else {
+            if cache_resolution_failure {
+                // For reference-style links we only want to report one resolution error
+                // so let's cache them as well.
+                self.visited_links.insert(key, None);
+            }
+
+            None
+        }
     }
 
     /// After parsing the disambiguator, resolve the main part of the link.
@@ -1981,13 +2016,7 @@ fn suggest_disambiguator(
 }
 
 /// Report a link from a public item to a private one.
-fn privacy_error(
-    cx: &DocContext<'_>,
-    item: &Item,
-    path_str: &str,
-    dox: &str,
-    link_range: Range<usize>,
-) {
+fn privacy_error(cx: &DocContext<'_>, item: &Item, path_str: &str, dox: &str, link: &MarkdownLink) {
     let sym;
     let item_name = match item.name {
         Some(name) => {
@@ -1999,7 +2028,7 @@ fn privacy_error(
     let msg =
         format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
 
-    report_diagnostic(cx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link.range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }

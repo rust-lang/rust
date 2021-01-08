@@ -333,7 +333,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             ExprKind::Path(ref qpath) => {
                                 // local binding
-                                if let &QPath::Resolved(_, ref path) = &qpath {
+                                if let QPath::Resolved(_, path) = qpath {
                                     if let hir::def::Res::Local(hir_id) = path.res {
                                         let span = tcx.hir().span(hir_id);
                                         let snippet = tcx.sess.source_map().span_to_snippet(span);

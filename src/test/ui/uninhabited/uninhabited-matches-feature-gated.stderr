@@ -23,6 +23,7 @@ LL |     let _ = match x {};
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&Void`
+   = note: references are always considered inhabited
 
 error[E0004]: non-exhaustive patterns: type `(Void,)` is non-empty
   --> $DIR/uninhabited-matches-feature-gated.rs:18:19

@@ -48,8 +48,8 @@ pub fn expand_deriving_hash(
 }
 
 fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> P<Expr> {
-    let state_expr = match &substr.nonself_args {
-        &[o_f] => o_f,
+    let state_expr = match substr.nonself_args {
+        [o_f] => o_f,
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`"),
     };
     let call_hash = |span, thing_expr| {
@@ -64,9 +64,9 @@ fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructu
     };
     let mut stmts = Vec::new();
 
-    let fields = match *substr.fields {
-        Struct(_, ref fs) | EnumMatching(_, 1, .., ref fs) => fs,
-        EnumMatching(.., ref fs) => {
+    let fields = match substr.fields {
+        Struct(_, fs) | EnumMatching(_, 1, .., fs) => fs,
+        EnumMatching(.., fs) => {
             let variant_value = deriving::call_intrinsic(
                 cx,
                 trait_span,

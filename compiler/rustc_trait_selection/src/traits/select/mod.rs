@@ -69,16 +69,16 @@ impl IntercrateAmbiguityCause {
 
     pub fn intercrate_ambiguity_hint(&self) -> String {
         match self {
-            &IntercrateAmbiguityCause::DownstreamCrate { ref trait_desc, ref self_desc } => {
-                let self_desc = if let &Some(ref ty) = self_desc {
+            IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc } => {
+                let self_desc = if let Some(ty) = self_desc {
                     format!(" for type `{}`", ty)
                 } else {
                     String::new()
                 };
                 format!("downstream crates may implement trait `{}`{}", trait_desc, self_desc)
             }
-            &IntercrateAmbiguityCause::UpstreamCrateUpdate { ref trait_desc, ref self_desc } => {
-                let self_desc = if let &Some(ref ty) = self_desc {
+            IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc } => {
+                let self_desc = if let Some(ty) = self_desc {
                     format!(" for type `{}`", ty)
                 } else {
                     String::new()
@@ -89,7 +89,7 @@ impl IntercrateAmbiguityCause {
                     trait_desc, self_desc
                 )
             }
-            &IntercrateAmbiguityCause::ReservationImpl { ref message } => message.clone(),
+            IntercrateAmbiguityCause::ReservationImpl { message } => message.clone(),
         }
     }
 }

@@ -1125,7 +1125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fields,
             base_expr.is_none(),
         );
-        if let &Some(ref base_expr) = base_expr {
+        if let Some(base_expr) = base_expr {
             // If check_expr_struct_fields hit an error, do not attempt to populate
             // the fields with the base_expr. This could cause us to hit errors later
             // when certain fields are assumed to exist that in fact do not.
@@ -1182,8 +1182,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // re-link the regions that EIfEO can erase.
         self.demand_eqtype(span, adt_ty_hint, adt_ty);
 
-        let (substs, adt_kind, kind_name) = match &adt_ty.kind() {
-            &ty::Adt(adt, substs) => (substs, adt.adt_kind(), adt.variant_descr()),
+        let (substs, adt_kind, kind_name) = match adt_ty.kind() {
+            ty::Adt(adt, substs) => (substs, adt.adt_kind(), adt.variant_descr()),
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields"),
         };
 

@@ -896,8 +896,8 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
     visitor: &mut V,
     predicate: &'v WherePredicate<'v>,
 ) {
-    match predicate {
-        &WherePredicate::BoundPredicate(WhereBoundPredicate {
+    match *predicate {
+        WherePredicate::BoundPredicate(WhereBoundPredicate {
             ref bounded_ty,
             bounds,
             bound_generic_params,
@@ -907,11 +907,11 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_generic_param, bound_generic_params);
         }
-        &WherePredicate::RegionPredicate(WhereRegionPredicate { ref lifetime, bounds, .. }) => {
+        WherePredicate::RegionPredicate(WhereRegionPredicate { ref lifetime, bounds, .. }) => {
             visitor.visit_lifetime(lifetime);
             walk_list!(visitor, visit_param_bound, bounds);
         }
-        &WherePredicate::EqPredicate(WhereEqPredicate {
+        WherePredicate::EqPredicate(WhereEqPredicate {
             hir_id, ref lhs_ty, ref rhs_ty, ..
         }) => {
             visitor.visit_id(hir_id);

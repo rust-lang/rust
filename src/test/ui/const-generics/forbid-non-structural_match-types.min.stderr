@@ -5,7 +5,7 @@ LL | struct B<const X: A>; // ok
    |                   ^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: `C` is forbidden as the type of a const generic parameter
   --> $DIR/forbid-non-structural_match-types.rs:14:19
@@ -14,7 +14,7 @@ LL | struct D<const X: C>;
    |                   ^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error[E0741]: `C` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the type of a const parameter
   --> $DIR/forbid-non-structural_match-types.rs:14:19

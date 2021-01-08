@@ -70,6 +70,7 @@ class ProgramOutOfDate(unittest.TestCase):
         self.build.build_dir = self.container
         self.rustc_stamp_path = os.path.join(self.container, "stage0",
                                              ".rustc-stamp")
+        self.key = self.build.date + str(None)
 
     def tearDown(self):
         rmtree(self.container)
@@ -78,19 +79,19 @@ class ProgramOutOfDate(unittest.TestCase):
         """Return True when the stamp file does not exists"""
         if os.path.exists(self.rustc_stamp_path):
             os.unlink(self.rustc_stamp_path)
-        self.assertTrue(self.build.program_out_of_date(self.rustc_stamp_path))
+        self.assertTrue(self.build.program_out_of_date(self.rustc_stamp_path, self.key))
 
     def test_dates_are_different(self):
         """Return True when the dates are different"""
         with open(self.rustc_stamp_path, "w") as rustc_stamp:
-            rustc_stamp.write("2017-06-14")
-        self.assertTrue(self.build.program_out_of_date(self.rustc_stamp_path))
+            rustc_stamp.write("2017-06-14None")
+        self.assertTrue(self.build.program_out_of_date(self.rustc_stamp_path, self.key))
 
     def test_same_dates(self):
         """Return False both dates match"""
         with open(self.rustc_stamp_path, "w") as rustc_stamp:
-            rustc_stamp.write("2017-06-15")
-        self.assertFalse(self.build.program_out_of_date(self.rustc_stamp_path))
+            rustc_stamp.write("2017-06-15None")
+        self.assertFalse(self.build.program_out_of_date(self.rustc_stamp_path, self.key))
 
 
 if __name__ == '__main__':

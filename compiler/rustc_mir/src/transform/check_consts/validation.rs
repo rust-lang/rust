@@ -3,6 +3,7 @@
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
@@ -188,6 +189,9 @@ pub struct Validator<'mir, 'tcx> {
     /// The span of the current statement.
     span: Span,
 
+    /// A set that stores for each local whether it has a `StorageDead` for it somewhere.
+    local_has_storage_dead: Option<BitSet<Local>>,
+
     error_emitted: Option<ErrorReported>,
     secondary_errors: Vec<Diagnostic>,
 }
@@ -206,6 +210,7 @@ impl Validator<'mir, 'tcx> {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
+            local_has_storage_dead: None,
             error_emitted: None,
             secondary_errors: Vec::new(),
         }
@@ -280,6 +285,27 @@ impl Validator<'mir, 'tcx> {
         } else {
             assert!(self.tcx.sess.has_errors());
         }
+    }
+
+    fn local_has_storage_dead(&mut self, local: Local) -> bool {
+        let ccx = self.ccx;
+        self.local_has_storage_dead
+            .get_or_insert_with(|| {
+                struct StorageDeads {
+                    locals: BitSet<Local>,
+                }
+                impl Visitor<'tcx> for StorageDeads {
+                    fn visit_statement(&mut self, stmt: &Statement<'tcx>, _: Location) {
+                        if let StatementKind::StorageDead(l) = stmt.kind {
+                            self.locals.insert(l);
+                        }
+                    }
+                }
+                let mut v = StorageDeads { locals: BitSet::new_empty(ccx.body.local_decls.len()) };
+                v.visit_body(ccx.body);
+                v.locals
+            })
+            .contains(local)
     }
 
     pub fn qualifs_in_return_place(&mut self) -> ConstQualifs {
@@ -556,7 +582,29 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 );
 
                 if borrowed_place_has_mut_interior {
-                    self.check_op(ops::CellBorrow);
+                    match self.const_kind() {
+                        // In a const fn all borrows are transient or point to the places given via
+                        // references in the arguments (so we already checked them with
+                        // TransientCellBorrow/CellBorrow as appropriate).
+                        // The borrow checker guarantees that no new non-transient borrows are created.
+                        // NOTE: Once we have heap allocations during CTFE we need to figure out
+                        // how to prevent `const fn` to create long-lived allocations that point
+                        // to (interior) mutable memory.
+                        hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
+                        _ => {
+                            // Locals with StorageDead are definitely not part of the final constant value, and
+                            // it is thus inherently safe to permit such locals to have their
+                            // address taken as we can't end up with a reference to them in the
+                            // final value.
+                            // Note: This is only sound if every local that has a `StorageDead` has a
+                            // `StorageDead` in every control flow path leading to a `return` terminator.
+                            if self.local_has_storage_dead(place.local) {
+                                self.check_op(ops::TransientCellBorrow);
+                            } else {
+                                self.check_op(ops::CellBorrow);
+                            }
+                        }
+                    }
                 }
             }
 

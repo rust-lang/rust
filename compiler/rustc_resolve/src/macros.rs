@@ -328,7 +328,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
             if after_derive {
                 self.session.span_err(span, "macro attributes must be placed before `#[derive]`");
             }
-            let normal_module_def_id = self.macro_def_scope(invoc_id).normal_ancestor_id;
+            let normal_module_def_id = self.macro_def_scope(invoc_id).nearest_parent_mod;
             self.definitions.add_parent_module_of_macro_def(invoc_id, normal_module_def_id);
         }
 

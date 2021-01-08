@@ -1368,7 +1368,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         code: &ObligationCauseCode<'tcx>,
     ) -> Option<(String, Option<Span>)> {
         match code {
-            &ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
+            ObligationCauseCode::BuiltinDerivedObligation(data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
                 match self.get_parent_trait_ref(&data.parent_code) {
                     Some(t) => Some(t),

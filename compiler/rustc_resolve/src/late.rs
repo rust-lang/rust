@@ -92,6 +92,12 @@ crate enum HasGenericParams {
     No,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+crate enum ConstantItemKind {
+    Const,
+    Static,
+}
+
 /// The rib kind restricts certain accesses,
 /// e.g. to a `Res::Local` of an outer item.
 #[derive(Copy, Clone, Debug)]
@@ -119,7 +125,7 @@ crate enum RibKind<'a> {
     ///
     /// The `bool` indicates if this constant may reference generic parameters
     /// and is used to only allow generic parameters to be used in trivial constant expressions.
-    ConstantItemRibKind(bool),
+    ConstantItemRibKind(bool, Option<(Ident, ConstantItemKind)>),
 
     /// We passed through a module.
     ModuleRibKind(Module<'a>),
@@ -145,7 +151,7 @@ impl RibKind<'_> {
             NormalRibKind
             | ClosureOrAsyncRibKind
             | FnItemRibKind
-            | ConstantItemRibKind(_)
+            | ConstantItemRibKind(..)
             | ModuleRibKind(_)
             | MacroDefinition(_)
             | ConstParamTyRibKind => false,
@@ -634,7 +640,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             // Note that we might not be inside of an repeat expression here,
                             // but considering that `IsRepeatExpr` is only relevant for
                             // non-trivial constants this is doesn't matter.
-                            self.with_constant_rib(IsRepeatExpr::No, true, |this| {
+                            self.with_constant_rib(IsRepeatExpr::No, true, None, |this| {
                                 this.smart_resolve_path(
                                     ty.id,
                                     qself.as_ref(),
@@ -843,7 +849,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | ClosureOrAsyncRibKind
                 | FnItemRibKind
                 | ItemRibKind(..)
-                | ConstantItemRibKind(_)
+                | ConstantItemRibKind(..)
                 | ModuleRibKind(..)
                 | ForwardTyParamBanRibKind
                 | ConstParamTyRibKind => {
@@ -970,6 +976,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             this.with_constant_rib(
                                                 IsRepeatExpr::No,
                                                 true,
+                                                None,
                                                 |this| this.visit_expr(expr),
                                             );
                                         }
@@ -1012,11 +1019,19 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
                     if let Some(expr) = expr {
+                        let constant_item_kind = match item.kind {
+                            ItemKind::Const(..) => ConstantItemKind::Const,
+                            ItemKind::Static(..) => ConstantItemKind::Static,
+                            _ => unreachable!(),
+                        };
                         // We already forbid generic params because of the above item rib,
                         // so it doesn't matter whether this is a trivial constant.
-                        this.with_constant_rib(IsRepeatExpr::No, true, |this| {
-                            this.visit_expr(expr)
-                        });
+                        this.with_constant_rib(
+                            IsRepeatExpr::No,
+                            true,
+                            Some((item.ident, constant_item_kind)),
+                            |this| this.visit_expr(expr),
+                        );
                     }
                 });
             }
@@ -1118,15 +1133,16 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         is_repeat: IsRepeatExpr,
         is_trivial: bool,
+        item: Option<(Ident, ConstantItemKind)>,
         f: impl FnOnce(&mut Self),
     ) {
         debug!("with_constant_rib: is_repeat={:?} is_trivial={}", is_repeat, is_trivial);
-        self.with_rib(ValueNS, ConstantItemRibKind(is_trivial), |this| {
+        self.with_rib(ValueNS, ConstantItemRibKind(is_trivial, item), |this| {
             this.with_rib(
                 TypeNS,
-                ConstantItemRibKind(is_repeat == IsRepeatExpr::Yes || is_trivial),
+                ConstantItemRibKind(is_repeat == IsRepeatExpr::Yes || is_trivial, item),
                 |this| {
-                    this.with_label_rib(ConstantItemRibKind(is_trivial), f);
+                    this.with_label_rib(ConstantItemRibKind(is_trivial, item), f);
                 },
             )
         });
@@ -1266,6 +1282,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             this.with_constant_rib(
                                                 IsRepeatExpr::No,
                                                 true,
+                                                None,
                                                 |this| {
                                                     visit::walk_assoc_item(
                                                         this,
@@ -1775,7 +1792,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if this.should_report_errs() {
                 let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
 
-                let def_id = this.parent_scope.module.normal_ancestor_id;
+                let def_id = this.parent_scope.module.nearest_parent_mod;
                 let instead = res.is_some();
                 let suggestion =
                     if res.is_none() { this.report_missing_type_error(path) } else { None };
@@ -1843,7 +1860,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             drop(parent_err);
 
-            let def_id = this.parent_scope.module.normal_ancestor_id;
+            let def_id = this.parent_scope.module.nearest_parent_mod;
 
             if this.should_report_errs() {
                 this.r.use_injections.push(UseError {
@@ -2200,6 +2217,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_constant_rib(
             is_repeat,
             constant.value.is_potential_trivial_const_param(),
+            None,
             |this| {
                 visit::walk_anon_const(this, constant);
             },

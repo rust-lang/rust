@@ -11,7 +11,7 @@ use rustc_hir::GenericArg;
 use rustc_middle::ty::{
     self, subst, subst::SubstsRef, GenericParamDef, GenericParamDefKind, Ty, TyCtxt,
 };
-use rustc_session::{lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS, Session};
+use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::{symbol::kw, MultiSpan, Span};
 
 use smallvec::SmallVec;
@@ -20,62 +20,72 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Report an error that a generic argument did not match the generic parameter that was
     /// expected.
     fn generic_arg_mismatch_err(
-        sess: &Session,
+        tcx: TyCtxt<'_>,
         arg: &GenericArg<'_>,
-        kind: &'static str,
+        param: &GenericParamDef,
         possible_ordering_error: bool,
         help: Option<&str>,
     ) {
+        let sess = tcx.sess;
         let mut err = struct_span_err!(
             sess,
             arg.span(),
             E0747,
             "{} provided when a {} was expected",
             arg.descr(),
-            kind,
+            param.kind.descr(),
         );
 
-        let unordered = sess.features_untracked().const_generics;
-        let kind_ord = match kind {
-            "lifetime" => ParamKindOrd::Lifetime,
-            "type" => ParamKindOrd::Type,
-            "constant" => ParamKindOrd::Const { unordered },
-            // It's more concise to match on the string representation, though it means
-            // the match is non-exhaustive.
-            _ => bug!("invalid generic parameter kind {}", kind),
-        };
-
-        if let ParamKindOrd::Const { .. } = kind_ord {
+        if let GenericParamDefKind::Const { .. } = param.kind {
             if let GenericArg::Type(hir::Ty { kind: hir::TyKind::Infer, .. }) = arg {
                 err.help("const arguments cannot yet be inferred with `_`");
             }
         }
 
-        let arg_ord = match arg {
-            GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
-            GenericArg::Type(_) => ParamKindOrd::Type,
-            GenericArg::Const(_) => ParamKindOrd::Const { unordered },
-        };
-
-        if matches!(arg, GenericArg::Type(hir::Ty { kind: hir::TyKind::Path { .. }, .. }))
-            && matches!(kind_ord, ParamKindOrd::Const { .. })
-        {
-            let suggestions = vec![
-                (arg.span().shrink_to_lo(), String::from("{ ")),
-                (arg.span().shrink_to_hi(), String::from(" }")),
-            ];
-            err.multipart_suggestion(
-                "if this generic argument was intended as a const parameter, \
+        // Specific suggestion set for diagnostics
+        match (arg, &param.kind) {
+            (
+                GenericArg::Type(hir::Ty { kind: hir::TyKind::Path { .. }, .. }),
+                GenericParamDefKind::Const { .. },
+            ) => {
+                let suggestions = vec![
+                    (arg.span().shrink_to_lo(), String::from("{ ")),
+                    (arg.span().shrink_to_hi(), String::from(" }")),
+                ];
+                err.multipart_suggestion(
+                    "if this generic argument was intended as a const parameter, \
                 try surrounding it with braces:",
-                suggestions,
-                Applicability::MaybeIncorrect,
-            );
+                    suggestions,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (
+                GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
+                GenericParamDefKind::Const { .. },
+            ) if tcx.type_of(param.def_id) == tcx.types.usize => {
+                let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id));
+                if let Ok(snippet) = snippet {
+                    err.span_suggestion(
+                        arg.span(),
+                        "array type provided where a `usize` was expected, try",
+                        format!("{{ {} }}", snippet),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            _ => {}
         }
+
+        let kind_ord = param.kind.to_ord(tcx);
+        let arg_ord = arg.to_ord(&tcx.features());
 
         // This note is only true when generic parameters are strictly ordered by their kind.
         if possible_ordering_error && kind_ord.cmp(&arg_ord) != core::cmp::Ordering::Equal {
-            let (first, last) =
-                if kind_ord < arg_ord { (kind, arg.descr()) } else { (arg.descr(), kind) };
+            let (first, last) = if kind_ord < arg_ord {
+                (param.kind.descr(), arg.descr())
+            } else {
+                (arg.descr(), param.kind.descr())
+            };
             err.note(&format!("{} arguments must be provided before {} arguments", first, last));
             if let Some(help) = help {
                 err.help(help);
@@ -203,7 +213,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // We expected a lifetime argument, but got a type or const
                                 // argument. That means we're inferring the lifetimes.
                                 substs.push(ctx.inferred_kind(None, param, infer_args));
-                                force_infer_lt = Some(arg);
+                                force_infer_lt = Some((arg, param));
                                 params.next();
                             }
                             (GenericArg::Lifetime(_), _, ExplicitLateBound::Yes) => {
@@ -213,7 +223,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // ignore it.
                                 args.next();
                             }
-                            (_, kind, _) => {
+                            (_, _, _) => {
                                 // We expected one kind of parameter, but the user provided
                                 // another. This is an error. However, if we already know that
                                 // the arguments don't match up with the parameters, we won't issue
@@ -256,9 +266,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                     param_types_present.dedup();
 
                                     Self::generic_arg_mismatch_err(
-                                        tcx.sess,
+                                        tcx,
                                         arg,
-                                        kind.descr(),
+                                        param,
                                         !args_iter.clone().is_sorted_by_key(|arg| match arg {
                                             GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
                                             GenericArg::Type(_) => ParamKindOrd::Type,
@@ -315,9 +325,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         {
                             let kind = arg.descr();
                             assert_eq!(kind, "lifetime");
-                            let provided =
+                            let (provided_arg, param) =
                                 force_infer_lt.expect("lifetimes ought to have been inferred");
-                            Self::generic_arg_mismatch_err(tcx.sess, provided, kind, false, None);
+                            Self::generic_arg_mismatch_err(tcx, provided_arg, param, false, None);
                         }
 
                         break;

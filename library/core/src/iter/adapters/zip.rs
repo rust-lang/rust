@@ -397,7 +397,7 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 ///    only be called at most `self.size() - idx - 1` times.
 /// 4. After `get_unchecked` is called, then only the following methods will be
 ///    called on `self`:
-///     * `std::clone::Clone::clone`
+///     * `std::clone::Clone::clone()`
 ///     * `std::iter::Iterator::size_hint()`
 ///     * `std::iter::Iterator::next_back()`
 ///     * `std::iter::Iterator::__iterator_get_unchecked()`

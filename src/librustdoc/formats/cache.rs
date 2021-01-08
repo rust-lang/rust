@@ -316,7 +316,7 @@ impl DocFolder for Cache {
                             path: path.join("::"),
                             desc: item
                                 .doc_value()
-                                .map_or_else(|| String::new(), short_markdown_summary),
+                                .map_or_else(String::new, |x| short_markdown_summary(&x.as_str())),
                             parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item),

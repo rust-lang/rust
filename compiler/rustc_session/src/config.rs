@@ -819,7 +819,7 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
         }
     }
     ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
-    ret.insert((sym::target_endian, Some(Symbol::intern(end))));
+    ret.insert((sym::target_endian, Some(Symbol::intern(end.as_str()))));
     ret.insert((sym::target_pointer_width, Some(Symbol::intern(&wordsz))));
     ret.insert((sym::target_env, Some(Symbol::intern(env))));
     ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
@@ -1829,11 +1829,17 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
 
         if debugging_opts.mir_opt_level > 1 {
+            // Functions inlined during MIR transform can, at best, make it impossible to
+            // effectively cover inlined functions, and, at worst, break coverage map generation
+            // during LLVM codegen. For example, function counter IDs are only unique within a
+            // function. Inlining after these counters are injected can produce duplicate counters,
+            // resulting in an invalid coverage map (and ICE); so this option combination is not
+            // allowed.
             early_warn(
                 error_format,
                 &format!(
-                    "`-Z mir-opt-level={}` (any level > 1) enables function inlining, which \
-                    limits the effectiveness of `-Z instrument-coverage`.",
+                    "`-Z mir-opt-level={}` (or any level > 1) enables function inlining, which \
+                    is incompatible with `-Z instrument-coverage`. Inlining will be disabled.",
                     debugging_opts.mir_opt_level,
                 ),
             );

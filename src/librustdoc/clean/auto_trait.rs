@@ -351,8 +351,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 if let Some(data) = ty_to_fn.get(&ty) {
                     let (poly_trait, output) =
                         (data.0.as_ref().expect("as_ref failed").clone(), data.1.as_ref().cloned());
-                    let new_ty = match &poly_trait.trait_ {
-                        &Type::ResolvedPath {
+                    let new_ty = match poly_trait.trait_ {
+                        Type::ResolvedPath {
                             ref path,
                             ref param_names,
                             ref did,
