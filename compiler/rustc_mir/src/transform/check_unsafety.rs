@@ -113,10 +113,17 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
             | StatementKind::Retag { .. }
-            | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::Nop => {
                 // safe (at least as emitted during MIR construction)
+            }
+            StatementKind::AscribeUserType(..) => {
+                // safe (at least as emitted during MIR construction)
+                // This is handled separately because we don't want
+                // super_statement to be called.
+                // See this for more:
+                // https://github.com/rust-lang/rust/issues/80059#issuecomment-756968485
+                return;
             }
 
             StatementKind::LlvmInlineAsm { .. } => self.require_unsafe(
