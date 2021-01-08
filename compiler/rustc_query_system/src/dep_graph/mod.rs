@@ -61,7 +61,7 @@ pub trait DepContext: Copy {
 }
 
 /// Describe the different families of dependency nodes.
-pub trait DepKind: Copy + fmt::Debug + Eq + Ord + Hash {
+pub trait DepKind: Copy + fmt::Debug + Eq + Hash {
     const NULL: Self;
 
     /// Return whether this kind always require evaluation.

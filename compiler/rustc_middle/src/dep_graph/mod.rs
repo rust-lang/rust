@@ -1,5 +1,4 @@
 use crate::ich::StableHashingContext;
-use crate::ty::query::try_load_from_on_disk_cache;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
@@ -9,13 +8,12 @@ use rustc_hir::def_id::LocalDefId;
 
 mod dep_node;
 
-pub(crate) use rustc_query_system::dep_graph::DepNodeParams;
 pub use rustc_query_system::dep_graph::{
     debug, hash_result, DepContext, DepNodeColor, DepNodeIndex, SerializedDepNodeIndex,
     WorkProduct, WorkProductId,
 };
 
-pub use dep_node::{label_strs, DepConstructor, DepKind, DepNode, DepNodeExt};
+pub use dep_node::{dep_constructor, label_strs, DepKind, DepNode, DepNodeExt};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
@@ -26,18 +24,25 @@ pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<
 impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
 
-    fn is_eval_always(&self) -> bool {
-        DepKind::is_eval_always(self)
+    #[inline(always)]
+    fn can_reconstruct_query_key(&self) -> bool {
+        DepKind::can_reconstruct_query_key(self)
     }
 
+    #[inline(always)]
+    fn is_eval_always(&self) -> bool {
+        self.is_eval_always
+    }
+
+    #[inline(always)]
     fn has_params(&self) -> bool {
-        DepKind::has_params(self)
+        self.has_params
     }
 
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", node.kind)?;
 
-        if !node.kind.has_params() && !node.kind.is_anon() {
+        if !node.kind.has_params && !node.kind.is_anon {
             return Ok(());
         }
 
@@ -80,10 +85,6 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
             let icx = if let Some(icx) = icx { icx } else { return };
             op(icx.task_deps)
         })
-    }
-
-    fn can_reconstruct_query_key(&self) -> bool {
-        DepKind::can_reconstruct_query_key(self)
     }
 }
 
@@ -153,7 +154,26 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         }
 
         debug!("try_force_from_dep_node({:?}) --- trying to force", dep_node);
-        ty::query::force_from_dep_node(*self, dep_node)
+
+        // We must avoid ever having to call `force_from_dep_node()` for a
+        // `DepNode::codegen_unit`:
+        // Since we cannot reconstruct the query key of a `DepNode::codegen_unit`, we
+        // would always end up having to evaluate the first caller of the
+        // `codegen_unit` query that *is* reconstructible. This might very well be
+        // the `compile_codegen_unit` query, thus re-codegenning the whole CGU just
+        // to re-trigger calling the `codegen_unit` query with the right key. At
+        // that point we would already have re-done all the work we are trying to
+        // avoid doing in the first place.
+        // The solution is simple: Just explicitly call the `codegen_unit` query for
+        // each CGU, right after partitioning. This way `try_mark_green` will always
+        // hit the cache instead of having to go through `force_from_dep_node`.
+        // This assertion makes sure, we actually keep applying the solution above.
+        debug_assert!(
+            dep_node.kind != DepKind::codegen_unit,
+            "calling force_from_dep_node() on DepKind::codegen_unit"
+        );
+
+        (dep_node.kind.force_from_dep_node)(*self, dep_node)
     }
 
     fn has_errors_or_delayed_span_bugs(&self) -> bool {
@@ -166,7 +186,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
 
     // Interactions with on_disk_cache
     fn try_load_from_on_disk_cache(&self, dep_node: &DepNode) {
-        try_load_from_on_disk_cache(*self, dep_node)
+        (dep_node.kind.try_load_from_on_disk_cache)(*self, dep_node)
     }
 
     fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic> {

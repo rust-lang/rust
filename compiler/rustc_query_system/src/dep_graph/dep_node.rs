@@ -153,12 +153,6 @@ where
     }
 }
 
-impl<Ctxt: DepContext> DepNodeParams<Ctxt> for () {
-    fn to_fingerprint(&self, _: Ctxt) -> Fingerprint {
-        Fingerprint::ZERO
-    }
-}
-
 /// A "work product" corresponds to a `.o` (or other) file that we
 /// save in between runs. These IDs do not have a `DefId` but rather
 /// some independent path or string that persists between runs without
