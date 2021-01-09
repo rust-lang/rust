@@ -2310,7 +2310,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(&2));
     /// ```
     #[inline]
-    #[unstable(feature = "at_least", reason = "new API", issue = "none")]
+    #[unstable(feature = "iter_at_least", reason = "new API", issue = "none")]
     fn at_least<F>(&mut self, n: usize, f: F) -> bool
         where
             Self: Sized,
@@ -2379,7 +2379,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(&3));
     /// ```
     #[inline]
-    #[unstable(feature = "at_most", reason = "new API", issue = "none")]
+    #[unstable(feature = "iter_at_most", reason = "new API", issue = "none")]
     fn at_most<F>(&mut self, n: usize, f: F) -> bool
         where
             Self: Sized,
