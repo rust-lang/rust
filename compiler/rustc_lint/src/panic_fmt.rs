@@ -74,9 +74,15 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                     let n_arguments =
                         (&mut fmt_parser).filter(|a| matches!(a, Piece::NextArgument(_))).count();
 
-                    // Unwrap another level of macro expansion if this panic!()
-                    // was expanded from assert!() or debug_assert!().
-                    for &assert in &[sym::assert_macro, sym::debug_assert_macro] {
+                    // Unwrap more levels of macro expansion, as panic_2015!()
+                    // was likely expanded from panic!() and possibly from
+                    // [debug_]assert!().
+                    for &assert in &[
+                        sym::std_panic_macro,
+                        sym::core_panic_macro,
+                        sym::assert_macro,
+                        sym::debug_assert_macro,
+                    ] {
                         let parent = expn.call_site.ctxt().outer_expn_data();
                         if parent
                             .macro_def_id
