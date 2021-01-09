@@ -19,10 +19,9 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// `panic!("{}")` panics with the message `"{}"`, as a `panic!()` invocation
-    /// with a single argument does not use `format_args!()`.
-    /// A future edition of Rust will interpret this string as format string,
-    /// which would break this.
+    /// In Rust 2018 and earlier, `panic!("{}")` panics with the message `"{}"`,
+    /// as a `panic!()` invocation with a single argument does not use `format_args!()`.
+    /// Rust 2021 interprets this string as format string, which breaks this.
     PANIC_FMT,
     Warn,
     "detect braces in single-argument panic!() invocations",
@@ -50,8 +49,8 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         if let ast::LitKind::Str(sym, _) = lit.node {
             let mut expn = f.span.ctxt().outer_expn_data();
             if let Some(id) = expn.macro_def_id {
-                if cx.tcx.is_diagnostic_item(sym::std_panic_macro, id)
-                    || cx.tcx.is_diagnostic_item(sym::core_panic_macro, id)
+                if cx.tcx.is_diagnostic_item(sym::std_panic_2015_macro, id)
+                    || cx.tcx.is_diagnostic_item(sym::core_panic_2015_macro, id)
                 {
                     let fmt = sym.as_str();
                     if !fmt.contains(&['{', '}'][..]) {
@@ -75,9 +74,15 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                     let n_arguments =
                         (&mut fmt_parser).filter(|a| matches!(a, Piece::NextArgument(_))).count();
 
-                    // Unwrap another level of macro expansion if this panic!()
-                    // was expanded from assert!() or debug_assert!().
-                    for &assert in &[sym::assert_macro, sym::debug_assert_macro] {
+                    // Unwrap more levels of macro expansion, as panic_2015!()
+                    // was likely expanded from panic!() and possibly from
+                    // [debug_]assert!().
+                    for &assert in &[
+                        sym::std_panic_macro,
+                        sym::core_panic_macro,
+                        sym::assert_macro,
+                        sym::debug_assert_macro,
+                    ] {
                         let parent = expn.call_site.ctxt().outer_expn_data();
                         if parent
                             .macro_def_id
