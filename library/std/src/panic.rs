@@ -36,16 +36,7 @@ pub macro panic_2015 {
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(libstd_sys_internals)]
-#[rustc_macro_transparency = "semitransparent"]
-pub macro panic_2021 {
-    () => ({
-        $crate::rt::begin_panic("explicit panic")
-    }),
-    ($($t:tt)+) => ({
-        $crate::rt::begin_panic_fmt(&$crate::format_args!($($t)+))
-    }),
-}
+pub use core::panic::panic_2021;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use crate::panicking::{set_hook, take_hook};
