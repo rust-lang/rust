@@ -1,0 +1,19 @@
+error[E0658]: yield syntax is experimental
+  --> $DIR/issue-80844-no-gate.rs:7:8
+   |
+LL |     || yield 0
+   |        ^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(generators)]` to the crate attributes to enable
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80844-no-gate.rs:4:27
+   |
+LL | fn returns_generator() -> _ {
+   |                           ^ not allowed in type signatures
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0121, E0658.
+For more information about an error, try `rustc --explain E0121`.

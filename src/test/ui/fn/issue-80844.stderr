@@ -1,0 +1,12 @@
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80844.rs:7:27
+   |
+LL | fn returns_generator() -> _ {
+   |                           ^ not allowed in type signatures
+   |
+   = help: consider using a `Generator` trait bound
+   = note: for more information on generators, see https://doc.rust-lang.org/beta/unstable-book/language-features/generators.html
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0121`.

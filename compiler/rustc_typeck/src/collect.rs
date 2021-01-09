@@ -1663,26 +1663,41 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     let mut diag = bad_placeholder_type(tcx, visitor.0);
                     let ret_ty = fn_sig.output();
                     if ret_ty != tcx.ty_error() {
-                        if !ret_ty.is_closure() {
-                            let ret_ty_str = match ret_ty.kind() {
-                                // Suggest a function pointer return type instead of a unique function definition
-                                // (e.g. `fn() -> i32` instead of `fn() -> i32 { f }`, the latter of which is invalid
-                                // syntax)
-                                ty::FnDef(..) => ret_ty.fn_sig(tcx).to_string(),
-                                _ => ret_ty.to_string(),
-                            };
-                            diag.span_suggestion(
-                                ty.span,
-                                "replace with the correct return type",
-                                ret_ty_str,
-                                Applicability::MaybeIncorrect,
-                            );
-                        } else {
-                            // We're dealing with a closure, so we should suggest using `impl Fn` or trait bounds
-                            // to prevent the user from getting a papercut while trying to use the unique closure
-                            // syntax (e.g. `[closure@src/lib.rs:2:5: 2:9]`).
-                            diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
-                            diag.note("for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html");
+                        match ret_ty.kind() {
+                            ty::FnDef(..) => {
+                                diag.span_suggestion(
+                                    ty.span,
+                                    "replace with the correct return type",
+                                    ret_ty.fn_sig(tcx).to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+
+                            ty::Closure(..) => {
+                                diag.help(
+                                    "consider using an `Fn`, `FnMut`, or `FnOnce` trait bound",
+                                );
+                                diag.note("for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html");
+                            }
+
+                            ty::Generator(..) if tcx.features().generators => {
+                                diag.help("consider using a `Generator` trait bound");
+                                // FIXME: link elsewhere if/when generators are stabilized
+                                diag.note("for more information on generators, see https://doc.rust-lang.org/beta/unstable-book/language-features/generators.html");
+                            }
+
+                            _ if ret_ty.is_suggestable() => {
+                                diag.span_suggestion(
+                                    ty.span,
+                                    "replace with the correct return type",
+                                    ret_ty.to_string(),
+                                    // FIXME: should this be MachineApplicable?
+                                    // (cf. `rustc_typeck::check::fn_ctxt::suggestions::suggest_missing_return_type()`)
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+
+                            _ => (),
                         }
                     }
                     diag.emit();
