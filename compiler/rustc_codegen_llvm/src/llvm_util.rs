@@ -8,7 +8,7 @@ use rustc_session::config::PrintRequest;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 
 use std::slice;
 use std::str;
@@ -219,6 +219,37 @@ pub fn target_cpu(sess: &Session) -> &str {
     };
 
     handle_native(name)
+}
+
+pub fn handle_native_features(sess: &Session) -> Vec<String> {
+    match sess.opts.cg.target_cpu {
+        Some(ref s) => {
+            if s != "native" {
+                return vec![];
+            }
+
+            let features_string = unsafe {
+                let ptr = llvm::LLVMGetHostCPUFeatures();
+                let features_string = if !ptr.is_null() {
+                    CStr::from_ptr(ptr)
+                        .to_str()
+                        .unwrap_or_else(|e| {
+                            bug!("LLVM returned a non-utf8 features string: {}", e);
+                        })
+                        .to_owned()
+                } else {
+                    bug!("could not allocate host CPU features, LLVM returned a `null` string");
+                };
+
+                llvm::LLVMDisposeMessage(ptr);
+
+                features_string
+            };
+
+            features_string.split(",").map(|s| s.to_owned()).collect()
+        }
+        None => vec![],
+    }
 }
 
 pub fn tune_cpu(sess: &Session) -> Option<&str> {

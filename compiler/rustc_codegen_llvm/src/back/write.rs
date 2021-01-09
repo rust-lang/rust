@@ -164,7 +164,8 @@ pub fn target_machine_factory(
 
     let code_model = to_llvm_code_model(sess.code_model());
 
-    let features = attributes::llvm_target_features(sess).collect::<Vec<_>>();
+    let mut features = llvm_util::handle_native_features(sess);
+    features.extend(attributes::llvm_target_features(sess).map(|s| s.to_owned()));
     let mut singlethread = sess.target.singlethread;
 
     // On the wasm target once the `atomics` feature is enabled that means that
