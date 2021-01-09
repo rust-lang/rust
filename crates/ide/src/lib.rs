@@ -76,7 +76,7 @@ pub use crate::{
     references::{rename::RenameError, Declaration, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
     syntax_highlighting::{
-        tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag},
+        tags::{Highlight, HlMod, HlMods, HlTag},
         HighlightedRange,
     },
 };

@@ -6,10 +6,9 @@ use std::{
 
 use ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
-    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag,
-    HighlightedRange, Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup,
-    NavigationTarget, ReferenceAccess, Runnable, Severity, SourceChange, SourceFileEdit,
-    SymbolKind, TextEdit, TextRange, TextSize,
+    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightedRange, HlMod, HlTag, Indel,
+    InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget, ReferenceAccess,
+    Runnable, Severity, SourceChange, SourceFileEdit, SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 
@@ -377,7 +376,7 @@ fn semantic_token_type_and_modifiers(
 ) -> (lsp_types::SemanticTokenType, semantic_tokens::ModifierSet) {
     let mut mods = semantic_tokens::ModifierSet::default();
     let type_ = match highlight.tag {
-        HighlightTag::Symbol(symbol) => match symbol {
+        HlTag::Symbol(symbol) => match symbol {
             SymbolKind::Module => lsp_types::SemanticTokenType::NAMESPACE,
             SymbolKind::Impl => lsp_types::SemanticTokenType::TYPE,
             SymbolKind::Field => lsp_types::SemanticTokenType::PROPERTY,
@@ -389,7 +388,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::SelfParam => semantic_tokens::SELF_KEYWORD,
             SymbolKind::Local => lsp_types::SemanticTokenType::VARIABLE,
             SymbolKind::Function => {
-                if highlight.modifiers.contains(HighlightModifier::Associated) {
+                if highlight.mods.contains(HlMod::Associated) {
                     lsp_types::SemanticTokenType::METHOD
                 } else {
                     lsp_types::SemanticTokenType::FUNCTION
@@ -412,38 +411,34 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Trait => lsp_types::SemanticTokenType::INTERFACE,
             SymbolKind::Macro => lsp_types::SemanticTokenType::MACRO,
         },
-        HighlightTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
-        HighlightTag::None => semantic_tokens::GENERIC,
-        HighlightTag::ByteLiteral | HighlightTag::NumericLiteral => {
-            lsp_types::SemanticTokenType::NUMBER
-        }
-        HighlightTag::BoolLiteral => semantic_tokens::BOOLEAN,
-        HighlightTag::CharLiteral | HighlightTag::StringLiteral => {
-            lsp_types::SemanticTokenType::STRING
-        }
-        HighlightTag::Comment => lsp_types::SemanticTokenType::COMMENT,
-        HighlightTag::Attribute => semantic_tokens::ATTRIBUTE,
-        HighlightTag::Keyword => lsp_types::SemanticTokenType::KEYWORD,
-        HighlightTag::UnresolvedReference => semantic_tokens::UNRESOLVED_REFERENCE,
-        HighlightTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
-        HighlightTag::Operator => lsp_types::SemanticTokenType::OPERATOR,
-        HighlightTag::EscapeSequence => semantic_tokens::ESCAPE_SEQUENCE,
-        HighlightTag::Punctuation => semantic_tokens::PUNCTUATION,
+        HlTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
+        HlTag::None => semantic_tokens::GENERIC,
+        HlTag::ByteLiteral | HlTag::NumericLiteral => lsp_types::SemanticTokenType::NUMBER,
+        HlTag::BoolLiteral => semantic_tokens::BOOLEAN,
+        HlTag::CharLiteral | HlTag::StringLiteral => lsp_types::SemanticTokenType::STRING,
+        HlTag::Comment => lsp_types::SemanticTokenType::COMMENT,
+        HlTag::Attribute => semantic_tokens::ATTRIBUTE,
+        HlTag::Keyword => lsp_types::SemanticTokenType::KEYWORD,
+        HlTag::UnresolvedReference => semantic_tokens::UNRESOLVED_REFERENCE,
+        HlTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
+        HlTag::Operator => lsp_types::SemanticTokenType::OPERATOR,
+        HlTag::EscapeSequence => semantic_tokens::ESCAPE_SEQUENCE,
+        HlTag::Punctuation => semantic_tokens::PUNCTUATION,
     };
 
-    for modifier in highlight.modifiers.iter() {
+    for modifier in highlight.mods.iter() {
         let modifier = match modifier {
-            HighlightModifier::Attribute => semantic_tokens::ATTRIBUTE_MODIFIER,
-            HighlightModifier::Definition => lsp_types::SemanticTokenModifier::DECLARATION,
-            HighlightModifier::Documentation => lsp_types::SemanticTokenModifier::DOCUMENTATION,
-            HighlightModifier::Injected => semantic_tokens::INJECTED,
-            HighlightModifier::ControlFlow => semantic_tokens::CONTROL_FLOW,
-            HighlightModifier::Mutable => semantic_tokens::MUTABLE,
-            HighlightModifier::Consuming => semantic_tokens::CONSUMING,
-            HighlightModifier::Unsafe => semantic_tokens::UNSAFE,
-            HighlightModifier::Callable => semantic_tokens::CALLABLE,
-            HighlightModifier::Static => lsp_types::SemanticTokenModifier::STATIC,
-            HighlightModifier::Associated => continue,
+            HlMod::Attribute => semantic_tokens::ATTRIBUTE_MODIFIER,
+            HlMod::Definition => lsp_types::SemanticTokenModifier::DECLARATION,
+            HlMod::Documentation => lsp_types::SemanticTokenModifier::DOCUMENTATION,
+            HlMod::Injected => semantic_tokens::INJECTED,
+            HlMod::ControlFlow => semantic_tokens::CONTROL_FLOW,
+            HlMod::Mutable => semantic_tokens::MUTABLE,
+            HlMod::Consuming => semantic_tokens::CONSUMING,
+            HlMod::Unsafe => semantic_tokens::UNSAFE,
+            HlMod::Callable => semantic_tokens::CALLABLE,
+            HlMod::Static => lsp_types::SemanticTokenModifier::STATIC,
+            HlMod::Associated => continue,
         };
         mods |= modifier;
     }

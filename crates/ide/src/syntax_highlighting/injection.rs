@@ -7,7 +7,7 @@ use ide_db::call_info::ActiveParameter;
 use itertools::Itertools;
 use syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
 
-use crate::{Analysis, HighlightModifier, HighlightTag, HighlightedRange, RootDatabase};
+use crate::{Analysis, HighlightedRange, HlMod, HlTag, RootDatabase};
 
 use super::{highlights::Highlights, injector::Injector};
 
@@ -28,7 +28,7 @@ pub(super) fn highlight_injection(
     if let Some(range) = literal.open_quote_text_range() {
         acc.add(HighlightedRange {
             range,
-            highlight: HighlightTag::StringLiteral.into(),
+            highlight: HlTag::StringLiteral.into(),
             binding_hash: None,
         })
     }
@@ -44,7 +44,7 @@ pub(super) fn highlight_injection(
     if let Some(range) = literal.close_quote_text_range() {
         acc.add(HighlightedRange {
             range,
-            highlight: HighlightTag::StringLiteral.into(),
+            highlight: HlTag::StringLiteral.into(),
             binding_hash: None,
         })
     }
@@ -171,7 +171,7 @@ pub(super) fn extract_doc_comments(node: &SyntaxNode) -> Option<(Vec<Highlighted
                     range.start(),
                     range.start() + TextSize::try_from(pos).unwrap(),
                 ),
-                highlight: HighlightTag::Comment | HighlightModifier::Documentation,
+                highlight: HlTag::Comment | HlMod::Documentation,
                 binding_hash: None,
             });
             line_start += range.len() - TextSize::try_from(pos).unwrap();
@@ -209,7 +209,7 @@ pub(super) fn highlight_doc_comment(
         for r in inj.map_range_up(h.range) {
             stack.add(HighlightedRange {
                 range: r,
-                highlight: h.highlight | HighlightModifier::Injected,
+                highlight: h.highlight | HlMod::Injected,
                 binding_hash: h.binding_hash,
             });
         }

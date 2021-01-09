@@ -4,7 +4,7 @@ use std::{cmp::Ordering, iter};
 use stdx::equal_range_by;
 use syntax::TextRange;
 
-use crate::{HighlightTag, HighlightedRange};
+use crate::{HighlightedRange, HlTag};
 
 pub(super) struct Highlights {
     root: Node,
@@ -20,7 +20,7 @@ impl Highlights {
         Highlights {
             root: Node::new(HighlightedRange {
                 range,
-                highlight: HighlightTag::None.into(),
+                highlight: HlTag::None.into(),
                 binding_hash: None,
             }),
         }
