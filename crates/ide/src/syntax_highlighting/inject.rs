@@ -1,17 +1,14 @@
 //! Syntax highlighting injections such as highlighting of documentation tests.
 
-use std::convert::TryFrom;
-
 use hir::Semantics;
 use ide_db::call_info::ActiveParameter;
-use itertools::Itertools;
 use syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
 
 use crate::{Analysis, HlMod, HlRange, HlTag, RootDatabase};
 
 use super::{highlights::Highlights, injector::Injector};
 
-pub(super) fn highlight_injection(
+pub(super) fn ra_fixture(
     hl: &mut Highlights,
     sema: &Semantics<RootDatabase>,
     literal: ast::String,
@@ -84,107 +81,78 @@ const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
     "edition2021",
 ];
 
-/// Extracts Rust code from documentation comments as well as a mapping from
-/// the extracted source code back to the original source ranges.
-/// Lastly, a vector of new comment highlight ranges (spanning only the
-/// comment prefix) is returned which is used in the syntax highlighting
-/// injection to replace the previous (line-spanning) comment ranges.
-pub(super) fn extract_doc_comments(node: &SyntaxNode) -> Option<(Vec<HlRange>, Injector)> {
-    let mut inj = Injector::default();
-    // wrap the doctest into function body to get correct syntax highlighting
-    let prefix = "fn doctest() {\n";
-    let suffix = "}\n";
+/// Injection of syntax highlighting of doctests.
+pub(super) fn doc_comment(hl: &mut Highlights, node: &SyntaxNode) {
+    let doc_comments = node
+        .children_with_tokens()
+        .filter_map(|it| it.into_token().and_then(ast::Comment::cast))
+        .filter(|it| it.kind().doc.is_some());
 
-    let mut line_start = TextSize::of(prefix);
+    if !doc_comments.clone().any(|it| it.text().contains(RUSTDOC_FENCE)) {
+        return;
+    }
+
+    let mut inj = Injector::default();
+    inj.add_unmapped("fn doctest() {\n");
+
     let mut is_codeblock = false;
     let mut is_doctest = false;
+
     // Replace the original, line-spanning comment ranges by new, only comment-prefix
     // spanning comment ranges.
     let mut new_comments = Vec::new();
-
-    inj.add_unmapped(prefix);
-    let doctest = node
-        .children_with_tokens()
-        .filter_map(|el| el.into_token().and_then(ast::Comment::cast))
-        .filter(|comment| comment.kind().doc.is_some())
-        .filter(|comment| {
-            if let Some(idx) = comment.text().find(RUSTDOC_FENCE) {
+    for comment in doc_comments {
+        match comment.text().find(RUSTDOC_FENCE) {
+            Some(idx) => {
                 is_codeblock = !is_codeblock;
                 // Check whether code is rust by inspecting fence guards
                 let guards = &comment.text()[idx + RUSTDOC_FENCE.len()..];
                 let is_rust =
                     guards.split(',').all(|sub| RUSTDOC_FENCE_TOKENS.contains(&sub.trim()));
                 is_doctest = is_codeblock && is_rust;
-                false
-            } else {
-                is_doctest
+                continue;
             }
-        })
-        .map(|comment| {
-            let prefix_len = comment.prefix().len();
-            let line: &str = comment.text().as_str();
-            let range = comment.syntax().text_range();
+            None if !is_doctest => continue,
+            None => (),
+        }
 
-            // whitespace after comment is ignored
-            let pos = if let Some(ws) = line.chars().nth(prefix_len).filter(|c| c.is_whitespace()) {
-                prefix_len + ws.len_utf8()
-            } else {
-                prefix_len
-            };
+        let line: &str = comment.text().as_str();
+        let range = comment.syntax().text_range();
 
-            // lines marked with `#` should be ignored in output, we skip the `#` char
-            let pos = if let Some(ws) = line.chars().nth(pos).filter(|&c| c == '#') {
-                pos + ws.len_utf8()
-            } else {
-                pos
-            };
+        let mut pos = TextSize::of(comment.prefix());
+        // whitespace after comment is ignored
+        if let Some(ws) = line[pos.into()..].chars().next().filter(|c| c.is_whitespace()) {
+            pos += TextSize::of(ws);
+        }
+        // lines marked with `#` should be ignored in output, we skip the `#` char
+        if let Some(ws) = line[pos.into()..].chars().next().filter(|&c| c == '#') {
+            pos += TextSize::of(ws);
+        }
 
-            new_comments.push(HlRange {
-                range: TextRange::new(
-                    range.start(),
-                    range.start() + TextSize::try_from(pos).unwrap(),
-                ),
-                highlight: HlTag::Comment | HlMod::Documentation,
-                binding_hash: None,
-            });
-            line_start += range.len() - TextSize::try_from(pos).unwrap();
-            line_start += TextSize::of("\n");
+        new_comments.push(TextRange::at(range.start(), pos));
 
-            inj.add(
-                &line[pos..],
-                TextRange::new(range.start() + TextSize::try_from(pos).unwrap(), range.end()),
-            );
-            inj.add_unmapped("\n");
-            line[pos..].to_owned()
-        })
-        .join("\n");
-    inj.add_unmapped(suffix);
-
-    if doctest.is_empty() {
-        return None;
+        inj.add(&line[pos.into()..], TextRange::new(range.start() + pos, range.end()));
+        inj.add_unmapped("\n");
     }
+    inj.add_unmapped("\n}");
 
-    Some((new_comments, inj))
-}
-
-/// Injection of syntax highlighting of doctests.
-pub(super) fn highlight_doc_comment(
-    new_comments: Vec<HlRange>,
-    inj: Injector,
-    stack: &mut Highlights,
-) {
     let (analysis, tmp_file_id) = Analysis::from_single_file(inj.text().to_string());
-    for comment in new_comments {
-        stack.add(comment);
-    }
 
     for h in analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true)).unwrap() {
         for r in inj.map_range_up(h.range) {
-            stack.add(HlRange {
+            hl.add(HlRange {
                 range: r,
                 highlight: h.highlight | HlMod::Injected,
                 binding_hash: h.binding_hash,
             });
         }
+    }
+
+    for range in new_comments {
+        hl.add(HlRange {
+            range,
+            highlight: HlTag::Comment | HlMod::Documentation,
+            binding_hash: None,
+        });
     }
 }

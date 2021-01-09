@@ -4,7 +4,7 @@ mod highlights;
 mod injector;
 
 mod format;
-mod injection;
+mod inject;
 mod macro_rules;
 
 mod html;
@@ -135,9 +135,7 @@ pub(crate) fn highlight(
                 if ast::Attr::can_cast(node.kind()) {
                     inside_attribute = false
                 }
-                if let Some((new_comments, inj)) = injection::extract_doc_comments(node) {
-                    injection::highlight_doc_comment(new_comments, inj, &mut hl);
-                }
+                inject::doc_comment(&mut hl, node);
             }
             WalkEvent::Enter(NodeOrToken::Node(node)) if ast::Attr::can_cast(node.kind()) => {
                 inside_attribute = true
@@ -181,7 +179,7 @@ pub(crate) fn highlight(
         if let Some(token) = element.as_token().cloned().and_then(ast::String::cast) {
             if token.is_raw() {
                 let expanded = element_to_highlight.as_token().unwrap().clone();
-                if injection::highlight_injection(&mut hl, &sema, token, expanded).is_some() {
+                if inject::ra_fixture(&mut hl, &sema, token, expanded).is_some() {
                     continue;
                 }
             }
