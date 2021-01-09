@@ -77,7 +77,7 @@ pub use crate::{
     runnables::{Runnable, RunnableKind, TestId},
     syntax_highlighting::{
         tags::{Highlight, HlMod, HlMods, HlTag},
-        HighlightedRange,
+        HlRange,
     },
 };
 pub use assists::{Assist, AssistConfig, AssistId, AssistKind, InsertUseConfig};
@@ -449,12 +449,12 @@ impl Analysis {
     }
 
     /// Computes syntax highlighting for the given file
-    pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
+    pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HlRange>> {
         self.with_db(|db| syntax_highlighting::highlight(db, file_id, None, false))
     }
 
     /// Computes syntax highlighting for the given file range.
-    pub fn highlight_range(&self, frange: FileRange) -> Cancelable<Vec<HighlightedRange>> {
+    pub fn highlight_range(&self, frange: FileRange) -> Cancelable<Vec<HlRange>> {
         self.with_db(|db| {
             syntax_highlighting::highlight(db, frange.file_id, Some(frange.range), false)
         })

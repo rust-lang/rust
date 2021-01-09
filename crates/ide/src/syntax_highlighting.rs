@@ -34,7 +34,7 @@ use crate::{
 pub(crate) use html::highlight_as_html;
 
 #[derive(Debug, Clone)]
-pub struct HighlightedRange {
+pub struct HlRange {
     pub range: TextRange,
     pub highlight: Highlight,
     pub binding_hash: Option<u64>,
@@ -54,7 +54,7 @@ pub(crate) fn highlight(
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
     syntactic_name_ref_highlighting: bool,
-) -> Vec<HighlightedRange> {
+) -> Vec<HlRange> {
     let _p = profile::span("highlight");
     let sema = Semantics::new(db);
 
@@ -98,7 +98,7 @@ pub(crate) fn highlight(
         match event.clone().map(|it| it.into_node().and_then(ast::MacroCall::cast)) {
             WalkEvent::Enter(Some(mc)) => {
                 if let Some(range) = macro_call_range(&mc) {
-                    stack.add(HighlightedRange {
+                    stack.add(HlRange {
                         range,
                         highlight: HlTag::Symbol(SymbolKind::Macro).into(),
                         binding_hash: None,
@@ -198,7 +198,7 @@ pub(crate) fn highlight(
             }
 
             if macro_rules_highlighter.highlight(element_to_highlight.clone()).is_none() {
-                stack.add(HighlightedRange { range, highlight, binding_hash });
+                stack.add(HlRange { range, highlight, binding_hash });
             }
 
             if let Some(string) =
@@ -209,7 +209,7 @@ pub(crate) fn highlight(
                 if let Some(char_ranges) = string.char_ranges() {
                     for (piece_range, _) in char_ranges.iter().filter(|(_, char)| char.is_ok()) {
                         if string.text()[piece_range.start().into()..].starts_with('\\') {
-                            stack.add(HighlightedRange {
+                            stack.add(HlRange {
                                 range: piece_range + range.start(),
                                 highlight: HlTag::EscapeSequence.into(),
                                 binding_hash: None,

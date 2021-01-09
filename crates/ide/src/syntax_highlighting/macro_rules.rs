@@ -1,7 +1,7 @@
 //! Syntax highlighting for macro_rules!.
 use syntax::{SyntaxElement, SyntaxKind, SyntaxToken, TextRange, T};
 
-use crate::{HighlightedRange, HlTag};
+use crate::{HlRange, HlTag};
 
 #[derive(Default)]
 pub(super) struct MacroRulesHighlighter {
@@ -19,11 +19,11 @@ impl MacroRulesHighlighter {
         }
     }
 
-    pub(super) fn highlight(&self, element: SyntaxElement) -> Option<HighlightedRange> {
+    pub(super) fn highlight(&self, element: SyntaxElement) -> Option<HlRange> {
         if let Some(state) = self.state.as_ref() {
             if matches!(state.rule_state, RuleState::Matcher | RuleState::Expander) {
                 if let Some(range) = is_metavariable(element) {
-                    return Some(HighlightedRange {
+                    return Some(HlRange {
                         range,
                         highlight: HlTag::UnresolvedReference.into(),
                         binding_hash: None,

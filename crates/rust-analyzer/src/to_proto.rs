@@ -6,9 +6,9 @@ use std::{
 
 use ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
-    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightedRange, HlMod, HlTag, Indel,
-    InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget, ReferenceAccess,
-    Runnable, Severity, SourceChange, SourceFileEdit, SymbolKind, TextEdit, TextRange, TextSize,
+    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlRange, HlTag, Indel, InlayHint,
+    InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget, ReferenceAccess, Runnable,
+    Severity, SourceChange, SourceFileEdit, SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 
@@ -336,7 +336,7 @@ static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
 pub(crate) fn semantic_tokens(
     text: &str,
     line_index: &LineIndex,
-    highlights: Vec<HighlightedRange>,
+    highlights: Vec<HlRange>,
 ) -> lsp_types::SemanticTokens {
     let id = TOKEN_RESULT_COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
     let mut builder = semantic_tokens::SemanticTokensBuilder::new(id);

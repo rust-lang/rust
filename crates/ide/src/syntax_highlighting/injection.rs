@@ -7,7 +7,7 @@ use ide_db::call_info::ActiveParameter;
 use itertools::Itertools;
 use syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
 
-use crate::{Analysis, HighlightedRange, HlMod, HlTag, RootDatabase};
+use crate::{Analysis, HlMod, HlRange, HlTag, RootDatabase};
 
 use super::{highlights::Highlights, injector::Injector};
 
@@ -26,11 +26,7 @@ pub(super) fn highlight_injection(
     let (analysis, tmp_file_id) = Analysis::from_single_file(marker_info.cleaned_text.clone());
 
     if let Some(range) = literal.open_quote_text_range() {
-        acc.add(HighlightedRange {
-            range,
-            highlight: HlTag::StringLiteral.into(),
-            binding_hash: None,
-        })
+        acc.add(HlRange { range, highlight: HlTag::StringLiteral.into(), binding_hash: None })
     }
 
     for mut h in analysis.highlight(tmp_file_id).unwrap() {
@@ -42,11 +38,7 @@ pub(super) fn highlight_injection(
     }
 
     if let Some(range) = literal.close_quote_text_range() {
-        acc.add(HighlightedRange {
-            range,
-            highlight: HlTag::StringLiteral.into(),
-            binding_hash: None,
-        })
+        acc.add(HlRange { range, highlight: HlTag::StringLiteral.into(), binding_hash: None })
     }
 
     Some(())
@@ -116,7 +108,7 @@ const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
 /// Lastly, a vector of new comment highlight ranges (spanning only the
 /// comment prefix) is returned which is used in the syntax highlighting
 /// injection to replace the previous (line-spanning) comment ranges.
-pub(super) fn extract_doc_comments(node: &SyntaxNode) -> Option<(Vec<HighlightedRange>, Injector)> {
+pub(super) fn extract_doc_comments(node: &SyntaxNode) -> Option<(Vec<HlRange>, Injector)> {
     let mut inj = Injector::default();
     // wrap the doctest into function body to get correct syntax highlighting
     let prefix = "fn doctest() {\n";
@@ -166,7 +158,7 @@ pub(super) fn extract_doc_comments(node: &SyntaxNode) -> Option<(Vec<Highlighted
                 pos
             };
 
-            new_comments.push(HighlightedRange {
+            new_comments.push(HlRange {
                 range: TextRange::new(
                     range.start(),
                     range.start() + TextSize::try_from(pos).unwrap(),
@@ -196,7 +188,7 @@ pub(super) fn extract_doc_comments(node: &SyntaxNode) -> Option<(Vec<Highlighted
 
 /// Injection of syntax highlighting of doctests.
 pub(super) fn highlight_doc_comment(
-    new_comments: Vec<HighlightedRange>,
+    new_comments: Vec<HlRange>,
     inj: Injector,
     stack: &mut Highlights,
 ) {
@@ -207,7 +199,7 @@ pub(super) fn highlight_doc_comment(
 
     for h in analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true)).unwrap() {
         for r in inj.map_range_up(h.range) {
-            stack.add(HighlightedRange {
+            stack.add(HlRange {
                 range: r,
                 highlight: h.highlight | HlMod::Injected,
                 binding_hash: h.binding_hash,

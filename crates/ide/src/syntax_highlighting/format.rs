@@ -4,7 +4,7 @@ use syntax::{
     AstNode, AstToken, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
 };
 
-use crate::{HighlightedRange, HlTag, SymbolKind};
+use crate::{HlRange, HlTag, SymbolKind};
 
 use super::highlights::Highlights;
 
@@ -46,7 +46,7 @@ impl FormatStringHighlighter {
         if self.format_string.as_ref() == Some(&SyntaxElement::from(string.syntax().clone())) {
             string.lex_format_specifier(|piece_range, kind| {
                 if let Some(highlight) = highlight_format_specifier(kind) {
-                    stack.add(HighlightedRange {
+                    stack.add(HlRange {
                         range: piece_range + range.start(),
                         highlight: highlight.into(),
                         binding_hash: None,
