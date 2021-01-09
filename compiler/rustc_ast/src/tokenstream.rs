@@ -194,14 +194,20 @@ impl<CTX> HashStable<CTX> for LazyTokenStream {
 /// instead of a representation of the abstract syntax tree.
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
 /// backwards compatability.
-#[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Lrc<Vec<TreeAndSpacing>>);
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct TokenStream(pub(crate) Lrc<[TreeAndSpacing]>);
+
+impl Default for TokenStream {
+    fn default() -> Self {
+        TokenStream(Lrc::new([]))
+    }
+}
 
 pub type TreeAndSpacing = (TokenTree, Spacing);
 
 // `TokenStream` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(TokenStream, 8);
+rustc_data_structures::static_assert_size!(TokenStream, 16);
 
 #[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable)]
 pub enum Spacing {
@@ -278,7 +284,7 @@ impl PartialEq<TokenStream> for TokenStream {
 
 impl TokenStream {
     pub fn new(streams: Vec<TreeAndSpacing>) -> TokenStream {
-        TokenStream(Lrc::new(streams))
+        TokenStream(streams.into())
     }
 
     pub fn is_empty(&self) -> bool {
@@ -290,7 +296,7 @@ impl TokenStream {
     }
 
     pub fn span(&self) -> Option<Span> {
-        match &**self.0 {
+        match &*self.0 {
             [] => None,
             [(tt, _)] => Some(tt.span()),
             [(tt_start, _), .., (tt_end, _)] => Some(tt_start.span().to(tt_end.span())),
@@ -324,11 +330,12 @@ impl TokenStream {
 
                 // Append the elements to the first stream, after reserving
                 // space for them.
-                let first_vec_mut = Lrc::make_mut(&mut first_stream_lrc);
+                let mut first_vec_mut = first_stream_lrc.to_vec();
                 first_vec_mut.reserve(num_appends);
                 for stream in iter {
                     first_vec_mut.extend(stream.0.iter().cloned());
                 }
+                first_stream_lrc = first_vec_mut.into();
 
                 // Create the final `TokenStream`.
                 TokenStream(first_stream_lrc)
@@ -361,13 +368,13 @@ impl TokenStream {
     }
 
     pub fn map_enumerated<F: FnMut(usize, &TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
-        TokenStream(Lrc::new(
+        TokenStream(
             self.0
                 .iter()
                 .enumerate()
                 .map(|(i, (tree, is_joint))| (f(i, tree), *is_joint))
                 .collect(),
-        ))
+        )
     }
 }
 
@@ -402,13 +409,15 @@ impl TokenStreamBuilder {
 
                         // Overwrite the last token tree with the merged
                         // token.
-                        let last_vec_mut = Lrc::make_mut(last_stream_lrc);
+                        let mut last_vec_mut = last_stream_lrc.to_vec();
                         *last_vec_mut.last_mut().unwrap() = (TokenTree::Token(glued_tok), *spacing);
+                        *last_stream_lrc = last_vec_mut.into();
 
                         // Remove the first token tree from `stream`. (This
                         // is almost always the only tree in `stream`.)
-                        let stream_vec_mut = Lrc::make_mut(stream_lrc);
+                        let mut stream_vec_mut = stream_lrc.to_vec();
                         stream_vec_mut.remove(0);
+                        *stream_lrc = stream_vec_mut.into();
 
                         // Don't push `stream` if it's empty -- that could
                         // block subsequent token gluing, by getting
