@@ -34,6 +34,11 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
+      - name: Add mingw64 to path for x86_64-gnu
+        run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
+        if: matrix.rust == 'nightly-x86_64-gnu'
+        shell: bash
+
       - name: Install cargo-make
         uses: actions-rs/cargo@v1
         with:
