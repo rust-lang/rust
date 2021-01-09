@@ -1068,8 +1068,31 @@ impl fmt::Debug for OsStr {
 }
 
 impl OsStr {
-    pub(crate) fn display(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, formatter)
+    #[stable(feature = "os_str_display", since = "1.51.0")]
+    /// Returns an object that implements [`Display`] for safely printing strings that may contain
+    /// non-Unicode data.
+    ///
+    /// See also [`Path::display()`].
+    ///
+    /// [`Display`]: fmt::Display
+    /// [`Path::display()`]: crate::path::Path::display
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("foo.txt");
+    /// println!("{}", os_str.display());
+    /// ```
+    ///
+    /// ```
+    /// let path = std::path::Path::new("foo.txt");
+    /// let os_str = path.as_os_str();
+    /// println!("{}", os_str.display());
+    /// ```
+    pub fn display(&self) -> impl fmt::Display + '_ {
+        &self.inner
     }
 }
 

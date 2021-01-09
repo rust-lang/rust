@@ -2525,7 +2525,7 @@ impl fmt::Debug for Display<'_> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.path.inner.display(f)
+        self.path.inner.display().fmt(f)
     }
 }
 
