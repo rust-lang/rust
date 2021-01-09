@@ -12,7 +12,7 @@ use crate::{Analysis, HlMod, HlRange, HlTag, RootDatabase};
 use super::{highlights::Highlights, injector::Injector};
 
 pub(super) fn highlight_injection(
-    acc: &mut Highlights,
+    hl: &mut Highlights,
     sema: &Semantics<RootDatabase>,
     literal: ast::String,
     expanded: SyntaxToken,
@@ -21,24 +21,25 @@ pub(super) fn highlight_injection(
     if !active_parameter.name.starts_with("ra_fixture") {
         return None;
     }
+
     let value = literal.value()?;
     let marker_info = MarkerInfo::new(&*value);
     let (analysis, tmp_file_id) = Analysis::from_single_file(marker_info.cleaned_text.clone());
 
     if let Some(range) = literal.open_quote_text_range() {
-        acc.add(HlRange { range, highlight: HlTag::StringLiteral.into(), binding_hash: None })
+        hl.add(HlRange { range, highlight: HlTag::StringLiteral.into(), binding_hash: None })
     }
 
-    for mut h in analysis.highlight(tmp_file_id).unwrap() {
-        let range = marker_info.map_range_up(h.range);
+    for mut hl_range in analysis.highlight(tmp_file_id).unwrap() {
+        let range = marker_info.map_range_up(hl_range.range);
         if let Some(range) = literal.map_range_up(range) {
-            h.range = range;
-            acc.add(h);
+            hl_range.range = range;
+            hl.add(hl_range);
         }
     }
 
     if let Some(range) = literal.close_quote_text_range() {
-        acc.add(HlRange { range, highlight: HlTag::StringLiteral.into(), binding_hash: None })
+        hl.add(HlRange { range, highlight: HlTag::StringLiteral.into(), binding_hash: None })
     }
 
     Some(())

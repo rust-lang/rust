@@ -74,7 +74,7 @@ pub(crate) fn highlight(
     };
 
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
-    let mut stack = highlights::Highlights::new(range_to_highlight);
+    let mut hl = highlights::Highlights::new(range_to_highlight);
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
     let mut current_macro_rules: Option<ast::MacroRules> = None;
@@ -98,7 +98,7 @@ pub(crate) fn highlight(
         match event.clone().map(|it| it.into_node().and_then(ast::MacroCall::cast)) {
             WalkEvent::Enter(Some(mc)) => {
                 if let Some(range) = macro_call_range(&mc) {
-                    stack.add(HlRange {
+                    hl.add(HlRange {
                         range,
                         highlight: HlTag::Symbol(SymbolKind::Macro).into(),
                         binding_hash: None,
@@ -136,7 +136,7 @@ pub(crate) fn highlight(
                     inside_attribute = false
                 }
                 if let Some((new_comments, inj)) = injection::extract_doc_comments(node) {
-                    injection::highlight_doc_comment(new_comments, inj, &mut stack);
+                    injection::highlight_doc_comment(new_comments, inj, &mut hl);
                 }
             }
             WalkEvent::Enter(NodeOrToken::Node(node)) if ast::Attr::can_cast(node.kind()) => {
@@ -181,7 +181,7 @@ pub(crate) fn highlight(
         if let Some(token) = element.as_token().cloned().and_then(ast::String::cast) {
             if token.is_raw() {
                 let expanded = element_to_highlight.as_token().unwrap().clone();
-                if injection::highlight_injection(&mut stack, &sema, token, expanded).is_some() {
+                if injection::highlight_injection(&mut hl, &sema, token, expanded).is_some() {
                     continue;
                 }
             }
@@ -198,18 +198,18 @@ pub(crate) fn highlight(
             }
 
             if macro_rules_highlighter.highlight(element_to_highlight.clone()).is_none() {
-                stack.add(HlRange { range, highlight, binding_hash });
+                hl.add(HlRange { range, highlight, binding_hash });
             }
 
             if let Some(string) =
                 element_to_highlight.as_token().cloned().and_then(ast::String::cast)
             {
-                format_string_highlighter.highlight_format_string(&mut stack, &string, range);
+                format_string_highlighter.highlight_format_string(&mut hl, &string, range);
                 // Highlight escape sequences
                 if let Some(char_ranges) = string.char_ranges() {
                     for (piece_range, _) in char_ranges.iter().filter(|(_, char)| char.is_ok()) {
                         if string.text()[piece_range.start().into()..].starts_with('\\') {
-                            stack.add(HlRange {
+                            hl.add(HlRange {
                                 range: piece_range + range.start(),
                                 highlight: HlTag::EscapeSequence.into(),
                                 binding_hash: None,
@@ -221,7 +221,7 @@ pub(crate) fn highlight(
         }
     }
 
-    stack.to_vec()
+    hl.to_vec()
 }
 
 fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
