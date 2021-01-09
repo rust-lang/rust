@@ -42,6 +42,10 @@ pub(super) fn highlight_injection(
         offset += TextSize::of(chunk);
 
         if let Some(next) = text.strip_prefix(marker) {
+            if let Some(range) = literal.map_range_up(TextRange::at(offset, TextSize::of(marker))) {
+                hl.add(HlRange { range, highlight: HlTag::Keyword.into(), binding_hash: None });
+            }
+
             text = next;
 
             let marker_len = TextSize::of(marker);
