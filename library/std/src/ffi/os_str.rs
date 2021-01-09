@@ -1067,15 +1067,59 @@ impl fmt::Debug for OsStr {
     }
 }
 
+/// Helper struct for safely printing paths or [`OsStr`] with [`format!`] and `{}`.
+///
+/// A [`Path`] or [`OsStr`] might contain non-Unicode data. This `struct` implements the
+/// [`Display`] trait in a way that mitigates that. It is created by [`Path::display()`] or
+/// [`OsStr::display()`].
+///
+/// [`Path`]: crate::path::Path
+/// [`Path::display()`]: crate::path::Path::display()
+///
+/// # Examples
+///
+/// ```
+/// use std::path::Path;
+///
+/// let path = Path::new("/tmp/foo.rs");
+///
+/// println!("{}", path.display());
+/// ```
+///
+/// ```
+/// # use std::path::Path;
+/// let path = Path::new("foo.txt");
+/// let os_str = path.as_os_str();
+/// assert_eq!(path.display().to_string(), os_str.display().to_string());
+/// ```
+///
+/// [`Display`]: fmt::Display
+/// [`format!`]: crate::format
+#[stable(feature = "os_str_display", since = "1.51.0")]
+pub struct Display<'a> {
+    pub(crate) path: &'a OsStr,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.path, f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.path.inner.fmt(f)
+    }
+}
+
 impl OsStr {
     #[stable(feature = "os_str_display", since = "1.51.0")]
     /// Returns an object that implements [`Display`] for safely printing strings that may contain
     /// non-Unicode data.
     ///
-    /// See also [`Path::display()`].
-    ///
     /// [`Display`]: fmt::Display
-    /// [`Path::display()`]: crate::path::Path::display
     ///
     /// # Examples
     ///
@@ -1091,8 +1135,8 @@ impl OsStr {
     /// let os_str = path.as_os_str();
     /// assert_eq!(path.display().to_string(), os_str.display().to_string());
     /// ```
-    pub fn display(&self) -> impl fmt::Display + '_ {
-        &self.inner
+    pub fn display(&self) -> Display<'_> {
+        Display { path: &self }
     }
 }
 

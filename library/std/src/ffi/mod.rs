@@ -150,6 +150,8 @@ pub use self::c_str::FromVecWithNulError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::c_str::{CStr, CString, IntoStringError, NulError};
 
+#[stable(feature = "os_str_display", since = "1.51.0")]
+pub use self::os_str::Display;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::os_str::{OsStr, OsString};
 

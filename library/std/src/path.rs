@@ -2285,7 +2285,7 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn display(&self) -> Display<'_> {
-        Display { path: self }
+        Display { path: self.as_os_str() }
     }
 
     /// Queries the file system to get information about a file, directory, etc.
@@ -2492,42 +2492,8 @@ impl fmt::Debug for Path {
     }
 }
 
-/// Helper struct for safely printing paths with [`format!`] and `{}`.
-///
-/// A [`Path`] might contain non-Unicode data. This `struct` implements the
-/// [`Display`] trait in a way that mitigates that. It is created by the
-/// [`display`](Path::display) method on [`Path`].
-///
-/// # Examples
-///
-/// ```
-/// use std::path::Path;
-///
-/// let path = Path::new("/tmp/foo.rs");
-///
-/// println!("{}", path.display());
-/// ```
-///
-/// [`Display`]: fmt::Display
-/// [`format!`]: crate::format
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Display<'a> {
-    path: &'a Path,
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Debug for Display<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.path, f)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for Display<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.path.inner.display().fmt(f)
-    }
-}
+pub use crate::ffi::Display;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialEq for Path {
