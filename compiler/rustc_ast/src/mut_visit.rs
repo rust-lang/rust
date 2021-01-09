@@ -319,6 +319,17 @@ where
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[inline]
+pub fn visit_box_slice<T, F>(elems: &mut Box<[T]>, mut visit_elem: F)
+where
+    F: FnMut(&mut T),
+{
+    for elem in elems.iter_mut() {
+        visit_elem(elem);
+    }
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+#[inline]
 pub fn visit_opt<T, F>(opt: &mut Option<T>, mut visit_elem: F)
 where
     F: FnMut(&mut T),
@@ -654,7 +665,7 @@ pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
 pub fn visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
     if vis.token_visiting_enabled() && !tts.is_empty() {
         let tts = Lrc::make_mut(tts);
-        visit_vec(tts, |(tree, _is_joint)| visit_tt(tree, vis));
+        visit_box_slice(tts, |(tree, _is_joint)| visit_tt(tree, vis));
     }
 }
 

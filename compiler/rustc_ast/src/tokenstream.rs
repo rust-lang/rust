@@ -195,7 +195,7 @@ impl<CTX> HashStable<CTX> for LazyTokenStream {
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
 /// backwards compatability.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Lrc<Vec<TreeAndSpacing>>);
+pub struct TokenStream(pub(crate) Lrc<Box<[TreeAndSpacing]>>);
 
 pub type TreeAndSpacing = (TokenTree, Spacing);
 
@@ -278,7 +278,7 @@ impl PartialEq<TokenStream> for TokenStream {
 
 impl TokenStream {
     pub fn new(streams: Vec<TreeAndSpacing>) -> TokenStream {
-        TokenStream(Lrc::new(streams))
+        TokenStream(Lrc::new(streams.into()))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -324,11 +324,13 @@ impl TokenStream {
 
                 // Append the elements to the first stream, after reserving
                 // space for them.
-                let first_vec_mut = Lrc::make_mut(&mut first_stream_lrc);
+                let first_box_slice_mut = Lrc::make_mut(&mut first_stream_lrc);
+                let mut first_vec_mut: Vec<_> = std::mem::take(first_box_slice_mut).into();
                 first_vec_mut.reserve(num_appends);
                 for stream in iter {
                     first_vec_mut.extend(stream.0.iter().cloned());
                 }
+                *first_box_slice_mut = first_vec_mut.into();
 
                 // Create the final `TokenStream`.
                 TokenStream(first_stream_lrc)
@@ -407,8 +409,11 @@ impl TokenStreamBuilder {
 
                         // Remove the first token tree from `stream`. (This
                         // is almost always the only tree in `stream`.)
-                        let stream_vec_mut = Lrc::make_mut(stream_lrc);
+                        let stream_box_slice_mut = Lrc::make_mut(stream_lrc);
+                        let mut stream_vec_mut: Vec<_> =
+                            std::mem::take(stream_box_slice_mut).into();
                         stream_vec_mut.remove(0);
+                        *stream_box_slice_mut = stream_vec_mut.into();
 
                         // Don't push `stream` if it's empty -- that could
                         // block subsequent token gluing, by getting
