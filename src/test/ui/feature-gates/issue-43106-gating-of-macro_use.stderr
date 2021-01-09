@@ -1,8 +1,8 @@
 error: arguments to `macro_use` are not allowed here
-  --> $DIR/issue-43106-gating-of-macro_use.rs:6:1
+  --> $DIR/issue-43106-gating-of-macro_use.rs:12:17
    |
-LL | #![macro_use(my_macro)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     mod inner { #![macro_use(my_macro)] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: arguments to `macro_use` are not allowed here
   --> $DIR/issue-43106-gating-of-macro_use.rs:9:1
@@ -11,10 +11,10 @@ LL | #[macro_use(my_macro)]
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: arguments to `macro_use` are not allowed here
-  --> $DIR/issue-43106-gating-of-macro_use.rs:12:17
+  --> $DIR/issue-43106-gating-of-macro_use.rs:6:1
    |
-LL |     mod inner { #![macro_use(my_macro)] }
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![macro_use(my_macro)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: malformed `macro_use` attribute input
   --> $DIR/issue-43106-gating-of-macro_use.rs:15:5

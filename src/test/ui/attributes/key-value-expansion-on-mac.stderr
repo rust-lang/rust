@@ -1,0 +1,8 @@
+error: unexpected token: `stringify!(b)`
+  --> $DIR/key-value-expansion-on-mac.rs:12:17
+   |
+LL | #[rustc_dummy = stringify!(b)]
+   |                 ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

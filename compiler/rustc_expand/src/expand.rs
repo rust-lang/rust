@@ -1543,13 +1543,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_item_kind(&mut self, item: &mut ast::ItemKind) {
-        match item {
-            ast::ItemKind::MacroDef(..) => {}
-            _ => {
-                self.cfg.configure_item_kind(item);
-                noop_visit_item_kind(item, self);
-            }
-        }
+        self.cfg.configure_item_kind(item);
+        noop_visit_item_kind(item, self);
     }
 
     fn flat_map_generic_param(

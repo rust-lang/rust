@@ -1298,26 +1298,31 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     method!(visit_ty: ast::Ty, ast::TyKind::MacCall, walk_ty);
 
     fn visit_item(&mut self, item: &'b Item) {
-        let macro_use = match item.kind {
+        let orig_module_scope = self.parent_scope.module;
+        self.parent_scope.macro_rules = match item.kind {
             ItemKind::MacroDef(..) => {
-                self.parent_scope.macro_rules = self.define_macro(item);
-                return;
+                let macro_rules_scope = self.define_macro(item);
+                visit::walk_item(self, item);
+                macro_rules_scope
             }
             ItemKind::MacCall(..) => {
-                self.parent_scope.macro_rules = self.visit_invoc_in_module(item.id);
-                return;
+                let macro_rules_scope = self.visit_invoc_in_module(item.id);
+                visit::walk_item(self, item);
+                macro_rules_scope
             }
-            ItemKind::Mod(..) => self.contains_macro_use(&item.attrs),
-            _ => false,
+            _ => {
+                let orig_macro_rules_scope = self.parent_scope.macro_rules;
+                self.build_reduced_graph_for_item(item);
+                visit::walk_item(self, item);
+                match item.kind {
+                    ItemKind::Mod(..) if self.contains_macro_use(&item.attrs) => {
+                        self.parent_scope.macro_rules
+                    }
+                    _ => orig_macro_rules_scope,
+                }
+            }
         };
-        let orig_current_module = self.parent_scope.module;
-        let orig_current_macro_rules_scope = self.parent_scope.macro_rules;
-        self.build_reduced_graph_for_item(item);
-        visit::walk_item(self, item);
-        self.parent_scope.module = orig_current_module;
-        if !macro_use {
-            self.parent_scope.macro_rules = orig_current_macro_rules_scope;
-        }
+        self.parent_scope.module = orig_module_scope;
     }
 
     fn visit_stmt(&mut self, stmt: &'b ast::Stmt) {
