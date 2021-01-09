@@ -337,7 +337,7 @@ impl<'a, B: ?Sized + ToOwned> Cow<'a, B> {
     /// ```
     /// # #![feature(cow_disown_if)]
     /// # use std::borrow::Cow;
-    /// let mut cow = Cow::Owned(String::from("Moo"));
+    /// let mut cow: Cow<'_, str> = Cow::Owned(String::from("Moo"));
     /// let moo = "moo";
     /// assert_eq!(cow.disown_if(moo, |o| o.to_lowercase() == moo), Some(String::from("Moo")));
     /// assert_eq!(cow.disown_if(moo, |o| o.to_lowercase() == moo), None);
@@ -373,7 +373,7 @@ where
     /// ```
     /// # #![feature(cow_disown_if)]
     /// # use std::borrow::Cow;
-    /// let mut cow = Cow::Owned(String::from("moo"));
+    /// let mut cow: Cow<'_, str> = Cow::Owned(String::from("moo"));
     /// let moo = "moo";
     /// assert_eq!(cow.disown_if_eq(moo), Some(moo.to_string()));
     /// assert_eq!(cow, Cow::Borrowed("moo"));
