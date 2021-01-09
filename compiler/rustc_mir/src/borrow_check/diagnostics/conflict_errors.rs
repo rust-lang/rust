@@ -1331,11 +1331,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             ConstraintCategory::CallArgument => {
                 fr_name.highlight_region_name(&mut err);
-                if matches!(use_span.generator_kind(), Some(generator_kind) 
+                if matches!(use_span.generator_kind(), Some(generator_kind)
                     if matches!(generator_kind, GeneratorKind::Async(_)))
                 {
-                    err.note("async blocks are not executed immediately and either must take a \
-                    reference or ownership of outside variables they use");
+                    err.note(
+                        "async blocks are not executed immediately and either must take a \
+                    reference or ownership of outside variables they use",
+                    );
                     err.help("see https://rust-lang.github.io/async-book/03_async_await/01_chapter.html#awaiting-on-a-multithreaded-executor \
                         for more information");
                 } else {
