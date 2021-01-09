@@ -36,7 +36,7 @@ macro_rules! forward_inner_docs {
     ($e:expr => $i:item) => {
         #[doc = $e]
         $i
-    }
+    };
 }
 
 /// In general, the `DiagnosticBuilder` uses deref to allow access to

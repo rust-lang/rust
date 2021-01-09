@@ -6,8 +6,8 @@ use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::thir::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
-use rustc_middle::middle::region;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
+use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
@@ -57,7 +57,8 @@ crate enum PlaceBase {
         /// DefId of the closure
         closure_def_id: DefId,
         /// The trait closure implements, `Fn`, `FnMut`, `FnOnce`
-        closure_kind: ty::ClosureKind },
+        closure_kind: ty::ClosureKind,
+    },
 }
 
 /// `PlaceBuilder` is used to create places during MIR construction. It allows you to "build up" a
@@ -81,8 +82,7 @@ crate struct PlaceBuilder<'tcx> {
 fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
     mir_projections: &[PlaceElem<'tcx>],
 ) -> Vec<HirProjectionKind> {
-
-    let mut hir_projections  = Vec::new();
+    let mut hir_projections = Vec::new();
 
     for mir_projection in mir_projections {
         let hir_projection = match mir_projection {
@@ -91,20 +91,20 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
                 // We will never encouter this for multivariant enums,
                 // read the comment for `Downcast`.
                 HirProjectionKind::Field(field.index() as u32, VariantIdx::new(0))
-            },
+            }
             ProjectionElem::Downcast(..) => {
                 // This projections exist only for enums that have
                 // multiple variants. Since such enums that are captured
                 // completely, we can stop here.
-                break
-            },
+                break;
+            }
             ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. } => {
                 // We don't capture array-access projections.
                 // We can stop here as arrays are captured completely.
-                break
-            },
+                break;
+            }
         };
 
         hir_projections.push(hir_projection);
@@ -181,9 +181,9 @@ fn find_capture_matching_projections<'a, 'tcx>(
     // If an ancestor is found, `idx` is the index within the list of captured places
     // for root variable `var_hir_id` and `capture` is the `ty::CapturedPlace` itself.
     let (idx, capture) = root_variable_min_captures.iter().enumerate().find(|(_, capture)| {
-            let possible_ancestor_proj_kinds =
-                capture.place.projections.iter().map(|proj| proj.kind).collect();
-            is_ancestor_or_same_capture(&possible_ancestor_proj_kinds, &hir_projections)
+        let possible_ancestor_proj_kinds =
+            capture.place.projections.iter().map(|proj| proj.kind).collect();
+        is_ancestor_or_same_capture(&possible_ancestor_proj_kinds, &hir_projections)
     })?;
 
     // Convert index to be from the presepective of the entire closure_min_captures map
@@ -213,35 +213,34 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
                 ty::ClosureKind::FnOnce => {}
             }
 
-            let (capture_index, capture) =
-                if let Some(capture_details) = find_capture_matching_projections(
+            let (capture_index, capture) = if let Some(capture_details) =
+                find_capture_matching_projections(
                     typeck_results,
                     var_hir_id,
                     closure_def_id,
                     &from_builder.projection,
                 ) {
-                    capture_details
-                } else {
-                    if !tcx.features().capture_disjoint_fields {
-                        bug!(
-                            "No associated capture found for {:?}[{:#?}] even though \
+                capture_details
+            } else {
+                if !tcx.features().capture_disjoint_fields {
+                    bug!(
+                        "No associated capture found for {:?}[{:#?}] even though \
                             capture_disjoint_fields isn't enabled",
-                            var_hir_id,
-                            from_builder.projection
-                        )
-                    } else {
-                        // FIXME(project-rfc-2229#24): Handle this case properly
-                        debug!(
-                            "No associated capture found for {:?}[{:#?}]",
-                            var_hir_id,
-                            from_builder.projection,
-                        );
-                    }
-                    return Err(var_hir_id);
-                };
+                        var_hir_id,
+                        from_builder.projection
+                    )
+                } else {
+                    // FIXME(project-rfc-2229#24): Handle this case properly
+                    debug!(
+                        "No associated capture found for {:?}[{:#?}]",
+                        var_hir_id, from_builder.projection,
+                    );
+                }
+                return Err(var_hir_id);
+            };
 
-            let closure_ty =
-                typeck_results.node_type(tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local()));
+            let closure_ty = typeck_results
+                .node_type(tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local()));
 
             let substs = match closure_ty.kind() {
                 ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
@@ -256,7 +255,8 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
             // we know that the capture exists and is the `capture_index`-th capture.
             let var_ty = substs.tupled_upvars_ty().tuple_element_ty(capture_index).unwrap();
 
-            upvar_resolved_place_builder = upvar_resolved_place_builder.field(Field::new(capture_index), var_ty);
+            upvar_resolved_place_builder =
+                upvar_resolved_place_builder.field(Field::new(capture_index), var_ty);
 
             // If the variable is captured via ByRef(Immutable/Mutable) Borrow,
             // we need to deref it
@@ -270,8 +270,9 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
 
             // We used some of the projections to build the capture itself,
             // now we apply the remaining to the upvar resolved place.
-            upvar_resolved_place_builder.projection.extend(
-                curr_projections.drain(next_projection..));
+            upvar_resolved_place_builder
+                .projection
+                .extend(curr_projections.drain(next_projection..));
 
             Ok(upvar_resolved_place_builder)
         }
@@ -356,7 +357,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
     /// intermediate `Place` values until we know the full set of projections.
-    crate fn as_place_builder<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<PlaceBuilder<'tcx>>
+    crate fn as_place_builder<M>(
+        &mut self,
+        block: BasicBlock,
+        expr: M,
+    ) -> BlockAnd<PlaceBuilder<'tcx>>
     where
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
@@ -627,7 +632,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if is_outermost_index {
             self.read_fake_borrows(block, fake_borrow_temps, source_info)
         } else {
-            base_place = base_place.expect_upvars_resolved(self.hir.tcx(), self.hir.typeck_results());
+            base_place =
+                base_place.expect_upvars_resolved(self.hir.tcx(), self.hir.typeck_results());
             self.add_fake_borrows_of_base(
                 &base_place,
                 block,
@@ -679,7 +685,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.hir.tcx();
         let local = match base_place.base {
             PlaceBase::Local(local) => local,
-            PlaceBase::Upvar { .. } => bug!("Expected PlacseBase::Local found Upvar")
+            PlaceBase::Upvar { .. } => bug!("Expected PlacseBase::Local found Upvar"),
         };
 
         let place_ty = Place::ty_from(local, &base_place.projection, &self.local_decls, tcx);
