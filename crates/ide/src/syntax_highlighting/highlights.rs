@@ -20,7 +20,7 @@ impl Highlights {
         Highlights {
             root: Node::new(HighlightedRange {
                 range,
-                highlight: HighlightTag::Dummy.into(),
+                highlight: HighlightTag::None.into(),
                 binding_hash: None,
             }),
         }

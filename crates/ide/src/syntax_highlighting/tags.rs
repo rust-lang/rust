@@ -33,8 +33,8 @@ pub enum HighlightTag {
     Operator,
     UnresolvedReference,
 
-    // For things which don't have proper Tag, but want to use modifiers.
-    Dummy,
+    // For things which don't have a specific highlight.
+    None,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -100,7 +100,7 @@ impl HighlightTag {
             HighlightTag::Operator => "operator",
             HighlightTag::StringLiteral => "string_literal",
             HighlightTag::UnresolvedReference => "unresolved_reference",
-            HighlightTag::Dummy => "dummy",
+            HighlightTag::None => "none",
         }
     }
 }
@@ -174,7 +174,7 @@ impl Highlight {
         Highlight { tag, modifiers: HighlightModifiers::default() }
     }
     pub fn is_empty(&self) -> bool {
-        self.tag == HighlightTag::Dummy && self.modifiers == HighlightModifiers::default()
+        self.tag == HighlightTag::None && self.modifiers == HighlightModifiers::default()
     }
 }
 
