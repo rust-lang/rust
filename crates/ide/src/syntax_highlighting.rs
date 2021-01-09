@@ -1,11 +1,13 @@
+pub(crate) mod tags;
+
 mod highlights;
 mod injector;
 
 mod format;
-mod html;
 mod injection;
 mod macro_rules;
-pub(crate) mod tags;
+
+mod html;
 #[cfg(test)]
 mod tests;
 
