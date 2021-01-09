@@ -1324,33 +1324,32 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Applicability::MachineApplicable,
         );
 
-        let msg = match category {
+        match category {
             ConstraintCategory::Return(_) | ConstraintCategory::OpaqueType => {
-                format!("{} is returned here", kind)
+                let msg = format!("{} is returned here", kind);
+                err.span_note(constraint_span, &msg);
             }
             ConstraintCategory::CallArgument => {
                 fr_name.highlight_region_name(&mut err);
-                format!("function requires argument type to outlive `{}`", fr_name)
+                if matches!(use_span.generator_kind(), Some(generator_kind) 
+                    if matches!(generator_kind, GeneratorKind::Async(_)))
+                {
+                    err.note("async blocks are not executed immediately and either must take a \
+                    reference or ownership of outside variables they use");
+                    err.help("see https://rust-lang.github.io/async-book/03_async_await/01_chapter.html#awaiting-on-a-multithreaded-executor \
+                        for more information");
+                } else {
+                    let msg = format!("function requires argument type to outlive `{}`", fr_name);
+                    err.span_note(constraint_span, &msg);
+                }
             }
             _ => bug!(
                 "report_escaping_closure_capture called with unexpected constraint \
                  category: `{:?}`",
                 category
             ),
-        };
-        err.span_note(constraint_span, &msg);
-        if let ConstraintCategory::CallArgument = category {
-            if let Some(generator_kind) = use_span.generator_kind() {
-                if let GeneratorKind::Async(_) = generator_kind {
-                    err.note(
-                        "borrows cannot be held across a yield point, because the stack \
-                        space of the current function is not preserved",
-                    );
-                    err.help("see https://rust-lang.github.io/async-book/03_async_await/01_chapter.html#awaiting-on-a-multithreaded-executor \
-                        for more information");
-                }
-            }
         }
+
         err
     }
 

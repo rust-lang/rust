@@ -8,15 +8,7 @@ LL | |         game_loop(Arc::clone(&room_ref))
 LL | |     });
    | |_____^ may outlive borrowed value `room_ref`
    |
-note: function requires argument type to outlive `'static`
-  --> $DIR/issue-78938-async-block.rs:8:33
-   |
-LL |       let gameloop_handle = spawn(async {
-   |  _________________________________^
-LL | |         game_loop(Arc::clone(&room_ref))
-LL | |     });
-   | |_____^
-   = note: borrows cannot be held across a yield point, because the stack space of the current function is not preserved
+   = note: async blocks are not executed immediately and either must take a reference or ownership of outside variables they use
    = help: see https://rust-lang.github.io/async-book/03_async_await/01_chapter.html#awaiting-on-a-multithreaded-executor for more information
 help: to force the async block to take ownership of `room_ref` (and any other referenced variables), use the `move` keyword
    |
