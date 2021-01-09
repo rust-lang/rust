@@ -33,7 +33,7 @@ use crate::{
 
 pub(crate) use html::highlight_as_html;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct HlRange {
     pub range: TextRange,
     pub highlight: Highlight,

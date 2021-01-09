@@ -21,20 +21,42 @@ pub(super) fn highlight_injection(
     if !active_parameter.name.starts_with("ra_fixture") {
         return None;
     }
-
     let value = literal.value()?;
-    let marker_info = MarkerInfo::new(&*value);
-    let (analysis, tmp_file_id) = Analysis::from_single_file(marker_info.cleaned_text.clone());
 
     if let Some(range) = literal.open_quote_text_range() {
         hl.add(HlRange { range, highlight: HlTag::StringLiteral.into(), binding_hash: None })
     }
 
+    let mut inj = Injector::default();
+
+    let mut text = &*value;
+    let mut offset: TextSize = 0.into();
+
+    while !text.is_empty() {
+        let marker = "$0";
+        let idx = text.find(marker).unwrap_or(text.len());
+        let (chunk, next) = text.split_at(idx);
+        inj.add(chunk, TextRange::at(offset, TextSize::of(chunk)));
+
+        text = next;
+        offset += TextSize::of(chunk);
+
+        if let Some(next) = text.strip_prefix(marker) {
+            text = next;
+
+            let marker_len = TextSize::of(marker);
+            offset += marker_len;
+        }
+    }
+
+    let (analysis, tmp_file_id) = Analysis::from_single_file(inj.text().to_string());
+
     for mut hl_range in analysis.highlight(tmp_file_id).unwrap() {
-        let range = marker_info.map_range_up(hl_range.range);
-        if let Some(range) = literal.map_range_up(range) {
-            hl_range.range = range;
-            hl.add(hl_range);
+        for range in inj.map_range_up(hl_range.range) {
+            if let Some(range) = literal.map_range_up(range) {
+                hl_range.range = range;
+                hl.add(hl_range.clone());
+            }
         }
     }
 
@@ -43,52 +65,6 @@ pub(super) fn highlight_injection(
     }
 
     Some(())
-}
-
-/// Data to remove `$0` from string and map ranges
-#[derive(Default, Debug)]
-struct MarkerInfo {
-    cleaned_text: String,
-    markers: Vec<TextRange>,
-}
-
-impl MarkerInfo {
-    fn new(mut text: &str) -> Self {
-        let marker = "$0";
-
-        let mut res = MarkerInfo::default();
-        let mut offset: TextSize = 0.into();
-        while !text.is_empty() {
-            let idx = text.find(marker).unwrap_or(text.len());
-            let (chunk, next) = text.split_at(idx);
-            text = next;
-            res.cleaned_text.push_str(chunk);
-            offset += TextSize::of(chunk);
-
-            if let Some(next) = text.strip_prefix(marker) {
-                text = next;
-
-                let marker_len = TextSize::of(marker);
-                res.markers.push(TextRange::at(offset, marker_len));
-                offset += marker_len;
-            }
-        }
-        res
-    }
-    fn map_range_up(&self, range: TextRange) -> TextRange {
-        TextRange::new(
-            self.map_offset_up(range.start(), true),
-            self.map_offset_up(range.end(), false),
-        )
-    }
-    fn map_offset_up(&self, mut offset: TextSize, start: bool) -> TextSize {
-        for r in &self.markers {
-            if r.start() < offset || (start && r.start() == offset) {
-                offset += r.len()
-            }
-        }
-        offset
-    }
 }
 
 const RUSTDOC_FENCE: &'static str = "```";
