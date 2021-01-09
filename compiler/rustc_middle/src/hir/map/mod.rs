@@ -569,9 +569,9 @@ impl<'hir> Map<'hir> {
             self.find(self.get_parent_node(id)),
             Some(
                 Node::Item(_)
-                | Node::TraitItem(_)
-                | Node::ImplItem(_)
-                | Node::Expr(Expr { kind: ExprKind::Closure(..), .. }),
+                    | Node::TraitItem(_)
+                    | Node::ImplItem(_)
+                    | Node::Expr(Expr { kind: ExprKind::Closure(..), .. }),
             )
         )
     }

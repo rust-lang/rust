@@ -290,9 +290,9 @@ fn suggest_restriction(
             generics
                 .params
                 .iter()
-                .filter(
-                    |p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), ..}),
-                )
+                .filter(|p| {
+                    !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), .. })
+                })
                 .next(),
             super_traits,
         ) {

@@ -838,9 +838,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 _ => span_bug!(self.fn_span, "upvars with non-closure env ty {:?}", closure_ty),
             };
             let capture_tys = upvar_substs.upvar_tys();
-            let captures_with_tys = hir_typeck_results
-                .closure_min_captures_flattened(fn_def_id)
-                .zip(capture_tys);
+            let captures_with_tys =
+                hir_typeck_results.closure_min_captures_flattened(fn_def_id).zip(capture_tys);
 
             self.upvar_mutbls = captures_with_tys
                 .enumerate()
@@ -848,7 +847,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let capture = captured_place.info.capture_kind;
                     let var_id = match captured_place.place.base {
                         HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
-                        _ => bug!("Expected an upvar")
+                        _ => bug!("Expected an upvar"),
                     };
 
                     let mutability = captured_place.mutability;
