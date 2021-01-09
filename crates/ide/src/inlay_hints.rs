@@ -353,9 +353,13 @@ fn is_argument_similar_to_param_name(
     }
     match get_string_representation(argument) {
         None => false,
-        Some(repr) => {
-            let argument_string = repr.trim_start_matches('_');
-            argument_string.starts_with(param_name) || argument_string.ends_with(param_name)
+        Some(mut repr) => {
+            let param_name = param_name.to_ascii_lowercase();
+            let argument_string = {
+                repr.make_ascii_lowercase();
+                repr.trim_start_matches('_')
+            };
+            argument_string.starts_with(&param_name) || argument_string.ends_with(&param_name)
         }
     }
 }
@@ -900,6 +904,9 @@ fn main() {
 
     twiddle(true);
     doo(true);
+
+    const TWIDDLE_UPPERCASE: bool = true;
+    twiddle(TWIDDLE_UPPERCASE);
 
     let mut param_begin: Param = Param {};
     different_order(&param_begin);
