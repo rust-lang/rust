@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// **What it does:**
     /// Suggests alternatives for useless applications of `?` in terminating expressions
     ///
-    /// **Why is this bad?** There's no reason to use ? to short-circuit when execution of the body will end there anyway.
+    /// **Why is this bad?** There's no reason to use `?` to short-circuit when execution of the body will end there anyway.
     ///
     /// **Known problems:** None.
     ///
@@ -58,7 +58,7 @@ declare_clippy_lint! {
     /// ```
     pub NEEDLESS_QUESTION_MARK,
     complexity,
-    "Suggest value.inner_option instead of Some(value.inner_option?). The same goes for Result<T, E>."
+    "Suggest `value.inner_option` instead of `Some(value.inner_option?)`. The same goes for `Result<T, E>`."
 }
 
 const NEEDLESS_QUESTION_MARK_RESULT_MSRV: RustcVersion = RustcVersion::new(1, 13, 0);
