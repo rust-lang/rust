@@ -175,12 +175,7 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
         Definition::SelfType(it) => it.target_ty(db).as_adt(),
         _ => None,
     }?;
-    match adt {
-        Adt::Struct(it) => it.try_to_nav(db),
-        Adt::Union(it) => it.try_to_nav(db),
-        Adt::Enum(it) => it.try_to_nav(db),
-    }
-    .map(to_action)
+    adt.try_to_nav(db).map(to_action)
 }
 
 fn runnable_action(
