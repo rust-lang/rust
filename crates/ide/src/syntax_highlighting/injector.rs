@@ -17,17 +17,15 @@ impl Injector {
     pub(super) fn add(&mut self, text: &str, source_range: TextRange) {
         let len = TextSize::of(text);
         assert_eq!(len, source_range.len());
-
-        let target_range = TextRange::at(TextSize::of(&self.buf), len);
-        self.ranges
-            .push((target_range, Some(Delta::new(target_range.start(), source_range.start()))));
-        self.buf.push_str(text);
+        self.add_impl(text, Some(source_range.start()));
     }
     pub(super) fn add_unmapped(&mut self, text: &str) {
+        self.add_impl(text, None);
+    }
+    fn add_impl(&mut self, text: &str, source: Option<TextSize>) {
         let len = TextSize::of(text);
-
         let target_range = TextRange::at(TextSize::of(&self.buf), len);
-        self.ranges.push((target_range, None));
+        self.ranges.push((target_range, source.map(|it| Delta::new(target_range.start(), it))));
         self.buf.push_str(text);
     }
 

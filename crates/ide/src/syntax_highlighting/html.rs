@@ -20,26 +20,26 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         )
     }
 
-    let ranges = highlight(db, file_id, None, false);
+    let hl_ranges = highlight(db, file_id, None, false);
     let text = parse.tree().syntax().to_string();
     let mut buf = String::new();
     buf.push_str(&STYLE);
     buf.push_str("<pre><code>");
-    for range in &ranges {
-        let curr = &text[range.range];
-        if range.highlight.is_empty() {
-            format_to!(buf, "{}", html_escape(curr));
+    for r in &hl_ranges {
+        let chunk = html_escape(&text[r.range]);
+        if r.highlight.is_empty() {
+            format_to!(buf, "{}", chunk);
             continue;
         }
 
-        let class = range.highlight.to_string().replace('.', " ");
-        let color = match (rainbow, range.binding_hash) {
+        let class = r.highlight.to_string().replace('.', " ");
+        let color = match (rainbow, r.binding_hash) {
             (true, Some(hash)) => {
                 format!(" data-binding-hash=\"{}\" style=\"color: {};\"", hash, rainbowify(hash))
             }
             _ => "".into(),
         };
-        format_to!(buf, "<span class=\"{}\"{}>{}</span>", class, color, html_escape(curr));
+        format_to!(buf, "<span class=\"{}\"{}>{}</span>", class, color, chunk);
     }
     buf.push_str("</code></pre>");
     buf

@@ -4,7 +4,7 @@ use syntax::{
     AstNode, AstToken, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
 };
 
-use crate::{HighlightTag, HighlightedRange, SymbolKind};
+use crate::{HlRange, HlTag, SymbolKind};
 
 use super::highlights::Highlights;
 
@@ -46,7 +46,7 @@ impl FormatStringHighlighter {
         if self.format_string.as_ref() == Some(&SyntaxElement::from(string.syntax().clone())) {
             string.lex_format_specifier(|piece_range, kind| {
                 if let Some(highlight) = highlight_format_specifier(kind) {
-                    stack.add(HighlightedRange {
+                    stack.add(HlRange {
                         range: piece_range + range.start(),
                         highlight: highlight.into(),
                         binding_hash: None,
@@ -57,7 +57,7 @@ impl FormatStringHighlighter {
     }
 }
 
-fn highlight_format_specifier(kind: FormatSpecifier) -> Option<HighlightTag> {
+fn highlight_format_specifier(kind: FormatSpecifier) -> Option<HlTag> {
     Some(match kind {
         FormatSpecifier::Open
         | FormatSpecifier::Close
@@ -69,8 +69,8 @@ fn highlight_format_specifier(kind: FormatSpecifier) -> Option<HighlightTag> {
         | FormatSpecifier::DollarSign
         | FormatSpecifier::Dot
         | FormatSpecifier::Asterisk
-        | FormatSpecifier::QuestionMark => HighlightTag::FormatSpecifier,
-        FormatSpecifier::Integer | FormatSpecifier::Zero => HighlightTag::NumericLiteral,
-        FormatSpecifier::Identifier => HighlightTag::Symbol(SymbolKind::Local),
+        | FormatSpecifier::QuestionMark => HlTag::FormatSpecifier,
+        FormatSpecifier::Integer | FormatSpecifier::Zero => HlTag::NumericLiteral,
+        FormatSpecifier::Identifier => HlTag::Symbol(SymbolKind::Local),
     })
 }
