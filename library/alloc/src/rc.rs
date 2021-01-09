@@ -2314,10 +2314,12 @@ impl<T: ?Sized> Unpin for Rc<T> {}
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
-    // Align the unsized value to the end of the `RcBox`.
-    // Because it is ?Sized, it will always be the last field in memory.
-    // Note: This is a detail of the current implementation of the compiler,
-    // and is not a guaranteed language detail. Do not rely on it outside of std.
+    // Align the unsized value to the end of the RcBox.
+    // Because RcBox is repr(C), it will always be the last field in memory.
+    // SAFETY: since the only unsized types possible are slices, trait objects,
+    // and extern types, the input safety requirement is currently enough to
+    // satisfy the requirements of align_of_val_raw; this is an implementation
+    // detail of the language that may not be relied upon outside of std.
     unsafe { data_offset_align(align_of_val_raw(ptr)) }
 }
 
