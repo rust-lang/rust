@@ -1,4 +1,4 @@
-//! Syntax highlighting injections such as highlighting of documentation tests.
+//! "Recursive" Syntax highlighting for code in doctests and fixtures.
 
 use hir::Semantics;
 use ide_db::call_info::ActiveParameter;
