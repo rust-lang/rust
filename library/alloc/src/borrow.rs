@@ -338,8 +338,8 @@ impl<'a, B: ?Sized + ToOwned> Cow<'a, B> {
     /// # use std::borrow::Cow;
     /// let mut cow = Cow::Owned(String::from("Moo"));
     /// let moo = "moo";
-    /// assert_eq!(cow.replace_if(moo, |o| o.to_lowercase() == moo), Some(String::from("Moo")));
-    /// assert_eq!(cow.replace_if(moo, |o| o.to_lowercase() == moo), None);
+    /// assert_eq!(cow.disown_if(moo, |o| o.to_lowercase() == moo), Some(String::from("Moo")));
+    /// assert_eq!(cow.disown_if(moo, |o| o.to_lowercase() == moo), None);
     /// assert_eq!(cow, Cow::Borrowed("moo"));
     /// ```
     #[unstable(feature = "cow_disown", issue = "none")]
@@ -373,7 +373,7 @@ where
     /// # use std::borrow::Cow;
     /// let mut cow = Cow::Owned(String::from("moo"));
     /// let moo = "moo";
-    /// assert_eq!(cow.replace_if_eq(moo), Some(moo.to_string()));
+    /// assert_eq!(cow.disown_if_eq(moo), Some(moo.to_string()));
     /// assert_eq!(cow, Cow::Borrowed("moo"));
     /// ```
     #[unstable(feature = "cow_disown", issue = "none")]
