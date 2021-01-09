@@ -85,8 +85,9 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
                                 matches: Some(FileOperationPatternKind::File),
                                 options: None,
                             },
+                        },
                         FileOperationFilter {
-                            scheme: Some(String::from("untitled")),
+                            scheme: Some(String::from("file")),
                             pattern: FileOperationPattern {
                                 glob: String::from("**"),
                                 matches: Some(FileOperationPatternKind::Folder),
