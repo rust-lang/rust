@@ -782,7 +782,9 @@ impl SyntaxExtension {
             }
         }
 
-        let builtin_name = sess.find_by_name(attrs, sym::rustc_builtin_macro).map(|a| a.value_str().unwrap_or(name));
+        let builtin_name = sess
+            .find_by_name(attrs, sym::rustc_builtin_macro)
+            .map(|a| a.value_str().unwrap_or(name));
         let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
         if const_stability.is_some() {
             sess.parse_sess
