@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::apple_base::opts("macos");
@@ -10,7 +10,7 @@ pub fn target() -> Target {
         vec!["-m64".to_string(), "-arch".to_string(), "x86_64".to_string()],
     );
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
-    base.stack_probes = true;
+    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
 
     // Clang automatically chooses a more specific target based on
     // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work
