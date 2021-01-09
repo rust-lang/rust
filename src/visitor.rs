@@ -112,7 +112,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         mk_sp(self.last_pos, hi)
     }
 
-    fn visit_stmt(&mut self, stmt: &Stmt<'_>) {
+    fn visit_stmt(&mut self, stmt: &Stmt<'_>, include_empty_semi: bool) {
         debug!(
             "visit_stmt: {}",
             self.parse_sess.span_to_debug_info(stmt.span())
@@ -127,13 +127,23 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 .map_or(false, |i| starts_with_newline(&snippet[i..]));
             let snippet = snippet.trim();
             if !snippet.is_empty() {
-                if original_starts_with_newline {
-                    self.push_str("\n");
-                }
-                self.push_str(&self.block_indent.to_string(self.config));
-                self.push_str(snippet);
-            }
+                // FIXME(calebcartwright 2021-01-03) - This exists strictly to maintain legacy
+                // formatting where rustfmt would preserve redundant semicolons on Items in a
+                // statement position.
+                // See comment within `walk_stmts` for more info
+                if include_empty_semi {
+                    self.format_missing(stmt.span().hi());
+                } else {
+                    if original_starts_with_newline {
+                        self.push_str("\n");
+                    }
 
+                    self.push_str(&self.block_indent.to_string(self.config));
+                    self.push_str(snippet);
+                }
+            } else if include_empty_semi {
+                self.push_str(";");
+            }
             self.last_pos = stmt.span().hi();
             return;
         }
@@ -141,8 +151,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         match stmt.as_ast_node().kind {
             ast::StmtKind::Item(ref item) => {
                 self.visit_item(item);
-                // Handle potential `;` after the item.
-                self.format_missing(stmt.span().hi());
+                self.last_pos = stmt.span().hi();
             }
             ast::StmtKind::Local(..) | ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
                 let attrs = get_attrs_from_stmt(stmt.as_ast_node());
@@ -899,7 +908,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.visit_items_with_reordering(&ptr_vec_to_ref_vec(&m.items));
     }
 
-    fn walk_stmts(&mut self, stmts: &[Stmt<'_>]) {
+    fn walk_stmts(&mut self, stmts: &[Stmt<'_>], include_current_empty_semi: bool) {
         if stmts.is_empty() {
             return;
         }
@@ -912,16 +921,38 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             .collect();
 
         if items.is_empty() {
-            self.visit_stmt(&stmts[0]);
-            self.walk_stmts(&stmts[1..]);
+            self.visit_stmt(&stmts[0], include_current_empty_semi);
+
+            // FIXME(calebcartwright 2021-01-03) - This exists strictly to maintain legacy
+            // formatting where rustfmt would preserve redundant semicolons on Items in a
+            // statement position.
+            //
+            // Starting in rustc-ap-* v692 (~2020-12-01) the rustc parser now parses this as
+            // two separate statements (Item and Empty kinds), whereas before it was parsed as
+            // a single statement with the statement's span including the redundant semicolon.
+            //
+            // rustfmt typically tosses unnecessary/redundant semicolons, and eventually we
+            // should toss these as well, but doing so at this time would
+            // break the Stability Guarantee
+            // N.B. This could be updated to utilize the version gates.
+            let include_next_empty = if stmts.len() > 1 {
+                match (&stmts[0].as_ast_node().kind, &stmts[1].as_ast_node().kind) {
+                    (ast::StmtKind::Item(_), ast::StmtKind::Empty) => true,
+                    _ => false,
+                }
+            } else {
+                false
+            };
+
+            self.walk_stmts(&stmts[1..], include_next_empty);
         } else {
             self.visit_items_with_reordering(&items);
-            self.walk_stmts(&stmts[items.len()..]);
+            self.walk_stmts(&stmts[items.len()..], false);
         }
     }
 
     fn walk_block_stmts(&mut self, b: &ast::Block) {
-        self.walk_stmts(&Stmt::from_ast_nodes(b.stmts.iter()))
+        self.walk_stmts(&Stmt::from_ast_nodes(b.stmts.iter()), false)
     }
 
     fn format_mod(
