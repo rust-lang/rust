@@ -15,7 +15,7 @@ pub enum IndexResult {
     Edge(usize),
 }
 
-impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     /// Looks up a given key in a (sub)tree headed by the node, recursively.
     /// Returns a `Found` with the handle of the matching KV, if any. Otherwise,
     /// returns a `GoDown` with the handle of the leaf edge where the key belongs.

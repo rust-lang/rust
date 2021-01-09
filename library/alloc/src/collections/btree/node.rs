@@ -93,8 +93,8 @@ struct InternalNode<K, V> {
     data: LeafNode<K, V>,
 
     /// The pointers to the children of this node. `len + 1` of these are considered
-    /// initialized and valid. Although during the process of `into_iter` or `drop`,
-    /// some pointers are dangling while others still need to be traversed.
+    /// initialized and valid, except that near the end, while the tree is held
+    /// through borrow type `Dying`, some of these pointers are dangling.
     edges: [MaybeUninit<BoxedNode<K, V>>; 2 * B],
 }
 
@@ -119,7 +119,7 @@ impl<K, V> InternalNode<K, V> {
 /// is not a separate type and has no destructor.
 type BoxedNode<K, V> = NonNull<LeafNode<K, V>>;
 
-/// An owned tree.
+/// The root node of an owned tree.
 ///
 /// Note that this does not have a destructor, and must be cleaned up manually.
 pub type Root<K, V> = NodeRef<marker::Owned, K, V, marker::LeafOrInternal>;
@@ -157,16 +157,21 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
 }
 
 impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
-    /// Mutably borrows the owned node. Unlike `reborrow_mut`, this is safe,
-    /// because the return value cannot be used to destroy the node itself,
-    /// and there cannot be other references to the tree (except during the
-    /// process of `into_iter` or `drop`, but that is horrific already).
+    /// Mutably borrows the owned root node. Unlike `reborrow_mut`, this is safe
+    /// because the return value cannot be used to destroy the root, and there
+    /// cannot be other references to the tree.
     pub fn borrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
-    /// Slightly mutably borrows the owned node.
+    /// Slightly mutably borrows the owned root node.
     pub fn borrow_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, Type> {
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
+    }
+
+    /// Irreversibly transistions to a reference that offers traversal,
+    /// destructive methods and little else.
+    pub fn into_dying(self) -> NodeRef<marker::Dying, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 }
@@ -196,8 +201,13 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 
         let top = self.node;
 
-        let internal_node = NodeRef { height: self.height, node: top, _marker: PhantomData };
-        *self = internal_node.first_edge().descend();
+        // SAFETY: we asserted to be internal.
+        let internal_self = unsafe { self.borrow_mut().cast_to_internal_unchecked() };
+        // SAFETY: we borrowed `self` exclusively and its borrow type is exclusive.
+        let internal_node = unsafe { &mut *NodeRef::as_internal_ptr(&internal_self) };
+        // SAFETY: the first edge is always initialized.
+        self.node = unsafe { internal_node.edges[0].assume_init_read() };
+        self.height -= 1;
         self.clear_parent_link();
 
         unsafe {
@@ -224,6 +234,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 ///      although insert methods allow a mutable pointer to a value to coexist.
 ///    - When this is `Owned`, the `NodeRef` acts roughly like `Box<Node>`,
 ///      but does not have a destructor, and must be cleaned up manually.
+///    - When this is `Dying`, the `NodeRef` still acts roughly like `Box<Node>`,
+///      but has methods to destroy the tree bit by bit, and ordinary methods,
+///      while not marked as unsafe to call, can invoke UB if called incorrectly.
 ///   Since any `NodeRef` allows navigating through the tree, `BorrowType`
 ///   effectively applies to the entire tree, not just to the node itself.
 /// - `K` and `V`: These are the types of keys and values stored in the nodes.
@@ -280,6 +293,7 @@ unsafe impl<'a, K: Sync + 'a, V: Sync + 'a, Type> Send for NodeRef<marker::Immut
 unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send for NodeRef<marker::Mut<'a>, K, V, Type> {}
 unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send for NodeRef<marker::ValMut<'a>, K, V, Type> {}
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> {}
+unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Dying, K, V, Type> {}
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Unpack a node reference that was packed as `NodeRef::parent`.
@@ -343,7 +357,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 }
 
-impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
+impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// Finds the parent of the current node. Returns `Ok(handle)` if the current
     /// node actually has a parent, where `handle` points to the edge of the parent
     /// that points to the current node. Returns `Err(self)` if the current node has
@@ -356,6 +370,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     pub fn ascend(
         self,
     ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {
+        assert!(BorrowType::PERMITS_TRAVERSAL);
         // We need to use raw pointers to nodes because, if BorrowType is marker::ValMut,
         // there might be outstanding mutable references to values that we must not invalidate.
         let leaf_ptr: *const _ = Self::as_leaf_ptr(&self);
@@ -410,13 +425,13 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     }
 }
 
-impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
+impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
     /// Similar to `ascend`, gets a reference to a node's parent node, but also
     /// deallocates the current node in the process. This is unsafe because the
     /// current node will still be accessible despite being deallocated.
     pub unsafe fn deallocate_and_ascend(
         self,
-    ) -> Option<Handle<NodeRef<marker::Owned, K, V, marker::Internal>, marker::Edge>> {
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Internal>, marker::Edge>> {
         let height = self.height;
         let node = self.node;
         let ret = self.ascend().ok();
@@ -951,7 +966,9 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     }
 }
 
-impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge> {
+impl<BorrowType: marker::BorrowType, K, V>
+    Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>
+{
     /// Finds the node pointed to by this edge.
     ///
     /// The method name assumes you picture trees with the root node on top.
@@ -959,6 +976,7 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
     /// `edge.descend().ascend().unwrap()` and `node.ascend().unwrap().descend()` should
     /// both, upon success, do nothing.
     pub fn descend(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+        assert!(BorrowType::PERMITS_TRAVERSAL);
         // We need to use raw pointers to nodes because, if BorrowType is
         // marker::ValMut, there might be outstanding mutable references to
         // values that we must not invalidate. There's no worry accessing the
@@ -1596,9 +1614,26 @@ pub mod marker {
     pub enum LeafOrInternal {}
 
     pub enum Owned {}
+    pub enum Dying {}
     pub struct Immut<'a>(PhantomData<&'a ()>);
     pub struct Mut<'a>(PhantomData<&'a mut ()>);
     pub struct ValMut<'a>(PhantomData<&'a mut ()>);
+
+    pub trait BorrowType {
+        // Whether node references of this borrow type allow traversing
+        // to other nodes in the tree.
+        const PERMITS_TRAVERSAL: bool = true;
+    }
+    impl BorrowType for Owned {
+        // Traversal isn't needede, it happens using the result of `borrow_mut`.
+        // By disabling traversal, and only creating new references to roots,
+        // we know that every reference of the `Owned` type is to a root node.
+        const PERMITS_TRAVERSAL: bool = false;
+    }
+    impl BorrowType for Dying {}
+    impl<'a> BorrowType for Immut<'a> {}
+    impl<'a> BorrowType for Mut<'a> {}
+    impl<'a> BorrowType for ValMut<'a> {}
 
     pub enum KV {}
     pub enum Edge {}
