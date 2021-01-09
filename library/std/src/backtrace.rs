@@ -58,7 +58,7 @@
 //! `RUST_LIB_BACKTRACE` or `RUST_BACKTRACE` at runtime may not actually change
 //! how backtraces are captured.
 
-#![stable(feature = "backtrace", since = "1.50.0")]
+#![stable(feature = "backtrace", since = "1.51.0")]
 
 #[cfg(test)]
 mod tests;
@@ -103,7 +103,7 @@ use crate::vec::Vec;
 /// previous point in time. In some instances the `Backtrace` type may
 /// internally be empty due to configuration. For more information see
 /// `Backtrace::capture`.
-#[stable(feature = "backtrace", since = "1.50.0")]
+#[stable(feature = "backtrace", since = "1.51.0")]
 pub struct Backtrace {
     inner: Inner,
 }
@@ -112,19 +112,19 @@ pub struct Backtrace {
 /// whether it is empty for some other reason.
 #[non_exhaustive]
 #[derive(Debug, PartialEq, Eq)]
-#[stable(feature = "backtrace", since = "1.50.0")]
+#[stable(feature = "backtrace", since = "1.51.0")]
 pub enum BacktraceStatus {
     /// Capturing a backtrace is not supported, likely because it's not
     /// implemented for the current platform.
-    #[stable(feature = "backtrace", since = "1.50.0")]
+    #[stable(feature = "backtrace", since = "1.51.0")]
     Unsupported,
     /// Capturing a backtrace has been disabled through either the
     /// `RUST_LIB_BACKTRACE` or `RUST_BACKTRACE` environment variables.
-    #[stable(feature = "backtrace", since = "1.50.0")]
+    #[stable(feature = "backtrace", since = "1.51.0")]
     Disabled,
     /// A backtrace has been captured and the `Backtrace` should print
     /// reasonable information when rendered.
-    #[stable(feature = "backtrace", since = "1.50.0")]
+    #[stable(feature = "backtrace", since = "1.51.0")]
     Captured,
 }
 
@@ -168,7 +168,7 @@ enum BytesOrWide {
     Wide(Vec<u16>),
 }
 
-#[stable(feature = "backtrace", since = "1.50.0")]
+#[stable(feature = "backtrace", since = "1.51.0")]
 impl fmt::Debug for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut capture = match &self.inner {
@@ -276,7 +276,7 @@ impl Backtrace {
     ///
     /// To forcibly capture a backtrace regardless of environment variables, use
     /// the `Backtrace::force_capture` function.
-    #[stable(feature = "backtrace", since = "1.50.0")]
+    #[stable(feature = "backtrace", since = "1.51.0")]
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn capture() -> Backtrace {
         if !Backtrace::enabled() {
@@ -295,7 +295,7 @@ impl Backtrace {
     /// Note that capturing a backtrace can be an expensive operation on some
     /// platforms, so this should be used with caution in performance-sensitive
     /// parts of code.
-    #[stable(feature = "backtrace", since = "1.50.0")]
+    #[stable(feature = "backtrace", since = "1.51.0")]
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn force_capture() -> Backtrace {
         Backtrace::create(Backtrace::force_capture as usize)
@@ -346,7 +346,7 @@ impl Backtrace {
     /// Returns the status of this backtrace, indicating whether this backtrace
     /// request was unsupported, disabled, or a stack trace was actually
     /// captured.
-    #[stable(feature = "backtrace", since = "1.50.0")]
+    #[stable(feature = "backtrace", since = "1.51.0")]
     pub fn status(&self) -> BacktraceStatus {
         match self.inner {
             Inner::Unsupported => BacktraceStatus::Unsupported,
@@ -356,7 +356,7 @@ impl Backtrace {
     }
 }
 
-#[stable(feature = "backtrace", since = "1.50.0")]
+#[stable(feature = "backtrace", since = "1.51.0")]
 impl fmt::Display for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut capture = match &self.inner {
