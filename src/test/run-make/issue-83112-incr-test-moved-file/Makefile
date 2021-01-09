@@ -1,8 +1,5 @@
 include ../../run-make-fulldeps/tools.mk
 
-# FIXME https://github.com/rust-lang/rust/issues/78911
-# ignore-32bit wrong/no cross compiler and sometimes we pass wrong gcc args (-m64)
-
 # Regression test for issue #83112
 # The generated test harness code contains spans with a dummy location,
 # but a non-dummy SyntaxContext. Previously, the incremental cache was encoding
@@ -20,6 +17,6 @@ all:
 	mkdir $(SRC)/mydir
 	mkdir $(INCR)
 	cp main.rs $(SRC)/main.rs
-	$(RUSTC) --test -C incremental=$(INCR) $(SRC)/main.rs
+	$(RUSTC) --test -C incremental=$(INCR) $(SRC)/main.rs --target $(TARGET)
 	mv $(SRC)/main.rs $(SRC)/mydir/main.rs
-	$(RUSTC) --test -C incremental=$(INCR) $(SRC)/mydir/main.rs
+	$(RUSTC) --test -C incremental=$(INCR) $(SRC)/mydir/main.rs --target $(TARGET)
