@@ -365,18 +365,16 @@ pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
             visit_delim_span(dspan, vis);
             visit_tts(tokens, vis);
         }
-        MacArgs::Eq(eq_span, tokens) => {
+        MacArgs::Eq(eq_span, token) => {
             vis.visit_span(eq_span);
-            visit_tts(tokens, vis);
-            // The value in `#[key = VALUE]` must be visited as an expression for backward
-            // compatibility, so that macros can be expanded in that position.
-            if !vis.token_visiting_enabled() {
-                match Lrc::make_mut(&mut tokens.0).get_mut(0) {
-                    Some((TokenTree::Token(token), _spacing)) => match &mut token.kind {
-                        token::Interpolated(nt) => match Lrc::make_mut(nt) {
-                            token::NtExpr(expr) => vis.visit_expr(expr),
-                            t => panic!("unexpected token in key-value attribute: {:?}", t),
-                        },
+            if vis.token_visiting_enabled() {
+                visit_token(token, vis);
+            } else {
+                // The value in `#[key = VALUE]` must be visited as an expression for backward
+                // compatibility, so that macros can be expanded in that position.
+                match &mut token.kind {
+                    token::Interpolated(nt) => match Lrc::make_mut(nt) {
+                        token::NtExpr(expr) => vis.visit_expr(expr),
                         t => panic!("unexpected token in key-value attribute: {:?}", t),
                     },
                     t => panic!("unexpected token in key-value attribute: {:?}", t),

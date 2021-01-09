@@ -445,10 +445,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             ),
             MacArgs::Empty | MacArgs::Eq(..) => {
                 self.print_path(&item.path, false, 0);
-                if let MacArgs::Eq(_, tokens) = &item.args {
+                if let MacArgs::Eq(_, token) = &item.args {
                     self.space();
                     self.word_space("=");
-                    self.print_tts(tokens, true);
+                    let token_str = self.token_to_string_ext(token, true);
+                    self.word(token_str);
                 }
             }
         }
