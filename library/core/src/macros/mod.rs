@@ -7,15 +7,15 @@ macro_rules! panic {
     () => (
         $crate::panic!("explicit panic")
     );
-    ($msg:literal $(,)?) => (
+    ($msg:literal $(,)?) => ({
         $crate::panicking::panic($msg)
-    );
-    ($msg:expr $(,)?) => (
+    });
+    ($msg:expr $(,)?) => ({
         $crate::panicking::panic_str($msg)
-    );
-    ($fmt:expr, $($arg:tt)+) => (
+    });
+    ($fmt:expr, $($arg:tt)+) => ({
         $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+))
-    );
+    });
 }
 
 /// Asserts that two expressions are equal to each other (using [`PartialEq`]).
