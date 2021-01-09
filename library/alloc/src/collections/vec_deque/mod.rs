@@ -1292,7 +1292,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front(&self) -> Option<&T> {
-        if !self.is_empty() { Some(&self[0]) } else { None }
+        self.get(0)
     }
 
     /// Provides a mutable reference to the front element, or `None` if the
@@ -1316,7 +1316,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front_mut(&mut self) -> Option<&mut T> {
-        if !self.is_empty() { Some(&mut self[0]) } else { None }
+        self.get_mut(0)
     }
 
     /// Provides a reference to the back element, or `None` if the `VecDeque` is
@@ -1336,7 +1336,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back(&self) -> Option<&T> {
-        if !self.is_empty() { Some(&self[self.len() - 1]) } else { None }
+        self.get(self.len().wrapping_sub(1))
     }
 
     /// Provides a mutable reference to the back element, or `None` if the
@@ -1360,8 +1360,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        let len = self.len();
-        if !self.is_empty() { Some(&mut self[len - 1]) } else { None }
+        self.get_mut(self.len().wrapping_sub(1))
     }
 
     /// Removes the first element and returns it, or `None` if the `VecDeque` is
