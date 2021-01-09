@@ -34,6 +34,7 @@ mod global_allocator;
 mod global_asm;
 mod llvm_asm;
 mod log_syntax;
+mod panic;
 mod source_util;
 mod test;
 mod trace_macros;
@@ -82,6 +83,8 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand, edition: Editi
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
         option_env: env::expand_option_env,
+        core_panic_macro: panic::expand_panic,
+        std_panic_macro: panic::expand_panic,
         stringify: source_util::expand_stringify,
         trace_macros: trace_macros::expand_trace_macros,
     }

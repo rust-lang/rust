@@ -1,3 +1,4 @@
+#[cfg(bootstrap)]
 #[doc(include = "panic.md")]
 #[macro_export]
 #[allow_internal_unstable(core_panic)]
@@ -16,6 +17,19 @@ macro_rules! panic {
     ($fmt:expr, $($arg:tt)+) => (
         $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+))
     );
+}
+
+#[cfg(not(bootstrap))]
+#[doc(include = "panic.md")]
+#[macro_export]
+#[rustc_builtin_macro = "core_panic_macro"]
+#[allow_internal_unstable(edition_panic)]
+#[stable(feature = "core", since = "1.6.0")]
+#[rustc_diagnostic_item = "core_panic_macro"]
+macro_rules! panic {
+    // Expands to either `$crate::panic_2015` or `$crate::panic_2021`
+    // depending on the edition of the caller.
+    ($($arg:tt)*) => { /* compiler built-in */ };
 }
 
 /// Asserts that two expressions are equal to each other (using [`PartialEq`]).
