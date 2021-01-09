@@ -112,7 +112,7 @@ impl From<char> for u32 {
     }
 }
 
-#[stable(feature = "more_char_conversions", since = "1.50.0")]
+#[stable(feature = "more_char_conversions", since = "1.51.0")]
 impl From<char> for u64 {
     /// Converts a [`char`] into a [`u64`].
     ///
@@ -133,7 +133,7 @@ impl From<char> for u64 {
     }
 }
 
-#[stable(feature = "more_char_conversions", since = "1.50.0")]
+#[stable(feature = "more_char_conversions", since = "1.51.0")]
 impl From<char> for u128 {
     /// Converts a [`char`] into a [`u128`].
     ///
