@@ -1089,7 +1089,7 @@ impl OsStr {
     /// ```
     /// let path = std::path::Path::new("foo.txt");
     /// let os_str = path.as_os_str();
-    /// println!("{}", os_str.display());
+    /// assert_eq!(path.display().to_string(), os_str.display().to_string());
     /// ```
     pub fn display(&self) -> impl fmt::Display + '_ {
         &self.inner
