@@ -23,16 +23,34 @@ pub fn expand_assert<'cx>(
         }
     };
 
+    let is_2021 = sp.rust_2021();
+
     // `core::panic` and `std::panic` are different macros, so we use call-site
     // context to pick up whichever is currently in scope.
     let sp = cx.with_call_site_ctxt(sp);
 
     let panic_call = if let Some(tokens) = custom_message {
+        let path = if is_2021 {
+            // On edition 2021, we always call `$crate::panic!()`.
+            Path {
+                span: sp,
+                segments: cx
+                    .std_path(&[sym::panic])
+                    .into_iter()
+                    .map(|ident| PathSegment::from_ident(ident))
+                    .collect(),
+                tokens: None,
+            }
+        } else {
+            // Before edition 2021, we call `panic!()` unqualified,
+            // such that it calls either `std::panic!()` or `core::panic!()`.
+            Path::from_ident(Ident::new(sym::panic, sp))
+        };
         // Pass the custom message to panic!().
         cx.expr(
             sp,
             ExprKind::MacCall(MacCall {
-                path: Path::from_ident(Ident::new(sym::panic, sp)),
+                path,
                 args: P(MacArgs::Delimited(
                     DelimSpan::from_single(sp),
                     MacDelimiter::Parenthesis,
