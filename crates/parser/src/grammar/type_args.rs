@@ -55,7 +55,7 @@ fn generic_arg(p: &mut Parser) {
             expressions::literal(p);
             m.complete(p, CONST_ARG);
         }
-        TRUE_KW | FALSE_KW => {
+        T![true] | T![false] => {
             expressions::literal(p);
             m.complete(p, CONST_ARG);
         }
