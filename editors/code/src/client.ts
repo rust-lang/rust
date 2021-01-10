@@ -51,23 +51,24 @@ export function createClient(serverPath: string, cwd: string, extraEnv: Env): lc
         'Rust Analyzer Language Server Trace',
     );
 
-    const workspace:lc.WorkspaceMiddleware = {
-        willRenameFiles:function<P extends vscode.FileRenameEvent,R extends Thenable<vscode.WorkspaceEdit | null | undefined>>(this: void, data: P, next:(data: P) => R ){
+    const workspace: lc.WorkspaceMiddleware = {
+        willRenameFiles: function <P extends vscode.FileRenameEvent, R extends Thenable<vscode.WorkspaceEdit | null | undefined>>(this: void, data: P, next: (data: P) => R) {
             // why add this function rather than default:
             // 1. change `url` parameter to happy format for url crate. (folder should end with '/')
             // 2. filter some change in here.
             //     2.1 rename from or to `mod.rs` should be special. 
             //     2.2 not all folder change should be cared, only those have files with ".rs" postfix.
-            let newFiles =  data.files.map((file)=>{
+            const newFiles = data.files.map((file) => {
                 const isFolder = !file.oldUri.path.endsWith(".rs");
                 return !isFolder ? file : {
-                    oldUri:vscode.Uri.file(file.oldUri.path+'/'),
-                    newUri:vscode.Uri.file(file.newUri.path+'/')
-                }});
-            data = {...data, files:newFiles};
+                    oldUri: vscode.Uri.file(file.oldUri.path + '/'),
+                    newUri: vscode.Uri.file(file.newUri.path + '/')
+                };
+            });
+            data = { ...data, files: newFiles };
             return next(data);
         }
-    }
+    };
 
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'rust' }],
