@@ -135,7 +135,7 @@ when the item is re-exported. If a link from another crate fails to resolve, no
 warning is given.
 
 When re-exporting an item, rustdoc allows adding additional documentation to it.
-That additional documentation will be resolved in scope of the re-export, not
+That additional documentation will be resolved in the scope of the re-export, not
 the original, allowing you to link to items in the new crate. The new links
 will still give a warning if they fail to resolve.
 
