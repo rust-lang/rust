@@ -643,6 +643,27 @@ assert!(x >= lo && x <= hi>);
 **Rationale:** Less-then comparisons are more intuitive, they correspond spatially to [real line](https://en.wikipedia.org/wiki/Real_line).
 
 
+## Token names
+
+Use `T![foo]` instead of `SyntaxKind::FOO_KW`.
+
+```rust
+// GOOD
+match p.current() {
+    T![true] | T![false] => true,
+    _ => false,
+}
+
+// BAD
+
+match p.current() {
+    SyntaxKind::TRUE_KW | SyntaxKind::FALSE_KW => true,
+    _ => false,
+}
+```
+
+**Rationale:** The macro uses the familiar Rust syntax, avoiding ambiguities like "is this a brace or bracket?".
+
 ## Documentation
 
 For `.md` and `.adoc` files, prefer a sentence-per-line format, don't wrap lines.
