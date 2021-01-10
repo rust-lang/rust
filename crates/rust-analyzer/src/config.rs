@@ -334,6 +334,18 @@ impl Config {
         }
     }
 
+    pub fn did_save_text_document_dynamic_registration(&self) -> bool {
+        let caps =
+            try_or!(self.caps.text_document.as_ref()?.synchronization.clone()?, Default::default());
+        caps.did_save == Some(true) && caps.dynamic_registration == Some(true)
+    }
+    pub fn did_change_watched_files_dynamic_registration(&self) -> bool {
+        try_or!(
+            self.caps.workspace.as_ref()?.did_change_watched_files.as_ref()?.dynamic_registration?,
+            false
+        )
+    }
+
     pub fn location_link(&self) -> bool {
         try_or!(self.caps.text_document.as_ref()?.definition?.link_support?, false)
     }

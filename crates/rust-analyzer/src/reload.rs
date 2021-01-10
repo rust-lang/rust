@@ -182,26 +182,31 @@ impl GlobalState {
         }
 
         if let FilesWatcher::Client = self.config.files().watcher {
-            let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
-                watchers: workspaces
-                    .iter()
-                    .flat_map(ProjectWorkspace::to_roots)
-                    .filter(|it| it.is_member)
-                    .flat_map(|root| {
-                        root.include.into_iter().map(|it| format!("{}/**/*.rs", it.display()))
-                    })
-                    .map(|glob_pattern| lsp_types::FileSystemWatcher { glob_pattern, kind: None })
-                    .collect(),
-            };
-            let registration = lsp_types::Registration {
-                id: "workspace/didChangeWatchedFiles".to_string(),
-                method: "workspace/didChangeWatchedFiles".to_string(),
-                register_options: Some(serde_json::to_value(registration_options).unwrap()),
-            };
-            self.send_request::<lsp_types::request::RegisterCapability>(
-                lsp_types::RegistrationParams { registrations: vec![registration] },
-                |_, _| (),
-            );
+            if self.config.did_change_watched_files_dynamic_registration() {
+                let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
+                    watchers: workspaces
+                        .iter()
+                        .flat_map(ProjectWorkspace::to_roots)
+                        .filter(|it| it.is_member)
+                        .flat_map(|root| {
+                            root.include.into_iter().map(|it| format!("{}/**/*.rs", it.display()))
+                        })
+                        .map(|glob_pattern| lsp_types::FileSystemWatcher {
+                            glob_pattern,
+                            kind: None,
+                        })
+                        .collect(),
+                };
+                let registration = lsp_types::Registration {
+                    id: "workspace/didChangeWatchedFiles".to_string(),
+                    method: "workspace/didChangeWatchedFiles".to_string(),
+                    register_options: Some(serde_json::to_value(registration_options).unwrap()),
+                };
+                self.send_request::<lsp_types::request::RegisterCapability>(
+                    lsp_types::RegistrationParams { registrations: vec![registration] },
+                    |_, _| (),
+                );
+            }
         }
 
         let mut change = Change::new();
