@@ -354,17 +354,21 @@ fn is_argument_similar_to_param_name(
     match get_string_representation(argument) {
         None => false,
         Some(argument_string) => {
+            // Does the argument name begin with the parameter name? Ignore leading underscores.
             let mut arg_bytes = argument_string.bytes().skip_while(|&c| c == b'_');
             let starts_with_pattern = param_name.bytes().all(
                 |expected| matches!(arg_bytes.next(), Some(actual) if expected.eq_ignore_ascii_case(&actual)),
             );
 
-            let mut arg_bytes = argument_string.bytes();
-            let ends_with_pattern = param_name.bytes().rev().all(
-                |expected| matches!(arg_bytes.next_back(), Some(actual) if expected.eq_ignore_ascii_case(&actual)),
-            );
+            if starts_with_pattern {
+                return true;
+            }
 
-            starts_with_pattern || ends_with_pattern
+            // Does the argument name end with the parameter name?
+            let mut arg_bytes = argument_string.bytes();
+            param_name.bytes().rev().all(
+                |expected| matches!(arg_bytes.next_back(), Some(actual) if expected.eq_ignore_ascii_case(&actual)),
+            )
         }
     }
 }
