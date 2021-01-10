@@ -22,6 +22,7 @@ use crate::{
     from_proto,
     line_endings::LineEndings,
     main_loop::Task,
+    op_queue::OpQueue,
     reload::SourceRootConfig,
     request_metrics::{LatestRequests, RequestMetrics},
     thread_pool::TaskPool,
@@ -78,6 +79,7 @@ pub(crate) struct GlobalState {
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_client: Option<ProcMacroClient>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) fetch_workspaces_queue: OpQueue,
     latest_requests: Arc<RwLock<LatestRequests>>,
 }
 
@@ -130,6 +132,7 @@ impl GlobalState {
             source_root_config: SourceRootConfig::default(),
             proc_macro_client: None,
             workspaces: Arc::new(Vec::new()),
+            fetch_workspaces_queue: OpQueue::default(),
             latest_requests: Default::default(),
         }
     }

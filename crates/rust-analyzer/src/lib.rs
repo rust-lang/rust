@@ -35,6 +35,7 @@ mod lsp_utils;
 mod thread_pool;
 mod document;
 mod diff;
+mod op_queue;
 pub mod lsp_ext;
 pub mod config;
 

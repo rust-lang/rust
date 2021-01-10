@@ -19,7 +19,7 @@ use lsp_ext::StatusParams;
 pub(crate) enum ProjectWorkspaceProgress {
     Begin,
     Report(String),
-    End,
+    End(Vec<anyhow::Result<ProjectWorkspace>>),
 }
 
 impl GlobalState {
@@ -30,7 +30,7 @@ impl GlobalState {
             self.analysis_host.update_lru_capacity(self.config.lru_capacity());
         }
         if self.config.linked_projects() != old_config.linked_projects() {
-            self.fetch_workspaces()
+            self.fetch_workspaces_request()
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
@@ -44,7 +44,7 @@ impl GlobalState {
             Status::Ready | Status::Invalid => (),
         }
         if self.config.cargo_autoreload() {
-            self.fetch_workspaces();
+            self.fetch_workspaces_request();
         } else {
             self.transition(Status::NeedsReload);
         }
@@ -98,8 +98,15 @@ impl GlobalState {
             });
         }
     }
-    pub(crate) fn fetch_workspaces(&mut self) {
+
+    pub(crate) fn fetch_workspaces_request(&mut self) {
+        self.fetch_workspaces_queue.request_op()
+    }
+    pub(crate) fn fetch_workspaces_if_needed(&mut self) {
         log::info!("will fetch workspaces");
+        if !self.fetch_workspaces_queue.should_start_op() {
+            return;
+        }
 
         self.task_pool.handle.spawn_with_sender({
             let linked_projects = self.config.linked_projects();
@@ -133,12 +140,17 @@ impl GlobalState {
                     })
                     .collect::<Vec<_>>();
 
-                sender.send(Task::FetchWorkspace(ProjectWorkspaceProgress::End)).unwrap();
                 log::info!("did fetch workspaces {:?}", workspaces);
-                sender.send(Task::Workspaces(workspaces)).unwrap()
+                sender
+                    .send(Task::FetchWorkspace(ProjectWorkspaceProgress::End(workspaces)))
+                    .unwrap();
             }
         });
     }
+    pub(crate) fn fetch_workspaces_completed(&mut self) {
+        self.fetch_workspaces_queue.op_completed()
+    }
+
     pub(crate) fn switch_workspaces(&mut self, workspaces: Vec<anyhow::Result<ProjectWorkspace>>) {
         let _p = profile::span("GlobalState::switch_workspaces");
         log::info!("will switch workspaces: {:?}", workspaces);
