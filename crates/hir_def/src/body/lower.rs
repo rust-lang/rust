@@ -581,7 +581,7 @@ impl ExprCollector<'_> {
         match res.value {
             Some((mark, expansion)) => {
                 // FIXME: Statements are too complicated to recover from error for now.
-                // It is because we don't have any hygenine for local variable expansion right now.
+                // It is because we don't have any hygiene for local variable expansion right now.
                 if T::can_cast(syntax::SyntaxKind::MACRO_STMTS) && res.err.is_some() {
                     self.expander.exit(self.db, mark);
                     collector(self, None);
@@ -959,7 +959,7 @@ impl ExprCollector<'_> {
 
     fn collect_tuple_pat(&mut self, args: AstChildren<ast::Pat>) -> (Vec<PatId>, Option<usize>) {
         // Find the location of the `..`, if there is one. Note that we do not
-        // consider the possiblity of there being multiple `..` here.
+        // consider the possibility of there being multiple `..` here.
         let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::RestPat(_)));
         // We want to skip the `..` pattern here, since we account for it above.
         let args = args

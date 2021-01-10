@@ -267,7 +267,7 @@ impl DefCollector<'_> {
 
         // Resolve all indeterminate resolved imports again
         // As some of the macros will expand newly import shadowing partial resolved imports
-        // FIXME: We maybe could skip this, if we handle the Indetermine imports in `resolve_imports`
+        // FIXME: We maybe could skip this, if we handle the indeterminate imports in `resolve_imports`
         // correctly
         let partial_resolved = self.resolved_imports.iter().filter_map(|directive| {
             if let PartialResolvedImport::Indeterminate(_) = directive.status {
@@ -402,7 +402,7 @@ impl DefCollector<'_> {
 
     /// Define a proc macro
     ///
-    /// A proc macro is similar to normal macro scope, but it would not visiable in legacy textual scoped.
+    /// A proc macro is similar to normal macro scope, but it would not visible in legacy textual scoped.
     /// And unconditionally exported.
     fn define_proc_macro(&mut self, name: Name, macro_: MacroDefId) {
         self.update(
@@ -592,7 +592,7 @@ impl DefCollector<'_> {
                     // XXX: urgh, so this works by accident! Here, we look at
                     // the enum data, and, in theory, this might require us to
                     // look back at the crate_def_map, creating a cycle. For
-                    // example, `enum E { crate::some_macro!(); }`. Luckely, the
+                    // example, `enum E { crate::some_macro!(); }`. Luckily, the
                     // only kind of macro that is allowed inside enum is a
                     // `cfg_macro`, and we don't need to run name resolution for
                     // it, but this is sheer luck!
@@ -655,7 +655,7 @@ impl DefCollector<'_> {
         &mut self,
         module_id: LocalModuleId,
         resolutions: &[(Option<Name>, PerNs)],
-        // All resolutions are imported with this visibility; the visibilies in
+        // All resolutions are imported with this visibility; the visibilities in
         // the `PerNs` values are ignored and overwritten
         vis: Visibility,
         import_type: ImportType,

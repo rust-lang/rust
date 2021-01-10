@@ -173,7 +173,7 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
                     assert_eq!(
                         node.parent(),
                         pair.parent(),
-                        "\nunpaired curleys:\n{}\n{:#?}\n",
+                        "\nunpaired curlys:\n{}\n{:#?}\n",
                         root.text(),
                         root,
                     );

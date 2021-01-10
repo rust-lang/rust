@@ -14,7 +14,7 @@
 //! The algorithm implemented here is a modified version of the one described in
 //! <http://moscova.inria.fr/~maranget/papers/warn/index.html>.
 //! However, to save future implementors from reading the original paper, we
-//! summarise the algorithm here to hopefully save time and be a little clearer
+//! summarize the algorithm here to hopefully save time and be a little clearer
 //! (without being so rigorous).
 //!
 //! The core of the algorithm revolves about a "usefulness" check. In particular, we
@@ -132,7 +132,7 @@
 //! The algorithm is inductive (on the number of columns: i.e., components of tuple patterns).
 //! That means we're going to check the components from left-to-right, so the algorithm
 //! operates principally on the first component of the matrix and new pattern-stack `p`.
-//! This algorithm is realised in the `is_useful` function.
+//! This algorithm is realized in the `is_useful` function.
 //!
 //! Base case (`n = 0`, i.e., an empty tuple pattern):
 //! - If `P` already contains an empty pattern (i.e., if the number of patterns `m > 0`), then

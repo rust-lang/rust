@@ -88,8 +88,8 @@ pub fn least_common_ancestor(u: &SyntaxNode, v: &SyntaxNode) -> Option<SyntaxNod
     let keep = u_depth.min(v_depth);
 
     let u_candidates = u.ancestors().skip(u_depth - keep);
-    let v_canidates = v.ancestors().skip(v_depth - keep);
-    let (res, _) = u_candidates.zip(v_canidates).find(|(x, y)| x == y)?;
+    let v_candidates = v.ancestors().skip(v_depth - keep);
+    let (res, _) = u_candidates.zip(v_candidates).find(|(x, y)| x == y)?;
     Some(res)
 }
 

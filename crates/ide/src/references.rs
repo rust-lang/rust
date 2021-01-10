@@ -3,7 +3,7 @@
 //! or `ast::NameRef`. If it's a `ast::NameRef`, at the classification step we
 //! try to resolve the direct tree parent of this element, otherwise we
 //! already have a definition and just need to get its HIR together with
-//! some information that is needed for futher steps of searching.
+//! some information that is needed for further steps of searching.
 //! After that, we collect files that might contain references and look
 //! for text occurrences of the identifier. If there's an `ast::NameRef`
 //! at the index that the match starts at and its tree parent is

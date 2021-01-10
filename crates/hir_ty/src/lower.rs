@@ -491,16 +491,16 @@ impl Ty {
     fn from_hir_path_inner(
         ctx: &TyLoweringContext<'_>,
         segment: PathSegment<'_>,
-        typable: TyDefId,
+        typeable: TyDefId,
         infer_args: bool,
     ) -> Ty {
-        let generic_def = match typable {
+        let generic_def = match typeable {
             TyDefId::BuiltinType(_) => None,
             TyDefId::AdtId(it) => Some(it.into()),
             TyDefId::TypeAliasId(it) => Some(it.into()),
         };
         let substs = substs_from_path_segment(ctx, segment, generic_def, infer_args);
-        ctx.db.ty(typable).subst(&substs)
+        ctx.db.ty(typeable).subst(&substs)
     }
 
     /// Collect generic arguments from a path into a `Substs`. See also

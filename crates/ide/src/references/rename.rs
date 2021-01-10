@@ -945,7 +945,7 @@ use crate::foo$0::FooContent;
 //- /lib.rs
 mod fo$0o;
 //- /foo/mod.rs
-// emtpy
+// empty
 "#,
             expect![[r#"
                 RangeInfo {
@@ -995,7 +995,7 @@ mod fo$0o;
 mod outer { mod fo$0o; }
 
 //- /outer/foo.rs
-// emtpy
+// empty
 "#,
             expect![[r#"
                 RangeInfo {

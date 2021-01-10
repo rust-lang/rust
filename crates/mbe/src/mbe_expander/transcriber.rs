@@ -67,7 +67,7 @@ struct NestingState {
     /// because there is no variable in use by the current repetition
     hit: bool,
     /// `at_end` is currently necessary to tell `expand_repeat` if it should stop
-    /// because there is no more value avaible for the current repetition
+    /// because there is no more value available for the current repetition
     at_end: bool,
 }
 
@@ -179,11 +179,7 @@ fn expand_repeat(
 
         counter += 1;
         if counter == limit {
-            log::warn!(
-                "expand_tt excced in repeat pattern exceed limit => {:#?}\n{:#?}",
-                template,
-                ctx
-            );
+            log::warn!("expand_tt in repeat pattern exceed limit => {:#?}\n{:#?}", template, ctx);
             break;
         }
 

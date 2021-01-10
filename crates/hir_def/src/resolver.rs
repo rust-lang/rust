@@ -27,7 +27,7 @@ use crate::{
 
 #[derive(Debug, Clone, Default)]
 pub struct Resolver {
-    // FIXME: all usages generally call `.rev`, so maybe reverse once in consturciton?
+    // FIXME: all usages generally call `.rev`, so maybe reverse once in construction?
     scopes: Vec<Scope>,
 }
 

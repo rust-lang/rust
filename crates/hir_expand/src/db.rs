@@ -40,7 +40,7 @@ impl TokenExpander {
             // FIXME switch these to ExpandResult as well
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
             TokenExpander::ProcMacro(_) => {
-                // We store the result in salsa db to prevent non-determinisc behavior in
+                // We store the result in salsa db to prevent non-deterministic behavior in
                 // some proc-macro implementation
                 // See #4315 for details
                 db.expand_proc_macro(id.into()).into()

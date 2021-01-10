@@ -39,7 +39,7 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Defi
         if target.contains("://") {
             (target.to_string(), title.to_string())
         } else {
-            // Two posibilities:
+            // Two possibilities:
             // * path-based links: `../../module/struct.MyStruct.html`
             // * module-based links (AKA intra-doc links): `super::super::module::MyStruct`
             if let Some(rewritten) = rewrite_intra_doc_link(db, *definition, target, title) {
@@ -442,7 +442,7 @@ fn get_symbol_fragment(db: &dyn HirDatabase, field_or_assoc: &FieldOrAssocItem) 
                     function.as_assoc_item(db).map(|assoc| assoc.container(db)),
                     Some(AssocItemContainer::Trait(..))
                 );
-                // This distinction may get more complicated when specialisation is available.
+                // This distinction may get more complicated when specialization is available.
                 // Rustdoc makes this decision based on whether a method 'has defaultness'.
                 // Currently this is only the case for provided trait methods.
                 if is_trait_method && !function.has_body(db) {

@@ -1967,7 +1967,7 @@ fn test_no_space_after_semi_colon() {
 #[test]
 fn test_rustc_issue_57597() {
     fn test_error(fixture: &str) {
-        assert_eq!(parse_macro_error(fixture), ParseError::RepetitionEmtpyTokenTree);
+        assert_eq!(parse_macro_error(fixture), ParseError::RepetitionEmptyTokenTree);
     }
 
     test_error("macro_rules! foo { ($($($i:ident)?)+) => {}; }");

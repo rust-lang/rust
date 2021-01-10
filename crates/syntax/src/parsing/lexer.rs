@@ -24,7 +24,7 @@ pub struct Token {
 /// Beware that it checks for shebang first and its length contributes to resulting
 /// tokens offsets.
 pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
-    // non-empty string is a precondtion of `rustc_lexer::strip_shebang()`.
+    // non-empty string is a precondition of `rustc_lexer::strip_shebang()`.
     if text.is_empty() {
         return Default::default();
     }
@@ -76,7 +76,7 @@ pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxEr
 }
 
 /// The same as `lex_single_syntax_kind()` but returns only `SyntaxKind` and
-/// returns `None` if any tokenization error occured.
+/// returns `None` if any tokenization error occurred.
 ///
 /// Beware that unescape errors are not checked at tokenization time.
 pub fn lex_single_valid_syntax_kind(text: &str) -> Option<SyntaxKind> {
@@ -96,7 +96,7 @@ pub fn lex_single_valid_syntax_kind(text: &str) -> Option<SyntaxKind> {
 ///
 /// Beware that unescape errors are not checked at tokenization time.
 fn lex_first_token(text: &str) -> Option<(Token, Option<SyntaxError>)> {
-    // non-empty string is a precondtion of `rustc_lexer::first_token()`.
+    // non-empty string is a precondition of `rustc_lexer::first_token()`.
     if text.is_empty() {
         return None;
     }
@@ -117,7 +117,7 @@ fn rustc_token_kind_to_syntax_kind(
     token_text: &str,
 ) -> (SyntaxKind, Option<&'static str>) {
     // A note on an intended tradeoff:
-    // We drop some useful infromation here (see patterns with double dots `..`)
+    // We drop some useful information here (see patterns with double dots `..`)
     // Storing that info in `SyntaxKind` is not possible due to its layout requirements of
     // being `u16` that come from `rowan::SyntaxKind`.
 

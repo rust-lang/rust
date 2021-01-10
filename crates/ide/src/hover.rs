@@ -1953,16 +1953,16 @@ struct S {
 /// Test cases:
 /// case 1.  bare URL: https://www.example.com/
 /// case 2.  inline URL with title: [example](https://www.example.com/)
-/// case 3.  code refrence: [`Result`]
-/// case 4.  code refrence but miss footnote: [`String`]
+/// case 3.  code reference: [`Result`]
+/// case 4.  code reference but miss footnote: [`String`]
 /// case 5.  autolink: <http://www.example.com/>
 /// case 6.  email address: <test@example.com>
-/// case 7.  refrence: [example][example]
+/// case 7.  reference: [example][example]
 /// case 8.  collapsed link: [example][]
 /// case 9.  shortcut link: [example]
 /// case 10. inline without URL: [example]()
-/// case 11. refrence: [foo][foo]
-/// case 12. refrence: [foo][bar]
+/// case 11. reference: [foo][foo]
+/// case 12. reference: [foo][bar]
 /// case 13. collapsed link: [foo][]
 /// case 14. shortcut link: [foo]
 /// case 15. inline without URL: [foo]()
@@ -1989,16 +1989,16 @@ pub fn fo$0o() {}
                 Test cases:
                 case 1.  bare URL: https://www.example.com/
                 case 2.  inline URL with title: [example](https://www.example.com/)
-                case 3.  code refrence: `Result`
-                case 4.  code refrence but miss footnote: `String`
+                case 3.  code reference: `Result`
+                case 4.  code reference but miss footnote: `String`
                 case 5.  autolink: http://www.example.com/
                 case 6.  email address: test@example.com
-                case 7.  refrence: example
+                case 7.  reference: example
                 case 8.  collapsed link: example
                 case 9.  shortcut link: example
                 case 10. inline without URL: example
-                case 11. refrence: foo
-                case 12. refrence: foo
+                case 11. reference: foo
+                case 12. reference: foo
                 case 13. collapsed link: foo
                 case 14. shortcut link: foo
                 case 15. inline without URL: foo

@@ -378,7 +378,7 @@ pub(super) fn match_repeat(
     src: &mut TtIter,
 ) -> Result<(), ExpandError> {
     // Dirty hack to make macro-expansion terminate.
-    // This should be replaced by a propper macro-by-example implementation
+    // This should be replaced by a proper macro-by-example implementation
     let mut limit = 65536;
     let mut counter = 0;
 

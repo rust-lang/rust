@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_format_docs_preserves_newlines() {
-        let comment = "this\nis\nultiline";
+        let comment = "this\nis\nmultiline";
         assert_eq!(format_docs(comment), comment);
     }
 

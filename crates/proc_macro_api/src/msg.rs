@@ -79,7 +79,7 @@ impl Message for Response {}
 fn read_json(inp: &mut impl BufRead) -> io::Result<Option<String>> {
     let mut buf = String::new();
     inp.read_line(&mut buf)?;
-    buf.pop(); // Remove traling '\n'
+    buf.pop(); // Remove trailing '\n'
     Ok(match buf.len() {
         0 => None,
         _ => Some(buf),

@@ -241,7 +241,7 @@ pub fn wildcard_pat() -> ast::WildcardPat {
     }
 }
 
-/// Creates a tuple of patterns from an interator of patterns.
+/// Creates a tuple of patterns from an iterator of patterns.
 ///
 /// Invariant: `pats` must be length > 1
 ///
