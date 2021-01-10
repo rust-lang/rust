@@ -629,6 +629,9 @@ make_backup = false
 
         #[test]
         fn test_old_option_set() {
+            if !crate::is_nightly_channel!() {
+                return;
+            }
             let toml = r#"
                 unstable_features = true
                 merge_imports = true
@@ -639,6 +642,9 @@ make_backup = false
 
         #[test]
         fn test_both_set() {
+            if !crate::is_nightly_channel!() {
+                return;
+            }
             let toml = r#"
                 unstable_features = true
                 merge_imports = true
@@ -650,6 +656,9 @@ make_backup = false
 
         #[test]
         fn test_new_overridden() {
+            if !crate::is_nightly_channel!() {
+                return;
+            }
             let toml = r#"
                 unstable_features = true
                 merge_imports = true
@@ -661,6 +670,9 @@ make_backup = false
 
         #[test]
         fn test_old_overridden() {
+            if !crate::is_nightly_channel!() {
+                return;
+            }
             let toml = r#"
                 unstable_features = true
                 imports_granularity = "Module"
