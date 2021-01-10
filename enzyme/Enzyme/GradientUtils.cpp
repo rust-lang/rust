@@ -1181,6 +1181,58 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
 
   if (auto arg = dyn_cast<GlobalVariable>(oval)) {
     if (!hasMetadata(arg, "enzyme_shadow")) {
+
+      if (mode == DerivativeMode::Both) {
+        bool seen = false;
+        MemoryLocation
+#if LLVM_VERSION_MAJOR >= 12
+        Loc = MemoryLocation(oval, LocationSize::beforeOrAfterPointer());
+#elif LLVM_VERSION_MAJOR >= 9
+        Loc = MemoryLocation(oval, LocationSize::unknown());
+#else
+        Loc = MemoryLocation(oval, MemoryLocation::UnknownSize);
+#endif
+        for (BasicBlock &BB : *oldFunc) {
+          for (Instruction &I : BB) {
+            if (auto CI = dyn_cast<CallInst>(&I)) {
+              if (!isConstantInstruction(CI)) {
+                if (llvm::isModOrRefSet(AA.getModRefInfo(CI, Loc))) {
+                  seen = true;
+                  llvm::errs() << " cannot handle global " << *oval << " due to " << *CI << "\n";
+                  goto endCheck;
+                }
+              }
+            }
+          }
+        }
+        endCheck:;
+        if (!seen) {
+          IRBuilder<> bb(inversionAllocs);
+          AllocaInst *antialloca = bb.CreateAlloca(arg->getValueType(),
+            arg->getValueType()->getPointerAddressSpace(), nullptr, arg->getName() + "'ipa");
+          invertedPointers[arg] = antialloca;
+
+          if (arg->getAlignment()) {
+      #if LLVM_VERSION_MAJOR >= 10
+            antialloca->setAlignment(Align(arg->getAlignment()));
+      #else
+            antialloca->setAlignment(arg->getAlignment());
+      #endif
+          }
+
+          auto st = bb.CreateStore(
+              Constant::getNullValue(arg->getValueType()), antialloca);
+          if (st->getAlignment()) {
+  #if LLVM_VERSION_MAJOR >= 10
+            st->setAlignment(Align(arg->getAlignment()));
+  #else
+            st->setAlignment(arg->getAlignment());
+  #endif
+          }
+          return lookupM(invertedPointers[arg], BuilderM);
+        }
+      }
+
       if ((llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
                Triple::nvptx ||
            llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
