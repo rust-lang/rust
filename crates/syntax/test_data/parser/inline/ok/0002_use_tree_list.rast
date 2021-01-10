@@ -1,4 +1,4 @@
-SOURCE_FILE@0..249
+SOURCE_FILE@0..248
   USE@0..58
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
@@ -75,62 +75,62 @@ SOURCE_FILE@0..249
         R_CURLY@119..120 "}"
     SEMICOLON@120..121 ";"
   WHITESPACE@121..122 " "
-  USE@122..166
+  USE@122..165
     COMMENT@122..134 "// Rust 2015"
     WHITESPACE@134..135 "\n"
     USE_KW@135..138 "use"
     WHITESPACE@138..139 " "
-    USE_TREE@139..165
+    USE_TREE@139..164
       COLON2@139..141 "::"
-      USE_TREE_LIST@141..165
+      USE_TREE_LIST@141..164
         L_CURLY@141..142 "{"
-        USE_TREE@142..164
-          PATH@142..164
-            PATH@142..158
+        USE_TREE@142..163
+          PATH@142..163
+            PATH@142..157
               PATH@142..146
                 PATH_SEGMENT@142..146
                   NAME_REF@142..146
                     IDENT@142..146 "some"
               COLON2@146..148 "::"
-              PATH_SEGMENT@148..158
-                NAME_REF@148..158
-                  IDENT@148..158 "arbritrary"
-            COLON2@158..160 "::"
-            PATH_SEGMENT@160..164
-              NAME_REF@160..164
-                IDENT@160..164 "path"
-        R_CURLY@164..165 "}"
-    SEMICOLON@165..166 ";"
-  WHITESPACE@166..167 " "
-  USE@167..205
-    COMMENT@167..179 "// Rust 2015"
-    WHITESPACE@179..180 "\n"
-    USE_KW@180..183 "use"
-    WHITESPACE@183..184 " "
-    USE_TREE@184..204
-      COLON2@184..186 "::"
-      USE_TREE_LIST@186..204
-        L_CURLY@186..187 "{"
-        USE_TREE@187..203
-          USE_TREE_LIST@187..203
-            L_CURLY@187..188 "{"
-            USE_TREE@188..202
-              USE_TREE_LIST@188..202
-                L_CURLY@188..189 "{"
-                USE_TREE@189..201
-                  PATH@189..201
-                    PATH@189..193
-                      PATH_SEGMENT@189..193
-                        NAME_REF@189..193
-                          IDENT@189..193 "root"
-                    COLON2@193..195 "::"
-                    PATH_SEGMENT@195..201
-                      NAME_REF@195..201
-                        IDENT@195..201 "export"
-                R_CURLY@201..202 "}"
-            R_CURLY@202..203 "}"
-        R_CURLY@203..204 "}"
-    SEMICOLON@204..205 ";"
-  WHITESPACE@205..206 " "
-  COMMENT@206..248 "// Nonsensical but pe ..."
-  WHITESPACE@248..249 "\n"
+              PATH_SEGMENT@148..157
+                NAME_REF@148..157
+                  IDENT@148..157 "arbitrary"
+            COLON2@157..159 "::"
+            PATH_SEGMENT@159..163
+              NAME_REF@159..163
+                IDENT@159..163 "path"
+        R_CURLY@163..164 "}"
+    SEMICOLON@164..165 ";"
+  WHITESPACE@165..166 " "
+  USE@166..204
+    COMMENT@166..178 "// Rust 2015"
+    WHITESPACE@178..179 "\n"
+    USE_KW@179..182 "use"
+    WHITESPACE@182..183 " "
+    USE_TREE@183..203
+      COLON2@183..185 "::"
+      USE_TREE_LIST@185..203
+        L_CURLY@185..186 "{"
+        USE_TREE@186..202
+          USE_TREE_LIST@186..202
+            L_CURLY@186..187 "{"
+            USE_TREE@187..201
+              USE_TREE_LIST@187..201
+                L_CURLY@187..188 "{"
+                USE_TREE@188..200
+                  PATH@188..200
+                    PATH@188..192
+                      PATH_SEGMENT@188..192
+                        NAME_REF@188..192
+                          IDENT@188..192 "root"
+                    COLON2@192..194 "::"
+                    PATH_SEGMENT@194..200
+                      NAME_REF@194..200
+                        IDENT@194..200 "export"
+                R_CURLY@200..201 "}"
+            R_CURLY@201..202 "}"
+        R_CURLY@202..203 "}"
+    SEMICOLON@203..204 ";"
+  WHITESPACE@204..205 " "
+  COMMENT@205..247 "// Nonsensical but pe ..."
+  WHITESPACE@247..248 "\n"
