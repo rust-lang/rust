@@ -223,6 +223,29 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
       } else {
         ty = whatType(PTy);
       }
+    } else if (isa<CastInst>(res) && cast<CastInst>(res) &&
+               isa<AllocaInst>(cast<CastInst>(res)->getOperand(0))) {
+      auto gv = cast<AllocaInst>(cast<CastInst>(res)->getOperand(0));
+      auto MS = gv->getName();
+      if (MS.startswith("enzyme_dup")) {
+        ty = DIFFE_TYPE::DUP_ARG;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS.startswith("enzyme_dupnoneed")) {
+        ty = DIFFE_TYPE::DUP_NONEED;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS.startswith("enzyme_out")) {
+        ty = DIFFE_TYPE::OUT_DIFF;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS.startswith("enzyme_const")) {
+        ty = DIFFE_TYPE::CONSTANT;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else {
+        ty = whatType(PTy);
+      }
     } else
       ty = whatType(PTy);
 
@@ -458,6 +481,7 @@ public:
         }
 
         if (Fn && (Fn->getName() == "__enzyme_autodiff" ||
+                   Fn->getName() == "enzyme_autodiff_" ||
                    Fn->getName().startswith("__enzyme_autodiff") ||
                    Fn->getName().contains("__enzyme_autodiff"))) {
           toLower.insert(CI);

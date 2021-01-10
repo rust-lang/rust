@@ -105,7 +105,8 @@ static inline bool couldFunctionArgumentCapture(CallInst *CI, Value *val) {
 }
 
 const char *KnownInactiveFunctionsStartingWith[] = {"_ZN4core3fmt",
-                                                    "_ZN3std2io5stdio6_print"};
+                                                    "_ZN3std2io5stdio6_print",
+                                                    "f90io"};
 
 const char *KnownInactiveFunctions[] = {"__assert_fail",
                                         "__cxa_guard_acquire",
@@ -702,6 +703,51 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           }
         } else {
           if (UpHypothesis->isConstantValue(TR, LI->getPointerOperand())) {
+            ConstantValues.insert(Val);
+            insertConstantsFrom(*UpHypothesis);
+            return true;
+          }
+        }
+      } else if (auto op = dyn_cast<CallInst>(TmpOrig)) {
+        if (op->hasFnAttr("enzyme_inactive")) {
+          ConstantValues.insert(Val);
+          insertConstantsFrom(*UpHypothesis);
+          return true;
+        }
+        if (auto called = op->getCalledFunction()) {
+          if (called->getName() == "free" || called->getName() == "_ZdlPv" ||
+              called->getName() == "_ZdlPvm" || called->getName() == "munmap") {
+            ConstantValues.insert(Val);
+            insertConstantsFrom(*UpHypothesis);
+            return true;
+          }
+
+          for (auto FuncName : KnownInactiveFunctionsStartingWith) {
+            if (called->getName().startswith(FuncName)) {
+              ConstantValues.insert(Val);
+              insertConstantsFrom(*UpHypothesis);
+              return true;
+            }
+          }
+          for (auto FuncName : KnownInactiveFunctions) {
+            if (called->getName() == FuncName) {
+              ConstantValues.insert(Val);
+              insertConstantsFrom(*UpHypothesis);
+              return true;
+            }
+          }
+
+          if (called->getIntrinsicID() == Intrinsic::trap) {
+            ConstantValues.insert(Val);
+            insertConstantsFrom(*UpHypothesis);
+            return true;
+          }
+
+          // If requesting emptty unknown functions to be considered inactive, abide
+          // by those rules
+          if (!isCertainPrintMallocOrFree(called) && called->empty() &&
+              !hasMetadata(called, "enzyme_gradient") && !isa<IntrinsicInst>(op) &&
+              emptyfnconst) {
             ConstantValues.insert(Val);
             insertConstantsFrom(*UpHypothesis);
             return true;

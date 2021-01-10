@@ -2706,6 +2706,16 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
           TypeTree(ConcreteType(Type::getDoubleTy(call.getContext()))).Only(-1),
           &call);
     }
+    if (ci->getName() == "__fd_sincos_1") {
+      updateAnalysis(
+          call.getArgOperand(0),
+          TypeTree(ConcreteType(call.getArgOperand(0)->getType())).Only(-1),
+          &call);
+      updateAnalysis(
+          &call,
+          TypeTree(ConcreteType(call.getArgOperand(0)->getType())).Only(-1),
+          &call);
+    }
 
     if (ci->getName() == "__cxa_guard_acquire" || ci->getName() == "printf" ||
         ci->getName() == "vprintf" || ci->getName() == "puts") {

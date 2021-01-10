@@ -3051,6 +3051,14 @@ public:
             return;
           }
         }
+        if (called->getName() == "__fd_sincos_1") {
+          if (Mode == DerivativeMode::Forward ||
+              gutils->isConstantInstruction(orig)) {
+            eraseIfUnused(*orig);
+            return;
+          }
+
+        }
       }
 
       if (n == "lgamma" || n == "lgammaf" || n == "lgammal" ||

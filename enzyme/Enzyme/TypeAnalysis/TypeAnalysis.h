@@ -49,6 +49,9 @@ static inline bool isMemFreeLibMFunction(llvm::StringRef str,
   if (str.startswith("__") && str.endswith("_finite")) {
     str = str.substr(2, str.size() - 2 - 7);
   }
+  if (str.startswith("__fd_") && str.endswith("_1")) {
+    str = str.substr(5, str.size() - 5 - 2);
+  }
   if (LIBM_FUNCTIONS.find(str.str()) != LIBM_FUNCTIONS.end()) {
     if (ID)
       *ID = LIBM_FUNCTIONS.find(str.str())->second;
