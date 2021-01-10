@@ -302,7 +302,7 @@ impl AnalysisStatsCmd {
             report_metric("total memory", memory.allocated.megabytes() as u64, "MB");
         }
 
-        if self.memory_usage {
+        if self.memory_usage && verbosity.is_verbose() {
             print_memory_usage(host, vfs);
         }
 
