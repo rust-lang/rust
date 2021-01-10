@@ -169,7 +169,17 @@ crate fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKin
         if !s.is_empty() { Some(s) } else { None }
     });
     let fqn = if let clean::TypeKind::Macro = kind {
-        vec![crate_name, relative.last().expect("relative was empty")]
+        // Check to see if it is a macro 2.0 or built-in macro
+        if matches!(
+            cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())),
+            LoadedMacro::MacroDef(def, _)
+                if matches!(&def.kind, ast::ItemKind::MacroDef(ast_def)
+                    if !ast_def.macro_rules)
+        ) {
+            once(crate_name).chain(relative).collect()
+        } else {
+            vec![crate_name, relative.last().expect("relative was empty")]
+        }
     } else {
         once(crate_name).chain(relative).collect()
     };
