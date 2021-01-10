@@ -32,6 +32,7 @@ const U8_MUT3: &u8 = { //~ NOTE
     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
     //~^ WARN [const_err]
     //~| NOTE constant accesses static
+    //~| NOTE in this expansion of panic!
 };
 
 pub fn test(x: &[u8; 1]) -> bool {
