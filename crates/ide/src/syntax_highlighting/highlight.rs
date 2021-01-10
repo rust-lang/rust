@@ -12,7 +12,7 @@ use syntax::{
     SyntaxNode, SyntaxToken, T,
 };
 
-use crate::{Highlight, HlMod, HlTag, SymbolKind};
+use crate::{syntax_highlighting::tags::HlPunct, Highlight, HlMod, HlTag, SymbolKind};
 
 pub(super) fn element(
     sema: &Semantics<RootDatabase>,
@@ -173,7 +173,7 @@ pub(super) fn element(
                 } else if let Some(ast::PrefixOp::Deref) = prefix_expr.op_kind() {
                     HlTag::Operator.into()
                 } else {
-                    HlTag::Punctuation.into()
+                    HlTag::Punctuation(HlPunct::Other).into()
                 }
             }
             T![-] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
@@ -196,7 +196,18 @@ pub(super) fn element(
             _ if element.parent().and_then(ast::RangePat::cast).is_some() => HlTag::Operator.into(),
             _ if element.parent().and_then(ast::RestPat::cast).is_some() => HlTag::Operator.into(),
             _ if element.parent().and_then(ast::Attr::cast).is_some() => HlTag::Attribute.into(),
-            _ => HlTag::Punctuation.into(),
+            kind => HlTag::Punctuation(match kind {
+                T!['['] | T![']'] => HlPunct::Bracket,
+                T!['{'] | T!['}'] => HlPunct::Brace,
+                T!['('] | T![')'] => HlPunct::Parenthesis,
+                T![<] | T![>] => HlPunct::Angle,
+                T![,] => HlPunct::Comma,
+                T![:] => HlPunct::Colon,
+                T![;] => HlPunct::Semi,
+                T![.] => HlPunct::Dot,
+                _ => HlPunct::Other,
+            })
+            .into(),
         },
 
         k if k.is_keyword() => {

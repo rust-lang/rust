@@ -29,7 +29,7 @@ pub enum HlTag {
     EscapeSequence,
     FormatSpecifier,
     Keyword,
-    Punctuation,
+    Punctuation(HlPunct),
     Operator,
     UnresolvedReference,
 
@@ -59,6 +59,28 @@ pub enum HlMod {
 
     /// Keep this last!
     Unsafe,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum HlPunct {
+    /// []
+    Bracket,
+    /// {}
+    Brace,
+    /// ()
+    Parenthesis,
+    /// <>
+    Angle,
+    /// ,
+    Comma,
+    /// .
+    Dot,
+    /// :
+    Colon,
+    /// ;
+    Semi,
+    ///
+    Other,
 }
 
 impl HlTag {
@@ -95,7 +117,17 @@ impl HlTag {
             HlTag::EscapeSequence => "escape_sequence",
             HlTag::FormatSpecifier => "format_specifier",
             HlTag::Keyword => "keyword",
-            HlTag::Punctuation => "punctuation",
+            HlTag::Punctuation(punct) => match punct {
+                HlPunct::Bracket => "bracket",
+                HlPunct::Brace => "brace",
+                HlPunct::Parenthesis => "parentheses",
+                HlPunct::Angle => "angle",
+                HlPunct::Comma => "comma",
+                HlPunct::Dot => "dot",
+                HlPunct::Colon => "colon",
+                HlPunct::Semi => "semicolon",
+                HlPunct::Other => "punctuation",
+            },
             HlTag::NumericLiteral => "numeric_literal",
             HlTag::Operator => "operator",
             HlTag::StringLiteral => "string_literal",
