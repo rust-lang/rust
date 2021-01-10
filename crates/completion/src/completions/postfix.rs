@@ -30,10 +30,16 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     let receiver_text =
         get_receiver_text(dot_receiver, ctx.dot_receiver_is_ambiguous_float_literal);
 
-    let receiver_ty = match ctx.sema.type_of_expr(&dot_receiver) {
+    let mut receiver_ty = match ctx.sema.type_of_expr(&dot_receiver) {
         Some(it) => it,
         None => return,
     };
+
+    let mut ref_removed = false;
+    if let Some(removed) = receiver_ty.remove_ref() {
+        receiver_ty = removed;
+        ref_removed = true;
+    }
 
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
@@ -85,7 +91,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
                 .add_to(acc);
             }
         }
-    } else if receiver_ty.is_bool() || receiver_ty.is_unknown() {
+    } else if !ref_removed && (receiver_ty.is_bool() || receiver_ty.is_unknown()) {
         postfix_snippet(
             ctx,
             cap,
@@ -496,6 +502,27 @@ fn main() {
     fn postfix_completion_for_references() {
         check_edit("dbg", r#"fn main() { &&42.$0 }"#, r#"fn main() { dbg!(&&42) }"#);
         check_edit("refm", r#"fn main() { &&42.$0 }"#, r#"fn main() { &&&mut 42 }"#);
+        check_edit(
+            "ifl",
+            r#"
+enum Option<T> { Some(T), None }
+
+fn main() {
+    let bar = &Option::Some(true);
+    bar.$0
+}
+"#,
+            r#"
+enum Option<T> { Some(T), None }
+
+fn main() {
+    let bar = &Option::Some(true);
+    if let Some($1) = bar {
+    $0
+}
+}
+"#,
+        )
     }
 
     #[test]
