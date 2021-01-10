@@ -145,8 +145,10 @@ no changes added to commit (use "git add" and/or "git commit -a")
 These changes are not changes to files: they are changes to submodules
 (more on this [later](#git-submodules)). To get rid of those, run `git submodule update` (or run any
 `x.py` command, which will automatically update the submodules).
-Note that there is currently a bug if you use worktrees, submodules, and x.py in a commit hook.
+Note that there is (as of January 2021) a bug if you use worktrees, submodules, and x.py in a commit
+hook.
 If you run into an error like:
+
 ```
 error: failed to read `/home/joshua/rustc-worktree/src/tools/miri/cargo-miri/Cargo.toml`
 
@@ -202,7 +204,7 @@ rebase. The section between `<<<<<<< HEAD` and `=======` has the code from
 master, while the other side has your version of the code. You'll need to
 decide how to deal with the conflict. You may want to keep your changes,
 keep the changes on master, or combine the two.
- 
+
 Generally, resolving the conflict consists of two steps: First, fix the
 particular conflict. Edit the file to make the changes you want and remove the
 `<<<<<<<`, `=======` and `>>>>>>>` lines in the process. Second, check the
@@ -311,7 +313,7 @@ This is because, like any dependency, we want to be able to control which versio
 Submodules allow us to do just that: every submodule is "pinned" to a certain
 commit, which doesn't change unless modified manually. If you use `git checkout <commit>`
 in the `miri` directory and go back to the `rust` directory, you can stage this
-change like any 
+change like any
 This is usually done by
 the maintainers of the project, and looks like [this][miri-update].
 

@@ -93,8 +93,6 @@ document so there is no duplication etc.?
 
 ### LLDB
 
-We have our own fork of LLDB - [https://github.com/rust-lang/lldb]
-
 Fork of LLVM project - [https://github.com/rust-lang/llvm-project]
 
 LLDB currently only works on macOS because of a dependency issue. This issue was easier to

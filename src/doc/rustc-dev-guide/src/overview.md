@@ -15,7 +15,6 @@ So first, let's look at what the compiler does to your code. For now, we will
 avoid mentioning how the compiler implements these steps except as needed;
 we'll talk about that later.
 
-
 - The compile process begins when a user writes a Rust source program in text
   and invokes the `rustc` compiler on it. The work that the compiler needs to
   perform is defined by command-line options. For example, it is possible to
@@ -158,17 +157,6 @@ satisfy/optimize for. For example,
 
 So, as you read through the rest of the guide, keep these things in mind. They
 will often inform decisions that we make.
-
-### Constant change
-
-Keep in mind that `rustc` is a real production-quality product.
-As such, it has its fair share of codebase churn and technical debt. A lot of
-the designs discussed throughout this guide are idealized designs that are not
-fully realized yet. And things keep changing so that it is hard to keep this
-guide completely up to date on everything!
-
-The compiler definitely has rough edges, but because of its design it is able
-to keep up with the requirements above.
 
 ### Intermediate representations
 

@@ -191,7 +191,7 @@ concrete integer.
 
 However, a variable of pointer or reference *type*, such as `*const T` or `&T`,
 does not have to have a pointer *value*: it could be obtaining by casting or
-transmuting an integer to a pointer (currently that is hard to do in const eval,
+transmuting an integer to a pointer (as of January 2021 that is hard to do in const eval,
 but eventually `transmute` will be stable as a `const fn`).  And similarly, when
 casting or transmuting a reference to some actual allocation to an integer, we
 end up with a pointer *value* (`Scalar::Ptr`) at integer *type* (`usize`).  This

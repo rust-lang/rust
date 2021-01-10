@@ -123,7 +123,7 @@ essence, it runs `./x.py test` after building for each of them.
 
 The integration bot [bors] is used for coordinating merges to the master
 branch. When a PR is approved, it goes into a [queue] where merges are tested
-one at a time on a wide set of platforms using GitHub Actions (currently over
+one at a time on a wide set of platforms using GitHub Actions (as of January 2021 over
 50 different configurations). Due to the limit on the number of parallel jobs,
 we run CI under the [rust-lang-ci] organization except for PRs.
 Most platforms only run the build steps, some run a restricted set of tests,

@@ -1,9 +1,10 @@
 # Parallel Compilation
 
 Most of the compiler is not parallel. This represents an opportunity for
-improving compiler performance. Much effort has been put into parallelizing
-`rustc`, but it is still pretty early days for this work. There is a lot of
-design and correctness work that needs to be done.
+improving compiler performance.
+
+As of January 2021, work on explicitly parallelizing the compiler has stalled.
+There is a lot of design and correctness work that needs to be done.
 
 One can try out the current parallel compiler work by enabling it in the
 `config.toml`.

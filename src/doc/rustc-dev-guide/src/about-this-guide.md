@@ -30,10 +30,27 @@ There are six parts to this guide:
 [p5]: ./part-5-intro.md
 [app]: ./appendix/background.md
 
-The Guide itself is of course open-source as well, and the sources can
-be found at the [GitHub repository]. If you find any mistakes in the
-guide, please file an issue about it, or even better, open a PR
-with a correction!
+### Constant change
+
+Keep in mind that `rustc` is a real production-quality product, being worked upon continuously by a
+sizeable set of contributors.
+As such, it has its fair share of codebase churn and technical debt.
+In addition, many of the ideas discussed throughout this guide are idealized designs that are not
+fully realized yet.
+All this makes keeping this guide completely up to date on everything very hard!
+
+The Guide itself is of course open-source as well, and the sources can be found at the
+[GitHub repository].
+If you find any mistakes in the guide, please file an issue about it, or even better, open a PR with
+a correction!
+
+If you do contribute to the guide, please see the corresponding
+[subsection on writing documentation in this guide].
+
+[subsection on writing documentation in this guide]: contributing.md#contributing-to-rustc-dev-guide.
+
+> “‘All conditioned things are impermanent’ — when one sees this with wisdom, one turns away from
+> suffering.” _The Dhammapada, verse 277_
 
 ## Other places to find information
 

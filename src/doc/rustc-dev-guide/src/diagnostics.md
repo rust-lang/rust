@@ -594,7 +594,7 @@ declare_lint! {
 
 If you need a combination of options that's not supported by the
 `declare_lint!` macro, you can always define your own static with a type of
-`&Lint` but this is currently linted against in the compiler tree.
+`&Lint` but this is (as of January 2021) linted against in the compiler tree.
 
 <a id="future-incompatible"></a>
 ####  Guidelines for creating a future incompatibility lint

@@ -15,9 +15,11 @@ Unfortunately, a lot of the documentation we have refers to both of these as jus
 
 First, we have the lint declarations themselves: this is where the name and default lint level and
 other metadata come from. These are normally defined by way of the [`declare_lint!`] macro, which
-boils down to a static with type `&rustc_session::lint::Lint`. We lint against direct declarations
-without the use of the macro today (though this may change in the future, as the macro is somewhat
-unwieldy to add new fields to, like all macros by example).
+boils down to a static with type `&rustc_session::lint::Lint`.
+
+As of January 2021, we lint against direct declarations without the use of the macro today
+(although this may change in the future, as the macro is somewhat unwieldy to add new fields to,
+like all macros by example).
 
 Lint declarations don't carry any "state" - they are merely global identifers and descriptions of
 lints. We assert at runtime that they are not registered twice (by lint name).

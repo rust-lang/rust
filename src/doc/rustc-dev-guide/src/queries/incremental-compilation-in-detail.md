@@ -207,7 +207,7 @@ This comes with a whole new set of implementation challenges:
   Fixed-sized, plain-old-data is preferred to complex things that need to run
   through an expensive (de-)serialization step.
 
-The following sections describe how the compiler currently solves these issues.
+The following sections describe how the compiler solves these issues.
 
 ### A Question Of Stability: Bridging The Gap Between Compilation Sessions
 

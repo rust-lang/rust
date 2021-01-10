@@ -107,7 +107,6 @@
         - [Lowering to logic](./traits/lowering-to-logic.md)
         - [Goals and clauses](./traits/goals-and-clauses.md)
         - [Canonical queries](./traits/canonical-queries.md)
-        - [Lowering module in rustc](./traits/lowering-module.md)
 - [Type checking](./type-checking.md)
     - [Method Lookup](./method-lookup.md)
     - [Variance](./variance.md)
