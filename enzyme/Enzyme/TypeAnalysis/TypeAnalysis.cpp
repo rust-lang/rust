@@ -131,7 +131,7 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
     if (notForAnalysis.count(&BB))
       continue;
     for (Instruction &I : BB) {
-      workList.push_back(&I);
+      workList.insert(&I);
     }
   }
   // Add all operands referenced in the function
@@ -391,7 +391,7 @@ void TypeAnalyzer::addToWorkList(Value *Val) {
     return;
 
   // Don't add this value to list twice
-  if (std::find(workList.begin(), workList.end(), Val) != workList.end())
+  if (workList.count(Val)) //std::find(workList.begin(), workList.end(), Val) != workList.end())
     return;
 
   // Verify this value comes from the function being analyzed
@@ -410,7 +410,7 @@ void TypeAnalyzer::addToWorkList(Value *Val) {
     assert(fntypeinfo.Function == Arg->getParent());
 
   // Add to workList
-  workList.push_back(Val);
+  workList.insert(Val);
 }
 
 void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
@@ -760,8 +760,8 @@ void TypeAnalyzer::run() {
   do {
 
     while (!Invalid && workList.size()) {
-      auto todo = workList.front();
-      workList.pop_front();
+      auto todo = *workList.begin();
+      workList.erase(workList.begin());
       if (auto ci = dyn_cast<CallInst>(todo)) {
         pendingCalls.push_back(ci);
         continue;
@@ -788,8 +788,8 @@ void TypeAnalyzer::run() {
   do {
 
     while (!Invalid && workList.size()) {
-      auto todo = workList.front();
-      workList.pop_front();
+      auto todo = *workList.begin();
+      workList.erase(workList.begin());
       if (auto ci = dyn_cast<CallInst>(todo)) {
         pendingCalls.push_back(ci);
         continue;
@@ -2157,10 +2157,10 @@ void TypeAnalyzer::visitInvokeInst(InvokeInst &call) {
   analysis[&call] = analysis[tmpCall];
   analysis.erase(tmpCall);
 
-  for (auto &a : workList) {
-    if (a == tmpCall) {
-      a = &call;
-    }
+  auto found = workList.find(tmpCall);
+  if (found != workList.end()) {
+    workList.erase(found);
+    workList.insert(&call);
   }
 
   tmpCall->eraseFromParent();

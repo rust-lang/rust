@@ -157,7 +157,7 @@ public:
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
 public:
   /// List of value's which should be re-analyzed now with new information
-  std::deque<llvm::Value *> workList;
+  std::set<llvm::Value *> workList;
 
 private:
   llvm::SmallPtrSet<llvm::BasicBlock *, 4> notForAnalysis;
