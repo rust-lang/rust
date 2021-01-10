@@ -42,7 +42,7 @@ The HIR uses a bunch of different identifiers that coexist and serve different p
   Unlike [`DefId`]s, a [`HirId`] can refer to [fine-grained entities][Node] like expressions,
   but stays local to the current crate.
 
-- A [`BodyId`] identifies a HIR [`Body`] in the current crate. It is currenty only
+- A [`BodyId`] identifies a HIR [`Body`] in the current crate. It is currently only
   a wrapper around a [`HirId`]. For more info about HIR bodies, please refer to the
   [HIR chapter][hir-bodies].
 
