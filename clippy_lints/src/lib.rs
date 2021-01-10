@@ -241,6 +241,7 @@ mod loops;
 mod macro_use;
 mod main_recursion;
 mod manual_async_fn;
+mod manual_map;
 mod manual_non_exhaustive;
 mod manual_ok_or;
 mod manual_strip;
@@ -706,6 +707,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &macro_use::MACRO_USE_IMPORTS,
         &main_recursion::MAIN_RECURSION,
         &manual_async_fn::MANUAL_ASYNC_FN,
+        &manual_map::MANUAL_MAP,
         &manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
         &manual_ok_or::MANUAL_OK_OR,
         &manual_strip::MANUAL_STRIP,
@@ -1262,6 +1264,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box case_sensitive_file_extension_comparisons::CaseSensitiveFileExtensionComparisons);
     store.register_late_pass(|| box redundant_slicing::RedundantSlicing);
     store.register_late_pass(|| box from_str_radix_10::FromStrRadix10);
+    store.register_late_pass(|| box manual_map::ManualMap);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1521,6 +1524,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::WHILE_LET_ON_ITERATOR),
         LintId::of(&main_recursion::MAIN_RECURSION),
         LintId::of(&manual_async_fn::MANUAL_ASYNC_FN),
+        LintId::of(&manual_map::MANUAL_MAP),
         LintId::of(&manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
         LintId::of(&manual_strip::MANUAL_STRIP),
         LintId::of(&manual_unwrap_or::MANUAL_UNWRAP_OR),
@@ -1750,6 +1754,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::WHILE_LET_ON_ITERATOR),
         LintId::of(&main_recursion::MAIN_RECURSION),
         LintId::of(&manual_async_fn::MANUAL_ASYNC_FN),
+        LintId::of(&manual_map::MANUAL_MAP),
         LintId::of(&manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
         LintId::of(&map_clone::MAP_CLONE),
         LintId::of(&matches::INFALLIBLE_DESTRUCTURING_MATCH),
