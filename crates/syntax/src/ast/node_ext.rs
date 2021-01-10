@@ -133,7 +133,7 @@ impl ast::Attr {
             first_token.and_then(|token| token.next_token()).as_ref().map(SyntaxToken::kind);
 
         match (first_token_kind, second_token_kind) {
-            (Some(SyntaxKind::POUND), Some(T![!])) => AttrKind::Inner,
+            (Some(T![#]), Some(T![!])) => AttrKind::Inner,
             _ => AttrKind::Outer,
         }
     }

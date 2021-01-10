@@ -5,7 +5,7 @@
 
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use syntax::{ast, AstNode, SyntaxKind};
+use syntax::{ast, AstNode, T};
 
 use crate::{
     context::CompletionContext,
@@ -205,8 +205,7 @@ fn complete_lint(
 fn parse_comma_sep_input(derive_input: ast::TokenTree) -> Result<FxHashSet<String>, ()> {
     match (derive_input.left_delimiter_token(), derive_input.right_delimiter_token()) {
         (Some(left_paren), Some(right_paren))
-            if left_paren.kind() == SyntaxKind::L_PAREN
-                && right_paren.kind() == SyntaxKind::R_PAREN =>
+            if left_paren.kind() == T!['('] && right_paren.kind() == T![')'] =>
         {
             let mut input_derives = FxHashSet::default();
             let mut current_derive = String::new();
@@ -218,7 +217,7 @@ fn parse_comma_sep_input(derive_input: ast::TokenTree) -> Result<FxHashSet<Strin
                 .skip(1)
                 .take_while(|token| token != &right_paren)
             {
-                if SyntaxKind::COMMA == token.kind() {
+                if T![,] == token.kind() {
                     if !current_derive.is_empty() {
                         input_derives.insert(current_derive);
                         current_derive = String::new();

@@ -1,6 +1,6 @@
 use syntax::{
     ast::{self, AstNode},
-    match_ast, SyntaxElement, SyntaxKind, TextRange, TextSize, T,
+    match_ast, SyntaxElement, TextRange, TextSize, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -136,14 +136,14 @@ fn needs_parentheses_around_macro_contents(macro_contents: Vec<SyntaxElement>) -
             symbol_kind => {
                 let symbol_not_in_bracket = unpaired_brackets_in_contents.is_empty();
                 if symbol_not_in_bracket
-                    && symbol_kind != SyntaxKind::COLON // paths
-                    && (symbol_kind != SyntaxKind::DOT // field/method access
+                    && symbol_kind != T![:] // paths
+                    && (symbol_kind != T![.] // field/method access
                         || macro_contents // range expressions consist of two SyntaxKind::Dot in macro invocations
                             .peek()
-                            .map(|element| element.kind() == SyntaxKind::DOT)
+                            .map(|element| element.kind() == T![.])
                             .unwrap_or(false))
-                    && symbol_kind != SyntaxKind::QUESTION // try operator
-                    && (symbol_kind.is_punct() || symbol_kind == SyntaxKind::AS_KW)
+                    && symbol_kind != T![?] // try operator
+                    && (symbol_kind.is_punct() || symbol_kind == T![as])
                 {
                     return true;
                 }

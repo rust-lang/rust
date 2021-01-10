@@ -5,7 +5,7 @@ use syntax::{
     ast::{self, LoopBodyOwner},
     match_ast, AstNode, Direction, NodeOrToken, SyntaxElement,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken,
+    SyntaxNode, SyntaxToken, T,
 };
 
 #[cfg(test)]
@@ -119,7 +119,7 @@ pub(crate) fn unsafe_is_prev(element: SyntaxElement) -> bool {
     element
         .into_token()
         .and_then(|it| previous_non_trivia_token(it))
-        .filter(|it| it.kind() == UNSAFE_KW)
+        .filter(|it| it.kind() == T![unsafe])
         .is_some()
 }
 #[test]
@@ -131,7 +131,7 @@ pub(crate) fn if_is_prev(element: SyntaxElement) -> bool {
     element
         .into_token()
         .and_then(|it| previous_non_trivia_token(it))
-        .filter(|it| it.kind() == IF_KW)
+        .filter(|it| it.kind() == T![if])
         .is_some()
 }
 
@@ -139,7 +139,7 @@ pub(crate) fn fn_is_prev(element: SyntaxElement) -> bool {
     element
         .into_token()
         .and_then(|it| previous_non_trivia_token(it))
-        .filter(|it| it.kind() == FN_KW)
+        .filter(|it| it.kind() == T![fn])
         .is_some()
 }
 #[test]
@@ -154,7 +154,7 @@ pub(crate) fn for_is_prev2(element: SyntaxElement) -> bool {
         .into_token()
         .and_then(|it| previous_non_trivia_token(it))
         .and_then(|it| previous_non_trivia_token(it))
-        .filter(|it| it.kind() == FOR_KW)
+        .filter(|it| it.kind() == T![for])
         .is_some()
 }
 #[test]

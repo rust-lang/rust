@@ -21,7 +21,7 @@ use ide_db::{
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
-    match_ast, AstNode, SyntaxKind, SyntaxNode, TextRange, TokenAtOffset,
+    match_ast, AstNode, SyntaxNode, TextRange, TokenAtOffset, T,
 };
 
 use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo, SymbolKind};
@@ -203,7 +203,7 @@ fn get_struct_def_name_for_struct_literal_search(
     position: FilePosition,
 ) -> Option<ast::Name> {
     if let TokenAtOffset::Between(ref left, ref right) = syntax.token_at_offset(position.offset) {
-        if right.kind() != SyntaxKind::L_CURLY && right.kind() != SyntaxKind::L_PAREN {
+        if right.kind() != T!['{'] && right.kind() != T!['('] {
             return None;
         }
         if let Some(name) =
@@ -230,7 +230,7 @@ fn get_enum_def_name_for_struct_literal_search(
     position: FilePosition,
 ) -> Option<ast::Name> {
     if let TokenAtOffset::Between(ref left, ref right) = syntax.token_at_offset(position.offset) {
-        if right.kind() != SyntaxKind::L_CURLY && right.kind() != SyntaxKind::L_PAREN {
+        if right.kind() != T!['{'] && right.kind() != T!['('] {
             return None;
         }
         if let Some(name) =
@@ -255,8 +255,7 @@ fn try_find_self_references(
     syntax: &SyntaxNode,
     position: FilePosition,
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
-    let self_token =
-        syntax.token_at_offset(position.offset).find(|t| t.kind() == SyntaxKind::SELF_KW)?;
+    let self_token = syntax.token_at_offset(position.offset).find(|t| t.kind() == T![self])?;
     let parent = self_token.parent();
     match_ast! {
         match parent {
