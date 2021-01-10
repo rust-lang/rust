@@ -11,11 +11,9 @@
 // @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.is_null"]' 'pointer::is_null'
 // @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.is_null"]' '*const::is_null'
 // @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.is_null"]' '*mut::is_null'
-// @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.is_null"]' '*::is_null'
 //! [pointer::is_null]
 //! [*const::is_null]
 //! [*mut::is_null]
-//! [*::is_null]
 
 // @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.unit.html"]' 'unit'
 //! [unit]
