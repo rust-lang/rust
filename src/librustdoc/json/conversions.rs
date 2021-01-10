@@ -422,7 +422,7 @@ impl From<clean::Impl> for Impl {
             trait_,
             for_,
             items,
-            polarity,
+            negative_polarity,
             synthetic,
             blanket_impl,
         } = impl_;
@@ -436,7 +436,7 @@ impl From<clean::Impl> for Impl {
             trait_: trait_.map(Into::into),
             for_: for_.into(),
             items: ids(items),
-            negative: polarity == Some(clean::ImplPolarity::Negative),
+            negative: negative_polarity,
             synthetic,
             blanket_impl: blanket_impl.map(Into::into),
         }

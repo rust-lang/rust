@@ -175,9 +175,11 @@ impl Item {
     }
 
     crate fn is_crate(&self) -> bool {
-        matches!(*self.kind,
+        matches!(
+            *self.kind,
             StrippedItem(box ModuleItem(Module { is_crate: true, .. }))
-            | ModuleItem(Module { is_crate: true, .. }))
+                | ModuleItem(Module { is_crate: true, .. })
+        )
     }
     crate fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
@@ -1226,6 +1228,7 @@ crate enum Type {
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
     Slice(Box<Type>),
+    /// The `String` field is about the size or the constant representing the array's length.
     Array(Box<Type>, String),
     Never,
     RawPointer(Mutability, Box<Type>),
@@ -1857,12 +1860,6 @@ crate struct Constant {
     crate is_literal: bool,
 }
 
-#[derive(Clone, PartialEq, Debug)]
-crate enum ImplPolarity {
-    Positive,
-    Negative,
-}
-
 #[derive(Clone, Debug)]
 crate struct Impl {
     crate unsafety: hir::Unsafety,
@@ -1871,7 +1868,7 @@ crate struct Impl {
     crate trait_: Option<Type>,
     crate for_: Type,
     crate items: Vec<Item>,
-    crate polarity: Option<ImplPolarity>,
+    crate negative_polarity: bool,
     crate synthetic: bool,
     crate blanket_impl: Option<Type>,
 }

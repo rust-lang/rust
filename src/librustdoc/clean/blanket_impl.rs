@@ -131,7 +131,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .in_definition_order()
                             .collect::<Vec<_>>()
                             .clean(self.cx),
-                        polarity: None,
+                        negative_polarity: false,
                         synthetic: false,
                         blanket_impl: Some(trait_ref.self_ty().clean(self.cx)),
                     }),
