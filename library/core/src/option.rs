@@ -428,6 +428,37 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns the contained [`Some`] value, consuming the `self` value,
+    /// without checking that the value is not [`None`].
+    ///
+    /// # Safety
+    ///
+    /// Undefined behavior if the value is [`None`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x = Some("air");
+    /// assert_eq!(unsafe { x.unwrap_unchecked() }, "air");
+    /// ```
+    ///
+    /// ```no_run
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x: Option<&str> = None;
+    /// assert_eq!(unsafe { x.unwrap_unchecked() }, "air"); // Undefined behavior!
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "none")]
+    pub unsafe fn unwrap_unchecked(self) -> T {
+        debug_assert!(self.is_some());
+        match self {
+            Some(val) => val,
+            None => unsafe { hint::unreachable_unchecked() },
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Transforming contained values
     /////////////////////////////////////////////////////////////////////////
