@@ -990,6 +990,9 @@ impl<T, A: Allocator> Vec<T, A> {
         //   such that no value will be dropped twice in case `drop_in_place`
         //   were to panic once (if it panics twice, the program aborts).
         unsafe {
+            // Note: It's intentional that this is `>` and not `>=`.
+            //       Changing it to `>=` has negative performance
+            //       implications in some cases. See #78884 for more.
             if len > self.len {
                 return;
             }
