@@ -113,6 +113,48 @@ impl From<char> for u32 {
     }
 }
 
+#[stable(feature = "more_char_conversions", since = "1.51.0")]
+impl From<char> for u64 {
+    /// Converts a [`char`] into a [`u64`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::mem;
+    ///
+    /// let c = '👤';
+    /// let u = u64::from(c);
+    /// assert!(8 == mem::size_of_val(&u))
+    /// ```
+    #[inline]
+    fn from(c: char) -> Self {
+        // The char is casted to the value of the code point, then zero-extended to 64 bit.
+        // See [https://doc.rust-lang.org/reference/expressions/operator-expr.html#semantics]
+        c as u64
+    }
+}
+
+#[stable(feature = "more_char_conversions", since = "1.51.0")]
+impl From<char> for u128 {
+    /// Converts a [`char`] into a [`u128`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::mem;
+    ///
+    /// let c = '⚙';
+    /// let u = u128::from(c);
+    /// assert!(16 == mem::size_of_val(&u))
+    /// ```
+    #[inline]
+    fn from(c: char) -> Self {
+        // The char is casted to the value of the code point, then zero-extended to 128 bit.
+        // See [https://doc.rust-lang.org/reference/expressions/operator-expr.html#semantics]
+        c as u128
+    }
+}
+
 /// Maps a byte in 0x00..=0xFF to a `char` whose code point has the same value, in U+0000..=U+00FF.
 ///
 /// Unicode is designed such that this effectively decodes bytes
