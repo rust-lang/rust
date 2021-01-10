@@ -36,6 +36,15 @@ impl fmt::Display for RenameError {
 
 impl Error for RenameError {}
 
+macro_rules! format_err {
+    ($fmt:expr) => {RenameError(format!($fmt))};
+    ($fmt:expr, $($arg:tt)+) => {RenameError(format!($fmt, $($arg)+))}
+}
+
+macro_rules! bail {
+    ($($tokens:tt)*) => {return Err(format_err!($($tokens)*))}
+}
+
 pub(crate) fn prepare_rename(
     db: &RootDatabase,
     position: FilePosition,
@@ -119,16 +128,13 @@ fn check_identifier(new_name: &str) -> RenameResult<IdentifierKind> {
                 Ok(IdentifierKind::Lifetime)
             }
             (SyntaxKind::LIFETIME_IDENT, _) => {
-                Err(format!("Invalid name `{0}`: Cannot rename lifetime to {0}", new_name))
+                bail!("Invalid name `{0}`: Cannot rename lifetime to {0}", new_name)
             }
-            (_, Some(syntax_error)) => {
-                Err(format!("Invalid name `{}`: {}", new_name, syntax_error))
-            }
-            (_, None) => Err(format!("Invalid name `{}`: not an identifier", new_name)),
+            (_, Some(syntax_error)) => bail!("Invalid name `{}`: {}", new_name, syntax_error),
+            (_, None) => bail!("Invalid name `{}`: not an identifier", new_name),
         },
-        None => Err(format!("Invalid name `{}`: not an identifier", new_name)),
+        None => bail!("Invalid name `{}`: not an identifier", new_name),
     }
-    .map_err(RenameError)
 }
 
 fn find_module_at_offset(
@@ -164,7 +170,7 @@ fn find_all_refs(
     position: FilePosition,
 ) -> RenameResult<RangeInfo<ReferenceSearchResult>> {
     crate::references::find_all_refs(sema, position, None)
-        .ok_or_else(|| RenameError("No references found at position".to_string()))
+        .ok_or_else(|| format_err!("No references found at position"))
 }
 
 fn source_edit_from_reference(
@@ -237,10 +243,7 @@ fn rename_mod(
     new_name: &str,
 ) -> RenameResult<RangeInfo<SourceChange>> {
     if IdentifierKind::Ident != check_identifier(new_name)? {
-        return Err(RenameError(format!(
-            "Invalid name `{0}`: cannot rename module to {0}",
-            new_name
-        )));
+        bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
     }
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
@@ -291,27 +294,26 @@ fn rename_to_self(
 
     let (fn_def, fn_ast) = find_node_at_offset::<ast::Fn>(syn, position.offset)
         .and_then(|fn_ast| sema.to_def(&fn_ast).zip(Some(fn_ast)))
-        .ok_or_else(|| RenameError("No surrounding method declaration found".to_string()))?;
+        .ok_or_else(|| format_err!("No surrounding method declaration found"))?;
     let param_range = fn_ast
         .param_list()
         .and_then(|p| p.params().next())
-        .ok_or_else(|| RenameError("Method has no parameters".to_string()))?
+        .ok_or_else(|| format_err!("Method has no parameters"))?
         .syntax()
         .text_range();
     if !param_range.contains(position.offset) {
-        return Err(RenameError("Only the first parameter can be self".to_string()));
+        bail!("Only the first parameter can be self");
     }
 
     let impl_block = find_node_at_offset::<ast::Impl>(syn, position.offset)
         .and_then(|def| sema.to_def(&def))
-        .ok_or_else(|| RenameError("No impl block found for function".to_string()))?;
+        .ok_or_else(|| format_err!("No impl block found for function"))?;
     if fn_def.self_param(sema.db).is_some() {
-        return Err(RenameError("Method already has a self parameter".to_string()));
+        bail!("Method already has a self parameter");
     }
 
     let params = fn_def.assoc_fn_params(sema.db);
-    let first_param =
-        params.first().ok_or_else(|| RenameError("Method has no parameters".into()))?;
+    let first_param = params.first().ok_or_else(|| format_err!("Method has no parameters"))?;
     let first_param_ty = first_param.ty();
     let impl_ty = impl_block.target_ty(sema.db);
     let (ty, self_param) = if impl_ty.remove_ref().is_some() {
@@ -324,7 +326,7 @@ fn rename_to_self(
     };
 
     if ty != impl_ty {
-        return Err(RenameError("Parameter type differs from impl block type".to_string()));
+        bail!("Parameter type differs from impl block type");
     }
 
     let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
@@ -334,7 +336,7 @@ fn rename_to_self(
         .partition(|reference| param_range.intersect(reference.file_range.range).is_some());
 
     if param_ref.is_empty() {
-        return Err(RenameError("Parameter to rename not found".to_string()));
+        bail!("Parameter to rename not found");
     }
 
     let mut edits = usages
@@ -385,9 +387,7 @@ fn rename_self_to_param(
 ) -> Result<RangeInfo<SourceChange>, RenameError> {
     let ident_kind = check_identifier(new_name)?;
     match ident_kind {
-        IdentifierKind::Lifetime => {
-            return Err(RenameError(format!("Invalid name `{}`: not an identifier", new_name)))
-        }
+        IdentifierKind::Lifetime => bail!("Invalid name `{}`: not an identifier", new_name),
         IdentifierKind::ToSelf => {
             // no-op
             return Ok(RangeInfo::new(self_token.text_range(), SourceChange::default()));
@@ -399,7 +399,7 @@ fn rename_self_to_param(
 
     let text = sema.db.file_text(position.file_id);
     let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)
-        .ok_or_else(|| RenameError("No surrounding method declaration found".to_string()))?;
+        .ok_or_else(|| format_err!("No surrounding method declaration found"))?;
     let search_range = fn_def.syntax().text_range();
 
     let mut edits: Vec<SourceFileEdit> = vec![];
@@ -414,7 +414,7 @@ fn rename_self_to_param(
         {
             let edit = if let Some(ref self_param) = ast::SelfParam::cast(usage.parent()) {
                 text_edit_from_self_param(syn, self_param, new_name)
-                    .ok_or_else(|| RenameError("No target type found".to_string()))?
+                    .ok_or_else(|| format_err!("No target type found"))?
             } else {
                 TextEdit::replace(usage.text_range(), String::from(new_name))
             };
@@ -423,9 +423,7 @@ fn rename_self_to_param(
     }
 
     if edits.len() > 1 && ident_kind == IdentifierKind::Underscore {
-        return Err(RenameError(format!(
-            "Cannot rename reference to `_` as it is being referenced multiple times",
-        )));
+        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
     }
 
     let range = ast::SelfParam::cast(self_token.parent())
@@ -446,15 +444,10 @@ fn rename_reference(
         (IdentifierKind::ToSelf, ReferenceKind::Lifetime)
         | (IdentifierKind::Underscore, ReferenceKind::Lifetime)
         | (IdentifierKind::Ident, ReferenceKind::Lifetime) => {
-            return Err(RenameError(format!(
-                "Invalid name `{}`: not a lifetime identifier",
-                new_name
-            )))
+            bail!("Invalid name `{}`: not a lifetime identifier", new_name)
         }
         (IdentifierKind::Lifetime, ReferenceKind::Lifetime) => (),
-        (IdentifierKind::Lifetime, _) => {
-            return Err(RenameError(format!("Invalid name `{}`: not an identifier", new_name)))
-        }
+        (IdentifierKind::Lifetime, _) => bail!("Invalid name `{}`: not an identifier", new_name),
         (IdentifierKind::ToSelf, ReferenceKind::SelfKw) => {
             //no-op
             return Ok(RangeInfo::new(range, SourceChange::default()));
@@ -463,9 +456,7 @@ fn rename_reference(
             return rename_to_self(sema, position);
         }
         (IdentifierKind::Underscore, _) if !refs.references.is_empty() => {
-            return Err(RenameError(format!(
-                "Cannot rename reference to `_` as it is being referenced multiple times",
-            )))
+            bail!("Cannot rename reference to `_` as it is being referenced multiple times")
         }
         (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => (),
     }
