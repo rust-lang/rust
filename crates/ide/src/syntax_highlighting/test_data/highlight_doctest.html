@@ -37,72 +37,72 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
 <pre><code><span class="comment documentation">/// ```</span>
-<span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="punctuation injected">_</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="string_literal injected">"early doctests should not go boom"</span><span class="punctuation injected">;</span>
+<span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="punctuation injected">_</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="string_literal injected">"early doctests should not go boom"</span><span class="semicolon injected">;</span>
 <span class="comment documentation">/// ```</span>
-<span class="keyword">struct</span> <span class="struct declaration">Foo</span> <span class="punctuation">{</span>
-    <span class="field declaration">bar</span><span class="punctuation">:</span> <span class="builtin_type">bool</span><span class="punctuation">,</span>
-<span class="punctuation">}</span>
+<span class="keyword">struct</span> <span class="struct declaration">Foo</span> <span class="brace">{</span>
+    <span class="field declaration">bar</span><span class="colon">:</span> <span class="builtin_type">bool</span><span class="comma">,</span>
+<span class="brace">}</span>
 
-<span class="keyword">impl</span> <span class="struct">Foo</span> <span class="punctuation">{</span>
+<span class="keyword">impl</span> <span class="struct">Foo</span> <span class="brace">{</span>
     <span class="comment documentation">/// ```</span>
     <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="punctuation injected">_</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="string_literal injected">"Call me</span>
     <span class="comment">//    KILLER WHALE</span>
-    <span class="comment documentation">/// </span><span class="string_literal injected">    Ishmael."</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// </span><span class="string_literal injected">    Ishmael."</span><span class="semicolon injected">;</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="constant declaration associated">bar</span><span class="punctuation">:</span> <span class="builtin_type">bool</span> <span class="operator">=</span> <span class="bool_literal">true</span><span class="punctuation">;</span>
+    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="constant declaration associated">bar</span><span class="colon">:</span> <span class="builtin_type">bool</span> <span class="operator">=</span> <span class="bool_literal">true</span><span class="semicolon">;</span>
 
     <span class="comment documentation">/// Constructs a new `Foo`.</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// # Examples</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```</span>
-    <span class="comment documentation">/// #</span><span class="none injected"> </span><span class="attribute attribute injected">#</span><span class="attribute attribute injected">!</span><span class="attribute attribute injected">[</span><span class="function attribute injected">allow</span><span class="punctuation attribute injected">(</span><span class="attribute attribute injected">unused_mut</span><span class="punctuation attribute injected">)</span><span class="attribute attribute injected">]</span>
-    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="keyword injected">mut</span><span class="none injected"> </span><span class="variable declaration injected mutable">foo</span><span class="punctuation injected">:</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// #</span><span class="none injected"> </span><span class="attribute attribute injected">#</span><span class="attribute attribute injected">!</span><span class="attribute attribute injected">[</span><span class="function attribute injected">allow</span><span class="parentheses attribute injected">(</span><span class="attribute attribute injected">unused_mut</span><span class="parentheses attribute injected">)</span><span class="attribute attribute injected">]</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="keyword injected">mut</span><span class="none injected"> </span><span class="variable declaration injected mutable">foo</span><span class="colon injected">:</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="parentheses injected">(</span><span class="parentheses injected">)</span><span class="semicolon injected">;</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function declaration static associated">new</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="struct">Foo</span> <span class="punctuation">{</span>
-        <span class="struct">Foo</span> <span class="punctuation">{</span> <span class="field">bar</span><span class="punctuation">:</span> <span class="bool_literal">true</span> <span class="punctuation">}</span>
-    <span class="punctuation">}</span>
+    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function declaration static associated">new</span><span class="parentheses">(</span><span class="parentheses">)</span> <span class="operator">-&gt;</span> <span class="struct">Foo</span> <span class="brace">{</span>
+        <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">bar</span><span class="colon">:</span> <span class="bool_literal">true</span> <span class="brace">}</span>
+    <span class="brace">}</span>
 
     <span class="comment documentation">/// `bar` method on `Foo`.</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// # Examples</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```</span>
-    <span class="comment documentation">/// </span><span class="keyword injected">use</span><span class="none injected"> </span><span class="module injected">x</span><span class="operator injected">::</span><span class="module injected">y</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">use</span><span class="none injected"> </span><span class="module injected">x</span><span class="operator injected">::</span><span class="module injected">y</span><span class="semicolon injected">;</span>
     <span class="comment documentation">///</span>
-    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">foo</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">foo</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="parentheses injected">(</span><span class="parentheses injected">)</span><span class="semicolon injected">;</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// </span><span class="comment injected">// calls bar on foo</span>
-    <span class="comment documentation">/// </span><span class="macro injected">assert!</span><span class="punctuation injected">(</span><span class="none injected">foo</span><span class="operator injected">.</span><span class="none injected">bar</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// </span><span class="macro injected">assert!</span><span class="parentheses injected">(</span><span class="none injected">foo</span><span class="operator injected">.</span><span class="none injected">bar</span><span class="parentheses injected">(</span><span class="parentheses injected">)</span><span class="parentheses injected">)</span><span class="semicolon injected">;</span>
     <span class="comment documentation">///</span>
-    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">bar</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="variable injected">foo</span><span class="operator injected">.</span><span class="field injected">bar</span><span class="none injected"> </span><span class="operator injected">||</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="constant injected">bar</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">bar</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="variable injected">foo</span><span class="operator injected">.</span><span class="field injected">bar</span><span class="none injected"> </span><span class="operator injected">||</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="constant injected">bar</span><span class="semicolon injected">;</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// </span><span class="comment injected">/* multi-line</span>
     <span class="comment documentation">/// </span><span class="comment injected">       comment */</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">multi_line_string</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="string_literal injected">"Foo</span>
     <span class="comment documentation">/// </span><span class="string_literal injected">  bar</span>
-    <span class="comment documentation">/// </span><span class="string_literal injected">         "</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// </span><span class="string_literal injected">         "</span><span class="semicolon injected">;</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```rust,no_run</span>
-    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">foobar</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="operator injected">.</span><span class="function injected">bar</span><span class="punctuation injected">(</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">foobar</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="parentheses injected">(</span><span class="parentheses injected">)</span><span class="operator injected">.</span><span class="function injected">bar</span><span class="parentheses injected">(</span><span class="parentheses injected">)</span><span class="semicolon injected">;</span>
     <span class="comment documentation">/// ```</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```sh</span>
     <span class="comment documentation">/// echo 1</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration associated">foo</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="punctuation">{</span>
+    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration associated">foo</span><span class="parentheses">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="parentheses">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
         <span class="bool_literal">true</span>
-    <span class="punctuation">}</span>
-<span class="punctuation">}</span>
+    <span class="brace">}</span>
+<span class="brace">}</span>
 
 <span class="comment documentation">/// ```</span>
-<span class="comment documentation">/// </span><span class="macro injected">noop!</span><span class="punctuation injected">(</span><span class="numeric_literal injected">1</span><span class="punctuation injected">)</span><span class="punctuation injected">;</span>
+<span class="comment documentation">/// </span><span class="macro injected">noop!</span><span class="parentheses injected">(</span><span class="numeric_literal injected">1</span><span class="parentheses injected">)</span><span class="semicolon injected">;</span>
 <span class="comment documentation">/// ```</span>
-<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">noop</span> <span class="punctuation">{</span>
-    <span class="punctuation">(</span><span class="punctuation">$</span>expr<span class="punctuation">:</span>expr<span class="punctuation">)</span> <span class="operator">=</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
+<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">noop</span> <span class="brace">{</span>
+    <span class="parentheses">(</span><span class="punctuation">$</span>expr<span class="colon">:</span>expr<span class="parentheses">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
         <span class="punctuation">$</span>expr
-    <span class="punctuation">}</span>
-<span class="punctuation">}</span></code></pre>
+    <span class="brace">}</span>
+<span class="brace">}</span></code></pre>

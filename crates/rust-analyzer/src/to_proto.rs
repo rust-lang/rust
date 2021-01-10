@@ -6,9 +6,9 @@ use std::{
 
 use ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
-    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlRange, HlTag, Indel, InlayHint,
-    InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget, ReferenceAccess, Runnable,
-    Severity, SourceChange, SourceFileEdit, SymbolKind, TextEdit, TextRange, TextSize,
+    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlPunct, HlRange, HlTag, Indel,
+    InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget, ReferenceAccess,
+    Runnable, Severity, SourceChange, SourceFileEdit, SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 
@@ -423,7 +423,17 @@ fn semantic_token_type_and_modifiers(
         HlTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
         HlTag::Operator => lsp_types::SemanticTokenType::OPERATOR,
         HlTag::EscapeSequence => semantic_tokens::ESCAPE_SEQUENCE,
-        HlTag::Punctuation => semantic_tokens::PUNCTUATION,
+        HlTag::Punctuation(punct) => match punct {
+            HlPunct::Bracket => semantic_tokens::BRACKET,
+            HlPunct::Brace => semantic_tokens::BRACE,
+            HlPunct::Parenthesis => semantic_tokens::PARENTHESIS,
+            HlPunct::Angle => semantic_tokens::ANGLE,
+            HlPunct::Comma => semantic_tokens::COMMA,
+            HlPunct::Dot => semantic_tokens::DOT,
+            HlPunct::Colon => semantic_tokens::COLON,
+            HlPunct::Semi => semantic_tokens::SEMICOLON,
+            HlPunct::Other => semantic_tokens::PUNCTUATION,
+        },
     };
 
     for modifier in highlight.mods.iter() {
