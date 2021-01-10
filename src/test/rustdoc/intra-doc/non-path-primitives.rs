@@ -8,6 +8,15 @@
 // @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.array.html#method.map"]' 'array::map'
 //! [array::map]
 
+// @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.str.html"]' 'owned str'
+// @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.str.html"]' 'str ref'
+// @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.str.html#method.is_empty"]' 'str::is_empty'
+// @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.str.html#method.len"]' '&str::len'
+//! [owned str][str]
+//! [str ref][&str]
+//! [str::is_empty]
+//! [&str::len]
+
 // @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.is_null"]' 'pointer::is_null'
 // @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.is_null"]' '*const::is_null'
 // @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.is_null"]' '*mut::is_null'
