@@ -257,7 +257,16 @@ pub fn nt_to_tokenstream(
     let tokens = match *nt {
         Nonterminal::NtItem(ref item) => prepend_attrs(sess, &item.attrs, nt, item.tokens.as_ref()),
         Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.as_ref()),
-        Nonterminal::NtStmt(ref stmt) => prepend_attrs(sess, stmt.attrs(), nt, stmt.tokens()),
+        Nonterminal::NtStmt(ref stmt) => {
+            let do_prepend = |tokens| prepend_attrs(sess, stmt.attrs(), nt, tokens);
+            if let ast::StmtKind::Empty = stmt.kind {
+                let tokens: TokenStream =
+                    tokenstream::TokenTree::token(token::Semi, stmt.span).into();
+                do_prepend(Some(&LazyTokenStream::new(tokens)))
+            } else {
+                do_prepend(stmt.tokens())
+            }
+        }
         Nonterminal::NtPat(ref pat) => convert_tokens(pat.tokens.as_ref()),
         Nonterminal::NtTy(ref ty) => convert_tokens(ty.tokens.as_ref()),
         Nonterminal::NtIdent(ident, is_raw) => {
