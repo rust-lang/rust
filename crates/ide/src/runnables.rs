@@ -96,21 +96,23 @@ impl Runnable {
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(file_id);
-    source_file.syntax().descendants().filter_map(|i| runnable(&sema, i)).collect()
-}
-
-pub(crate) fn runnable(sema: &Semantics<RootDatabase>, item: SyntaxNode) -> Option<Runnable> {
-    let runnable_item = match_ast! {
-        match (item.clone()) {
-            ast::Fn(func) => {
-                let def = sema.to_def(&func)?;
-                runnable_fn(sema, def)
-            },
-            ast::Module(it) => runnable_mod(sema, it),
-            _ => None,
-        }
-    };
-    runnable_item.or_else(|| runnable_doctest(sema, item))
+    source_file
+        .syntax()
+        .descendants()
+        .filter_map(|item| {
+            let runnable = match_ast! {
+                match item {
+                    ast::Fn(func) => {
+                        let def = sema.to_def(&func)?;
+                        runnable_fn(&sema, def)
+                    },
+                    ast::Module(it) => runnable_mod(&sema, it),
+                    _ => None,
+                }
+            };
+            runnable.or_else(|| runnable_doctest(&sema, item))
+        })
+        .collect()
 }
 
 pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) -> Option<Runnable> {
@@ -143,6 +145,29 @@ pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) ->
     );
     let cfg = def.attrs(sema.db).cfg();
     Some(Runnable { nav, kind, cfg })
+}
+
+pub(crate) fn runnable_mod(
+    sema: &Semantics<RootDatabase>,
+    module: ast::Module,
+) -> Option<Runnable> {
+    if !has_test_function_or_multiple_test_submodules(&module) {
+        return None;
+    }
+    let module_def = sema.to_def(&module)?;
+
+    let path = module_def
+        .path_to_root(sema.db)
+        .into_iter()
+        .rev()
+        .filter_map(|it| it.name(sema.db))
+        .join("::");
+
+    let def = sema.to_def(&module)?;
+    let attrs = def.attrs(sema.db);
+    let cfg = attrs.cfg();
+    let nav = module_def.to_nav(sema.db);
+    Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg })
 }
 
 fn runnable_doctest(sema: &Semantics<RootDatabase>, item: SyntaxNode) -> Option<Runnable> {
@@ -251,26 +276,6 @@ fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
 
         false
     })
-}
-
-fn runnable_mod(sema: &Semantics<RootDatabase>, module: ast::Module) -> Option<Runnable> {
-    if !has_test_function_or_multiple_test_submodules(&module) {
-        return None;
-    }
-    let module_def = sema.to_def(&module)?;
-
-    let path = module_def
-        .path_to_root(sema.db)
-        .into_iter()
-        .rev()
-        .filter_map(|it| it.name(sema.db))
-        .join("::");
-
-    let def = sema.to_def(&module)?;
-    let attrs = def.attrs(sema.db);
-    let cfg = attrs.cfg();
-    let nav = module_def.to_nav(sema.db);
-    Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg })
 }
 
 // We could create runnables for modules with number_of_test_submodules > 0,

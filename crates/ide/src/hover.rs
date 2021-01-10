@@ -17,7 +17,7 @@ use crate::{
     doc_links::{remove_links, rewrite_links},
     markdown_remove::remove_markdown,
     markup::Markup,
-    runnables::{runnable, runnable_fn},
+    runnables::{runnable_fn, runnable_mod},
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
 };
 
@@ -192,7 +192,7 @@ fn runnable_action(
         Definition::ModuleDef(it) => match it {
             ModuleDef::Module(it) => match it.definition_source(sema.db).value {
                 ModuleSource::Module(it) => {
-                    runnable(&sema, it.syntax().clone()).map(|it| HoverAction::Runnable(it))
+                    runnable_mod(&sema, it).map(|it| HoverAction::Runnable(it))
                 }
                 _ => None,
             },
