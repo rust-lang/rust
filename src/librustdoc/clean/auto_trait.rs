@@ -84,14 +84,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         new_generics
                     });
 
-                let polarity;
+                let negative_polarity;
                 let new_generics = match result {
                     AutoTraitResult::PositiveImpl(new_generics) => {
-                        polarity = None;
+                        negative_polarity = false;
                         new_generics
                     }
                     AutoTraitResult::NegativeImpl => {
-                        polarity = Some(ImplPolarity::Negative);
+                        negative_polarity = true;
 
                         // For negative impls, we use the generic params, but *not* the predicates,
                         // from the original type. Otherwise, the displayed impl appears to be a
@@ -130,7 +130,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
                         for_: ty.clean(self.cx),
                         items: Vec::new(),
-                        polarity,
+                        negative_polarity,
                         synthetic: true,
                         blanket_impl: None,
                     }),

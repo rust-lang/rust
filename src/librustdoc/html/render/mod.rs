@@ -4327,16 +4327,15 @@ fn sidebar_assoc_items(cx: &Context<'_>, it: &clean::Item) -> String {
 
                 let mut ret = impls
                     .iter()
-                    .filter_map(|i| {
-                        let is_negative_impl = is_negative_impl(i.inner_impl());
-                        if let Some(ref i) = i.inner_impl().trait_ {
+                    .filter_map(|it| {
+                        if let Some(ref i) = it.inner_impl().trait_ {
                             let i_display = format!("{:#}", i.print());
                             let out = Escape(&i_display);
                             let encoded = small_url_encode(&format!("{:#}", i.print()));
                             let generated = format!(
                                 "<a href=\"#impl-{}\">{}{}</a>",
                                 encoded,
-                                if is_negative_impl { "!" } else { "" },
+                                if it.inner_impl().negative_polarity { "!" } else { "" },
                                 out
                             );
                             if links.insert(generated.clone()) { Some(generated) } else { None }
@@ -4501,10 +4500,6 @@ fn extract_for_impl_name(item: &clean::Item) -> Option<(String, String)> {
         }
         _ => None,
     }
-}
-
-fn is_negative_impl(i: &clean::Impl) -> bool {
-    i.polarity == Some(clean::ImplPolarity::Negative)
 }
 
 fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
