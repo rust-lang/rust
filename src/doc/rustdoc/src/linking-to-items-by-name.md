@@ -1,7 +1,7 @@
 # Linking to items by name
 
 Rustdoc is capable of directly linking to other rustdoc pages using the path of
-the item as a link.
+the item as a link. This is referred to as an 'intra-doc link'.
 
 For example, in the following code all of the links will link to the rustdoc page for `Bar`:
 
@@ -27,8 +27,23 @@ pub struct Bar;
 Backticks around the link will be stripped, so ``[`Option`]`` will correctly
 link to `Option`.
 
-You can refer to anything in scope, and use paths, including `Self`, `self`,
-`super`, and `crate`. You may also use `foo()` and `foo!()` to refer to methods/functions and macros, respectively.
+## Valid links
+
+You can refer to anything in scope, and use paths, including `Self`, `self`, `super`, and
+`crate`. Associated items (functions, types, and constants) are supported, but [not for blanket
+trait implementations][#79682]. Rustdoc also supports linking to the following primitives, which
+have no path and cannot be imported:
+
+- [`slice`](https://doc.rust-lang.org/std/primitive.slice.html)
+- [`array`](https://doc.rust-lang.org/std/primitive.array.html)
+- [`tuple`](https://doc.rust-lang.org/std/primitive.tuple.html)
+- [`unit`](https://doc.rust-lang.org/std/primitive.unit.html)
+- [`fn`](https://doc.rust-lang.org/std/primitive.fn.html)
+- [`pointer`](https://doc.rust-lang.org/std/primitive.pointer.html), `*`, `*const`, or `*mut`
+- [`reference`](https://doc.rust-lang.org/std/primitive.reference.html), `&`, or `&mut`
+- [`never`](https://doc.rust-lang.org/std/primitive.never.html) or `!`
+
+[#79682]: https://github.com/rust-lang/rust/pull/79682
 
 You can also refer to items with generic parameters like `Vec<T>`. The link will
 resolve as if you had written ``[`Vec<T>`](Vec)``. Fully-qualified syntax (for example,
@@ -53,7 +68,7 @@ impl<T> AsyncReceiver<T> {
 }
 ```
 
-You can also link to sections using URL fragment specifiers:
+Rustdoc allows using URL fragment specifiers, just like a normal link:
 
 ```rust
 /// This is a special implementation of [positional parameters].
@@ -62,9 +77,13 @@ You can also link to sections using URL fragment specifiers:
 struct MySpecialFormatter;
 ```
 
-Paths in Rust have three namespaces: type, value, and macro. Item names must be
-unique within their namespace, but can overlap with items outside of their
-namespace. In case of ambiguity, rustdoc will warn about the ambiguity and ask you to disambiguate, which can be done by using a prefix like `struct@`, `enum@`, `type@`, `trait@`, `union@`, `const@`, `static@`, `value@`, `fn@`, `function@`, `mod@`, `module@`, `method@`, `prim@`, `primitive@`, `macro@`, or `derive@`:
+## Namespaces and Disambiguators
+
+Paths in Rust have three namespaces: type, value, and macro. Item names must be unique within
+their namespace, but can overlap with items outside of their namespace. In case of ambiguity,
+rustdoc will warn about the ambiguity and ask you to disambiguate, which can be done by using a
+prefix like `struct@`, `enum@`, `type@`, `trait@`, `union@`, `const@`, `static@`, `value@`,
+`fn@`, `function@`, `mod@`, `module@`, `method@`, `prim@`, `primitive@`, `macro@`, or `derive@`:
 
 ```rust
 /// See also: [`Foo`](struct@Foo)
@@ -75,6 +94,9 @@ struct Foo {}
 
 fn Foo() {}
 ```
+
+These prefixes will be stripped when displayed in the documentation, so `[struct@Foo]`
+will be rendered as `Foo`.
 
 You can also disambiguate for functions by adding `()` after the function name,
 or for macros by adding `!` after the macro name:
@@ -89,6 +111,32 @@ struct Foo {}
 fn Foo() {}
 ```
 
-Note: Because of how `macro_rules!` macros are scoped in Rust, the intra-doc links of a `macro_rules!` macro will be resolved [relative to the crate root][#72243], as opposed to the module it is defined in.
+## Warnings, re-exports, and scoping
+
+Links are resolved in the current module scope, even when re-exported. If a link from another
+crate fails to resolve, no warning is given.
+
+When re-exporting an item, rustdoc allows additional documentation to it. That documentation will
+be resolved in the new scope, not the original, allowing you to link to items in the current
+crate. The new links will still give a warning if they fail to resolve.
+
+```rust
+/// See also [foo()]
+pub use std::process::Command;
+
+pub fn foo() {}
+```
+
+This is especially useful for proc-macros, which must always be in their own dedicated crate.
+
+Note: Because of how `macro_rules!` macros are scoped in Rust, the intra-doc links of a
+`macro_rules!` macro will be resolved [relative to the crate root][#72243], as opposed to the
+module it is defined in.
+
+If links do not look 'sufficiently like' an intra-doc link, they will be ignored and no warning
+will be given, even if the link fails to resolve. For example, any link containing `/` or `[]`
+characters will be ignored. You can see the full criteria for 'sufficiently like' in [the source
+code].
 
 [#72243]: https://github.com/rust-lang/rust/issues/72243
+[the source code]: https://github.com/rust-lang/rust/blob/34628e5b533d35840b61c5db0665cf7633ed3c5a/src/librustdoc/passes/collect_intra_doc_links.rs#L982
