@@ -354,8 +354,11 @@ fn is_argument_similar_to_param_name(
     match get_string_representation(argument) {
         None => false,
         Some(argument_string) => {
+            let num_leading_underscores =
+                argument_string.bytes().take_while(|&c| c == b'_').count();
+
             // Does the argument name begin with the parameter name? Ignore leading underscores.
-            let mut arg_bytes = argument_string.bytes().skip_while(|&c| c == b'_');
+            let mut arg_bytes = argument_string.bytes().skip(num_leading_underscores);
             let starts_with_pattern = param_name.bytes().all(
                 |expected| matches!(arg_bytes.next(), Some(actual) if expected.eq_ignore_ascii_case(&actual)),
             );
@@ -365,7 +368,7 @@ fn is_argument_similar_to_param_name(
             }
 
             // Does the argument name end with the parameter name?
-            let mut arg_bytes = argument_string.bytes();
+            let mut arg_bytes = argument_string.bytes().skip(num_leading_underscores);
             param_name.bytes().rev().all(
                 |expected| matches!(arg_bytes.next_back(), Some(actual) if expected.eq_ignore_ascii_case(&actual)),
             )
