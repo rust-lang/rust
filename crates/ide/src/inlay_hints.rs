@@ -353,13 +353,18 @@ fn is_argument_similar_to_param_name(
     }
     match get_string_representation(argument) {
         None => false,
-        Some(mut repr) => {
-            let param_name = param_name.to_ascii_lowercase();
-            let argument_string = {
-                repr.make_ascii_lowercase();
-                repr.trim_start_matches('_')
-            };
-            argument_string.starts_with(&param_name) || argument_string.ends_with(&param_name)
+        Some(argument_string) => {
+            let mut arg_bytes = argument_string.bytes().skip_while(|&c| c == b'_');
+            let starts_with_pattern = param_name.bytes().all(
+                |expected| matches!(arg_bytes.next(), Some(actual) if expected.eq_ignore_ascii_case(&actual)),
+            );
+
+            let mut arg_bytes = argument_string.bytes();
+            let ends_with_pattern = param_name.bytes().rev().all(
+                |expected| matches!(arg_bytes.next_back(), Some(actual) if expected.eq_ignore_ascii_case(&actual)),
+            );
+
+            starts_with_pattern || ends_with_pattern
         }
     }
 }
