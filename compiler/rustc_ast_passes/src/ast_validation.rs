@@ -16,7 +16,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
-use rustc_session::lint::LintBuffer;
+use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -213,14 +213,14 @@ impl<'a> AstValidator<'a> {
         err.emit();
     }
 
-    fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, bool)) {
+    fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
         for Param { pat, .. } in &decl.inputs {
             match pat.kind {
                 PatKind::Ident(BindingMode::ByValue(Mutability::Not), _, None) | PatKind::Wild => {}
-                PatKind::Ident(BindingMode::ByValue(Mutability::Mut), _, None) => {
-                    report_err(pat.span, true)
+                PatKind::Ident(BindingMode::ByValue(Mutability::Mut), ident, None) => {
+                    report_err(pat.span, Some(ident), true)
                 }
-                _ => report_err(pat.span, false),
+                _ => report_err(pat.span, None, false),
             }
         }
     }
@@ -834,7 +834,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match ty.kind {
             TyKind::BareFn(ref bfty) => {
                 self.check_fn_decl(&bfty.decl, SelfSemantic::No);
-                Self::check_decl_no_pat(&bfty.decl, |span, _| {
+                Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
                     struct_span_err!(
                         self.session,
                         span,
@@ -1289,7 +1289,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         // Functions without bodies cannot have patterns.
         if let FnKind::Fn(ctxt, _, sig, _, None) = fk {
-            Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {
+            Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
                 let (code, msg, label) = match ctxt {
                     FnCtxt::Foreign => (
                         error_code!(E0130),
@@ -1303,7 +1303,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     ),
                 };
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
-                    self.lint_buffer.buffer_lint(PATTERNS_IN_FNS_WITHOUT_BODY, id, span, msg);
+                    if let Some(ident) = ident {
+                        let diag = BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident);
+                        self.lint_buffer.buffer_lint_with_diagnostic(
+                            PATTERNS_IN_FNS_WITHOUT_BODY,
+                            id,
+                            span,
+                            msg,
+                            diag,
+                        )
+                    }
                 } else {
                     self.err_handler()
                         .struct_span_err(span, msg)

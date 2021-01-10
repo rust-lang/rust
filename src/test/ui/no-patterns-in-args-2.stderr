@@ -8,7 +8,7 @@ error: patterns aren't allowed in functions without bodies
   --> $DIR/no-patterns-in-args-2.rs:4:11
    |
 LL |     fn f1(mut arg: u8);
-   |           ^^^^^^^
+   |           ^^^^^^^ help: remove `mut` from the parameter: `arg`
    |
 note: the lint level is defined here
   --> $DIR/no-patterns-in-args-2.rs:1:9

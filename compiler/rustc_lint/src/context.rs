@@ -597,6 +597,9 @@ pub trait LintContext: Sized {
                     db.help("to document an item produced by a macro, \
                                   the macro must produce the documentation as part of its expansion");
                 }
+                BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident) => {
+                    db.span_suggestion(span, "remove `mut` from the parameter", ident.to_string(), Applicability::MachineApplicable);
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
