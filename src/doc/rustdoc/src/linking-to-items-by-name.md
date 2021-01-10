@@ -24,6 +24,9 @@ pub struct Foo4;
 pub struct Bar;
 ```
 
+Unlike normal markdown, `[bar][Bar]` syntax is also supported without needing a
+`[Bar]: ...` reference link, and links are case-sensitive.
+
 Backticks around the link will be stripped, so ``[`Option`]`` will correctly
 link to `Option`.
 
