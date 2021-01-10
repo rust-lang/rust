@@ -324,7 +324,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(same_name_method::SameNameMethod));
     store.register_late_pass(|| Box::new(map_clone::MapClone));
     store.register_late_pass(|| Box::new(map_err_ignore::MapErrIgnore));
-    store.register_late_pass(|| Box::new(shadow::Shadow));
+    store.register_late_pass(|| Box::new(shadow::Shadow::default()));
     store.register_late_pass(|| Box::new(unit_types::UnitTypes));
     store.register_late_pass(|| Box::new(loops::Loops));
     store.register_late_pass(|| Box::new(main_recursion::MainRecursion::default()));
