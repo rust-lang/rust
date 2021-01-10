@@ -504,15 +504,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             match res {
                 // FIXME(#76467): make this fallthrough to lookup the associated
                 // item a separate function.
-                Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => {
-                    assert_eq!(ns, ValueNS);
-                }
-                Res::Def(DefKind::AssocTy, _) => {
-                    assert_eq!(ns, TypeNS);
-                }
-                Res::Def(DefKind::Variant, _) => {
-                    return handle_variant(cx, res, extra_fragment);
-                }
+                Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => assert_eq!(ns, ValueNS),
+                Res::Def(DefKind::AssocTy, _) => assert_eq!(ns, TypeNS),
+                Res::Def(DefKind::Variant, _) => return handle_variant(cx, res, extra_fragment),
                 // Not a trait item; just return what we found.
                 Res::Primitive(ty) => {
                     if extra_fragment.is_some() {
@@ -522,12 +516,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     }
                     return Ok((res, Some(ty.as_str().to_owned())));
                 }
-                Res::Def(DefKind::Mod, _) => {
-                    return Ok((res, extra_fragment.clone()));
-                }
-                _ => {
-                    return Ok((res, extra_fragment.clone()));
-                }
+                _ => return Ok((res, extra_fragment.clone())),
             }
         }
 
