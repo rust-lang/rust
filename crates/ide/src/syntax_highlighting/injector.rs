@@ -33,8 +33,7 @@ impl Injector {
         &self.buf
     }
     pub(super) fn map_range_up(&self, range: TextRange) -> impl Iterator<Item = TextRange> + '_ {
-        let (start, len) = equal_range_by(&self.ranges, |&(r, _)| ordering(r, range));
-        (start..start + len).filter_map(move |i| {
+        equal_range_by(&self.ranges, |&(r, _)| ordering(r, range)).filter_map(move |i| {
             let (target_range, delta) = self.ranges[i];
             let intersection = target_range.intersect(range).unwrap();
             Some(intersection + delta?)

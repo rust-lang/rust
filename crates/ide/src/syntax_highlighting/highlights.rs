@@ -51,18 +51,20 @@ impl Node {
             }
         }
 
-        let (start, len) =
+        let overlapping =
             equal_range_by(&self.nested, |n| ordering(n.hl_range.range, hl_range.range));
 
-        if len == 1 && self.nested[start].hl_range.range.contains_range(hl_range.range) {
-            return self.nested[start].add(hl_range);
+        if overlapping.len() == 1
+            && self.nested[overlapping.start].hl_range.range.contains_range(hl_range.range)
+        {
+            return self.nested[overlapping.start].add(hl_range);
         }
 
         let nested = self
             .nested
-            .splice(start..start + len, iter::once(Node::new(hl_range)))
+            .splice(overlapping.clone(), iter::once(Node::new(hl_range)))
             .collect::<Vec<_>>();
-        self.nested[start].nested = nested;
+        self.nested[overlapping.start].nested = nested;
     }
 
     fn flatten(&self, acc: &mut Vec<HlRange>) {

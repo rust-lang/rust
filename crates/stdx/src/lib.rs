@@ -152,13 +152,13 @@ where
     left
 }
 
-pub fn equal_range_by<T, F>(slice: &[T], mut key: F) -> (usize, usize)
+pub fn equal_range_by<T, F>(slice: &[T], mut key: F) -> ops::Range<usize>
 where
     F: FnMut(&T) -> Ordering,
 {
     let start = partition_point(slice, |it| key(it) == Ordering::Less);
     let len = partition_point(&slice[start..], |it| key(it) == Ordering::Equal);
-    (start, len)
+    start..start + len
 }
 
 pub struct JodChild(pub process::Child);
