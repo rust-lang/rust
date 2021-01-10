@@ -1,7 +1,11 @@
 use std::fmt::Write;
 
 use ::parser::FragmentKind;
-use syntax::{ast, AstNode, NodeOrToken, SyntaxKind::IDENT, SyntaxNode, WalkEvent, T};
+use syntax::{
+    ast, AstNode, NodeOrToken,
+    SyntaxKind::{ERROR, IDENT},
+    SyntaxNode, WalkEvent, T,
+};
 use test_utils::assert_eq_text;
 
 use super::*;
@@ -1192,6 +1196,23 @@ macro_rules! foo {
         r#"foo!(x,y, 1);"#,
         r#"macro_rules ! bar {($ bi : ident) => {fn $ bi () -> u8 {1}}} bar ! (x) ; fn y () -> u8 {1}"#,
     );
+}
+
+#[test]
+fn test_expr_after_path_colons() {
+    assert!(parse_macro(
+        r#"
+macro_rules! m {
+    ($k:expr) => {
+            f(K::$k);
+       }
+}
+"#,
+    )
+    .expand_statements(r#"m!(C("0"))"#)
+    .descendants()
+    .find(|token| token.kind() == ERROR)
+    .is_some());
 }
 
 // The following tests are based on real world situations
