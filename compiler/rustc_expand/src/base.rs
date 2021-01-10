@@ -728,9 +728,7 @@ pub struct SyntaxExtension {
     pub edition: Edition,
     /// Built-in macros have a couple of special properties like availability
     /// in `#[no_implicit_prelude]` modules, so we have to keep this flag.
-    pub is_builtin: bool,
-    /// We have to identify macros providing a `Copy` impl early for compatibility reasons.
-    pub is_derive_copy: bool,
+    pub builtin_name: Option<Symbol>,
 }
 
 impl SyntaxExtension {
@@ -758,8 +756,7 @@ impl SyntaxExtension {
             deprecation: None,
             helper_attrs: Vec::new(),
             edition,
-            is_builtin: false,
-            is_derive_copy: false,
+            builtin_name: None,
             kind,
         }
     }
@@ -785,7 +782,9 @@ impl SyntaxExtension {
             }
         }
 
-        let is_builtin = sess.contains_name(attrs, sym::rustc_builtin_macro);
+        let builtin_name = sess
+            .find_by_name(attrs, sym::rustc_builtin_macro)
+            .map(|a| a.value_str().unwrap_or(name));
         let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
         if const_stability.is_some() {
             sess.parse_sess
@@ -803,8 +802,7 @@ impl SyntaxExtension {
             deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
             helper_attrs,
             edition,
-            is_builtin,
-            is_derive_copy: is_builtin && name == sym::Copy,
+            builtin_name,
         }
     }
 
