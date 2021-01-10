@@ -108,38 +108,40 @@ impl GlobalState {
             );
         };
 
-        let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
-            include_text: Some(false),
-            text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
-                document_selector: Some(vec![
-                    lsp_types::DocumentFilter {
-                        language: None,
-                        scheme: None,
-                        pattern: Some("**/*.rs".into()),
-                    },
-                    lsp_types::DocumentFilter {
-                        language: None,
-                        scheme: None,
-                        pattern: Some("**/Cargo.toml".into()),
-                    },
-                    lsp_types::DocumentFilter {
-                        language: None,
-                        scheme: None,
-                        pattern: Some("**/Cargo.lock".into()),
-                    },
-                ]),
-            },
-        };
+        if self.config.did_save_text_document_dynamic_registration() {
+            let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
+                include_text: Some(false),
+                text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
+                    document_selector: Some(vec![
+                        lsp_types::DocumentFilter {
+                            language: None,
+                            scheme: None,
+                            pattern: Some("**/*.rs".into()),
+                        },
+                        lsp_types::DocumentFilter {
+                            language: None,
+                            scheme: None,
+                            pattern: Some("**/Cargo.toml".into()),
+                        },
+                        lsp_types::DocumentFilter {
+                            language: None,
+                            scheme: None,
+                            pattern: Some("**/Cargo.lock".into()),
+                        },
+                    ]),
+                },
+            };
 
-        let registration = lsp_types::Registration {
-            id: "textDocument/didSave".to_string(),
-            method: "textDocument/didSave".to_string(),
-            register_options: Some(serde_json::to_value(save_registration_options).unwrap()),
-        };
-        self.send_request::<lsp_types::request::RegisterCapability>(
-            lsp_types::RegistrationParams { registrations: vec![registration] },
-            |_, _| (),
-        );
+            let registration = lsp_types::Registration {
+                id: "textDocument/didSave".to_string(),
+                method: "textDocument/didSave".to_string(),
+                register_options: Some(serde_json::to_value(save_registration_options).unwrap()),
+            };
+            self.send_request::<lsp_types::request::RegisterCapability>(
+                lsp_types::RegistrationParams { registrations: vec![registration] },
+                |_, _| (),
+            );
+        }
 
         self.fetch_workspaces_request();
         self.fetch_workspaces_if_needed();
