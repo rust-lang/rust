@@ -13,6 +13,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_session::Limit;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Align, Size};
+use rustc_target::spec::abi::Abi;
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, Allocation, Frame, ImmTy, InterpCx, InterpResult, Memory,
@@ -203,6 +204,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
+        _abi: Abi,
         args: &[OpTy<'tcx>],
         _ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock>, // unwinding is not supported in consts

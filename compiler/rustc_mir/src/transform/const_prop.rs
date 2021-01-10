@@ -25,6 +25,7 @@ use rustc_middle::ty::{
 use rustc_session::lint;
 use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
+use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 
 use crate::const_eval::ConstEvalErr;
@@ -187,6 +188,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
+        _abi: Abi,
         _args: &[OpTy<'tcx>],
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
         _unwind: Option<BasicBlock>,

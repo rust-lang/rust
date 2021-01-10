@@ -219,7 +219,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,
             FnVal::Other(extra) => {
-                return M::call_extra_fn(self, extra, args, ret, unwind);
+                return M::call_extra_fn(self, extra, caller_abi, args, ret, unwind);
             }
         };
 
@@ -264,10 +264,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let body = match M::find_mir_or_eval_fn(self, instance, args, ret, unwind)? {
-                    Some(body) => body,
-                    None => return Ok(()),
-                };
+                let body =
+                    match M::find_mir_or_eval_fn(self, instance, caller_abi, args, ret, unwind)? {
+                        Some(body) => body,
+                        None => return Ok(()),
+                    };
 
                 self.push_stack_frame(
                     instance,
