@@ -210,7 +210,11 @@ enum ResolutionError<'a> {
     /// Error E0434: can't capture dynamic environment in a fn item.
     CannotCaptureDynamicEnvironmentInFnItem,
     /// Error E0435: attempt to use a non-constant value in a constant.
-    AttemptToUseNonConstantValueInConstant(Ident, String),
+    AttemptToUseNonConstantValueInConstant(
+        Ident,
+        /* suggestion */ &'static str,
+        /* current */ &'static str,
+    ),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable(&'static str, Symbol, &'a NameBinding<'a>),
     /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
@@ -1443,7 +1447,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn is_builtin_macro(&mut self, res: Res) -> bool {
-        self.get_macro(res).map_or(false, |ext| ext.is_builtin)
+        self.get_macro(res).map_or(false, |ext| ext.builtin_name.is_some())
     }
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
@@ -2010,7 +2014,7 @@ impl<'a> Resolver<'a> {
                 // The macro is a proc macro derive
                 if let Some(def_id) = module.expansion.expn_data().macro_def_id {
                     let ext = self.get_macro_by_def_id(def_id);
-                    if !ext.is_builtin
+                    if ext.builtin_name.is_none()
                         && ext.macro_kind() == MacroKind::Derive
                         && parent.expansion.outer_expn_is_descendant_of(span.ctxt())
                     {
@@ -2614,18 +2618,19 @@ impl<'a> Resolver<'a> {
                                             ConstantItemKind::Const => "const",
                                             ConstantItemKind::Static => "static",
                                         };
-                                        let sugg = format!(
-                                            "consider using `let` instead of `{}`",
-                                            kind_str
-                                        );
-                                        (span, AttemptToUseNonConstantValueInConstant(ident, sugg))
+                                        (
+                                            span,
+                                            AttemptToUseNonConstantValueInConstant(
+                                                ident, "let", kind_str,
+                                            ),
+                                        )
                                     } else {
-                                        let sugg = "consider using `const` instead of `let`";
                                         (
                                             rib_ident.span,
                                             AttemptToUseNonConstantValueInConstant(
                                                 original_rib_ident_def,
-                                                sugg.to_string(),
+                                                "const",
+                                                "let",
                                             ),
                                         )
                                     };

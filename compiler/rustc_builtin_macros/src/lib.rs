@@ -48,7 +48,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand, edition: Editi
     let mut register = |name, kind| {
         resolver.register_builtin_macro(
             Ident::with_dummy_span(name),
-            SyntaxExtension { is_builtin: true, ..SyntaxExtension::default(kind, edition) },
+            SyntaxExtension::default(kind, edition),
         )
     };
     macro register_bang($($name:ident: $f:expr,)*) {

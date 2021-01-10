@@ -870,7 +870,7 @@ impl clean::Impl {
             }
 
             if let Some(ref ty) = self.trait_ {
-                if self.polarity == Some(clean::ImplPolarity::Negative) {
+                if self.negative_polarity {
                     write!(f, "!")?;
                 }
 
