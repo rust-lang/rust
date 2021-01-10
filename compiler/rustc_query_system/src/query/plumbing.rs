@@ -566,7 +566,6 @@ fn incremental_verify_ich<CTX, K, V>(
     assert!(new_hash == old_hash, "found unstable fingerprints for {:?}", dep_node,);
 }
 
-#[inline(always)]
 fn force_query_with_job<C, CTX>(
     tcx: CTX,
     key: C::Key,
