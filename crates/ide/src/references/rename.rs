@@ -14,7 +14,7 @@ use ide_db::{
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
-    lex_single_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken,
+    lex_single_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken, T,
 };
 use test_utils::mark;
 use text_edit::TextEdit;
@@ -55,7 +55,7 @@ pub(crate) fn prepare_rename(
     if let Some(module) = find_module_at_offset(&sema, position, syntax) {
         rename_mod(&sema, position, module, "dummy")
     } else if let Some(self_token) =
-        syntax.token_at_offset(position.offset).find(|t| t.kind() == SyntaxKind::SELF_KW)
+        syntax.token_at_offset(position.offset).find(|t| t.kind() == T![self])
     {
         rename_self_to_param(&sema, position, self_token, "dummy")
     } else {
@@ -85,7 +85,7 @@ pub(crate) fn rename_with_semantics(
     if let Some(module) = find_module_at_offset(&sema, position, syntax) {
         rename_mod(&sema, position, module, new_name)
     } else if let Some(self_token) =
-        syntax.token_at_offset(position.offset).find(|t| t.kind() == SyntaxKind::SELF_KW)
+        syntax.token_at_offset(position.offset).find(|t| t.kind() == T![self])
     {
         rename_self_to_param(&sema, position, self_token, new_name)
     } else {
@@ -110,7 +110,7 @@ pub(crate) fn will_rename_file(
     Some(change)
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 enum IdentifierKind {
     Ident,
     Lifetime,
@@ -122,8 +122,8 @@ fn check_identifier(new_name: &str) -> RenameResult<IdentifierKind> {
     match lex_single_syntax_kind(new_name) {
         Some(res) => match res {
             (SyntaxKind::IDENT, _) => Ok(IdentifierKind::Ident),
-            (SyntaxKind::UNDERSCORE, _) => Ok(IdentifierKind::Underscore),
-            (SyntaxKind::SELF_KW, _) => Ok(IdentifierKind::ToSelf),
+            (T![_], _) => Ok(IdentifierKind::Underscore),
+            (T![self], _) => Ok(IdentifierKind::ToSelf),
             (SyntaxKind::LIFETIME_IDENT, _) if new_name != "'static" && new_name != "'_" => {
                 Ok(IdentifierKind::Lifetime)
             }
@@ -390,6 +390,7 @@ fn rename_self_to_param(
         IdentifierKind::Lifetime => bail!("Invalid name `{}`: not an identifier", new_name),
         IdentifierKind::ToSelf => {
             // no-op
+            mark::hit!(rename_self_to_self);
             return Ok(RangeInfo::new(self_token.text_range(), SourceChange::default()));
         }
         _ => (),
@@ -409,9 +410,7 @@ fn rename_self_to_param(
         if !search_range.contains_inclusive(offset) {
             continue;
         }
-        if let Some(ref usage) =
-            syn.token_at_offset(offset).find(|t| t.kind() == SyntaxKind::SELF_KW)
-        {
+        if let Some(ref usage) = syn.token_at_offset(offset).find(|t| t.kind() == T![self]) {
             let edit = if let Some(ref self_param) = ast::SelfParam::cast(usage.parent()) {
                 text_edit_from_self_param(syn, self_param, new_name)
                     .ok_or_else(|| format_err!("No target type found"))?
@@ -444,21 +443,26 @@ fn rename_reference(
         (IdentifierKind::ToSelf, ReferenceKind::Lifetime)
         | (IdentifierKind::Underscore, ReferenceKind::Lifetime)
         | (IdentifierKind::Ident, ReferenceKind::Lifetime) => {
+            mark::hit!(rename_not_a_lifetime_ident_ref);
             bail!("Invalid name `{}`: not a lifetime identifier", new_name)
         }
-        (IdentifierKind::Lifetime, ReferenceKind::Lifetime) => (),
-        (IdentifierKind::Lifetime, _) => bail!("Invalid name `{}`: not an identifier", new_name),
+        (IdentifierKind::Lifetime, ReferenceKind::Lifetime) => mark::hit!(rename_lifetime),
+        (IdentifierKind::Lifetime, _) => {
+            mark::hit!(rename_not_an_ident_ref);
+            bail!("Invalid name `{}`: not an identifier", new_name)
+        }
         (IdentifierKind::ToSelf, ReferenceKind::SelfKw) => {
-            //no-op
-            return Ok(RangeInfo::new(range, SourceChange::default()));
+            unreachable!("rename_self_to_param should've been called instead")
         }
         (IdentifierKind::ToSelf, _) => {
+            mark::hit!(rename_to_self);
             return rename_to_self(sema, position);
         }
         (IdentifierKind::Underscore, _) if !refs.references.is_empty() => {
+            mark::hit!(rename_underscore_multiple);
             bail!("Cannot rename reference to `_` as it is being referenced multiple times")
         }
-        (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => (),
+        (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => mark::hit!(rename_ident),
     }
 
     let edit = refs
@@ -494,9 +498,11 @@ mod tests {
                         text_edit_builder.replace(indel.delete, indel.insert);
                     }
                 }
-                let mut result = analysis.file_text(file_id.unwrap()).unwrap().to_string();
-                text_edit_builder.finish().apply(&mut result);
-                assert_eq_text!(ra_fixture_after, &*result);
+                if let Some(file_id) = file_id {
+                    let mut result = analysis.file_text(file_id).unwrap().to_string();
+                    text_edit_builder.finish().apply(&mut result);
+                    assert_eq_text!(ra_fixture_after, &*result);
+                }
             }
             Err(err) => {
                 if ra_fixture_after.starts_with("error:") {
@@ -562,6 +568,7 @@ mod tests {
 
     #[test]
     fn test_rename_to_invalid_identifier_lifetime() {
+        mark::check!(rename_not_an_ident_ref);
         check(
             "'foo",
             r#"fn main() { let i$0 = 1; }"#,
@@ -571,6 +578,7 @@ mod tests {
 
     #[test]
     fn test_rename_to_invalid_identifier_lifetime2() {
+        mark::check!(rename_not_a_lifetime_ident_ref);
         check(
             "foo",
             r#"fn main<'a>(_: &'a$0 ()) {}"#,
@@ -580,6 +588,7 @@ mod tests {
 
     #[test]
     fn test_rename_to_underscore_invalid() {
+        mark::check!(rename_underscore_multiple);
         check(
             "_",
             r#"fn main(foo$0: ()) {foo;}"#,
@@ -588,7 +597,17 @@ mod tests {
     }
 
     #[test]
+    fn test_rename_mod_invalid() {
+        check(
+            "'foo",
+            r#"mod foo$0 {}"#,
+            "error: Invalid name `'foo`: cannot rename module to 'foo",
+        );
+    }
+
+    #[test]
     fn test_rename_for_local() {
+        mark::check!(rename_ident);
         check(
             "k",
             r#"
@@ -1219,6 +1238,7 @@ fn foo(f: foo::Foo) {
 
     #[test]
     fn test_parameter_to_self() {
+        mark::check!(rename_to_self);
         check(
             "self",
             r#"
@@ -1522,6 +1542,7 @@ fn foo(Foo { i: bar }: foo) -> i32 {
 
     #[test]
     fn test_rename_lifetimes() {
+        mark::check!(rename_lifetime);
         check(
             "'yeeee",
             r#"
@@ -1602,6 +1623,26 @@ fn foo<'a>() -> &'a () {
             break 'foo;
         }
     }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_self_to_self() {
+        mark::check!(rename_self_to_self);
+        check(
+            "self",
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(self$0) {}
+}
+"#,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(self) {}
 }
 "#,
         )
