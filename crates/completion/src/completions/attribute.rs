@@ -21,15 +21,17 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
 
     let attribute = ctx.attribute_under_caret.as_ref()?;
     match (attribute.path(), attribute.token_tree()) {
-        (Some(path), Some(token_tree)) => match path.to_string().as_str() {
-            "derive" => complete_derive(acc, ctx, token_tree),
-            "feature" => complete_lint(acc, ctx, token_tree, FEATURES),
-            "allow" | "warn" | "deny" | "forbid" => {
+        (Some(path), Some(token_tree)) => {
+            let path = path.syntax().text();
+            if path == "derive" {
+                complete_derive(acc, ctx, token_tree)
+            } else if path == "feature" {
+                complete_lint(acc, ctx, token_tree, FEATURES)
+            } else if path == "allow" || path == "warn" || path == "deny" || path == "forbid" {
                 complete_lint(acc, ctx, token_tree.clone(), DEFAULT_LINT_COMPLETIONS);
                 complete_lint(acc, ctx, token_tree, CLIPPY_LINTS);
             }
-            _ => {}
-        },
+        }
         (_, Some(_token_tree)) => {}
         _ => complete_attribute_start(acc, ctx, attribute),
     }
