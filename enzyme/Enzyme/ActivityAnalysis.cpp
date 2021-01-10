@@ -104,15 +104,13 @@ static inline bool couldFunctionArgumentCapture(CallInst *CI, Value *val) {
   return false;
 }
 
-const char *KnownInactiveFunctionsStartingWith[] = {"_ZN4core3fmt",
-                                                    "_ZN3std2io5stdio6_print",
-                                                    "f90io"};
+const char *KnownInactiveFunctionsStartingWith[] = {
+    "_ZN4core3fmt", "_ZN3std2io5stdio6_print", "f90io"};
 
 const char *KnownInactiveFunctions[] = {"__assert_fail",
                                         "__cxa_guard_acquire",
                                         "__cxa_guard_release",
                                         "__cxa_guard_abort",
-                                        "posix_memalign",
                                         "printf",
                                         "vprintf",
                                         "puts",
@@ -157,6 +155,18 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
 
   Function *F = CI->getCalledFunction();
 
+#if LLVM_VERSION_MAJOR >= 11
+  if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
+#else
+  if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
+#endif
+  {
+    if (castinst->isCast())
+      if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+        F = fn;
+      }
+  }
+
   // Indirect function calls may actively use the argument
   if (F == nullptr)
     return false;
@@ -166,6 +176,8 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   // Allocations, deallocations, and c++ guards don't impact the activity
   // of arguments
   if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI))
+    return true;
+  if (Name == "posix_memalign")
     return true;
 
   for (auto FuncName : KnownInactiveFunctionsStartingWith) {
@@ -714,7 +726,21 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           insertConstantsFrom(*UpHypothesis);
           return true;
         }
-        if (auto called = op->getCalledFunction()) {
+
+        Function *called = op->getCalledFunction();
+
+#if LLVM_VERSION_MAJOR >= 11
+        if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledOperand()))
+#else
+        if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue()))
+#endif
+        {
+          if (castinst->isCast())
+            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+              called = fn;
+            }
+        }
+        if (called) {
           if (called->getName() == "free" || called->getName() == "_ZdlPv" ||
               called->getName() == "_ZdlPvm" || called->getName() == "munmap") {
             ConstantValues.insert(Val);
@@ -743,11 +769,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             return true;
           }
 
-          // If requesting emptty unknown functions to be considered inactive, abide
-          // by those rules
+          // If requesting empty unknown functions to be considered inactive,
+          // abide by those rules
           if (!isCertainPrintMallocOrFree(called) && called->empty() &&
-              !hasMetadata(called, "enzyme_gradient") && !isa<IntrinsicInst>(op) &&
-              emptyfnconst) {
+              !hasMetadata(called, "enzyme_gradient") &&
+              !isa<IntrinsicInst>(op) && emptyfnconst) {
             ConstantValues.insert(Val);
             insertConstantsFrom(*UpHypothesis);
             return true;
@@ -1228,7 +1254,19 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     if (op->hasFnAttr("enzyme_inactive")) {
       return true;
     }
-    if (auto called = op->getCalledFunction()) {
+    Function *called = op->getCalledFunction();
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledOperand()))
+#else
+    if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue()))
+#endif
+    {
+      if (castinst->isCast())
+        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+          called = fn;
+        }
+    }
+    if (called) {
       if (called->getName() == "free" || called->getName() == "_ZdlPv" ||
           called->getName() == "_ZdlPvm" || called->getName() == "munmap") {
         return true;
@@ -1247,7 +1285,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
       if (called->getIntrinsicID() == Intrinsic::trap)
         return true;
 
-      // If requesting emptty unknown functions to be considered inactive, abide
+      // If requesting empty unknown functions to be considered inactive, abide
       // by those rules
       if (!isCertainPrintMallocOrFree(called) && called->empty() &&
           !hasMetadata(called, "enzyme_gradient") && !isa<IntrinsicInst>(op) &&

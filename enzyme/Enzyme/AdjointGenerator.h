@@ -3057,7 +3057,6 @@ public:
             eraseIfUnused(*orig);
             return;
           }
-
         }
       }
 
