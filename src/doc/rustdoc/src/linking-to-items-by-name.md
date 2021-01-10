@@ -24,7 +24,7 @@ pub struct Foo4;
 pub struct Bar;
 ```
 
-Unlike normal markdown, `[bar][Bar]` syntax is also supported without needing a
+Unlike normal Markdown, `[bar][Bar]` syntax is also supported without needing a
 `[Bar]: ...` reference link, and links are case-sensitive.
 
 Backticks around the link will be stripped, so ``[`Option`]`` will correctly
@@ -37,14 +37,14 @@ You can refer to anything in scope, and use paths, including `Self`, `self`, `su
 trait implementations][#79682]. Rustdoc also supports linking to the following primitives, which
 have no path and cannot be imported:
 
-- [`slice`](https://doc.rust-lang.org/std/primitive.slice.html)
-- [`array`](https://doc.rust-lang.org/std/primitive.array.html)
-- [`tuple`](https://doc.rust-lang.org/std/primitive.tuple.html)
-- [`unit`](https://doc.rust-lang.org/std/primitive.unit.html)
-- [`fn`](https://doc.rust-lang.org/std/primitive.fn.html)
-- [`pointer`](https://doc.rust-lang.org/std/primitive.pointer.html), `*`, `*const`, or `*mut`
-- [`reference`](https://doc.rust-lang.org/std/primitive.reference.html), `&`, or `&mut`
-- [`never`](https://doc.rust-lang.org/std/primitive.never.html) or `!`
+- [`slice`](../../std/primitive.slice.html)
+- [`array`](../../std/primitive.array.html)
+- [`tuple`](../../std/primitive.tuple.html)
+- [`unit`](../../std/primitive.unit.html)
+- [`fn`](../../std/primitive.fn.html)
+- [`pointer`](../../std/primitive.pointer.html), `*`, `*const`, or `*mut`
+- [`reference`](../../std/primitive.reference.html), `&`, or `&mut`
+- [`never`](../../std/primitive.never.html) or `!`
 
 [#79682]: https://github.com/rust-lang/rust/pull/79682
 
@@ -83,10 +83,8 @@ struct MySpecialFormatter;
 ## Namespaces and Disambiguators
 
 Paths in Rust have three namespaces: type, value, and macro. Item names must be unique within
-their namespace, but can overlap with items outside of their namespace. In case of ambiguity,
-rustdoc will warn about the ambiguity and ask you to disambiguate, which can be done by using a
-prefix like `struct@`, `enum@`, `type@`, `trait@`, `union@`, `const@`, `static@`, `value@`,
-`fn@`, `function@`, `mod@`, `module@`, `method@`, `prim@`, `primitive@`, `macro@`, or `derive@`:
+their namespace, but can overlap with items in other namespaces. In case of ambiguity,
+rustdoc will warn about the ambiguity and ask you to disambiguate.
 
 ```rust
 /// See also: [`Foo`](struct@Foo)
@@ -98,6 +96,22 @@ struct Foo {}
 fn Foo() {}
 ```
 
+The following prefixes can be used:
+
+- `struct@`
+- `enum@`
+- `type@`
+- `trait@`
+- `union@`
+- `const@`
+- `static@`
+- `value@`
+- `fn@` / `function@` / `method@`
+- `mod@` / `module@`
+- `prim@` / `primitive@`
+- `macro@`
+- `derive@`
+
 These prefixes will be stripped when displayed in the documentation, so `[struct@Foo]`
 will be rendered as `Foo`.
 
@@ -105,23 +119,25 @@ You can also disambiguate for functions by adding `()` after the function name,
 or for macros by adding `!` after the macro name:
 
 ```rust
-/// See also: [`Foo`](struct@Foo)
-struct Bar;
+/// This is different from [`foo!`]
+fn foo() {}
 
-/// This is different from [`Foo()`]
-struct Foo {}
-
-fn Foo() {}
+/// This is different from [`foo()`]
+macro_rules! foo {
+  () => {}
+}
 ```
 
 ## Warnings, re-exports, and scoping
 
-Links are resolved in the current module scope, even when re-exported. If a link from another
-crate fails to resolve, no warning is given.
+Links are resolved in the scope of the module where the item is defined, even
+when the item is re-exported. If a link from another crate fails to resolve, no
+warning is given.
 
-When re-exporting an item, rustdoc allows additional documentation to it. That documentation will
-be resolved in the new scope, not the original, allowing you to link to items in the current
-crate. The new links will still give a warning if they fail to resolve.
+When re-exporting an item, rustdoc allows adding additional documentation to it.
+That additional documentation will be resolved in scope of the re-export, not
+the original, allowing you to link to items in the new crate. The new links
+will still give a warning if they fail to resolve.
 
 ```rust
 /// See also [foo()]
@@ -130,7 +146,7 @@ pub use std::process::Command;
 pub fn foo() {}
 ```
 
-This is especially useful for proc-macros, which must always be in their own dedicated crate.
+This is especially useful for proc-macros, which must always be defined in their own dedicated crate.
 
 Note: Because of how `macro_rules!` macros are scoped in Rust, the intra-doc links of a
 `macro_rules!` macro will be resolved [relative to the crate root][#72243], as opposed to the
