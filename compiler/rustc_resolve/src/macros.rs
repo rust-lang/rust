@@ -618,8 +618,9 @@ impl<'a> Resolver<'a> {
         let break_result = self.visit_scopes(
             scope_set,
             parent_scope,
-            orig_ident,
-            |this, scope, use_prelude, ident| {
+            orig_ident.span.ctxt(),
+            |this, scope, use_prelude, ctxt| {
+                let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
                 let ok = |res, span, arenas| {
                     Ok((
                         (res, ty::Visibility::Public, span, ExpnId::root()).to_name_binding(arenas),

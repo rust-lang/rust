@@ -611,7 +611,8 @@ impl<'a> Resolver<'a> {
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
         let mut suggestions = Vec::new();
-        self.visit_scopes(scope_set, parent_scope, ident, |this, scope, use_prelude, _| {
+        let ctxt = ident.span.ctxt();
+        self.visit_scopes(scope_set, parent_scope, ctxt, |this, scope, use_prelude, _| {
             match scope {
                 Scope::DeriveHelpers(expn_id) => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);

@@ -622,6 +622,10 @@ impl SyntaxContext {
     pub fn dollar_crate_name(self) -> Symbol {
         HygieneData::with(|data| data.syntax_context_data[self.0 as usize].dollar_crate_name)
     }
+
+    pub fn edition(self) -> Edition {
+        self.outer_expn_data().edition
+    }
 }
 
 impl fmt::Debug for SyntaxContext {

@@ -268,52 +268,60 @@ impl<'a> PathSource<'a> {
 
     crate fn is_expected(self, res: Res) -> bool {
         match self {
-            PathSource::Type => matches!(res, Res::Def(
+            PathSource::Type => matches!(
+                res,
+                Res::Def(
                     DefKind::Struct
-                    | DefKind::Union
-                    | DefKind::Enum
-                    | DefKind::Trait
-                    | DefKind::TraitAlias
-                    | DefKind::TyAlias
-                    | DefKind::AssocTy
-                    | DefKind::TyParam
-                    | DefKind::OpaqueTy
-                    | DefKind::ForeignTy,
+                        | DefKind::Union
+                        | DefKind::Enum
+                        | DefKind::Trait
+                        | DefKind::TraitAlias
+                        | DefKind::TyAlias
+                        | DefKind::AssocTy
+                        | DefKind::TyParam
+                        | DefKind::OpaqueTy
+                        | DefKind::ForeignTy,
                     _,
-                )
-                | Res::PrimTy(..)
-                | Res::SelfTy(..)),
+                ) | Res::PrimTy(..)
+                    | Res::SelfTy(..)
+            ),
             PathSource::Trait(AliasPossibility::No) => matches!(res, Res::Def(DefKind::Trait, _)),
             PathSource::Trait(AliasPossibility::Maybe) => {
                 matches!(res, Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
             }
-            PathSource::Expr(..) => matches!(res, Res::Def(
+            PathSource::Expr(..) => matches!(
+                res,
+                Res::Def(
                     DefKind::Ctor(_, CtorKind::Const | CtorKind::Fn)
-                    | DefKind::Const
-                    | DefKind::Static
-                    | DefKind::Fn
-                    | DefKind::AssocFn
-                    | DefKind::AssocConst
-                    | DefKind::ConstParam,
+                        | DefKind::Const
+                        | DefKind::Static
+                        | DefKind::Fn
+                        | DefKind::AssocFn
+                        | DefKind::AssocConst
+                        | DefKind::ConstParam,
                     _,
-                )
-                | Res::Local(..)
-                | Res::SelfCtor(..)),
-            PathSource::Pat => matches!(res, Res::Def(
+                ) | Res::Local(..)
+                    | Res::SelfCtor(..)
+            ),
+            PathSource::Pat => matches!(
+                res,
+                Res::Def(
                     DefKind::Ctor(_, CtorKind::Const) | DefKind::Const | DefKind::AssocConst,
                     _,
-                )
-                | Res::SelfCtor(..)),
+                ) | Res::SelfCtor(..)
+            ),
             PathSource::TupleStruct(..) => res.expected_in_tuple_struct_pat(),
-            PathSource::Struct => matches!(res, Res::Def(
+            PathSource::Struct => matches!(
+                res,
+                Res::Def(
                     DefKind::Struct
-                    | DefKind::Union
-                    | DefKind::Variant
-                    | DefKind::TyAlias
-                    | DefKind::AssocTy,
+                        | DefKind::Union
+                        | DefKind::Variant
+                        | DefKind::TyAlias
+                        | DefKind::AssocTy,
                     _,
-                )
-                | Res::SelfTy(..)),
+                ) | Res::SelfTy(..)
+            ),
             PathSource::TraitItem(ns) => match res {
                 Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
@@ -2415,8 +2423,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 &mut found_traits,
                 &self.parent_scope,
             );
-            search_module =
-                unwrap_or!(self.r.hygienic_lexical_parent(search_module, &mut ident.span), break);
+            let mut span_data = ident.span.data();
+            search_module = unwrap_or!(
+                self.r.hygienic_lexical_parent(search_module, &mut span_data.ctxt),
+                break
+            );
+            ident.span = span_data.span();
         }
 
         if let Some(prelude) = self.r.prelude {
