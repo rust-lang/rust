@@ -215,10 +215,8 @@ impl TryToNav for Definition {
             Definition::ModuleDef(it) => it.try_to_nav(db),
             Definition::SelfType(it) => it.try_to_nav(db),
             Definition::Local(it) => Some(it.to_nav(db)),
-            Definition::TypeParam(it) => it.try_to_nav(db),
-            Definition::LifetimeParam(it) => it.try_to_nav(db),
+            Definition::GenericParam(it) => it.try_to_nav(db),
             Definition::Label(it) => Some(it.to_nav(db)),
-            Definition::ConstParam(it) => it.try_to_nav(db),
         }
     }
 }
@@ -385,6 +383,16 @@ impl TryToNav for hir::AssocItem {
             AssocItem::Function(it) => it.try_to_nav(db),
             AssocItem::Const(it) => it.try_to_nav(db),
             AssocItem::TypeAlias(it) => it.try_to_nav(db),
+        }
+    }
+}
+
+impl TryToNav for hir::GenericParam {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        match self {
+            hir::GenericParam::TypeParam(it) => it.try_to_nav(db),
+            hir::GenericParam::ConstParam(it) => it.try_to_nav(db),
+            hir::GenericParam::LifetimeParam(it) => it.try_to_nav(db),
         }
     }
 }

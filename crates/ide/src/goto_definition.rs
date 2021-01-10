@@ -111,9 +111,7 @@ fn def_for_doc_comment(
         Definition::Field(it) => it.resolve_doc_path(db, link, ns),
         Definition::SelfType(_)
         | Definition::Local(_)
-        | Definition::TypeParam(_)
-        | Definition::LifetimeParam(_)
-        | Definition::ConstParam(_)
+        | Definition::GenericParam(_)
         | Definition::Label(_) => return None,
     }
 }

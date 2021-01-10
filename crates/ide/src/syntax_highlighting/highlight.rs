@@ -328,8 +328,11 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             }
         },
         Definition::SelfType(_) => HlTag::Symbol(SymbolKind::Impl),
-        Definition::TypeParam(_) => HlTag::Symbol(SymbolKind::TypeParam),
-        Definition::ConstParam(_) => HlTag::Symbol(SymbolKind::ConstParam),
+        Definition::GenericParam(it) => match it {
+            hir::GenericParam::TypeParam(_) => HlTag::Symbol(SymbolKind::TypeParam),
+            hir::GenericParam::ConstParam(_) => HlTag::Symbol(SymbolKind::ConstParam),
+            hir::GenericParam::LifetimeParam(_) => HlTag::Symbol(SymbolKind::LifetimeParam),
+        },
         Definition::Local(local) => {
             let tag = if local.is_param(db) {
                 HlTag::Symbol(SymbolKind::ValueParam)
@@ -345,7 +348,6 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             }
             return h;
         }
-        Definition::LifetimeParam(_) => HlTag::Symbol(SymbolKind::LifetimeParam),
         Definition::Label(_) => HlTag::Symbol(SymbolKind::Label),
     }
     .into()

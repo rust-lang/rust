@@ -130,7 +130,10 @@ pub(crate) fn find_all_refs(
                 kind = ReferenceKind::FieldShorthandForLocal;
             }
         }
-    } else if matches!(def, Definition::LifetimeParam(_) | Definition::Label(_)) {
+    } else if matches!(
+        def,
+        Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
+    ) {
         kind = ReferenceKind::Lifetime;
     };
 
