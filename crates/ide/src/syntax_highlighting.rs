@@ -24,7 +24,7 @@ use syntax::{
 
 use crate::{
     syntax_highlighting::{
-        format::FormatStringHighlighter, highlights::Highlights,
+        format::highlight_format_string, highlights::Highlights,
         macro_rules::MacroRulesHighlighter, tags::Highlight,
     },
     FileId, HlMod, HlTag, SymbolKind,
@@ -88,7 +88,6 @@ fn traverse(
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
     let mut current_macro_rules: Option<ast::MacroRules> = None;
-    let mut format_string_highlighter = FormatStringHighlighter::default();
     let mut macro_rules_highlighter = MacroRulesHighlighter::default();
     let mut inside_attribute = false;
 
@@ -120,7 +119,6 @@ fn traverse(
             WalkEvent::Leave(Some(mc)) => {
                 assert_eq!(current_macro_call, Some(mc));
                 current_macro_call = None;
-                format_string_highlighter = FormatStringHighlighter::default();
             }
             _ => (),
         }
@@ -175,8 +173,6 @@ fn traverse(
             let token = sema.descend_into_macros(token.clone());
             let parent = token.parent();
 
-            format_string_highlighter.check_for_format_string(&parent);
-
             // We only care Name and Name_ref
             match (token.kind(), parent.kind()) {
                 (IDENT, NAME) | (IDENT, NAME_REF) => parent.into(),
@@ -195,6 +191,10 @@ fn traverse(
             }
         }
 
+        if let Some(_) = macro_rules_highlighter.highlight(element_to_highlight.clone()) {
+            continue;
+        }
+
         if let Some((mut highlight, binding_hash)) = highlight::element(
             &sema,
             &mut bindings_shadow_count,
@@ -205,24 +205,20 @@ fn traverse(
                 highlight = highlight | HlMod::Attribute;
             }
 
-            if macro_rules_highlighter.highlight(element_to_highlight.clone()).is_none() {
-                hl.add(HlRange { range, highlight, binding_hash });
-            }
+            hl.add(HlRange { range, highlight, binding_hash });
+        }
 
-            if let Some(string) =
-                element_to_highlight.as_token().cloned().and_then(ast::String::cast)
-            {
-                format_string_highlighter.highlight_format_string(hl, &string, range);
-                // Highlight escape sequences
-                if let Some(char_ranges) = string.char_ranges() {
-                    for (piece_range, _) in char_ranges.iter().filter(|(_, char)| char.is_ok()) {
-                        if string.text()[piece_range.start().into()..].starts_with('\\') {
-                            hl.add(HlRange {
-                                range: piece_range + range.start(),
-                                highlight: HlTag::EscapeSequence.into(),
-                                binding_hash: None,
-                            });
-                        }
+        if let Some(string) = element_to_highlight.as_token().cloned().and_then(ast::String::cast) {
+            highlight_format_string(hl, &string, range);
+            // Highlight escape sequences
+            if let Some(char_ranges) = string.char_ranges() {
+                for (piece_range, _) in char_ranges.iter().filter(|(_, char)| char.is_ok()) {
+                    if string.text()[piece_range.start().into()..].starts_with('\\') {
+                        hl.add(HlRange {
+                            range: piece_range + range.start(),
+                            highlight: HlTag::EscapeSequence.into(),
+                            binding_hash: None,
+                        });
                     }
                 }
             }
