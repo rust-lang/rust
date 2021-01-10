@@ -61,15 +61,17 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo
 
       - name: Install rustup-toolchain-install-master and xargo
+        shell: bash
         run: |
           cargo install rustup-toolchain-install-master
           cargo install xargo
-        shell: bash
 
       - name: Install "master" toolchain
+        shell: bash
         run: |
           if [[ ${{ github.event_name }} == 'schedule' ]]; then
             RUSTC_HASH=$(git ls-remote https://github.com/rust-lang/rust.git master | awk '{print $1}')
+            exit 1 # just to test cron notifications
           else
             RUSTC_HASH=$(< rust-version)
           fi
@@ -81,7 +83,6 @@ jobs:
             -c llvm-tools \
             --host ${{ matrix.host_target }}
           rustup default master
-        shell: bash
 
       - name: Show Rust version
         run: |
@@ -113,3 +114,22 @@ jobs:
     steps:
       - name: mark the job as a failure
         run: exit 1
+
+  # Send a Zulip notification when a cron job fails
+  cron-fail-notify:
+    name: cronjob failure notification
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'schedule' && (failure() || cancelled())
+    steps:
+      - name: Install zulip-send
+        run: pip3 install zulip
+      - name: Send Zulip notification
+        shell: bash
+        env:
+          ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
+          ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}
+        run: |
+          zulip-send --stream miri --subject "Cron Job Failure" \
+            --message '@**RalfJ** @**oli** the Miri cron job build failed. Please investigate!' \
+            --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN
