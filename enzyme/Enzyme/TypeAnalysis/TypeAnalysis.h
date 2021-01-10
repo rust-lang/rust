@@ -159,8 +159,9 @@ public:
   /// List of value's which should be re-analyzed now with new information
   std::set<llvm::Value *> workList;
 
+  const llvm::SmallPtrSet<llvm::BasicBlock *, 4> notForAnalysis;
+
 private:
-  llvm::SmallPtrSet<llvm::BasicBlock *, 4> notForAnalysis;
   /// Tell TypeAnalyzer to reanalyze this value
   void addToWorkList(llvm::Value *val);
 
@@ -194,11 +195,16 @@ public:
   /// Intermediate conservative, but correct Type analysis results
   std::map<llvm::Value *, TypeTree> analysis;
 
-  llvm::DominatorTree DT;
+  std::shared_ptr<llvm::DominatorTree> DT;
 
   FnTypeInfo getCallInfo(llvm::CallInst &CI, llvm::Function &fn);
 
   TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
+               uint8_t direction = BOTH);
+
+  TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
+               const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
+               std::shared_ptr<llvm::DominatorTree> DT,
                uint8_t direction = BOTH);
 
   /// Get the current results for a given value

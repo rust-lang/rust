@@ -142,7 +142,8 @@ const char *KnownInactiveFunctions[] = {"__assert_fail",
                                         "MPI_Comm_rank",
                                         "MPI_Get_processor_name",
                                         "MPI_Finalize",
-                                        "_msize"};
+                                        "_msize",
+                                        "ftnio_fmt_write64"};
 
 /// Is the use of value val as an argument of call CI known to be inactive
 /// This tool can only be used when in DOWN mode
