@@ -93,11 +93,11 @@ fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, Synt
         // `impl .. { const $0 }`
         // ERROR      0
         //   CONST_KW <- *
-        SyntaxKind::CONST_KW => 0,
+        T![const] => 0,
         // `impl .. { fn/type $0 }`
         // FN/TYPE_ALIAS  0
         //   FN_KW        <- *
-        SyntaxKind::FN_KW | SyntaxKind::TYPE_KW => 0,
+        T![fn] | T![type] => 0,
         // `impl .. { fn/type/const foo$0 }`
         // FN/TYPE_ALIAS/CONST  1
         //  NAME                0
@@ -121,7 +121,7 @@ fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, Synt
     let impl_def = ast::Impl::cast(impl_item.parent()?.parent()?)?;
     let kind = match impl_item.kind() {
         // `impl ... { const $0 fn/type/const }`
-        _ if token.kind() == SyntaxKind::CONST_KW => ImplCompletionKind::Const,
+        _ if token.kind() == T![const] => ImplCompletionKind::Const,
         SyntaxKind::CONST | SyntaxKind::ERROR => ImplCompletionKind::Const,
         SyntaxKind::TYPE_ALIAS => ImplCompletionKind::TypeAlias,
         SyntaxKind::FN => ImplCompletionKind::Fn,

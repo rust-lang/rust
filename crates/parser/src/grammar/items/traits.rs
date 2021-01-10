@@ -110,7 +110,7 @@ fn choose_type_params_over_qpath(p: &Parser) -> bool {
     if !p.at(T![<]) {
         return false;
     }
-    if p.nth(1) == T![#] || p.nth(1) == T![>] || p.nth(1) == CONST_KW {
+    if p.nth(1) == T![#] || p.nth(1) == T![>] || p.nth(1) == T![const] {
         return true;
     }
     (p.nth(1) == LIFETIME_IDENT || p.nth(1) == IDENT)

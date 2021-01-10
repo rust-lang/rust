@@ -119,7 +119,7 @@ fn is_metavariable(element: SyntaxElement) -> Option<TextRange> {
     let tok = element.as_token()?;
     match tok.kind() {
         kind if kind == SyntaxKind::IDENT || kind.is_keyword() => {
-            if let Some(_dollar) = tok.prev_token().filter(|t| t.kind() == SyntaxKind::DOLLAR) {
+            if let Some(_dollar) = tok.prev_token().filter(|t| t.kind() == T![$]) {
                 return Some(tok.text_range());
             }
         }

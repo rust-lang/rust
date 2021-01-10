@@ -25,7 +25,7 @@ fn generic_param_list(p: &mut Parser) {
         match p.current() {
             LIFETIME_IDENT => lifetime_param(p, m),
             IDENT => type_param(p, m),
-            CONST_KW => const_param(p, m),
+            T![const] => const_param(p, m),
             _ => {
                 m.abandon(p);
                 p.err_and_bump("expected type parameter")
@@ -66,7 +66,7 @@ fn type_param(p: &mut Parser, m: Marker) {
 // test const_param
 // struct S<const N: u32>;
 fn const_param(p: &mut Parser, m: Marker) {
-    assert!(p.at(CONST_KW));
+    assert!(p.at(T![const]));
     p.bump(T![const]);
     name(p);
     types::ascription(p);
