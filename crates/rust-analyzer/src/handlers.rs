@@ -435,22 +435,22 @@ pub(crate) fn handle_will_rename_files(
                     if from_path.is_dir() {
                         // This is a quick implement, try to use will_rename_file code.
                         // imitate change the older_folder/mod.rs to older_folder/new_folder.rs
-                        let imitate_from_path = from_path.join("mod.rs");
-                        let new_from_url = imitate_from_path.to_str()?;
-                        let new_from_url = Url::parse(new_from_url).ok()?;
-
-                        let new_folder_name = to_path.file_name()?.to_str()?;
-                        let mut imite_new_file_name  = new_folder_name.to_string();
-                        imite_new_file_name.push_str(".rs");
-                        let new_to = from_path.join(imite_new_file_name);
-                        let new_to = new_to.to_str()?;
-
-                        Some((snap.url_to_file_id(&new_from_url).ok()?, new_to.to_string()))
-                    }
-                    else{
+                        let imitate_from_url = from.join("mod.rs").ok()?;
+                        let imite_new_file_name = to_path.file_name()?.to_str()?;
+                        Some((
+                            snap.url_to_file_id(&imitate_from_url).ok()?,
+                            imite_new_file_name.to_string(),
+                        ))
+                    } else {
+                        let old_name = from_path.file_stem()?;
+                        let old_name = old_name.to_str()?;
                         let new_name = to_path.file_stem()?;
                         let new_name = new_name.to_str()?;
-                        Some((snap.url_to_file_id(&from).ok()?, new_name.to_string()))
+                        if old_name != "mod" || new_name != "mod" {
+                            Some((snap.url_to_file_id(&from).ok()?, new_name.to_string()))
+                        } else {
+                            None
+                        }
                     }
                 }
                 _ => None,
