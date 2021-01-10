@@ -29,7 +29,7 @@ The HIR uses a bunch of different identifiers that coexist and serve different p
 - A [`DefId`], as the name suggests, identifies a particular definition, or top-level
   item, in a given crate. It is composed of two parts: a [`CrateNum`] which identifies
   the crate the definition comes from, and a [`DefIndex`] which identifies the definition
-  within the crate. Unlike [`NodeId`]s, there isn't a [`DefId`] for every expression, which
+  within the crate. Unlike [`HirId`]s, there isn't a [`DefId`] for every expression, which
   makes them more stable across compilations.
 
 - A [`LocalDefId`] is basically a [`DefId`] that is known to come from the current crate.
