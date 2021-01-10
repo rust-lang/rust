@@ -28,7 +28,9 @@ macro_rules! panic {
 macro_rules! panic {
     // Expands to either `$crate::panic_2015` or `$crate::panic_2021`
     // depending on the edition of the caller.
-    ($($arg:tt)*) => { /* compiler built-in */ };
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
 }
 
 /// Prints to the standard output.
