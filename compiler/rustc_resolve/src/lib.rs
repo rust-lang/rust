@@ -1447,7 +1447,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn is_builtin_macro(&mut self, res: Res) -> bool {
-        self.get_macro(res).map_or(false, |ext| ext.is_builtin)
+        self.get_macro(res).map_or(false, |ext| ext.builtin_name.is_some())
     }
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
@@ -2014,7 +2014,7 @@ impl<'a> Resolver<'a> {
                 // The macro is a proc macro derive
                 if let Some(def_id) = module.expansion.expn_data().macro_def_id {
                     let ext = self.get_macro_by_def_id(def_id);
-                    if !ext.is_builtin
+                    if ext.builtin_name.is_none()
                         && ext.macro_kind() == MacroKind::Derive
                         && parent.expansion.outer_expn_is_descendant_of(span.ctxt())
                     {
