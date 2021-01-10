@@ -2312,9 +2312,9 @@ pub trait Iterator {
     #[inline]
     #[unstable(feature = "iter_at_least", reason = "new API", issue = "none")]
     fn at_least<F>(&mut self, n: usize, f: F) -> bool
-        where
-            Self: Sized,
-            F: FnMut(Self::Item) -> bool,
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> bool,
     {
         #[inline]
         fn check<T>(
@@ -2324,11 +2324,7 @@ pub trait Iterator {
             move |mut i, x| {
                 i += f(x) as usize;
 
-                if i < n {
-                    ControlFlow::Continue(i)
-                } else {
-                    ControlFlow::Break(i)
-                }
+                if i < n { ControlFlow::Continue(i) } else { ControlFlow::Break(i) }
             }
         }
 
@@ -2381,9 +2377,9 @@ pub trait Iterator {
     #[inline]
     #[unstable(feature = "iter_at_most", reason = "new API", issue = "none")]
     fn at_most<F>(&mut self, n: usize, f: F) -> bool
-        where
-            Self: Sized,
-            F: FnMut(Self::Item) -> bool,
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> bool,
     {
         #[inline]
         fn check<T>(
@@ -2393,11 +2389,7 @@ pub trait Iterator {
             move |mut i, x| {
                 i += f(x) as usize;
 
-                if i <= n {
-                    ControlFlow::Continue(i)
-                } else {
-                    ControlFlow::Break(i)
-                }
+                if i <= n { ControlFlow::Continue(i) } else { ControlFlow::Break(i) }
             }
         }
 
