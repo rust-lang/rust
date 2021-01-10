@@ -11,7 +11,6 @@ use ide::{Canceled, FileId};
 use ide_db::base_db::VfsPath;
 use lsp_server::{Connection, Notification, Request, Response};
 use lsp_types::notification::Notification as _;
-use project_model::ProjectWorkspace;
 use vfs::ChangeKind;
 
 use crate::{
@@ -62,7 +61,6 @@ enum Event {
 pub(crate) enum Task {
     Response(Response),
     Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
-    Workspaces(Vec<anyhow::Result<ProjectWorkspace>>),
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
 }
@@ -143,7 +141,8 @@ impl GlobalState {
             |_, _| (),
         );
 
-        self.fetch_workspaces();
+        self.fetch_workspaces_request();
+        self.fetch_workspaces_if_needed();
 
         while let Some(event) = self.next_event(&inbox) {
             if let Event::Lsp(lsp_server::Message::Notification(not)) = &event {
@@ -204,7 +203,6 @@ impl GlobalState {
                                 self.diagnostics.set_native_diagnostics(file_id, diagnostics)
                             }
                         }
-                        Task::Workspaces(workspaces) => self.switch_workspaces(workspaces),
                         Task::PrimeCaches(progress) => match progress {
                             PrimeCachesProgress::Started => prime_caches_progress.push(progress),
                             PrimeCachesProgress::StartedOnCrate { .. } => {
@@ -224,7 +222,11 @@ impl GlobalState {
                                 ProjectWorkspaceProgress::Report(msg) => {
                                     (Progress::Report, Some(msg))
                                 }
-                                ProjectWorkspaceProgress::End => (Progress::End, None),
+                                ProjectWorkspaceProgress::End(workspaces) => {
+                                    self.fetch_workspaces_completed();
+                                    self.switch_workspaces(workspaces);
+                                    (Progress::End, None)
+                                }
                             };
                             self.report_progress("fetching", state, msg, None);
                         }
@@ -403,6 +405,8 @@ impl GlobalState {
             }
         }
 
+        self.fetch_workspaces_if_needed();
+
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) {
             log::warn!("overly long loop turn: {:?}", loop_duration);
@@ -440,7 +444,7 @@ impl GlobalState {
         }
 
         RequestDispatcher { req: Some(req), global_state: self }
-            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.fetch_workspaces()))?
+            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.fetch_workspaces_request()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
             .on_sync::<lsp_types::request::Shutdown>(|s, ()| {
