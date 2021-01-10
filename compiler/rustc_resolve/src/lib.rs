@@ -210,7 +210,11 @@ enum ResolutionError<'a> {
     /// Error E0434: can't capture dynamic environment in a fn item.
     CannotCaptureDynamicEnvironmentInFnItem,
     /// Error E0435: attempt to use a non-constant value in a constant.
-    AttemptToUseNonConstantValueInConstant(Ident, String),
+    AttemptToUseNonConstantValueInConstant(
+        Ident,
+        /* suggestion */ &'static str,
+        /* current */ &'static str,
+    ),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable(&'static str, Symbol, &'a NameBinding<'a>),
     /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
@@ -2614,18 +2618,19 @@ impl<'a> Resolver<'a> {
                                             ConstantItemKind::Const => "const",
                                             ConstantItemKind::Static => "static",
                                         };
-                                        let sugg = format!(
-                                            "consider using `let` instead of `{}`",
-                                            kind_str
-                                        );
-                                        (span, AttemptToUseNonConstantValueInConstant(ident, sugg))
+                                        (
+                                            span,
+                                            AttemptToUseNonConstantValueInConstant(
+                                                ident, "let", kind_str,
+                                            ),
+                                        )
                                     } else {
-                                        let sugg = "consider using `const` instead of `let`";
                                         (
                                             rib_ident.span,
                                             AttemptToUseNonConstantValueInConstant(
                                                 original_rib_ident_def,
-                                                sugg.to_string(),
+                                                "const",
+                                                "let",
                                             ),
                                         )
                                     };
