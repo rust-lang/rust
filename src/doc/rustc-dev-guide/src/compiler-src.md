@@ -15,18 +15,24 @@ look at the structure of the contents of the rust-lang/rust repo.
 
 The `rust-lang/rust` repository consists of a single large cargo workspace
 containing the compiler, the standard libraries (`core`, `alloc`, `std`,
-`proc_macro`, etc), and `rustdoc`, along with the build system and bunch of
+`proc_macro`, etc), and `rustdoc`, along with the build system and a bunch of
 tools and submodules for building a full Rust distribution.
 
 As of this writing, this structure is gradually undergoing some transformation
 to make it a bit less monolithic and more approachable, especially to
 newcomers.
 
-The repository consists of a `src` directory, under which there live many
-crates, which are the source for the compiler, build system, tools, etc. This
-directory is currently being broken up to be less monolithic. There is also a
-`library/` directory, where the standard libraries (`core`, `alloc`, `std`,
-`proc_macro`, etc) live.
+The repository consists of three main directories:
+
+- `compiler/` contains the source code for `rustc`. It consists of many crates
+  that together make up the compiler.
+
+- `library/` contains the standard libraries (`core`, `alloc`, `std`,
+  `proc_macro`, `test`), as well as the Rust runtime (`backtrace`, `rtstartup`,
+  `lang_start`).
+
+- `src/` contains the source code for rustdoc, clippy, cargo, the build system,
+  language docs, etc.
 
 ## Standard library
 
