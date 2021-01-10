@@ -174,14 +174,10 @@ where
 
         Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
             // Special-case reborrows to be more like a copy of the reference.
-            if let &[ref proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
-                let base_ty = Place::ty_from(place.local, proj_base, cx.body, cx.tcx).ty;
+            if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
+                let base_ty = place_base.ty(cx.body, cx.tcx).ty;
                 if let ty::Ref(..) = base_ty.kind() {
-                    return in_place::<Q, _>(
-                        cx,
-                        in_local,
-                        PlaceRef { local: place.local, projection: proj_base },
-                    );
+                    return in_place::<Q, _>(cx, in_local, place_base);
                 }
             }
 
@@ -209,9 +205,9 @@ where
     Q: Qualif,
     F: FnMut(Local) -> bool,
 {
-    let mut projection = place.projection;
-    while let &[ref proj_base @ .., proj_elem] = projection {
-        match proj_elem {
+    let mut place = place;
+    while let Some((place_base, elem)) = place.last_projection() {
+        match elem {
             ProjectionElem::Index(index) if in_local(index) => return true,
 
             ProjectionElem::Deref
@@ -222,16 +218,16 @@ where
             | ProjectionElem::Index(_) => {}
         }
 
-        let base_ty = Place::ty_from(place.local, proj_base, cx.body, cx.tcx);
-        let proj_ty = base_ty.projection_ty(cx.tcx, proj_elem).ty;
+        let base_ty = place_base.ty(cx.body, cx.tcx);
+        let proj_ty = base_ty.projection_ty(cx.tcx, elem).ty;
         if !Q::in_any_value_of_ty(cx, proj_ty) {
             return false;
         }
 
-        projection = proj_base;
+        place = place_base;
     }
 
-    assert!(projection.is_empty());
+    assert!(place.projection.is_empty());
     in_local(place.local)
 }
 

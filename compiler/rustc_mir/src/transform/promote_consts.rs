@@ -445,43 +445,50 @@ impl<'tcx> Validator<'_, 'tcx> {
     }
 
     fn validate_place(&self, place: PlaceRef<'tcx>) -> Result<(), Unpromotable> {
-        match place {
-            PlaceRef { local, projection: [] } => self.validate_local(local),
-            PlaceRef { local, projection: [proj_base @ .., elem] } => {
+        match place.last_projection() {
+            None => self.validate_local(place.local),
+            Some((place_base, elem)) => {
                 // Validate topmost projection, then recurse.
-                match *elem {
+                match elem {
                     ProjectionElem::Deref => {
                         let mut promotable = false;
-                        // This is a special treatment for cases like *&STATIC where STATIC is a
-                        // global static variable.
-                        // This pattern is generated only when global static variables are directly
-                        // accessed and is qualified for promotion safely.
-                        if let TempState::Defined { location, .. } = self.temps[local] {
-                            let def_stmt =
-                                self.body[location.block].statements.get(location.statement_index);
-                            if let Some(Statement {
-                                kind:
-                                    StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(c)))),
-                                ..
-                            }) = def_stmt
+                        // The `is_empty` predicate is introduced to exclude the case
+                        // where the projection operations are [ .field, * ].
+                        // The reason is because promotion will be illegal if field
+                        // accesses precede the dereferencing.
+                        // Discussion can be found at
+                        // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247
+                        // There may be opportunity for generalization, but this needs to be
+                        // accounted for.
+                        if place_base.projection.is_empty() {
+                            // This is a special treatment for cases like *&STATIC where STATIC is a
+                            // global static variable.
+                            // This pattern is generated only when global static variables are directly
+                            // accessed and is qualified for promotion safely.
+                            if let TempState::Defined { location, .. } =
+                                self.temps[place_base.local]
                             {
-                                if let Some(did) = c.check_static_ptr(self.tcx) {
-                                    // Evaluating a promoted may not read statics except if it got
-                                    // promoted from a static (this is a CTFE check). So we
-                                    // can only promote static accesses inside statics.
-                                    if let Some(hir::ConstContext::Static(..)) = self.const_kind {
-                                        // The `is_empty` predicate is introduced to exclude the case
-                                        // where the projection operations are [ .field, * ].
-                                        // The reason is because promotion will be illegal if field
-                                        // accesses precede the dereferencing.
-                                        // Discussion can be found at
-                                        // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247
-                                        // There may be opportunity for generalization, but this needs to be
-                                        // accounted for.
-                                        if proj_base.is_empty()
-                                            && !self.tcx.is_thread_local_static(did)
+                                let def_stmt = self.body[location.block]
+                                    .statements
+                                    .get(location.statement_index);
+                                if let Some(Statement {
+                                    kind:
+                                        StatementKind::Assign(box (
+                                            _,
+                                            Rvalue::Use(Operand::Constant(c)),
+                                        )),
+                                    ..
+                                }) = def_stmt
+                                {
+                                    if let Some(did) = c.check_static_ptr(self.tcx) {
+                                        // Evaluating a promoted may not read statics except if it got
+                                        // promoted from a static (this is a CTFE check). So we
+                                        // can only promote static accesses inside statics.
+                                        if let Some(hir::ConstContext::Static(..)) = self.const_kind
                                         {
-                                            promotable = true;
+                                            if !self.tcx.is_thread_local_static(did) {
+                                                promotable = true;
+                                            }
                                         }
                                     }
                                 }
@@ -502,8 +509,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     }
 
                     ProjectionElem::Field(..) => {
-                        let base_ty =
-                            Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
+                        let base_ty = place_base.ty(self.body, self.tcx).ty;
                         if let Some(def) = base_ty.ty_adt_def() {
                             // No promotion of union field accesses.
                             if def.is_union() {
@@ -513,7 +519,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     }
                 }
 
-                self.validate_place(PlaceRef { local: place.local, projection: proj_base })
+                self.validate_place(place_base)
             }
         }
     }
@@ -660,13 +666,11 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::AddressOf(_, place) => {
                 // We accept `&raw *`, i.e., raw reborrows -- creating a raw pointer is
                 // no problem, only using it is.
-                if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
-                    let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
+                if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection()
+                {
+                    let base_ty = place_base.ty(self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind() {
-                        return self.validate_place(PlaceRef {
-                            local: place.local,
-                            projection: proj_base,
-                        });
+                        return self.validate_place(place_base);
                     }
                 }
                 return Err(Unpromotable);
@@ -675,12 +679,12 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::Ref(_, kind, place) => {
                 // Special-case reborrows to be more like a copy of the reference.
                 let mut place_simplified = place.as_ref();
-                if let [proj_base @ .., ProjectionElem::Deref] = &place_simplified.projection {
-                    let base_ty =
-                        Place::ty_from(place_simplified.local, proj_base, self.body, self.tcx).ty;
+                if let Some((place_base, ProjectionElem::Deref)) =
+                    place_simplified.last_projection()
+                {
+                    let base_ty = place_base.ty(self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind() {
-                        place_simplified =
-                            PlaceRef { local: place_simplified.local, projection: proj_base };
+                        place_simplified = place_base;
                     }
                 }
 
