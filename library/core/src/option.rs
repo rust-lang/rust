@@ -455,6 +455,7 @@ impl<T> Option<T> {
         debug_assert!(self.is_some());
         match self {
             Some(val) => val,
+            // SAFETY: the safety contract must be upheld by the caller.
             None => unsafe { hint::unreachable_unchecked() },
         }
     }
