@@ -120,7 +120,7 @@ impl HlTag {
             HlTag::Punctuation(punct) => match punct {
                 HlPunct::Bracket => "bracket",
                 HlPunct::Brace => "brace",
-                HlPunct::Parenthesis => "parentheses",
+                HlPunct::Parenthesis => "parenthesis",
                 HlPunct::Angle => "angle",
                 HlPunct::Comma => "comma",
                 HlPunct::Dot => "dot",

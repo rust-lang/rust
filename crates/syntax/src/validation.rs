@@ -344,9 +344,9 @@ fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxError> {
 
     if tbl.bounds().count() > 1 {
         let dyn_token = ty.dyn_token()?;
-        let potential_parentheses =
+        let potential_parenthesis =
             algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
-        let kind = potential_parentheses.kind();
+        let kind = potential_parenthesis.kind();
         if !matches!(kind, T!['('] | T![<] | T![=]) {
             return Some(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()));
         }
