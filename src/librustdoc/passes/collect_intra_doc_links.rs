@@ -504,15 +504,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             match res {
                 // FIXME(#76467): make this fallthrough to lookup the associated
                 // item a separate function.
-                Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => {
-                    assert_eq!(ns, ValueNS);
-                }
-                Res::Def(DefKind::AssocTy, _) => {
-                    assert_eq!(ns, TypeNS);
-                }
-                Res::Def(DefKind::Variant, _) => {
-                    return handle_variant(cx, res, extra_fragment);
-                }
+                Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => assert_eq!(ns, ValueNS),
+                Res::Def(DefKind::AssocTy, _) => assert_eq!(ns, TypeNS),
+                Res::Def(DefKind::Variant, _) => return handle_variant(cx, res, extra_fragment),
                 // Not a trait item; just return what we found.
                 Res::Primitive(ty) => {
                     if extra_fragment.is_some() {
@@ -522,12 +516,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     }
                     return Ok((res, Some(ty.as_str().to_owned())));
                 }
-                Res::Def(DefKind::Mod, _) => {
-                    return Ok((res, extra_fragment.clone()));
-                }
-                _ => {
-                    return Ok((res, extra_fragment.clone()));
-                }
+                _ => return Ok((res, extra_fragment.clone())),
             }
         }
 
@@ -1024,12 +1013,18 @@ impl LinkCollector<'_, '_> {
 
         let resolved_self;
         // replace `Self` with suitable item's parent name
-        if path_str.starts_with("Self::") {
+        let is_lone_self = path_str == "Self";
+        let is_lone_crate = path_str == "crate";
+        if path_str.starts_with("Self::") || is_lone_self {
             if let Some(ref name) = self_name {
-                resolved_self = format!("{}::{}", name, &path_str[6..]);
-                path_str = &resolved_self;
+                if is_lone_self {
+                    path_str = name;
+                } else {
+                    resolved_self = format!("{}::{}", name, &path_str[6..]);
+                    path_str = &resolved_self;
+                }
             }
-        } else if path_str.starts_with("crate::") {
+        } else if path_str.starts_with("crate::") || is_lone_crate {
             use rustc_span::def_id::CRATE_DEF_INDEX;
 
             // HACK(jynelson): rustc_resolve thinks that `crate` is the crate currently being documented.
@@ -1038,8 +1033,12 @@ impl LinkCollector<'_, '_> {
             // HACK(jynelson)(2): If we just strip `crate::` then suddenly primitives become ambiguous
             // (consider `crate::char`). Instead, change it to `self::`. This works because 'self' is now the crate root.
             // FIXME(#78696): This doesn't always work.
-            resolved_self = format!("self::{}", &path_str["crate::".len()..]);
-            path_str = &resolved_self;
+            if is_lone_crate {
+                path_str = "self";
+            } else {
+                resolved_self = format!("self::{}", &path_str["crate::".len()..]);
+                path_str = &resolved_self;
+            }
             module_id = DefId { krate, index: CRATE_DEF_INDEX };
         }
 
@@ -2092,7 +2091,7 @@ fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
         "array" => Array,
         "tuple" => Tuple,
         "unit" => Unit,
-        "pointer" | "*" | "*const" | "*mut" => RawPointer,
+        "pointer" | "*const" | "*mut" => RawPointer,
         "reference" | "&" | "&mut" => Reference,
         "fn" => Fn,
         "never" | "!" => Never,

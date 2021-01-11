@@ -566,6 +566,25 @@ fn stdout_isatty() -> bool {
     }
 }
 
+// FIXME remove these and use winapi 0.3 instead
+#[cfg(unix)]
+fn stderr_isatty() -> bool {
+    unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
+}
+
+#[cfg(windows)]
+fn stderr_isatty() -> bool {
+    use winapi::um::consoleapi::GetConsoleMode;
+    use winapi::um::processenv::GetStdHandle;
+    use winapi::um::winbase::STD_ERROR_HANDLE;
+
+    unsafe {
+        let handle = GetStdHandle(STD_ERROR_HANDLE);
+        let mut out = 0;
+        GetConsoleMode(handle, &mut out) != 0
+    }
+}
+
 fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     let normalised =
         if code.starts_with('E') { code.to_string() } else { format!("E{0:0>4}", code) };
@@ -1290,7 +1309,7 @@ pub fn init_env_logger(env: &str) {
         Ok(value) => match value.as_ref() {
             "always" => true,
             "never" => false,
-            "auto" => stdout_isatty(),
+            "auto" => stderr_isatty(),
             _ => early_error(
                 ErrorOutputType::default(),
                 &format!(
@@ -1299,7 +1318,7 @@ pub fn init_env_logger(env: &str) {
                 ),
             ),
         },
-        Err(std::env::VarError::NotPresent) => stdout_isatty(),
+        Err(std::env::VarError::NotPresent) => stderr_isatty(),
         Err(std::env::VarError::NotUnicode(_value)) => early_error(
             ErrorOutputType::default(),
             "non-Unicode log color value: expected one of always, never, or auto",

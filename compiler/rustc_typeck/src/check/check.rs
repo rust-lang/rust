@@ -113,7 +113,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             };
 
             if let Some(header) = item {
-                tcx.sess.span_err(header.span, "A function with the \"rust-call\" ABI must take a single non-self argument that is a tuple")
+                tcx.sess.span_err(header.span, "functions with the \"rust-call\" ABI must take a single non-self argument that is a tuple")
             }
         };
 
