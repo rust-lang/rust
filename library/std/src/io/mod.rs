@@ -384,14 +384,15 @@ where
             }
         }
 
-        match r.read(&mut g.buf[g.len..]) {
+        let buf = &mut g.buf[g.len..];
+        match r.read(buf) {
             Ok(0) => return Ok(g.len - start_len),
             Ok(n) => {
                 // We can't let g.len overflow which would result in the vec shrinking when the function returns. In
                 // particular, that could break read_to_string if the shortened buffer doesn't end on a UTF-8 boundary.
                 // The minimal check would just be a checked_add, but this assert is a bit more precise and should be
                 // just about the same cost.
-                assert!(n <= g.buf.len() - g.len);
+                assert!(n <= buf.len());
                 g.len += n;
             }
             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
