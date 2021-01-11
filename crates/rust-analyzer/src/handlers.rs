@@ -437,9 +437,7 @@ pub(crate) fn handle_will_rename_files(
                         // imitate change the older_folder/mod.rs to older_folder/new_folder.rs
 
                         // add '/' to end of url -- from `file://path/to/folder` to `file://path/to/folder/`
-                        let old_folder_name = from_path.file_stem()?;
-                        let old_folder_name = old_folder_name.to_str()?;
-                        let mut old_folder_name = old_folder_name.to_string();
+                        let mut old_folder_name = from_path.file_stem()?.to_str()?.to_string();
                         old_folder_name.push('/');
                         let from_with_trailing_slash = from.join(&old_folder_name).ok()?;
 
