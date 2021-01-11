@@ -37,7 +37,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 
     let ref_removed_ty =
         std::iter::successors(Some(receiver_ty.clone()), |ty| ty.remove_ref()).last().unwrap();
-    
+
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
         None => return,
