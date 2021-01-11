@@ -99,10 +99,10 @@ pub(super) fn parse(
                                 }
                                 _ => token.span,
                             },
-                            tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
+                            tree => tree.as_ref().map_or(span, tokenstream::TokenTree::span),
                         }
                     }
-                    tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
+                    tree => tree.as_ref().map_or(start_sp, tokenstream::TokenTree::span),
                 };
                 if node_id != DUMMY_NODE_ID {
                     // Macros loaded from other crates have dummy node ids.
@@ -250,7 +250,7 @@ fn parse_kleene_op(
             Some(op) => Ok(Ok((op, token.span))),
             None => Ok(Err(token)),
         },
-        tree => Err(tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span)),
+        tree => Err(tree.as_ref().map_or(span, tokenstream::TokenTree::span)),
     }
 }
 

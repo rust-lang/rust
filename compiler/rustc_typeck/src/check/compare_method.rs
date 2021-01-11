@@ -364,13 +364,14 @@ fn check_region_bounds_on_impl_item<'tcx>(
     if trait_params != impl_params {
         let item_kind = assoc_item_kind_str(impl_m);
         let def_span = tcx.sess.source_map().guess_head_span(span);
-        let span = tcx.hir().get_generics(impl_m.def_id).map(|g| g.span).unwrap_or(def_span);
+        let span = tcx.hir().get_generics(impl_m.def_id).map_or(def_span, |g| g.span);
         let generics_span = if let Some(sp) = tcx.hir().span_if_local(trait_m.def_id) {
             let def_sp = tcx.sess.source_map().guess_head_span(sp);
-            Some(tcx.hir().get_generics(trait_m.def_id).map(|g| g.span).unwrap_or(def_sp))
+            Some(tcx.hir().get_generics(trait_m.def_id).map_or(def_sp, |g| g.span))
         } else {
             None
         };
+
         tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
             span,
             item_kind,

@@ -1358,7 +1358,7 @@ pub fn build_session(
 
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
     let optimization_fuel = Lock::new(OptimizationFuel {
-        remaining: sopts.debugging_opts.fuel.as_ref().map(|i| i.1).unwrap_or(0),
+        remaining: sopts.debugging_opts.fuel.as_ref().map_or(0, |i| i.1),
         out_of_fuel: false,
     });
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();

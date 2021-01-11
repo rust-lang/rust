@@ -904,8 +904,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // Return directly on cache hit. This is useful to avoid doubly reporting
             // errors with default match binding modes. See #44614.
-            let def =
-                cached_result.map(|(kind, def_id)| Res::Def(kind, def_id)).unwrap_or(Res::Err);
+            let def = cached_result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id));
             return (def, Some(ty), slice::from_ref(&**item_segment));
         }
         let item_name = item_segment.ident;
@@ -932,7 +931,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Write back the new resolution.
         self.write_resolution(hir_id, result);
         (
-            result.map(|(kind, def_id)| Res::Def(kind, def_id)).unwrap_or(Res::Err),
+            result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
             Some(ty),
             slice::from_ref(&**item_segment),
         )

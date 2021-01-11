@@ -952,7 +952,7 @@ fn is_useful<'p, 'tcx>(
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
-    let ty = matrix.heads().next().map(|r| r.ty).unwrap_or(v.head().ty);
+    let ty = matrix.heads().next().map_or(v.head().ty, |r| r.ty);
     let pcx = PatCtxt { cx, ty, span: v.head().span, is_top_level };
 
     debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", pcx.ty, v.head());
