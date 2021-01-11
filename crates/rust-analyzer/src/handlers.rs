@@ -435,7 +435,15 @@ pub(crate) fn handle_will_rename_files(
                     if from_path.is_dir() {
                         // This is a quick implement, try to use will_rename_file code.
                         // imitate change the older_folder/mod.rs to older_folder/new_folder.rs
-                        let imitate_from_url = from.join("mod.rs").ok()?;
+
+                        // add '/' to end of url -- from `file://path/to/folder` to `file://path/to/folder/`
+                        let old_folder_name = from_path.file_stem()?;
+                        let old_folder_name = old_folder_name.to_str()?;
+                        let mut old_folder_name = old_folder_name.to_string();
+                        old_folder_name.push('/');
+                        let from_with_trailing_slash = from.join(&old_folder_name).ok()?;
+
+                        let imitate_from_url = from_with_trailing_slash.join("mod.rs").ok()?;
                         let imite_new_file_name = to_path.file_name()?.to_str()?;
                         Some((
                             snap.url_to_file_id(&imitate_from_url).ok()?,
