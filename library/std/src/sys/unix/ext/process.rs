@@ -172,7 +172,7 @@ impl CommandExt for process::Command {
 
 /// Unix-specific extensions to [`process::ExitStatus`].
 ///
-/// This trait is saeled (since Rust 1.51): it cannot be implemented outside the standard library.
+/// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExitStatusExt: private::Sealed {

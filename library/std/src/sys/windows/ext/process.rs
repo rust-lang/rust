@@ -82,7 +82,7 @@ impl IntoRawHandle for process::ChildStderr {
 
 /// Windows-specific extensions to [`process::ExitStatus`].
 ///
-/// This trait is saeled (since Rust 1.51): it cannot be implemented outside the standard library.
+/// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 #[stable(feature = "exit_status_from", since = "1.12.0")]
 pub trait ExitStatusExt: private::Sealed {
