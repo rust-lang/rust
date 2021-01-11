@@ -37,14 +37,14 @@ You can refer to anything in scope, and use paths, including `Self`, `self`, `su
 trait implementations][#79682]. Rustdoc also supports linking to the following primitives, which
 have no path and cannot be imported:
 
-- [`slice`](../../std/primitive.slice.html)
-- [`array`](../../std/primitive.array.html)
-- [`tuple`](../../std/primitive.tuple.html)
-- [`unit`](../../std/primitive.unit.html)
-- [`fn`](../../std/primitive.fn.html)
-- [`pointer`](../../std/primitive.pointer.html), `*`, `*const`, or `*mut`
-- [`reference`](../../std/primitive.reference.html), `&`, or `&mut`
-- [`never`](../../std/primitive.never.html) or `!`
+- [`slice`](../std/primitive.slice.html)
+- [`array`](../std/primitive.array.html)
+- [`tuple`](../std/primitive.tuple.html)
+- [`unit`](../std/primitive.unit.html)
+- [`fn`](../std/primitive.fn.html)
+- [`pointer`](../std/primitive.pointer.html), `*`, `*const`, or `*mut`
+- [`reference`](../std/primitive.reference.html), `&`, or `&mut`
+- [`never`](../std/primitive.never.html) or `!`
 
 [#79682]: https://github.com/rust-lang/rust/pull/79682
 
