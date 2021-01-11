@@ -447,9 +447,11 @@ pub(crate) fn handle_will_rename_files(
                     } else {
                         let old_name = from_path.file_stem()?.to_str()?;
                         let new_name = to_path.file_stem()?.to_str()?;
-                        match(old_name,new_name){
-                            ("mod","mod") =>Some((snap.url_to_file_id(&from).ok()?, new_name.to_string())),
-                            _=>None
+                        match (old_name, new_name) {
+                            ("mod", "mod") => {
+                                Some((snap.url_to_file_id(&from).ok()?, new_name.to_string()))
+                            }
+                            _ => None,
                         }
                     }
                 }
