@@ -2091,7 +2091,7 @@ fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
         "array" => Array,
         "tuple" => Tuple,
         "unit" => Unit,
-        "pointer" | "*" | "*const" | "*mut" => RawPointer,
+        "pointer" | "*const" | "*mut" => RawPointer,
         "reference" | "&" | "&mut" => Reference,
         "fn" => Fn,
         "never" | "!" => Never,
