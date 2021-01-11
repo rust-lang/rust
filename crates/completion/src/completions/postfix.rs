@@ -30,22 +30,19 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     let receiver_text =
         get_receiver_text(dot_receiver, ctx.dot_receiver_is_ambiguous_float_literal);
 
-    let mut receiver_ty = match ctx.sema.type_of_expr(&dot_receiver) {
+    let receiver_ty = match ctx.sema.type_of_expr(&dot_receiver) {
         Some(it) => it,
         None => return,
     };
 
-    let mut ref_removed = false;
-    if let Some(removed) = receiver_ty.remove_ref() {
-        receiver_ty = removed;
-        ref_removed = true;
-    }
-
+    let ref_removed_ty =
+        std::iter::successors(Some(receiver_ty.clone()), |ty| ty.remove_ref()).last().unwrap();
+    
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
         None => return,
     };
-    let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty);
+    let try_enum = TryEnum::from_ty(&ctx.sema, &ref_removed_ty);
     if let Some(try_enum) = &try_enum {
         match try_enum {
             TryEnum::Result => {
@@ -91,7 +88,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
                 .add_to(acc);
             }
         }
-    } else if !ref_removed && (receiver_ty.is_bool() || receiver_ty.is_unknown()) {
+    } else if receiver_ty.is_bool() || receiver_ty.is_unknown() {
         postfix_snippet(
             ctx,
             cap,
