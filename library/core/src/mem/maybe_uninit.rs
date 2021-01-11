@@ -830,7 +830,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// assert_eq!(array, [0, 1, 2]);
     /// ```
-    #[unstable(feature = "maybe_uninit_array_assume_init", issue = "none")]
+    #[unstable(feature = "maybe_uninit_array_assume_init", issue = "80908")]
     #[inline(always)]
     pub unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
         // Convert using a union because mem::transmute does not support const_generics
