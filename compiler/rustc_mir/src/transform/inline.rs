@@ -39,6 +39,9 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // If you change this optimization level, also change the level in
+        // `mir_drops_elaborated_and_const_checked` for the call to `mir_inliner_callees`.
+        // Otherwise you will get an ICE about stolen MIR.
         if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
             return;
         }

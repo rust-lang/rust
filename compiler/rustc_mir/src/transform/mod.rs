@@ -425,7 +425,12 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
     if is_fn_like {
         let did = def.did.to_def_id();
         let def = ty::WithOptConstParam::unknown(did);
-        let _ = tcx.mir_inliner_callees(ty::InstanceDef::Item(def));
+
+        // Do not compute the mir call graph without said call graph actually being used.
+        // Keep this in sync with the mir inliner's optimization level.
+        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+            let _ = tcx.mir_inliner_callees(ty::InstanceDef::Item(def));
+        }
     }
 
     let (body, _) = tcx.mir_promoted(def);
