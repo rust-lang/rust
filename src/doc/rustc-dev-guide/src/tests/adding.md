@@ -66,6 +66,8 @@ directory that helps identify what piece of code is being tested here
 If you've tried and cannot find a more relevant place,
 the test may be added to `src/test/ui/issues/`.
 Still, **do include the issue number somewhere**.
+But please avoid putting your test there as possible since that
+directory has too many tests and it causes poor semantic organization.
 
 When writing a new feature, **create a subdirectory to store your
 tests**. For example, if you are implementing RFC 1234 ("Widgets"),
@@ -390,6 +392,21 @@ and so forth.
 
 [hw-main]: https://github.com/rust-lang/rust/blob/master/src/test/ui/hello_world/main.rs
 [hw]: https://github.com/rust-lang/rust/blob/master/src/test/ui/hello_world/
+
+We now have a ton of UI tests and some directories have too many entries.
+This is a problem because it isn't editor/IDE friendly and GitHub UI won't
+show more than 1000 entries. To resolve it and organize semantic structure,
+we have a tidy check to ensure the number of entries is less than 1000.
+However, since `src/test/ui` (UI test root directory) and
+`src/test/ui/issues` directories have more than 1000 entries,
+we set a different limit for each directories. So, please
+avoid putting a new test there and try to find a more relevant place.
+For example, if your test is related to closures, you should put it in
+`src/test/ui/closures`. If you're not sure where is the best place,
+it's still okay to add to `src/test/ui/issues/`. When you reach the limit,
+you could increase it by tweaking [here][ui test tidy].
+
+[ui test tidy]: https://github.com/rust-lang/rust/blob/master/src/tools/tidy/src/ui_tests.rs
 
 ### Tests that do not result in compile errors
 
