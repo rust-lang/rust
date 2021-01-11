@@ -351,6 +351,7 @@ Expr =
 | TryExpr
 | TupleExpr
 | WhileExpr
+| YieldExpr
 
 Literal =
   Attr* value:(
@@ -490,6 +491,9 @@ MatchGuard =
 
 ReturnExpr =
   Attr* 'return' Expr?
+
+YieldExpr =
+  Attr* 'yield' Expr?
 
 AwaitExpr =
   Attr* Expr '.' 'await'
