@@ -12,7 +12,7 @@ use rustc_hir::definitions::{DefPathHash, Definitions};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, CachingSourceMapView, SourceFile};
+use rustc_span::{BytePos, CachingSourceMapView, SourceFile, SpanData};
 
 use rustc_span::def_id::{CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
@@ -247,6 +247,13 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         byte: BytePos,
     ) -> Option<(Lrc<SourceFile>, usize, BytePos)> {
         self.source_map().byte_pos_to_line_and_col(byte)
+    }
+
+    fn span_data_to_lines_and_cols(
+        &mut self,
+        span: &SpanData,
+    ) -> Option<(Lrc<SourceFile>, usize, BytePos, usize, BytePos)> {
+        self.source_map().span_data_to_lines_and_cols(span)
     }
 }
 
