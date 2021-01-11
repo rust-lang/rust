@@ -2118,7 +2118,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let consider = format!(
                     "{} {}...",
                     msg,
-                    if type_param_span.map(|(_, _, is_impl_trait)| is_impl_trait).unwrap_or(false) {
+                    if type_param_span.map_or(false, |(_, _, is_impl_trait)| is_impl_trait) {
                         format!(" `{}` to `{}`", sub, bound_kind)
                     } else {
                         format!("`{}: {}`", bound_kind, sub)

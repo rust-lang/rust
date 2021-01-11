@@ -539,7 +539,7 @@ impl SourceMap {
 
     pub fn is_line_before_span_empty(&self, sp: Span) -> bool {
         match self.span_to_prev_source(sp) {
-            Ok(s) => s.split('\n').last().map(|l| l.trim_start().is_empty()).unwrap_or(false),
+            Ok(s) => s.split('\n').last().map_or(false, |l| l.trim_start().is_empty()),
             Err(_) => false,
         }
     }
@@ -568,7 +568,7 @@ impl SourceMap {
         // asserting that the line numbers here are all indeed 1-based.
         let hi_line = hi.line.saturating_sub(1);
         for line_index in lo.line.saturating_sub(1)..hi_line {
-            let line_len = lo.file.get_line(line_index).map(|s| s.chars().count()).unwrap_or(0);
+            let line_len = lo.file.get_line(line_index).map_or(0, |s| s.chars().count());
             lines.push(LineInfo { line_index, start_col, end_col: CharPos::from_usize(line_len) });
             start_col = CharPos::from_usize(0);
         }

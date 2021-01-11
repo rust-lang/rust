@@ -203,7 +203,7 @@ fn macro_rules_dummy_expander<'cx>(
 }
 
 fn trace_macros_note(cx_expansions: &mut FxHashMap<Span, Vec<String>>, sp: Span, message: String) {
-    let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
+    let sp = sp.macro_backtrace().last().map_or(sp, |trace| trace.call_site);
     cx_expansions.entry(sp).or_default().push(message);
 }
 

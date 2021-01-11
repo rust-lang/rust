@@ -500,7 +500,7 @@ fn inner_parse_loop<'root, 'tt>(
                 if idx == len && item.sep.is_some() {
                     // We have a separator, and it is the current token. We can advance past the
                     // separator token.
-                    if item.sep.as_ref().map(|sep| token_name_eq(token, sep)).unwrap_or(false) {
+                    if item.sep.as_ref().map_or(false, |sep| token_name_eq(token, sep)) {
                         item.idx += 1;
                         next_items.push(item);
                     }

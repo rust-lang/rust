@@ -670,7 +670,7 @@ impl<'tcx> SaveContext<'tcx> {
     ) -> Option<Ref> {
         // Returns true if the path is function type sugar, e.g., `Fn(A) -> B`.
         fn fn_type(seg: &hir::PathSegment<'_>) -> bool {
-            seg.args.map(|args| args.parenthesized).unwrap_or(false)
+            seg.args.map_or(false, |args| args.parenthesized)
         }
 
         let res = self.get_path_res(id);
