@@ -14,7 +14,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
-use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand, SyntaxExtension};
+use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand};
+use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind};
 use rustc_feature::is_builtin_attr_name;
@@ -176,10 +177,11 @@ impl<'a> ResolverExpand for Resolver<'a> {
         parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
     }
 
-    fn register_builtin_macro(&mut self, ident: Ident, ext: SyntaxExtension) {
-        if self.builtin_macros.insert(ident.name, BuiltinMacroState::NotYetSeen(ext)).is_some() {
+    fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind) {
+        if self.builtin_macros.insert(name, BuiltinMacroState::NotYetSeen(ext)).is_some() {
             self.session
-                .span_err(ident.span, &format!("built-in macro `{}` was already defined", ident));
+                .diagnostic()
+                .bug(&format!("built-in macro `{}` was already registered", name));
         }
     }
 
@@ -1097,7 +1099,7 @@ impl<'a> Resolver<'a> {
                 // while still taking everything else from the source code.
                 // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
                 match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(item.span)) {
-                    BuiltinMacroState::NotYetSeen(ext) => result.kind = ext.kind,
+                    BuiltinMacroState::NotYetSeen(ext) => result.kind = ext,
                     BuiltinMacroState::AlreadySeen(span) => {
                         struct_span_err!(
                             self.session,

@@ -33,7 +33,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
-use rustc_expand::base::SyntaxExtension;
+use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
@@ -874,7 +874,7 @@ pub struct ExternPreludeEntry<'a> {
 
 /// Used for better errors for E0773
 enum BuiltinMacroState {
-    NotYetSeen(SyntaxExtension),
+    NotYetSeen(SyntaxExtensionKind),
     AlreadySeen(Span),
 }
 
