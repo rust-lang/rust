@@ -3652,6 +3652,7 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
+ "atty",
  "libc",
  "rustc_ast",
  "rustc_ast_pretty",

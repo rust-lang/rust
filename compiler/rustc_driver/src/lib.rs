@@ -546,43 +546,12 @@ impl Compilation {
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
-// FIXME remove these and use winapi 0.3 instead
-// Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs
-#[cfg(unix)]
 fn stdout_isatty() -> bool {
-    unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+    atty::is(atty::Stream::Stdout)
 }
 
-#[cfg(windows)]
-fn stdout_isatty() -> bool {
-    use winapi::um::consoleapi::GetConsoleMode;
-    use winapi::um::processenv::GetStdHandle;
-    use winapi::um::winbase::STD_OUTPUT_HANDLE;
-
-    unsafe {
-        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
-        let mut out = 0;
-        GetConsoleMode(handle, &mut out) != 0
-    }
-}
-
-// FIXME remove these and use winapi 0.3 instead
-#[cfg(unix)]
 fn stderr_isatty() -> bool {
-    unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
-}
-
-#[cfg(windows)]
-fn stderr_isatty() -> bool {
-    use winapi::um::consoleapi::GetConsoleMode;
-    use winapi::um::processenv::GetStdHandle;
-    use winapi::um::winbase::STD_ERROR_HANDLE;
-
-    unsafe {
-        let handle = GetStdHandle(STD_ERROR_HANDLE);
-        let mut out = 0;
-        GetConsoleMode(handle, &mut out) != 0
-    }
+    atty::is(atty::Stream::Stderr)
 }
 
 fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
