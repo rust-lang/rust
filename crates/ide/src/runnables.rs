@@ -3,7 +3,7 @@ use std::fmt;
 use assists::utils::test_related_attribute;
 use cfg::CfgExpr;
 use hir::{AsAssocItem, HasAttrs, HasSource, Semantics};
-use ide_db::RootDatabase;
+use ide_db::{defs::Definition, RootDatabase};
 use itertools::Itertools;
 use syntax::{
     ast::{self, AstNode, AttrsOwner, ModuleItemOwner},
@@ -110,7 +110,10 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
                     _ => None,
                 }
             };
-            runnable.or_else(|| runnable_doctest(&sema, item))
+            runnable.or_else(|| match doc_owner_to_def(&sema, item)? {
+                Definition::ModuleDef(def) => module_def_doctest(&sema, def),
+                _ => None,
+            })
         })
         .collect()
 }
@@ -170,20 +173,26 @@ pub(crate) fn runnable_mod(
     Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg })
 }
 
-fn runnable_doctest(sema: &Semantics<RootDatabase>, item: SyntaxNode) -> Option<Runnable> {
-    match_ast! {
+// FIXME: figure out a proper API here.
+pub(crate) fn doc_owner_to_def(
+    sema: &Semantics<RootDatabase>,
+    item: SyntaxNode,
+) -> Option<Definition> {
+    let res: hir::ModuleDef = match_ast! {
         match item {
-            ast::Fn(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
-            ast::Struct(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
-            ast::Enum(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
-            ast::Union(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
-            ast::Trait(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
-            ast::Const(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
-            ast::Static(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
-            ast::TypeAlias(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
-            _ => None,
+            ast::SourceFile(it) => sema.scope(&item).module()?.into(),
+            ast::Fn(it) => sema.to_def(&it)?.into(),
+            ast::Struct(it) => sema.to_def(&it)?.into(),
+            ast::Enum(it) => sema.to_def(&it)?.into(),
+            ast::Union(it) => sema.to_def(&it)?.into(),
+            ast::Trait(it) => sema.to_def(&it)?.into(),
+            ast::Const(it) => sema.to_def(&it)?.into(),
+            ast::Static(it) => sema.to_def(&it)?.into(),
+            ast::TypeAlias(it) => sema.to_def(&it)?.into(),
+            _ => return None,
         }
-    }
+    };
+    Some(Definition::ModuleDef(res))
 }
 
 fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Option<Runnable> {
