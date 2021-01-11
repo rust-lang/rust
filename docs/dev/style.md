@@ -78,6 +78,8 @@ Use original span for FileId
 
 This makes it easier to prepare a changelog.
 
+If the change adds a new user-visible functionality, consider recording a GIF with [peek](https://github.com/phw/peek) and pasting it into the PR description.
+
 **Rationale:** clean history is potentially useful, but rarely used.
 But many users read changelogs.
 
