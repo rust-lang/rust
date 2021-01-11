@@ -1686,6 +1686,18 @@ macro_rules! unwrap_cargo_metadata {
     }};
 }
 
+pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
+    if_chain! {
+        if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
+        if let Res::Def(_, def_id) = path.res;
+        then {
+            cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr)
+        } else {
+            false
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{reindent_multiline, without_block_comments};
