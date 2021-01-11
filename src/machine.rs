@@ -24,6 +24,7 @@ use rustc_middle::{
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{LayoutOf, Size};
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
 
@@ -352,6 +353,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
+        _abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
@@ -363,6 +365,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     fn call_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Dlsym,
+        _abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock>,
