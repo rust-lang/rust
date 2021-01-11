@@ -1,3 +1,6 @@
+# ignore-riscv64 $(call RUN,foo) expects to run the target executable natively
+#                              so it won't work with remote-test-server
+
 include ../../run-make-fulldeps/tools.mk
 
 all: foo
