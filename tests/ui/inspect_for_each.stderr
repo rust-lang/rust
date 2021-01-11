@@ -1,0 +1,16 @@
+error: called `inspect(..).for_each(..)` on an `Iterator`
+  --> $DIR/inspect_for_each.rs:7:19
+   |
+LL |       a.into_iter().inspect(|x| assert!(*x > 0)).for_each(|x| {
+   |  ___________________^
+LL | |         let y = do_some(x);
+LL | |         let z = do_more(y);
+LL | |         b.push(z);
+LL | |     });
+   | |______^
+   |
+   = note: `-D clippy::inspect-for-each` implied by `-D warnings`
+   = help: move the code from `inspect(..)` to `for_each(..)` and remove the `inspect(..)`
+
+error: aborting due to previous error
+

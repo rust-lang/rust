@@ -1,5 +1,6 @@
 mod bind_instead_of_map;
 mod inefficient_to_string;
+mod inspect_for_each;
 mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
 mod unnecessary_filter_map;
@@ -1405,6 +1406,36 @@ declare_clippy_lint! {
     "use `.collect()` instead of `::from_iter()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `inspect().for_each()`.
+    ///
+    /// **Why is this bad?** It is the same as performing the computation
+    /// inside `inspect` at the beginning of the closure in `for_each`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// [1,2,3,4,5].iter()
+    /// .inspect(|&x| println!("inspect the number: {}", x))
+    /// .for_each(|&x| {
+    ///     assert!(x >= 0);
+    /// });
+    /// ```
+    /// Can be written as
+    /// ```rust
+    /// [1,2,3,4,5].iter()
+    /// .for_each(|&x| {
+    ///     println!("inspect the number: {}", x);
+    ///     assert!(x >= 0);
+    /// });
+    /// ```
+    pub INSPECT_FOR_EACH,
+    complexity,
+    "using `.inspect().for_each()`, which can be replaced with `.for_each()`"
+}
+
 pub struct Methods {
     msrv: Option<RustcVersion>,
 }
@@ -1467,6 +1498,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_LAZY_EVALUATIONS,
     MAP_COLLECT_RESULT_UNIT,
     FROM_ITER_INSTEAD_OF_COLLECT,
+    INSPECT_FOR_EACH,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
@@ -1553,6 +1585,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["get_or_insert_with", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "get_or_insert"),
             ["ok_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "ok_or"),
             ["collect", "map"] => lint_map_collect(cx, expr, arg_lists[1], arg_lists[0]),
+            ["for_each", "inspect"] => inspect_for_each::lint(cx, expr, method_spans[1]),
             _ => {},
         }
 

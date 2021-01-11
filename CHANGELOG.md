@@ -1996,6 +1996,7 @@ Released 2018-09-13
 [`inline_asm_x86_att_syntax`]: https://rust-lang.github.io/rust-clippy/master/index.html#inline_asm_x86_att_syntax
 [`inline_asm_x86_intel_syntax`]: https://rust-lang.github.io/rust-clippy/master/index.html#inline_asm_x86_intel_syntax
 [`inline_fn_without_body`]: https://rust-lang.github.io/rust-clippy/master/index.html#inline_fn_without_body
+[`inspect_for_each`]: https://rust-lang.github.io/rust-clippy/master/index.html#inspect_for_each
 [`int_plus_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#int_plus_one
 [`integer_arithmetic`]: https://rust-lang.github.io/rust-clippy/master/index.html#integer_arithmetic
 [`integer_division`]: https://rust-lang.github.io/rust-clippy/master/index.html#integer_division
