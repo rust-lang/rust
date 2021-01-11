@@ -2897,19 +2897,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<&'tcx AssocItem> {
-        let is_associated_item = if let Some(def_id) = def_id.as_local() {
-            matches!(
-                self.hir().get(self.hir().local_def_id_to_hir_id(def_id)),
-                Node::TraitItem(_) | Node::ImplItem(_)
-            )
+        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
+            Some(self.associated_item(def_id))
         } else {
-            matches!(
-                self.def_kind(def_id),
-                DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy
-            )
-        };
-
-        is_associated_item.then(|| self.associated_item(def_id))
+            None
+        }
     }
 
     pub fn field_index(self, hir_id: hir::HirId, typeck_results: &TypeckResults<'_>) -> usize {
