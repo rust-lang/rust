@@ -14,16 +14,17 @@ use ide_db::{
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
-    lex_single_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken,
+    lex_single_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken, T,
 };
 use test_utils::mark;
 use text_edit::TextEdit;
 
 use crate::{
-    references::find_all_refs, FilePosition, FileSystemEdit, RangeInfo, Reference, ReferenceKind,
+    FilePosition, FileSystemEdit, RangeInfo, Reference, ReferenceKind, ReferenceSearchResult,
     SourceChange, SourceFileEdit, TextRange, TextSize,
 };
 
+type RenameResult<T> = Result<T, RenameError>;
 #[derive(Debug)]
 pub struct RenameError(pub(crate) String);
 
@@ -35,24 +36,30 @@ impl fmt::Display for RenameError {
 
 impl Error for RenameError {}
 
+macro_rules! format_err {
+    ($fmt:expr) => {RenameError(format!($fmt))};
+    ($fmt:expr, $($arg:tt)+) => {RenameError(format!($fmt, $($arg)+))}
+}
+
+macro_rules! bail {
+    ($($tokens:tt)*) => {return Err(format_err!($($tokens)*))}
+}
+
 pub(crate) fn prepare_rename(
     db: &RootDatabase,
     position: FilePosition,
-) -> Result<RangeInfo<()>, RenameError> {
+) -> RenameResult<RangeInfo<()>> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
     if let Some(module) = find_module_at_offset(&sema, position, syntax) {
         rename_mod(&sema, position, module, "dummy")
     } else if let Some(self_token) =
-        syntax.token_at_offset(position.offset).find(|t| t.kind() == SyntaxKind::SELF_KW)
+        syntax.token_at_offset(position.offset).find(|t| t.kind() == T![self])
     {
         rename_self_to_param(&sema, position, self_token, "dummy")
     } else {
-        let range = match find_all_refs(&sema, position, None) {
-            Some(RangeInfo { range, .. }) => range,
-            None => return Err(RenameError("No references found at position".to_string())),
-        };
+        let RangeInfo { range, .. } = find_all_refs(&sema, position)?;
         Ok(RangeInfo::new(range, SourceChange::from(vec![])))
     }
     .map(|info| RangeInfo::new(info.range, ()))
@@ -62,7 +69,7 @@ pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
     new_name: &str,
-) -> Result<RangeInfo<SourceChange>, RenameError> {
+) -> RenameResult<RangeInfo<SourceChange>> {
     let sema = Semantics::new(db);
     rename_with_semantics(&sema, position, new_name)
 }
@@ -71,42 +78,18 @@ pub(crate) fn rename_with_semantics(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
     new_name: &str,
-) -> Result<RangeInfo<SourceChange>, RenameError> {
-    let is_lifetime_name = match lex_single_syntax_kind(new_name) {
-        Some(res) => match res {
-            (SyntaxKind::IDENT, _) => false,
-            (SyntaxKind::UNDERSCORE, _) => false,
-            (SyntaxKind::SELF_KW, _) => return rename_to_self(&sema, position),
-            (SyntaxKind::LIFETIME_IDENT, _) if new_name != "'static" && new_name != "'_" => true,
-            (SyntaxKind::LIFETIME_IDENT, _) => {
-                return Err(RenameError(format!(
-                    "Invalid name `{0}`: Cannot rename lifetime to {0}",
-                    new_name
-                )))
-            }
-            (_, Some(syntax_error)) => {
-                return Err(RenameError(format!("Invalid name `{}`: {}", new_name, syntax_error)))
-            }
-            (_, None) => {
-                return Err(RenameError(format!("Invalid name `{}`: not an identifier", new_name)))
-            }
-        },
-        None => return Err(RenameError(format!("Invalid name `{}`: not an identifier", new_name))),
-    };
-
+) -> RenameResult<RangeInfo<SourceChange>> {
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
-    // this is here to prevent lifetime renames from happening on modules and self
-    if is_lifetime_name {
-        rename_reference(&sema, position, new_name, is_lifetime_name)
-    } else if let Some(module) = find_module_at_offset(&sema, position, syntax) {
+
+    if let Some(module) = find_module_at_offset(&sema, position, syntax) {
         rename_mod(&sema, position, module, new_name)
     } else if let Some(self_token) =
-        syntax.token_at_offset(position.offset).find(|t| t.kind() == SyntaxKind::SELF_KW)
+        syntax.token_at_offset(position.offset).find(|t| t.kind() == T![self])
     {
         rename_self_to_param(&sema, position, self_token, new_name)
     } else {
-        rename_reference(&sema, position, new_name, is_lifetime_name)
+        rename_reference(&sema, position, new_name)
     }
 }
 
@@ -125,6 +108,33 @@ pub(crate) fn will_rename_file(
     let mut change = rename_mod(&sema, position, module, new_name_stem).ok()?.info;
     change.file_system_edits.clear();
     Some(change)
+}
+
+#[derive(Debug, PartialEq)]
+enum IdentifierKind {
+    Ident,
+    Lifetime,
+    ToSelf,
+    Underscore,
+}
+
+fn check_identifier(new_name: &str) -> RenameResult<IdentifierKind> {
+    match lex_single_syntax_kind(new_name) {
+        Some(res) => match res {
+            (SyntaxKind::IDENT, _) => Ok(IdentifierKind::Ident),
+            (T![_], _) => Ok(IdentifierKind::Underscore),
+            (T![self], _) => Ok(IdentifierKind::ToSelf),
+            (SyntaxKind::LIFETIME_IDENT, _) if new_name != "'static" && new_name != "'_" => {
+                Ok(IdentifierKind::Lifetime)
+            }
+            (SyntaxKind::LIFETIME_IDENT, _) => {
+                bail!("Invalid name `{0}`: Cannot rename lifetime to {0}", new_name)
+            }
+            (_, Some(syntax_error)) => bail!("Invalid name `{}`: {}", new_name, syntax_error),
+            (_, None) => bail!("Invalid name `{}`: not an identifier", new_name),
+        },
+        None => bail!("Invalid name `{}`: not an identifier", new_name),
+    }
 }
 
 fn find_module_at_offset(
@@ -153,6 +163,14 @@ fn find_module_at_offset(
     };
 
     Some(module)
+}
+
+fn find_all_refs(
+    sema: &Semantics<RootDatabase>,
+    position: FilePosition,
+) -> RenameResult<RangeInfo<ReferenceSearchResult>> {
+    crate::references::find_all_refs(sema, position, None)
+        .ok_or_else(|| format_err!("No references found at position"))
 }
 
 fn source_edit_from_reference(
@@ -223,7 +241,10 @@ fn rename_mod(
     position: FilePosition,
     module: Module,
     new_name: &str,
-) -> Result<RangeInfo<SourceChange>, RenameError> {
+) -> RenameResult<RangeInfo<SourceChange>> {
+    if IdentifierKind::Ident != check_identifier(new_name)? {
+        bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
+    }
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
 
@@ -254,8 +275,7 @@ fn rename_mod(
         source_file_edits.push(edit);
     }
 
-    let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)
-        .ok_or_else(|| RenameError("No references found at position".to_string()))?;
+    let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
     let ref_edits = refs
         .references
         .into_iter()
@@ -274,27 +294,26 @@ fn rename_to_self(
 
     let (fn_def, fn_ast) = find_node_at_offset::<ast::Fn>(syn, position.offset)
         .and_then(|fn_ast| sema.to_def(&fn_ast).zip(Some(fn_ast)))
-        .ok_or_else(|| RenameError("No surrounding method declaration found".to_string()))?;
+        .ok_or_else(|| format_err!("No surrounding method declaration found"))?;
     let param_range = fn_ast
         .param_list()
         .and_then(|p| p.params().next())
-        .ok_or_else(|| RenameError("Method has no parameters".to_string()))?
+        .ok_or_else(|| format_err!("Method has no parameters"))?
         .syntax()
         .text_range();
     if !param_range.contains(position.offset) {
-        return Err(RenameError("Only the first parameter can be self".to_string()));
+        bail!("Only the first parameter can be self");
     }
 
     let impl_block = find_node_at_offset::<ast::Impl>(syn, position.offset)
         .and_then(|def| sema.to_def(&def))
-        .ok_or_else(|| RenameError("No impl block found for function".to_string()))?;
+        .ok_or_else(|| format_err!("No impl block found for function"))?;
     if fn_def.self_param(sema.db).is_some() {
-        return Err(RenameError("Method already has a self parameter".to_string()));
+        bail!("Method already has a self parameter");
     }
 
     let params = fn_def.assoc_fn_params(sema.db);
-    let first_param =
-        params.first().ok_or_else(|| RenameError("Method has no parameters".into()))?;
+    let first_param = params.first().ok_or_else(|| format_err!("Method has no parameters"))?;
     let first_param_ty = first_param.ty();
     let impl_ty = impl_block.target_ty(sema.db);
     let (ty, self_param) = if impl_ty.remove_ref().is_some() {
@@ -307,18 +326,17 @@ fn rename_to_self(
     };
 
     if ty != impl_ty {
-        return Err(RenameError("Parameter type differs from impl block type".to_string()));
+        bail!("Parameter type differs from impl block type");
     }
 
-    let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)
-        .ok_or_else(|| RenameError("No reference found at position".to_string()))?;
+    let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
 
     let (param_ref, usages): (Vec<Reference>, Vec<Reference>) = refs
         .into_iter()
         .partition(|reference| param_range.intersect(reference.file_range.range).is_some());
 
     if param_ref.is_empty() {
-        return Err(RenameError("Parameter to rename not found".to_string()));
+        bail!("Parameter to rename not found");
     }
 
     let mut edits = usages
@@ -367,12 +385,22 @@ fn rename_self_to_param(
     self_token: SyntaxToken,
     new_name: &str,
 ) -> Result<RangeInfo<SourceChange>, RenameError> {
+    let ident_kind = check_identifier(new_name)?;
+    match ident_kind {
+        IdentifierKind::Lifetime => bail!("Invalid name `{}`: not an identifier", new_name),
+        IdentifierKind::ToSelf => {
+            // no-op
+            mark::hit!(rename_self_to_self);
+            return Ok(RangeInfo::new(self_token.text_range(), SourceChange::default()));
+        }
+        _ => (),
+    }
     let source_file = sema.parse(position.file_id);
     let syn = source_file.syntax();
 
     let text = sema.db.file_text(position.file_id);
     let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)
-        .ok_or_else(|| RenameError("No surrounding method declaration found".to_string()))?;
+        .ok_or_else(|| format_err!("No surrounding method declaration found"))?;
     let search_range = fn_def.syntax().text_range();
 
     let mut edits: Vec<SourceFileEdit> = vec![];
@@ -382,17 +410,19 @@ fn rename_self_to_param(
         if !search_range.contains_inclusive(offset) {
             continue;
         }
-        if let Some(ref usage) =
-            syn.token_at_offset(offset).find(|t| t.kind() == SyntaxKind::SELF_KW)
-        {
+        if let Some(ref usage) = syn.token_at_offset(offset).find(|t| t.kind() == T![self]) {
             let edit = if let Some(ref self_param) = ast::SelfParam::cast(usage.parent()) {
                 text_edit_from_self_param(syn, self_param, new_name)
-                    .ok_or_else(|| RenameError("No target type found".to_string()))?
+                    .ok_or_else(|| format_err!("No target type found"))?
             } else {
                 TextEdit::replace(usage.text_range(), String::from(new_name))
             };
             edits.push(SourceFileEdit { file_id: position.file_id, edit });
         }
+    }
+
+    if edits.len() > 1 && ident_kind == IdentifierKind::Underscore {
+        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
     }
 
     let range = ast::SelfParam::cast(self_token.parent())
@@ -405,34 +435,40 @@ fn rename_reference(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
     new_name: &str,
-    is_lifetime_name: bool,
 ) -> Result<RangeInfo<SourceChange>, RenameError> {
-    let RangeInfo { range, info: refs } = match find_all_refs(sema, position, None) {
-        Some(range_info) => range_info,
-        None => return Err(RenameError("No references found at position".to_string())),
-    };
+    let ident_kind = check_identifier(new_name)?;
+    let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
 
-    match (refs.declaration.kind == ReferenceKind::Lifetime, is_lifetime_name) {
-        (true, false) => {
-            return Err(RenameError(format!(
-                "Invalid name `{}`: not a lifetime identifier",
-                new_name
-            )))
+    match (ident_kind, &refs.declaration.kind) {
+        (IdentifierKind::ToSelf, ReferenceKind::Lifetime)
+        | (IdentifierKind::Underscore, ReferenceKind::Lifetime)
+        | (IdentifierKind::Ident, ReferenceKind::Lifetime) => {
+            mark::hit!(rename_not_a_lifetime_ident_ref);
+            bail!("Invalid name `{}`: not a lifetime identifier", new_name)
         }
-        (false, true) => {
-            return Err(RenameError(format!("Invalid name `{}`: not an identifier", new_name)))
+        (IdentifierKind::Lifetime, ReferenceKind::Lifetime) => mark::hit!(rename_lifetime),
+        (IdentifierKind::Lifetime, _) => {
+            mark::hit!(rename_not_an_ident_ref);
+            bail!("Invalid name `{}`: not an identifier", new_name)
         }
-        _ => (),
+        (IdentifierKind::ToSelf, ReferenceKind::SelfKw) => {
+            unreachable!("rename_self_to_param should've been called instead")
+        }
+        (IdentifierKind::ToSelf, _) => {
+            mark::hit!(rename_to_self);
+            return rename_to_self(sema, position);
+        }
+        (IdentifierKind::Underscore, _) if !refs.references.is_empty() => {
+            mark::hit!(rename_underscore_multiple);
+            bail!("Cannot rename reference to `_` as it is being referenced multiple times")
+        }
+        (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => mark::hit!(rename_ident),
     }
 
     let edit = refs
         .into_iter()
         .map(|reference| source_edit_from_reference(sema, reference, new_name))
         .collect::<Vec<_>>();
-
-    if edit.is_empty() {
-        return Err(RenameError("No references found at position".to_string()));
-    }
 
     Ok(RangeInfo::new(range, SourceChange::from(edit)))
 }
@@ -462,9 +498,11 @@ mod tests {
                         text_edit_builder.replace(indel.delete, indel.insert);
                     }
                 }
-                let mut result = analysis.file_text(file_id.unwrap()).unwrap().to_string();
-                text_edit_builder.finish().apply(&mut result);
-                assert_eq_text!(ra_fixture_after, &*result);
+                if let Some(file_id) = file_id {
+                    let mut result = analysis.file_text(file_id).unwrap().to_string();
+                    text_edit_builder.finish().apply(&mut result);
+                    assert_eq_text!(ra_fixture_after, &*result);
+                }
             }
             Err(err) => {
                 if ra_fixture_after.starts_with("error:") {
@@ -530,6 +568,7 @@ mod tests {
 
     #[test]
     fn test_rename_to_invalid_identifier_lifetime() {
+        mark::check!(rename_not_an_ident_ref);
         check(
             "'foo",
             r#"fn main() { let i$0 = 1; }"#,
@@ -539,6 +578,7 @@ mod tests {
 
     #[test]
     fn test_rename_to_invalid_identifier_lifetime2() {
+        mark::check!(rename_not_a_lifetime_ident_ref);
         check(
             "foo",
             r#"fn main<'a>(_: &'a$0 ()) {}"#,
@@ -547,7 +587,27 @@ mod tests {
     }
 
     #[test]
+    fn test_rename_to_underscore_invalid() {
+        mark::check!(rename_underscore_multiple);
+        check(
+            "_",
+            r#"fn main(foo$0: ()) {foo;}"#,
+            "error: Cannot rename reference to `_` as it is being referenced multiple times",
+        );
+    }
+
+    #[test]
+    fn test_rename_mod_invalid() {
+        check(
+            "'foo",
+            r#"mod foo$0 {}"#,
+            "error: Invalid name `'foo`: cannot rename module to 'foo",
+        );
+    }
+
+    #[test]
     fn test_rename_for_local() {
+        mark::check!(rename_ident);
         check(
             "k",
             r#"
@@ -1178,6 +1238,7 @@ fn foo(f: foo::Foo) {
 
     #[test]
     fn test_parameter_to_self() {
+        mark::check!(rename_to_self);
         check(
             "self",
             r#"
@@ -1481,6 +1542,7 @@ fn foo(Foo { i: bar }: foo) -> i32 {
 
     #[test]
     fn test_rename_lifetimes() {
+        mark::check!(rename_lifetime);
         check(
             "'yeeee",
             r#"
@@ -1561,6 +1623,26 @@ fn foo<'a>() -> &'a () {
             break 'foo;
         }
     }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_self_to_self() {
+        mark::check!(rename_self_to_self);
+        check(
+            "self",
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(self$0) {}
+}
+"#,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(self) {}
 }
 "#,
         )
