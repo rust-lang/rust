@@ -2,12 +2,16 @@ use std::iter;
 
 use either::Either;
 use hir::{AsName, Module, ModuleDef, Name, Variant};
-use ide_db::helpers::{
-    insert_use::{insert_use, ImportScope},
-    mod_path_to_ast,
+use ide_db::{
+    defs::Definition,
+    helpers::{
+        insert_use::{insert_use, ImportScope},
+        mod_path_to_ast,
+    },
+    search::{FileReference, FileReferences},
+    RootDatabase,
 };
-use ide_db::{defs::Definition, search::Reference, RootDatabase};
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use syntax::{
     algo::{find_node_at_offset, SyntaxRewriter},
     ast::{self, edit::IndentLevel, make, AstNode, NameOwner, VisibilityOwner},
@@ -58,29 +62,29 @@ pub(crate) fn extract_struct_from_enum_variant(
             let mut visited_modules_set = FxHashSet::default();
             let current_module = enum_hir.module(ctx.db());
             visited_modules_set.insert(current_module);
-            let mut rewriters = FxHashMap::default();
-            for reference in usages {
-                let rewriter = rewriters
-                    .entry(reference.file_range.file_id)
-                    .or_insert_with(SyntaxRewriter::default);
-                let source_file = ctx.sema.parse(reference.file_range.file_id);
-                update_reference(
-                    ctx,
-                    rewriter,
-                    reference,
-                    &source_file,
-                    &enum_module_def,
-                    &variant_hir_name,
-                    &mut visited_modules_set,
-                );
-            }
-            let mut rewriter =
-                rewriters.remove(&ctx.frange.file_id).unwrap_or_else(SyntaxRewriter::default);
-            for (file_id, rewriter) in rewriters {
+            let mut def_rewriter = None;
+            for FileReferences { file_id, references: refs } in usages {
+                let mut rewriter = SyntaxRewriter::default();
+                let source_file = ctx.sema.parse(file_id);
+                for reference in refs {
+                    update_reference(
+                        ctx,
+                        &mut rewriter,
+                        reference,
+                        &source_file,
+                        &enum_module_def,
+                        &variant_hir_name,
+                        &mut visited_modules_set,
+                    );
+                }
+                if file_id == ctx.frange.file_id {
+                    def_rewriter = Some(rewriter);
+                    continue;
+                }
                 builder.edit_file(file_id);
                 builder.rewrite(rewriter);
             }
-            builder.edit_file(ctx.frange.file_id);
+            let mut rewriter = def_rewriter.unwrap_or_default();
             update_variant(&mut rewriter, &variant);
             extract_struct_def(
                 &mut rewriter,
@@ -90,6 +94,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                 &variant.parent_enum().syntax().clone().into(),
                 enum_ast.visibility(),
             );
+            builder.edit_file(ctx.frange.file_id);
             builder.rewrite(rewriter);
         },
     )
@@ -205,13 +210,13 @@ fn update_variant(rewriter: &mut SyntaxRewriter, variant: &ast::Variant) -> Opti
 fn update_reference(
     ctx: &AssistContext,
     rewriter: &mut SyntaxRewriter,
-    reference: Reference,
+    reference: FileReference,
     source_file: &SourceFile,
     enum_module_def: &ModuleDef,
     variant_hir_name: &Name,
     visited_modules_set: &mut FxHashSet<Module>,
 ) -> Option<()> {
-    let offset = reference.file_range.range.start();
+    let offset = reference.range.start();
     let (segment, expr) = if let Some(path_expr) =
         find_node_at_offset::<ast::PathExpr>(source_file.syntax(), offset)
     {

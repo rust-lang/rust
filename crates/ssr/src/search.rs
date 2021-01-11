@@ -5,10 +5,10 @@ use crate::{
     resolving::{ResolvedPath, ResolvedPattern, ResolvedRule},
     Match, MatchFinder,
 };
-use ide_db::base_db::{FileId, FileRange};
 use ide_db::{
+    base_db::{FileId, FileRange},
     defs::Definition,
-    search::{Reference, SearchScope},
+    search::{FileReferences, SearchScope},
 };
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
@@ -20,7 +20,7 @@ use test_utils::mark;
 /// them more than once.
 #[derive(Default)]
 pub(crate) struct UsageCache {
-    usages: Vec<(Definition, Vec<Reference>)>,
+    usages: Vec<(Definition, Vec<FileReferences>)>,
 }
 
 impl<'db> MatchFinder<'db> {
@@ -58,8 +58,12 @@ impl<'db> MatchFinder<'db> {
     ) {
         if let Some(resolved_path) = pick_path_for_usages(pattern) {
             let definition: Definition = resolved_path.resolution.clone().into();
-            for reference in self.find_usages(usage_cache, definition) {
-                if let Some(node_to_match) = self.find_node_to_match(resolved_path, reference) {
+            for file_range in self
+                .find_usages(usage_cache, definition)
+                .iter()
+                .flat_map(FileReferences::file_ranges)
+            {
+                if let Some(node_to_match) = self.find_node_to_match(resolved_path, file_range) {
                     if !is_search_permitted_ancestors(&node_to_match) {
                         mark::hit!(use_declaration_with_braces);
                         continue;
@@ -73,11 +77,11 @@ impl<'db> MatchFinder<'db> {
     fn find_node_to_match(
         &self,
         resolved_path: &ResolvedPath,
-        reference: &Reference,
+        file_range: FileRange,
     ) -> Option<SyntaxNode> {
-        let file = self.sema.parse(reference.file_range.file_id);
+        let file = self.sema.parse(file_range.file_id);
         let depth = resolved_path.depth as usize;
-        let offset = reference.file_range.range.start();
+        let offset = file_range.range.start();
         if let Some(path) =
             self.sema.find_node_at_offset_with_descend::<ast::Path>(file.syntax(), offset)
         {
@@ -108,7 +112,7 @@ impl<'db> MatchFinder<'db> {
         &self,
         usage_cache: &'a mut UsageCache,
         definition: Definition,
-    ) -> &'a [Reference] {
+    ) -> &'a [FileReferences] {
         // Logically if a lookup succeeds we should just return it. Unfortunately returning it would
         // extend the lifetime of the borrow, then we wouldn't be able to do the insertion on a
         // cache miss. This is a limitation of NLL and is fixed with Polonius. For now we do two
@@ -250,7 +254,7 @@ fn is_search_permitted(node: &SyntaxNode) -> bool {
 }
 
 impl UsageCache {
-    fn find(&mut self, definition: &Definition) -> Option<&[Reference]> {
+    fn find(&mut self, definition: &Definition) -> Option<&[FileReferences]> {
         // We expect a very small number of cache entries (generally 1), so a linear scan should be
         // fast enough and avoids the need to implement Hash for Definition.
         for (d, refs) in &self.usages {

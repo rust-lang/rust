@@ -1,4 +1,7 @@
-use ide_db::{defs::Definition, search::ReferenceKind};
+use ide_db::{
+    defs::Definition,
+    search::{FileReference, ReferenceKind},
+};
 use syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
@@ -63,48 +66,44 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         let_stmt.syntax().text_range()
     };
 
-    let mut wrap_in_parens = vec![true; refs.len()];
+    let wrap_in_parens = refs
+        .iter()
+        .flat_map(|refs| &refs.references)
+        .map(|&FileReference { range, .. }| {
+            let usage_node =
+                ctx.covering_node_for_range(range).ancestors().find_map(ast::PathExpr::cast)?;
+            let usage_parent_option = usage_node.syntax().parent().and_then(ast::Expr::cast);
+            let usage_parent = match usage_parent_option {
+                Some(u) => u,
+                None => return Ok(false),
+            };
 
-    for (i, desc) in refs.iter().enumerate() {
-        let usage_node = ctx
-            .covering_node_for_range(desc.file_range.range)
-            .ancestors()
-            .find_map(ast::PathExpr::cast)?;
-        let usage_parent_option = usage_node.syntax().parent().and_then(ast::Expr::cast);
-        let usage_parent = match usage_parent_option {
-            Some(u) => u,
-            None => {
-                wrap_in_parens[i] = false;
-                continue;
-            }
-        };
-
-        wrap_in_parens[i] = match (&initializer_expr, usage_parent) {
-            (ast::Expr::CallExpr(_), _)
-            | (ast::Expr::IndexExpr(_), _)
-            | (ast::Expr::MethodCallExpr(_), _)
-            | (ast::Expr::FieldExpr(_), _)
-            | (ast::Expr::TryExpr(_), _)
-            | (ast::Expr::RefExpr(_), _)
-            | (ast::Expr::Literal(_), _)
-            | (ast::Expr::TupleExpr(_), _)
-            | (ast::Expr::ArrayExpr(_), _)
-            | (ast::Expr::ParenExpr(_), _)
-            | (ast::Expr::PathExpr(_), _)
-            | (ast::Expr::BlockExpr(_), _)
-            | (ast::Expr::EffectExpr(_), _)
-            | (_, ast::Expr::CallExpr(_))
-            | (_, ast::Expr::TupleExpr(_))
-            | (_, ast::Expr::ArrayExpr(_))
-            | (_, ast::Expr::ParenExpr(_))
-            | (_, ast::Expr::ForExpr(_))
-            | (_, ast::Expr::WhileExpr(_))
-            | (_, ast::Expr::BreakExpr(_))
-            | (_, ast::Expr::ReturnExpr(_))
-            | (_, ast::Expr::MatchExpr(_)) => false,
-            _ => true,
-        };
-    }
+            Ok(!matches!((&initializer_expr, usage_parent),
+                (ast::Expr::CallExpr(_), _)
+                | (ast::Expr::IndexExpr(_), _)
+                | (ast::Expr::MethodCallExpr(_), _)
+                | (ast::Expr::FieldExpr(_), _)
+                | (ast::Expr::TryExpr(_), _)
+                | (ast::Expr::RefExpr(_), _)
+                | (ast::Expr::Literal(_), _)
+                | (ast::Expr::TupleExpr(_), _)
+                | (ast::Expr::ArrayExpr(_), _)
+                | (ast::Expr::ParenExpr(_), _)
+                | (ast::Expr::PathExpr(_), _)
+                | (ast::Expr::BlockExpr(_), _)
+                | (ast::Expr::EffectExpr(_), _)
+                | (_, ast::Expr::CallExpr(_))
+                | (_, ast::Expr::TupleExpr(_))
+                | (_, ast::Expr::ArrayExpr(_))
+                | (_, ast::Expr::ParenExpr(_))
+                | (_, ast::Expr::ForExpr(_))
+                | (_, ast::Expr::WhileExpr(_))
+                | (_, ast::Expr::BreakExpr(_))
+                | (_, ast::Expr::ReturnExpr(_))
+                | (_, ast::Expr::MatchExpr(_))
+            ))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     let init_str = initializer_expr.syntax().text().to_string();
     let init_in_paren = format!("({})", &init_str);
@@ -116,15 +115,17 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         target,
         move |builder| {
             builder.delete(delete_range);
-            for (desc, should_wrap) in refs.iter().zip(wrap_in_parens) {
+            for (reference, should_wrap) in
+                refs.iter().flat_map(|refs| &refs.references).zip(wrap_in_parens)
+            {
                 let replacement =
                     if should_wrap { init_in_paren.clone() } else { init_str.clone() };
-                match desc.kind {
+                match reference.kind {
                     ReferenceKind::FieldShorthandForLocal => {
                         mark::hit!(inline_field_shorthand);
-                        builder.insert(desc.file_range.range.end(), format!(": {}", replacement))
+                        builder.insert(reference.range.end(), format!(": {}", replacement))
                     }
-                    _ => builder.replace(desc.file_range.range, replacement),
+                    _ => builder.replace(reference.range, replacement),
                 }
             }
         },
