@@ -388,10 +388,9 @@ where
         match r.read(buf) {
             Ok(0) => return Ok(g.len - start_len),
             Ok(n) => {
-                // We can't let g.len overflow which would result in the vec shrinking when the function returns. In
-                // particular, that could break read_to_string if the shortened buffer doesn't end on a UTF-8 boundary.
-                // The minimal check would just be a checked_add, but this assert is a bit more precise and should be
-                // just about the same cost.
+                // We can't allow bogus values from read. If it is too large, the returned vec could have its length
+                // set past its capacity, or if it overflows the vec could be shortened which could create an invalid
+                // string if this is called via read_to_string.
                 assert!(n <= buf.len());
                 g.len += n;
             }
