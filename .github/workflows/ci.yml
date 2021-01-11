@@ -130,6 +130,6 @@ jobs:
           ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
           ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}
         run: |
-          zulip-send --stream miri --subject "Cron Job Failure" \
+          ~/.local/bin/zulip-send --stream miri --subject "Cron Job Failure" \
             --message '@**RalfJ** @**oli** the Miri cron job build failed. Please investigate!' \
             --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN
