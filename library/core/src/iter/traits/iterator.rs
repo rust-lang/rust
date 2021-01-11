@@ -2284,6 +2284,8 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(iter_at_least)]
+    ///
     /// let a = [1, 2, 3];
     ///
     /// assert!(a.iter().at_least(1, |&x| x > 0));
@@ -2294,6 +2296,8 @@ pub trait Iterator {
     /// Stopping at the `n`th `true`:
     ///
     /// ```
+    /// #![feature(iter_at_least)]
+    ///
     /// let a = vec![1, 2, 3, 4, 5];
     ///
     /// let mut iter = a.iter();
@@ -2349,6 +2353,8 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(iter_at_most)]
+    ///
     /// let a = [1, 2, 3];
     ///
     /// assert!(a.iter().at_most(1, |&x| x > 3));
@@ -2359,6 +2365,8 @@ pub trait Iterator {
     /// Stopping at the `n + 1`th `true`:
     ///
     /// ```
+    /// #![feature(iter_at_most)]
+    ///
     /// let a = vec![1, 2, 3, 4, 5];
     ///
     /// let mut iter = a.iter();
