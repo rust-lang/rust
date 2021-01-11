@@ -12,7 +12,7 @@ use std::env;
 
 use codegen::CodegenCmd;
 use pico_args::Arguments;
-use xshell::pushd;
+use xshell::{cmd, cp, pushd};
 use xtask::{
     codegen::{self, Mode},
     dist::DistCmd,
@@ -124,6 +124,13 @@ FLAGS:
             args.finish()?;
             MetricsCmd { dry_run }.run()
         }
+        "bb" => {
+            let suffix: String = args.free_from_str()?.unwrap();
+            args.finish()?;
+            cmd!("cargo build --release").run()?;
+            cp("./target/release/rust-analyzer", format!("./target/rust-analyzer-{}", suffix))?;
+            Ok(())
+        }
         _ => {
             eprintln!(
                 "\
@@ -141,7 +148,8 @@ SUBCOMMANDS:
     install
     lint
     dist
-    promote"
+    promote
+    bb"
             );
             Ok(())
         }
