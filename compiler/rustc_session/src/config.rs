@@ -2172,6 +2172,7 @@ crate mod dep_tracking {
         SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
+    use crate::options::WasiExecModel;
     use crate::utils::NativeLibKind;
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
@@ -2227,6 +2228,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<RelocModel>);
     impl_dep_tracking_hash_via_hash!(Option<CodeModel>);
     impl_dep_tracking_hash_via_hash!(Option<TlsModel>);
+    impl_dep_tracking_hash_via_hash!(Option<WasiExecModel>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
