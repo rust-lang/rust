@@ -885,7 +885,7 @@ impl<T: ?Sized> Arc<T> {
             match this.inner().weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
                 Ok(_) => {
                     // Make sure we do not create a dangling Weak
-                    debug_assert!(!is_dangling(this.ptr));
+                    debug_assert!(!is_dangling(this.ptr.as_ptr()));
                     return Weak { ptr: this.ptr };
                 }
                 Err(old) => cur = old,
@@ -1664,12 +1664,10 @@ impl<T: ?Sized> Weak<T> {
     pub fn as_ptr(&self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(self.ptr);
 
-        if is_dangling(self.ptr) {
-            // If the pointer is dangling, we return a null pointer as the dangling sentinel.
-            // We can't return the usize::MAX sentinel, as that could valid if T is ZST.
-            // SAFETY: we have to return a known sentinel here that cannot be produced for
-            // a valid pointer, so that `from_raw` can reverse this transformation.
-            (ptr as *mut T).set_ptr_value(ptr::null_mut())
+        if is_dangling(ptr) {
+            // If the pointer is dangling, we return the sentinel directly. This cannot be
+            // a valid payload address, as it is at least as aligned as ArcInner (usize).
+            ptr as *const T
         } else {
             // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
             // The payload may be dropped at this point, and we have to maintain provenance,
@@ -1758,10 +1756,9 @@ impl<T: ?Sized> Weak<T> {
     pub unsafe fn from_raw(ptr: *const T) -> Self {
         // See Weak::as_ptr for context on how the input pointer is derived.
 
-        let ptr = if ptr.is_null() {
-            // If we get a null pointer, this is a dangling weak.
-            // SAFETY: this is the same sentinel as used in Weak::new and is_dangling
-            (ptr as *mut ArcInner<T>).set_ptr_value(usize::MAX as *mut _)
+        let ptr = if is_dangling(ptr as *mut T) {
+            // This is a dangling Weak.
+            ptr as *mut ArcInner<T>
         } else {
             // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
             // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
@@ -1877,7 +1874,7 @@ impl<T: ?Sized> Weak<T> {
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
     fn inner(&self) -> Option<WeakInner<'_>> {
-        if is_dangling(self.ptr) {
+        if is_dangling(self.ptr.as_ptr()) {
             None
         } else {
             // We are careful to *not* create a reference covering the "data" field, as
