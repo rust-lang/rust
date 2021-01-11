@@ -458,8 +458,8 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
                 false
             }
             (true, false) => {
-                if !generics.params.is_empty() {
-                    sd.span_err(i.span, "functions used as tests must have signature fn() -> ()");
+                if !generics.params.iter().all(|p| p.is_lifetime()) {
+                    sd.span_err(i.span, "return value of functions used as tests must either be `()` or implement `Termination`, and cannot use generics");
                     false
                 } else {
                     true

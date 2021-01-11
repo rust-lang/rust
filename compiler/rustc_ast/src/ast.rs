@@ -392,6 +392,12 @@ pub struct GenericParam {
     pub kind: GenericParamKind,
 }
 
+impl GenericParam {
+    pub fn is_lifetime(&self) -> bool {
+        matches!(self.kind, GenericParamKind::Lifetime)
+    }
+}
+
 /// Represents lifetime, type and const parameters attached to a declaration of
 /// a function, enum, trait, etc.
 #[derive(Clone, Encodable, Decodable, Debug)]

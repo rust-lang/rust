@@ -1,0 +1,21 @@
+error: return value of functions used as tests must either be `()` or implement `Termination`, and cannot use generics
+  --> $DIR/test-fn-with-lifetime.rs:20:1
+   |
+LL | / fn unit_3<T: Termination>() -> Result<(), T> { // nope (how would this get monomorphized?)
+LL | |
+LL | |     Ok(())
+LL | | }
+   | |_^
+
+error: return value of functions used as tests must either be `()` or implement `Termination`, and cannot use generics
+  --> $DIR/test-fn-with-lifetime.rs:43:1
+   |
+LL | / fn unit_4<T: Bar<Baz = String>>() -> <T as Bar>::Baz { // also nope
+LL | |
+LL | |     let q = Quux{};
+LL | |     <Quux as Bar>::rah(&q)
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+
