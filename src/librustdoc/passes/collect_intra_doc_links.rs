@@ -2085,7 +2085,7 @@ fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
         "f64" => F64,
         "char" => Char,
         "bool" | "true" | "false" => Bool,
-        "str" => Str,
+        "str" | "&str" => Str,
         // See #80181 for why these don't have symbols associated.
         "slice" => Slice,
         "array" => Array,
