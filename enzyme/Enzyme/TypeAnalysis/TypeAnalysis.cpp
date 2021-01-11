@@ -97,6 +97,7 @@ const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
     {"fma", Intrinsic::fma},
     {"ilogb", Intrinsic::not_intrinsic},
     {"scalbn", Intrinsic::not_intrinsic},
+    {"powi", Intrinsic::powi},
 #if LLVM_VERSION_MAJOR >= 9
     {"lround", Intrinsic::lround},
     {"llround", Intrinsic::llround},
@@ -1364,8 +1365,8 @@ void TypeAnalyzer::visitSelectInst(SelectInst &I) {
   if (direction & DOWN) {
     // If getTrueValue and getFalseValue are the same type (per the and)
     // it is safe to assume the result is as well
-    TypeTree vd = getAnalysis(I.getTrueValue());
-    vd &= getAnalysis(I.getFalseValue());
+    TypeTree vd = getAnalysis(I.getTrueValue()).PurgeAnything();
+    vd &= getAnalysis(I.getFalseValue()).PurgeAnything();
 
     // A regular and operation, however is not sufficient. One of the operands
     // could be anything whereas the other is concrete, resulting in the
@@ -1374,8 +1375,9 @@ void TypeAnalyzer::visitSelectInst(SelectInst &I) {
     // is a pointer). As a result, explicitly or in any anything values
     // TODO this should be propagated elsewhere as well (specifically returns,
     // phi)
-    vd |= getAnalysis(I.getTrueValue()).JustAnything();
-    vd |= getAnalysis(I.getFalseValue()).JustAnything();
+    TypeTree any = getAnalysis(I.getTrueValue()).JustAnything();
+    any &= getAnalysis(I.getFalseValue()).JustAnything();
+    vd |= any;
     updateAnalysis(&I, vd, &I);
   }
 }

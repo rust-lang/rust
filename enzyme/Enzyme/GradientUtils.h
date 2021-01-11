@@ -100,6 +100,7 @@ public:
   ValueMap<BasicBlock *, BasicBlock *> reverseBlocks;
   SmallVector<PHINode *, 4> fictiousPHIs;
   ValueToValueMapTy originalToNewFn;
+  std::vector<CallInst*> originalCalls;
 
   const std::map<Instruction *, bool> *can_modref_map;
 
@@ -636,6 +637,14 @@ public:
         OrigLI(OrigDT), AA(AA_), TA(TA_) {
     if (oldFunc_->getSubprogram()) {
       assert(originalToNewFn_.hasMD());
+    }
+
+    for (BasicBlock &BB : *oldFunc) {
+      for (Instruction &I : BB) {
+        if (auto CI = dyn_cast<CallInst>(&I)) {
+          originalCalls.push_back(CI);
+        }
+      }
     }
 
     originalToNewFn.getMDMap() = originalToNewFn_.getMDMap();

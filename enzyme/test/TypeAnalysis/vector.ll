@@ -276,7 +276,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %rdx.minmax.select = select <2 x i1> %rdx.minmax.cmp, <2 x double> %.lcssa21, <2 x double> %.lcssa: {[-1]:Float@double}
 ; CHECK-NEXT:   %rdx.shuf = shufflevector <2 x double> %rdx.minmax.select, <2 x double> undef, <2 x i32> <i32 1, i32 undef>: {[-1]:Float@double, [8]:Anything, [9]:Anything, [10]:Anything, [11]:Anything, [12]:Anything, [13]:Anything, [14]:Anything, [15]:Anything}
 ; CHECK-NEXT:   %rdx.minmax.cmp18 = fcmp fast ogt <2 x double> %rdx.minmax.select, %rdx.shuf: {[-1]:Integer}
-; CHECK-NEXT:   %rdx.minmax.select19 = select <2 x i1> %rdx.minmax.cmp18, <2 x double> %rdx.minmax.select, <2 x double> %rdx.shuf: {[-1]:Float@double, [8]:Anything, [9]:Anything, [10]:Anything, [11]:Anything, [12]:Anything, [13]:Anything, [14]:Anything, [15]:Anything}
+; CHECK-NEXT:   %rdx.minmax.select19 = select <2 x i1> %rdx.minmax.cmp18, <2 x double> %rdx.minmax.select, <2 x double> %rdx.shuf: {[-1]:Float@double}
 ; CHECK-NEXT:   %28 = extractelement <2 x double> %rdx.minmax.select19, i32 0: {[-1]:Float@double}
 ; CHECK-NEXT:   %cmp.n = icmp eq i64 %n.vec, %wide.trip.count: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %cmp.n, label %for.cond.cleanup, label %for.body.preheader20: {}

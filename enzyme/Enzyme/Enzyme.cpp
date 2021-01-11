@@ -246,6 +246,28 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
       } else {
         ty = whatType(PTy);
       }
+    } else if (isa<AllocaInst>(res)) {
+      auto gv = cast<AllocaInst>(res);
+      auto MS = gv->getName();
+      if (MS.startswith("enzyme_dup")) {
+        ty = DIFFE_TYPE::DUP_ARG;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS.startswith("enzyme_dupnoneed")) {
+        ty = DIFFE_TYPE::DUP_NONEED;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS.startswith("enzyme_out")) {
+        ty = DIFFE_TYPE::OUT_DIFF;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS.startswith("enzyme_const")) {
+        ty = DIFFE_TYPE::CONSTANT;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else {
+        ty = whatType(PTy);
+      }
     } else
       ty = whatType(PTy);
 
@@ -552,6 +574,51 @@ public:
     auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     */
     bool changed = false;
+    for (Function &F : M) {
+      if (F.empty())
+        continue;
+      std::vector<Instruction*> toErase;
+      for (BasicBlock &BB : F) {
+        for (Instruction &I : BB) {
+          if (auto CI = dyn_cast<CallInst>(&I)) {
+            Function* F = CI->getCalledFunction();
+            #if LLVM_VERSION_MAJOR >= 11
+              if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
+            #else
+              if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
+            #endif
+              {
+                if (castinst->isCast())
+                  if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                      F = fn;
+                  }
+              }
+              if (F && F->getName() == "f90_mzero8") {
+                toErase.push_back(CI);
+                IRBuilder<> B(CI);
+
+                SmallVector<Value *, 4> args;
+                args.push_back(CI->getArgOperand(0));
+                args.push_back(
+                    ConstantInt::get(Type::getInt8Ty(M.getContext()), 0));
+                args.push_back(B.CreateMul(CI->getArgOperand(1), ConstantInt::get(CI->getArgOperand(1)->getType(), 8)));
+                #if LLVM_VERSION_MAJOR <= 6
+                args.push_back(ConstantInt::get(
+                    Type::getInt32Ty(M.getContext()), 1U));
+                #endif
+                args.push_back(ConstantInt::getFalse(M.getContext()));
+
+                Type *tys[] = {args[0]->getType(), args[2]->getType()};
+                auto memsetIntr = Intrinsic::getDeclaration(&M, Intrinsic::memset, tys);  
+                B.CreateCall(memsetIntr, args);
+              }
+          }
+        }
+      }
+      for (Instruction* I : toErase) {
+        I->eraseFromParent();
+      }
+    }
     std::set<Function *> done;
     for (Function &F : M) {
       if (F.empty())

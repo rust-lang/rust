@@ -13,7 +13,7 @@ entry:
 
 ; CHECK: caller - {} |
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %sel = select i1 true, i64 0, i64 8: {[-1]:Anything}
-; CHECK-NEXT:   %ptr = inttoptr i64 %sel to i64*: {[-1]:Anything}
+; CHECK-NEXT:   %sel = select i1 true, i64 0, i64 8: {[-1]:Pointer}
+; CHECK-NEXT:   %ptr = inttoptr i64 %sel to i64*: {[-1]:Pointer}
 ; CHECK-NEXT:   %ld = load i64, i64* %ptr, align 8: {}
 ; CHECK-NEXT:   ret void: {}

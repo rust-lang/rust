@@ -566,17 +566,24 @@ public:
                     orig_op0->getType()) +
                 7) /
                8;
+      Type* FT = TR.addingType(size, orig_op0);
+      if (!FT) {
+        llvm::errs() << " " << *gutils->oldFunc << "\n";
+        TR.dump();
+        llvm::errs() << " " << *orig_op0 << "\n";
+      }
+      assert(FT);
       if (I.getOpcode() == CastInst::CastOps::FPTrunc ||
           I.getOpcode() == CastInst::CastOps::FPExt) {
         addToDiffe(orig_op0, Builder2.CreateFPCast(dif, op0->getType()),
-                   Builder2, TR.addingType(size, orig_op0));
+                   Builder2, FT);
       } else if (I.getOpcode() == CastInst::CastOps::BitCast) {
         addToDiffe(orig_op0, Builder2.CreateBitCast(dif, op0->getType()),
-                   Builder2, TR.addingType(size, orig_op0));
+                   Builder2, FT);
       } else if (I.getOpcode() == CastInst::CastOps::Trunc) {
         // TODO CHECK THIS
         auto trunced = Builder2.CreateZExt(dif, op0->getType());
-        addToDiffe(orig_op0, trunced, Builder2, TR.addingType(size, orig_op0));
+        addToDiffe(orig_op0, trunced, Builder2, FT);
       } else {
         TR.dump();
         llvm::errs() << *I.getParent()->getParent() << "\n"
@@ -3010,6 +3017,25 @@ public:
       }
 
       if (called &&
+          (called->getName() == "atan" || called->getName() == "atanf" ||
+           called->getName() == "atanl"|| called->getName() == "__fd_atan_1")) {
+        eraseIfUnused(*orig);
+        if (Mode == DerivativeMode::Forward ||
+            gutils->isConstantInstruction(orig))
+          return;
+
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+        Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                          Builder2);
+        Value *onePx2 = Builder2.CreateFAdd(ConstantFP::get(x->getType(), 1.0),
+                                            Builder2.CreateFMul(x, x));
+        Value *dif0 = Builder2.CreateFDiv(diffe(orig, Builder2), onePx2);
+        addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
+        return;
+      }
+
+      if (called &&
           (called->getName() == "tanhf" || called->getName() == "tanh")) {
         eraseIfUnused(*orig);
         if (Mode == DerivativeMode::Forward ||
@@ -3057,6 +3083,29 @@ public:
             eraseIfUnused(*orig);
             return;
           }
+
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+
+          Value* vdiff = diffe(orig, Builder2);
+          Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                            Builder2);
+
+          Value *args[] = {x};
+
+          Type *tys[] = {orig->getOperand(0)->getType()};
+          CallInst *dsin = cast<CallInst>(Builder2.CreateCall(
+              Intrinsic::getDeclaration(gutils->oldFunc->getParent(), Intrinsic::cos, tys), args));
+          CallInst *dcos = cast<CallInst>(Builder2.CreateCall(
+              Intrinsic::getDeclaration(gutils->oldFunc->getParent(), Intrinsic::sin, tys), args));
+          Value *dif0 = Builder2.CreateFSub(
+            Builder2.CreateFMul(Builder2.CreateExtractValue(vdiff, {0}), dsin),
+            Builder2.CreateFMul(Builder2.CreateExtractValue(vdiff, {1}), dcos)
+          );
+
+          setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+          addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
+          return;
         }
       }
 

@@ -1447,8 +1447,9 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     if (!isa<Instruction>(a)) {
       if (isa<ConstantExpr>(a)) {
         if (!isValueInactiveFromUsers(TR, a)) {
-          llvm::errs() << "   inactive user of " << *val << " in " << *a
-                       << "\n";
+          if (printconst)
+            llvm::errs() << "   active user of " << *val << " in " << *a
+                         << "\n";
           return false;
         } else
           continue;
