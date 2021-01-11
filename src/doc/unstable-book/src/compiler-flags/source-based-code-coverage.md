@@ -123,7 +123,7 @@ The `rustup` option is guaranteed to install a compatible version of the LLVM to
 ```shell
 $ rustup component add llvm-tools-preview
 $ cargo install cargo-binutils
-$ cargo profdata -- --help  # note the additional "--" preceeding the tool-specific arguments
+$ cargo profdata -- --help  # note the additional "--" preceding the tool-specific arguments
 ```
 
 ## Creating coverage reports
