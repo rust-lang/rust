@@ -390,7 +390,14 @@ where
                 ret = Ok(g.len - start_len);
                 break;
             }
-            Ok(n) => g.len += n,
+            Ok(n) => {
+                // We can't let g.len overflow which would result in the vec shrinking when the function returns. In
+                // particular, that could break read_to_string if the shortened buffer doesn't end on a UTF-8 boundary.
+                // The minimal check would just be a checked_add, but this assert is a bit more precise and should be
+                // just about the same cost.
+                assert!(n <= g.buf.len() - g.len);
+                g.len += n;
+            }
             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
             Err(e) => {
                 ret = Err(e);
