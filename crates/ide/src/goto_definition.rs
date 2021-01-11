@@ -6,15 +6,13 @@ use ide_db::{
     symbol_index, RootDatabase,
 };
 use syntax::{
-    ast::{self, NameOwner},
-    match_ast, AstNode, AstToken,
-    SyntaxKind::*,
-    SyntaxToken, TextSize, TokenAtOffset, T,
+    ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextSize, TokenAtOffset, T,
 };
 
 use crate::{
     display::{ToNav, TryToNav},
     doc_links::extract_definitions_from_markdown,
+    runnables::doc_owner_to_def,
     FilePosition, NavigationTarget, RangeInfo, SymbolKind,
 };
 
@@ -84,31 +82,23 @@ fn def_for_doc_comment(
     doc_comment: &ast::Comment,
 ) -> Option<hir::ModuleDef> {
     let parent = doc_comment.syntax().parent();
-    let db = sema.db;
     let (link, ns) = extract_positioned_link_from_comment(position, doc_comment)?;
-    let link = &link;
-    let name = match_ast! {
-        match parent {
-            ast::Name(name) => Some(name),
-            ast::Fn(func) => func.name(),
-            _ => None,
-        }
-    }?;
-    let definition = NameClass::classify(&sema, &name).and_then(|d| d.defined(sema.db))?;
-    match definition {
+
+    let def = doc_owner_to_def(sema, parent)?;
+    match def {
         Definition::ModuleDef(def) => match def {
-            ModuleDef::Module(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Function(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Adt(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Variant(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Const(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Static(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Trait(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
+            ModuleDef::Module(it) => it.resolve_doc_path(sema.db, &link, ns),
+            ModuleDef::Function(it) => it.resolve_doc_path(sema.db, &link, ns),
+            ModuleDef::Adt(it) => it.resolve_doc_path(sema.db, &link, ns),
+            ModuleDef::Variant(it) => it.resolve_doc_path(sema.db, &link, ns),
+            ModuleDef::Const(it) => it.resolve_doc_path(sema.db, &link, ns),
+            ModuleDef::Static(it) => it.resolve_doc_path(sema.db, &link, ns),
+            ModuleDef::Trait(it) => it.resolve_doc_path(sema.db, &link, ns),
+            ModuleDef::TypeAlias(it) => it.resolve_doc_path(sema.db, &link, ns),
             ModuleDef::BuiltinType(_) => return None,
         },
-        Definition::Macro(it) => it.resolve_doc_path(db, link, ns),
-        Definition::Field(it) => it.resolve_doc_path(db, link, ns),
+        Definition::Macro(it) => it.resolve_doc_path(sema.db, &link, ns),
+        Definition::Field(it) => it.resolve_doc_path(sema.db, &link, ns),
         Definition::SelfType(_)
         | Definition::Local(_)
         | Definition::GenericParam(_)
@@ -1212,7 +1202,7 @@ fn foo<'foo>(_: &'foo ()) {
     }
 
     #[test]
-    fn goto_def_for_intra_rustdoc_link_same_file() {
+    fn goto_def_for_intra_doc_link_same_file() {
         check(
             r#"
 /// Blah, [`bar`](bar) .. [`foo`](foo)$0 has [`bar`](bar)
@@ -1223,6 +1213,21 @@ pub fn foo() { }
      //^^^
 
 }"#,
+        )
+    }
+
+    #[test]
+    fn goto_def_for_intra_doc_link_inner() {
+        check(
+            r#"
+//- /main.rs
+mod m;
+struct S;
+     //^
+
+//- /m.rs
+//! [`super::S$0`]
+"#,
         )
     }
 }
