@@ -35,11 +35,14 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         None => return,
     };
 
+    let ref_removed_ty =
+        std::iter::successors(Some(receiver_ty.clone()), |ty| ty.remove_ref()).last().unwrap();
+
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
         None => return,
     };
-    let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty);
+    let try_enum = TryEnum::from_ty(&ctx.sema, &ref_removed_ty);
     if let Some(try_enum) = &try_enum {
         match try_enum {
             TryEnum::Result => {
@@ -496,6 +499,27 @@ fn main() {
     fn postfix_completion_for_references() {
         check_edit("dbg", r#"fn main() { &&42.$0 }"#, r#"fn main() { dbg!(&&42) }"#);
         check_edit("refm", r#"fn main() { &&42.$0 }"#, r#"fn main() { &&&mut 42 }"#);
+        check_edit(
+            "ifl",
+            r#"
+enum Option<T> { Some(T), None }
+
+fn main() {
+    let bar = &Option::Some(true);
+    bar.$0
+}
+"#,
+            r#"
+enum Option<T> { Some(T), None }
+
+fn main() {
+    let bar = &Option::Some(true);
+    if let Some($1) = bar {
+    $0
+}
+}
+"#,
+        )
     }
 
     #[test]
