@@ -298,7 +298,6 @@ fn lint_shadow<'tcx>(
                     snippet(cx, expr.span, "..")
                 ),
                 |diag| {
-                    diag.span_note(expr.span, "initialization happens here");
                     diag.span_note(prev_span, "previous binding is here");
                 },
             );
@@ -309,7 +308,6 @@ fn lint_shadow<'tcx>(
                 pattern_span,
                 &format!("`{}` is being shadowed", snippet(cx, pattern_span, "_")),
                 |diag| {
-                    diag.span_note(expr.span, "initialization happens here");
                     diag.span_note(prev_span, "previous binding is here");
                 },
             );
