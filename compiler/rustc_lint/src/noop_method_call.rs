@@ -39,7 +39,7 @@ declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL]);
 impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // We only care about method calls
-        if let ExprKind::MethodCall(..) = expr.kind {
+        if let ExprKind::MethodCall(call, ..) = expr.kind {
             // Get the `DefId` only when dealing with an `AssocFn`
             if let Some((DefKind::AssocFn, did)) =
                 cx.typeck_results().type_dependent_def(expr.hir_id)
@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                     }
 
                     let substs = cx.typeck_results().node_substs(expr.hir_id);
-                    // We can't resolve on types that recursively require monomorphization,
+                    // We can't resolve on types that require monomorphization,
                     // so check that we don't need to perfom substitution
                     if !substs.needs_subst() {
                         let param_env = cx.tcx.param_env(trait_id);
@@ -73,9 +73,12 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                                 let expr_span = expr.span;
 
                                 cx.struct_span_lint(NOOP_METHOD_CALL, expr_span, |lint| {
-                                    let message = "call to method that does nothing";
+                                    let method = &call.ident.name;
+                                    let message = format!("call to `.{}()` on a reference in this situation does nothing", &method);
                                     lint.build(&message)
                                         .span_label(expr_span, "unnecessary method call")
+                                        .note("the type the method is being called on and the return type are functionally equivalent.")
+                                        .note("therefore, the method call doesn't actually do anything and can be removed.")
                                         .emit()
                                 });
                             }
