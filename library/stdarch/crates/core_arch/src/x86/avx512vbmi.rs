@@ -438,8 +438,6 @@ mod tests {
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
-    //use crate::hint::black_box;
-    //use crate::mem::{self};
 
     #[simd_test(enable = "avx512vbmi")]
     unsafe fn test_mm512_permutex2var_epi8() {

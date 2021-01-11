@@ -479,6 +479,9 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             // The XML file names VBMI as "avx512_vbmi", while Rust calls
             // it "avx512vbmi".
             "avx512_vbmi" => String::from("avx512vbmi"),
+            // The XML file names VBMI2 as "avx512_vbmi2", while Rust calls
+            // it "avx512vbmi2".
+            "avx512_vbmi2" => String::from("avx512vbmi2"),
             // Some AVX512f intrinsics are also supported by Knight's Corner.
             // The XML lists them as avx512f/kncni, but we are solely gating
             // them behind avx512f since we don't have a KNC feature yet.

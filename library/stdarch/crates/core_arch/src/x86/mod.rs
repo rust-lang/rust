@@ -678,6 +678,9 @@ pub use self::avx512ifma::*;
 mod avx512vbmi;
 pub use self::avx512vbmi::*;
 
+mod avx512vbmi2;
+pub use self::avx512vbmi2::*;
+
 mod avx512bitalg;
 pub use self::avx512bitalg::*;
 
