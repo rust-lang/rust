@@ -58,7 +58,7 @@ impl AnalysisStatsCmd {
         let mut db_load_sw = self.stop_watch();
         let (host, vfs) = load_cargo(&self.path, self.load_output_dirs, self.with_proc_macro)?;
         let db = host.raw_database();
-        eprintln!("Database loaded {}", db_load_sw.elapsed());
+        eprintln!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
 
         let mut analysis_sw = self.stop_watch();
         let mut num_crates = 0;
@@ -85,7 +85,7 @@ impl AnalysisStatsCmd {
             shuffle(&mut rng, &mut visit_queue);
         }
 
-        eprintln!("Crates in this dir: {}", num_crates);
+        eprint!("  crates: {}", num_crates);
         let mut num_decls = 0;
         let mut funcs = Vec::new();
         while let Some(module) = visit_queue.pop() {
@@ -109,10 +109,8 @@ impl AnalysisStatsCmd {
                 }
             }
         }
-        eprintln!("Total modules found: {}", visited_modules.len());
-        eprintln!("Total declarations: {}", num_decls);
-        eprintln!("Total functions: {}", funcs.len());
-        eprintln!("Item Collection: {}", analysis_sw.elapsed());
+        eprintln!(", mods: {}, decls: {}, fns: {}", visited_modules.len(), num_decls, funcs.len());
+        eprintln!("{:<20} {}", "Item Collection:", analysis_sw.elapsed());
 
         if self.randomize {
             shuffle(&mut rng, &mut funcs);
@@ -135,7 +133,7 @@ impl AnalysisStatsCmd {
                     snap.0.infer(f_id.into());
                 })
                 .count();
-            eprintln!("Parallel Inference: {}", inference_sw.elapsed());
+            eprintln!("{:<20} {}", "Parallel Inference:", inference_sw.elapsed());
         }
 
         let mut inference_sw = self.stop_watch();
@@ -273,27 +271,22 @@ impl AnalysisStatsCmd {
             bar.inc(1);
         }
         bar.finish_and_clear();
-        eprintln!("Total expressions: {}", num_exprs);
         eprintln!(
-            "Expressions of unknown type: {} ({}%)",
+            "  exprs: {}, ??ty: {} ({}%), ?ty: {} ({}%), !ty: {}",
+            num_exprs,
             num_exprs_unknown,
-            if num_exprs > 0 { num_exprs_unknown * 100 / num_exprs } else { 100 }
+            percentage(num_exprs_unknown, num_exprs),
+            num_exprs_partially_unknown,
+            percentage(num_exprs_partially_unknown, num_exprs),
+            num_type_mismatches
         );
         report_metric("unknown type", num_exprs_unknown, "#");
-
-        eprintln!(
-            "Expressions of partially unknown type: {} ({}%)",
-            num_exprs_partially_unknown,
-            if num_exprs > 0 { num_exprs_partially_unknown * 100 / num_exprs } else { 100 }
-        );
-
-        eprintln!("Type mismatches: {}", num_type_mismatches);
         report_metric("type mismatches", num_type_mismatches, "#");
 
-        eprintln!("Inference: {}", inference_sw.elapsed());
+        eprintln!("{:<20} {}", "Inference:", inference_sw.elapsed());
 
         let total_span = analysis_sw.elapsed();
-        eprintln!("Total: {}", total_span);
+        eprintln!("{:<20} {}", "Total:", total_span);
         report_metric("total time", total_span.time.as_millis() as u64, "ms");
         if let Some(instructions) = total_span.instructions {
             report_metric("total instructions", instructions, "#instr");
@@ -324,4 +317,8 @@ fn shuffle<T>(rng: &mut Rand32, slice: &mut [T]) {
         let idx = rng.rand_range(0..slice.len() as u32) as usize;
         slice.swap(0, idx);
     }
+}
+
+fn percentage(n: u64, total: u64) -> u64 {
+    (n * 100).checked_div(total).unwrap_or(100)
 }
