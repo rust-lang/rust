@@ -273,13 +273,6 @@ pub fn write_mir_pretty<'tcx>(
 
     let mut first = true;
     for def_id in dump_mir_def_ids(tcx, single) {
-        let body = match tcx.hir().body_const_context(def_id.expect_local()) {
-            // For `const fn` we want to render the optimized MIR. If you want the mir used in
-            // ctfe, you can dump the MIR after the `Deaggregator` optimization pass.
-            None | Some(rustc_hir::ConstContext::ConstFn) => tcx.optimized_mir(def_id),
-            Some(_) => tcx.mir_for_ctfe(def_id),
-        };
-
         if first {
             first = false;
         } else {
@@ -287,11 +280,28 @@ pub fn write_mir_pretty<'tcx>(
             writeln!(w)?;
         }
 
-        write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
-
-        for body in tcx.promoted_mir(def_id) {
-            writeln!(w)?;
+        let render_body = |w: &mut dyn Write, body| -> io::Result<()> {
             write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
+
+            for body in tcx.promoted_mir(def_id) {
+                writeln!(w)?;
+                write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
+            }
+            Ok(())
+        };
+        match tcx.hir().body_const_context(def_id.expect_local()) {
+            None => render_body(w, tcx.optimized_mir(def_id))?,
+            // For `const fn` we want to render the optimized MIR. If you want the mir used in
+            // ctfe, you can dump the MIR after the `Deaggregator` optimization pass.
+            Some(rustc_hir::ConstContext::ConstFn) => {
+                render_body(w, tcx.optimized_mir(def_id))?;
+                writeln!(w)?;
+                writeln!(w, "// MIR FOR CTFE")?;
+                // Do not use `render_body`, as that would render the promoteds again, but these
+                // are shared between mir_for_ctfe and optimized_mir
+                write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &mut |_, _| Ok(()), w)?;
+            }
+            Some(_) => render_body(w, tcx.mir_for_ctfe(def_id))?,
         }
     }
     Ok(())
