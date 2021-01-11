@@ -8,7 +8,7 @@ LL |     consume(x.into_iter().next().unwrap());
 LL |     touch(&x[0]);
    |            ^ value borrowed here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `x`
+note: this function takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
