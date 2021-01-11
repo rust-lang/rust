@@ -366,7 +366,6 @@ where
 {
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf };
-    let ret;
     loop {
         if g.len == g.buf.len() {
             unsafe {
@@ -386,10 +385,7 @@ where
         }
 
         match r.read(&mut g.buf[g.len..]) {
-            Ok(0) => {
-                ret = Ok(g.len - start_len);
-                break;
-            }
+            Ok(0) => return Ok(g.len - start_len),
             Ok(n) => {
                 // We can't let g.len overflow which would result in the vec shrinking when the function returns. In
                 // particular, that could break read_to_string if the shortened buffer doesn't end on a UTF-8 boundary.
@@ -399,14 +395,9 @@ where
                 g.len += n;
             }
             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-            Err(e) => {
-                ret = Err(e);
-                break;
-            }
+            Err(e) => return Err(e),
         }
     }
-
-    ret
 }
 
 pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
