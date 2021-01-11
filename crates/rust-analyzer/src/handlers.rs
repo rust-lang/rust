@@ -450,10 +450,8 @@ pub(crate) fn handle_will_rename_files(
                             imite_new_file_name.to_string(),
                         ))
                     } else {
-                        let old_name = from_path.file_stem()?;
-                        let old_name = old_name.to_str()?;
-                        let new_name = to_path.file_stem()?;
-                        let new_name = new_name.to_str()?;
+                        let old_name = from_path.file_stem()?.to_str()?;
+                        let new_name = to_path.file_stem()?.to_str()?;
                         if old_name != "mod" && new_name != "mod" {
                             Some((snap.url_to_file_id(&from).ok()?, new_name.to_string()))
                         } else {
