@@ -271,22 +271,38 @@ impl ToJson for Endian {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct Size {
+    // The top 3 bits are ALWAYS zero.
     raw: u64,
 }
 
 impl Size {
     pub const ZERO: Size = Size { raw: 0 };
 
-    #[inline]
+    /// Rounds `bits` up to the next-higher byte boundary, if `bits` is
+    /// is not aligned.
     pub fn from_bits(bits: impl TryInto<u64>) -> Size {
         let bits = bits.try_into().ok().unwrap();
+
+        #[cold]
+        fn overflow(bits: u64) -> ! {
+            panic!("Size::from_bits({}) has overflowed", bits);
+        }
+
+        // This is the largest value of `bits` that does not cause overflow
+        // during rounding, and guarantees that the resulting number of bytes
+        // cannot cause overflow when multiplied by 8.
+        if bits > 0xffff_ffff_ffff_fff8 {
+            overflow(bits);
+        }
+
         // Avoid potential overflow from `bits + 7`.
-        Size::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
+        Size { raw: bits / 8 + ((bits % 8) + 7) / 8 }
     }
 
     #[inline]
     pub fn from_bytes(bytes: impl TryInto<u64>) -> Size {
-        Size { raw: bytes.try_into().ok().unwrap() }
+        let bytes: u64 = bytes.try_into().ok().unwrap();
+        Size { raw: bytes }
     }
 
     #[inline]
@@ -301,9 +317,7 @@ impl Size {
 
     #[inline]
     pub fn bits(self) -> u64 {
-        self.bytes().checked_mul(8).unwrap_or_else(|| {
-            panic!("Size::bits: {} bytes in bits doesn't fit in u64", self.bytes())
-        })
+        self.raw << 3
     }
 
     #[inline]
