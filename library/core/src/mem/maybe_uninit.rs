@@ -833,21 +833,14 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_array_assume_init", issue = "80908")]
     #[inline(always)]
     pub unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
-        // Convert using a union because mem::transmute does not support const_generics
-        union ArrayInit<T, const N: usize> {
-            maybe_uninit: ManuallyDrop<[MaybeUninit<T>; N]>,
-            init: ManuallyDrop<[T; N]>,
-        }
-
         // SAFETY:
-        // * The caller guarantees that all elements of the array are initialized,
-        // * `MaybeUninit<T>` and T are guaranteed to have the same layout,
-        // Therefore the conversion is safe
+        // * The caller guarantees that all elements of the array are initialized
+        // * `MaybeUninit<T>` and T are guaranteed to have the same layout
+        // * MaybeUnint does not drop, so there are no double-frees
+        // And thus the conversion is safe
         unsafe {
             intrinsics::assert_inhabited::<T>();
-
-            let array = ArrayInit { maybe_uninit: ManuallyDrop::new(array) };
-            ManuallyDrop::into_inner(array.init)
+            (&array as *const _ as *const T).read()
         }
     }
 
