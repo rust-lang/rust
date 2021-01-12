@@ -263,9 +263,10 @@ use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
-use crate::alloc::{box_free, handle_alloc_error, AllocError, Allocator, Global, Layout};
+use crate::alloc::{
+    box_free, handle_alloc_error, AllocError, Allocator, Global, Layout, WriteCloneIntoRaw,
+};
 use crate::borrow::{Cow, ToOwned};
-use crate::boxed::WriteCloneIntoRaw;
 use crate::string::String;
 use crate::vec::Vec;
 

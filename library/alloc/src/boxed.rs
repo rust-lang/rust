@@ -151,7 +151,7 @@ use core::pin::Pin;
 use core::ptr::{self, Unique};
 use core::task::{Context, Poll};
 
-use crate::alloc::{handle_alloc_error, AllocError, Allocator, Global, Layout};
+use crate::alloc::{handle_alloc_error, AllocError, Allocator, Global, Layout, WriteCloneIntoRaw};
 use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
@@ -1044,28 +1044,6 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     #[inline]
     fn clone_from(&mut self, source: &Self) {
         (**self).clone_from(&(**source));
-    }
-}
-
-/// Specialize clones into pre-allocated, uninitialized memory.
-pub(crate) trait WriteCloneIntoRaw: Sized {
-    unsafe fn write_clone_into_raw(&self, target: *mut Self);
-}
-
-impl<T: Clone> WriteCloneIntoRaw for T {
-    #[inline]
-    default unsafe fn write_clone_into_raw(&self, target: *mut Self) {
-        // Having allocated *first* may allow the optimizer to create
-        // the cloned value in-place, skipping the local and move.
-        unsafe { target.write(self.clone()) };
-    }
-}
-
-impl<T: Copy> WriteCloneIntoRaw for T {
-    #[inline]
-    unsafe fn write_clone_into_raw(&self, target: *mut Self) {
-        // We can always copy in-place, without ever involving a local value.
-        unsafe { target.copy_from_nonoverlapping(self, 1) };
     }
 }
 
