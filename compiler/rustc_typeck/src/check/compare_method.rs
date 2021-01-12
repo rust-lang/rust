@@ -296,7 +296,7 @@ fn compare_predicate_entailment<'tcx>(
                     {
                         diag.span_suggestion(
                             impl_err_span,
-                            "consider change the type to match the mutability in trait",
+                            "consider changing the mutability to match the trait",
                             trait_err_str,
                             Applicability::MachineApplicable,
                         );
