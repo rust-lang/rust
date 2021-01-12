@@ -56,15 +56,7 @@ pub(super) fn mangle(
     let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
 
     let mut printer = SymbolPrinter { tcx, path: SymbolPath::new(), keep_within_component: false }
-        .print_def_path(
-            def_id,
-            if let ty::InstanceDef::DropGlue(_, _) = instance.def {
-                // Add the name of the dropped type to the symbol name
-                &*instance.substs
-            } else {
-                &[]
-            },
-        )
+        .print_def_path(def_id, &[])
         .unwrap();
 
     if let ty::InstanceDef::VtableShim(..) = instance.def {
