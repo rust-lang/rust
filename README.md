@@ -7,7 +7,7 @@ standard library, and documentation.
 
 [Rust]: https://www.rust-lang.org
 
-**Note: this README is for _users_ rather than _contributors_.
+**Note: This README is for _users_ rather than _contributors_.
 If you wish to _contribute_ to the compiler, you should read the
 [Getting Started][gettingstarted] section of the rustc-dev-guide instead.**
 
@@ -62,7 +62,7 @@ by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
     If you plan to use `x.py install` to create an installation, it is recommended
     that you set the `prefix` value in the `[install]` section to a directory.
 
-    Create install directory if you are not installing in default directory
+    Create install directory if you are not installing in the default directory
 
 4. Build and install:
 
@@ -90,7 +90,7 @@ build.
 
 #### MinGW
 
-[MSYS2][msys2] can be used to easily build Rust on Windows:
+[MSYS2][msys2] can be used to build Rust on Windows easily:
 
 [msys2]: https://msys2.github.io/
 
@@ -98,7 +98,7 @@ build.
 
 2. Run `mingw32_shell.bat` or `mingw64_shell.bat` from wherever you installed
    MSYS2 (i.e. `C:\msys64`), depending on whether you want 32-bit or 64-bit
-   Rust. (As of the latest version of MSYS2 you have to run `msys2_shell.cmd
+   Rust. (As of the latest version of MSYS2, you have to run `msys2_shell.cmd
    -mingw32` or `msys2_shell.cmd -mingw64` from the command line instead)
 
 3. From this terminal, install the required tools:
@@ -109,7 +109,7 @@ build.
 
    # Install build tools needed for Rust. If you're building a 32-bit compiler,
    # then replace "x86_64" below with "i686". If you've already got git, python,
-   # or CMake installed and in PATH you can remove them from this list. Note
+   # or CMake installed, and in PATH, you can remove them from this list. Note
    # that it is important that you do **not** use the 'python2', 'cmake' and 'ninja'
    # packages from the 'msys2' subsystem. The build has historically been known
    # to fail with these packages.
@@ -137,7 +137,7 @@ MSVC builds of Rust additionally require an installation of Visual Studio 2017
 
 [Visual Studio]: https://visualstudio.microsoft.com/downloads/
 
-(If you're installing cmake yourself, be careful that “C++ CMake tools for
+(If you're installing CMake yourself, be careful that “C++ CMake tools for
 Windows” doesn't get included under “Individual components”.)
 
 With these dependencies installed, you can build the compiler in a `cmd.exe`
@@ -197,15 +197,14 @@ If you’d like to build the documentation, it’s almost the same:
 ```
 
 The generated documentation will appear under `doc` in the `build` directory for
-the ABI used. I.e., if the ABI was `x86_64-pc-windows-msvc`, the directory will be
+the ABI used. i.e., if the ABI was `x86_64-pc-windows-msvc`, the directory will be
 `build\x86_64-pc-windows-msvc\doc`.
 
 ## Notes
 
 Since the Rust compiler is written in Rust, it must be built by a
 precompiled "snapshot" version of itself (made in an earlier stage of
-development). As such, source builds require a connection to the Internet, to
-fetch snapshots, and an OS that can execute the available snapshot binaries.
+development). As such, source builds require a connection to the Internet to fetch snapshots and an OS that can execute the available snapshot binaries.
 
 Snapshot binaries are currently built and tested on several platforms:
 
@@ -254,7 +253,7 @@ See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
 
 ## Trademark
 
-The Rust programming language is an open source, community project governed
+The Rust programming language is an open-source, community project governed
 by a core team. It is also sponsored by the Mozilla Foundation (“Mozilla”),
 which owns and protects the Rust and Cargo trademarks and logos
 (the “Rust Trademarks”).
