@@ -132,6 +132,16 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
+    /// Entry point for obtaining the MIR of anything that should get evaluated.
+    /// So not just functions and shims, but also const/static initializers, anonymous
+    /// constants, ...
+    fn load_mir(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        instance: ty::InstanceDef<'tcx>,
+    ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
+        Ok(ecx.tcx.instance_mir(instance))
+    }
+
     /// Entry point to all function calls.
     ///
     /// Returns either the mir to use for the call, or `None` if execution should

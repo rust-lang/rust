@@ -1160,6 +1160,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
+    fn is_ctfe_mir_available(&self, id: DefIndex) -> bool {
+        self.root.tables.mir_for_ctfe.get(self, id).is_some()
+    }
+
     fn is_item_mir_available(&self, id: DefIndex) -> bool {
         self.root.tables.mir.get(self, id).is_some()
     }
@@ -1179,6 +1183,17 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .get(self, id)
             .unwrap_or_else(|| {
                 bug!("get_optimized_mir: missing MIR for `{:?}`", self.local_def_id(id))
+            })
+            .decode((self, tcx))
+    }
+
+    fn get_mir_for_ctfe(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
+        self.root
+            .tables
+            .mir_for_ctfe
+            .get(self, id)
+            .unwrap_or_else(|| {
+                bug!("get_mir_for_ctfe: missing MIR for `{:?}`", self.local_def_id(id))
             })
             .decode((self, tcx))
     }

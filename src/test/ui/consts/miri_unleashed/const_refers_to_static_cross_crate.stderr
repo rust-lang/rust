@@ -35,11 +35,11 @@ LL |         U8_MUT => true,
    |         ^^^^^^
 
 warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static_cross_crate.rs:26:14
+  --> $DIR/const_refers_to_static_cross_crate.rs:26:15
    |
 LL | / const U8_MUT2: &u8 = {
 LL | |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
-   | |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
+   | |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
 LL | |
 LL | |
 LL | | };

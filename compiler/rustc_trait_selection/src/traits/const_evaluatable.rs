@@ -152,7 +152,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     if concrete.is_ok() && substs.has_param_types_or_consts() {
         match infcx.tcx.def_kind(def.did) {
             DefKind::AnonConst => {
-                let mir_body = infcx.tcx.optimized_mir_opt_const_arg(def);
+                let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(def);
 
                 if mir_body.is_polymorphic {
                     future_compat_lint();

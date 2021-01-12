@@ -477,16 +477,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some(promoted) = promoted {
             return Ok(&self.tcx.promoted_mir_opt_const_arg(def)[promoted]);
         }
-        match instance {
-            ty::InstanceDef::Item(def) => {
-                if self.tcx.is_mir_available(def.did) {
-                    Ok(self.tcx.optimized_mir_opt_const_arg(def))
-                } else {
-                    throw_unsup!(NoMirFor(def.did))
-                }
-            }
-            _ => Ok(self.tcx.instance_mir(instance)),
-        }
+        M::load_mir(self, instance)
     }
 
     /// Call this on things you got out of the MIR (so it is as generic as the current

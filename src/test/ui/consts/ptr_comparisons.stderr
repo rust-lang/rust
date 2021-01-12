@@ -16,19 +16,17 @@ LL | const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
    = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:67:14
+  --> $DIR/ptr_comparisons.rs:67:35
    |
 LL | / const _: *const u8 =
 LL | |
 LL | |     unsafe { std::ptr::raw_const!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
-   | |______________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^__-
-   |                |
-   |                memory access failed: pointer must be in-bounds at offset 1000, but is outside bounds of alloc2 which has size $WORD
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   | |___________________________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^___-
+   |                                     |
+   |                                     memory access failed: pointer must be in-bounds at offset 1000, but is outside bounds of alloc2 which has size $WORD
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:70:27
+  --> $DIR/ptr_comparisons.rs:71:27
    |
 LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -36,7 +34,7 @@ LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) +
    |                           "pointer-to-integer cast" needs an rfc before being allowed inside constants
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:75:27
+  --> $DIR/ptr_comparisons.rs:76:27
    |
 LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---

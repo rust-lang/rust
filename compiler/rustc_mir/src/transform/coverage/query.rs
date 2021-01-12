@@ -4,7 +4,7 @@ use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, Coverage, CoverageInfo, Location};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 
 /// The `query` provider for `CoverageInfo`, requested by `codegen_coverage()` (to inject each
@@ -112,7 +112,7 @@ impl Visitor<'_> for CoverageVisitor {
 }
 
 fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo {
-    let mir_body = tcx.optimized_mir(def_id);
+    let mir_body = mir_body(tcx, def_id);
 
     let mut coverage_visitor = CoverageVisitor {
         // num_counters always has at least the `ZERO` counter.
@@ -129,8 +129,7 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo
 }
 
 fn covered_file_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Symbol> {
-    let mir_body = tcx.optimized_mir(def_id);
-    for bb_data in mir_body.basic_blocks().iter() {
+    for bb_data in mir_body(tcx, def_id).basic_blocks().iter() {
         for statement in bb_data.statements.iter() {
             if let StatementKind::Coverage(box ref coverage) = statement.kind {
                 if let Some(code_region) = coverage.code_region.as_ref() {
@@ -142,9 +141,17 @@ fn covered_file_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Symbol> {
     None
 }
 
+/// This function ensures we obtain the correct MIR for the given item irrespective of
+/// whether that means const mir or runtime mir. For `const fn` this opts for runtime
+/// mir.
+fn mir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx mir::Body<'tcx> {
+    let id = ty::WithOptConstParam::unknown(def_id);
+    let def = ty::InstanceDef::Item(id);
+    tcx.instance_mir(def)
+}
+
 fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx CodeRegion> {
-    let mir_body: &'tcx mir::Body<'tcx> = tcx.optimized_mir(def_id);
-    mir_body
+    mir_body(tcx, def_id)
         .basic_blocks()
         .iter()
         .map(|data| {
