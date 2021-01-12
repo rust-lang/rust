@@ -5,7 +5,7 @@ Assumes the `MIRI_SYSROOT` env var to be set appropriately,
 and the working directory to contain the cargo-miri-test project.
 '''
 
-import sys, subprocess, os
+import sys, subprocess, os, re
 
 CGREEN  = '\33[32m'
 CBOLD   = '\33[1m'
@@ -23,6 +23,10 @@ def cargo_miri(cmd, quiet = True):
         args += ["--target", os.environ['MIRI_TEST_TARGET']]
     return args
 
+def normalize_stdout(str):
+    str = str.replace("src\\", "src/") # normalize paths across platforms
+    return re.sub("finished in \d+\.\d\ds", "finished in $TIME", str)
+
 def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
     print("Testing {}...".format(name))
     ## Call `cargo miri`, capture all output
@@ -38,7 +42,7 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
     (stdout, stderr) = p.communicate(input=stdin)
     stdout = stdout.decode("UTF-8")
     stderr = stderr.decode("UTF-8")
-    if p.returncode == 0 and stdout == open(stdout_ref).read() and stderr == open(stderr_ref).read():
+    if p.returncode == 0 and normalize_stdout(stdout) == open(stdout_ref).read() and stderr == open(stderr_ref).read():
         # All good!
         return
     # Show output
@@ -101,26 +105,27 @@ def test_cargo_miri_run():
 def test_cargo_miri_test():
     # rustdoc is not run on foreign targets
     is_foreign = 'MIRI_TEST_TARGET' in os.environ
-    rustdoc_ref = "test.stderr-empty.ref" if is_foreign else "test.stderr-rustdoc.ref"
+    default_ref = "test.cross-target.stdout.ref" if is_foreign else "test.default.stdout.ref"
+    filter_ref = "test.filter.cross-target.stdout.ref" if is_foreign else "test.filter.stdout.ref"
 
     test("`cargo miri test`",
         cargo_miri("test"),
-        "test.default.stdout.ref", rustdoc_ref,
+        default_ref, "test.stderr-empty.ref",
         env={'MIRIFLAGS': "-Zmiri-seed=feed"},
     )
     test("`cargo miri test` (no isolation)",
         cargo_miri("test"),
-        "test.default.stdout.ref", rustdoc_ref,
+        default_ref, "test.stderr-empty.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
     test("`cargo miri test` (raw-ptr tracking)",
         cargo_miri("test"),
-        "test.default.stdout.ref", rustdoc_ref,
+        default_ref, "test.stderr-empty.ref",
         env={'MIRIFLAGS': "-Zmiri-track-raw-pointers"},
     )
     test("`cargo miri test` (with filter)",
         cargo_miri("test") + ["--", "--format=pretty", "le1"],
-        "test.filter.stdout.ref", rustdoc_ref,
+        filter_ref, "test.stderr-empty.ref",
     )
     test("`cargo miri test` (test target)",
         cargo_miri("test") + ["--test", "test", "--", "--format=pretty"],
