@@ -141,6 +141,20 @@ fn assume_init_good() {
 }
 
 #[test]
+fn uninit_array_assume_init() {
+    let mut array: [MaybeUninit<i16>; 5] = MaybeUninit::uninit_array();
+    array[0].write(3);
+    array[1].write(1);
+    array[2].write(4);
+    array[3].write(1);
+    array[4].write(5);
+
+    let array = unsafe { MaybeUninit::array_assume_init(array) };
+
+    assert_eq!(array, [3, 1, 4, 1, 5]);
+}
+
+#[test]
 fn uninit_write_slice() {
     let mut dst = [MaybeUninit::new(255); 64];
     let src = [0; 64];
