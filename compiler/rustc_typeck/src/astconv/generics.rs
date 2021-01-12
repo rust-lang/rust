@@ -79,7 +79,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let param_hir_id = tcx.hir().local_def_id_to_hir_id(param_local_id);
                         let param_name = tcx.hir().ty_param_name(param_hir_id);
                         let param_type = tcx.type_of(param.def_id);
-                        if param_type.is_suggestable() {
+                        if param_type.is_suggestable(tcx) {
                             err.span_suggestion(
                                 tcx.def_span(src_def_id),
                                 "consider changing this type paramater to a `const`-generic",

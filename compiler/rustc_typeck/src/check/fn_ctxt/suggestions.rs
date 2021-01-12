@@ -435,7 +435,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
-        match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
+        debug!("suggest_missing_return_type: about to determine if {:?} is suggestable", found);
+        match (&fn_decl.output, found.is_suggestable(self.tcx), can_suggest, expected.is_unit()) {
             (&hir::FnRetTy::DefaultReturn(span), true, true, true) => {
                 err.span_suggestion(
                     span,

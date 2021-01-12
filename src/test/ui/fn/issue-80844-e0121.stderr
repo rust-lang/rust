@@ -1,0 +1,48 @@
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80844-e0121.rs:9:27
+   |
+LL | fn returns_generator() -> _ {
+   |                           ^ not allowed in type signatures
+   |
+   = help: consider using a `Generator` trait bound
+   = note: for more information on generators, see https://doc.rust-lang.org/beta/unstable-book/language-features/generators.html
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80844-e0121.rs:17:35
+   |
+LL | fn returns_returns_generator() -> _ {
+   |                                   ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80844-e0121.rs:23:32
+   |
+LL | fn returns_option_closure() -> _ {
+   |                                ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80844-e0121.rs:29:28
+   |
+LL | fn returns_option_i32() -> _ {
+   |                            ^
+   |                            |
+   |                            not allowed in type signatures
+   |                            help: replace with the correct return type: `Option<i32>`
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80844-e0121.rs:37:35
+   |
+LL | fn returns_container_closure() -> _ {
+   |                                   ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80844-e0121.rs:43:31
+   |
+LL | fn returns_container_i32() -> _ {
+   |                               ^
+   |                               |
+   |                               not allowed in type signatures
+   |                               help: replace with the correct return type: `Container<i32>`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

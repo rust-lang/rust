@@ -1,7 +1,8 @@
 //! Diagnostics related methods for `TyS`.
 
+use crate::ty::subst::SubstsRef;
 use crate::ty::TyKind::*;
-use crate::ty::{InferTy, TyCtxt, TyS};
+use crate::ty::{FnSig, InferTy, PolyFnSig, TyCtxt, TyS, VariantDef};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -61,20 +62,45 @@ impl<'tcx> TyS<'tcx> {
     }
 
     /// Whether the type can be safely suggested during error recovery.
-    pub fn is_suggestable(&self) -> bool {
-        !matches!(
-            self.kind(),
-            Opaque(..)
-                | FnDef(..)
-                | FnPtr(..)
-                | Dynamic(..)
-                | Closure(..)
-                | Infer(..)
-                | Projection(..)
-                | Generator(..)
-                | GeneratorWitness(..)
-                | Error(..)
-        )
+    pub fn is_suggestable(&self, tcx: TyCtxt<'tcx>) -> bool {
+        debug!("is_suggestable: checking if {:?} is suggestable", self.kind());
+        match self.kind() {
+            Opaque(..) | FnDef(..) | Dynamic(..) | Closure(..) | Infer(..) | Projection(..)
+            | Generator(..) | GeneratorWitness(..) | Error(..) => false,
+
+            Adt(def, substs) => {
+                def.variants.iter().all(|variants| variants.is_suggestable(tcx, substs))
+            }
+
+            Array(ty, _) | Slice(ty) => ty.is_suggestable(tcx),
+            FnPtr(sig) => sig.is_suggestable(tcx),
+            RawPtr(ty_and_mut) => ty_and_mut.ty.is_suggestable(tcx),
+            Ref(_, ty, _) => ty.is_suggestable(tcx),
+            Tuple(_) => self.tuple_fields().all(|ty| ty.is_suggestable(tcx)),
+
+            _ => true,
+        }
+    }
+}
+
+impl<'tcx> FnSig<'tcx> {
+    /// Whether this function signature can be safely suggested during error recovery.
+    pub fn is_suggestable(&self, tcx: TyCtxt<'tcx>) -> bool {
+        self.inputs_and_output.iter().all(|ty| ty.is_suggestable(tcx))
+    }
+}
+
+impl<'tcx> PolyFnSig<'tcx> {
+    /// Whether this function signature can be safely suggested during error recovery.
+    pub fn is_suggestable(&self, tcx: TyCtxt<'tcx>) -> bool {
+        self.as_ref().skip_binder().is_suggestable(tcx)
+    }
+}
+
+impl VariantDef {
+    /// Whether this variant can be safely suggested during error recovery.
+    pub fn is_suggestable<'tcx>(&self, tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>) -> bool {
+        self.fields.iter().all(|field| field.ty(tcx, substs).is_suggestable(tcx))
     }
 }
 

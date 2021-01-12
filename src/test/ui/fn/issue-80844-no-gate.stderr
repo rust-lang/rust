@@ -13,7 +13,13 @@ error[E0121]: the type placeholder `_` is not allowed within types on item signa
 LL | fn returns_generator() -> _ {
    |                           ^ not allowed in type signatures
 
-error: aborting due to 2 previous errors
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80844-no-gate.rs:12:35
+   |
+LL | fn returns_returns_generator() -> _ {
+   |                                   ^ not allowed in type signatures
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0121, E0658.
 For more information about an error, try `rustc --explain E0121`.

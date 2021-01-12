@@ -1664,7 +1664,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     let ret_ty = fn_sig.output();
                     if ret_ty != tcx.ty_error() {
                         match ret_ty.kind() {
-                            ty::FnDef(..) => {
+                            ty::FnDef(..) if ret_ty.fn_sig(tcx).is_suggestable(tcx) => {
                                 diag.span_suggestion(
                                     ty.span,
                                     "replace with the correct return type",
@@ -1686,7 +1686,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                                 diag.note("for more information on generators, see https://doc.rust-lang.org/beta/unstable-book/language-features/generators.html");
                             }
 
-                            _ if ret_ty.is_suggestable() => {
+                            _ if ret_ty.is_suggestable(tcx) => {
                                 diag.span_suggestion(
                                     ty.span,
                                     "replace with the correct return type",

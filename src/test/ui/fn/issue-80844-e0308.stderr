@@ -1,0 +1,97 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-80844-e0308.rs:11:5
+   |
+LL | fn expected_unit_got_generator() {
+   |                                  - possibly return type missing here?
+LL |
+LL |     || yield 0i32
+   |     ^^^^^^^^^^^^^ expected `()`, found generator
+   |
+   = note: expected unit type `()`
+              found generator `[generator@$DIR/issue-80844-e0308.rs:11:5: 11:18]`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-80844-e0308.rs:19:5
+   |
+LL | fn expected_unit_got_closure() {
+   |                                - possibly return type missing here?
+LL |
+LL |     || 0i32
+   |     ^^^^^^^ expected `()`, found closure
+   |
+   = note: expected unit type `()`
+                found closure `[closure@$DIR/issue-80844-e0308.rs:19:5: 19:12]`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-80844-e0308.rs:27:5
+   |
+LL | fn expected_unit_got_option_closure() {
+   |                                       - possibly return type missing here?
+LL |
+LL |     Some(|| 0i32)
+   |     ^^^^^^^^^^^^^- help: try adding a semicolon: `;`
+   |     |
+   |     expected `()`, found enum `Option`
+   |
+   = note: expected unit type `()`
+                   found enum `Option<[closure@$DIR/issue-80844-e0308.rs:27:10: 27:17]>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-80844-e0308.rs:36:5
+   |
+LL | fn expected_unit_got_option_i32() {
+   |                                   - possibly return type missing here?
+LL |
+LL |     Some(0i32)
+   |     ^^^^^^^^^^- help: try adding a semicolon: `;`
+   |     |
+   |     expected `()`, found enum `Option`
+   |
+   = note: expected unit type `()`
+                   found enum `Option<i32>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-80844-e0308.rs:45:5
+   |
+LL | fn expected_unit_got_container_closure() {
+   |                                          - possibly return type missing here?
+LL |
+LL |     Container(|| 0i32)
+   |     ^^^^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
+   |     |
+   |     expected `()`, found struct `Container`
+   |
+   = note: expected unit type `()`
+                 found struct `Container<[closure@$DIR/issue-80844-e0308.rs:45:15: 45:22]>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-80844-e0308.rs:54:5
+   |
+LL | fn expected_unit_got_container_i32() {
+   |                                      - possibly return type missing here?
+LL |
+LL |     Container(0i32)
+   |     ^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
+   |     |
+   |     expected `()`, found struct `Container`
+   |
+   = note: expected unit type `()`
+                 found struct `Container<i32>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-80844-e0308.rs:63:5
+   |
+LL | fn expected_unit_got_container_bool() {
+   |                                       - possibly return type missing here?
+LL |
+LL |     Container(true)
+   |     ^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
+   |     |
+   |     expected `()`, found struct `Container`
+   |
+   = note: expected unit type `()`
+                 found struct `Container<bool>`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

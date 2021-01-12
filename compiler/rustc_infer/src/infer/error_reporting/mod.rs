@@ -609,7 +609,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match cause.code {
             ObligationCauseCode::Pattern { origin_expr: true, span: Some(span), root_ty } => {
                 let ty = self.resolve_vars_if_possible(root_ty);
-                if ty.is_suggestable() {
+                if ty.is_suggestable(self.tcx) {
                     // don't show type `_`
                     err.span_label(span, format!("this expression has type `{}`", ty));
                 }
