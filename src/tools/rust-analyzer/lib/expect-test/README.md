@@ -1,4 +1,5 @@
 # expect-test
+[![Docs](https://docs.rs/expect-test/badge.svg)](https://docs.rs/expect-test)
 
 Minimalistic snapshot testing for Rust.
 
