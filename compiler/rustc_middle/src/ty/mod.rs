@@ -3155,6 +3155,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         all_local_trait_impls: trait_def::all_local_trait_impls,
+        type_uninhabited_from: inhabitedness::type_uninhabited_from,
         ..*providers
     };
 }

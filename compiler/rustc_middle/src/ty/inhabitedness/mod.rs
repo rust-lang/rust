@@ -6,7 +6,6 @@ use crate::ty::TyKind::*;
 use crate::ty::{AdtDef, FieldDef, Ty, TyS, VariantDef};
 use crate::ty::{AdtKind, Visibility};
 use crate::ty::{DefId, SubstsRef};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 
 mod def_id_forest;
 
@@ -187,34 +186,46 @@ impl<'tcx> FieldDef {
 
 impl<'tcx> TyS<'tcx> {
     /// Calculates the forest of `DefId`s from which this type is visibly uninhabited.
-    fn uninhabited_from(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> DefIdForest {
-        match *self.kind() {
-            Adt(def, substs) => {
-                ensure_sufficient_stack(|| def.uninhabited_from(tcx, substs, param_env))
-            }
+    fn uninhabited_from(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> DefIdForest {
+        tcx.type_uninhabited_from(param_env.and(self))
+    }
+}
 
-            Never => DefIdForest::full(tcx),
+// Query provider for `type_uninhabited_from`.
+pub(crate) fn type_uninhabited_from<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> DefIdForest {
+    let ty = key.value;
+    let param_env = key.param_env;
+    match *ty.kind() {
+        Adt(def, substs) => def.uninhabited_from(tcx, substs, param_env),
 
-            Tuple(ref tys) => DefIdForest::union(
-                tcx,
-                tys.iter().map(|ty| ty.expect_ty().uninhabited_from(tcx, param_env)),
-            ),
+        Never => DefIdForest::full(tcx),
 
-            Array(ty, len) => match len.try_eval_usize(tcx, param_env) {
-                Some(0) | None => DefIdForest::empty(),
-                // If the array is definitely non-empty, it's uninhabited if
-                // the type of its elements is uninhabited.
-                Some(1..) => ty.uninhabited_from(tcx, param_env),
-            },
+        Tuple(ref tys) => DefIdForest::union(
+            tcx,
+            tys.iter().map(|ty| ty.expect_ty().uninhabited_from(tcx, param_env)),
+        ),
 
-            // References to uninitialised memory are valid for any type, including
-            // uninhabited types, in unsafe code, so we treat all references as
-            // inhabited.
-            // The precise semantics of inhabitedness with respect to references is currently
-            // undecided.
-            Ref(..) => DefIdForest::empty(),
+        Array(ty, len) => match len.try_eval_usize(tcx, param_env) {
+            Some(0) | None => DefIdForest::empty(),
+            // If the array is definitely non-empty, it's uninhabited if
+            // the type of its elements is uninhabited.
+            Some(1..) => ty.uninhabited_from(tcx, param_env),
+        },
 
-            _ => DefIdForest::empty(),
-        }
+        // References to uninitialised memory are valid for any type, including
+        // uninhabited types, in unsafe code, so we treat all references as
+        // inhabited.
+        // The precise semantics of inhabitedness with respect to references is currently
+        // undecided.
+        Ref(..) => DefIdForest::empty(),
+
+        _ => DefIdForest::empty(),
     }
 }
