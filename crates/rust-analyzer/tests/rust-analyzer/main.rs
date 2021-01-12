@@ -744,8 +744,8 @@ fn test_will_rename_files_same_level() {
     // }
     let tmp_dir = TestDir::new();
     let tmp_dir_path = tmp_dir.path().to_owned();
-    let tmp_dir_path = tmp_dir_path.to_str().unwrap();
-    let base_path = PathBuf::from(format!("file://{}", tmp_dir_path));
+    let tmp_dir_str = tmp_dir_path.to_str().unwrap();
+    let base_path = PathBuf::from(format!("file://{}", tmp_dir_str));
 
     let code = r#"
 //- /Cargo.toml
@@ -784,7 +784,7 @@ fn main() {}
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}/src/lib.rs", tmp_dir_path),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs")),
                 "version": null
               },
               "edits": [
@@ -845,7 +845,7 @@ fn main() {}
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}/src/lib.rs", tmp_dir_path),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs")),
                 "version": null
               },
               "edits": [
