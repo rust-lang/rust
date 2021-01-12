@@ -936,7 +936,7 @@ fn join_bounds_inner(
                 _ => false,
             };
 
-            let shape = if i > 0 && need_indent && force_newline {
+            let shape = if need_indent && force_newline {
                 shape
                     .block_indent(context.config.tab_spaces())
                     .with_max_width(context.config)
