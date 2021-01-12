@@ -1438,22 +1438,21 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(|value| PredicateAtom::RegionOutlives(value))
+        self.map_bound(PredicateAtom::RegionOutlives)
             .potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(|value| PredicateAtom::TypeOutlives(value))
+        self.map_bound(PredicateAtom::TypeOutlives)
             .potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(|value| PredicateAtom::Projection(value))
-            .potentially_quantified(tcx, PredicateKind::ForAll)
+        self.map_bound(PredicateAtom::Projection).potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 

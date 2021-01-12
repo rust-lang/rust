@@ -1256,17 +1256,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             })
         });
 
-        let regular_trait_predicates = existential_trait_refs.map(|trait_ref| {
-            trait_ref.map_bound(|trait_ref| ty::ExistentialPredicate::Trait(trait_ref))
-        });
+        let regular_trait_predicates = existential_trait_refs
+            .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait));
         let auto_trait_predicates = auto_traits.into_iter().map(|trait_ref| {
             ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(trait_ref.trait_ref().def_id()))
         });
         let mut v = regular_trait_predicates
             .chain(auto_trait_predicates)
             .chain(
-                existential_projections
-                    .map(|x| x.map_bound(|x| ty::ExistentialPredicate::Projection(x))),
+                existential_projections.map(|x| x.map_bound(ty::ExistentialPredicate::Projection)),
             )
             .collect::<SmallVec<[_; 8]>>();
         v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));

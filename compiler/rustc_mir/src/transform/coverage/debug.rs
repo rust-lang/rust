@@ -130,7 +130,7 @@ const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 pub(super) fn debug_options<'a>() -> &'a DebugOptions {
     static DEBUG_OPTIONS: SyncOnceCell<DebugOptions> = SyncOnceCell::new();
 
-    &DEBUG_OPTIONS.get_or_init(|| DebugOptions::from_env())
+    &DEBUG_OPTIONS.get_or_init(DebugOptions::from_env)
 }
 
 /// Parses and maintains coverage-specific debug options captured from the environment variable
@@ -430,7 +430,7 @@ impl GraphvizData {
         {
             bcb_to_coverage_spans_with_counters
                 .entry(bcb)
-                .or_insert_with(|| Vec::new())
+                .or_insert_with(Vec::new)
                 .push((coverage_span.clone(), counter_kind.clone()));
         }
     }
@@ -456,7 +456,7 @@ impl GraphvizData {
         if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_mut() {
             bcb_to_dependency_counters
                 .entry(bcb)
-                .or_insert_with(|| Vec::new())
+                .or_insert_with(Vec::new)
                 .push(counter_kind.clone());
         }
     }
@@ -527,8 +527,8 @@ impl UsedExpressions {
     pub fn add_expression_operands(&mut self, expression: &CoverageKind) {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_mut() {
             if let CoverageKind::Expression { id, lhs, rhs, .. } = *expression {
-                used_expression_operands.entry(lhs).or_insert_with(|| Vec::new()).push(id);
-                used_expression_operands.entry(rhs).or_insert_with(|| Vec::new()).push(id);
+                used_expression_operands.entry(lhs).or_insert_with(Vec::new).push(id);
+                used_expression_operands.entry(rhs).or_insert_with(Vec::new).push(id);
             }
         }
     }
