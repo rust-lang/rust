@@ -792,9 +792,12 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
-        self.encode_mir_for_ctfe(def_id.expect_local());
-        self.encode_optimized_mir(def_id.expect_local());
+        let opt_mir = tcx.sess.opts.debugging_opts.always_encode_mir || self.emit_codegen_mir;
+        if opt_mir {
+            self.encode_optimized_mir(def_id.expect_local());
+        }
         self.encode_promoted_mir(def_id.expect_local());
+        self.encode_mir_for_ctfe(def_id.expect_local());
     }
 
     fn encode_info_for_mod(&mut self, id: hir::HirId, md: &hir::Mod<'_>, attrs: &[ast::Attribute]) {
@@ -900,7 +903,10 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
-        self.encode_optimized_mir(def_id.expect_local());
+        let opt_mir = tcx.sess.opts.debugging_opts.always_encode_mir || self.emit_codegen_mir;
+        if opt_mir {
+            self.encode_optimized_mir(def_id.expect_local());
+        }
         self.encode_mir_for_ctfe(def_id.expect_local());
         self.encode_promoted_mir(def_id.expect_local());
     }
@@ -1029,12 +1035,23 @@ impl EncodeContext<'a, 'tcx> {
                 }
             }
             ty::AssocKind::Fn => {
-                if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id.expect_local()) {
-                    self.encode_optimized_mir(def_id.expect_local());
-                    self.encode_promoted_mir(def_id.expect_local());
+                let opt_mir =
+                    tcx.sess.opts.debugging_opts.always_encode_mir || self.emit_codegen_mir;
+                if opt_mir {
+                    if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id.expect_local()) {
+                        self.encode_optimized_mir(def_id.expect_local());
+                        self.encode_promoted_mir(def_id.expect_local());
+                    }
                 }
             }
         }
+    }
+
+    fn should_encode_fn_opt_mir(&self, def_id: DefId) -> bool {
+        self.tcx.sess.opts.debugging_opts.always_encode_mir
+            || (self.emit_codegen_mir
+                && (self.tcx.generics_of(def_id).requires_monomorphization(self.tcx)
+                    || self.tcx.codegen_fn_attrs(def_id).requests_inline()))
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) {
@@ -1105,10 +1122,7 @@ impl EncodeContext<'a, 'tcx> {
         let (mir, mir_const) = match ast_item.kind {
             hir::ImplItemKind::Const(..) => (false, true),
             hir::ImplItemKind::Fn(ref sig, _) => {
-                let opt_mir = tcx.sess.opts.debugging_opts.always_encode_mir
-                    || (self.emit_codegen_mir
-                        && (tcx.generics_of(def_id).requires_monomorphization(tcx)
-                            || tcx.codegen_fn_attrs(def_id).requests_inline()));
+                let opt_mir = self.should_encode_fn_opt_mir(def_id);
                 let is_const_fn = sig.header.constness == hir::Constness::Const;
                 (opt_mir, is_const_fn)
             }
@@ -1432,10 +1446,7 @@ impl EncodeContext<'a, 'tcx> {
         let (mir, const_mir) = match item.kind {
             hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => (false, true),
             hir::ItemKind::Fn(ref sig, ..) => {
-                let opt_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir
-                    || (self.emit_codegen_mir
-                        && (tcx.generics_of(def_id).requires_monomorphization(tcx)
-                            || tcx.codegen_fn_attrs(def_id).requests_inline()));
+                let opt_mir = self.should_encode_fn_opt_mir(def_id);
                 let is_const_fn = sig.header.constness == hir::Constness::Const;
                 // We don't need the optimized MIR for const fns.
                 (opt_mir, is_const_fn)
@@ -1498,8 +1509,11 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.fn_sig[def_id] <- substs.as_closure().sig());
         }
         self.encode_generics(def_id.to_def_id());
-        self.encode_optimized_mir(def_id);
-        self.encode_promoted_mir(def_id);
+        let opt_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir || self.emit_codegen_mir;
+        if opt_mir {
+            self.encode_optimized_mir(def_id);
+            self.encode_promoted_mir(def_id);
+        }
     }
 
     fn encode_info_for_anon_const(&mut self, def_id: LocalDefId) {
