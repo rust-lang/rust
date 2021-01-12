@@ -738,6 +738,11 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
                     F->getName() == "__fd_sincos_1")) {
             continue;
           }
+          
+          if (F && (F->getName().startswith("f90io") || F->getName() == "ftnio_fmt_write64" ||
+                    F->getName() == "__mth_i_ipowi" || F->getName() == "f90_pausea")) {
+            continue;
+          }
 
 #if LLVM_VERSION_MAJOR >= 9
           AAQueryInfo AAQIP;
