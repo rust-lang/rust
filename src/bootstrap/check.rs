@@ -62,7 +62,7 @@ impl Step for Std {
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-        let compiler = builder.compiler(0, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build);
 
         let mut cargo = builder.cargo(
             compiler,
@@ -152,7 +152,7 @@ impl Step for Rustc {
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(0, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
 
         builder.ensure(Std { target });
@@ -214,7 +214,7 @@ impl Step for CodegenBackend {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(0, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
         let backend = self.backend;
 
@@ -269,7 +269,7 @@ macro_rules! tool_check_step {
             }
 
             fn run(self, builder: &Builder<'_>) {
-                let compiler = builder.compiler(0, builder.config.build);
+                let compiler = builder.compiler(builder.top_stage, builder.config.build);
                 let target = self.target;
 
                 builder.ensure(Rustc { target });
