@@ -1,14 +1,15 @@
 //! FIXME: write short doc here
 
-use std::fmt;
+use std::{borrow::Cow, fmt};
 
 use crate::{
     db::HirDatabase, utils::generics, ApplicationTy, CallableDefId, FnSig, GenericPredicate,
-    Lifetime, Obligation, OpaqueTyId, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+    Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
+use arrayvec::ArrayVec;
 use hir_def::{
-    find_path, generics::TypeParamProvenance, item_scope::ItemInNs, AdtId, AssocContainerId,
-    Lookup, ModuleId,
+    db::DefDatabase, find_path, generics::TypeParamProvenance, item_scope::ItemInNs, AdtId,
+    AssocContainerId, HasModule, Lookup, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 
@@ -257,25 +258,45 @@ impl HirDisplay for ApplicationTy {
                 t.hir_fmt(f)?;
                 write!(f, "; _]")?;
             }
-            TypeCtor::RawPtr(m) => {
-                let t = self.parameters.as_single();
-
-                write!(f, "*{}", m.as_keyword_for_ptr())?;
-                if matches!(t, Ty::Dyn(predicates) if predicates.len() > 1) {
-                    write!(f, "(")?;
-                    t.hir_fmt(f)?;
-                    write!(f, ")")?;
-                } else {
-                    t.hir_fmt(f)?;
-                }
-            }
-            TypeCtor::Ref(m) => {
+            TypeCtor::RawPtr(m) | TypeCtor::Ref(m) => {
                 let t = self.parameters.as_single();
                 let ty_display =
                     t.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
 
-                write!(f, "&{}", m.as_keyword_for_ref())?;
-                if matches!(t, Ty::Dyn(predicates) if predicates.len() > 1) {
+                if matches!(self.ctor, TypeCtor::RawPtr(_)) {
+                    write!(f, "*{}", m.as_keyword_for_ptr())?;
+                } else {
+                    write!(f, "&{}", m.as_keyword_for_ref())?;
+                }
+
+                let datas;
+                let predicates = match t {
+                    Ty::Dyn(predicates) if predicates.len() > 1 => {
+                        Cow::Borrowed(predicates.as_ref())
+                    }
+                    &Ty::Opaque(OpaqueTy {
+                        opaque_ty_id: OpaqueTyId::ReturnTypeImplTrait(func, idx),
+                        ref parameters,
+                    }) => {
+                        datas =
+                            f.db.return_type_impl_traits(func).expect("impl trait id without data");
+                        let data = (*datas)
+                            .as_ref()
+                            .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                        let bounds = data.subst(parameters);
+                        Cow::Owned(bounds.value)
+                    }
+                    _ => Cow::Borrowed(&[][..]),
+                };
+
+                if let [GenericPredicate::Implemented(trait_ref), _] = predicates.as_ref() {
+                    let trait_ = trait_ref.trait_;
+                    if fn_traits(f.db.upcast(), trait_).any(|it| it == trait_) {
+                        return write!(f, "{}", ty_display);
+                    }
+                }
+
+                if predicates.len() > 1 {
                     write!(f, "(")?;
                     write!(f, "{}", ty_display)?;
                     write!(f, ")")?;
@@ -595,6 +616,17 @@ impl HirDisplay for FnSig {
     }
 }
 
+fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = TraitId> {
+    let krate = trait_.lookup(db).container.module(db).krate;
+    let fn_traits = [
+        db.lang_item(krate, "fn".into()),
+        db.lang_item(krate, "fn_mut".into()),
+        db.lang_item(krate, "fn_once".into()),
+    ];
+    // FIXME: Replace ArrayVec when into_iter is a thing on arrays
+    ArrayVec::from(fn_traits).into_iter().flatten().flat_map(|it| it.as_trait())
+}
+
 pub fn write_bounds_like_dyn_trait(
     predicates: &[GenericPredicate],
     f: &mut HirFormatter,
@@ -607,10 +639,15 @@ pub fn write_bounds_like_dyn_trait(
     // predicate for that trait).
     let mut first = true;
     let mut angle_open = false;
+    let mut is_fn_trait = false;
     for p in predicates.iter() {
         match p {
             GenericPredicate::Implemented(trait_ref) => {
-                if angle_open {
+                let trait_ = trait_ref.trait_;
+                if !is_fn_trait {
+                    is_fn_trait = fn_traits(f.db.upcast(), trait_).any(|it| it == trait_);
+                }
+                if !is_fn_trait && angle_open {
                     write!(f, ">")?;
                     angle_open = false;
                 }
@@ -620,13 +657,26 @@ pub fn write_bounds_like_dyn_trait(
                 // We assume that the self type is $0 (i.e. the
                 // existential) here, which is the only thing that's
                 // possible in actual Rust, and hence don't print it
-                write!(f, "{}", f.db.trait_data(trait_ref.trait_).name)?;
-                if trait_ref.substs.len() > 1 {
-                    write!(f, "<")?;
-                    f.write_joined(&trait_ref.substs[1..], ", ")?;
-                    // there might be assoc type bindings, so we leave the angle brackets open
-                    angle_open = true;
+                write!(f, "{}", f.db.trait_data(trait_).name)?;
+                if let [_, params @ ..] = &*trait_ref.substs.0 {
+                    if is_fn_trait {
+                        if let Some(args) = params.first().and_then(|it| it.as_tuple()) {
+                            write!(f, "(")?;
+                            f.write_joined(&*args.0, ", ")?;
+                            write!(f, ")")?;
+                        }
+                    } else if !params.is_empty() {
+                        write!(f, "<")?;
+                        f.write_joined(params, ", ")?;
+                        // there might be assoc type bindings, so we leave the angle brackets open
+                        angle_open = true;
+                    }
                 }
+            }
+            GenericPredicate::Projection(projection_pred) if is_fn_trait => {
+                is_fn_trait = false;
+                write!(f, " -> ")?;
+                projection_pred.ty.hir_fmt(f)?;
             }
             GenericPredicate::Projection(projection_pred) => {
                 // in types in actual Rust, these will always come

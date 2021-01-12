@@ -1,4 +1,5 @@
 //- /libcore.rs crate:core
+//! Signatures of traits, types and functions from the core lib for use in tests.
 pub mod convert {
     pub trait From<T> {
         fn from(t: T) -> Self;

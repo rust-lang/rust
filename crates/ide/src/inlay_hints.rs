@@ -1401,4 +1401,41 @@ fn main() {
 "#,
         )
     }
+
+    #[test]
+    fn fn_hints() {
+        check(
+            r#"
+trait Sized {}
+
+fn foo() -> impl Fn() { loop {} }
+fn foo1() -> impl Fn(f64) { loop {} }
+fn foo2() -> impl Fn(f64, f64) { loop {} }
+fn foo3() -> impl Fn(f64, f64) -> u32 { loop {} }
+fn foo4() -> &'static dyn Fn(f64, f64) -> u32 { loop {} }
+fn foo5() -> &'static dyn Fn(&'static dyn Fn(f64, f64) -> u32, f64) -> u32 { loop {} }
+fn foo6() -> impl Fn(f64, f64) -> u32 + Sized { loop {} }
+fn foo7() -> *const (impl Fn(f64, f64) -> u32 + Sized) { loop {} }
+
+fn main() {
+    let foo = foo();
+     // ^^^ impl Fn()
+    let foo = foo1();
+     // ^^^ impl Fn(f64)
+    let foo = foo2();
+     // ^^^ impl Fn(f64, f64)
+    let foo = foo3();
+     // ^^^ impl Fn(f64, f64) -> u32
+    let foo = foo4();
+     // ^^^ &dyn Fn(f64, f64) -> u32
+    let foo = foo5();
+     // ^^^ &dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
+    let foo = foo6();
+     // ^^^ impl Fn(f64, f64) -> u32 + Sized
+    let foo = foo7();
+     // ^^^ *const (impl Fn(f64, f64) -> u32 + Sized)
+}
+"#,
+        )
+    }
 }
