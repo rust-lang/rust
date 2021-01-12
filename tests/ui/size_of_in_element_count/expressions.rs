@@ -20,6 +20,15 @@ fn main() {
     // Count expression involving divisions of size_of (Should trigger the lint)
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE * size_of::<u8>() / 2) };
 
+    // Count expression involving divisions by size_of (Should not trigger the lint)
+    unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE / size_of::<u8>()) };
+
+    // Count expression involving divisions by multiple size_of (Should not trigger the lint)
+    unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE / (2 * size_of::<u8>())) };
+
+    // Count expression involving recursive divisions by size_of (Should trigger the lint)
+    unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE / (2 / size_of::<u8>())) };
+
     // No size_of calls (Should not trigger the lint)
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), SIZE) };
 
