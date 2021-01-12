@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
-use rustc_serialize::opaque::Encoder;
+use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;
 use std::fs;
@@ -33,12 +33,12 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         join(
             move || {
                 sess.time("incr_comp_persist_result_cache", || {
-                    save_in(sess, query_cache_path, |e| encode_query_cache(tcx, e));
+                    save_in(sess, query_cache_path, "query cache", |e| encode_query_cache(tcx, e));
                 });
             },
             || {
                 sess.time("incr_comp_persist_dep_graph", || {
-                    save_in(sess, dep_graph_path, |e| {
+                    save_in(sess, dep_graph_path, "dependency graph", |e| {
                         sess.time("incr_comp_encode_dep_graph", || encode_dep_graph(tcx, e))
                     });
                 });
@@ -65,7 +65,7 @@ pub fn save_work_product_index(
     debug!("save_work_product_index()");
     dep_graph.assert_ignored();
     let path = work_products_path(sess);
-    save_in(sess, path, |e| encode_work_product_index(&new_work_products, e));
+    save_in(sess, path, "work product index", |e| encode_work_product_index(&new_work_products, e));
 
     // We also need to clean out old work-products, as not all of them are
     // deleted during invalidation. Some object files don't change their
@@ -92,13 +92,13 @@ pub fn save_work_product_index(
     });
 }
 
-fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
+fn save_in<F>(sess: &Session, path_buf: PathBuf, name: &str, encode: F)
 where
-    F: FnOnce(&mut Encoder),
+    F: FnOnce(&mut FileEncoder) -> FileEncodeResult,
 {
     debug!("save: storing data in {}", path_buf.display());
 
-    // delete the old dep-graph, if any
+    // Delete the old file, if any.
     // Note: It's important that we actually delete the old file and not just
     // truncate and overwrite it, since it might be a shared hard-link, the
     // underlying data of which we don't want to modify
@@ -109,7 +109,8 @@ where
         Err(err) if err.kind() == io::ErrorKind::NotFound => (),
         Err(err) => {
             sess.err(&format!(
-                "unable to delete old dep-graph at `{}`: {}",
+                "unable to delete old {} at `{}`: {}",
+                name,
                 path_buf.display(),
                 err
             ));
@@ -117,26 +118,35 @@ where
         }
     }
 
-    // generate the data in a memory buffer
-    let mut encoder = Encoder::new(Vec::new());
-    file_format::write_file_header(&mut encoder, sess.is_nightly_build());
-    encode(&mut encoder);
-
-    // write the data out
-    let data = encoder.into_inner();
-    match fs::write(&path_buf, data) {
-        Ok(_) => {
-            debug!("save: data written to disk successfully");
-        }
+    let mut encoder = match FileEncoder::new(&path_buf) {
+        Ok(encoder) => encoder,
         Err(err) => {
-            sess.err(&format!("failed to write dep-graph to `{}`: {}", path_buf.display(), err));
+            sess.err(&format!("failed to create {} at `{}`: {}", name, path_buf.display(), err));
+            return;
         }
+    };
+
+    if let Err(err) = file_format::write_file_header(&mut encoder, sess.is_nightly_build()) {
+        sess.err(&format!("failed to write {} header to `{}`: {}", name, path_buf.display(), err));
+        return;
     }
+
+    if let Err(err) = encode(&mut encoder) {
+        sess.err(&format!("failed to write {} to `{}`: {}", name, path_buf.display(), err));
+        return;
+    }
+
+    if let Err(err) = encoder.flush() {
+        sess.err(&format!("failed to flush {} to `{}`: {}", name, path_buf.display(), err));
+        return;
+    }
+
+    debug!("save: data written to disk successfully");
 }
 
-fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
+fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeResult {
     // First encode the commandline arguments hash
-    tcx.sess.opts.dep_tracking_hash().encode(encoder).unwrap();
+    tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
 
     // Encode the graph data.
     let serialized_graph =
@@ -214,15 +224,13 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
         println!("[incremental]");
     }
 
-    tcx.sess.time("incr_comp_encode_serialized_dep_graph", || {
-        serialized_graph.encode(encoder).unwrap();
-    });
+    tcx.sess.time("incr_comp_encode_serialized_dep_graph", || serialized_graph.encode(encoder))
 }
 
 fn encode_work_product_index(
     work_products: &FxHashMap<WorkProductId, WorkProduct>,
-    encoder: &mut Encoder,
-) {
+    encoder: &mut FileEncoder,
+) -> FileEncodeResult {
     let serialized_products: Vec<_> = work_products
         .iter()
         .map(|(id, work_product)| SerializedWorkProduct {
@@ -231,11 +239,9 @@ fn encode_work_product_index(
         })
         .collect();
 
-    serialized_products.encode(encoder).unwrap();
+    serialized_products.encode(encoder)
 }
 
-fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
-    tcx.sess.time("incr_comp_serialize_result_cache", || {
-        tcx.serialize_query_result_cache(encoder).unwrap();
-    })
+fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeResult {
+    tcx.sess.time("incr_comp_serialize_result_cache", || tcx.serialize_query_result_cache(encoder))
 }
