@@ -73,8 +73,7 @@ crate use region_infer::RegionInferenceContext;
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]
 crate struct Upvar<'tcx> {
-    // FIXME(project-rfc-2229#8): ty::CapturePlace should have a to_string(), or similar
-    //                           then this should not be needed.
+    // FIXME(project-rfc_2229#36): print capture precisely here.
     name: Symbol,
 
     place: CapturedPlace<'tcx>,
@@ -2156,6 +2155,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         place: PlaceRef<'tcx>,
         is_local_mutation_allowed: LocalMutationIsAllowed,
     ) -> Result<RootPlace<'tcx>, PlaceRef<'tcx>> {
+        debug!("is_mutable: place={:?}, is_local...={:?}", place, is_local_mutation_allowed);
         match place.last_projection() {
             None => {
                 let local = &self.body.local_decls[place.local];
@@ -2237,9 +2237,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if let Some(field) = upvar_field_projection {
                             let upvar = &self.upvars[field.index()];
                             debug!(
-                                "upvar.mutability={:?} local_mutation_is_allowed={:?} \
-                                 place={:?}",
-                                upvar, is_local_mutation_allowed, place
+                                "is_mutable: upvar.mutability={:?} local_mutation_is_allowed={:?} \
+                                 place={:?}, place_base={:?}",
+                                upvar, is_local_mutation_allowed, place, place_base
                             );
                             match (upvar.place.mutability, is_local_mutation_allowed) {
                                 (
