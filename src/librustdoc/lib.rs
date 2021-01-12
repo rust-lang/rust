@@ -412,12 +412,7 @@ fn opts() -> Vec<RustcOptGroup> {
             )
         }),
         unstable("test-builder", |o| {
-            o.optopt(
-                "",
-                "test-builder",
-                "specifies the rustc-like binary to use as the test builder",
-                "PATH",
-            )
+            o.optopt("", "test-builder", "The rustc-like binary to use as the test builder", "PATH")
         }),
         unstable("check", |o| o.optflag("", "check", "Run rustdoc checks")),
     ]
