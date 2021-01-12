@@ -47,8 +47,8 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
 
     let def = ctx.sema.to_def(&bind_pat)?;
     let def = Definition::Local(def);
-    let refs = def.usages(&ctx.sema).all();
-    if refs.is_empty() {
+    let usages = def.usages(&ctx.sema).all();
+    if usages.is_empty() {
         mark::hit!(test_not_applicable_if_variable_unused);
         return None;
     };
@@ -66,9 +66,10 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         let_stmt.syntax().text_range()
     };
 
-    let wrap_in_parens = refs
-        .iter()
-        .flat_map(|refs| &refs.references)
+    let wrap_in_parens = usages
+        .references
+        .values()
+        .flatten()
         .map(|&FileReference { range, .. }| {
             let usage_node =
                 ctx.covering_node_for_range(range).ancestors().find_map(ast::PathExpr::cast)?;
@@ -115,8 +116,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         target,
         move |builder| {
             builder.delete(delete_range);
-            for (reference, should_wrap) in
-                refs.iter().flat_map(|refs| &refs.references).zip(wrap_in_parens)
+            for (reference, should_wrap) in usages.references.values().flatten().zip(wrap_in_parens)
             {
                 let replacement =
                     if should_wrap { init_in_paren.clone() } else { init_str.clone() };

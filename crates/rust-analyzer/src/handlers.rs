@@ -12,7 +12,6 @@ use ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, LineIndex, NavigationTarget,
     Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, SymbolKind, TextEdit,
 };
-use ide_db::search::FileReferences;
 use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
@@ -813,18 +812,14 @@ pub(crate) fn handle_references(
     };
 
     let locations = if params.context.include_declaration {
-        let mut locations = Vec::default();
-        refs.into_iter().for_each(|it| {
-            locations.extend(
-                it.file_ranges().filter_map(|frange| to_proto::location(&snap, frange).ok()),
-            )
-        });
-        locations
+        refs.references_with_declaration()
+            .file_ranges()
+            .filter_map(|frange| to_proto::location(&snap, frange).ok())
+            .collect()
     } else {
         // Only iterate over the references if include_declaration was false
         refs.references()
-            .iter()
-            .flat_map(FileReferences::file_ranges)
+            .file_ranges()
             .filter_map(|frange| to_proto::location(&snap, frange).ok())
             .collect()
     };
@@ -1181,8 +1176,7 @@ pub(crate) fn handle_code_lens_resolve(
                 .unwrap_or(None)
                 .map(|r| {
                     r.references()
-                        .iter()
-                        .flat_map(FileReferences::file_ranges)
+                        .file_ranges()
                         .filter_map(|frange| to_proto::location(&snap, frange).ok())
                         .collect_vec()
                 })
@@ -1227,11 +1221,11 @@ pub(crate) fn handle_document_highlight(
     };
 
     let res = refs
-        .into_iter()
-        .find(|refs| refs.file_id == position.file_id)
+        .references_with_declaration()
+        .references
+        .get(&position.file_id)
         .map(|file_refs| {
             file_refs
-                .references
                 .into_iter()
                 .map(|r| DocumentHighlight {
                     range: to_proto::range(&line_index, r.range),

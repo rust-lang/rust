@@ -8,7 +8,7 @@ use ide_db::{
         insert_use::{insert_use, ImportScope},
         mod_path_to_ast,
     },
-    search::{FileReference, FileReferences},
+    search::FileReference,
     RootDatabase,
 };
 use rustc_hash::FxHashSet;
@@ -63,10 +63,10 @@ pub(crate) fn extract_struct_from_enum_variant(
             let current_module = enum_hir.module(ctx.db());
             visited_modules_set.insert(current_module);
             let mut def_rewriter = None;
-            for FileReferences { file_id, references: refs } in usages {
+            for (file_id, references) in usages {
                 let mut rewriter = SyntaxRewriter::default();
                 let source_file = ctx.sema.parse(file_id);
-                for reference in refs {
+                for reference in references {
                     update_reference(
                         ctx,
                         &mut rewriter,

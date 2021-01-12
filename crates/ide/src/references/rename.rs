@@ -9,7 +9,7 @@ use hir::{Module, ModuleDef, ModuleSource, Semantics};
 use ide_db::{
     base_db::{AnchoredPathBuf, FileId, FileRange, SourceDatabaseExt},
     defs::{Definition, NameClass, NameRefClass},
-    search::FileReferences,
+    search::FileReference,
     RootDatabase,
 };
 use syntax::{
@@ -176,7 +176,8 @@ fn find_all_refs(
 
 fn source_edit_from_references(
     sema: &Semantics<RootDatabase>,
-    &FileReferences { file_id, ref references }: &FileReferences,
+    file_id: FileId,
+    references: &[FileReference],
     new_name: &str,
 ) -> SourceFileEdit {
     let mut edit = TextEdit::builder();
@@ -283,10 +284,9 @@ fn rename_mod(
     }
 
     let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
-    let ref_edits = refs
-        .references()
-        .iter()
-        .map(|reference| source_edit_from_references(sema, reference, new_name));
+    let ref_edits = refs.references().iter().map(|(&file_id, references)| {
+        source_edit_from_references(sema, file_id, references, new_name)
+    });
     source_file_edits.extend(ref_edits);
 
     Ok(RangeInfo::new(range, SourceChange::from_edits(source_file_edits, file_system_edits)))
@@ -341,7 +341,9 @@ fn rename_to_self(
     let mut edits = refs
         .references()
         .iter()
-        .map(|reference| source_edit_from_references(sema, reference, "self"))
+        .map(|(&file_id, references)| {
+            source_edit_from_references(sema, file_id, references, "self")
+        })
         .collect::<Vec<_>>();
 
     edits.push(SourceFileEdit {
@@ -467,7 +469,9 @@ fn rename_reference(
 
     let edit = refs
         .into_iter()
-        .map(|reference| source_edit_from_references(sema, &reference, new_name))
+        .map(|(file_id, references)| {
+            source_edit_from_references(sema, file_id, &references, new_name)
+        })
         .collect::<Vec<_>>();
 
     Ok(RangeInfo::new(range, SourceChange::from(edit)))

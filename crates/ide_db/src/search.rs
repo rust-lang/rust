@@ -8,7 +8,6 @@ use std::{convert::TryInto, mem};
 
 use base_db::{FileId, FileRange, SourceDatabaseExt};
 use hir::{DefWithBody, HasSource, Module, ModuleSource, Semantics, Visibility};
-use itertools::Itertools;
 use once_cell::unsync::Lazy;
 use rustc_hash::FxHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
@@ -19,17 +18,37 @@ use crate::{
     RootDatabase,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct FileReferences {
-    pub file_id: FileId,
-    pub references: Vec<FileReference>,
+    pub references: FxHashMap<FileId, Vec<FileReference>>,
 }
 
 impl FileReferences {
+    pub fn is_empty(&self) -> bool {
+        self.references.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.references.len()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&FileId, &Vec<FileReference>)> + '_ {
+        self.references.iter()
+    }
+
     pub fn file_ranges(&self) -> impl Iterator<Item = FileRange> + '_ {
-        self.references
-            .iter()
-            .map(move |&FileReference { range, .. }| FileRange { file_id: self.file_id, range })
+        self.references.iter().flat_map(|(&file_id, refs)| {
+            refs.iter().map(move |&FileReference { range, .. }| FileRange { file_id, range })
+        })
+    }
+}
+
+impl IntoIterator for FileReferences {
+    type Item = (FileId, Vec<FileReference>);
+    type IntoIter = <FxHashMap<FileId, Vec<FileReference>> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.references.into_iter()
     }
 }
 
@@ -275,21 +294,12 @@ impl<'a> FindUsages<'a> {
     }
 
     /// The [`FileReferences`] returned always have unique [`FileId`]s.
-    pub fn all(self) -> Vec<FileReferences> {
-        let mut res = <Vec<FileReferences>>::new();
+    pub fn all(self) -> FileReferences {
+        let mut res = FileReferences::default();
         self.search(&mut |file_id, reference| {
-            match res.iter_mut().find(|it| it.file_id == file_id) {
-                Some(file_refs) => file_refs.references.push(reference),
-                _ => res.push(FileReferences { file_id, references: vec![reference] }),
-            }
+            res.references.entry(file_id).or_default().push(reference);
             false
         });
-        assert!(res
-            .iter()
-            .map(|refs| refs.file_id)
-            .sorted_unstable()
-            .tuple_windows::<(_, _)>()
-            .all(|(a, b)| a < b));
         res
     }
 

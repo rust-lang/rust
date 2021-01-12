@@ -13,6 +13,7 @@ pub(crate) mod rename;
 
 use hir::Semantics;
 use ide_db::{
+    base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, FileReferences, ReferenceAccess, ReferenceKind, SearchScope},
     RootDatabase,
@@ -28,7 +29,7 @@ use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeI
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
     declaration: Declaration,
-    references: Vec<FileReferences>,
+    references: FileReferences,
 }
 
 #[derive(Debug, Clone)]
@@ -47,8 +48,19 @@ impl ReferenceSearchResult {
         &self.declaration.nav
     }
 
-    pub fn references(&self) -> &[FileReferences] {
+    pub fn references(&self) -> &FileReferences {
         &self.references
+    }
+
+    pub fn references_with_declaration(mut self) -> FileReferences {
+        let decl_ref = FileReference {
+            range: self.declaration.nav.focus_or_full_range(),
+            kind: self.declaration.kind,
+            access: self.declaration.access,
+        };
+        let file_id = self.declaration.nav.file_id;
+        self.references.references.entry(file_id).or_default().push(decl_ref);
+        self.references
     }
 
     /// Total number of references
@@ -62,23 +74,11 @@ impl ReferenceSearchResult {
 // allow turning ReferenceSearchResult into an iterator
 // over References
 impl IntoIterator for ReferenceSearchResult {
-    type Item = FileReferences;
-    type IntoIter = std::vec::IntoIter<FileReferences>;
+    type Item = (FileId, Vec<FileReference>);
+    type IntoIter = std::collections::hash_map::IntoIter<FileId, Vec<FileReference>>;
 
-    fn into_iter(mut self) -> Self::IntoIter {
-        let mut v = Vec::with_capacity(self.len());
-        v.append(&mut self.references);
-        let decl_ref = FileReference {
-            range: self.declaration.nav.focus_or_full_range(),
-            kind: self.declaration.kind,
-            access: self.declaration.access,
-        };
-        let file_id = self.declaration.nav.file_id;
-        match v.iter_mut().find(|it| it.file_id == file_id) {
-            Some(file_refs) => file_refs.references.push(decl_ref),
-            None => v.push(FileReferences { file_id, references: vec![decl_ref] }),
-        }
-        v.into_iter()
+    fn into_iter(self) -> Self::IntoIter {
+        self.references_with_declaration().into_iter()
     }
 }
 
@@ -110,11 +110,12 @@ pub(crate) fn find_all_refs(
 
     let RangeInfo { range, info: def } = find_name(&sema, &syntax, position, opt_name)?;
 
-    let mut references = def.usages(sema).set_scope(search_scope).all();
-    references.iter_mut().for_each(|it| {
-        it.references.retain(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
-    });
-    references.retain(|r| !r.references.is_empty());
+    let mut usages = def.usages(sema).set_scope(search_scope).all();
+    usages
+        .references
+        .values_mut()
+        .for_each(|it| it.retain(|r| search_kind == ReferenceKind::Other || search_kind == r.kind));
+    usages.references.retain(|_, it| !it.is_empty());
 
     let nav = def.try_to_nav(sema.db)?;
     let decl_range = nav.focus_or_full_range();
@@ -138,7 +139,7 @@ pub(crate) fn find_all_refs(
 
     let declaration = Declaration { nav, kind, access: decl_access(&def, &syntax, decl_range) };
 
-    Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }))
+    Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references: usages }))
 }
 
 fn find_name(
@@ -292,32 +293,30 @@ fn try_find_self_references(
             ReferenceAccess::Read
         }),
     };
-    let references = function
+    let refs = function
         .body()
         .map(|body| {
-            FileReferences {
-                file_id,
-                references: body
-                    .syntax()
-                    .descendants()
-                    .filter_map(ast::PathExpr::cast)
-                    .filter_map(|expr| {
-                        let path = expr.path()?;
-                        if path.qualifier().is_none() {
-                            path.segment()?.self_token()
-                        } else {
-                            None
-                        }
-                    })
-                    .map(|token| FileReference {
-                        range: token.text_range(),
-                        kind: ReferenceKind::SelfKw,
-                        access: declaration.access, // FIXME: properly check access kind here instead of copying it from the declaration
-                    })
-                    .collect(),
-            }
+            body.syntax()
+                .descendants()
+                .filter_map(ast::PathExpr::cast)
+                .filter_map(|expr| {
+                    let path = expr.path()?;
+                    if path.qualifier().is_none() {
+                        path.segment()?.self_token()
+                    } else {
+                        None
+                    }
+                })
+                .map(|token| FileReference {
+                    range: token.text_range(),
+                    kind: ReferenceKind::SelfKw,
+                    access: declaration.access, // FIXME: properly check access kind here instead of copying it from the declaration
+                })
+                .collect()
         })
-        .map_or_else(Vec::default, |it| vec![it]);
+        .unwrap_or_default();
+    let mut references = FileReferences::default();
+    references.references.insert(file_id, refs);
 
     Some(RangeInfo::new(
         param_self_token.text_range(),
@@ -328,7 +327,7 @@ fn try_find_self_references(
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_db::{base_db::FileId, search::FileReferences};
+    use ide_db::base_db::FileId;
     use stdx::format_to;
 
     use crate::{fixture, SearchScope};
@@ -1022,7 +1021,7 @@ impl Foo {
             actual += "\n\n";
         }
 
-        for FileReferences { file_id, references } in refs.references {
+        for (file_id, references) in refs.references {
             for r in references {
                 format_to!(actual, "{:?} {:?} {:?}", file_id, r.range, r.kind);
                 if let Some(access) = r.access {

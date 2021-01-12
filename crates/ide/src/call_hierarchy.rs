@@ -3,8 +3,8 @@
 use indexmap::IndexMap;
 
 use hir::Semantics;
+use ide_db::call_info::FnCallNode;
 use ide_db::RootDatabase;
-use ide_db::{call_info::FnCallNode, search::FileReferences};
 use syntax::{ast, AstNode, TextRange};
 
 use crate::{
@@ -47,7 +47,7 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
 
     let mut calls = CallLocations::default();
 
-    for &FileReferences { file_id, ref references } in refs.info.references() {
+    for (&file_id, references) in refs.info.references().iter() {
         let file = sema.parse(file_id);
         let file = file.syntax();
         for reference in references {

@@ -1,7 +1,4 @@
-use ide_db::{
-    defs::Definition,
-    search::{FileReference, FileReferences},
-};
+use ide_db::{base_db::FileId, defs::Definition, search::FileReference};
 use syntax::{
     algo::find_node_at_range,
     ast::{self, ArgListOwner},
@@ -61,8 +58,8 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
         param.syntax().text_range(),
         |builder| {
             builder.delete(range_to_remove(param.syntax()));
-            for usages in fn_def.usages(&ctx.sema).all() {
-                process_usages(ctx, builder, usages, param_position);
+            for (file_id, references) in fn_def.usages(&ctx.sema).all() {
+                process_usages(ctx, builder, file_id, references, param_position);
             }
         },
     )
@@ -71,12 +68,13 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
 fn process_usages(
     ctx: &AssistContext,
     builder: &mut AssistBuilder,
-    usages: FileReferences,
+    file_id: FileId,
+    references: Vec<FileReference>,
     arg_to_remove: usize,
 ) {
-    let source_file = ctx.sema.parse(usages.file_id);
-    builder.edit_file(usages.file_id);
-    for usage in usages.references {
+    let source_file = ctx.sema.parse(file_id);
+    builder.edit_file(file_id);
+    for usage in references {
         if let Some(text_range) = process_usage(&source_file, usage, arg_to_remove) {
             builder.delete(text_range);
         }
