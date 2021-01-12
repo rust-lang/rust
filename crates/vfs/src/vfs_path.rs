@@ -3,25 +3,37 @@ use std::fmt;
 
 use paths::{AbsPath, AbsPathBuf};
 
+/// Path in [`Vfs`].
+///
 /// Long-term, we want to support files which do not reside in the file-system,
-/// so we treat VfsPaths as opaque identifiers.
+/// so we treat `VfsPath`s as opaque identifiers.
+///
+/// [`Vfs`]: crate::Vfs
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct VfsPath(VfsPathRepr);
 
 impl VfsPath {
-    /// Creates an "in-memory" path from `/`-separates string.
+    /// Creates an "in-memory" path from `/`-separated string.
+    ///
     /// This is most useful for testing, to avoid windows/linux differences
+    ///
+    /// # Panics
+    ///
+    /// Panics if `path` does not start with `'/'`.
     pub fn new_virtual_path(path: String) -> VfsPath {
         assert!(path.starts_with('/'));
         VfsPath(VfsPathRepr::VirtualPath(VirtualPath(path)))
     }
 
+    /// Returns the `AbsPath` representation of `self` if `self` is on the file system.
     pub fn as_path(&self) -> Option<&AbsPath> {
         match &self.0 {
             VfsPathRepr::PathBuf(it) => Some(it.as_path()),
             VfsPathRepr::VirtualPath(_) => None,
         }
     }
+
+    /// Creates a new `VfsPath` with `path` adjoined to `self`.
     pub fn join(&self, path: &str) -> Option<VfsPath> {
         match &self.0 {
             VfsPathRepr::PathBuf(it) => {
@@ -34,12 +46,30 @@ impl VfsPath {
             }
         }
     }
+
+    /// Remove the last component of `self` if there is one.
+    ///
+    /// If `self` has no component, returns `false`; else returns `true`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use vfs::{AbsPathBuf, VfsPath};
+    /// let mut path = VfsPath::from(AbsPathBuf::assert("/foo/bar".into()));
+    /// assert!(path.pop());
+    /// assert_eq!(path, VfsPath::from(AbsPathBuf::assert("/foo".into())));
+    /// assert!(path.pop());
+    /// assert_eq!(path, VfsPath::from(AbsPathBuf::assert("/".into())));
+    /// assert!(!path.pop());
+    /// ```
     pub fn pop(&mut self) -> bool {
         match &mut self.0 {
             VfsPathRepr::PathBuf(it) => it.pop(),
             VfsPathRepr::VirtualPath(it) => it.pop(),
         }
     }
+
+    /// Returns `true` if `other` is a prefix of `self`.
     pub fn starts_with(&self, other: &VfsPath) -> bool {
         match (&self.0, &other.0) {
             (VfsPathRepr::PathBuf(lhs), VfsPathRepr::PathBuf(rhs)) => lhs.starts_with(rhs),
@@ -48,6 +78,10 @@ impl VfsPath {
             (VfsPathRepr::VirtualPath(_), _) => false,
         }
     }
+
+    /// Returns the `VfsPath` without its final component, if there is one.
+    ///
+    /// Returns [`None`] if the path is a root or prefix.
     pub fn parent(&self) -> Option<VfsPath> {
         let mut parent = self.clone();
         if parent.pop() {
@@ -57,6 +91,7 @@ impl VfsPath {
         }
     }
 
+    /// Returns `self`'s base name and file extension.
     pub fn name_and_extension(&self) -> Option<(&str, Option<&str>)> {
         match &self.0 {
             VfsPathRepr::PathBuf(p) => Some((

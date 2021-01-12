@@ -26,14 +26,24 @@
 //! from the anchor than.
 use crate::FileId;
 
+/// Path relative to a file.
+///
+/// Owned version of [`AnchoredPath`].
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AnchoredPathBuf {
+    /// File that this path is relative to.
     pub anchor: FileId,
+    /// Path relative to `anchor`'s containing directory.
     pub path: String,
 }
 
+/// Path relative to a file.
+///
+/// Borrowed version of [`AnchoredPathBuf`].
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct AnchoredPath<'a> {
+    /// File that this path is relative to.
     pub anchor: FileId,
+    /// Path relative to `anchor`'s containing directory.
     pub path: &'a str,
 }
