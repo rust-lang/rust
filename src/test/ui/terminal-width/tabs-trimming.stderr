@@ -1,0 +1,12 @@
+error[E0408]: variable `v` is not bound in all patterns
+  --> $DIR/tabs-trimming.rs:9:16
+   |
+LL | ...   v @ 1 | 2 | 3 => panic!("You gave me too little money {}", v), // Long text here: TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...
+   |       -       ^   ^ pattern doesn't bind `v`
+   |       |       |
+   |       |       pattern doesn't bind `v`
+   |       variable not in all patterns
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0408`.

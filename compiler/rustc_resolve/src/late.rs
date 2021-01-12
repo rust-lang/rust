@@ -1947,8 +1947,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             _ => report_errors(self, None),
         };
 
-        if let PathSource::TraitItem(..) = source {
-        } else {
+        if !matches!(source, PathSource::TraitItem(..)) {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
             self.r.record_partial_res(id, partial_res);
         }

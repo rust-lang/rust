@@ -225,6 +225,21 @@ fn make_contiguous_head_to_end() {
 }
 
 #[test]
+fn make_contiguous_head_to_end_2() {
+    // Another test case for #79808, taken from #80293.
+
+    let mut dq = VecDeque::from_iter(0..6);
+    dq.pop_front();
+    dq.pop_front();
+    dq.push_back(6);
+    dq.push_back(7);
+    dq.push_back(8);
+    dq.make_contiguous();
+    let collected: Vec<_> = dq.iter().copied().collect();
+    assert_eq!(dq.as_slices(), (&collected[..], &[] as &[_]));
+}
+
+#[test]
 fn test_remove() {
     // This test checks that every single combination of tail position, length, and
     // removal position is tested. Capacity 15 should be large enough to cover every case.
