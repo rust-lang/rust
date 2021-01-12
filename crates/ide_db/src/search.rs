@@ -19,11 +19,11 @@ use crate::{
 };
 
 #[derive(Debug, Default, Clone)]
-pub struct FileReferences {
+pub struct UsageSearchResult {
     pub references: FxHashMap<FileId, Vec<FileReference>>,
 }
 
-impl FileReferences {
+impl UsageSearchResult {
     pub fn is_empty(&self) -> bool {
         self.references.is_empty()
     }
@@ -43,7 +43,7 @@ impl FileReferences {
     }
 }
 
-impl IntoIterator for FileReferences {
+impl IntoIterator for UsageSearchResult {
     type Item = (FileId, Vec<FileReference>);
     type IntoIter = <FxHashMap<FileId, Vec<FileReference>> as IntoIterator>::IntoIter;
 
@@ -293,9 +293,8 @@ impl<'a> FindUsages<'a> {
         found
     }
 
-    /// The [`FileReferences`] returned always have unique [`FileId`]s.
-    pub fn all(self) -> FileReferences {
-        let mut res = FileReferences::default();
+    pub fn all(self) -> UsageSearchResult {
+        let mut res = UsageSearchResult::default();
         self.search(&mut |file_id, reference| {
             res.references.entry(file_id).or_default().push(reference);
             false

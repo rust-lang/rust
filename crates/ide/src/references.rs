@@ -15,7 +15,7 @@ use hir::Semantics;
 use ide_db::{
     base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
-    search::{FileReference, FileReferences, ReferenceAccess, ReferenceKind, SearchScope},
+    search::{FileReference, ReferenceAccess, ReferenceKind, SearchScope, UsageSearchResult},
     RootDatabase,
 };
 use syntax::{
@@ -29,7 +29,7 @@ use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeI
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
     declaration: Declaration,
-    references: FileReferences,
+    references: UsageSearchResult,
 }
 
 #[derive(Debug, Clone)]
@@ -48,11 +48,11 @@ impl ReferenceSearchResult {
         &self.declaration.nav
     }
 
-    pub fn references(&self) -> &FileReferences {
+    pub fn references(&self) -> &UsageSearchResult {
         &self.references
     }
 
-    pub fn references_with_declaration(mut self) -> FileReferences {
+    pub fn references_with_declaration(mut self) -> UsageSearchResult {
         let decl_ref = FileReference {
             range: self.declaration.nav.focus_or_full_range(),
             kind: self.declaration.kind,
@@ -315,7 +315,7 @@ fn try_find_self_references(
                 .collect()
         })
         .unwrap_or_default();
-    let mut references = FileReferences::default();
+    let mut references = UsageSearchResult::default();
     references.references.insert(file_id, refs);
 
     Some(RangeInfo::new(

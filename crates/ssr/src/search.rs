@@ -8,7 +8,7 @@ use crate::{
 use ide_db::{
     base_db::{FileId, FileRange},
     defs::Definition,
-    search::{FileReferences, SearchScope},
+    search::{SearchScope, UsageSearchResult},
 };
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
@@ -20,7 +20,7 @@ use test_utils::mark;
 /// them more than once.
 #[derive(Default)]
 pub(crate) struct UsageCache {
-    usages: Vec<(Definition, FileReferences)>,
+    usages: Vec<(Definition, UsageSearchResult)>,
 }
 
 impl<'db> MatchFinder<'db> {
@@ -108,7 +108,7 @@ impl<'db> MatchFinder<'db> {
         &self,
         usage_cache: &'a mut UsageCache,
         definition: Definition,
-    ) -> &'a FileReferences {
+    ) -> &'a UsageSearchResult {
         // Logically if a lookup succeeds we should just return it. Unfortunately returning it would
         // extend the lifetime of the borrow, then we wouldn't be able to do the insertion on a
         // cache miss. This is a limitation of NLL and is fixed with Polonius. For now we do two
@@ -250,7 +250,7 @@ fn is_search_permitted(node: &SyntaxNode) -> bool {
 }
 
 impl UsageCache {
-    fn find(&mut self, definition: &Definition) -> Option<&FileReferences> {
+    fn find(&mut self, definition: &Definition) -> Option<&UsageSearchResult> {
         // We expect a very small number of cache entries (generally 1), so a linear scan should be
         // fast enough and avoids the need to implement Hash for Definition.
         for (d, refs) in &self.usages {
