@@ -62,7 +62,7 @@ by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
     If you plan to use `x.py install` to create an installation, it is recommended
     that you set the `prefix` value in the `[install]` section to a directory.
 
-    Create install directory if you are not installing in the default directory
+    Create an install directory if you are not installing in the default directory.
 
 4. Build and install:
 
