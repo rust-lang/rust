@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
-use rustc_middle::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encodable as RustcEncodable;
@@ -148,83 +148,15 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeRes
     // First encode the commandline arguments hash
     tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
 
-    // Encode the graph data.
-    let serialized_graph =
-        tcx.sess.time("incr_comp_serialize_dep_graph", || tcx.dep_graph.serialize());
-
     if tcx.sess.opts.debugging_opts.incremental_info {
-        #[derive(Clone)]
-        struct Stat {
-            kind: DepKind,
-            node_counter: u64,
-            edge_counter: u64,
-        }
-
-        let total_node_count = serialized_graph.nodes.len();
-        let total_edge_count = serialized_graph.edge_list_data.len();
-
-        let mut counts: FxHashMap<_, Stat> =
-            FxHashMap::with_capacity_and_hasher(total_node_count, Default::default());
-
-        for (i, &node) in serialized_graph.nodes.iter_enumerated() {
-            let stat = counts.entry(node.kind).or_insert(Stat {
-                kind: node.kind,
-                node_counter: 0,
-                edge_counter: 0,
-            });
-
-            stat.node_counter += 1;
-            let (edge_start, edge_end) = serialized_graph.edge_list_indices[i];
-            stat.edge_counter += (edge_end - edge_start) as u64;
-        }
-
-        let mut counts: Vec<_> = counts.values().cloned().collect();
-        counts.sort_by_key(|s| -(s.node_counter as i64));
-
-        println!("[incremental]");
-        println!("[incremental] DepGraph Statistics");
-
-        const SEPARATOR: &str = "[incremental] --------------------------------\
-                                 ----------------------------------------------\
-                                 ------------";
-
-        println!("{}", SEPARATOR);
-        println!("[incremental]");
-        println!("[incremental] Total Node Count: {}", total_node_count);
-        println!("[incremental] Total Edge Count: {}", total_edge_count);
-        if let Some((total_edge_reads, total_duplicate_edge_reads)) =
-            tcx.dep_graph.edge_deduplication_data()
-        {
-            println!("[incremental] Total Edge Reads: {}", total_edge_reads);
-            println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
-        }
-        println!("[incremental]");
-        println!(
-            "[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
-            "Node Kind", "Node Frequency", "Node Count", "Avg. Edge Count"
-        );
-        println!(
-            "[incremental] -------------------------------------\
-                  |------------------\
-                  |-------------\
-                  |------------------|"
-        );
-
-        for stat in counts.iter() {
-            println!(
-                "[incremental]  {:<36}|{:>16.1}% |{:>12} |{:>17.1} |",
-                format!("{:?}", stat.kind),
-                (100.0 * (stat.node_counter as f64)) / (total_node_count as f64), // percentage of all nodes
-                stat.node_counter,
-                (stat.edge_counter as f64) / (stat.node_counter as f64), // average edges per kind
-            );
-        }
-
-        println!("{}", SEPARATOR);
-        println!("[incremental]");
+        tcx.dep_graph.print_incremental_info();
     }
 
-    tcx.sess.time("incr_comp_encode_serialized_dep_graph", || serialized_graph.encode(encoder))
+    // There is a tiny window between printing the incremental info above and encoding the dep
+    // graph below in which the dep graph could change, thus making the printed incremental info
+    // slightly out of date. If this matters to you, please feel free to submit a patch. :)
+
+    tcx.sess.time("incr_comp_encode_serialized_dep_graph", || tcx.dep_graph.encode(encoder))
 }
 
 fn encode_work_product_index(
