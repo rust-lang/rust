@@ -953,6 +953,19 @@ pub trait Read {
 /// use [`Read::read_to_string`] you have to remember to check whether the read
 /// succeeded because otherwise your buffer will be empty or only partially full.)
 ///
+/// # Performance
+///
+/// The downside of this function's increased ease of use and type safety is
+/// that it gives you less control over performance. For example, you can't
+/// pre-allocate memory like you can using [`String::with_capacity`] and
+/// [`Read::read_to_string`]. Also, you can't re-use the buffer if an error
+/// occurs while reading.
+///
+/// In many cases, this function's performance will be adequate and the ease of use
+/// and type safety tradeoffs will be worth it. However, there are cases where you
+/// need more control over performance, and in those cases you should definitely use
+/// [`Read::read_to_string`] directly.
+///
 /// # Errors
 ///
 /// This function forces you to handle errors because the output (the `String`)
