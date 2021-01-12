@@ -14,6 +14,17 @@ use rustc_span::Span;
 use tracing::debug;
 
 macro_rules! gate_feature_fn {
+    ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $help: expr) => {{
+        let (visitor, has_feature, span, name, explain, help) =
+            (&*$visitor, $has_feature, $span, $name, $explain, $help);
+        let has_feature: bool = has_feature(visitor.features);
+        debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
+        if !has_feature && !span.allows_unstable($name) {
+            feature_err_issue(&visitor.sess.parse_sess, name, span, GateIssue::Language, explain)
+                .help(help)
+                .emit();
+        }
+    }};
     ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
         let (visitor, has_feature, span, name, explain) =
             (&*$visitor, $has_feature, $span, $name, $explain);
@@ -27,6 +38,9 @@ macro_rules! gate_feature_fn {
 }
 
 macro_rules! gate_feature_post {
+    ($visitor: expr, $feature: ident, $span: expr, $explain: expr, $help: expr) => {
+        gate_feature_fn!($visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain, $help)
+    };
     ($visitor: expr, $feature: ident, $span: expr, $explain: expr) => {
         gate_feature_fn!($visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain)
     };
@@ -597,6 +611,13 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
 
     let spans = sess.parse_sess.gated_spans.spans.borrow();
     macro_rules! gate_all {
+        ($gate:ident, $msg:literal, $help:literal) => {
+            if let Some(spans) = spans.get(&sym::$gate) {
+                for span in spans {
+                    gate_feature_post!(&visitor, $gate, *span, $msg, $help);
+                }
+            }
+        };
         ($gate:ident, $msg:literal) => {
             if let Some(spans) = spans.get(&sym::$gate) {
                 for span in spans {
@@ -607,7 +628,11 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     }
     gate_all!(if_let_guard, "`if let` guards are experimental");
     gate_all!(let_chains, "`let` expressions in this position are experimental");
-    gate_all!(async_closure, "async closures are unstable");
+    gate_all!(
+        async_closure,
+        "async closures are unstable",
+        "to use an async block, remove the `||`: `async {`"
+    );
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");

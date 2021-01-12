@@ -1599,10 +1599,6 @@ impl<'a> Parser<'a> {
         } else {
             Async::No
         };
-        if let Async::Yes { span, .. } = asyncness {
-            // Feature-gate `async ||` closures.
-            self.sess.gated_spans.gate(sym::async_closure, span);
-        }
 
         let capture_clause = self.parse_capture_clause()?;
         let decl = self.parse_fn_block_decl()?;
@@ -1618,6 +1614,11 @@ impl<'a> Parser<'a> {
                 self.parse_block_expr(None, body_lo, BlockCheckMode::Default, AttrVec::new())?
             }
         };
+
+        if let Async::Yes { span, .. } = asyncness {
+            // Feature-gate `async ||` closures.
+            self.sess.gated_spans.gate(sym::async_closure, span);
+        }
 
         Ok(self.mk_expr(
             lo.to(body.span),
