@@ -2289,7 +2289,6 @@ pub trait Iterator {
     /// let a = [1, 2, 3];
     ///
     /// assert!(a.iter().at_least(1, |&x| x > 0));
-    ///
     /// assert!(!a.iter().at_least(1, |&x| x > 5));
     /// ```
     ///
@@ -2300,12 +2299,10 @@ pub trait Iterator {
     ///
     /// let a = vec![1, 2, 3, 4, 5];
     ///
-    /// let mut iter = a.iter();
-    ///
-    /// assert!(iter.at_least(0, |&x| x % 2 == 0));
-    /// assert!(iter.at_least(1, |&x| x % 2 == 0));
-    /// assert!(iter.at_least(2, |&x| x % 2 == 0));
-    /// assert!(!iter.at_least(3, |&x| x % 2 == 0));
+    /// assert!(a.iter().at_least(0, |&x| x % 2 == 0));
+    /// assert!(a.iter().at_least(1, |&x| x % 2 == 0));
+    /// assert!(a.iter().at_least(2, |&x| x % 2 == 0));
+    /// assert!(!a.iter().at_least(3, |&x| x % 2 == 0));
     ///
     /// // we can still use `iter`, as there are more elements.
     /// let a = [1, 2, 3];
@@ -2358,7 +2355,6 @@ pub trait Iterator {
     /// let a = [1, 2, 3];
     ///
     /// assert!(a.iter().at_most(1, |&x| x > 3));
-    ///
     /// assert!(!a.iter().at_most(1, |&x| x > 0));
     /// ```
     ///
@@ -2369,12 +2365,10 @@ pub trait Iterator {
     ///
     /// let a = vec![1, 2, 3, 4, 5];
     ///
-    /// let mut iter = a.iter();
-    ///
-    /// assert!(iter.at_least(0, |&x| x % 2 == 0));
-    /// assert!(iter.at_least(1, |&x| x % 2 == 0));
-    /// assert!(iter.at_least(2, |&x| x % 2 == 0));
-    /// assert!(!iter.at_least(3, |&x| x % 2 == 0));
+    /// assert!(!a.iter().at_most(0, |&x| x % 2 == 0));
+    /// assert!(!a.iter().at_most(1, |&x| x % 2 == 0));
+    /// assert!(a.iter().at_most(2, |&x| x % 2 == 0));
+    /// assert!(a.iter().at_most(3, |&x| x % 2 == 0));
     ///
     /// // we can still use `iter`, as there are more elements.
     /// let a = [1, 1, 3];
