@@ -69,51 +69,47 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 36"><span class="line"><span><span class="code even" style="--layer: 1" title="38:19-38:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb9]
+<div class="code" style="counter-reset: line 36"><span class="line"><span><span class="code even" style="--layer: 1" title="38:19-38:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb8]
 38:19-38:35: @1[0]: _3 = &amp;_4
-38:19-38:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]
+38:19-38:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb7]
 38:19-38:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 38:9-38:16: @2[3]: FakeRead(ForLet, _1)
 39:25-39:26: @3[2]: _5 = const 2_i32
 39:9-39:22: @3[3]: FakeRead(ForLet, _5)
 40:9-40:16: @3[6]: _7 = _1
-40:8-40:16: @3[7]: _6 = Not(move _7)
-40:8-40:16: @3[9]: FakeRead(ForMatchedPlace, _6)"><span class="annotation">@0,1,2,3⦊</span>pub fn unused_function() {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="38:19-38:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb9]
+40:8-40:16: @3[7]: _6 = Not(move _7)"><span class="annotation">@0,1,2,3⦊</span>pub fn unused_function() {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="38:19-38:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb8]
 38:19-38:35: @1[0]: _3 = &amp;_4
-38:19-38:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]
+38:19-38:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb7]
 38:19-38:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 38:9-38:16: @2[3]: FakeRead(ForLet, _1)
 39:25-39:26: @3[2]: _5 = const 2_i32
 39:9-39:22: @3[3]: FakeRead(ForLet, _5)
 40:9-40:16: @3[6]: _7 = _1
-40:8-40:16: @3[7]: _6 = Not(move _7)
-40:8-40:16: @3[9]: FakeRead(ForMatchedPlace, _6)">    let is_true = std::env::args().len() == 1;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="38:19-38:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb9]
+40:8-40:16: @3[7]: _6 = Not(move _7)">    let is_true = std::env::args().len() == 1;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="38:19-38:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb8]
 38:19-38:35: @1[0]: _3 = &amp;_4
-38:19-38:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]
+38:19-38:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb7]
 38:19-38:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 38:9-38:16: @2[3]: FakeRead(ForLet, _1)
 39:25-39:26: @3[2]: _5 = const 2_i32
 39:9-39:22: @3[3]: FakeRead(ForLet, _5)
 40:9-40:16: @3[6]: _7 = _1
-40:8-40:16: @3[7]: _6 = Not(move _7)
-40:8-40:16: @3[9]: FakeRead(ForMatchedPlace, _6)">    let mut countdown = 2;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="38:19-38:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb9]
+40:8-40:16: @3[7]: _6 = Not(move _7)">    let mut countdown = 2;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="38:19-38:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb8]
 38:19-38:35: @1[0]: _3 = &amp;_4
-38:19-38:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]
+38:19-38:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb7]
 38:19-38:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 38:9-38:16: @2[3]: FakeRead(ForLet, _1)
 39:25-39:26: @3[2]: _5 = const 2_i32
 39:9-39:22: @3[3]: FakeRead(ForLet, _5)
 40:9-40:16: @3[6]: _7 = _1
-40:8-40:16: @3[7]: _6 = Not(move _7)
-40:8-40:16: @3[9]: FakeRead(ForMatchedPlace, _6)">    if !is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="41:9-41:23: @6[0]: _5 = const 20_i32
-40:17-42:6: @6[1]: _0 = const ()"><span class="annotation">@4,6⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="41:9-41:23: @6[0]: _5 = const 20_i32
-40:17-42:6: @6[1]: _0 = const ()">        countdown = 20;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="41:9-41:23: @6[0]: _5 = const 20_i32
-40:17-42:6: @6[1]: _0 = const ()">    }<span class="annotation">⦉@4,6</span></span></span><span><span class="code even" style="--layer: 1" title="42:6-42:6: @5[0]: _0 = const ()"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="43:2-43:2: @7.Return: return"><span class="annotation">@7⦊</span>‸<span class="annotation">⦉@7</span></span></span></span></div>
+40:8-40:16: @3[7]: _6 = Not(move _7)">    if !is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="41:9-41:23: @4[0]: _5 = const 20_i32
+40:17-42:6: @4[1]: _0 = const ()"><span class="annotation">@4⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="41:9-41:23: @4[0]: _5 = const 20_i32
+40:17-42:6: @4[1]: _0 = const ()">        countdown = 20;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="41:9-41:23: @4[0]: _5 = const 20_i32
+40:17-42:6: @4[1]: _0 = const ()">    }<span class="annotation">⦉@4</span></span></span><span><span class="code even" style="--layer: 1" title="42:6-42:6: @5[0]: _0 = const ()"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="43:2-43:2: @6.Return: return"><span class="annotation">@6⦊</span>‸<span class="annotation">⦉@6</span></span></span></span></div>
 </body>
 </html>

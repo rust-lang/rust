@@ -72,60 +72,57 @@ For revisions in Pull Requests (PR):
 <div class="code" style="counter-reset: line 96"><span class="line">        <span class="code" style="--layer: 0">|val|</span></span>
 <span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="99:29-99:30: @0[1]: _3 = const 0_i32
 99:13-99:26: @0[2]: FakeRead(ForLet, _3)
-100:12-100:20: @0[5]: _5 = (*((*_1).0: &amp;bool))
-100:12-100:20: @0[6]: FakeRead(ForMatchedPlace, _5)"><span class="annotation">@0⦊</span>{</span></span>
+100:12-100:20: @0[5]: _5 = (*((*_1).0: &amp;bool))"><span class="annotation">@0⦊</span>{</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="99:29-99:30: @0[1]: _3 = const 0_i32
 99:13-99:26: @0[2]: FakeRead(ForLet, _3)
-100:12-100:20: @0[5]: _5 = (*((*_1).0: &amp;bool))
-100:12-100:20: @0[6]: FakeRead(ForMatchedPlace, _5)">        let mut countdown = 0;</span></span>
+100:12-100:20: @0[5]: _5 = (*((*_1).0: &amp;bool))">        let mut countdown = 0;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="99:29-99:30: @0[1]: _3 = const 0_i32
 99:13-99:26: @0[2]: FakeRead(ForLet, _3)
-100:12-100:20: @0[5]: _5 = (*((*_1).0: &amp;bool))
-100:12-100:20: @0[6]: FakeRead(ForMatchedPlace, _5)">        if is_false<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="101:13-101:27: @3[0]: _3 = const 10_i32
-100:21-102:10: @3[1]: _4 = const ()"><span class="annotation">@1,3⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="101:13-101:27: @3[0]: _3 = const 10_i32
-100:21-102:10: @3[1]: _4 = const ()">            countdown = 10;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="101:13-101:27: @3[0]: _3 = const 10_i32
-100:21-102:10: @3[1]: _4 = const ()">        }<span class="annotation">⦉@1,3</span></span></span><span><span class="code even" style="--layer: 1" title="102:10-102:10: @2[0]: _4 = const ()"><span class="annotation">@2⦊</span>‸<span class="annotation">⦉@2</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="103:17-103:23: @4[7]: _22 = const main::{closure#2}::promoted[0]
-103:17-103:23: @4[8]: _10 = &amp;(*_22)
-103:17-103:23: @4[9]: _9 = &amp;(*_10)
-103:17-103:23: @4[10]: _8 = move _9 as &amp;[&amp;str] (Pointer(Unsize))
-103:25-103:28: @4[18]: _17 = &amp;_2
-103:9-103:29: @4[19]: _16 = (move _17,)
-103:9-103:29: @4[21]: FakeRead(ForMatchedPlace, _16)
-103:9-103:29: @4[23]: _18 = (_16.0: &amp;&amp;str)
-103:9-103:29: @4[26]: _20 = &amp;(*_18)
-103:9-103:29: @4[28]: _21 = &lt;&amp;str as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;str, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-103:9-103:29: @4.Call: _19 = ArgumentV1::new::&lt;&amp;str&gt;(move _20, move _21) -&gt; [return: bb5, unwind: bb10]
-103:9-103:29: @5[2]: _15 = [move _19]
-103:9-103:29: @5[5]: _14 = &amp;_15
-103:9-103:29: @5[6]: _13 = &amp;(*_14)
-103:9-103:29: @5[7]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-103:9-103:29: @5.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb6, unwind: bb10]
-103:9-103:29: @6.Call: _6 = format(move _7) -&gt; [return: bb7, unwind: bb10]
-103:9-103:29: @7[1]: FakeRead(ForLet, _6)
-103:9-103:29: @7[6]: _0 = move _6
-104:6-104:6: @8.Return: return"><span class="annotation">@4,5,6,7,8⦊</span>format!("'{}'", val)</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="103:17-103:23: @4[7]: _22 = const main::{closure#2}::promoted[0]
-103:17-103:23: @4[8]: _10 = &amp;(*_22)
-103:17-103:23: @4[9]: _9 = &amp;(*_10)
-103:17-103:23: @4[10]: _8 = move _9 as &amp;[&amp;str] (Pointer(Unsize))
-103:25-103:28: @4[18]: _17 = &amp;_2
-103:9-103:29: @4[19]: _16 = (move _17,)
-103:9-103:29: @4[21]: FakeRead(ForMatchedPlace, _16)
-103:9-103:29: @4[23]: _18 = (_16.0: &amp;&amp;str)
-103:9-103:29: @4[26]: _20 = &amp;(*_18)
-103:9-103:29: @4[28]: _21 = &lt;&amp;str as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;str, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-103:9-103:29: @4.Call: _19 = ArgumentV1::new::&lt;&amp;str&gt;(move _20, move _21) -&gt; [return: bb5, unwind: bb10]
-103:9-103:29: @5[2]: _15 = [move _19]
-103:9-103:29: @5[5]: _14 = &amp;_15
-103:9-103:29: @5[6]: _13 = &amp;(*_14)
-103:9-103:29: @5[7]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-103:9-103:29: @5.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb6, unwind: bb10]
-103:9-103:29: @6.Call: _6 = format(move _7) -&gt; [return: bb7, unwind: bb10]
-103:9-103:29: @7[1]: FakeRead(ForLet, _6)
-103:9-103:29: @7[6]: _0 = move _6
-104:6-104:6: @8.Return: return">    }<span class="annotation">⦉@4,5,6,7,8</span></span></span></span></div>
+100:12-100:20: @0[5]: _5 = (*((*_1).0: &amp;bool))">        if is_false<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="101:13-101:27: @1[0]: _3 = const 10_i32
+100:21-102:10: @1[1]: _4 = const ()"><span class="annotation">@1⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="101:13-101:27: @1[0]: _3 = const 10_i32
+100:21-102:10: @1[1]: _4 = const ()">            countdown = 10;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="101:13-101:27: @1[0]: _3 = const 10_i32
+100:21-102:10: @1[1]: _4 = const ()">        }<span class="annotation">⦉@1</span></span></span><span><span class="code even" style="--layer: 1" title="102:10-102:10: @2[0]: _4 = const ()"><span class="annotation">@2⦊</span>‸<span class="annotation">⦉@2</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="103:17-103:23: @3[7]: _22 = const main::{closure#2}::promoted[0]
+103:17-103:23: @3[8]: _10 = &amp;(*_22)
+103:17-103:23: @3[9]: _9 = &amp;(*_10)
+103:17-103:23: @3[10]: _8 = move _9 as &amp;[&amp;str] (Pointer(Unsize))
+103:25-103:28: @3[18]: _17 = &amp;_2
+103:9-103:29: @3[19]: _16 = (move _17,)
+103:9-103:29: @3[21]: FakeRead(ForMatchedPlace, _16)
+103:9-103:29: @3[23]: _18 = (_16.0: &amp;&amp;str)
+103:9-103:29: @3[26]: _20 = &amp;(*_18)
+103:9-103:29: @3[28]: _21 = &lt;&amp;str as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;str, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+103:9-103:29: @3.Call: _19 = ArgumentV1::new::&lt;&amp;str&gt;(move _20, move _21) -&gt; [return: bb4, unwind: bb9]
+103:9-103:29: @4[2]: _15 = [move _19]
+103:9-103:29: @4[5]: _14 = &amp;_15
+103:9-103:29: @4[6]: _13 = &amp;(*_14)
+103:9-103:29: @4[7]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+103:9-103:29: @4.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb5, unwind: bb9]
+103:9-103:29: @5.Call: _6 = format(move _7) -&gt; [return: bb6, unwind: bb9]
+103:9-103:29: @6[1]: FakeRead(ForLet, _6)
+103:9-103:29: @6[6]: _0 = move _6
+104:6-104:6: @7.Return: return"><span class="annotation">@3,4,5,6,7⦊</span>format!("'{}'", val)</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="103:17-103:23: @3[7]: _22 = const main::{closure#2}::promoted[0]
+103:17-103:23: @3[8]: _10 = &amp;(*_22)
+103:17-103:23: @3[9]: _9 = &amp;(*_10)
+103:17-103:23: @3[10]: _8 = move _9 as &amp;[&amp;str] (Pointer(Unsize))
+103:25-103:28: @3[18]: _17 = &amp;_2
+103:9-103:29: @3[19]: _16 = (move _17,)
+103:9-103:29: @3[21]: FakeRead(ForMatchedPlace, _16)
+103:9-103:29: @3[23]: _18 = (_16.0: &amp;&amp;str)
+103:9-103:29: @3[26]: _20 = &amp;(*_18)
+103:9-103:29: @3[28]: _21 = &lt;&amp;str as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;str, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+103:9-103:29: @3.Call: _19 = ArgumentV1::new::&lt;&amp;str&gt;(move _20, move _21) -&gt; [return: bb4, unwind: bb9]
+103:9-103:29: @4[2]: _15 = [move _19]
+103:9-103:29: @4[5]: _14 = &amp;_15
+103:9-103:29: @4[6]: _13 = &amp;(*_14)
+103:9-103:29: @4[7]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+103:9-103:29: @4.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb5, unwind: bb9]
+103:9-103:29: @5.Call: _6 = format(move _7) -&gt; [return: bb6, unwind: bb9]
+103:9-103:29: @6[1]: FakeRead(ForLet, _6)
+103:9-103:29: @6[6]: _0 = move _6
+104:6-104:6: @7.Return: return">    }<span class="annotation">⦉@3,4,5,6,7</span></span></span></span></div>
 </body>
 </html>

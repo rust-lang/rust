@@ -72,28 +72,25 @@ For revisions in Pull Requests (PR):
 <div class="code" style="counter-reset: line 17"><span class="line">            <span class="code" style="--layer: 0">||</span></span>
 <span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="20:37-20:38: @0[1]: _2 = const 0_i32
 20:21-20:34: @0[2]: FakeRead(ForLet, _2)
-21:20-21:28: @0[5]: _4 = (*(_1.0: &amp;bool))
-21:20-21:28: @0[6]: FakeRead(ForMatchedPlace, _4)"><span class="annotation">@0⦊</span>{</span></span>
+21:20-21:28: @0[5]: _4 = (*(_1.0: &amp;bool))"><span class="annotation">@0⦊</span>{</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="20:37-20:38: @0[1]: _2 = const 0_i32
 20:21-20:34: @0[2]: FakeRead(ForLet, _2)
-21:20-21:28: @0[5]: _4 = (*(_1.0: &amp;bool))
-21:20-21:28: @0[6]: FakeRead(ForMatchedPlace, _4)">                let mut countdown = 0;</span></span>
+21:20-21:28: @0[5]: _4 = (*(_1.0: &amp;bool))">                let mut countdown = 0;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="20:37-20:38: @0[1]: _2 = const 0_i32
 20:21-20:34: @0[2]: FakeRead(ForLet, _2)
-21:20-21:28: @0[5]: _4 = (*(_1.0: &amp;bool))
-21:20-21:28: @0[6]: FakeRead(ForMatchedPlace, _4)">                if is_false<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="22:21-22:35: @3[0]: _2 = const 10_i32
-21:29-23:18: @3[1]: _3 = const ()"><span class="annotation">@1,3⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="22:21-22:35: @3[0]: _2 = const 10_i32
-21:29-23:18: @3[1]: _3 = const ()">                    countdown = 10;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="22:21-22:35: @3[0]: _2 = const 10_i32
-21:29-23:18: @3[1]: _3 = const ()">                }<span class="annotation">⦉@1,3</span></span></span><span><span class="code even" style="--layer: 1" title="23:18-23:18: @2[0]: _3 = const ()"><span class="annotation">@2⦊</span>‸<span class="annotation">⦉@2</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">                </span><span><span class="code odd" style="--layer: 1" title="24:17-24:31: @4[4]: _6 = const &quot;alt string 1&quot;
-24:17-24:31: @4[5]: _5 = &amp;(*_6)
-24:17-24:42: @4.Call: _0 = &lt;str as ToOwned&gt;::to_owned(move _5) -&gt; [return: bb5, unwind: bb6]
-25:14-25:14: @5.Return: return"><span class="annotation">@4,5⦊</span>"alt string 1".to_owned()</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="24:17-24:31: @4[4]: _6 = const &quot;alt string 1&quot;
-24:17-24:31: @4[5]: _5 = &amp;(*_6)
-24:17-24:42: @4.Call: _0 = &lt;str as ToOwned&gt;::to_owned(move _5) -&gt; [return: bb5, unwind: bb6]
-25:14-25:14: @5.Return: return">            }<span class="annotation">⦉@4,5</span></span></span></span></div>
+21:20-21:28: @0[5]: _4 = (*(_1.0: &amp;bool))">                if is_false<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="22:21-22:35: @1[0]: _2 = const 10_i32
+21:29-23:18: @1[1]: _3 = const ()"><span class="annotation">@1⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="22:21-22:35: @1[0]: _2 = const 10_i32
+21:29-23:18: @1[1]: _3 = const ()">                    countdown = 10;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="22:21-22:35: @1[0]: _2 = const 10_i32
+21:29-23:18: @1[1]: _3 = const ()">                }<span class="annotation">⦉@1</span></span></span><span><span class="code even" style="--layer: 1" title="23:18-23:18: @2[0]: _3 = const ()"><span class="annotation">@2⦊</span>‸<span class="annotation">⦉@2</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">                </span><span><span class="code odd" style="--layer: 1" title="24:17-24:31: @3[4]: _6 = const &quot;alt string 1&quot;
+24:17-24:31: @3[5]: _5 = &amp;(*_6)
+24:17-24:42: @3.Call: _0 = &lt;str as ToOwned&gt;::to_owned(move _5) -&gt; [return: bb4, unwind: bb5]
+25:14-25:14: @4.Return: return"><span class="annotation">@3,4⦊</span>"alt string 1".to_owned()</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="24:17-24:31: @3[4]: _6 = const &quot;alt string 1&quot;
+24:17-24:31: @3[5]: _5 = &amp;(*_6)
+24:17-24:42: @3.Call: _0 = &lt;str as ToOwned&gt;::to_owned(move _5) -&gt; [return: bb4, unwind: bb5]
+25:14-25:14: @4.Return: return">            }<span class="annotation">⦉@3,4</span></span></span></span></div>
 </body>
 </html>

@@ -69,35 +69,32 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 8"><span class="line">    <span><span class="code even" style="--layer: 1" title="10:12-10:16: @0[2]: _4 = const true
-10:12-10:16: @0[3]: FakeRead(ForMatchedPlace, _4)"><span class="annotation">@0⦊</span>fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter) -&gt; std::fmt::Result {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="10:12-10:16: @0[2]: _4 = const true
-10:12-10:16: @0[3]: FakeRead(ForMatchedPlace, _4)">        if true<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> {</span></span>
-<span class="line"><span class="code" style="--layer: 0">            if </span><span><span class="code odd" style="--layer: 1" title="11:16-11:21: @3[2]: _6 = const false
-11:16-11:21: @3[3]: FakeRead(ForMatchedPlace, _6)"><span class="annotation">@1,3⦊</span>false<span class="annotation">⦉@1,3</span></span></span><span class="code" style="--layer: 0"> {</span></span>
-<span class="line"><span class="code" style="--layer: 0">                while </span><span><span class="code even" style="--layer: 1" title="12:23-12:27: @7[1]: _8 = const true
-12:23-12:27: @7[2]: FakeRead(ForMatchedPlace, _8)"><span class="annotation">@6,7⦊</span>true<span class="annotation">⦉@6,7</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="12:28-13:18: @10[0]: _7 = const ()"><span class="annotation">@8,10⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="12:28-13:18: @10[0]: _7 = const ()">                }<span class="annotation">⦉@8,10</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">            }</span><span><span class="code even" style="--layer: 1" title="14:14-14:14: @5[0]: _5 = const ()"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="15:20-15:21: @11[6]: _13 = &amp;mut (*_2)
-15:23-15:30: @11[11]: _32 = const &lt;DebugTest as Debug&gt;::fmt::promoted[1]
-15:23-15:30: @11[12]: _17 = &amp;(*_32)
-15:23-15:30: @11[13]: _16 = &amp;(*_17)
-15:23-15:30: @11[14]: _15 = move _16 as &amp;[&amp;str] (Pointer(Unsize))
-15:13-15:31: @11[20]: _23 = ()
-15:13-15:31: @11[21]: FakeRead(ForMatchedPlace, _23)
-15:13-15:31: @11[22]: _31 = const &lt;DebugTest as Debug&gt;::fmt::promoted[0]
-15:13-15:31: @11[23]: _21 = &amp;(*_31)
-15:13-15:31: @11[24]: _20 = &amp;(*_21)
-15:13-15:31: @11[25]: _19 = move _20 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-15:13-15:31: @11.Call: _14 = Arguments::new_v1(move _15, move _19) -&gt; [return: bb12, unwind: bb23]
-15:13-15:31: @12.Call: _12 = Formatter::write_fmt(move _13, move _14) -&gt; [return: bb13, unwind: bb23]"><span class="annotation">@11,12,13,14⦊</span>write!(f, "error")<span class="annotation">⦉@11,12,13,14</span></span></span><span><span class="code even" style="--layer: 1" title="15:31-15:32: @18[1]: _25 = ((_11 as Err).0: std::fmt::Error)
-15:31-15:32: @18[4]: _28 = _25
-15:31-15:32: @18.Call: _27 = &lt;std::fmt::Error as From&lt;std::fmt::Error&gt;&gt;::from(move _28) -&gt; [return: bb19, unwind: bb23]"><span class="annotation">@16,18,19,20⦊</span>?<span class="annotation">⦉@16,18,19,20</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<div class="code" style="counter-reset: line 8"><span class="line">    <span><span class="code even" style="--layer: 1" title="10:12-10:16: @0[2]: _4 = const true"><span class="annotation">@0⦊</span>fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter) -&gt; std::fmt::Result {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="10:12-10:16: @0[2]: _4 = const true">        if true<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">            if </span><span><span class="code odd" style="--layer: 1" title="11:16-11:21: @1[2]: _6 = const false"><span class="annotation">@1⦊</span>false<span class="annotation">⦉@1</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">                while </span><span><span class="code even" style="--layer: 1" title="12:23-12:27: @5[1]: _8 = const true
+12:23-12:27: @5[2]: FakeRead(ForMatchedPlace, _8)"><span class="annotation">@4,5⦊</span>true<span class="annotation">⦉@4,5</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="12:28-13:18: @8[0]: _7 = const ()"><span class="annotation">@6,8⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="12:28-13:18: @8[0]: _7 = const ()">                }<span class="annotation">⦉@6,8</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            }</span><span><span class="code even" style="--layer: 1" title="14:14-14:14: @3[0]: _5 = const ()"><span class="annotation">@3⦊</span>‸<span class="annotation">⦉@3</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="15:20-15:21: @9[6]: _13 = &amp;mut (*_2)
+15:23-15:30: @9[11]: _32 = const &lt;DebugTest as Debug&gt;::fmt::promoted[1]
+15:23-15:30: @9[12]: _17 = &amp;(*_32)
+15:23-15:30: @9[13]: _16 = &amp;(*_17)
+15:23-15:30: @9[14]: _15 = move _16 as &amp;[&amp;str] (Pointer(Unsize))
+15:13-15:31: @9[20]: _23 = ()
+15:13-15:31: @9[21]: FakeRead(ForMatchedPlace, _23)
+15:13-15:31: @9[22]: _31 = const &lt;DebugTest as Debug&gt;::fmt::promoted[0]
+15:13-15:31: @9[23]: _21 = &amp;(*_31)
+15:13-15:31: @9[24]: _20 = &amp;(*_21)
+15:13-15:31: @9[25]: _19 = move _20 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+15:13-15:31: @9.Call: _14 = Arguments::new_v1(move _15, move _19) -&gt; [return: bb10, unwind: bb21]
+15:13-15:31: @10.Call: _12 = Formatter::write_fmt(move _13, move _14) -&gt; [return: bb11, unwind: bb21]"><span class="annotation">@9,10,11,12⦊</span>write!(f, "error")<span class="annotation">⦉@9,10,11,12</span></span></span><span><span class="code even" style="--layer: 1" title="15:31-15:32: @16[1]: _25 = ((_11 as Err).0: std::fmt::Error)
+15:31-15:32: @16[4]: _28 = _25
+15:31-15:32: @16.Call: _27 = &lt;std::fmt::Error as From&lt;std::fmt::Error&gt;&gt;::from(move _28) -&gt; [return: bb17, unwind: bb21]"><span class="annotation">@14,16,17,18⦊</span>?<span class="annotation">⦉@14,16,17,18</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">        } else </span><span><span class="code odd" style="--layer: 1" title="16:16-17:10: @2[0]: _3 = const ()"><span class="annotation">@2⦊</span>{</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="16:16-17:10: @2[0]: _3 = const ()">        }<span class="annotation">⦉@2</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="18:12-18:14: @21[3]: _30 = ()
-18:9-18:15: @21[4]: _0 = std::result::Result::&lt;(), std::fmt::Error&gt;::Ok(move _30)"><span class="annotation">@21⦊</span>Ok(())<span class="annotation">⦉@21</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code odd" style="--layer: 1" title="19:6-19:6: @22.Return: return"><span class="annotation">@22⦊</span>‸<span class="annotation">⦉@22</span></span></span></span></div>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="18:12-18:14: @19[3]: _30 = ()
+18:9-18:15: @19[4]: _0 = std::result::Result::&lt;(), std::fmt::Error&gt;::Ok(move _30)"><span class="annotation">@19⦊</span>Ok(())<span class="annotation">⦉@19</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code odd" style="--layer: 1" title="19:6-19:6: @20.Return: return"><span class="annotation">@20⦊</span>‸<span class="annotation">⦉@20</span></span></span></span></div>
 </body>
 </html>
