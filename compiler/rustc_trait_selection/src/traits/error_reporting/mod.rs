@@ -280,18 +280,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         let OnUnimplementedNote { message, label, note, enclosing_scope } =
                             self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
-                        let is_try = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(span)
-                            .map(|s| &s == "?")
-                            .unwrap_or(false);
-                        let is_from = self.tcx.get_diagnostic_item(sym::from_trait)
-                            == Some(trait_ref.def_id());
+                        let is_try_conversion = self.is_try_conversion(span, trait_ref.def_id());
                         let is_unsize =
                             { Some(trait_ref.def_id()) == self.tcx.lang_items().unsize_trait() };
-                        let (message, note) = if is_try && is_from {
+                        let (message, note) = if is_try_conversion {
                             (
                                 Some(format!(
                                     "`?` couldn't convert the error to `{}`",
@@ -319,7 +311,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             ))
                         );
 
-                        if is_try && is_from {
+                        if is_try_conversion {
                             let none_error = self
                                 .tcx
                                 .get_diagnostic_item(sym::none_error)

@@ -3,13 +3,14 @@ use crate::infer::InferCtxt;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, Pat};
 use rustc_middle::hir::map::Map;
 use rustc_middle::infer::unify_key::ConstVariableOriginKind;
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, DefIdTree, InferConst, Ty};
+use rustc_middle::ty::{self, DefIdTree, InferConst, Ty, TyCtxt};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
@@ -25,6 +26,7 @@ struct FindHirNodeVisitor<'a, 'tcx> {
     found_closure: Option<&'tcx Expr<'tcx>>,
     found_method_call: Option<&'tcx Expr<'tcx>>,
     found_exact_method_call: Option<&'tcx Expr<'tcx>>,
+    found_use_diagnostic: Option<UseDiagnostic<'tcx>>,
 }
 
 impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
@@ -39,34 +41,43 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
             found_closure: None,
             found_method_call: None,
             found_exact_method_call: None,
+            found_use_diagnostic: None,
         }
     }
 
-    fn node_ty_contains_target(&mut self, hir_id: HirId) -> Option<Ty<'tcx>> {
-        self.infcx
-            .in_progress_typeck_results
-            .and_then(|typeck_results| typeck_results.borrow().node_type_opt(hir_id))
-            .map(|ty| self.infcx.resolve_vars_if_possible(ty))
-            .filter(|ty| {
-                ty.walk().any(|inner| {
-                    inner == self.target
-                        || match (inner.unpack(), self.target.unpack()) {
-                            (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
-                                use ty::{Infer, TyVar};
-                                match (inner_ty.kind(), target_ty.kind()) {
-                                    (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
-                                        .infcx
-                                        .inner
-                                        .borrow_mut()
-                                        .type_variables()
-                                        .sub_unified(a_vid, b_vid),
-                                    _ => false,
-                                }
+    fn node_type_opt(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
+        self.infcx.in_progress_typeck_results?.borrow().node_type_opt(hir_id)
+    }
+
+    fn node_ty_contains_target(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
+        self.node_type_opt(hir_id).map(|ty| self.infcx.resolve_vars_if_possible(ty)).filter(|ty| {
+            ty.walk().any(|inner| {
+                inner == self.target
+                    || match (inner.unpack(), self.target.unpack()) {
+                        (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
+                            use ty::{Infer, TyVar};
+                            match (inner_ty.kind(), target_ty.kind()) {
+                                (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
+                                    .infcx
+                                    .inner
+                                    .borrow_mut()
+                                    .type_variables()
+                                    .sub_unified(a_vid, b_vid),
+                                _ => false,
                             }
-                            _ => false,
                         }
-                })
+                        _ => false,
+                    }
             })
+        })
+    }
+
+    /// Determine whether the expression, assumed to be the callee within a `Call`,
+    /// corresponds to the `From::from` emitted in desugaring of the `?` operator.
+    fn is_try_conversion(&self, callee: &Expr<'tcx>) -> bool {
+        self.infcx
+            .trait_def_from_hir_fn(callee.hir_id)
+            .map_or(false, |def_id| self.infcx.is_try_conversion(callee.span, def_id))
     }
 }
 
@@ -119,10 +130,23 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
         // are handled specially, but instead they should be handled in `annotate_method_call`,
         // which currently doesn't work because this evaluates to `false` for const arguments.
         // See https://github.com/rust-lang/rust/pull/77758 for more details.
-        if self.node_ty_contains_target(expr.hir_id).is_some() {
+        if let Some(ty) = self.node_ty_contains_target(expr.hir_id) {
             match expr.kind {
                 ExprKind::Closure(..) => self.found_closure = Some(&expr),
                 ExprKind::MethodCall(..) => self.found_method_call = Some(&expr),
+
+                // If the given expression falls within the target span and is a
+                // `From::from(e)` call emitted during desugaring of the `?` operator,
+                // extract the types inferred before and after the call
+                ExprKind::Call(callee, [arg])
+                    if self.target_span.contains(expr.span)
+                        && self.found_use_diagnostic.is_none()
+                        && self.is_try_conversion(callee) =>
+                {
+                    self.found_use_diagnostic = self.node_type_opt(arg.hir_id).map(|pre_ty| {
+                        UseDiagnostic::TryConversion { pre_ty, post_ty: ty, span: callee.span }
+                    });
+                }
                 _ => {}
             }
         }
@@ -130,17 +154,70 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
     }
 }
 
+/// An observation about the use site of a type to be emitted as an additional
+/// note in an inference failure error.
+enum UseDiagnostic<'tcx> {
+    /// Records the types inferred before and after `From::from` is called on the
+    /// error value within the desugaring of the `?` operator.
+    TryConversion { pre_ty: Ty<'tcx>, post_ty: Ty<'tcx>, span: Span },
+}
+
+impl UseDiagnostic<'_> {
+    /// Return a descriptor of the value at the use site
+    fn descr(&self) -> &'static str {
+        match self {
+            Self::TryConversion { .. } => "error for `?` operator",
+        }
+    }
+
+    /// Return a descriptor of the type at the use site
+    fn type_descr(&self) -> &'static str {
+        match self {
+            Self::TryConversion { .. } => "error type for `?` operator",
+        }
+    }
+
+    fn applies_to(&self, span: Span) -> bool {
+        match *self {
+            // In some cases the span for an inference failure due to try
+            // conversion contains the antecedent expression as well as the `?`
+            Self::TryConversion { span: s, .. } => span.contains(s) && span.hi() == s.hi(),
+        }
+    }
+
+    fn attach_note(&self, err: &mut DiagnosticBuilder<'_>) {
+        match *self {
+            Self::TryConversion { pre_ty, post_ty, .. } => {
+                let intro = "`?` implicitly converts the error value";
+
+                let msg = match (pre_ty.is_ty_infer(), post_ty.is_ty_infer()) {
+                    (true, true) => format!("{} using the `From` trait", intro),
+                    (false, true) => {
+                        format!("{} into a type implementing `From<{}>`", intro, pre_ty)
+                    }
+                    (true, false) => {
+                        format!("{} into `{}` using the `From` trait", intro, post_ty)
+                    }
+                    (false, false) => {
+                        format!(
+                            "{} into `{}` using its implementation of `From<{}>`",
+                            intro, post_ty, pre_ty
+                        )
+                    }
+                };
+
+                err.note(&msg);
+            }
+        }
+    }
+}
+
 /// Suggest giving an appropriate return type to a closure expression.
 fn closure_return_type_suggestion(
-    span: Span,
     err: &mut DiagnosticBuilder<'_>,
     output: &FnRetTy<'_>,
     body: &Body<'_>,
-    descr: &str,
-    name: &str,
     ret: &str,
-    parent_name: Option<String>,
-    parent_descr: Option<&str>,
 ) {
     let (arrow, post) = match output {
         FnRetTy::DefaultReturn(_) => ("-> ", " "),
@@ -157,10 +234,6 @@ fn closure_return_type_suggestion(
         "give this closure an explicit return type without `_` placeholders",
         suggestion,
         Applicability::HasPlaceholders,
-    );
-    err.span_label(
-        span,
-        InferCtxt::cannot_infer_msg("type", &name, &descr, parent_name, parent_descr),
     );
 }
 
@@ -206,9 +279,67 @@ impl Into<rustc_errors::DiagnosticId> for TypeAnnotationNeeded {
 pub struct InferenceDiagnosticsData {
     pub name: String,
     pub span: Option<Span>,
-    pub description: Cow<'static, str>,
-    pub parent_name: Option<String>,
-    pub parent_description: Option<&'static str>,
+    pub kind: UnderspecifiedArgKind,
+    pub parent: Option<InferenceDiagnosticsParentData>,
+}
+
+/// Data on the parent definition where a generic argument was declared.
+pub struct InferenceDiagnosticsParentData {
+    pub prefix: &'static str,
+    pub name: String,
+}
+
+pub enum UnderspecifiedArgKind {
+    Type { prefix: Cow<'static, str> },
+    Const { is_parameter: bool },
+}
+
+impl InferenceDiagnosticsData {
+    /// Generate a label for a generic argument which can't be inferred. When not
+    /// much is known about the argument, `use_diag` may be used to describe the
+    /// labeled value.
+    fn cannot_infer_msg(&self, use_diag: Option<&UseDiagnostic<'_>>) -> String {
+        if self.name == "_" && matches!(self.kind, UnderspecifiedArgKind::Type { .. }) {
+            if let Some(use_diag) = use_diag {
+                return format!("cannot infer type of {}", use_diag.descr());
+            }
+
+            return "cannot infer type".to_string();
+        }
+
+        let suffix = match (&self.parent, use_diag) {
+            (Some(parent), _) => format!(" declared on the {} `{}`", parent.prefix, parent.name),
+            (None, Some(use_diag)) => format!(" in {}", use_diag.type_descr()),
+            (None, None) => String::new(),
+        };
+
+        // For example: "cannot infer type for type parameter `T`"
+        format!("cannot infer {} `{}`{}", self.kind.prefix_string(), self.name, suffix)
+    }
+}
+
+impl InferenceDiagnosticsParentData {
+    fn for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<InferenceDiagnosticsParentData> {
+        let parent_def_id = tcx.parent(def_id)?;
+
+        let parent_name =
+            tcx.def_key(parent_def_id).disambiguated_data.data.get_opt_name()?.to_string();
+
+        Some(InferenceDiagnosticsParentData {
+            prefix: tcx.def_kind(parent_def_id).descr(parent_def_id),
+            name: parent_name,
+        })
+    }
+}
+
+impl UnderspecifiedArgKind {
+    fn prefix_string(&self) -> Cow<'static, str> {
+        match self {
+            Self::Type { prefix } => format!("type for {}", prefix).into(),
+            Self::Const { is_parameter: true } => "the value of const parameter".into(),
+            Self::Const { is_parameter: false } => "the value of the constant".into(),
+        }
+    }
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
@@ -228,32 +359,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) =
                         var_origin.kind
                     {
-                        let parent_def_id = def_id.and_then(|def_id| self.tcx.parent(def_id));
-                        let (parent_name, parent_description) =
-                            if let Some(parent_def_id) = parent_def_id {
-                                let parent_name = self
-                                    .tcx
-                                    .def_key(parent_def_id)
-                                    .disambiguated_data
-                                    .data
-                                    .get_opt_name()
-                                    .map(|parent_symbol| parent_symbol.to_string());
-
-                                (
-                                    parent_name,
-                                    Some(self.tcx.def_kind(parent_def_id).descr(parent_def_id)),
-                                )
-                            } else {
-                                (None, None)
-                            };
-
                         if name != kw::SelfUpper {
                             return InferenceDiagnosticsData {
                                 name: name.to_string(),
                                 span: Some(var_origin.span),
-                                description: "type parameter".into(),
-                                parent_name,
-                                parent_description,
+                                kind: UnderspecifiedArgKind::Type {
+                                    prefix: "type parameter".into(),
+                                },
+                                parent: def_id.and_then(|def_id| {
+                                    InferenceDiagnosticsParentData::for_def_id(self.tcx, def_id)
+                                }),
                             };
                         }
                     }
@@ -268,9 +383,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 InferenceDiagnosticsData {
                     name: s,
                     span: None,
-                    description: ty.prefix_string(),
-                    parent_name: None,
-                    parent_description: None,
+                    kind: UnderspecifiedArgKind::Type { prefix: ty.prefix_string() },
+                    parent: None,
                 }
             }
             GenericArgKind::Const(ct) => {
@@ -280,31 +394,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
                         origin.kind
                     {
-                        let parent_def_id = self.tcx.parent(def_id);
-                        let (parent_name, parent_description) =
-                            if let Some(parent_def_id) = parent_def_id {
-                                let parent_name = self
-                                    .tcx
-                                    .def_key(parent_def_id)
-                                    .disambiguated_data
-                                    .data
-                                    .get_opt_name()
-                                    .map(|parent_symbol| parent_symbol.to_string());
-
-                                (
-                                    parent_name,
-                                    Some(self.tcx.def_kind(parent_def_id).descr(parent_def_id)),
-                                )
-                            } else {
-                                (None, None)
-                            };
-
                         return InferenceDiagnosticsData {
                             name: name.to_string(),
                             span: Some(origin.span),
-                            description: "const parameter".into(),
-                            parent_name,
-                            parent_description,
+                            kind: UnderspecifiedArgKind::Const { is_parameter: true },
+                            parent: InferenceDiagnosticsParentData::for_def_id(self.tcx, def_id),
                         };
                     }
 
@@ -319,9 +413,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     InferenceDiagnosticsData {
                         name: s,
                         span: Some(origin.span),
-                        description: "the constant".into(),
-                        parent_name: None,
-                        parent_description: None,
+                        kind: UnderspecifiedArgKind::Const { is_parameter: false },
+                        parent: None,
                     }
                 } else {
                     bug!("unexpect const: {:?}", ct);
@@ -420,7 +513,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // When `arg_data.name` corresponds to a type argument, show the path of the full type we're
         // trying to infer. In the following example, `ty_msg` contains
-        // " in `std::result::Result<i32, E>`":
+        // " for `std::result::Result<i32, E>`":
         // ```
         // error[E0282]: type annotations needed for `std::result::Result<i32, E>`
         //  --> file.rs:L:CC
@@ -438,6 +531,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             error_code,
         );
 
+        let use_diag = local_visitor.found_use_diagnostic.as_ref();
+        if let Some(use_diag) = use_diag {
+            if use_diag.applies_to(err_span) {
+                use_diag.attach_note(&mut err);
+            }
+        }
+
         let suffix = match local_visitor.found_node_ty {
             Some(ty) if ty.is_closure() => {
                 let substs =
@@ -453,18 +553,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                 if let Some((decl, body_id)) = closure_decl_and_body_id {
                     closure_return_type_suggestion(
-                        span,
                         &mut err,
                         &decl.output,
                         self.tcx.hir().body(body_id),
-                        &arg_data.description,
-                        &arg_data.name,
                         &ret,
-                        arg_data.parent_name,
-                        arg_data.parent_description,
                     );
                     // We don't want to give the other suggestions when the problem is the
                     // closure return type.
+                    err.span_label(
+                        span,
+                        arg_data.cannot_infer_msg(use_diag.filter(|d| d.applies_to(span))),
+                    );
                     return err;
                 }
 
@@ -601,6 +700,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         //   |
         //   = note: type must be known at this point
         let span = arg_data.span.unwrap_or(err_span);
+
+        // Avoid multiple labels pointing at `span`.
         if !err
             .span
             .span_labels()
@@ -608,42 +709,42 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .any(|span_label| span_label.label.is_some() && span_label.span == span)
             && local_visitor.found_arg_pattern.is_none()
         {
-            let (kind_str, const_value) = match arg.unpack() {
-                GenericArgKind::Type(_) => ("type", None),
-                GenericArgKind::Const(_) => ("the value", Some(())),
-                GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
-            };
-
             // FIXME(const_generics): we would like to handle const arguments
             // as part of the normal diagnostics flow below, but there appear to
             // be subtleties in doing so, so for now we special-case const args
             // here.
-            if let Some(suggestion) = const_value
-                .and_then(|_| arg_data.parent_name.as_ref())
-                .map(|parent| format!("{}::<{}>", parent, arg_data.name))
+            if let (UnderspecifiedArgKind::Const { .. }, Some(parent_data)) =
+                (&arg_data.kind, &arg_data.parent)
             {
                 err.span_suggestion_verbose(
                     span,
                     "consider specifying the const argument",
-                    suggestion,
+                    format!("{}::<{}>", parent_data.name, arg_data.name),
                     Applicability::MaybeIncorrect,
                 );
             }
 
-            // Avoid multiple labels pointing at `span`.
             err.span_label(
                 span,
-                InferCtxt::cannot_infer_msg(
-                    kind_str,
-                    &arg_data.name,
-                    &arg_data.description,
-                    arg_data.parent_name,
-                    arg_data.parent_description,
-                ),
+                arg_data.cannot_infer_msg(use_diag.filter(|d| d.applies_to(span))),
             );
         }
 
         err
+    }
+
+    fn trait_def_from_hir_fn(&self, hir_id: hir::HirId) -> Option<DefId> {
+        // The DefId will be the method's trait item ID unless this is an inherent impl
+        if let Some((DefKind::AssocFn, def_id)) =
+            self.in_progress_typeck_results?.borrow().type_dependent_def(hir_id)
+        {
+            return self
+                .tcx
+                .parent(def_id)
+                .filter(|&parent_def_id| self.tcx.is_trait(parent_def_id));
+        }
+
+        None
     }
 
     /// If the `FnSig` for the method call can be found and type arguments are identified as
@@ -708,49 +809,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "type inside {} must be known in this context",
             kind,
         );
-        err.span_label(
-            span,
-            InferCtxt::cannot_infer_msg(
-                "type",
-                &data.name,
-                &data.description,
-                data.parent_name,
-                data.parent_description,
-            ),
-        );
+        err.span_label(span, data.cannot_infer_msg(None));
         err
-    }
-
-    fn cannot_infer_msg(
-        kind_str: &str,
-        type_name: &str,
-        descr: &str,
-        parent_name: Option<String>,
-        parent_descr: Option<&str>,
-    ) -> String {
-        if type_name == "_" {
-            format!("cannot infer {}", kind_str)
-        } else {
-            let parent_desc = if let Some(parent_name) = parent_name {
-                let parent_type_descr = if let Some(parent_descr) = parent_descr {
-                    format!(" the {}", parent_descr)
-                } else {
-                    "".into()
-                };
-
-                format!(" declared on{} `{}`", parent_type_descr, parent_name)
-            } else {
-                "".to_string()
-            };
-
-            // FIXME: We really shouldn't be dealing with strings here
-            // but instead use a sensible enum for cases like this.
-            let preposition = if "the value" == kind_str { "of" } else { "for" };
-            // For example: "cannot infer type for type parameter `T`"
-            format!(
-                "cannot infer {} {} {} `{}`{}",
-                kind_str, preposition, descr, type_name, parent_desc
-            )
-        }
     }
 }

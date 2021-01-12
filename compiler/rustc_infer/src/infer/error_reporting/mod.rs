@@ -69,7 +69,7 @@ use rustc_middle::ty::{
     subst::{Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{BytePos, DesugaringKind, Pos, Span};
+use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::ops::ControlFlow;
 use std::{cmp, fmt};
@@ -2281,6 +2281,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         self.note_region_origin(&mut err, &sub_origin);
         err.emit();
+    }
+
+    /// Determine whether an error associated with the given span and definition
+    /// should be treated as being caused by the implicit `From` conversion
+    /// within `?` desugaring.
+    pub fn is_try_conversion(&self, span: Span, trait_def_id: DefId) -> bool {
+        span.is_desugaring(DesugaringKind::QuestionMark)
+            && self.tcx.is_diagnostic_item(sym::from_trait, trait_def_id)
     }
 }
 
