@@ -103,6 +103,9 @@ static cl::opt<bool>
 static cl::opt<bool> EnzymeInline("enzyme-inline", cl::init(false), cl::Hidden,
                                   cl::desc("Force inlining of autodiff"));
 
+static cl::opt<bool> EnzymeLowerGlobals("enzyme-lower-globals", cl::init(false), cl::Hidden,
+                                  cl::desc("Lower globals to locals assuming the global values are not needed outside of this gradient"));
+
 static cl::opt<int>
     EnzymeInlineCount("enzyme-inline-count", cl::init(10000), cl::Hidden,
                       cl::desc("Limit of number of functions to inline"));
@@ -646,6 +649,179 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   if (EnzymePreopt) {
     if (EnzymeInline) {
       ForceRecursiveInlining(NewF, /*Limit*/ EnzymeInlineCount);
+    }
+  }
+
+  if (EnzymeLowerGlobals) {
+    std::vector<CallInst*> Calls;
+    std::vector<ReturnInst*> Returns;
+    for (BasicBlock &BB : *NewF) {
+      for (Instruction &I : BB) {
+        if (auto CI = dyn_cast<CallInst>(&I)) {
+          Calls.push_back(CI);
+        }
+        if (auto RI = dyn_cast<ReturnInst>(&I)) {
+          Returns.push_back(RI);
+        }
+      }
+    }
+
+    //AAResults AA2;
+    //AA2.addAAResult(AA);
+      // Alias analysis is necessary to ensure can query whether we can move a
+      // forward pass function
+      AssumptionCache AC(*NewF);
+      DominatorTree DT(*NewF);
+      LoopInfo LI(DT);
+  #if LLVM_VERSION_MAJOR > 6
+      PhiValues PV(*NewF);
+  #endif
+      BasicAAResult AA2(NewF->getParent()->getDataLayout(),
+  #if LLVM_VERSION_MAJOR > 6
+                                  *NewF,
+  #endif
+                                  TLI, AC, &DT, &LI
+  #if LLVM_VERSION_MAJOR > 6
+                                  ,
+                                  &PV
+  #endif
+      );
+      //AA2.addAAResult(BAA);
+      //TypeBasedAAResult TBAAR();
+      //AA2.addAAResult(TBAAR);
+
+    for (auto &g : NewF->getParent()->globals()) {
+      std::set<Constant*> seen;
+      std::deque<Constant*> todo = { (Constant*)&g };
+      bool inF = false;
+      while(todo.size()) {
+        auto GV = todo.front();
+        todo.pop_front();
+        if (!seen.insert(GV).second) continue;
+        for (auto u : GV->users()) {
+          if (auto C = dyn_cast<Constant>(u)) {
+            todo.push_back(C);
+          } else if (auto I = dyn_cast<Instruction>(u)) {
+            if (I->getParent()->getParent() == NewF) {
+              inF = true;
+              goto doneF;
+            }
+          }
+        }
+      }
+      doneF:;
+      if (inF) {
+        bool seen = false;    
+        MemoryLocation
+#if LLVM_VERSION_MAJOR >= 12
+        Loc = MemoryLocation(&g, LocationSize::beforeOrAfterPointer());
+#elif LLVM_VERSION_MAJOR >= 9
+        Loc = MemoryLocation(&g, LocationSize::unknown());
+#else
+        Loc = MemoryLocation(&g, MemoryLocation::UnknownSize);
+#endif
+
+        for (CallInst* CI : Calls) {
+          if (isa<IntrinsicInst>(CI)) continue;
+          Function* F = CI->getCalledFunction();
+          #if LLVM_VERSION_MAJOR >= 11
+            if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
+          #else
+            if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
+          #endif
+            {
+              if (castinst->isCast())
+                if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                    F = fn;
+                }
+            }
+          if (F && (isMemFreeLibMFunction(F->getName()) || F->getName() == "__fd_sincos_1")) {
+            continue;
+          }
+          if (llvm::isModOrRefSet(AA2.getModRefInfo(CI, Loc))) {
+            seen = true;
+            goto endCheck;
+          }
+        }
+        endCheck:;
+        if (!seen) {
+          IRBuilder<> bb(&NewF->getEntryBlock(), NewF->getEntryBlock().begin());
+          AllocaInst *antialloca = bb.CreateAlloca(g.getValueType(),
+            g.getType()->getPointerAddressSpace(), nullptr, g.getName() + "_local");
+
+          if (g.getAlignment()) {
+      #if LLVM_VERSION_MAJOR >= 10
+            antialloca->setAlignment(Align(g.getAlignment()));
+      #else
+            antialloca->setAlignment(g.getAlignment());
+      #endif
+          }
+
+          std::map<Constant*, Value*> remap;
+          remap[&g] = antialloca;
+
+          std::deque<Constant*> todo = { &g };
+          while(todo.size()) {
+            auto GV = todo.front();
+            todo.pop_front();
+            if (&g != GV && remap.find(GV) != remap.end()) continue;
+            Value* replaced = nullptr;
+            if (remap.find(GV) != remap.end()) {
+              replaced = remap[GV];
+            } else if (auto CE = dyn_cast<ConstantExpr>(GV)) {
+              auto I = CE->getAsInstruction();
+              bb.Insert(I);
+              assert(isa<Constant>(I->getOperand(0)));
+              assert(remap[cast<Constant>(I->getOperand(0))]);
+              I->setOperand(0, remap[cast<Constant>(I->getOperand(0))]);
+              replaced = remap[GV] = I;
+            }
+            assert(replaced && "unhandled constantexpr");
+
+            std::vector<std::pair<Instruction*, size_t>> uses;
+            for (Use &U : GV->uses()) {
+              if (auto I = dyn_cast<Instruction>(U.getUser())) {
+                if (I->getParent()->getParent() == NewF) {
+                  uses.emplace_back(I, U.getOperandNo());
+                }
+              }
+              if (auto C = dyn_cast<Constant>(U.getUser())) {
+                assert(C != &g);
+                todo.push_back(C);
+              }
+            }
+            for(auto &U : uses) {
+              U.first->setOperand(U.second, replaced);
+            }
+          }
+
+          auto ld = bb.CreateLoad(&g);
+          auto st = bb.CreateStore(ld, antialloca);
+          if (g.getAlignment()) {
+  #if LLVM_VERSION_MAJOR >= 10
+            st->setAlignment(Align(g.getAlignment()));
+            ld->setAlignment(Align(g.getAlignment()));
+  #else
+            st->setAlignment(g.getAlignment());
+            ld->setAlignment(g.getAlignment());
+  #endif
+          }
+          for (ReturnInst* RI : Returns) {
+            IRBuilder<> IB(RI);
+            auto ld = IB.CreateLoad(antialloca);
+            auto st = IB.CreateStore(ld, &g);
+            if (g.getAlignment()) {
+    #if LLVM_VERSION_MAJOR >= 10
+              st->setAlignment(Align(g.getAlignment()));
+              ld->setAlignment(Align(g.getAlignment()));
+    #else
+              st->setAlignment(g.getAlignment());
+              ld->setAlignment(g.getAlignment());
+    #endif
+            }
+          }
+        }
+      }
     }
   }
 
