@@ -967,22 +967,21 @@ fn join_bounds_inner(
                 joiner
             };
 
-            let (trailing_str, extendable) = if i == 0 {
+            let (extendable, trailing_str) = if i == 0 {
                 let bound_str = item.rewrite(context, shape)?;
-                let bound_str_clone = bound_str.clone();
-                (bound_str, is_bound_extendable(&bound_str_clone, item))
+                (is_bound_extendable(&bound_str, item), bound_str)
             } else {
                 let bound_str = &item.rewrite(context, shape)?;
                 match leading_span {
                     Some(ls) if has_leading_comment => (
+                        is_bound_extendable(bound_str, item),
                         combine_strs_with_missing_comments(
                             context, joiner, bound_str, ls, shape, true,
                         )?,
-                        is_bound_extendable(bound_str, item),
                     ),
                     _ => (
-                        String::from(joiner) + bound_str,
                         is_bound_extendable(bound_str, item),
+                        String::from(joiner) + bound_str,
                     ),
                 }
             };
