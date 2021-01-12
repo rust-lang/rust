@@ -147,6 +147,13 @@ impl Directories {
     pub fn contains_dir(&self, path: &AbsPath) -> bool {
         self.includes_path(path)
     }
+
+    /// Returns `true` if `path` is included in `self`.
+    ///
+    /// It is included if
+    ///   - An element in `self.include` is a prefix of `path`.
+    ///   - This path is longer than any element in `self.exclude` that is a prefix
+    ///     of `path`. In case of equality, exclusion wins.
     fn includes_path(&self, path: &AbsPath) -> bool {
         let mut include: Option<&AbsPathBuf> = None;
         for incl in &self.include {
@@ -170,6 +177,14 @@ impl Directories {
     }
 }
 
+/// Returns :
+/// ```text
+/// Directories {
+///     extensions: ["rs"],
+///     include: [base],
+///     exclude: [base/<exclude>],
+/// }
+/// ```
 fn dirs(base: AbsPathBuf, exclude: &[&str]) -> Directories {
     let exclude = exclude.iter().map(|it| base.join(it)).collect::<Vec<_>>();
     Directories { extensions: vec!["rs".to_string()], include: vec![base], exclude }

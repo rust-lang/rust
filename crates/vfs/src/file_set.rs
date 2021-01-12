@@ -83,7 +83,12 @@ impl fmt::Debug for FileSet {
 /// ```
 #[derive(Debug)]
 pub struct FileSetConfig {
+    /// Number of sets that `self` can partition a [`Vfs`] into.
+    ///
+    /// This should be the number of sets in `self.map` + 1 for files that don't fit in any
+    /// defined set.
     n_file_sets: usize,
+    /// Map from encoded paths to the set they belong to.
     map: fst::Map<Vec<u8>>,
 }
 
@@ -111,9 +116,15 @@ impl FileSetConfig {
         }
         res
     }
+
+    /// Number of sets that `self` can partition a [`Vfs`] into.
     fn len(&self) -> usize {
         self.n_file_sets
     }
+
+    /// Returns the set index for the given `path`.
+    ///
+    /// `scratch_space` is used as a buffer and will be entirely replaced.
     fn classify(&self, path: &VfsPath, scratch_space: &mut Vec<u8>) -> usize {
         scratch_space.clear();
         path.encode(scratch_space);
@@ -169,11 +180,15 @@ impl FileSetConfigBuilder {
     }
 }
 
+/// Implements [`fst::Automaton`]
+///
+/// It will match if `prefix_of` is a prefix of the given data.
 struct PrefixOf<'a> {
     prefix_of: &'a [u8],
 }
 
 impl<'a> PrefixOf<'a> {
+    /// Creates a new `PrefixOf` from the given slice.
     fn new(prefix_of: &'a [u8]) -> Self {
         Self { prefix_of }
     }

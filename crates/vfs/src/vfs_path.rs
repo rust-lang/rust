@@ -102,7 +102,14 @@ impl VfsPath {
         }
     }
 
-    // Don't make this `pub`
+    /// **Don't make this `pub`**
+    ///
+    /// Encode the path in the given buffer.
+    ///
+    /// The encoding will be `0` if [`AbsPathBuf`], `1` if [`VirtualPath`], followed
+    /// by `self`'s representation.
+    ///
+    /// Note that this encoding is dependent on the operating system.
     pub(crate) fn encode(&self, buf: &mut Vec<u8>) {
         let tag = match &self.0 {
             VfsPathRepr::PathBuf(_) => 0,
@@ -259,6 +266,7 @@ mod windows_paths {
     }
 }
 
+/// Internal, private representation of [`VfsPath`].
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 enum VfsPathRepr {
     PathBuf(AbsPathBuf),
@@ -295,13 +303,34 @@ impl fmt::Debug for VfsPathRepr {
     }
 }
 
+/// `/`-separated virtual path.
+///
+/// This is used to describe files that do not reside on the file system.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 struct VirtualPath(String);
 
 impl VirtualPath {
+    /// Returns `true` if `other` is a prefix of `self` (as strings).
     fn starts_with(&self, other: &VirtualPath) -> bool {
         self.0.starts_with(&other.0)
     }
+
+    /// Remove the last component of `self`.
+    ///
+    /// This will find the last `'/'` in `self`, and remove everything after it,
+    /// including the `'/'`.
+    ///
+    /// If `self` contains no `'/'`, returns `false`; else returns `true`.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let mut path = VirtualPath("/foo/bar".to_string());
+    /// path.pop();
+    /// assert_eq!(path.0, "/foo");
+    /// path.pop();
+    /// assert_eq!(path.0, "");
+    /// ```
     fn pop(&mut self) -> bool {
         let pos = match self.0.rfind('/') {
             Some(pos) => pos,
@@ -310,6 +339,17 @@ impl VirtualPath {
         self.0 = self.0[..pos].to_string();
         true
     }
+
+    /// Append the given *relative* path `path` to `self`.
+    ///
+    /// This will resolve any leading `"../"` in `path` before appending it.
+    ///
+    /// Returns [`None`] if `path` has more leading `"../"` than the number of
+    /// components in `self`.
+    ///
+    /// # Notes
+    ///
+    /// In practice, appending here means `self/path` as strings.
     fn join(&self, mut path: &str) -> Option<VirtualPath> {
         let mut res = self.clone();
         while path.starts_with("../") {
@@ -322,7 +362,18 @@ impl VirtualPath {
         Some(res)
     }
 
-    pub(crate) fn name_and_extension(&self) -> Option<(&str, Option<&str>)> {
+    /// Returns `self`'s base name and file extension.
+    ///
+    /// # Returns
+    /// - `None` if `self` ends with `"//"`.
+    /// - `Some((name, None))` if `self`'s base contains no `.`, or only one `.` at
+    /// the start.
+    /// - `Some((name, Some(extension))` else.
+    ///
+    /// # Note
+    /// The extension will not contains `.`. This means `"/foo/bar.baz.rs"` will
+    /// return `Some(("bar.baz", Some("rs"))`.
+    fn name_and_extension(&self) -> Option<(&str, Option<&str>)> {
         let file_path = if self.0.ends_with('/') { &self.0[..&self.0.len() - 1] } else { &self.0 };
         let file_name = match file_path.rfind('/') {
             Some(position) => &file_path[position + 1..],

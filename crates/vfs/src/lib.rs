@@ -176,6 +176,14 @@ impl Vfs {
     pub fn take_changes(&mut self) -> Vec<ChangedFile> {
         mem::take(&mut self.changes)
     }
+
+    /// Returns the id associated with `path`
+    ///
+    /// - If `path` does not exists in the `Vfs`, allocate a new id for it, associated with a
+    /// deleted file;
+    /// - Else, returns `path`'s id.
+    ///
+    /// Does not record a change.
     fn alloc_file_id(&mut self, path: VfsPath) -> FileId {
         let file_id = self.interner.intern(path);
         let idx = file_id.0 as usize;
@@ -183,9 +191,21 @@ impl Vfs {
         self.data.resize_with(len, || None);
         file_id
     }
+
+    /// Returns the content associated with the given `file_id`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no file is associated to that id.
     fn get(&self, file_id: FileId) -> &Option<Vec<u8>> {
         &self.data[file_id.0 as usize]
     }
+
+    /// Mutably returns the content associated with the given `file_id`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no file is associated to that id.
     fn get_mut(&mut self, file_id: FileId) -> &mut Option<Vec<u8>> {
         &mut self.data[file_id.0 as usize]
     }
