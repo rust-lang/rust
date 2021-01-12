@@ -4,6 +4,7 @@ use std::mem;
 
 use crate::clean::{self, GetDefId, Item};
 use crate::fold::{DocFolder, StripItem};
+use crate::formats::cache::Cache;
 
 crate struct Stripper<'a> {
     crate retained: &'a mut DefIdSet,
@@ -117,6 +118,7 @@ impl<'a> DocFolder for Stripper<'a> {
 /// This stripper discards all impls which reference stripped items
 crate struct ImplStripper<'a> {
     crate retained: &'a DefIdSet,
+    crate cache: &'a Cache,
 }
 
 impl<'a> DocFolder for ImplStripper<'a> {
@@ -126,13 +128,13 @@ impl<'a> DocFolder for ImplStripper<'a> {
             if imp.trait_.is_none() && imp.items.is_empty() {
                 return None;
             }
-            if let Some(did) = imp.for_.def_id() {
+            if let Some(did) = imp.for_.def_id(&self.cache) {
                 if did.is_local() && !imp.for_.is_generic() && !self.retained.contains(&did) {
                     debug!("ImplStripper: impl item for stripped type; removing");
                     return None;
                 }
             }
-            if let Some(did) = imp.trait_.def_id() {
+            if let Some(did) = imp.trait_.def_id(&self.cache) {
                 if did.is_local() && !self.retained.contains(&did) {
                     debug!("ImplStripper: impl item for stripped trait; removing");
                     return None;
@@ -140,7 +142,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
             }
             if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
                 for typaram in generics {
-                    if let Some(did) = typaram.def_id() {
+                    if let Some(did) = typaram.def_id(&self.cache) {
                         if did.is_local() && !self.retained.contains(&did) {
                             debug!(
                                 "ImplStripper: stripped item in trait's generics; removing impl"

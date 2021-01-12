@@ -8,6 +8,7 @@ use rustc_span::def_id::DefId;
 
 use crate::clean;
 use crate::clean::types::GetDefId;
+use crate::formats::cache::Cache;
 
 /// Specifies whether rendering directly implemented trait items or ones from a certain Deref
 /// impl.
@@ -38,7 +39,7 @@ impl Impl {
         }
     }
 
-    crate fn trait_did(&self) -> Option<DefId> {
-        self.inner_impl().trait_.def_id()
+    crate fn trait_did(&self, cache: &Cache) -> Option<DefId> {
+        self.inner_impl().trait_.def_id(cache)
     }
 }

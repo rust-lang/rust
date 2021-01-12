@@ -177,9 +177,11 @@ crate fn get_real_types(
         return res;
     }
     if arg.is_full_generic() {
-        let arg_s = Symbol::intern(&arg.print().to_string());
+        let arg_s = Symbol::intern(&arg.print(&cx.cache).to_string());
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
-            WherePredicate::BoundPredicate { ty, .. } => ty.def_id() == arg.def_id(),
+            WherePredicate::BoundPredicate { ty, .. } => {
+                ty.def_id(&cx.cache) == arg.def_id(&cx.cache)
+            }
             _ => false,
         }) {
             let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
@@ -195,7 +197,7 @@ crate fn get_real_types(
                                 res.extend(adds);
                             } else if !ty.is_full_generic() {
                                 if let Some(kind) =
-                                    ty.def_id().map(|did| cx.tcx.def_kind(did).clean(cx))
+                                    ty.def_id(&cx.cache).map(|did| cx.tcx.def_kind(did).clean(cx))
                                 {
                                     res.insert((ty, kind));
                                 }
@@ -212,7 +214,9 @@ crate fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     } else if !ty.is_full_generic() {
-                        if let Some(kind) = ty.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+                        if let Some(kind) =
+                            ty.def_id(&cx.cache).map(|did| cx.tcx.def_kind(did).clean(cx))
+                        {
                             res.insert((ty.clone(), kind));
                         }
                     }
@@ -220,7 +224,7 @@ crate fn get_real_types(
             }
         }
     } else {
-        if let Some(kind) = arg.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+        if let Some(kind) = arg.def_id(&cx.cache).map(|did| cx.tcx.def_kind(did).clean(cx)) {
             res.insert((arg.clone(), kind));
         }
         if let Some(gens) = arg.generics() {
@@ -230,7 +234,9 @@ crate fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     }
-                } else if let Some(kind) = gen.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+                } else if let Some(kind) =
+                    gen.def_id(&cx.cache).map(|did| cx.tcx.def_kind(did).clean(cx))
+                {
                     res.insert((gen.clone(), kind));
                 }
             }
@@ -257,7 +263,9 @@ crate fn get_all_types(
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            if let Some(kind) = arg.type_.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+            if let Some(kind) =
+                arg.type_.def_id(&cx.cache).map(|did| cx.tcx.def_kind(did).clean(cx))
+            {
                 all_types.insert((arg.type_.clone(), kind));
             }
         }
@@ -267,7 +275,9 @@ crate fn get_all_types(
         FnRetTy::Return(ref return_type) => {
             let mut ret = get_real_types(generics, &return_type, cx, 0);
             if ret.is_empty() {
-                if let Some(kind) = return_type.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+                if let Some(kind) =
+                    return_type.def_id(&cx.cache).map(|did| cx.tcx.def_kind(did).clean(cx))
+                {
                     ret.insert((return_type.clone(), kind));
                 }
             }
@@ -473,7 +483,7 @@ crate fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
             return Generic(kw::SelfUpper);
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
-            return Generic(Symbol::intern(&format!("{:#}", path.print())));
+            return Generic(Symbol::intern(&format!("{:#}", path.print(&cx.cache))));
         }
         Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
         _ => false,

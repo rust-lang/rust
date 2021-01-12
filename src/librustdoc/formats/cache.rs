@@ -1,8 +1,6 @@
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::mem;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
@@ -18,8 +16,6 @@ use crate::formats::Impl;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::cache::{extern_location, get_index_search_type, ExternalLocation};
 use crate::html::render::IndexItem;
-
-thread_local!(crate static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
@@ -230,8 +226,8 @@ impl DocFolder for Cache {
         // masked crate then remove it completely.
         if let clean::ImplItem(ref i) = *item.kind {
             if self.masked_crates.contains(&item.def_id.krate)
-                || i.trait_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate))
-                || i.for_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate))
+                || i.trait_.def_id(self).map_or(false, |d| self.masked_crates.contains(&d.krate))
+                || i.for_.def_id(self).map_or(false, |d| self.masked_crates.contains(&d.krate))
             {
                 return None;
             }
@@ -245,7 +241,7 @@ impl DocFolder for Cache {
 
         // Collect all the implementors of traits.
         if let clean::ImplItem(ref i) = *item.kind {
-            if let Some(did) = i.trait_.def_id() {
+            if let Some(did) = i.trait_.def_id(self) {
                 if i.blanket_impl.is_none() {
                     self.implementors
                         .entry(did)
@@ -319,7 +315,7 @@ impl DocFolder for Cache {
                                 .map_or_else(String::new, |x| short_markdown_summary(&x.as_str())),
                             parent,
                             parent_idx: None,
-                            search_type: get_index_search_type(&item),
+                            search_type: get_index_search_type(&item, self),
                         });
 
                         for alias in item.attrs.get_doc_aliases() {
@@ -447,18 +443,18 @@ impl DocFolder for Cache {
 
             if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
                 for bound in generics {
-                    if let Some(did) = bound.def_id() {
+                    if let Some(did) = bound.def_id(self) {
                         dids.insert(did);
                     }
                 }
             }
             let impl_item = Impl { impl_item: item };
-            if impl_item.trait_did().map_or(true, |d| self.traits.contains_key(&d)) {
+            if impl_item.trait_did(self).map_or(true, |d| self.traits.contains_key(&d)) {
                 for did in dids {
                     self.impls.entry(did).or_insert(vec![]).push(impl_item.clone());
                 }
             } else {
-                let trait_did = impl_item.trait_did().expect("no trait did");
+                let trait_did = impl_item.trait_did(self).expect("no trait did");
                 self.orphan_trait_impls.push((trait_did, dids, impl_item));
             }
             None
@@ -476,8 +472,4 @@ impl DocFolder for Cache {
         self.parent_is_trait_impl = orig_parent_is_trait_impl;
         ret
     }
-}
-
-crate fn cache() -> Arc<Cache> {
-    CACHE_KEY.with(|c| c.borrow().clone())
 }
