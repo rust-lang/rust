@@ -1392,17 +1392,14 @@ impl<T: Clone> Arc<T> {
 
             // Materialize our own implicit weak pointer, so that it can clean
             // up the ArcInner as needed.
-            let weak = Weak { ptr: this.ptr };
+            let _weak = Weak { ptr: this.ptr };
 
-            // mark the data itself as already deallocated
+            // Can just steal the data, all that's left is Weaks
+            let mut arc = Self::new_uninit();
             unsafe {
-                // there is no data race in the implicit write caused by `read`
-                // here (due to zeroing) because data is no longer accessed by
-                // other threads (due to there being no more strong refs at this
-                // point).
-                let mut swap = Arc::new(ptr::read(&weak.ptr.as_ref().data));
-                mem::swap(this, &mut swap);
-                mem::forget(swap);
+                let data = Arc::get_mut_unchecked(&mut arc);
+                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
+                ptr::write(this, arc.assume_init());
             }
         } else {
             // We were the sole reference of either kind; bump back up the

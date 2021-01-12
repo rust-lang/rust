@@ -1048,14 +1048,16 @@ impl<T: Clone> Rc<T> {
             }
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
+            let mut rc = Self::new_uninit();
             unsafe {
-                let mut swap = Rc::new(ptr::read(&this.ptr.as_ref().value));
-                mem::swap(this, &mut swap);
-                swap.inner().dec_strong();
+                let data = Rc::get_mut_unchecked(&mut rc);
+                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
+
+                this.inner().dec_strong();
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
-                swap.inner().dec_weak();
-                forget(swap);
+                this.inner().dec_weak();
+                ptr::write(this, rc.assume_init());
             }
         }
         // This unsafety is ok because we're guaranteed that the pointer
