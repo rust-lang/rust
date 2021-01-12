@@ -739,9 +739,10 @@ pub fn foo(_input: TokenStream) -> TokenStream {
 
 #[test]
 fn test_will_rename_files_same_level() {
-    // if skip_slow_tests() {
-    //     return;
-    // }
+    if skip_slow_tests() {
+        return;
+    }
+
     let tmp_dir = TestDir::new();
     let tmp_dir_path = tmp_dir.path().to_owned();
     let tmp_dir_str = tmp_dir_path.to_str().unwrap();
