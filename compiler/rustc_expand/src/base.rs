@@ -868,7 +868,7 @@ pub trait ResolverExpand {
 
     fn resolve_dollar_crates(&mut self);
     fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment);
-    fn register_builtin_macro(&mut self, ident: Ident, ext: SyntaxExtension);
+    fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind);
 
     fn expansion_for_ast_pass(
         &mut self,

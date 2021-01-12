@@ -279,6 +279,7 @@ macro_rules! options {
         pub const parse_tls_model: &str =
             "one of supported TLS models (`rustc --print tls-models`)";
         pub const parse_target_feature: &str = parse_string;
+        pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     }
 
     #[allow(dead_code)]
@@ -721,6 +722,15 @@ macro_rules! options {
                 }
                 None => false,
             }
+        }
+
+        fn parse_wasi_exec_model(slot: &mut Option<WasiExecModel>, v: Option<&str>) -> bool {
+            match v {
+                Some("command")  => *slot = Some(WasiExecModel::Command),
+                Some("reactor") => *slot = Some(WasiExecModel::Reactor),
+                _ => return false,
+            }
+            true
         }
     }
 ) }
@@ -1166,9 +1176,17 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "in general, enable more debug printouts (default: no)"),
     verify_llvm_ir: bool = (false, parse_bool, [TRACKED],
         "verify LLVM IR (default: no)"),
+    wasi_exec_model: Option<WasiExecModel> = (None, parse_wasi_exec_model, [TRACKED],
+        "whether to build a wasi command or reactor"),
 
     // This list is in alphabetical order.
     //
     // If you add a new option, please update:
-    // - src/librustc_interface/tests.rs
+    // - compiler/rustc_interface/src/tests.rs
+}
+
+#[derive(Clone, Hash)]
+pub enum WasiExecModel {
+    Command,
+    Reactor,
 }

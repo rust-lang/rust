@@ -188,14 +188,16 @@ fn copy_self_contained_objects(
         }
     } else if target.ends_with("-wasi") {
         let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
-        copy_and_stamp(
-            builder,
-            &libdir_self_contained,
-            &srcdir,
-            "crt1.o",
-            &mut target_deps,
-            DependencyType::TargetSelfContained,
-        );
+        for &obj in &["crt1.o", "crt1-reactor.o"] {
+            copy_and_stamp(
+                builder,
+                &libdir_self_contained,
+                &srcdir,
+                obj,
+                &mut target_deps,
+                DependencyType::TargetSelfContained,
+            );
+        }
     } else if target.contains("windows-gnu") {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
             let src = compiler_file(builder, builder.cc(target), target, obj);

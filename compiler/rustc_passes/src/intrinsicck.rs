@@ -78,7 +78,7 @@ impl ExprVisitor<'tcx> {
                 return;
             }
 
-            // Special-case transmutting from `typeof(function)` and
+            // Special-case transmuting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(self.tcx, from);
             if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) {
