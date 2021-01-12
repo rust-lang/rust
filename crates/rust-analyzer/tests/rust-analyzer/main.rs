@@ -15,11 +15,14 @@ use std::{collections::HashMap, path::PathBuf, time::Instant};
 
 use lsp_types::{
     notification::DidOpenTextDocument,
-    request::{CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest},
+    request::{
+        CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
+        WillRenameFiles,
+    },
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
-    DocumentFormattingParams, FormattingOptions, GotoDefinitionParams, HoverParams,
-    PartialResultParams, Position, Range, TextDocumentItem, TextDocumentPositionParams,
-    WorkDoneProgressParams,
+    DocumentFormattingParams, FileRename, FormattingOptions, GotoDefinitionParams, HoverParams,
+    PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
+    TextDocumentPositionParams, WorkDoneProgressParams,
 };
 use rust_analyzer::lsp_ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
@@ -732,4 +735,136 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     });
     let value = res.get("contents").unwrap().get("value").unwrap().to_string();
     assert_eq!(value, r#""\n```rust\nfoo::Bar\n```\n\n```rust\nfn bar()\n```""#)
+}
+
+#[test]
+fn test_will_rename_files_same_level() {
+    // if skip_slow_tests() {
+    //     return;
+    // }
+    let tmp_dir = TestDir::new();
+    let tmp_dir_path = tmp_dir.path().to_owned();
+    let tmp_dir_path = tmp_dir_path.to_str().unwrap();
+    let base_path = PathBuf::from(format!("file://{}", tmp_dir_path));
+
+    let code = r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+mod old_file;
+mod from_mod;
+mod to_mod;
+mod old_folder;
+fn main() {}
+
+//- /src/old_file.rs
+
+//- /src/old_folder/mod.rs
+
+//- /src/from_mod/mod.rs
+
+//- /src/to_mod/foo.rs
+
+"#;
+    let server =
+        Project::with_fixture(&code).tmp_dir(tmp_dir).server().wait_until_workspace_is_loaded();
+
+    //rename same level file
+    server.request::<WillRenameFiles>(
+        RenameFilesParams {
+            files: vec![FileRename {
+                old_uri: base_path.join("src/old_file.rs").to_str().unwrap().to_string(),
+                new_uri: base_path.join("src/new_file.rs").to_str().unwrap().to_string(),
+            }],
+        },
+        json!({
+          "documentChanges": [
+            {
+              "textDocument": {
+                "uri": format!("file://{}/src/lib.rs", tmp_dir_path),
+                "version": null
+              },
+              "edits": [
+                {
+                  "range": {
+                    "start": {
+                      "line": 0,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 0,
+                      "character": 12
+                    }
+                  },
+                  "newText": "new_file"
+                }
+              ]
+            }
+          ]
+        }),
+    );
+
+    //rename file from mod.rs to foo.rs
+    server.request::<WillRenameFiles>(
+        RenameFilesParams {
+            files: vec![FileRename {
+                old_uri: base_path.join("src/from_mod/mod.rs").to_str().unwrap().to_string(),
+                new_uri: base_path.join("src/from_mod/foo.rs").to_str().unwrap().to_string(),
+            }],
+        },
+        json!({
+          "documentChanges": []
+        }),
+    );
+
+    //rename file from foo.rs to mod.rs
+    server.request::<WillRenameFiles>(
+        RenameFilesParams {
+            files: vec![FileRename {
+                old_uri: base_path.join("src/to_mod/foo.rs").to_str().unwrap().to_string(),
+                new_uri: base_path.join("src/to_mod/mod.rs").to_str().unwrap().to_string(),
+            }],
+        },
+        json!({
+          "documentChanges": []
+        }),
+    );
+
+    //rename same level file
+    server.request::<WillRenameFiles>(
+        RenameFilesParams {
+            files: vec![FileRename {
+                old_uri: base_path.join("src/old_folder").to_str().unwrap().to_string(),
+                new_uri: base_path.join("src/new_folder").to_str().unwrap().to_string(),
+            }],
+        },
+        json!({
+          "documentChanges": [
+            {
+              "textDocument": {
+                "uri": format!("file://{}/src/lib.rs", tmp_dir_path),
+                "version": null
+              },
+              "edits": [
+                {
+                  "range": {
+                    "start": {
+                      "line": 3,
+                      "character": 4
+                    },
+                    "end": {
+                      "line": 3,
+                      "character": 14
+                    }
+                  },
+                  "newText": "new_folder"
+                }
+              ]
+            }
+          ]
+        }),
+    );
 }
