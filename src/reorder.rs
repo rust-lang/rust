@@ -12,7 +12,7 @@ use rustc_ast::ast;
 use rustc_span::{symbol::sym, Span};
 
 use crate::config::{Config, GroupImportsTactic, ImportGranularity};
-use crate::imports::{merge_use_trees, SharedPrefix, UseSegment, UseTree};
+use crate::imports::{flatten_use_trees, merge_use_trees, SharedPrefix, UseSegment, UseTree};
 use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use crate::lists::{itemize_list, write_list, ListFormatting, ListItem};
 use crate::rewrite::RewriteContext;
@@ -107,15 +107,14 @@ fn rewrite_reorderable_or_regroupable_items(
             for (item, list_item) in normalized_items.iter_mut().zip(list_items) {
                 item.list_item = Some(list_item.clone());
             }
-            match context.config.imports_granularity() {
-                ImportGranularity::Crate => {
-                    normalized_items = merge_use_trees(normalized_items, SharedPrefix::Crate)
-                }
+            normalized_items = match context.config.imports_granularity() {
+                ImportGranularity::Crate => merge_use_trees(normalized_items, SharedPrefix::Crate),
                 ImportGranularity::Module => {
-                    normalized_items = merge_use_trees(normalized_items, SharedPrefix::Module)
+                    merge_use_trees(normalized_items, SharedPrefix::Module)
                 }
-                ImportGranularity::Preserve => {}
-            }
+                ImportGranularity::Item => flatten_use_trees(normalized_items),
+                ImportGranularity::Preserve => normalized_items,
+            };
 
             let mut regrouped_items = match context.config.group_imports() {
                 GroupImportsTactic::Preserve => vec![normalized_items],

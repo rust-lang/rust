@@ -121,6 +121,8 @@ pub enum ImportGranularity {
     Crate,
     /// Use one `use` statement per module.
     Module,
+    /// Use one `use` statement per imported item.
+    Item,
 }
 
 #[config_type]

@@ -181,6 +181,24 @@ pub(crate) fn merge_use_trees(use_trees: Vec<UseTree>, merge_by: SharedPrefix) -
     result
 }
 
+pub(crate) fn flatten_use_trees(use_trees: Vec<UseTree>) -> Vec<UseTree> {
+    use_trees
+        .into_iter()
+        .flat_map(UseTree::flatten)
+        .map(|mut tree| {
+            // If a path ends in `::self`, rewrite it to `::{self}`.
+            if let Some(UseSegment::Slf(..)) = tree.path.last() {
+                let self_segment = tree.path.pop().unwrap();
+                tree.path.push(UseSegment::List(vec![UseTree::from_path(
+                    vec![self_segment],
+                    DUMMY_SP,
+                )]));
+            }
+            tree
+        })
+        .collect()
+}
+
 impl fmt::Debug for UseTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
@@ -1081,6 +1099,25 @@ mod test {
             Module,
             ["foo::{a::b, a::c, d::e, d::f}"],
             ["foo::a::{b, c}", "foo::d::{e, f}"]
+        );
+    }
+
+    #[test]
+    fn test_flatten_use_trees() {
+        assert_eq!(
+            flatten_use_trees(parse_use_trees!["foo::{a::{b, c}, d::e}"]),
+            parse_use_trees!["foo::a::b", "foo::a::c", "foo::d::e"]
+        );
+
+        assert_eq!(
+            flatten_use_trees(parse_use_trees!["foo::{self, a, b::{c, d}, e::*}"]),
+            parse_use_trees![
+                "foo::{self}",
+                "foo::a",
+                "foo::b::c",
+                "foo::b::d",
+                "foo::e::*"
+            ]
         );
     }
 
