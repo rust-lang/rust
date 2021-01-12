@@ -840,7 +840,7 @@ impl<T> MaybeUninit<T> {
         // And thus the conversion is safe
         unsafe {
             intrinsics::assert_inhabited::<T>();
-            (&array as *const _ as *const T).read()
+            (&array as *const _ as *const [T; N]).read()
         }
     }
 
