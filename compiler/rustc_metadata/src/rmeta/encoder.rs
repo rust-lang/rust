@@ -796,7 +796,6 @@ impl EncodeContext<'a, 'tcx> {
         if opt_mir {
             self.encode_optimized_mir(def_id.expect_local());
         }
-        self.encode_promoted_mir(def_id.expect_local());
         self.encode_mir_for_ctfe(def_id.expect_local());
     }
 
@@ -908,7 +907,6 @@ impl EncodeContext<'a, 'tcx> {
             self.encode_optimized_mir(def_id.expect_local());
         }
         self.encode_mir_for_ctfe(def_id.expect_local());
-        self.encode_promoted_mir(def_id.expect_local());
     }
 
     fn encode_generics(&mut self, def_id: DefId) {
