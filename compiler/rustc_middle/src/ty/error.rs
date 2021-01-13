@@ -829,7 +829,7 @@ fn foo(&self) -> Self::T { String::new() }
                 }
             }
             Some(hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { items, .. }),
+                kind: hir::ItemKind::Impl(box hir::Impl { items, .. }),
                 ..
             })) => {
                 for item in &items[..] {

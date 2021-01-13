@@ -111,7 +111,7 @@ impl LateLintPass<'_> for ToStringInDisplay {
 
 fn is_display_impl(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if_chain! {
-        if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), .. }) = &item.kind;
+        if let ItemKind::Impl(box Impl { of_trait: Some(trait_ref), .. }) = &item.kind;
         if let Some(did) = trait_ref.trait_def_id();
         then {
             match_def_path(cx, did, &paths::DISPLAY_TRAIT)

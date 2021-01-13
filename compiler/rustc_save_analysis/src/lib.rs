@@ -1,4 +1,5 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(box_patterns)]
 #![feature(nll)]
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
@@ -318,7 +319,7 @@ impl<'tcx> SaveContext<'tcx> {
                     attributes: lower_attributes(item.attrs.to_vec(), self),
                 }))
             }
-            hir::ItemKind::Impl(hir::Impl { ref of_trait, ref self_ty, ref items, .. }) => {
+            hir::ItemKind::Impl(box hir::Impl { ref of_trait, ref self_ty, ref items, .. }) => {
                 if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = self_ty.kind {
                     // Common case impl for a struct or something basic.
                     if generated_code(path.span) {
@@ -410,7 +411,7 @@ impl<'tcx> SaveContext<'tcx> {
             match self.tcx.impl_of_method(def_id) {
                 Some(impl_id) => match self.tcx.hir().get_if_local(impl_id) {
                     Some(Node::Item(item)) => match item.kind {
-                        hir::ItemKind::Impl(hir::Impl { ref self_ty, .. }) => {
+                        hir::ItemKind::Impl(box hir::Impl { ref self_ty, .. }) => {
                             let hir = self.tcx.hir();
 
                             let mut qualname = String::from("<");

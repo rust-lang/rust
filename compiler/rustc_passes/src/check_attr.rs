@@ -343,7 +343,7 @@ impl CheckAttrVisitor<'tcx> {
                 // We can't link to trait impl's consts.
                 let err = "associated constant in trait implementation block";
                 match containing_item.kind {
-                    ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => Some(err),
+                    ItemKind::Impl(box hir::Impl { of_trait: Some(_), .. }) => Some(err),
                     _ => None,
                 }
             }

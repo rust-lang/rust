@@ -611,7 +611,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
             visitor.visit_enum_def(enum_definition, generics, item.hir_id, item.span)
         }
-        ItemKind::Impl(Impl {
+        ItemKind::Impl(box Impl {
             unsafety: _,
             defaultness: _,
             polarity: _,

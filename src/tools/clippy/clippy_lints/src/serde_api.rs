@@ -22,7 +22,7 @@ declare_lint_pass!(SerdeAPI => [SERDE_API_MISUSE]);
 
 impl<'tcx> LateLintPass<'tcx> for SerdeAPI {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl(Impl {
+        if let ItemKind::Impl(box Impl {
             of_trait: Some(ref trait_ref),
             items,
             ..

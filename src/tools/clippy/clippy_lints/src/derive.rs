@@ -164,7 +164,7 @@ declare_lint_pass!(Derive => [
 
 impl<'tcx> LateLintPass<'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl(Impl {
+        if let ItemKind::Impl(box Impl {
             of_trait: Some(ref trait_ref),
             ..
         }) = item.kind

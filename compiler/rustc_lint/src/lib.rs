@@ -29,6 +29,7 @@
 #![cfg_attr(test, feature(test))]
 #![feature(array_windows)]
 #![feature(bool_to_option)]
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(iter_order_by)]

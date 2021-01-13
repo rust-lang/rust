@@ -258,7 +258,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
         // Skip trait implementations; see issue #605.
         if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id)) {
-            if let ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
+            if let ItemKind::Impl(box hir::Impl { of_trait: Some(_), .. }) = item.kind {
                 return;
             }
         }

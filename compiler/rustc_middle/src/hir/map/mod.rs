@@ -505,7 +505,7 @@ impl<'hir> Map<'hir> {
                     | ItemKind::Union(_, generics)
                     | ItemKind::Trait(_, _, generics, ..)
                     | ItemKind::TraitAlias(generics, _)
-                    | ItemKind::Impl(Impl { generics, .. }),
+                    | ItemKind::Impl(box Impl { generics, .. }),
                 ..
             }) => Some(generics),
             _ => None,

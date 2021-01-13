@@ -501,7 +501,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 Ok(sig)
             }
-            hir::ItemKind::Impl(hir::Impl {
+            hir::ItemKind::Impl(box hir::Impl {
                 unsafety,
                 polarity,
                 defaultness,

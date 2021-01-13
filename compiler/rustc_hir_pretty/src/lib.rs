@@ -1,3 +1,4 @@
+#![feature(box_patterns)]
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
 
@@ -684,7 +685,7 @@ impl<'a> State<'a> {
                 self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, item.ident.name, item.span, true);
             }
-            hir::ItemKind::Impl(hir::Impl {
+            hir::ItemKind::Impl(box hir::Impl {
                 unsafety,
                 polarity,
                 defaultness,

@@ -49,7 +49,7 @@ impl_lint_pass!(MultipleInherentImpl => [MULTIPLE_INHERENT_IMPL]);
 
 impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
     fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl(Impl {
+        if let ItemKind::Impl(box Impl {
             ref generics,
             of_trait: None,
             ..

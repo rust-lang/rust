@@ -1530,7 +1530,7 @@ pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
 /// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-        matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
+        matches!(item.kind, ItemKind::Impl(box hir::Impl { of_trait: Some(_), .. }))
     } else {
         false
     }

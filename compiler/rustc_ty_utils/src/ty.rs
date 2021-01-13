@@ -324,8 +324,8 @@ fn well_formed_types_in_env<'tcx>(
         },
 
         Node::Item(item) => match item.kind {
-            ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => NodeKind::TraitImpl,
-            ItemKind::Impl(hir::Impl { of_trait: None, .. }) => NodeKind::InherentImpl,
+            ItemKind::Impl(box hir::Impl { of_trait: Some(_), .. }) => NodeKind::TraitImpl,
+            ItemKind::Impl(box hir::Impl { of_trait: None, .. }) => NodeKind::InherentImpl,
             ItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         },

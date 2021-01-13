@@ -2562,8 +2562,11 @@ pub enum ItemKind<'hir> {
     TraitAlias(Generics<'hir>, GenericBounds<'hir>),
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
-    Impl(Impl<'hir>),
+    Impl(Box<Impl<'hir>>),
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(ItemKind<'_>, 88);
 
 #[derive(Debug, HashStable_Generic)]
 pub struct Impl<'hir> {
@@ -2593,7 +2596,7 @@ impl ItemKind<'_> {
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics)
             | ItemKind::Trait(_, _, ref generics, _, _)
-            | ItemKind::Impl(Impl { ref generics, .. }) => generics,
+            | ItemKind::Impl(box Impl { ref generics, .. }) => generics,
             _ => return None,
         })
     }

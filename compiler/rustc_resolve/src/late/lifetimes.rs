@@ -409,7 +409,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             | hir::ItemKind::Union(_, ref generics)
             | hir::ItemKind::Trait(_, _, ref generics, ..)
             | hir::ItemKind::TraitAlias(ref generics, ..)
-            | hir::ItemKind::Impl(hir::Impl { ref generics, .. }) => {
+            | hir::ItemKind::Impl(box hir::Impl { ref generics, .. }) => {
                 self.missing_named_lifetime_spots.push(generics.into());
 
                 // Impls permit `'_` to be used and it is equivalent to "some fresh lifetime name".
@@ -1677,7 +1677,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
             match parent.kind {
                 hir::ItemKind::Trait(_, _, ref generics, ..)
-                | hir::ItemKind::Impl(hir::Impl { ref generics, .. }) => {
+                | hir::ItemKind::Impl(box hir::Impl { ref generics, .. }) => {
                     index += generics.params.len() as u32;
                 }
                 _ => {}
@@ -2102,7 +2102,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body), .. }) => {
-                if let hir::ItemKind::Impl(hir::Impl { ref self_ty, ref items, .. }) =
+                if let hir::ItemKind::Impl(box hir::Impl { ref self_ty, ref items, .. }) =
                     self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
                 {
                     impl_self = Some(self_ty);

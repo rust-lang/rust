@@ -31,6 +31,8 @@
 //! in the HIR, especially for multiple identifiers.
 
 #![feature(array_value_iter)]
+#![feature(box_patterns)]
+#![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(or_patterns)]
 #![recursion_limit = "256"]

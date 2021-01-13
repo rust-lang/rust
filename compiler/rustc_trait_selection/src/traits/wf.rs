@@ -333,7 +333,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     let mut new_cause = cause.clone();
                     // The first subst is the self ty - use the correct span for it.
                     if i == 0 {
-                        if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =
+                        if let Some(hir::ItemKind::Impl(box hir::Impl { self_ty, .. })) =
                             item.map(|i| &i.kind)
                         {
                             new_cause.make_mut().span = self_ty.span;

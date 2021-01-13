@@ -275,7 +275,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             let item = cx.tcx.hir().expect_item(item_hir_id);
 
             match &item.kind {
-                ItemKind::Impl(Impl {
+                ItemKind::Impl(box Impl {
                     of_trait: Some(of_trait_ref),
                     ..
                 }) => {
@@ -317,7 +317,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                         }
                     }
                 },
-                ItemKind::Impl(Impl { of_trait: None, .. }) => {
+                ItemKind::Impl(box Impl { of_trait: None, .. }) => {
                     let ty = hir_ty_to_ty(cx.tcx, hir_ty);
                     // Normalize assoc types originated from generic params.
                     let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);

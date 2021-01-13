@@ -189,7 +189,7 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
         | hir::ItemKind::Enum(_, generics)
         | hir::ItemKind::TraitAlias(generics, _)
         | hir::ItemKind::Trait(_, _, generics, ..)
-        | hir::ItemKind::Impl(hir::Impl { generics, .. })
+        | hir::ItemKind::Impl(box hir::Impl { generics, .. })
         | hir::ItemKind::Struct(_, generics) => (generics, true),
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. })
         | hir::ItemKind::TyAlias(_, generics) => (generics, false),
@@ -531,7 +531,7 @@ fn type_param_predicates(
         Node::Item(item) => {
             match item.kind {
                 ItemKind::Fn(.., ref generics, _)
-                | ItemKind::Impl(hir::Impl { ref generics, .. })
+                | ItemKind::Impl(box hir::Impl { ref generics, .. })
                 | ItemKind::TyAlias(_, ref generics)
                 | ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. })
                 | ItemKind::Enum(_, ref generics)
@@ -1311,7 +1311,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         Node::Item(item) => {
             match item.kind {
                 ItemKind::Fn(.., ref generics, _)
-                | ItemKind::Impl(hir::Impl { ref generics, .. }) => generics,
+                | ItemKind::Impl(box hir::Impl { ref generics, .. }) => generics,
 
                 ItemKind::TyAlias(_, ref generics)
                 | ItemKind::Enum(_, ref generics)
@@ -1652,7 +1652,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(hir_id);
     match &item.kind {
-        hir::ItemKind::Impl(hir::Impl {
+        hir::ItemKind::Impl(box hir::Impl {
             polarity: hir::ImplPolarity::Negative(span),
             of_trait,
             ..
@@ -1663,7 +1663,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
             }
             ty::ImplPolarity::Negative
         }
-        hir::ItemKind::Impl(hir::Impl {
+        hir::ItemKind::Impl(box hir::Impl {
             polarity: hir::ImplPolarity::Positive,
             of_trait: None,
             ..
@@ -1673,7 +1673,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
             }
             ty::ImplPolarity::Positive
         }
-        hir::ItemKind::Impl(hir::Impl {
+        hir::ItemKind::Impl(box hir::Impl {
             polarity: hir::ImplPolarity::Positive,
             of_trait: Some(_),
             ..
@@ -2963,7 +2963,7 @@ fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span:
     if let Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) = node {
         let parent_id = tcx.hir().get_parent_item(hir_id);
         let parent_item = tcx.hir().expect_item(parent_id);
-        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = parent_item.kind {
+        if let hir::ItemKind::Impl(box hir::Impl { of_trait: Some(_), .. }) = parent_item.kind {
             tcx.sess
                 .struct_span_err(
                     attr_span,

@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
             if matches!(
                 item.kind,
-                ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
+                ItemKind::Impl(box Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
             ) {
                 return;
             }

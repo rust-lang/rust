@@ -26,8 +26,11 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         // "Trait" impl
-        if let hir::ItemKind::Impl(hir::Impl {
-            generics, of_trait: Some(ref tr), self_ty, ..
+        if let hir::ItemKind::Impl(box hir::Impl {
+            generics,
+            of_trait: Some(ref tr),
+            self_ty,
+            ..
         }) = &item.kind
         {
             debug!(
