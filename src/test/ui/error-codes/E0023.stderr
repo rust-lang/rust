@@ -5,10 +5,12 @@ LL |     Apple(String, String),
    |     --------------------- tuple variant defined here
 ...
 LL |         Fruit::Apple(a) => {},
-   |         ^^^^^^^^^^^^^^-
-   |         |             |
-   |         |             help: use `_` to explicitly ignore each field
-   |         expected 2 fields, found 1
+   |         ^^^^^^^^^^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         Fruit::Apple(a, _) => {},
+   |                       ^^^
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/E0023.rs:12:9

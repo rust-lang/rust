@@ -14,10 +14,12 @@ LL | struct S(i32, f32);
    | ------------------- tuple struct defined here
 ...
 LL |         S(x) => {}
-   |         ^^^-
-   |         |  |
-   |         |  help: use `_` to explicitly ignore each field
-   |         expected 2 fields, found 1
+   |         ^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         S(x, _) => {}
+   |            ^^^
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
   --> $DIR/pat-tuple-underfield.rs:14:9
@@ -26,10 +28,12 @@ LL | struct S(i32, f32);
    | ------------------- tuple struct defined here
 ...
 LL |         S(_) => {}
-   |         ^^^-
-   |         |  |
-   |         |  help: use `_` to explicitly ignore each field
-   |         expected 2 fields, found 1
+   |         ^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         S(_, _) => {}
+   |            ^^^
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 2 fields
   --> $DIR/pat-tuple-underfield.rs:19:9
@@ -56,10 +60,12 @@ LL |     S(i32, f32),
    |     ----------- tuple variant defined here
 ...
 LL |         E::S(x) => {}
-   |         ^^^^^^-
-   |         |     |
-   |         |     help: use `_` to explicitly ignore each field
-   |         expected 2 fields, found 1
+   |         ^^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E::S(x, _) => {}
+   |               ^^^
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
   --> $DIR/pat-tuple-underfield.rs:31:9
@@ -68,10 +74,12 @@ LL |     S(i32, f32),
    |     ----------- tuple variant defined here
 ...
 LL |         E::S(_) => {}
-   |         ^^^^^^-
-   |         |     |
-   |         |     help: use `_` to explicitly ignore each field
-   |         expected 2 fields, found 1
+   |         ^^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E::S(_, _) => {}
+   |               ^^^
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/pat-tuple-underfield.rs:36:9

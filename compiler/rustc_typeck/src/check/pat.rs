@@ -1061,7 +1061,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 wildcard_sugg = String::from(", ") + &wildcard_sugg;
             }
 
-            err.span_suggestion_short(
+            err.span_suggestion_verbose(
                 after_fields_span,
                 "use `_` to explicitly ignore each field",
                 wildcard_sugg,
@@ -1071,14 +1071,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Only suggest `..` if more than one field is missing.
             if fields.len() - subpats.len() > 1 {
                 if subpats.is_empty() || all_wildcards {
-                    err.span_suggestion_short(
+                    err.span_suggestion_verbose(
                         all_fields_span,
                         "use `..` to ignore all fields",
                         String::from(".."),
                         Applicability::MaybeIncorrect,
                     );
                 } else {
-                    err.span_suggestion_short(
+                    err.span_suggestion_verbose(
                         after_fields_span,
                         "use `..` to ignore the rest of the fields",
                         String::from(", .."),
