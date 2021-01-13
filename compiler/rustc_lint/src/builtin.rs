@@ -542,7 +542,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                     return;
                 }
             }
-            hir::ItemKind::Impl { of_trait: Some(ref trait_ref), items, .. } => {
+            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), items, .. }) => {
                 // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();

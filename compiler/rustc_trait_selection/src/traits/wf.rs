@@ -199,7 +199,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
         trait_ref, item, cause, pred
     );
     let items = match item {
-        Some(hir::Item { kind: hir::ItemKind::Impl { items, .. }, .. }) => items,
+        Some(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.items,
         _ => return,
     };
     let fix_span =
@@ -333,7 +333,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     let mut new_cause = cause.clone();
                     // The first subst is the self ty - use the correct span for it.
                     if i == 0 {
-                        if let Some(hir::ItemKind::Impl { self_ty, .. }) = item.map(|i| &i.kind) {
+                        if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =
+                            item.map(|i| &i.kind)
+                        {
                             new_cause.make_mut().span = self_ty.span;
                         }
                     }

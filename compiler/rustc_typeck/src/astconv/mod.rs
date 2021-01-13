@@ -2011,11 +2011,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         "generic `Self` types are currently not permitted in anonymous constants",
                     );
                     if let Some(hir::Node::Item(&hir::Item {
-                        kind: hir::ItemKind::Impl { self_ty, .. },
+                        kind: hir::ItemKind::Impl(ref impl_),
                         ..
                     })) = tcx.hir().get_if_local(def_id)
                     {
-                        err.span_note(self_ty.span, "not a concrete type");
+                        err.span_note(impl_.self_ty.span, "not a concrete type");
                     }
                     err.emit();
                     tcx.ty_error()

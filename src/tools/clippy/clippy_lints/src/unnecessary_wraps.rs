@@ -5,7 +5,7 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, ExprKind, FnDecl, HirId, ItemKind, Node};
+use rustc_hir::{Body, ExprKind, FnDecl, HirId, ItemKind, Impl, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
             if matches!(
                 item.kind,
-                ItemKind::Impl { of_trait: Some(_), .. } | ItemKind::Trait(..)
+                ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
             ) {
                 return;
             }

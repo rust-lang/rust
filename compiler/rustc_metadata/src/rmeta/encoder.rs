@@ -1283,7 +1283,7 @@ impl EncodeContext<'a, 'tcx> {
                     is_non_exhaustive: variant.is_field_list_non_exhaustive(),
                 }), adt_def.repr)
             }
-            hir::ItemKind::Impl { defaultness, .. } => {
+            hir::ItemKind::Impl(hir::Impl { defaultness, .. }) => {
                 let trait_ref = self.tcx.impl_trait_ref(def_id);
                 let polarity = self.tcx.impl_polarity(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {

@@ -45,7 +45,9 @@ struct InherentCollect<'tcx> {
 impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         let (ty, assoc_items) = match item.kind {
-            hir::ItemKind::Impl { of_trait: None, ref self_ty, items, .. } => (self_ty, items),
+            hir::ItemKind::Impl(hir::Impl { of_trait: None, ref self_ty, items, .. }) => {
+                (self_ty, items)
+            }
             _ => return,
         };
 

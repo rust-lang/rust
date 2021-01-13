@@ -501,7 +501,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 Ok(sig)
             }
-            hir::ItemKind::Impl {
+            hir::ItemKind::Impl(hir::Impl {
                 unsafety,
                 polarity,
                 defaultness,
@@ -511,7 +511,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 ref of_trait,
                 ref self_ty,
                 items: _,
-            } => {
+            }) => {
                 let mut text = String::new();
                 if let hir::Defaultness::Default { .. } = defaultness {
                     text.push_str("default ");

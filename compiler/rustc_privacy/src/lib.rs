@@ -632,9 +632,9 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Impl { ref of_trait, items, .. } => {
-                for impl_item_ref in items {
-                    if of_trait.is_some() || impl_item_ref.vis.node.is_pub() {
+            hir::ItemKind::Impl(ref impl_) => {
+                for impl_item_ref in impl_.items {
+                    if impl_.of_trait.is_some() || impl_item_ref.vis.node.is_pub() {
                         self.update(impl_item_ref.id.hir_id, item_level);
                     }
                 }
@@ -736,11 +736,11 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 }
             }
             // Visit everything except for private impl items.
-            hir::ItemKind::Impl { items, .. } => {
+            hir::ItemKind::Impl(ref impl_) => {
                 if item_level.is_some() {
                     self.reach(item.hir_id, item_level).generics().predicates().ty().trait_ref();
 
-                    for impl_item_ref in items {
+                    for impl_item_ref in impl_.items {
                         let impl_item_level = self.get(impl_item_ref.id.hir_id);
                         if impl_item_level.is_some() {
                             self.reach(impl_item_ref.id.hir_id, impl_item_level)
@@ -1450,7 +1450,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             // (i.e., we could just return here to not check them at
             // all, or some worse estimation of whether an impl is
             // publicly visible).
-            hir::ItemKind::Impl { generics: ref g, ref of_trait, ref self_ty, items, .. } => {
+            hir::ItemKind::Impl(ref impl_) => {
                 // `impl [... for] Private` is never visible.
                 let self_contains_private;
                 // `impl [... for] Public<...>`, but not `impl [... for]
@@ -1465,7 +1465,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                         at_outer_type: true,
                         outer_type_is_public_path: false,
                     };
-                    visitor.visit_ty(&self_ty);
+                    visitor.visit_ty(&impl_.self_ty);
                     self_contains_private = visitor.contains_private;
                     self_is_public_path = visitor.outer_type_is_public_path;
                 }
@@ -1473,7 +1473,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 // Miscellaneous info about the impl:
 
                 // `true` iff this is `impl Private for ...`.
-                let not_private_trait = of_trait.as_ref().map_or(
+                let not_private_trait = impl_.of_trait.as_ref().map_or(
                     true, // no trait counts as public trait
                     |tr| {
                         let did = tr.path.res.def_id();
@@ -1494,8 +1494,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 // directly because we might have `impl<T: Foo<Private>> ...`,
                 // and we shouldn't warn about the generics if all the methods
                 // are private (because `T` won't be visible externally).
-                let trait_or_some_public_method = of_trait.is_some()
-                    || items.iter().any(|impl_item_ref| {
+                let trait_or_some_public_method = impl_.of_trait.is_some()
+                    || impl_.items.iter().any(|impl_item_ref| {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                         match impl_item.kind {
                             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..) => {
@@ -1506,11 +1506,11 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     });
 
                 if !self_contains_private && not_private_trait && trait_or_some_public_method {
-                    intravisit::walk_generics(self, g);
+                    intravisit::walk_generics(self, &impl_.generics);
 
-                    match of_trait {
+                    match impl_.of_trait {
                         None => {
-                            for impl_item_ref in items {
+                            for impl_item_ref in impl_.items {
                                 // This is where we choose whether to walk down
                                 // further into the impl to check its items. We
                                 // should only walk into public items so that we
@@ -1531,7 +1531,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                 }
                             }
                         }
-                        Some(tr) => {
+                        Some(ref tr) => {
                             // Any private types in a trait impl fall into three
                             // categories.
                             // 1. mentioned in the trait definition
@@ -1548,7 +1548,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             intravisit::walk_path(self, &tr.path);
 
                             // Those in 3. are warned with this call.
-                            for impl_item_ref in items {
+                            for impl_item_ref in impl_.items {
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                                 if let hir::ImplItemKind::TyAlias(ref ty) = impl_item.kind {
                                     self.visit_ty(ty);
@@ -1556,11 +1556,11 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             }
                         }
                     }
-                } else if of_trait.is_none() && self_is_public_path {
+                } else if impl_.of_trait.is_none() && self_is_public_path {
                     // `impl Public<Private> { ... }`. Any public static
                     // methods will be visible as `Public::foo`.
                     let mut found_pub_static = false;
-                    for impl_item_ref in items {
+                    for impl_item_ref in impl_.items {
                         if self.item_is_public(&impl_item_ref.id.hir_id, &impl_item_ref.vis) {
                             let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                             match impl_item_ref.kind {
@@ -1577,7 +1577,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                         }
                     }
                     if found_pub_static {
-                        intravisit::walk_generics(self, g)
+                        intravisit::walk_generics(self, &impl_.generics)
                     }
                 }
                 return;
@@ -1970,11 +1970,11 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // Subitems of inherent impls have their own publicity.
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity.
-            hir::ItemKind::Impl { ref of_trait, items, .. } => {
+            hir::ItemKind::Impl(ref impl_) => {
                 let impl_vis = ty::Visibility::of_impl(item.hir_id, tcx, &Default::default());
                 self.check(item.hir_id, impl_vis).generics().predicates();
-                for impl_item_ref in items {
-                    let impl_item_vis = if of_trait.is_none() {
+                for impl_item_ref in impl_.items {
+                    let impl_item_vis = if impl_.of_trait.is_none() {
                         min(
                             tcx.visibility(tcx.hir().local_def_id(impl_item_ref.id.hir_id)),
                             impl_vis,
@@ -2032,7 +2032,7 @@ fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility {
                 Node::ImplItem(impl_item) => {
                     match tcx.hir().get(tcx.hir().get_parent_item(hir_id)) {
                         Node::Item(hir::Item {
-                            kind: hir::ItemKind::Impl { of_trait: Some(tr), .. },
+                            kind: hir::ItemKind::Impl(hir::Impl { of_trait: Some(tr), .. }),
                             ..
                         }) => tr.path.res.opt_def_id().map_or_else(
                             || {

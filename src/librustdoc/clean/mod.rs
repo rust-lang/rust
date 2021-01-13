@@ -2027,7 +2027,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                     fields: variant_data.fields().clean(cx),
                     fields_stripped: false,
                 }),
-                ItemKind::Impl { .. } => return clean_impl(item, cx),
+                ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.hir_id, cx),
                 // proc macros can have a name set by attributes
                 ItemKind::Fn(ref sig, ref generics, body_id) => {
                     clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
@@ -2081,17 +2081,12 @@ impl Clean<bool> for ty::ImplPolarity {
     }
 }
 
-fn clean_impl(impl_: &hir::Item<'_>, cx: &DocContext<'_>) -> Vec<Item> {
+fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &DocContext<'_>) -> Vec<Item> {
     let mut ret = Vec::new();
-    let (trait_, items, for_, unsafety, generics) = match &impl_.kind {
-        hir::ItemKind::Impl { of_trait, items, self_ty, unsafety, generics, .. } => {
-            (of_trait, items, self_ty, *unsafety, generics)
-        }
-        _ => unreachable!(),
-    };
-    let trait_ = trait_.clean(cx);
-    let items = items.iter().map(|ii| cx.tcx.hir().impl_item(ii.id).clean(cx)).collect::<Vec<_>>();
-    let def_id = cx.tcx.hir().local_def_id(impl_.hir_id);
+    let trait_ = impl_.of_trait.clean(cx);
+    let items =
+        impl_.items.iter().map(|ii| cx.tcx.hir().impl_item(ii.id).clean(cx)).collect::<Vec<_>>();
+    let def_id = cx.tcx.hir().local_def_id(hir_id);
 
     // If this impl block is an implementation of the Deref trait, then we
     // need to try inlining the target's inherent impl blocks as well.
@@ -2104,15 +2099,15 @@ fn clean_impl(impl_: &hir::Item<'_>, cx: &DocContext<'_>) -> Vec<Item> {
         .map(|did| cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
         .unwrap_or_default();
 
-    let for_ = for_.clean(cx);
+    let for_ = impl_.self_ty.clean(cx);
     let type_alias = for_.def_id().and_then(|did| match cx.tcx.def_kind(did) {
         DefKind::TyAlias => Some(cx.tcx.type_of(did).clean(cx)),
         _ => None,
     });
     let make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Impl {
-            unsafety,
-            generics: generics.clean(cx),
+            unsafety: impl_.unsafety,
+            generics: impl_.generics.clean(cx),
             provided_trait_methods: provided.clone(),
             trait_,
             for_,
@@ -2121,7 +2116,7 @@ fn clean_impl(impl_: &hir::Item<'_>, cx: &DocContext<'_>) -> Vec<Item> {
             synthetic: false,
             blanket_impl: None,
         });
-        Item::from_hir_id_and_parts(impl_.hir_id, None, kind, cx)
+        Item::from_hir_id_and_parts(hir_id, None, kind, cx)
     };
     if let Some(type_alias) = type_alias {
         ret.push(make_item(trait_.clone(), type_alias, items.clone()));

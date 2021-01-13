@@ -684,7 +684,7 @@ impl<'a> State<'a> {
                 self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, item.ident.name, item.span, true);
             }
-            hir::ItemKind::Impl {
+            hir::ItemKind::Impl(hir::Impl {
                 unsafety,
                 polarity,
                 defaultness,
@@ -694,7 +694,7 @@ impl<'a> State<'a> {
                 ref of_trait,
                 ref self_ty,
                 items,
-            } => {
+            }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_defaultness(defaultness);

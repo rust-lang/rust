@@ -182,11 +182,8 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                     lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id));
                 }
             },
-            hir::ItemKind::Impl {
-                of_trait: ref trait_ref,
-                ..
-            } => {
-                self.in_trait_impl = trait_ref.is_some();
+            hir::ItemKind::Impl(ref impl_) => {
+                self.in_trait_impl = impl_.of_trait.is_some();
             },
             _ => {},
         }
