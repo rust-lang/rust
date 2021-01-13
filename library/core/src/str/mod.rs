@@ -65,7 +65,7 @@ pub use iter::{EscapeDebug, EscapeDefault, EscapeUnicode};
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use iter::SplitAsciiWhitespace;
 
-#[stable(feature = "split_inclusive", since = "1.49.0")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 use iter::SplitInclusive;
 
 #[unstable(feature = "str_internals", issue = "none")]
@@ -1241,7 +1241,7 @@ impl str {
     ///     .split_inclusive('\n').collect();
     /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb.\n"]);
     /// ```
-    #[stable(feature = "split_inclusive", since = "1.49.0")]
+    #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
     pub fn split_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
         SplitInclusive(SplitInternal {
