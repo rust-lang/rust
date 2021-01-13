@@ -688,9 +688,9 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
                         return Group::load_aligned(self.ctrl(0))
                             .match_empty_or_deleted()
                             .lowest_set_bit_nonzero();
-                    } else {
-                        return result;
                     }
+
+                    return result;
                 }
             }
             probe_seq.move_next(self.bucket_mask);

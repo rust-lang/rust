@@ -26,7 +26,8 @@
     clippy::doc_markdown,
     clippy::module_name_repetitions,
     clippy::must_use_candidate,
-    clippy::option_if_let_else
+    clippy::option_if_let_else,
+    clippy::redundant_else
 )]
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
