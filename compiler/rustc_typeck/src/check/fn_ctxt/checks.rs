@@ -221,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (coerce_error.is_ok() && is_supertype, checked_ty, coerced_ty)
         };
 
-        // A "softer" version of the hlper above, which checks types without persisting them,
+        // A "softer" version of the helper above, which checks types without persisting them,
         // and treats error types differently
         // This will allow us to "probe" for other argument orders that would likely have been correct
         let check_compatible = |arg_idx, input_idx| {
