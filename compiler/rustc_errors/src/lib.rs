@@ -4,7 +4,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(crate_visibility_modifier)]
-#![feature(backtrace)]
 #![feature(nll)]
 
 #[macro_use]
