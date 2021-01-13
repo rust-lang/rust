@@ -1,7 +1,6 @@
 //! FIXME: write short doc here
 use std::{
     convert::TryInto,
-    error::Error,
     fmt::{self, Display},
 };
 
@@ -33,8 +32,6 @@ impl fmt::Display for RenameError {
         Display::fmt(&self.0, f)
     }
 }
-
-impl Error for RenameError {}
 
 macro_rules! format_err {
     ($fmt:expr) => {RenameError(format!($fmt))};
