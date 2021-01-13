@@ -1,5 +1,5 @@
 //! Collects a tree of highlighted ranges and flattens it.
-use std::{cmp::Ordering, iter};
+use std::iter;
 
 use stdx::equal_range_by;
 use syntax::TextRange;
@@ -52,7 +52,7 @@ impl Node {
         }
 
         let overlapping =
-            equal_range_by(&self.nested, |n| ordering(n.hl_range.range, hl_range.range));
+            equal_range_by(&self.nested, |n| TextRange::ordering(n.hl_range.range, hl_range.range));
 
         if overlapping.len() == 1
             && self.nested[overlapping.start].hl_range.range.contains_range(hl_range.range)
@@ -88,15 +88,5 @@ impl Node {
                 None => break,
             }
         }
-    }
-}
-
-pub(super) fn ordering(r1: TextRange, r2: TextRange) -> Ordering {
-    if r1.end() <= r2.start() {
-        Ordering::Less
-    } else if r2.end() <= r1.start() {
-        Ordering::Greater
-    } else {
-        Ordering::Equal
     }
 }
