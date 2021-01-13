@@ -931,6 +931,15 @@ impl WhileExpr {
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct YieldExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for YieldExpr {}
+impl YieldExpr {
+    pub fn yield_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![yield]) }
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Label {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1334,6 +1343,7 @@ pub enum Expr {
     TryExpr(TryExpr),
     TupleExpr(TupleExpr),
     WhileExpr(WhileExpr),
+    YieldExpr(YieldExpr),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Item {
@@ -2386,6 +2396,17 @@ impl AstNode for WhileExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for YieldExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == YIELD_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for Label {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LABEL }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3028,6 +3049,9 @@ impl From<TupleExpr> for Expr {
 impl From<WhileExpr> for Expr {
     fn from(node: WhileExpr) -> Expr { Expr::WhileExpr(node) }
 }
+impl From<YieldExpr> for Expr {
+    fn from(node: YieldExpr) -> Expr { Expr::YieldExpr(node) }
+}
 impl AstNode for Expr {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -3035,7 +3059,8 @@ impl AstNode for Expr {
             | CAST_EXPR | CLOSURE_EXPR | CONTINUE_EXPR | EFFECT_EXPR | FIELD_EXPR | FOR_EXPR
             | IF_EXPR | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MATCH_EXPR
             | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
-            | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR => true,
+            | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR
+            | YIELD_EXPR => true,
             _ => false,
         }
     }
@@ -3071,6 +3096,7 @@ impl AstNode for Expr {
             TRY_EXPR => Expr::TryExpr(TryExpr { syntax }),
             TUPLE_EXPR => Expr::TupleExpr(TupleExpr { syntax }),
             WHILE_EXPR => Expr::WhileExpr(WhileExpr { syntax }),
+            YIELD_EXPR => Expr::YieldExpr(YieldExpr { syntax }),
             _ => return None,
         };
         Some(res)
@@ -3107,6 +3133,7 @@ impl AstNode for Expr {
             Expr::TryExpr(it) => &it.syntax,
             Expr::TupleExpr(it) => &it.syntax,
             Expr::WhileExpr(it) => &it.syntax,
+            Expr::YieldExpr(it) => &it.syntax,
         }
     }
 }
@@ -3979,6 +4006,11 @@ impl std::fmt::Display for TupleExpr {
     }
 }
 impl std::fmt::Display for WhileExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for YieldExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
