@@ -872,8 +872,10 @@ impl SourceMap {
     }
 
     pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {
+        // Remap filename before lookup
+        let filename = self.path_mapping().map_filename_prefix(filename).0;
         for sf in self.files.borrow().source_files.iter() {
-            if *filename == sf.name {
+            if filename == sf.name {
                 return Some(sf.clone());
             }
         }
@@ -1040,5 +1042,16 @@ impl FilePathMapping {
         }
 
         (path, false)
+    }
+
+    fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
+        match file {
+            FileName::Real(realfile) => {
+                let path = realfile.local_path();
+                let (path, mapped) = self.map_prefix(path.to_path_buf());
+                (FileName::Real(RealFileName::Named(path)), mapped)
+            }
+            other => (other.clone(), false),
+        }
     }
 }
