@@ -146,6 +146,7 @@ mod handlers {
     mod remove_mut;
     mod remove_unused_param;
     mod reorder_fields;
+    mod reorder_impl;
     mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
     mod replace_impl_trait_with_generic;
@@ -202,6 +203,7 @@ mod handlers {
             remove_mut::remove_mut,
             remove_unused_param::remove_unused_param,
             reorder_fields::reorder_fields,
+            reorder_impl::reorder_impl,
             replace_derive_with_manual_impl::replace_derive_with_manual_impl,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_if_let_with_match::replace_match_with_if_let,
