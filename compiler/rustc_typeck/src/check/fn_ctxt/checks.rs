@@ -22,7 +22,7 @@ use rustc_session::Session;
 use rustc_span::{self, MultiSpan, Span};
 use rustc_span::{
     symbol::{sym, Ident},
-    BytePos, Pos,
+    BytePos,
 };
 use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
 
@@ -495,6 +495,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if stack.len() <= 2 {
                         // If we encounter a cycle of 1 or 2 elements, we'll let the
                         // "satisfy" and "swap" code above handle those
+                        is_cycle = false;
                     }
                     // We've built up some chain, some of which might be a cycle
                     // ex: [1,2,3,4]; last = 2; j = 2;
@@ -614,7 +615,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             }
 
-            if issues.len() > 0 {
+            let issue_count = issues.len();
+            if issue_count > 0 {
                 // We found issues, so lets construct a diagnostic that summarizes the issues we found
                 // FIXME: This might need some refining in code review
                 let mut labels = vec![];
@@ -624,44 +626,75 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     match issue {
                         Issue::Invalid(arg) => {
                             let span = provided_args[arg].span;
-                            labels.push((span, "expected `TE`, found `TF`")); // FIXME: find actual types
-                            suggestions.push((span, "<TF>".to_string())); // FIXME: find actual type
+                            let expected_type = expected_input_tys[arg];
+                            let found_type = final_arg_types.iter().filter(|(i, _, _)| *i == arg).next().unwrap().1;
+                            labels.push((span, format!("expected {}, found {}", expected_type, found_type)));
                         }
                         Issue::Extra(arg) => {
-                            // FIXME: This could be a lot cleaner, but I dunno how
+                            // FIXME: This could probably be a lot cleaner, but I dunno how
                             let span = provided_args[arg].span;
-                            let hungry_span = Span::new(
-                                span.lo(),
-                                BytePos(span.hi().to_u32() + 2u32),
-                                span.ctxt(),
-                            ); // Eat the comma
-                            // FIXME: find the actual types / names
-                            labels.push((span, "no parameter of type `TF` is needed in `fn_name`"));
-                            suggestions.push((hungry_span, "".to_string()));
+                            let hungry_span = if arg < provided_args.len() - 1 {
+                                // Eat the comma
+                                Span::new(
+                                    span.lo(),
+                                    span.hi() + BytePos(2),
+                                    span.ctxt(),
+                                )
+                            } else {
+                                span
+                            };
+                            let found_type = self.check_expr(&provided_args[arg]);
+                            let fn_name = fn_def_id
+                                .and_then(|def_id| tcx.hir().get_if_local(def_id))
+                                .and_then(|node| node.ident())
+                                .map(|ident| format!("fn {}(..)", ident))
+                                .unwrap_or("this function".to_string());
+
+                            labels.push((span, format!("no parameter of type {} is needed in {}", found_type, fn_name)));
+                            if issue_count > 1 {
+                                suggestions.push((hungry_span, format!("")));
+                            }
                         }
                         Issue::Missing(arg) => {
-                            // FIXME: do this cleaner, if possible.  Handle `missing()`, etc
+                            // FIXME: The spans here are all kinds of wrong for multiple missing arguments etc.
                             let prev_span = if arg < provided_args.len() {
                                 provided_args[arg].span
                             } else {
                                 call_span
                             };
-                            let missing_span = Span::new(
-                                BytePos(prev_span.hi().to_u32() + 1u32),
-                                BytePos(prev_span.hi().to_u32() + 1u32),
-                                prev_span.ctxt(),
-                            );
-                            labels.push((missing_span, "missing argument of type `TE`")); // FIXME: find the type name
-                            suggestions.push((missing_span, " <TE>,".to_string())); // FIXME: find the type name
+                            // If we're missing something in the middle, shift the span slightly to eat the comma
+                            let missing_span = if arg < provided_args.len() {
+                                Span::new(
+                                    prev_span.hi() + BytePos(1),
+                                    prev_span.hi() + BytePos(1),
+                                    prev_span.ctxt(),
+                                )
+                            } else {
+                                Span::new(
+                                    prev_span.hi() - BytePos(1),
+                                    prev_span.hi() - BytePos(1),
+                                    prev_span.ctxt(),
+                                )
+                            };
+                            let expected_type = expected_input_tys[arg];
+                            labels.push((missing_span, format!("missing argument of type {}", expected_type)));
+                            if issue_count > 1 {
+                                suggestions.push((missing_span, format!(" {{{}}},", expected_type)));
+                            }
                         }
                         Issue::Swap(arg, other) => {
                             let first_span = provided_args[arg].span;
                             let second_span = provided_args[other].span;
                             let first_snippet = source_map.span_to_snippet(first_span).unwrap();
                             let second_snippet = source_map.span_to_snippet(second_span).unwrap();
-                            labels.push((first_span, "expected `T1`, found `T2`")); // FIXME: Find the type name
+                            let expected_types = (expected_input_tys[arg], expected_input_tys[other]);
+                            let found_types = (
+                                final_arg_types.iter().filter(|(i, _, _)| *i == arg).next().unwrap().1,
+                                final_arg_types.iter().filter(|(i, _, _)| *i == other).next().unwrap().1,
+                            );
+                            labels.push((first_span, format!("expected {}, found {}", expected_types.0, found_types.0)));
                             suggestions.push((first_span, second_snippet));
-                            labels.push((second_span, "expected `T2`, found `T1`")); // FIXME: Find the type name
+                            labels.push((second_span, format!("expected {}, found {}", expected_types.1, found_types.1)));
                             suggestions.push((second_span, first_snippet));
                         }
                         Issue::Permutation(args) => {
@@ -670,7 +703,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     let src_span = provided_args[src].span;
                                     let dst_span = provided_args[dst].span;
                                     let snippet = source_map.span_to_snippet(src_span).unwrap();
-                                    labels.push((dst_span, "expected `{}`, found `{}`")); // FIXME: find the type names
+                                    let expected_type = expected_input_tys[dst];
+                                    let found_type = final_arg_types.iter().filter(|(i, _, _)| *i == dst).next().unwrap().1;
+                                    labels.push((dst_span, format!("expected {}, found {}", expected_type, found_type)));
                                     suggestions.push((dst_span, snippet));
                                 }
                             }
@@ -715,11 +750,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // And add a series of suggestions
                 // FIXME: for simpler cases, this might be overkill
-                err.multipart_suggestion(
-                    "the arguments can be modified to be of the appropriate types in the right positions",
-                    suggestions,
-                    Applicability::MaybeIncorrect,
-                );
+                if suggestions.len() > 0 {
+                    err.multipart_suggestion(
+                        "the following changes might help",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
 
                 err.emit();
             }

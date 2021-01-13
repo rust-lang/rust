@@ -1,61 +1,99 @@
-error[E0059]: one or more arguments to this function are incorrect
-  --> $DIR/basic.rs:31:5
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/basic.rs:20:13
    |
 LL |     invalid(1.0);
-   |     ^^^^^^^^---^
-   |             |
-   |             the type of this argument is incorrect
+   |             ^^^ expected u32, found {float}
+   |
+note: function defined here
+  --> $DIR/basic.rs:12:4
+   |
+LL | fn invalid(_i: u32) {}
+   |    ^^^^^^^ -------
 
-error[E0059]: one or more arguments to this function are incorrect
-  --> $DIR/basic.rs:32:5
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/basic.rs:21:11
    |
 LL |     extra(&"");
-   |     ^^^^^^---^
-   |           |
-   |           this argument appears to be extra
+   |           ^^^ no parameter of type &&'static str is needed in fn extra(..)
+   |
+note: function defined here
+  --> $DIR/basic.rs:13:4
+   |
+LL | fn extra() {}
+   |    ^^^^^
 
-error[E0059]: one or more arguments to this function are incorrect
-  --> $DIR/basic.rs:33:5
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/basic.rs:22:13
    |
 LL |     missing();
-   |     ^^^^^^^^^
+   |             ^ missing argument of type u32
    |
-   = note: the 1st parameter appears to be missing
+note: function defined here
+  --> $DIR/basic.rs:14:4
+   |
+LL | fn missing(_i: u32) {}
+   |    ^^^^^^^ -------
 
-error[E0059]: one or more arguments to this function are incorrect
-  --> $DIR/basic.rs:34:5
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/basic.rs:23:13
    |
 LL |     swapped(&"", 1);
-   |     ^^^^^^^^---^^-^
-   |             |    |
-   |             |    these two arguments appear to be swapped
-   |             these two arguments appear to be swapped
+   |             ^^^  ^ expected &str, found {integer}
+   |             |
+   |             expected u32, found &&'static str
+   |
+note: function defined here
+  --> $DIR/basic.rs:15:4
+   |
+LL | fn swapped(_i: u32, _s: &str) {}
+   |    ^^^^^^^ -------  --------
+help: the following changes might help
+   |
+LL |     swapped(1, &"");
+   |             ^  ^^^
 
-error[E0059]: one or more arguments to this function are incorrect
-  --> $DIR/basic.rs:35:5
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/basic.rs:24:14
    |
 LL |     permuted(Y {}, Z {}, X {});
-   |     ^^^^^^^^^----^^----^^----^
-   |              |     |     |
-   |              |     |     these 3 arguments appear to be in the wrong order
-   |              |     these 3 arguments appear to be in the wrong order
-   |              these 3 arguments appear to be in the wrong order
+   |              ^^^^  ^^^^  ^^^^ expected Z, found X
+   |              |     |
+   |              |     expected Y, found Z
+   |              expected X, found Y
+   |
+note: function defined here
+  --> $DIR/basic.rs:16:4
+   |
+LL | fn permuted(_x: X, _y: Y, _z: Z) {}
+   |    ^^^^^^^^ -----  -----  -----
+help: the following changes might help
+   |
+LL |     permuted(X {}, Y {}, Z {});
+   |              ^^^^  ^^^^  ^^^^
 
-error[E0059]: one or more arguments to this function are incorrect
-  --> $DIR/basic.rs:36:5
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/basic.rs:25:13
    |
 LL |     complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
-   |     ^^^^^^^^---^^----^^^^^^^---^^-----^^----^^----^^----^
-   |             |    |          |    |      |     |     |
-   |             |    |          |    |      |     |     these 3 arguments appear to be in the wrong order
-   |             |    |          |    |      |     these 3 arguments appear to be in the wrong order
-   |             |    |          |    |      these 3 arguments appear to be in the wrong order
-   |             |    |          |    these two arguments appear to be swapped
-   |             |    |          these two arguments appear to be swapped
-   |             |    this argument appears to be extra
-   |             the type of this argument is incorrect
+   |             ^^^  ^^^^      ^^^^  ^^^^^  ^^^^  ^^^^  ^^^^ expected Z, found Y
+   |             |    |         ||    |      |     |
+   |             |    |         ||    |      |     expected Y, found X
+   |             |    |         ||    |      expected X, found Z
+   |             |    |         ||    expected G, found F
+   |             |    |         |expected F, found G
+   |             |    |         missing argument of type E
+   |             |    no parameter of type H is needed in fn complex(..)
+   |             expected u32, found {float}
    |
-   = note: the 3rd parameter appears to be missing
+note: function defined here
+  --> $DIR/basic.rs:17:4
+   |
+LL | fn complex(_i: u32, _s: &str, _e: E, _f: F, _g: G, _x: X, _y: Y, _z: Z ) {}
+   |    ^^^^^^^ -------  --------  -----  -----  -----  -----  -----  ------
+help: the following changes might help
+   |
+LL |     complex(1.0, &"", {E}, F::X2, G{}, X {}, Y {}, Z {});
+   |                 --    ^^^^ ^^^^^  ^^^  ^^^^  ^^^^  ^^^^
 
 error: aborting due to 6 previous errors
 
