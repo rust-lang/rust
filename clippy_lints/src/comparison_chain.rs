@@ -13,7 +13,7 @@ declare_clippy_lint! {
     /// repetitive
     ///
     /// **Known problems:** The match statement may be slower due to the compiler
-    /// not inlining the call to cmp. See issue #5354
+    /// not inlining the call to cmp. See issue [#5354](https://github.com/rust-lang/rust-clippy/issues/5354)
     ///
     /// **Example:**
     /// ```rust,ignore

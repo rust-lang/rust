@@ -28,8 +28,8 @@ declare_clippy_lint! {
     /// feels inconsistent.
     ///
     /// **Known problems:**
-    /// - False positive when using associated types (#2843)
-    /// - False positives in some situations when using generics (#3410)
+    /// - False positive when using associated types ([#2843](https://github.com/rust-lang/rust-clippy/issues/2843))
+    /// - False positives in some situations when using generics ([#3410](https://github.com/rust-lang/rust-clippy/issues/3410))
     ///
     /// **Example:**
     /// ```rust

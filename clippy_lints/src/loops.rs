@@ -218,7 +218,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** The `while let` loop is usually shorter and more
     /// readable.
     ///
-    /// **Known problems:** Sometimes the wrong binding is displayed (#383).
+    /// **Known problems:** Sometimes the wrong binding is displayed ([#383](https://github.com/rust-lang/rust-clippy/issues/383)).
     ///
     /// **Example:**
     /// ```rust,no_run
