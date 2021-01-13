@@ -75,14 +75,24 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
                 will_create: None,
                 did_rename: None,
                 will_rename: Some(FileOperationRegistrationOptions {
-                    filters: vec![FileOperationFilter {
-                        scheme: Some(String::from("file")),
-                        pattern: FileOperationPattern {
-                            glob: String::from("**/*.rs"),
-                            matches: Some(FileOperationPatternKind::File),
-                            options: None,
+                    filters: vec![
+                        FileOperationFilter {
+                            scheme: Some(String::from("file")),
+                            pattern: FileOperationPattern {
+                                glob: String::from("**/*.rs"),
+                                matches: Some(FileOperationPatternKind::File),
+                                options: None,
+                            },
                         },
-                    }],
+                        FileOperationFilter {
+                            scheme: Some(String::from("file")),
+                            pattern: FileOperationPattern {
+                                glob: String::from("**"),
+                                matches: Some(FileOperationPatternKind::Folder),
+                                options: None,
+                            },
+                        },
+                    ],
                 }),
                 did_delete: None,
                 will_delete: None,
