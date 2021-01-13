@@ -8,7 +8,8 @@ use ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
     FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlPunct, HlRange, HlTag, Indel,
     InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget, ReferenceAccess,
-    Runnable, Severity, SourceChange, SourceFileEdit, SymbolKind, TextEdit, TextRange, TextSize,
+    RenameError, Runnable, Severity, SourceChange, SourceFileEdit, SymbolKind, TextEdit, TextRange,
+    TextSize,
 };
 use itertools::Itertools;
 
@@ -853,6 +854,10 @@ pub(crate) fn runnable(
 pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
     let value = crate::markdown::format_docs(markup.as_str());
     lsp_types::MarkupContent { kind: lsp_types::MarkupKind::Markdown, value }
+}
+
+pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
+    crate::LspError { code: lsp_server::ErrorCode::InvalidParams as i32, message: err.to_string() }
 }
 
 #[cfg(test)]

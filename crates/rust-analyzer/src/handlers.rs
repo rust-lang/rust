@@ -773,7 +773,8 @@ pub(crate) fn handle_prepare_rename(
     let _p = profile::span("handle_prepare_rename");
     let position = from_proto::file_position(&snap, params)?;
 
-    let change = snap.analysis.prepare_rename(position)??;
+    let change = snap.analysis.prepare_rename(position)?.map_err(to_proto::rename_error)?;
+
     let line_index = snap.analysis.file_line_index(position.file_id)?;
     let range = to_proto::range(&line_index, change.range);
     Ok(Some(PrepareRenameResponse::Range(range)))
@@ -786,15 +787,8 @@ pub(crate) fn handle_rename(
     let _p = profile::span("handle_rename");
     let position = from_proto::file_position(&snap, params.text_document_position)?;
 
-    if params.new_name.is_empty() {
-        return Err(LspError::new(
-            ErrorCode::InvalidParams as i32,
-            "New Name cannot be empty".into(),
-        )
-        .into());
-    }
-
-    let change = snap.analysis.rename(position, &*params.new_name)??;
+    let change =
+        snap.analysis.rename(position, &*params.new_name)?.map_err(to_proto::rename_error)?;
     let workspace_edit = to_proto::workspace_edit(&snap, change.info)?;
     Ok(Some(workspace_edit))
 }
