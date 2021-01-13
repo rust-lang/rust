@@ -738,7 +738,10 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
           if (F && (isMemFreeLibMFunction(F->getName()) || F->getName() == "__fd_sincos_1")) {
             continue;
           }
-          if (llvm::isModOrRefSet(AA2.getModRefInfo(CI, Loc))) {
+
+          AAQueryInfo AAQIP;
+          if (llvm::isModOrRefSet(AA2.getModRefInfo(CI, Loc, AAQIP))) {
+            llvm::errs() << " failed to inline global: " << g << " due to " << *CI << "\n";
             seen = true;
             goto endCheck;
           }
