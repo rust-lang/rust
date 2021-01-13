@@ -60,7 +60,7 @@ pub use iter::ArrayWindows;
 #[unstable(feature = "slice_group_by", issue = "80552")]
 pub use iter::{GroupBy, GroupByMut};
 
-#[stable(feature = "split_inclusive", since = "1.49.0")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1569,7 +1569,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next().unwrap(), &[10, 40, 33]);
     /// assert!(iter.next().is_none());
     /// ```
-    #[stable(feature = "split_inclusive", since = "1.49.0")]
+    #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
     pub fn split_inclusive<F>(&self, pred: F) -> SplitInclusive<'_, T, F>
     where
@@ -1593,7 +1593,7 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, [10, 40, 1, 20, 1, 1]);
     /// ```
-    #[stable(feature = "split_inclusive", since = "1.49.0")]
+    #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
     pub fn split_inclusive_mut<F>(&mut self, pred: F) -> SplitInclusiveMut<'_, T, F>
     where
