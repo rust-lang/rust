@@ -465,8 +465,21 @@ class RustBuild(object):
 
     def downloading_llvm(self):
         opt = self.get_toml('download-ci-llvm', 'llvm')
+        # This is currently all tier 1 targets (since others may not have CI
+        # artifacts)
+        # https://doc.rust-lang.org/rustc/platform-support.html#tier-1
+        supported_platforms = [
+            "aarch64-unknown-linux-gnu",
+            "i686-pc-windows-gnu",
+            "i686-pc-windows-msvc",
+            "i686-unknown-linux-gnu",
+            "x86_64-unknown-linux-gnu",
+            "x86_64-apple-darwin",
+            "x86_64-pc-windows-gnu",
+            "x86_64-pc-windows-msvc",
+        ]
         return opt == "true" \
-            or (opt == "if-available" and self.build == "x86_64-unknown-linux-gnu")
+            or (opt == "if-available" and self.build in supported_platforms)
 
     def _download_stage0_helper(self, filename, pattern, tarball_suffix, date=None):
         if date is None:
