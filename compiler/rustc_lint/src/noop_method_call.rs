@@ -62,33 +62,45 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                         // Resolve the trait method instance
                         if let Ok(Some(i)) = ty::Instance::resolve(cx.tcx, param_env, did, substs) {
                             // Check that it implements the noop diagnostic
-                            if [
-                                sym::noop_method_borrow,
-                                sym::noop_method_clone,
-                                sym::noop_method_deref,
+                            for (s, peel_ref) in [
+                                (sym::noop_method_borrow, true),
+                                (sym::noop_method_clone, false),
+                                (sym::noop_method_deref, true),
                             ]
                             .iter()
-                            .any(|s| cx.tcx.is_diagnostic_item(*s, i.def_id()))
                             {
-                                let method = &call.ident.name;
-                                let receiver = &elements[0];
-                                let receiver_ty = cx.typeck_results().expr_ty(receiver);
-                                let expr_span = expr.span;
-                                let note = format!(
-                                    "the type `{:?}` which `{}` is being called on is the same as the type returned from `{}`, \
-                                        so the method call does not do anything and can be removed.",
-                                    receiver_ty, method, method
-                                );
-
-                                let span = expr_span.with_lo(receiver.span.hi());
-                                cx.struct_span_lint(NOOP_METHOD_CALL, span, |lint| {
+                                if cx.tcx.is_diagnostic_item(*s, i.def_id()) {
                                     let method = &call.ident.name;
-                                    let message = format!("call to `.{}()` on a reference in this situation does nothing", &method);
-                                    lint.build(&message)
-                                        .span_label(span, "unnecessary method call")
-                                        .note(&note)
-                                        .emit()
-                                });
+                                    let receiver = &elements[0];
+                                    let receiver_ty = cx.typeck_results().expr_ty(receiver);
+                                    let receiver_ty = match receiver_ty.kind() {
+                                        // Remove one borrow from the receiver as all the trait methods
+                                        // we care about here have a `&self` receiver.
+                                        ty::Ref(_, ty, _) if *peel_ref => ty,
+                                        _ => receiver_ty,
+                                    };
+                                    let expr_ty = cx.typeck_results().expr_ty_adjusted(expr);
+                                    if receiver_ty != expr_ty {
+                                        return;
+                                    }
+                                    let expr_span = expr.span;
+                                    let note = format!(
+                                        "the type `{:?}` which `{}` is being called on is the same as \
+                                        the type returned from `{}`, so the method call does not do \
+                                        anything and can be removed",
+                                        receiver_ty, method, method,
+                                    );
+
+                                    let span = expr_span.with_lo(receiver.span.hi());
+                                    cx.struct_span_lint(NOOP_METHOD_CALL, span, |lint| {
+                                        let method = &call.ident.name;
+                                        let message = format!("call to `.{}()` on a reference in this situation does nothing", &method);
+                                        lint.build(&message)
+                                            .span_label(span, "unnecessary method call")
+                                            .note(&note)
+                                            .emit()
+                                     });
+                                }
                             }
                         }
                     }

@@ -37,6 +37,9 @@ fn main() {
     let a = &&Foo(1u32);
     let borrowed: &Foo<u32> = a.borrow();
     //~^ WARNING call to `.borrow()` on a reference in this situation does nothing
+
+    let xs = ["a", "b", "c"];
+    let _v: Vec<&str> = xs.iter().map(|x| x.clone()).collect(); // ok, but could use `*x` instead
 }
 
 fn generic<T>(foo: &Foo<T>) {
