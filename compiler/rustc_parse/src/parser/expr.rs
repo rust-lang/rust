@@ -472,7 +472,8 @@ impl<'a> Parser<'a> {
     /// Parses a prefix-unary-operator expr.
     fn parse_prefix_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
-        self.maybe_collect_tokens(super::attr::maybe_needs_tokens(&attrs), |this| {
+        let needs_tokens = super::attr::maybe_needs_tokens(&attrs);
+        let do_parse = |this: &mut Parser<'a>| {
             let lo = this.token.span;
             // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
             let (hi, ex) = match this.token.uninterpolate().kind {
@@ -488,7 +489,8 @@ impl<'a> Parser<'a> {
                 _ => return this.parse_dot_or_call_expr(Some(attrs)),
             }?;
             Ok(this.mk_expr(lo.to(hi), ex, attrs))
-        })
+        };
+        if needs_tokens { self.collect_tokens(do_parse) } else { do_parse(self) }
     }
 
     fn parse_prefix_expr_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
@@ -1122,20 +1124,6 @@ impl<'a> Parser<'a> {
             }
         } else {
             self.parse_lit_expr(attrs)
-        }
-    }
-
-    fn maybe_collect_tokens(
-        &mut self,
-        needs_tokens: bool,
-        f: impl FnOnce(&mut Self) -> PResult<'a, P<Expr>>,
-    ) -> PResult<'a, P<Expr>> {
-        if needs_tokens {
-            let (mut expr, tokens) = self.collect_tokens(f)?;
-            expr.tokens = tokens;
-            Ok(expr)
-        } else {
-            f(self)
         }
     }
 
