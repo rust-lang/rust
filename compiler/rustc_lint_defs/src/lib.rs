@@ -6,6 +6,7 @@ use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
+use rustc_target::spec::abi::Abi;
 
 pub mod builtin;
 
@@ -252,7 +253,9 @@ pub enum BuiltinLintDiagnostics {
     UnusedImports(String, Vec<(Span, String)>),
     RedundantImport(Vec<(Span, bool)>, Ident),
     DeprecatedMacro(Option<Symbol>, Span),
+    MissingAbi(Span, Abi),
     UnusedDocComment(Span),
+    PatternsInFnsWithoutBody(Span, Ident),
 }
 
 /// Lints that are buffered up early on in the `Session` before the
@@ -366,11 +369,25 @@ impl LintBuffer {
 /// ```
 ///
 /// The `{{produces}}` tag will be automatically replaced with the output from
-/// the example by the build system. You can build and view the rustc book
-/// with `x.py doc --stage=1 src/doc/rustc --open`. If the lint example is too
-/// complex to run as a simple example (for example, it needs an extern
-/// crate), mark it with `ignore` and manually paste the expected output below
-/// the example.
+/// the example by the build system. If the lint example is too complex to run
+/// as a simple example (for example, it needs an extern crate), mark the code
+/// block with `ignore` and manually replace the `{{produces}}` line with the
+/// expected output in a `text` code block.
+///
+/// If this is a rustdoc-only lint, then only include a brief introduction
+/// with a link with the text `[rustdoc book]` so that the validator knows
+/// that this is for rustdoc only (see BROKEN_INTRA_DOC_LINKS as an example).
+///
+/// Commands to view and test the documentation:
+///
+/// * `./x.py doc --stage=1 src/doc/rustc --open`: Builds the rustc book and opens it.
+/// * `./x.py test src/tools/lint-docs`: Validates that the lint docs have the
+///   correct style, and that the code example actually emits the expected
+///   lint.
+///
+/// If you have already built the compiler, and you want to make changes to
+/// just the doc comments, then use the `--keep-stage=0` flag with the above
+/// commands to avoid rebuilding the compiler.
 #[macro_export]
 macro_rules! declare_lint {
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr) => (

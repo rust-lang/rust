@@ -582,7 +582,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 }
                 ref v => {
                     let mut value = format!("{}::{}", enum_data.name, name);
-                    if let &hir::VariantData::Tuple(ref fields, _) = v {
+                    if let hir::VariantData::Tuple(fields, _) = v {
                         value.push('(');
                         value.push_str(
                             &fields
@@ -631,14 +631,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.dumper.dump_def(&access, enum_data);
     }
 
-    fn process_impl(
-        &mut self,
-        item: &'tcx hir::Item<'tcx>,
-        generics: &'tcx hir::Generics<'tcx>,
-        trait_ref: &'tcx Option<hir::TraitRef<'tcx>>,
-        typ: &'tcx hir::Ty<'tcx>,
-        impl_items: &'tcx [hir::ImplItemRef<'tcx>],
-    ) {
+    fn process_impl(&mut self, item: &'tcx hir::Item<'tcx>, impl_: &'tcx hir::Impl<'tcx>) {
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
             if !self.span.filter_generated(item.span) {
                 if let super::Data::RelationData(rel, imp) = impl_data {
@@ -652,12 +645,12 @@ impl<'tcx> DumpVisitor<'tcx> {
 
         let map = &self.tcx.hir();
         self.nest_typeck_results(map.local_def_id(item.hir_id), |v| {
-            v.visit_ty(&typ);
-            if let &Some(ref trait_ref) = trait_ref {
+            v.visit_ty(&impl_.self_ty);
+            if let Some(trait_ref) = &impl_.of_trait {
                 v.process_path(trait_ref.hir_ref_id, &hir::QPath::Resolved(None, &trait_ref.path));
             }
-            v.process_generic_params(generics, "", item.hir_id);
-            for impl_item in impl_items {
+            v.process_generic_params(&impl_.generics, "", item.hir_id);
+            for impl_item in impl_.items {
                 v.process_impl_item(
                     map.impl_item(impl_item.id),
                     map.local_def_id(item.hir_id).to_def_id(),
@@ -816,7 +809,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         path: &'tcx hir::QPath<'tcx>,
         fields: &'tcx [hir::Field<'tcx>],
         variant: &'tcx ty::VariantDef,
-        base: Option<&'tcx hir::Expr<'tcx>>,
+        rest: Option<&'tcx hir::Expr<'tcx>>,
     ) {
         if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
             if let hir::QPath::Resolved(_, path) = path {
@@ -836,7 +829,9 @@ impl<'tcx> DumpVisitor<'tcx> {
             }
         }
 
-        walk_list!(self, visit_expr, base);
+        if let Some(base) = rest {
+            self.visit_expr(&base);
+        }
     }
 
     fn process_method_call(
@@ -1080,7 +1075,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     );
                 }
 
-                if let &Some(ref default_ty) = default_ty {
+                if let Some(default_ty) = default_ty {
                     self.visit_ty(default_ty)
                 }
             }
@@ -1285,9 +1280,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 self.process_struct(item, def, ty_params)
             }
             hir::ItemKind::Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
-            hir::ItemKind::Impl { ref generics, ref of_trait, ref self_ty, ref items, .. } => {
-                self.process_impl(item, generics, of_trait, &self_ty, items)
-            }
+            hir::ItemKind::Impl(ref impl_) => self.process_impl(item, impl_),
             hir::ItemKind::Trait(_, _, ref generics, ref trait_refs, methods) => {
                 self.process_trait(item, generics, trait_refs, methods)
             }
@@ -1341,9 +1334,12 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                         self.visit_ty(ty);
                     }
                 }
-                hir::GenericParamKind::Const { ref ty } => {
+                hir::GenericParamKind::Const { ref ty, ref default } => {
                     self.process_bounds(param.bounds);
                     self.visit_ty(ty);
+                    if let Some(default) = default {
+                        self.visit_anon_const(default);
+                    }
                 }
             }
         }
@@ -1399,7 +1395,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
         debug!("visit_expr {:?}", ex.kind);
         self.process_macro_use(ex.span);
         match ex.kind {
-            hir::ExprKind::Struct(ref path, ref fields, ref base) => {
+            hir::ExprKind::Struct(ref path, ref fields, ref rest) => {
                 let hir_expr = self.save_ctxt.tcx.hir().expect_expr(ex.hir_id);
                 let adt = match self.save_ctxt.typeck_results().expr_ty_opt(&hir_expr) {
                     Some(ty) if ty.ty_adt_def().is_some() => ty.ty_adt_def().unwrap(),
@@ -1409,7 +1405,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     }
                 };
                 let res = self.save_ctxt.get_path_res(hir_expr.hir_id);
-                self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), *base)
+                self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), *rest)
             }
             hir::ExprKind::MethodCall(ref seg, _, args, _) => {
                 self.process_method_call(ex, seg, args)

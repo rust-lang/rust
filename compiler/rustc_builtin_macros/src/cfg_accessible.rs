@@ -1,7 +1,7 @@
 //! Implementation of the `#[cfg_accessible(path)]` attribute macro.
 
 use rustc_ast as ast;
-use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
+use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
 use rustc_span::symbol::sym;
@@ -31,7 +31,7 @@ impl MultiItemModifier for Expander {
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,
-        _span: Span,
+        span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
@@ -49,11 +49,14 @@ impl MultiItemModifier for Expander {
             None => return ExpandResult::Ready(Vec::new()),
         };
 
-        let failure_msg = "cannot determine whether the path is accessible or not";
         match ecx.resolver.cfg_accessible(ecx.current_expansion.id, path) {
             Ok(true) => ExpandResult::Ready(vec![item]),
             Ok(false) => ExpandResult::Ready(Vec::new()),
-            Err(_) => ExpandResult::Retry(item, failure_msg.into()),
+            Err(Indeterminate) if ecx.force_mode => {
+                ecx.span_err(span, "cannot determine whether the path is accessible or not");
+                ExpandResult::Ready(vec![item])
+            }
+            Err(Indeterminate) => ExpandResult::Retry(item),
         }
     }
 }

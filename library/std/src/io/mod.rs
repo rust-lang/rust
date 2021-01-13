@@ -240,7 +240,6 @@
 //!
 //! [`File`]: crate::fs::File
 //! [`TcpStream`]: crate::net::TcpStream
-//! [`Vec<T>`]: Vec
 //! [`io::stdout`]: stdout
 //! [`io::Result`]: self::Result
 //! [`?` operator]: ../../book/appendix-02-operators.html
@@ -266,24 +265,25 @@ pub use self::buffered::IntoInnerError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::{BufReader, BufWriter, LineWriter};
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use self::copy::copy;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::cursor::Cursor;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::error::{Error, ErrorKind, Result};
+#[unstable(feature = "internal_output_capture", issue = "none")]
+#[doc(no_inline, hidden)]
+pub use self::stdio::set_output_capture;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StderrLock, StdinLock, StdoutLock};
 #[unstable(feature = "print_internals", issue = "none")]
 pub use self::stdio::{_eprint, _print};
-#[unstable(feature = "libstd_io_internals", issue = "42788")]
-#[doc(no_inline, hidden)]
-pub use self::stdio::{set_panic, set_print, LocalOutput};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::util::{copy, empty, repeat, sink, Empty, Repeat, Sink};
-
-pub(crate) use self::stdio::clone_io;
+pub use self::util::{empty, repeat, sink, Empty, Repeat, Sink};
 
 mod buffered;
+pub(crate) mod copy;
 mod cursor;
 mod error;
 mod impls;
@@ -1306,10 +1306,10 @@ pub trait Write {
         default_write_vectored(|b| self.write(b), bufs)
     }
 
-    /// Determines if this `Write`er has an efficient [`write_vectored`]
+    /// Determines if this `Write`r has an efficient [`write_vectored`]
     /// implementation.
     ///
-    /// If a `Write`er does not override the default [`write_vectored`]
+    /// If a `Write`r does not override the default [`write_vectored`]
     /// implementation, code using it may want to avoid the method all together
     /// and coalesce writes into a single buffer for higher performance.
     ///
@@ -1983,7 +1983,6 @@ pub trait BufRead: Read {
     /// also yielded an error.
     ///
     /// [`io::Result`]: self::Result
-    /// [`Vec<u8>`]: Vec
     /// [`read_until`]: BufRead::read_until
     ///
     /// # Examples

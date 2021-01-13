@@ -1,0 +1,129 @@
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/pointer-sized-int.rs:12:11
+   |
+LL |     match 0usize {
+   |           ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `usize`
+   = note: `usize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/pointer-sized-int.rs:17:11
+   |
+LL |     match 0isize {
+   |           ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `isize`
+   = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/pointer-sized-int.rs:22:8
+   |
+LL |     m!(0usize, 0..=usize::MAX);
+   |        ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `usize`
+   = note: `usize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/pointer-sized-int.rs:24:8
+   |
+LL |     m!(0usize, 0..5 | 5..=usize::MAX);
+   |        ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `usize`
+   = note: `usize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/pointer-sized-int.rs:26:8
+   |
+LL |     m!(0usize, 0..usize::MAX | usize::MAX);
+   |        ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `usize`
+   = note: `usize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
+
+error[E0004]: non-exhaustive patterns: `(_, _)` not covered
+  --> $DIR/pointer-sized-int.rs:28:8
+   |
+LL |     m!((0usize, true), (0..5, true) | (5..=usize::MAX, true) | (0..=usize::MAX, false));
+   |        ^^^^^^^^^^^^^^ pattern `(_, _)` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(usize, bool)`
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/pointer-sized-int.rs:31:8
+   |
+LL |     m!(0isize, isize::MIN..=isize::MAX);
+   |        ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `isize`
+   = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/pointer-sized-int.rs:33:8
+   |
+LL |     m!(0isize, isize::MIN..5 | 5..=isize::MAX);
+   |        ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `isize`
+   = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/pointer-sized-int.rs:35:8
+   |
+LL |     m!(0isize, isize::MIN..isize::MAX | isize::MAX);
+   |        ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `isize`
+   = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
+
+error[E0004]: non-exhaustive patterns: `(_, _)` not covered
+  --> $DIR/pointer-sized-int.rs:37:8
+   |
+LL |     m!((0isize, true), (isize::MIN..5, true)
+   |        ^^^^^^^^^^^^^^ pattern `(_, _)` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(isize, bool)`
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/pointer-sized-int.rs:41:11
+   |
+LL |     match 0isize {
+   |           ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `isize`
+   = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
+
+error[E0004]: non-exhaustive patterns: type `usize` is non-empty
+  --> $DIR/pointer-sized-int.rs:48:11
+   |
+LL |     match 7usize {}
+   |           ^^^^^^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `usize`
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

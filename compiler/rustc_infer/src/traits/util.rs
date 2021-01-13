@@ -9,7 +9,7 @@ pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     pred: ty::Predicate<'tcx>,
 ) -> ty::Predicate<'tcx> {
-    match pred.kind() {
+    match *pred.kind() {
         ty::PredicateKind::ForAll(binder) => {
             let new = ty::PredicateKind::ForAll(tcx.anonymize_late_bound_regions(binder));
             tcx.reuse_or_mk_predicate(pred, new)
@@ -309,7 +309,7 @@ impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToT
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(obligation) = self.base_iterator.next() {
             if let Some(data) = obligation.predicate.to_opt_poly_trait_ref() {
-                return Some(data);
+                return Some(data.value);
             }
         }
         None

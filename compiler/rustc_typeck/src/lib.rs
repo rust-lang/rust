@@ -61,6 +61,7 @@ This API is completely unstable and subject to change.
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
+#![feature(is_sorted)]
 #![feature(nll)]
 #![feature(or_patterns)]
 #![feature(try_blocks)]
@@ -225,19 +226,21 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: LocalDefId) {
             let expected_return_type = if tcx.lang_items().termination().is_some() {
                 // we take the return type of the given main function, the real check is done
                 // in `check_fn`
-                actual.output().skip_binder()
+                actual.output()
             } else {
                 // standard () main return type
-                tcx.mk_unit()
+                ty::Binder::dummy(tcx.mk_unit())
             };
 
-            let se_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
-                iter::empty(),
-                expected_return_type,
-                false,
-                hir::Unsafety::Normal,
-                Abi::Rust,
-            )));
+            let se_ty = tcx.mk_fn_ptr(expected_return_type.map_bound(|expected_return_type| {
+                tcx.mk_fn_sig(
+                    iter::empty(),
+                    expected_return_type,
+                    false,
+                    hir::Unsafety::Normal,
+                    Abi::Rust,
+                )
+            }));
 
             require_same_types(
                 tcx,

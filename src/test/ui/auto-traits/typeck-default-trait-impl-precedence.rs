@@ -3,7 +3,7 @@
 // other words, the auto impl only applies if there are no existing
 // impls whose types unify.
 
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 #![feature(negative_impls)]
 
 auto trait Defaulted { }

@@ -89,8 +89,8 @@ LL |     fn bar() -> u8 { 42 }
 error: incorrect function inside `extern` block
   --> $DIR/fn-body-eq-expr-semi.rs:9:8
    |
-LL | extern {
-   | ------ `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
 LL |     fn foo() = 42;
    |        ^^^   ----- help: remove the invalid body: `;`
    |        |
@@ -102,8 +102,8 @@ LL |     fn foo() = 42;
 error: incorrect function inside `extern` block
   --> $DIR/fn-body-eq-expr-semi.rs:11:8
    |
-LL | extern {
-   | ------ `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
 ...
 LL |     fn bar() -> u8 = 42;
    |        ^^^         ----- help: remove the invalid body: `;`

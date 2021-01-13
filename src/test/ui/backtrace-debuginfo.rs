@@ -9,7 +9,6 @@
 // compile-flags:-g -Cllvm-args=-enable-tail-merge=0 -Cllvm-args=-opt-bisect-limit=0
 // compile-flags:-Cforce-frame-pointers=yes
 // ignore-pretty issue #37195
-// ignore-cloudabi spawning processes is not supported
 // ignore-emscripten spawning processes is not supported
 // ignore-sgx no processes
 // normalize-stderr-test ".*\n" -> ""

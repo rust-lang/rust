@@ -46,7 +46,7 @@ pub enum UnsafetyViolationDetails {
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
-    AssignToNonCopyUnionField,
+    AssignToDroppingUnionField,
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
@@ -94,8 +94,8 @@ impl UnsafetyViolationDetails {
                 "raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules \
                  and cause data races: all of these are undefined behavior",
             ),
-            AssignToNonCopyUnionField => (
-                "assignment to non-`Copy` union field",
+            AssignToDroppingUnionField => (
+                "assignment to union field that might need dropping",
                 "the previous content of the field will be dropped, which causes undefined \
                  behavior if the field was not properly initialized",
             ),
@@ -233,14 +233,15 @@ pub struct BorrowCheckResult<'tcx> {
 
 /// The result of the `mir_const_qualif` query.
 ///
-/// Each field corresponds to an implementer of the `Qualif` trait in
-/// `librustc_mir/transform/check_consts/qualifs.rs`. See that file for more information on each
+/// Each field (except `error_occured`) corresponds to an implementer of the `Qualif` trait in
+/// `rustc_mir/src/transform/check_consts/qualifs.rs`. See that file for more information on each
 /// `Qualif`.
 #[derive(Clone, Copy, Debug, Default, TyEncodable, TyDecodable, HashStable)]
 pub struct ConstQualifs {
     pub has_mut_interior: bool,
     pub needs_drop: bool,
     pub custom_eq: bool,
+    pub error_occured: Option<ErrorReported>,
 }
 
 /// After we borrow check a closure, we are left with various
@@ -438,14 +439,23 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn optimized_mir_opt_const_arg(
+    pub fn optimized_mir_or_const_arg_mir(
         self,
         def: ty::WithOptConstParam<DefId>,
     ) -> &'tcx Body<'tcx> {
         if let Some((did, param_did)) = def.as_const_arg() {
-            self.optimized_mir_of_const_arg((did, param_did))
+            self.mir_for_ctfe_of_const_arg((did, param_did))
         } else {
             self.optimized_mir(def.did)
+        }
+    }
+
+    #[inline]
+    pub fn mir_for_ctfe_opt_const_arg(self, def: ty::WithOptConstParam<DefId>) -> &'tcx Body<'tcx> {
+        if let Some((did, param_did)) = def.as_const_arg() {
+            self.mir_for_ctfe_of_const_arg((did, param_did))
+        } else {
+            self.mir_for_ctfe(def.did)
         }
     }
 

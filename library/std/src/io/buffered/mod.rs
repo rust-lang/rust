@@ -126,6 +126,51 @@ impl<W> IntoInnerError<W> {
     pub fn into_inner(self) -> W {
         self.0
     }
+
+    /// Consumes the [`IntoInnerError`] and returns the error which caused the call to
+    /// [`BufWriter::into_inner()`] to fail.  Unlike `error`, this can be used to
+    /// obtain ownership of the underlying error.
+    ///
+    /// # Example
+    /// ```
+    /// #![feature(io_into_inner_error_parts)]
+    /// use std::io::{BufWriter, ErrorKind, Write};
+    ///
+    /// let mut not_enough_space = [0u8; 10];
+    /// let mut stream = BufWriter::new(not_enough_space.as_mut());
+    /// write!(stream, "this cannot be actually written").unwrap();
+    /// let into_inner_err = stream.into_inner().expect_err("now we discover it's too small");
+    /// let err = into_inner_err.into_error();
+    /// assert_eq!(err.kind(), ErrorKind::WriteZero);
+    /// ```
+    #[unstable(feature = "io_into_inner_error_parts", issue = "79704")]
+    pub fn into_error(self) -> Error {
+        self.1
+    }
+
+    /// Consumes the [`IntoInnerError`] and returns the error which caused the call to
+    /// [`BufWriter::into_inner()`] to fail, and the underlying writer.
+    ///
+    /// This can be used to simply obtain ownership of the underlying error; it can also be used for
+    /// advanced error recovery.
+    ///
+    /// # Example
+    /// ```
+    /// #![feature(io_into_inner_error_parts)]
+    /// use std::io::{BufWriter, ErrorKind, Write};
+    ///
+    /// let mut not_enough_space = [0u8; 10];
+    /// let mut stream = BufWriter::new(not_enough_space.as_mut());
+    /// write!(stream, "this cannot be actually written").unwrap();
+    /// let into_inner_err = stream.into_inner().expect_err("now we discover it's too small");
+    /// let (err, recovered_writer) = into_inner_err.into_parts();
+    /// assert_eq!(err.kind(), ErrorKind::WriteZero);
+    /// assert_eq!(recovered_writer.buffer(), b"t be actually written");
+    /// ```
+    #[unstable(feature = "io_into_inner_error_parts", issue = "79704")]
+    pub fn into_parts(self) -> (Error, W) {
+        (self.1, self.0)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

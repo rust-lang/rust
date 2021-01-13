@@ -1,0 +1,70 @@
+// run-rustfix
+
+#![warn(clippy::all)]
+#![warn(clippy::redundant_pattern_matching)]
+#![allow(unused_must_use, clippy::needless_bool, clippy::match_like_matches_macro)]
+
+use std::task::Poll::{self, Pending, Ready};
+
+fn main() {
+    if Pending::<()>.is_pending() {}
+
+    if Ready(42).is_ready() {}
+
+    if Ready(42).is_ready() {
+        foo();
+    } else {
+        bar();
+    }
+
+    while Ready(42).is_ready() {}
+
+    while Ready(42).is_pending() {}
+
+    while Pending::<()>.is_pending() {}
+
+    if Pending::<i32>.is_pending() {}
+
+    if Ready(42).is_ready() {}
+
+    Ready(42).is_ready();
+
+    Pending::<()>.is_pending();
+
+    let _ = Pending::<()>.is_pending();
+
+    let poll = Ready(false);
+    let _ = if poll.is_ready() { true } else { false };
+
+    poll_const();
+
+    let _ = if gen_poll().is_ready() {
+        1
+    } else if gen_poll().is_pending() {
+        2
+    } else {
+        3
+    };
+}
+
+fn gen_poll() -> Poll<()> {
+    Pending
+}
+
+fn foo() {}
+
+fn bar() {}
+
+const fn poll_const() {
+    if Ready(42).is_ready() {}
+
+    if Pending::<()>.is_pending() {}
+
+    while Ready(42).is_ready() {}
+
+    while Pending::<()>.is_pending() {}
+
+    Ready(42).is_ready();
+
+    Pending::<()>.is_pending();
+}

@@ -4,6 +4,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
 
+use crate::parser::pat::{GateOr, RecoverComma};
 use crate::parser::{FollowedByType, Parser, PathStyle};
 
 impl<'a> Parser<'a> {
@@ -27,6 +28,8 @@ impl<'a> Parser<'a> {
                 token.can_begin_expr()
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Let)
+                // This exception is here for backwards compatibility.
+                && !token.is_keyword(kw::Const)
             }
             NonterminalKind::Ty => token.can_begin_type(),
             NonterminalKind::Ident => get_macro_ident(token).is_some(),
@@ -55,7 +58,7 @@ impl<'a> Parser<'a> {
                 },
                 _ => false,
             },
-            NonterminalKind::Pat => match token.kind {
+            NonterminalKind::Pat2018 { .. } | NonterminalKind::Pat2021 { .. } => match token.kind {
                 token::Ident(..) |                  // box, ref, mut, and other identifiers (can stricten)
                 token::OpenDelim(token::Paren) |    // tuple pattern
                 token::OpenDelim(token::Bracket) |  // slice pattern
@@ -68,6 +71,8 @@ impl<'a> Parser<'a> {
                 token::ModSep |                     // path
                 token::Lt |                         // path (UFCS constant)
                 token::BinOp(token::Shl) => true,   // path (double UFCS)
+                // leading vert `|` or-pattern
+                token::BinOp(token::Or) =>  matches!(kind, NonterminalKind::Pat2021 {..}),
                 token::Interpolated(ref nt) => may_be_ident(nt),
                 _ => false,
             },
@@ -84,6 +89,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`).
     pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, Nonterminal> {
         // Any `Nonterminal` which stores its tokens (currently `NtItem` and `NtExpr`)
         // needs to have them force-captured here.
@@ -117,8 +123,8 @@ impl<'a> Parser<'a> {
                 let (stmt, tokens) = self.collect_tokens(|this| this.parse_stmt())?;
                 match stmt {
                     Some(mut s) => {
-                        if s.tokens.is_none() {
-                            s.tokens = tokens;
+                        if s.tokens().is_none() {
+                            s.set_tokens(tokens);
                         }
                         token::NtStmt(s)
                     }
@@ -127,8 +133,14 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            NonterminalKind::Pat => {
-                let (mut pat, tokens) = self.collect_tokens(|this| this.parse_pat(None))?;
+            NonterminalKind::Pat2018 { .. } | NonterminalKind::Pat2021 { .. } => {
+                let (mut pat, tokens) = self.collect_tokens(|this| match kind {
+                    NonterminalKind::Pat2018 { .. } => this.parse_pat(None),
+                    NonterminalKind::Pat2021 { .. } => {
+                        this.parse_top_pat(GateOr::Yes, RecoverComma::No)
+                    }
+                    _ => unreachable!(),
+                })?;
                 // We have have eaten an NtPat, which could already have tokens
                 if pat.tokens.is_none() {
                     pat.tokens = tokens;

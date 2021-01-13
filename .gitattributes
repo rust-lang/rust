@@ -5,6 +5,7 @@
 *.h rust
 *.rs rust diff=rust
 *.fixed linguist-language=Rust
+*.mir linguist-language=Rust
 src/etc/installer/gfx/* binary
 *.woff binary
 src/vendor/** -text

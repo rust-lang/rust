@@ -1,17 +1,17 @@
-error[E0658]: non-builtin inner attributes are unstable
-  --> $DIR/proc-macro-gates.rs:10:5
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/proc-macro-gates.rs:10:8
    |
 LL |     #![empty_attr]
-   |     ^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^
    |
    = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
 
-error[E0658]: non-builtin inner attributes are unstable
-  --> $DIR/proc-macro-gates.rs:14:5
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/proc-macro-gates.rs:14:8
    |
 LL |     #![empty_attr]
-   |     ^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^
    |
    = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
@@ -76,6 +76,16 @@ LL |     let _x = #[identity_attr] println!();
    = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
-error: aborting due to 9 previous errors
+error: inner macro attributes are unstable
+  --> $DIR/proc-macro-gates.rs:49:8
+   |
+LL |     #![test]
+   |        ^^^^
+   |
+   = note: `#[deny(soft_unstable)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

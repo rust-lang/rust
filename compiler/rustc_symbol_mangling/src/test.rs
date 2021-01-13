@@ -39,7 +39,7 @@ impl SymbolNamesTest<'tcx> {
                 let def_id = def_id.to_def_id();
                 let instance = Instance::new(
                     def_id,
-                    tcx.erase_regions(&InternalSubsts::identity_for_item(tcx, def_id)),
+                    tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def_id)),
                 );
                 let mangled = tcx.symbol_name(instance);
                 tcx.sess.span_err(attr.span, &format!("symbol-name({})", mangled));
@@ -70,5 +70,9 @@ impl hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         self.process_attrs(impl_item.hir_id);
+    }
+
+    fn visit_foreign_item(&mut self, foreign_item: &'tcx hir::ForeignItem<'tcx>) {
+        self.process_attrs(foreign_item.hir_id);
     }
 }

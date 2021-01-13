@@ -167,7 +167,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 sup_type, sub_region, origin
             );
 
-            let sup_type = self.resolve_vars_if_possible(&sup_type);
+            let sup_type = self.resolve_vars_if_possible(sup_type);
 
             if let Some(region_bound_pairs) = region_bound_pairs_map.get(&body_id) {
                 let outlives = &mut TypeOutlives::new(
@@ -205,7 +205,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             implicit_region_bound,
             param_env,
         );
-        let ty = self.resolve_vars_if_possible(&ty);
+        let ty = self.resolve_vars_if_possible(ty);
         outlives.type_must_outlive(origin, ty, region);
     }
 }

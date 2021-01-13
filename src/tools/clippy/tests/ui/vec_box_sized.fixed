@@ -35,4 +35,18 @@ mod should_not_trigger {
     }
 }
 
+mod inner_mod {
+    mod inner {
+        pub struct S;
+    }
+
+    mod inner2 {
+        use super::inner::S;
+
+        pub fn f() -> Vec<S> {
+            vec![]
+        }
+    }
+}
+
 fn main() {}

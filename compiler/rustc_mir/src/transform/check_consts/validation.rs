@@ -1,9 +1,11 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{struct_span_err, Applicability, Diagnostic};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
@@ -11,9 +13,10 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt, TypeAndMut,
 };
+use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
-use rustc_trait_selection::traits::{self, TraitEngine};
+use rustc_trait_selection::traits::{self, SelectionContext, TraitEngine};
 
 use std::mem;
 use std::ops::Deref;
@@ -123,7 +126,11 @@ impl Qualifs<'mir, 'tcx> {
         has_mut_interior.get().contains(local) || self.indirectly_mutable(ccx, local, location)
     }
 
-    fn in_return_place(&mut self, ccx: &'mir ConstCx<'mir, 'tcx>) -> ConstQualifs {
+    fn in_return_place(
+        &mut self,
+        ccx: &'mir ConstCx<'mir, 'tcx>,
+        error_occured: Option<ErrorReported>,
+    ) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
         // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
@@ -139,7 +146,7 @@ impl Qualifs<'mir, 'tcx> {
             .map(|(bb, _)| bb);
 
         let return_block = match return_block {
-            None => return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty()),
+            None => return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty(), error_occured),
             Some(bb) => bb,
         };
 
@@ -170,6 +177,7 @@ impl Qualifs<'mir, 'tcx> {
             needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
             has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
             custom_eq,
+            error_occured,
         }
     }
 }
@@ -181,7 +189,10 @@ pub struct Validator<'mir, 'tcx> {
     /// The span of the current statement.
     span: Span,
 
-    error_emitted: bool,
+    /// A set that stores for each local whether it has a `StorageDead` for it somewhere.
+    local_has_storage_dead: Option<BitSet<Local>>,
+
+    error_emitted: Option<ErrorReported>,
     secondary_errors: Vec<Diagnostic>,
 }
 
@@ -199,7 +210,8 @@ impl Validator<'mir, 'tcx> {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
-            error_emitted: false,
+            local_has_storage_dead: None,
+            error_emitted: None,
             secondary_errors: Vec::new(),
         }
     }
@@ -266,7 +278,7 @@ impl Validator<'mir, 'tcx> {
         // If we got through const-checking without emitting any "primary" errors, emit any
         // "secondary" errors if they occurred.
         let secondary_errors = mem::take(&mut self.secondary_errors);
-        if !self.error_emitted {
+        if self.error_emitted.is_none() {
             for error in secondary_errors {
                 self.tcx.sess.diagnostic().emit_diagnostic(&error);
             }
@@ -275,8 +287,29 @@ impl Validator<'mir, 'tcx> {
         }
     }
 
+    fn local_has_storage_dead(&mut self, local: Local) -> bool {
+        let ccx = self.ccx;
+        self.local_has_storage_dead
+            .get_or_insert_with(|| {
+                struct StorageDeads {
+                    locals: BitSet<Local>,
+                }
+                impl Visitor<'tcx> for StorageDeads {
+                    fn visit_statement(&mut self, stmt: &Statement<'tcx>, _: Location) {
+                        if let StatementKind::StorageDead(l) = stmt.kind {
+                            self.locals.insert(l);
+                        }
+                    }
+                }
+                let mut v = StorageDeads { locals: BitSet::new_empty(ccx.body.local_decls.len()) };
+                v.visit_body(ccx.body);
+                v.locals
+            })
+            .contains(local)
+    }
+
     pub fn qualifs_in_return_place(&mut self) -> ConstQualifs {
-        self.qualifs.in_return_place(self.ccx)
+        self.qualifs.in_return_place(self.ccx, self.error_emitted)
     }
 
     /// Emits an error if an expression cannot be evaluated in the current context.
@@ -318,7 +351,7 @@ impl Validator<'mir, 'tcx> {
 
         match op.importance() {
             ops::DiagnosticImportance::Primary => {
-                self.error_emitted = true;
+                self.error_emitted = Some(ErrorReported);
                 err.emit();
             }
 
@@ -549,7 +582,29 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 );
 
                 if borrowed_place_has_mut_interior {
-                    self.check_op(ops::CellBorrow);
+                    match self.const_kind() {
+                        // In a const fn all borrows are transient or point to the places given via
+                        // references in the arguments (so we already checked them with
+                        // TransientCellBorrow/CellBorrow as appropriate).
+                        // The borrow checker guarantees that no new non-transient borrows are created.
+                        // NOTE: Once we have heap allocations during CTFE we need to figure out
+                        // how to prevent `const fn` to create long-lived allocations that point
+                        // to (interior) mutable memory.
+                        hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
+                        _ => {
+                            // Locals with StorageDead are definitely not part of the final constant value, and
+                            // it is thus inherently safe to permit such locals to have their
+                            // address taken as we can't end up with a reference to them in the
+                            // final value.
+                            // Note: This is only sound if every local that has a `StorageDead` has a
+                            // `StorageDead` in every control flow path leading to a `return` terminator.
+                            if self.local_has_storage_dead(place.local) {
+                                self.check_op(ops::TransientCellBorrow);
+                            } else {
+                                self.check_op(ops::CellBorrow);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -715,17 +770,16 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         trace!("visit_statement: statement={:?} location={:?}", statement, location);
 
-        match statement.kind {
-            StatementKind::Assign(..) | StatementKind::SetDiscriminant { .. } => {
-                self.super_statement(statement, location);
-            }
+        self.super_statement(statement, location);
 
+        match statement.kind {
             StatementKind::LlvmInlineAsm { .. } => {
-                self.super_statement(statement, location);
                 self.check_op(ops::InlineAsm);
             }
 
-            StatementKind::FakeRead(..)
+            StatementKind::Assign(..)
+            | StatementKind::SetDiscriminant { .. }
+            | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag { .. }
@@ -760,9 +814,39 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     }
                 };
 
-                // Resolve a trait method call to its concrete implementation, which may be in a
-                // `const` trait impl.
-                if self.tcx.features().const_trait_impl {
+                // Attempting to call a trait method?
+                if let Some(trait_id) = tcx.trait_of_item(callee) {
+                    if !self.tcx.features().const_trait_impl {
+                        self.check_op(ops::FnCallNonConst(callee));
+                        return;
+                    }
+
+                    let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
+                    let obligation = Obligation::new(
+                        ObligationCause::dummy(),
+                        param_env,
+                        Binder::bind(TraitPredicate {
+                            trait_ref: TraitRef::from_method(tcx, trait_id, substs),
+                        }),
+                    );
+
+                    let implsrc = tcx.infer_ctxt().enter(|infcx| {
+                        let mut selcx = SelectionContext::new(&infcx);
+                        selcx.select(&obligation).unwrap()
+                    });
+
+                    // If the method is provided via a where-clause that does not use the `?const`
+                    // opt-out, the call is allowed.
+                    if let Some(ImplSource::Param(_, hir::Constness::Const)) = implsrc {
+                        debug!(
+                            "const_trait_impl: provided {:?} via where-clause in {:?}",
+                            trait_ref, param_env
+                        );
+                        return;
+                    }
+
+                    // Resolve a trait method call to its concrete implementation, which may be in a
+                    // `const` trait impl.
                     let instance = Instance::resolve(tcx, param_env, callee, substs);
                     debug!("Resolving ({:?}) -> {:?}", callee, instance);
                     if let Ok(Some(func)) = instance {

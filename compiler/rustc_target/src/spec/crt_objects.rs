@@ -5,15 +5,16 @@
 //! The `crtx` ones are generally distributed with libc and the `begin/end` ones with gcc.
 //! See <https://dev.gentoo.org/~vapier/crt.txt> for some more details.
 //!
-//! | Pre-link CRT objects | glibc                  | musl                   | bionic           | mingw             | wasi |
-//! |----------------------|------------------------|------------------------|------------------|-------------------|------|
-//! | dynamic-nopic-exe    | crt1, crti, crtbegin   | crt1, crti, crtbegin   | crtbegin_dynamic | crt2, crtbegin    | crt1 |
-//! | dynamic-pic-exe      | Scrt1, crti, crtbeginS | Scrt1, crti, crtbeginS | crtbegin_dynamic | crt2, crtbegin    | crt1 |
-//! | static-nopic-exe     | crt1, crti, crtbeginT  | crt1, crti, crtbegin   | crtbegin_static  | crt2, crtbegin    | crt1 |
-//! | static-pic-exe       | rcrt1, crti, crtbeginS | rcrt1, crti, crtbeginS | crtbegin_dynamic | crt2, crtbegin    | crt1 |
-//! | dynamic-dylib        | crti, crtbeginS        | crti, crtbeginS        | crtbegin_so      | dllcrt2, crtbegin | -    |
-//! | static-dylib (gcc)   | crti, crtbeginT        | crti, crtbeginS        | crtbegin_so      | dllcrt2, crtbegin | -    |
-//! | static-dylib (clang) | crti, crtbeginT        | N/A                    | crtbegin_static  | dllcrt2, crtbegin | -    |
+//! | Pre-link CRT objects | glibc                  | musl                   | bionic           | mingw             | wasi         |
+//! |----------------------|------------------------|------------------------|------------------|-------------------|--------------|
+//! | dynamic-nopic-exe    | crt1, crti, crtbegin   | crt1, crti, crtbegin   | crtbegin_dynamic | crt2, crtbegin    | crt1         |
+//! | dynamic-pic-exe      | Scrt1, crti, crtbeginS | Scrt1, crti, crtbeginS | crtbegin_dynamic | crt2, crtbegin    | crt1         |
+//! | static-nopic-exe     | crt1, crti, crtbeginT  | crt1, crti, crtbegin   | crtbegin_static  | crt2, crtbegin    | crt1         |
+//! | static-pic-exe       | rcrt1, crti, crtbeginS | rcrt1, crti, crtbeginS | crtbegin_dynamic | crt2, crtbegin    | crt1         |
+//! | dynamic-dylib        | crti, crtbeginS        | crti, crtbeginS        | crtbegin_so      | dllcrt2, crtbegin | -            |
+//! | static-dylib (gcc)   | crti, crtbeginT        | crti, crtbeginS        | crtbegin_so      | dllcrt2, crtbegin | -            |
+//! | static-dylib (clang) | crti, crtbeginT        | N/A                    | crtbegin_static  | dllcrt2, crtbegin | -            |
+//! | wasi-reactor-exe     | N/A                    | N/A                    | N/A              | N/A               | crt1-reactor |
 //!
 //! | Post-link CRT objects | glibc         | musl          | bionic         | mingw  | wasi |
 //! |-----------------------|---------------|---------------|----------------|--------|------|
@@ -105,6 +106,7 @@ pub(super) fn pre_wasi_fallback() -> CrtObjects {
         (LinkOutputKind::DynamicPicExe, &["crt1.o"]),
         (LinkOutputKind::StaticNoPicExe, &["crt1.o"]),
         (LinkOutputKind::StaticPicExe, &["crt1.o"]),
+        (LinkOutputKind::WasiReactorExe, &["crt1-reactor.o"]),
     ])
 }
 

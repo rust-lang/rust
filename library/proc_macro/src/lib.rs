@@ -18,7 +18,7 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(not(bootstrap), feature(rustc_allow_const_fn_unstable))]
+#![feature(rustc_allow_const_fn_unstable)]
 #![feature(nll)]
 #![feature(staged_api)]
 #![feature(const_fn)]
@@ -28,7 +28,7 @@
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
 #![feature(negative_impls)]
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
@@ -839,6 +839,13 @@ impl fmt::Debug for Punct {
             .field("spacing", &self.spacing())
             .field("span", &self.span())
             .finish()
+    }
+}
+
+#[stable(feature = "proc_macro_punct_eq", since = "1.49.0")]
+impl PartialEq<char> for Punct {
+    fn eq(&self, rhs: &char) -> bool {
+        self.as_char() == *rhs
     }
 }
 

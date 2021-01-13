@@ -31,6 +31,7 @@ fn panic_with_single_argument_does_not_get_formatted() {
     // RFC #2795 suggests that this may need to change so that captured arguments are formatted.
     // For stability reasons this will need to part of an edition change.
 
+    #[allow(panic_fmt)]
     let msg = std::panic::catch_unwind(|| {
         panic!("{foo}");
     }).unwrap_err();

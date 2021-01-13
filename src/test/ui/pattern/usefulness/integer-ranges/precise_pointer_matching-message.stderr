@@ -1,0 +1,25 @@
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/precise_pointer_matching-message.rs:3:11
+   |
+LL |     match 0usize {
+   |           ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `usize`
+   = note: `usize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/precise_pointer_matching-message.rs:11:11
+   |
+LL |     match 0isize {
+   |           ^^^^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `isize`
+   = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
+   = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

@@ -15,7 +15,6 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::nightly_options;
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, Span, Symbol};
 
@@ -45,6 +44,8 @@ impl NonConstExpr {
             Self::Loop(ForLoop) | Self::Match(ForLoopDesugar | TryDesugar | AwaitDesugar) => {
                 return None;
             }
+
+            Self::Match(IfLetGuardDesugar) => bug!("if-let guard outside a `match` expression"),
 
             // All other expressions are allowed.
             Self::Loop(Loop | While | WhileLet)
@@ -145,7 +146,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
                 //
                 // FIXME(ecstaticmorse): Maybe this could be incorporated into `feature_err`? This
                 // is a pretty narrow case, however.
-                if nightly_options::is_nightly_build() {
+                if tcx.sess.is_nightly_build() {
                     for gate in missing_secondary {
                         let note = format!(
                             "add `#![feature({})]` to the crate attributes to enable",

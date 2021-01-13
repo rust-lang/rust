@@ -95,18 +95,18 @@
 //!
 //!     Depending on the values and combinations, counters can be labeled by:
 //!
-//!         * `id` - counter or expression ID (ascending counter IDs, starting at 1, or descending
-//!           expression IDs, starting at `u32:MAX`)
-//!         * `block` - the `BasicCoverageBlock` label (for example, `bcb0`) or edge label (for
-//!           example `bcb0->bcb1`), for counters or expressions assigned to count a
-//!           `BasicCoverageBlock` or edge. Intermediate expressions (not directly associated with
-//!           a BCB or edge) will be labeled by their expression ID, unless `operation` is also
-//!           specified.
-//!         * `operation` - applied to expressions only, labels include the left-hand-side counter
-//!           or expression label (lhs operand), the operator (`+` or `-`), and the right-hand-side
-//!           counter or expression (rhs operand). Expression operand labels are generated
-//!           recursively, generating labels with nested operations, enclosed in parentheses
-//!           (for example: `bcb2 + (bcb0 - bcb1)`).
+//!       * `id` - counter or expression ID (ascending counter IDs, starting at 1, or descending
+//!         expression IDs, starting at `u32:MAX`)
+//!       * `block` - the `BasicCoverageBlock` label (for example, `bcb0`) or edge label (for
+//!         example `bcb0->bcb1`), for counters or expressions assigned to count a
+//!         `BasicCoverageBlock` or edge. Intermediate expressions (not directly associated with
+//!         a BCB or edge) will be labeled by their expression ID, unless `operation` is also
+//!         specified.
+//!       * `operation` - applied to expressions only, labels include the left-hand-side counter
+//!         or expression label (lhs operand), the operator (`+` or `-`), and the right-hand-side
+//!         counter or expression (rhs operand). Expression operand labels are generated
+//!         recursively, generating labels with nested operations, enclosed in parentheses
+//!         (for example: `bcb2 + (bcb0 - bcb1)`).
 
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use super::spans::CoverageSpan;
@@ -127,16 +127,16 @@ pub const NESTED_INDENT: &str = "    ";
 
 const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 
-pub(crate) fn debug_options<'a>() -> &'a DebugOptions {
+pub(super) fn debug_options<'a>() -> &'a DebugOptions {
     static DEBUG_OPTIONS: SyncOnceCell<DebugOptions> = SyncOnceCell::new();
 
-    &DEBUG_OPTIONS.get_or_init(|| DebugOptions::from_env())
+    &DEBUG_OPTIONS.get_or_init(DebugOptions::from_env)
 }
 
 /// Parses and maintains coverage-specific debug options captured from the environment variable
 /// "RUSTC_COVERAGE_DEBUG_OPTIONS", if set.
 #[derive(Debug, Clone)]
-pub(crate) struct DebugOptions {
+pub(super) struct DebugOptions {
     pub allow_unused_expressions: bool,
     counter_format: ExpressionFormat,
 }
@@ -148,40 +148,46 @@ impl DebugOptions {
 
         if let Ok(env_debug_options) = std::env::var(RUSTC_COVERAGE_DEBUG_OPTIONS) {
             for setting_str in env_debug_options.replace(" ", "").replace("-", "_").split(',') {
-                let mut setting = setting_str.splitn(2, '=');
-                match setting.next() {
-                    Some(option) if option == "allow_unused_expressions" => {
-                        allow_unused_expressions = bool_option_val(option, setting.next());
+                let (option, value) = match setting_str.split_once('=') {
+                    None => (setting_str, None),
+                    Some((k, v)) => (k, Some(v)),
+                };
+                match option {
+                    "allow_unused_expressions" => {
+                        allow_unused_expressions = bool_option_val(option, value);
                         debug!(
                             "{} env option `allow_unused_expressions` is set to {}",
                             RUSTC_COVERAGE_DEBUG_OPTIONS, allow_unused_expressions
                         );
                     }
-                    Some(option) if option == "counter_format" => {
-                        if let Some(strval) = setting.next() {
-                            counter_format = counter_format_option_val(strval);
-                            debug!(
-                                "{} env option `counter_format` is set to {:?}",
-                                RUSTC_COVERAGE_DEBUG_OPTIONS, counter_format
-                            );
-                        } else {
-                            bug!(
-                                "`{}` option in environment variable {} requires one or more \
-                                plus-separated choices (a non-empty subset of \
-                                `id+block+operation`)",
-                                option,
-                                RUSTC_COVERAGE_DEBUG_OPTIONS
-                            );
-                        }
+                    "counter_format" => {
+                        match value {
+                            None => {
+                                bug!(
+                                    "`{}` option in environment variable {} requires one or more \
+                                    plus-separated choices (a non-empty subset of \
+                                    `id+block+operation`)",
+                                    option,
+                                    RUSTC_COVERAGE_DEBUG_OPTIONS
+                                );
+                            }
+                            Some(val) => {
+                                counter_format = counter_format_option_val(val);
+                                debug!(
+                                    "{} env option `counter_format` is set to {:?}",
+                                    RUSTC_COVERAGE_DEBUG_OPTIONS, counter_format
+                                );
+                            }
+                        };
                     }
-                    Some("") => {}
-                    Some(invalid) => bug!(
-                        "Unsupported setting `{}` in environment variable {}",
-                        invalid,
-                        RUSTC_COVERAGE_DEBUG_OPTIONS
-                    ),
-                    None => {}
-                }
+                    _ => {
+                        bug!(
+                            "Unsupported setting `{}` in environment variable {}",
+                            option,
+                            RUSTC_COVERAGE_DEBUG_OPTIONS
+                        )
+                    }
+                };
             }
         }
 
@@ -250,7 +256,7 @@ impl Default for ExpressionFormat {
 ///
 /// `DebugCounters` supports a recursive rendering of `Expression` counters, so they can be
 /// presented as nested expressions such as `(bcb3 - (bcb0 + bcb1))`.
-pub(crate) struct DebugCounters {
+pub(super) struct DebugCounters {
     some_counters: Option<FxHashMap<ExpressionOperandId, DebugCounter>>,
 }
 
@@ -279,7 +285,7 @@ impl DebugCounters {
                 ),
             };
             counters
-                .insert(id.into(), DebugCounter::new(counter_kind.clone(), some_block_label))
+                .insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
                 .expect_none(
                     "attempt to add the same counter_kind to DebugCounters more than once",
                 );
@@ -334,7 +340,7 @@ impl DebugCounters {
         if self.some_counters.is_some() && (counter_format.block || !counter_format.id) {
             let counters = self.some_counters.as_ref().unwrap();
             if let Some(DebugCounter { some_block_label: Some(block_label), .. }) =
-                counters.get(&id.into())
+                counters.get(&id)
             {
                 return if counter_format.id {
                     format!("{}#{}", block_label, id.index())
@@ -386,7 +392,7 @@ impl DebugCounter {
 
 /// If enabled, this data structure captures additional debugging information used when generating
 /// a Graphviz (.dot file) representation of the `CoverageGraph`, for debugging purposes.
-pub(crate) struct GraphvizData {
+pub(super) struct GraphvizData {
     some_bcb_to_coverage_spans_with_counters:
         Option<FxHashMap<BasicCoverageBlock, Vec<(CoverageSpan, CoverageKind)>>>,
     some_bcb_to_dependency_counters: Option<FxHashMap<BasicCoverageBlock, Vec<CoverageKind>>>,
@@ -424,7 +430,7 @@ impl GraphvizData {
         {
             bcb_to_coverage_spans_with_counters
                 .entry(bcb)
-                .or_insert_with(|| Vec::new())
+                .or_insert_with(Vec::new)
                 .push((coverage_span.clone(), counter_kind.clone()));
         }
     }
@@ -450,7 +456,7 @@ impl GraphvizData {
         if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_mut() {
             bcb_to_dependency_counters
                 .entry(bcb)
-                .or_insert_with(|| Vec::new())
+                .or_insert_with(Vec::new)
                 .push(counter_kind.clone());
         }
     }
@@ -496,7 +502,7 @@ impl GraphvizData {
 /// directly or indirectly, to compute the coverage counts for all `CoverageSpan`s, and any that are
 /// _not_ used are retained in the `unused_expressions` Vec, to be included in debug output (logs
 /// and/or a `CoverageGraph` graphviz output).
-pub(crate) struct UsedExpressions {
+pub(super) struct UsedExpressions {
     some_used_expression_operands:
         Option<FxHashMap<ExpressionOperandId, Vec<InjectedExpressionId>>>,
     some_unused_expressions:
@@ -521,8 +527,8 @@ impl UsedExpressions {
     pub fn add_expression_operands(&mut self, expression: &CoverageKind) {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_mut() {
             if let CoverageKind::Expression { id, lhs, rhs, .. } = *expression {
-                used_expression_operands.entry(lhs).or_insert_with(|| Vec::new()).push(id);
-                used_expression_operands.entry(rhs).or_insert_with(|| Vec::new()).push(id);
+                used_expression_operands.entry(lhs).or_insert_with(Vec::new).push(id);
+                used_expression_operands.entry(rhs).or_insert_with(Vec::new).push(id);
             }
         }
     }
@@ -626,7 +632,7 @@ impl UsedExpressions {
 }
 
 /// Generates the MIR pass `CoverageSpan`-specific spanview dump file.
-pub(crate) fn dump_coverage_spanview(
+pub(super) fn dump_coverage_spanview(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     basic_coverage_blocks: &CoverageGraph,
@@ -666,7 +672,7 @@ fn span_viewables(
 }
 
 /// Generates the MIR pass coverage-specific graphviz dump file.
-pub(crate) fn dump_coverage_graphviz(
+pub(super) fn dump_coverage_graphviz(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     pass_name: &str,
@@ -815,7 +821,7 @@ fn bcb_to_string_sections(
 
 /// Returns a simple string representation of a `TerminatorKind` variant, indenpendent of any
 /// values it might hold.
-pub(crate) fn term_type(kind: &TerminatorKind<'tcx>) -> &'static str {
+pub(super) fn term_type(kind: &TerminatorKind<'tcx>) -> &'static str {
     match kind {
         TerminatorKind::Goto { .. } => "Goto",
         TerminatorKind::SwitchInt { .. } => "SwitchInt",

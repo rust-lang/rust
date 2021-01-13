@@ -7,6 +7,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
+use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_span::{hygiene::ExpnKind, ExpnData, Span};
 use rustc_target::spec::abi::Abi;
@@ -28,6 +29,7 @@ pub struct Inline;
 #[derive(Copy, Clone, Debug)]
 struct CallSite<'tcx> {
     callee: Instance<'tcx>,
+    fn_sig: ty::PolyFnSig<'tcx>,
     block: BasicBlock,
     target: Option<BasicBlock>,
     source_info: SourceInfo,
@@ -40,10 +42,11 @@ impl<'tcx> MirPass<'tcx> for Inline {
         }
 
         if tcx.sess.opts.debugging_opts.instrument_coverage {
-            // The current implementation of source code coverage injects code region counters
-            // into the MIR, and assumes a 1-to-1 correspondence between MIR and source-code-
-            // based function.
-            debug!("function inlining is disabled when compiling with `instrument_coverage`");
+            // Since `Inline` happens after `InstrumentCoverage`, the function-specific coverage
+            // counters can be invalidated, such as by merging coverage counter statements from
+            // a pre-inlined function into a different function. This kind of change is invalid,
+            // so inlining must be skipped. Note: This check is performed here so inlining can
+            // be disabled without preventing other optimizations (regardless of `mir_opt_level`).
             return;
         }
 
@@ -120,7 +123,7 @@ impl Inliner<'tcx> {
             let callee_body = callsite.callee.subst_mir_and_normalize_erasing_regions(
                 self.tcx,
                 self.param_env,
-                callee_body,
+                callee_body.clone(),
             );
 
             let old_blocks = caller_body.basic_blocks().next_index();
@@ -173,22 +176,23 @@ impl Inliner<'tcx> {
 
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
-        if let TerminatorKind::Call { func: ref op, ref destination, .. } = terminator.kind {
-            if let ty::FnDef(callee_def_id, substs) = *op.ty(caller_body, self.tcx).kind() {
-                // To resolve an instance its substs have to be fully normalized, so
-                // we do this here.
-                let normalized_substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
+        if let TerminatorKind::Call { ref func, ref destination, .. } = terminator.kind {
+            let func_ty = func.ty(caller_body, self.tcx);
+            if let ty::FnDef(def_id, substs) = *func_ty.kind() {
+                // To resolve an instance its substs have to be fully normalized.
+                let substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
                 let callee =
-                    Instance::resolve(self.tcx, self.param_env, callee_def_id, normalized_substs)
-                        .ok()
-                        .flatten()?;
+                    Instance::resolve(self.tcx, self.param_env, def_id, substs).ok().flatten()?;
 
                 if let InstanceDef::Virtual(..) | InstanceDef::Intrinsic(_) = callee.def {
                     return None;
                 }
 
+                let fn_sig = self.tcx.fn_sig(def_id).subst(self.tcx, substs);
+
                 return Some(CallSite {
                     callee,
+                    fn_sig,
                     block: bb,
                     target: destination.map(|(_, target)| target),
                     source_info: terminator.source_info,
@@ -203,9 +207,8 @@ impl Inliner<'tcx> {
         debug!("should_inline({:?})", callsite);
         let tcx = self.tcx;
 
-        // Cannot inline generators which haven't been transformed yet
-        if callee_body.yield_ty.is_some() {
-            debug!("    yield ty present - not inlining");
+        if callsite.fn_sig.c_variadic() {
+            debug!("callee is variadic - not inlining");
             return false;
         }
 
@@ -218,11 +221,7 @@ impl Inliner<'tcx> {
             return false;
         }
 
-        let self_no_sanitize =
-            self.codegen_fn_attrs.no_sanitize & self.tcx.sess.opts.debugging_opts.sanitizer;
-        let callee_no_sanitize =
-            codegen_fn_attrs.no_sanitize & self.tcx.sess.opts.debugging_opts.sanitizer;
-        if self_no_sanitize != callee_no_sanitize {
+        if self.codegen_fn_attrs.no_sanitize != codegen_fn_attrs.no_sanitize {
             debug!("`callee has incompatible no_sanitize attribute - not inlining");
             return false;
         }
@@ -256,9 +255,14 @@ impl Inliner<'tcx> {
             self.tcx.sess.opts.debugging_opts.inline_mir_threshold
         };
 
-        // Significantly lower the threshold for inlining cold functions
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+            debug!("#[naked] present - not inlining");
+            return false;
+        }
+
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
-            threshold /= 5;
+            debug!("#[cold] present - not inlining");
+            return false;
         }
 
         // Give a bonus functions with a small number of blocks,
@@ -447,7 +451,7 @@ impl Inliner<'tcx> {
                 };
 
                 // Copy the arguments if needed.
-                let args: Vec<_> = self.make_call_args(args, &callsite, caller_body);
+                let args: Vec<_> = self.make_call_args(args, &callsite, caller_body, &callee_body);
 
                 let mut integrator = Integrator {
                     args: &args,
@@ -461,6 +465,7 @@ impl Inliner<'tcx> {
                     tcx: self.tcx,
                     callsite_span: callsite.source_info.span,
                     body_span: callee_body.span,
+                    always_live_locals: BitSet::new_filled(callee_body.local_decls.len()),
                 };
 
                 // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
@@ -490,6 +495,34 @@ impl Inliner<'tcx> {
                         scope.inlined_parent_scope =
                             Some(integrator.map_scope(OUTERMOST_SOURCE_SCOPE));
                     }
+                }
+
+                // If there are any locals without storage markers, give them storage only for the
+                // duration of the call.
+                for local in callee_body.vars_and_temps_iter() {
+                    if integrator.always_live_locals.contains(local) {
+                        let new_local = integrator.map_local(local);
+                        caller_body[callsite.block].statements.push(Statement {
+                            source_info: callsite.source_info,
+                            kind: StatementKind::StorageLive(new_local),
+                        });
+                    }
+                }
+                if let Some(block) = callsite.target {
+                    // To avoid repeated O(n) insert, push any new statements to the end and rotate
+                    // the slice once.
+                    let mut n = 0;
+                    for local in callee_body.vars_and_temps_iter().rev() {
+                        if integrator.always_live_locals.contains(local) {
+                            let new_local = integrator.map_local(local);
+                            caller_body[block].statements.push(Statement {
+                                source_info: callsite.source_info,
+                                kind: StatementKind::StorageDead(new_local),
+                            });
+                            n += 1;
+                        }
+                    }
+                    caller_body[block].statements.rotate_right(n);
                 }
 
                 // Insert all of the (mapped) parts of the callee body into the caller.
@@ -528,6 +561,7 @@ impl Inliner<'tcx> {
         args: Vec<Operand<'tcx>>,
         callsite: &CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
+        callee_body: &Body<'tcx>,
     ) -> Vec<Local> {
         let tcx = self.tcx;
 
@@ -554,9 +588,7 @@ impl Inliner<'tcx> {
         //     tmp2 = tuple_tmp.2
         //
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
-        // FIXME(eddyb) make this check for `"rust-call"` ABI combined with
-        // `callee_body.spread_arg == None`, instead of special-casing closures.
-        if tcx.is_closure(callsite.callee.def_id()) {
+        if callsite.fn_sig.abi() == Abi::RustCall && callee_body.spread_arg.is_none() {
             let mut args = args.into_iter();
             let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
@@ -673,6 +705,7 @@ struct Integrator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     callsite_span: Span,
     body_span: Span,
+    always_live_locals: BitSet<Local>,
 }
 
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
@@ -718,11 +751,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     }
 
     fn visit_span(&mut self, span: &mut Span) {
+        let mut expn_data =
+            ExpnData::default(ExpnKind::Inlined, *span, self.tcx.sess.edition(), None);
+        expn_data.def_site = self.body_span;
         // Make sure that all spans track the fact that they were inlined.
-        *span = self.callsite_span.fresh_expansion(ExpnData {
-            def_site: self.body_span,
-            ..ExpnData::default(ExpnKind::Inlined, *span, self.tcx.sess.edition(), None)
-        });
+        *span = self.callsite_span.fresh_expansion(expn_data);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
@@ -760,6 +793,15 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         if *kind == RetagKind::FnEntry {
             *kind = RetagKind::Default;
         }
+    }
+
+    fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
+        if let StatementKind::StorageLive(local) | StatementKind::StorageDead(local) =
+            statement.kind
+        {
+            self.always_live_locals.remove(local);
+        }
+        self.super_statement(statement, location);
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, loc: Location) {

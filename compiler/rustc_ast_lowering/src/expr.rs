@@ -164,6 +164,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Range(ref e1, ref e2, lims) => {
                     self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), lims)
                 }
+                ExprKind::Underscore => {
+                    self.sess
+                        .struct_span_err(
+                            e.span,
+                            "in expressions, `_` can only be used on the left-hand side of an assignment",
+                        )
+                        .span_label(e.span, "`_` not allowed here")
+                        .emit();
+                    hir::ExprKind::Err
+                }
                 ExprKind::Path(ref qself, ref path) => {
                     let qpath = self.lower_qpath(
                         e.id,
@@ -187,8 +197,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::InlineAsm(ref asm) => self.lower_expr_asm(e.span, asm),
                 ExprKind::LlvmInlineAsm(ref asm) => self.lower_expr_llvm_asm(asm),
-                ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
-                    let maybe_expr = maybe_expr.as_ref().map(|x| self.lower_expr(x));
+                ExprKind::Struct(ref path, ref fields, ref rest) => {
+                    let rest = match rest {
+                        StructRest::Base(e) => Some(self.lower_expr(e)),
+                        StructRest::Rest(sp) => {
+                            self.sess
+                                .struct_span_err(*sp, "base expression required after `..`")
+                                .span_label(*sp, "add a base expression here")
+                                .emit();
+                            Some(&*self.arena.alloc(self.expr_err(*sp)))
+                        }
+                        StructRest::None => None,
+                    };
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
                             e.id,
@@ -198,7 +218,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ImplTraitContext::disallowed(),
                         )),
                         self.arena.alloc_from_iter(fields.iter().map(|x| self.lower_field(x))),
-                        maybe_expr,
+                        rest,
                     )
                 }
                 ExprKind::Yield(ref opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
@@ -327,13 +347,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `_ => else_block` where `else_block` is `{}` if there's `None`:
         let else_pat = self.pat_wild(span);
         let (else_expr, contains_else_clause) = match else_opt {
-            None => (self.expr_block_empty(span), false),
+            None => (self.expr_block_empty(span.shrink_to_hi()), false),
             Some(els) => (self.lower_expr(els), true),
         };
         let else_arm = self.arm(else_pat, else_expr);
 
         // Handle then + scrutinee:
-        let then_expr = self.lower_block_expr(then);
         let (then_pat, scrutinee, desugar) = match cond.kind {
             // `<pat> => <then>`:
             ExprKind::Let(ref pat, ref scrutinee) => {
@@ -355,6 +374,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (pat, cond, hir::MatchSource::IfDesugar { contains_else_clause })
             }
         };
+        let then_expr = self.lower_block_expr(then);
         let then_arm = self.arm(then_pat, self.arena.alloc(then_expr));
 
         hir::ExprKind::Match(scrutinee, arena_vec![self; then_arm, else_arm], desugar)
@@ -380,7 +400,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         // Handle then + scrutinee:
-        let then_expr = self.lower_block_expr(body);
         let (then_pat, scrutinee, desugar, source) = match cond.kind {
             ExprKind::Let(ref pat, ref scrutinee) => {
                 // to:
@@ -420,6 +439,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (pat, cond, hir::MatchSource::WhileDesugar, hir::LoopSource::While)
             }
         };
+        let then_expr = self.lower_block_expr(body);
         let then_arm = self.arm(then_pat, self.arena.alloc(then_expr));
 
         // `match <scrutinee> { ... }`
@@ -485,14 +505,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
+        let pat = self.lower_pat(&arm.pat);
+        let guard = arm.guard.as_ref().map(|cond| {
+            if let ExprKind::Let(ref pat, ref scrutinee) = cond.kind {
+                hir::Guard::IfLet(self.lower_pat(pat), self.lower_expr(scrutinee))
+            } else {
+                hir::Guard::If(self.lower_expr(cond))
+            }
+        });
         hir::Arm {
             hir_id: self.next_id(),
             attrs: self.lower_attrs(&arm.attrs),
-            pat: self.lower_pat(&arm.pat),
-            guard: match arm.guard {
-                Some(ref x) => Some(hir::Guard::If(self.lower_expr(x))),
-                _ => None,
-            },
+            pat,
+            guard,
             body: self.lower_expr(&arm.body),
             span: arm.span,
         }
@@ -851,20 +876,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
         whole_span: Span,
     ) -> hir::ExprKind<'hir> {
         // Return early in case of an ordinary assignment.
-        fn is_ordinary(lhs: &Expr) -> bool {
+        fn is_ordinary(lower_ctx: &mut LoweringContext<'_, '_>, lhs: &Expr) -> bool {
             match &lhs.kind {
-                ExprKind::Tup(..) => false,
+                ExprKind::Array(..)
+                | ExprKind::Struct(..)
+                | ExprKind::Tup(..)
+                | ExprKind::Underscore => false,
+                // Check for tuple struct constructor.
+                ExprKind::Call(callee, ..) => lower_ctx.extract_tuple_struct_path(callee).is_none(),
                 ExprKind::Paren(e) => {
                     match e.kind {
                         // We special-case `(..)` for consistency with patterns.
                         ExprKind::Range(None, None, RangeLimits::HalfOpen) => false,
-                        _ => is_ordinary(e),
+                        _ => is_ordinary(lower_ctx, e),
                     }
                 }
                 _ => true,
             }
         }
-        if is_ordinary(lhs) {
+        if is_ordinary(self, lhs) {
             return hir::ExprKind::Assign(self.lower_expr(lhs), self.lower_expr(rhs), eq_sign_span);
         }
         if !self.sess.features_untracked().destructuring_assignment {
@@ -902,6 +932,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Block(&self.block_all(whole_span, stmts, None), None)
     }
 
+    /// If the given expression is a path to a tuple struct, returns that path.
+    /// It is not a complete check, but just tries to reject most paths early
+    /// if they are not tuple structs.
+    /// Type checking will take care of the full validation later.
+    fn extract_tuple_struct_path<'a>(&mut self, expr: &'a Expr) -> Option<&'a Path> {
+        // For tuple struct destructuring, it must be a non-qualified path (like in patterns).
+        if let ExprKind::Path(None, path) = &expr.kind {
+            // Does the path resolves to something disallowed in a tuple struct/variant pattern?
+            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
+                if partial_res.unresolved_segments() == 0
+                    && !partial_res.base_res().expected_in_tuple_struct_pat()
+                {
+                    return None;
+                }
+            }
+            return Some(path);
+        }
+        None
+    }
+
     /// Convert the LHS of a destructuring assignment to a pattern.
     /// Each sub-assignment is recorded in `assignments`.
     fn destructure_assign(
@@ -911,6 +961,90 @@ impl<'hir> LoweringContext<'_, 'hir> {
         assignments: &mut Vec<hir::Stmt<'hir>>,
     ) -> &'hir hir::Pat<'hir> {
         match &lhs.kind {
+            // Underscore pattern.
+            ExprKind::Underscore => {
+                return self.pat_without_dbm(lhs.span, hir::PatKind::Wild);
+            }
+            // Slice patterns.
+            ExprKind::Array(elements) => {
+                let (pats, rest) =
+                    self.destructure_sequence(elements, "slice", eq_sign_span, assignments);
+                let slice_pat = if let Some((i, span)) = rest {
+                    let (before, after) = pats.split_at(i);
+                    hir::PatKind::Slice(
+                        before,
+                        Some(self.pat_without_dbm(span, hir::PatKind::Wild)),
+                        after,
+                    )
+                } else {
+                    hir::PatKind::Slice(pats, None, &[])
+                };
+                return self.pat_without_dbm(lhs.span, slice_pat);
+            }
+            // Tuple structs.
+            ExprKind::Call(callee, args) => {
+                if let Some(path) = self.extract_tuple_struct_path(callee) {
+                    let (pats, rest) = self.destructure_sequence(
+                        args,
+                        "tuple struct or variant",
+                        eq_sign_span,
+                        assignments,
+                    );
+                    let qpath = self.lower_qpath(
+                        callee.id,
+                        &None,
+                        path,
+                        ParamMode::Optional,
+                        ImplTraitContext::disallowed(),
+                    );
+                    // Destructure like a tuple struct.
+                    let tuple_struct_pat =
+                        hir::PatKind::TupleStruct(qpath, pats, rest.map(|r| r.0));
+                    return self.pat_without_dbm(lhs.span, tuple_struct_pat);
+                }
+            }
+            // Structs.
+            ExprKind::Struct(path, fields, rest) => {
+                let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
+                    let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
+                    hir::FieldPat {
+                        hir_id: self.next_id(),
+                        ident: f.ident,
+                        pat,
+                        is_shorthand: f.is_shorthand,
+                        span: f.span,
+                    }
+                }));
+                let qpath = self.lower_qpath(
+                    lhs.id,
+                    &None,
+                    path,
+                    ParamMode::Optional,
+                    ImplTraitContext::disallowed(),
+                );
+                let fields_omitted = match rest {
+                    StructRest::Base(e) => {
+                        self.sess
+                            .struct_span_err(
+                                e.span,
+                                "functional record updates are not allowed in destructuring \
+                                    assignments",
+                            )
+                            .span_suggestion(
+                                e.span,
+                                "consider removing the trailing pattern",
+                                String::new(),
+                                rustc_errors::Applicability::MachineApplicable,
+                            )
+                            .emit();
+                        true
+                    }
+                    StructRest::Rest(_) => true,
+                    StructRest::None => false,
+                };
+                let struct_pat = hir::PatKind::Struct(qpath, field_pats, fields_omitted);
+                return self.pat_without_dbm(lhs.span, struct_pat);
+            }
             // Tuples.
             ExprKind::Tup(elements) => {
                 let (pats, rest) =
@@ -1178,7 +1312,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::InlineAsmOperand::Sym { expr: self.lower_expr_mut(expr) }
                     }
                 };
-                Some(op)
+                Some((op, *op_sp))
             })
             .collect();
 
@@ -1197,7 +1331,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             } = *p
             {
                 let op_sp = asm.operands[operand_idx].1;
-                match &operands[operand_idx] {
+                match &operands[operand_idx].0 {
                     hir::InlineAsmOperand::In { reg, .. }
                     | hir::InlineAsmOperand::Out { reg, .. }
                     | hir::InlineAsmOperand::InOut { reg, .. }
@@ -1255,14 +1389,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut used_input_regs = FxHashMap::default();
         let mut used_output_regs = FxHashMap::default();
-        for (idx, op) in operands.iter().enumerate() {
-            let op_sp = asm.operands[idx].1;
+        let mut required_features: Vec<&str> = vec![];
+        for (idx, &(ref op, op_sp)) in operands.iter().enumerate() {
             if let Some(reg) = op.reg() {
+                // Make sure we don't accidentally carry features from the
+                // previous iteration.
+                required_features.clear();
+
                 // Validate register classes against currently enabled target
                 // features. We check that at least one type is available for
                 // the current target.
                 let reg_class = reg.reg_class();
-                let mut required_features: Vec<&str> = vec![];
                 for &(_, feature) in reg_class.supported_types(asm_arch) {
                     if let Some(feature) = feature {
                         if self.sess.target_features.contains(&Symbol::intern(feature)) {
@@ -1325,8 +1462,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                     skip = true;
 
                                     let idx2 = *o.get();
-                                    let op2 = &operands[idx2];
-                                    let op_sp2 = asm.operands[idx2].1;
+                                    let &(ref op2, op_sp2) = &operands[idx2];
                                     let reg2 = match op2.reg() {
                                         Some(asm::InlineAsmRegOrRegClass::Reg(r)) => r,
                                         _ => unreachable!(),

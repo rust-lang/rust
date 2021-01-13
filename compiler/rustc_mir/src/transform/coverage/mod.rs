@@ -5,6 +5,9 @@ mod debug;
 mod graph;
 mod spans;
 
+#[cfg(test)]
+mod tests;
+
 use counters::CoverageCounters;
 use graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use spans::{CoverageSpan, CoverageSpans};
@@ -27,11 +30,12 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
+use rustc_span::source_map::SourceMap;
 use rustc_span::{CharPos, Pos, SourceFile, Span, Symbol};
 
 /// A simple error message wrapper for `coverage::Error`s.
 #[derive(Debug)]
-pub(crate) struct Error {
+struct Error {
     message: String,
 }
 
@@ -75,6 +79,14 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             return;
         }
 
+        match mir_body.basic_blocks()[mir::START_BLOCK].terminator().kind {
+            TerminatorKind::Unreachable => {
+                trace!("InstrumentCoverage skipped for unreachable `START_BLOCK`");
+                return;
+            }
+            _ => {}
+        }
+
         trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
         Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
         trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
@@ -85,6 +97,8 @@ struct Instrumentor<'a, 'tcx> {
     pass_name: &'a str,
     tcx: TyCtxt<'tcx>,
     mir_body: &'a mut mir::Body<'tcx>,
+    source_file: Lrc<SourceFile>,
+    fn_sig_span: Span,
     body_span: Span,
     basic_coverage_blocks: CoverageGraph,
     coverage_counters: CoverageCounters,
@@ -92,14 +106,24 @@ struct Instrumentor<'a, 'tcx> {
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(pass_name: &'a str, tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
-        let hir_body = hir_body(tcx, mir_body.source.def_id());
+        let source_map = tcx.sess.source_map();
+        let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, mir_body.source.def_id());
         let body_span = hir_body.value.span;
+        let source_file = source_map.lookup_source_file(body_span.lo());
+        let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
+            Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.hi()))
+        }) {
+            Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
+            None => body_span.shrink_to_lo(),
+        };
         let function_source_hash = hash_mir_source(tcx, hir_body);
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
         Self {
             pass_name,
             tcx,
             mir_body,
+            source_file,
+            fn_sig_span,
             body_span,
             basic_coverage_blocks,
             coverage_counters: CoverageCounters::new(function_source_hash),
@@ -111,9 +135,15 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let source_map = tcx.sess.source_map();
         let mir_source = self.mir_body.source;
         let def_id = mir_source.def_id();
+        let fn_sig_span = self.fn_sig_span;
         let body_span = self.body_span;
 
-        debug!("instrumenting {:?}, span: {}", def_id, source_map.span_to_string(body_span));
+        debug!(
+            "instrumenting {:?}, fn sig span: {}, body span: {}",
+            def_id,
+            source_map.span_to_string(fn_sig_span),
+            source_map.span_to_string(body_span)
+        );
 
         let mut graphviz_data = debug::GraphvizData::new();
         let mut debug_used_expressions = debug::UsedExpressions::new();
@@ -135,6 +165,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // Compute `CoverageSpan`s from the `CoverageGraph`.
         let coverage_spans = CoverageSpans::generate_coverage_spans(
             &self.mir_body,
+            fn_sig_span,
             body_span,
             &self.basic_coverage_blocks,
         );
@@ -252,8 +283,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
         let body_span = self.body_span;
-        let source_file = source_map.lookup_source_file(body_span.lo());
-        let file_name = Symbol::intern(&source_file.name.to_string());
+        let file_name = Symbol::intern(&self.source_file.name.to_string());
 
         let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
         for covspan in coverage_spans {
@@ -269,47 +299,22 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 bug!("Every BasicCoverageBlock should have a Counter or Expression");
             };
             graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &counter_kind);
-            // FIXME(#78542): Can spans for `TerminatorKind::Goto` be improved to avoid special
-            // cases?
-            let some_code_region = if self.is_code_region_redundant(bcb, span, body_span) {
-                None
-            } else {
-                Some(make_code_region(file_name, &source_file, span, body_span))
-            };
-            inject_statement(self.mir_body, counter_kind, self.bcb_last_bb(bcb), some_code_region);
-        }
-    }
 
-    /// Returns true if the type of `BasicCoverageBlock` (specifically, it's `BasicBlock`s
-    /// `TerminatorKind`) with the given `Span` (relative to the `body_span`) is known to produce
-    /// a redundant coverage count.
-    ///
-    /// There is at least one case for this, and if it's not handled, the last line in a function
-    /// will be double-counted.
-    ///
-    /// If this method returns `true`, the counter (which other `Expressions` may depend on) is
-    /// still injected, but without an associated code region.
-    // FIXME(#78542): Can spans for `TerminatorKind::Goto` be improved to avoid special cases?
-    fn is_code_region_redundant(
-        &self,
-        bcb: BasicCoverageBlock,
-        span: Span,
-        body_span: Span,
-    ) -> bool {
-        if span.hi() == body_span.hi() {
-            // All functions execute a `Return`-terminated `BasicBlock`, regardless of how the
-            // function returns; but only some functions also _can_ return after a `Goto` block
-            // that ends on the closing brace of the function (with the `Return`). When this
-            // happens, the last character is counted 2 (or possibly more) times, when we know
-            // the function returned only once (of course). By giving all `Goto` terminators at
-            // the end of a function a `non-reportable` code region, they are still counted
-            // if appropriate, but they don't increment the line counter, as long as their is
-            // also a `Return` on that last line.
-            if let TerminatorKind::Goto { .. } = self.bcb_terminator(bcb).kind {
-                return true;
-            }
+            debug!(
+                "Calling make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
+                file_name,
+                self.source_file,
+                source_map.span_to_string(span),
+                source_map.span_to_string(body_span)
+            );
+
+            inject_statement(
+                self.mir_body,
+                counter_kind,
+                self.bcb_leader_bb(bcb),
+                Some(make_code_region(source_map, file_name, &self.source_file, span, body_span)),
+            );
         }
-        false
     }
 
     /// `inject_coverage_span_counters()` looped through the `CoverageSpan`s and injected the
@@ -409,11 +414,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     }
 
     #[inline]
-    fn bcb_terminator(&self, bcb: BasicCoverageBlock) -> &Terminator<'tcx> {
-        self.bcb_data(bcb).terminator(self.mir_body)
-    }
-
-    #[inline]
     fn bcb_data(&self, bcb: BasicCoverageBlock) -> &BasicCoverageBlockData {
         &self.basic_coverage_blocks[bcb]
     }
@@ -471,7 +471,7 @@ fn inject_statement(
             code_region: some_code_region,
         }),
     };
-    data.statements.push(statement);
+    data.statements.insert(0, statement);
 }
 
 // Non-code expressions are injected into the coverage map, without generating executable code.
@@ -490,6 +490,7 @@ fn inject_intermediate_expression(mir_body: &mut mir::Body<'tcx>, expression: Co
 
 /// Convert the Span into its file name, start line and column, and end line and column
 fn make_code_region(
+    source_map: &SourceMap,
     file_name: Symbol,
     source_file: &Lrc<SourceFile>,
     span: Span,
@@ -509,6 +510,8 @@ fn make_code_region(
     } else {
         source_file.lookup_file_pos(span.hi())
     };
+    let start_line = source_map.doctest_offset_line(&source_file.name, start_line);
+    let end_line = source_map.doctest_offset_line(&source_file.name, end_line);
     CodeRegion {
         file_name,
         start_line: start_line as u32,
@@ -518,10 +521,15 @@ fn make_code_region(
     }
 }
 
-fn hir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx rustc_hir::Body<'tcx> {
+fn fn_sig_and_body<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> (Option<&'tcx rustc_hir::FnSig<'tcx>>, &'tcx rustc_hir::Body<'tcx>) {
+    // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
+    // to HIR for it.
     let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
     let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
-    tcx.hir().body(fn_body_id)
+    (hir::map::fn_sig(hir_node), tcx.hir().body(fn_body_id))
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {

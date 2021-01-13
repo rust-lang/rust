@@ -10,10 +10,10 @@ dir=$(pwd)
 
 # Use rustc with cg_clif as hotpluggable backend instead of the custom cg_clif driver so that
 # build scripts are still compiled using cg_llvm.
-export RUSTC=$dir"/cg_clif_build_sysroot"
+export RUSTC=$dir"/bin/cg_clif_build_sysroot"
 export RUSTFLAGS=$RUSTFLAGS" --clif"
 
-cd $(dirname "$0")
+cd "$(dirname "$0")"
 
 # Cleanup for previous run
 #     v Clean target dir except for build scripts and incremental cache
@@ -28,12 +28,13 @@ if [[ "$1" != "--debug" ]]; then
     sysroot_channel='release'
     # FIXME Enable incremental again once rust-lang/rust#74946 is fixed
     # FIXME Enable -Zmir-opt-level=2 again once it doesn't ice anymore
-    CARGO_INCREMENTAL=0 RUSTFLAGS="$RUSTFLAGS" cargo build --target $TARGET_TRIPLE --release
+    CARGO_INCREMENTAL=0 RUSTFLAGS="$RUSTFLAGS" cargo build --target "$TARGET_TRIPLE" --release
 else
     sysroot_channel='debug'
-    cargo build --target $TARGET_TRIPLE
+    cargo build --target "$TARGET_TRIPLE"
 fi
 
 # Copy files to sysroot
-mkdir -p $dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
-cp -a target/$TARGET_TRIPLE/$sysroot_channel/deps/* $dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
+mkdir -p "$dir/lib/rustlib/$TARGET_TRIPLE/lib/"
+ln "target/$TARGET_TRIPLE/$sysroot_channel/deps/"* "$dir/lib/rustlib/$TARGET_TRIPLE/lib/"
+rm "$dir/lib/rustlib/$TARGET_TRIPLE/lib/"*.{rmeta,d}

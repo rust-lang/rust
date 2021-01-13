@@ -13,7 +13,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
 
-use crate::{Span, DUMMY_SP, SESSION_GLOBALS};
+use crate::{Edition, Span, DUMMY_SP, SESSION_GLOBALS};
 
 #[cfg(test)]
 mod tests;
@@ -25,7 +25,7 @@ symbols! {
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
-        Invalid:            "",
+        Empty:              "",
         PathRoot:           "{{root}}",
         DollarCrate:        "$crate",
         Underscore:         "_",
@@ -267,6 +267,7 @@ symbols! {
         asm,
         assert,
         assert_inhabited,
+        assert_macro,
         assert_receiver_is_total_eq,
         assert_uninit_valid,
         assert_zero_valid,
@@ -284,6 +285,7 @@ symbols! {
         attr_literals,
         attributes,
         augmented_assignments,
+        auto_traits,
         automatically_derived,
         avx512_target_feature,
         await_macro,
@@ -318,6 +320,7 @@ symbols! {
         call_mut,
         call_once,
         caller_location,
+        capture_disjoint_fields,
         cdylib,
         ceilf32,
         ceilf64,
@@ -353,6 +356,7 @@ symbols! {
         concat_idents,
         conservative_impl_trait,
         console,
+        const_allocate,
         const_compare_raw_pointers,
         const_constructor,
         const_eval_limit,
@@ -364,6 +368,7 @@ symbols! {
         const_fn_transmute,
         const_fn_union,
         const_generics,
+        const_generics_defaults,
         const_if_match,
         const_impl_trait,
         const_in_array_repeat_expressions,
@@ -376,6 +381,7 @@ symbols! {
         const_ptr,
         const_raw_ptr_deref,
         const_raw_ptr_to_usize_cast,
+        const_refs_to_cell,
         const_slice_ptr,
         const_trait_bound_opt_out,
         const_trait_impl,
@@ -392,6 +398,7 @@ symbols! {
         copysignf64,
         core,
         core_intrinsics,
+        core_panic_macro,
         cosf32,
         cosf64,
         crate_id,
@@ -415,6 +422,7 @@ symbols! {
         dead_code,
         dealloc,
         debug,
+        debug_assert_macro,
         debug_assertions,
         debug_struct,
         debug_trait,
@@ -454,6 +462,9 @@ symbols! {
         document_private_items,
         dotdot_in_tuple_patterns,
         dotdoteq_in_patterns,
+        dreg,
+        dreg_low16,
+        dreg_low8,
         drop,
         drop_in_place,
         drop_types_in_const,
@@ -461,6 +472,7 @@ symbols! {
         dropck_parametricity,
         dylib,
         dyn_trait,
+        edition_macro_pats,
         eh_catch_typeinfo,
         eh_personality,
         emit_enum,
@@ -490,6 +502,7 @@ symbols! {
         expf64,
         export_name,
         expr,
+        extended_key_value_attributes,
         extern_absolute_paths,
         extern_crate_item_prelude,
         extern_crate_self,
@@ -537,6 +550,7 @@ symbols! {
         format_args_capture,
         format_args_nl,
         freeze,
+        freg,
         frem_fast,
         from,
         from_desugaring,
@@ -620,6 +634,7 @@ symbols! {
         iter,
         keyword,
         kind,
+        kreg,
         label,
         label_break_value,
         lang,
@@ -645,6 +660,7 @@ symbols! {
         lint_reasons,
         literal,
         llvm_asm,
+        local,
         local_inner_macros,
         log10f32,
         log10f64,
@@ -788,12 +804,15 @@ symbols! {
         panic_runtime,
         panic_str,
         panic_unwind,
+        panicking,
         param_attrs,
         parent_trait,
         partial_cmp,
         partial_ord,
         passes,
         pat,
+        pat2018,
+        pat2021,
         path,
         pattern_parentheses,
         phantom_data,
@@ -846,6 +865,9 @@ symbols! {
         pub_restricted,
         pure,
         pushpop_unsafe,
+        qreg,
+        qreg_low4,
+        qreg_low8,
         quad_precision_float,
         question_mark,
         quote,
@@ -867,6 +889,13 @@ symbols! {
         reexport_test_harness_main,
         reference,
         reflect,
+        reg,
+        reg16,
+        reg32,
+        reg64,
+        reg_abcd,
+        reg_byte,
+        reg_thumb,
         register_attr,
         register_tool,
         relaxed_adts,
@@ -896,6 +925,7 @@ symbols! {
         rust,
         rust_2015_preview,
         rust_2018_preview,
+        rust_2021_preview,
         rust_begin_unwind,
         rust_eh_catch_typeinfo,
         rust_eh_personality,
@@ -909,6 +939,7 @@ symbols! {
         rustc_args_required_const,
         rustc_attrs,
         rustc_builtin_macro,
+        rustc_capture_analysis,
         rustc_clean,
         rustc_const_stable,
         rustc_const_unstable,
@@ -1051,6 +1082,8 @@ symbols! {
         spotlight,
         sqrtf32,
         sqrtf64,
+        sreg,
+        sreg_low16,
         sse4a_target_feature,
         stable,
         staged_api,
@@ -1062,6 +1095,7 @@ symbols! {
         staticlib,
         std,
         std_inject,
+        std_panic_macro,
         stmt,
         stmt_expr_attributes,
         stop_after_dataflow,
@@ -1205,6 +1239,8 @@ symbols! {
         volatile_load,
         volatile_set_memory,
         volatile_store,
+        vreg,
+        vreg_low16,
         warn,
         wasm_import_module,
         wasm_target_feature,
@@ -1216,6 +1252,9 @@ symbols! {
         wrapping_mul,
         wrapping_sub,
         write_bytes,
+        xmm_reg,
+        ymm_reg,
+        zmm_reg,
     }
 }
 
@@ -1240,7 +1279,7 @@ impl Ident {
 
     #[inline]
     pub fn invalid() -> Ident {
-        Ident::with_dummy_span(kw::Invalid)
+        Ident::with_dummy_span(kw::Empty)
     }
 
     /// Maps a string to an identifier with a dummy span.
@@ -1354,15 +1393,13 @@ impl fmt::Display for IdentPrinter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_raw {
             f.write_str("r#")?;
-        } else {
-            if self.symbol == kw::DollarCrate {
-                if let Some(span) = self.convert_dollar_crate {
-                    let converted = span.ctxt().dollar_crate_name();
-                    if !converted.is_path_segment_keyword() {
-                        f.write_str("::")?;
-                    }
-                    return fmt::Display::fmt(&converted, f);
+        } else if self.symbol == kw::DollarCrate {
+            if let Some(span) = self.convert_dollar_crate {
+                let converted = span.ctxt().dollar_crate_name();
+                if !converted.is_path_segment_keyword() {
+                    f.write_str("::")?;
                 }
+                return fmt::Display::fmt(&converted, f);
             }
         }
         fmt::Display::fmt(&self.symbol, f)
@@ -1420,12 +1457,6 @@ impl Symbol {
         with_interner(|interner| interner.intern(string))
     }
 
-    /// Access the symbol's chars. This is a slowish operation because it
-    /// requires locking the symbol interner.
-    pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
-        with_interner(|interner| f(interner.get(self)))
-    }
-
     /// Convert to a `SymbolStr`. This is a slowish operation because it
     /// requires locking the symbol interner.
     pub fn as_str(self) -> SymbolStr {
@@ -1436,6 +1467,10 @@ impl Symbol {
 
     pub fn as_u32(self) -> u32 {
         self.0.as_u32()
+    }
+
+    pub fn is_empty(self) -> bool {
+        self == kw::Empty
     }
 
     /// This method is supposed to be used in error messages, so it's expected to be
@@ -1449,19 +1484,19 @@ impl Symbol {
 
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.with(|str| fmt::Debug::fmt(&str, f))
+        fmt::Debug::fmt(&self.as_str(), f)
     }
 }
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.with(|str| fmt::Display::fmt(&str, f))
+        fmt::Display::fmt(&self.as_str(), f)
     }
 }
 
 impl<S: Encoder> Encodable<S> for Symbol {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        self.with(|string| s.emit_str(string))
+        s.emit_str(&self.as_str())
     }
 }
 
@@ -1542,8 +1577,7 @@ impl Interner {
 /// Given that `kw` is imported, use them like `kw::keyword_name`.
 /// For example `kw::Loop` or `kw::Break`.
 pub mod kw {
-    use super::Symbol;
-    keywords!();
+    pub use super::kw_generated::*;
 }
 
 // This module has a very short name because it's used a lot.
@@ -1551,22 +1585,23 @@ pub mod kw {
 ///
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
-#[allow(rustc::default_hash_types)]
 pub mod sym {
     use super::Symbol;
     use std::convert::TryInto;
 
-    define_symbols!();
+    pub use super::sym_generated::*;
 
     // Used from a macro in `librustc_feature/accepted.rs`
     pub use super::kw::MacroRules as macro_rules;
 
-    // Get the symbol for an integer. The first few non-negative integers each
-    // have a static symbol and therefore are fast.
+    /// Get the symbol for an integer.
+    ///
+    /// The first few non-negative integers each have a static symbol and therefore
+    /// are fast.
     pub fn integer<N: TryInto<usize> + Copy + ToString>(n: N) -> Symbol {
         if let Result::Ok(idx) = n.try_into() {
-            if let Option::Some(&sym_) = digits_array.get(idx) {
-                return sym_;
+            if idx < 10 {
+                return Symbol::new(super::SYMBOL_DIGITS_BASE + idx as u32);
             }
         }
         Symbol::intern(&n.to_string())
@@ -1574,17 +1609,32 @@ pub mod sym {
 }
 
 impl Symbol {
-    fn is_used_keyword_2018(self) -> bool {
-        self >= kw::Async && self <= kw::Dyn
+    fn is_special(self) -> bool {
+        self <= kw::Underscore
     }
 
-    fn is_unused_keyword_2018(self) -> bool {
-        self == kw::Try
+    fn is_used_keyword_always(self) -> bool {
+        self >= kw::As && self <= kw::While
     }
 
-    /// Used for sanity checking rustdoc keyword sections.
-    pub fn is_doc_keyword(self) -> bool {
-        self <= kw::Union
+    fn is_used_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
+        (self >= kw::Async && self <= kw::Dyn) && edition() >= Edition::Edition2018
+    }
+
+    fn is_unused_keyword_always(self) -> bool {
+        self >= kw::Abstract && self <= kw::Yield
+    }
+
+    fn is_unused_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
+        self == kw::Try && edition() >= Edition::Edition2018
+    }
+
+    pub fn is_reserved(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
+        self.is_special()
+            || self.is_used_keyword_always()
+            || self.is_unused_keyword_always()
+            || self.is_used_keyword_conditional(edition)
+            || self.is_unused_keyword_conditional(edition)
     }
 
     /// A keyword or reserved identifier that can be used as a path segment.
@@ -1602,9 +1652,9 @@ impl Symbol {
         self == kw::True || self == kw::False
     }
 
-    /// This symbol can be a raw identifier.
+    /// Returns `true` if this symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
-        self != kw::Invalid && self != kw::Underscore && !self.is_path_segment_keyword()
+        self != kw::Empty && self != kw::Underscore && !self.is_path_segment_keyword()
     }
 }
 
@@ -1612,26 +1662,27 @@ impl Ident {
     // Returns `true` for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
-        self.name <= kw::Underscore
+        self.name.is_special()
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::As && self.name <= kw::While
-            || self.name.is_used_keyword_2018() && self.span.rust_2018()
+        self.name.is_used_keyword_always()
+            || self.name.is_used_keyword_conditional(|| self.span.edition())
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::Abstract && self.name <= kw::Yield
-            || self.name.is_unused_keyword_2018() && self.span.rust_2018()
+        self.name.is_unused_keyword_always()
+            || self.name.is_unused_keyword_conditional(|| self.span.edition())
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved(self) -> bool {
-        self.is_special() || self.is_used_keyword() || self.is_unused_keyword()
+        // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
+        self.name.is_reserved(|| self.span.edition())
     }
 
     /// A keyword or reserved identifier that can be used as a path segment.
@@ -1651,7 +1702,7 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     SESSION_GLOBALS.with(|session_globals| f(&mut *session_globals.symbol_interner.lock()))
 }
 
-/// An alternative to `Symbol`, useful when the chars within the symbol need to
+/// An alternative to [`Symbol`], useful when the chars within the symbol need to
 /// be accessed. It deliberately has limited functionality and should only be
 /// used for temporary values.
 ///

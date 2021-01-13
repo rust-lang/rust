@@ -1,5 +1,4 @@
 // compile-flags: -Z mir-opt-level=2
-// ignore-cloudabi no std::fs
 // build-pass
 
 use std::fs::File;

@@ -1,12 +1,11 @@
-use super::ty::{AllowPlus, RecoverQPath};
+use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, TokenType};
 use crate::maybe_whole;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
-use rustc_ast::{
-    self as ast, AngleBracketedArg, AngleBracketedArgs, GenericArg, ParenthesizedArgs,
-};
+use rustc_ast::{self as ast, AngleBracketedArg, AngleBracketedArgs, ParenthesizedArgs};
 use rustc_ast::{AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
+use rustc_ast::{GenericArg, GenericArgs};
 use rustc_ast::{Path, PathSegment, QSelf};
 use rustc_errors::{pluralize, Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
@@ -232,7 +231,8 @@ impl<'a> Parser<'a> {
                     // `(T, U) -> R`
                     let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
                     let span = ident.span.to(self.prev_token.span);
-                    let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No)?;
+                    let output =
+                        self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
                     ParenthesizedArgs { inputs, output, span }.into()
                 };
 
@@ -414,32 +414,40 @@ impl<'a> Parser<'a> {
 
     /// Parses a single argument in the angle arguments `<...>` of a path segment.
     fn parse_angle_arg(&mut self) -> PResult<'a, Option<AngleBracketedArg>> {
-        if self.check_ident() && self.look_ahead(1, |t| matches!(t.kind, token::Eq | token::Colon))
-        {
-            // Parse associated type constraint.
-            let lo = self.token.span;
-            let ident = self.parse_ident()?;
-            let kind = if self.eat(&token::Eq) {
-                let ty = self.parse_assoc_equality_term(ident, self.prev_token.span)?;
-                AssocTyConstraintKind::Equality { ty }
-            } else if self.eat(&token::Colon) {
-                let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
-                AssocTyConstraintKind::Bound { bounds }
-            } else {
-                unreachable!();
-            };
+        let lo = self.token.span;
+        let arg = self.parse_generic_arg()?;
+        match arg {
+            Some(arg) => {
+                if self.check(&token::Colon) | self.check(&token::Eq) {
+                    let (ident, gen_args) = self.get_ident_from_generic_arg(arg, lo)?;
+                    let kind = if self.eat(&token::Colon) {
+                        // Parse associated type constraint bound.
 
-            let span = lo.to(self.prev_token.span);
+                        let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
+                        AssocTyConstraintKind::Bound { bounds }
+                    } else if self.eat(&token::Eq) {
+                        // Parse associated type equality constraint
 
-            // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
-            if let AssocTyConstraintKind::Bound { .. } = kind {
-                self.sess.gated_spans.gate(sym::associated_type_bounds, span);
+                        let ty = self.parse_assoc_equality_term(ident, self.prev_token.span)?;
+                        AssocTyConstraintKind::Equality { ty }
+                    } else {
+                        unreachable!();
+                    };
+
+                    let span = lo.to(self.prev_token.span);
+
+                    // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
+                    if let AssocTyConstraintKind::Bound { .. } = kind {
+                        self.sess.gated_spans.gate(sym::associated_type_bounds, span);
+                    }
+                    let constraint =
+                        AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
+                    Ok(Some(AngleBracketedArg::Constraint(constraint)))
+                } else {
+                    Ok(Some(AngleBracketedArg::Arg(arg)))
+                }
             }
-
-            let constraint = AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, kind, span };
-            Ok(Some(AngleBracketedArg::Constraint(constraint)))
-        } else {
-            Ok(self.parse_generic_arg()?.map(AngleBracketedArg::Arg))
+            _ => Ok(None),
         }
     }
 
@@ -489,15 +497,39 @@ impl<'a> Parser<'a> {
     /// - An expression surrounded in `{}`.
     /// - A literal.
     /// - A numeric literal prefixed by `-`.
+    /// - A single-segment path.
     pub(super) fn expr_is_valid_const_arg(&self, expr: &P<rustc_ast::Expr>) -> bool {
         match &expr.kind {
             ast::ExprKind::Block(_, _) | ast::ExprKind::Lit(_) => true,
-            ast::ExprKind::Unary(ast::UnOp::Neg, expr) => match &expr.kind {
-                ast::ExprKind::Lit(_) => true,
-                _ => false,
-            },
+            ast::ExprKind::Unary(ast::UnOp::Neg, expr) => {
+                matches!(expr.kind, ast::ExprKind::Lit(_))
+            }
+            // We can only resolve single-segment paths at the moment, because multi-segment paths
+            // require type-checking: see `visit_generic_arg` in `src/librustc_resolve/late.rs`.
+            ast::ExprKind::Path(None, path)
+                if path.segments.len() == 1 && path.segments[0].args.is_none() =>
+            {
+                true
+            }
             _ => false,
         }
+    }
+
+    /// Parse a const argument, e.g. `<3>`. It is assumed the angle brackets will be parsed by
+    /// the caller.
+    pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
+        // Parse const argument.
+        let value = if let token::OpenDelim(token::Brace) = self.token.kind {
+            self.parse_block_expr(
+                None,
+                self.token.span,
+                BlockCheckMode::Default,
+                ast::AttrVec::new(),
+            )?
+        } else {
+            self.handle_unambiguous_unbraced_const_arg()?
+        };
+        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }
 
     /// Parse a generic argument in a path segment.
@@ -509,17 +541,7 @@ impl<'a> Parser<'a> {
             GenericArg::Lifetime(self.expect_lifetime())
         } else if self.check_const_arg() {
             // Parse const argument.
-            let value = if let token::OpenDelim(token::Brace) = self.token.kind {
-                self.parse_block_expr(
-                    None,
-                    self.token.span,
-                    BlockCheckMode::Default,
-                    ast::AttrVec::new(),
-                )?
-            } else {
-                self.handle_unambiguous_unbraced_const_arg()?
-            };
-            GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
+            GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
             // Parse type argument.
             match self.parse_ty() {
@@ -533,5 +555,55 @@ impl<'a> Parser<'a> {
             return Ok(None);
         };
         Ok(Some(arg))
+    }
+
+    fn get_ident_from_generic_arg(
+        &self,
+        gen_arg: GenericArg,
+        lo: Span,
+    ) -> PResult<'a, (Ident, Option<GenericArgs>)> {
+        let gen_arg_span = gen_arg.span();
+        match gen_arg {
+            GenericArg::Type(t) => match t.into_inner().kind {
+                ast::TyKind::Path(qself, mut path) => {
+                    if let Some(qself) = qself {
+                        let mut err = self.struct_span_err(
+                            gen_arg_span,
+                            "qualified paths cannot be used in associated type constraints",
+                        );
+                        err.span_label(
+                            qself.path_span,
+                            "not allowed in associated type constraints",
+                        );
+                        return Err(err);
+                    }
+                    if path.segments.len() == 1 {
+                        let path_seg = path.segments.remove(0);
+                        let ident = path_seg.ident;
+                        let gen_args = path_seg.args.map(|args| args.into_inner());
+                        return Ok((ident, gen_args));
+                    }
+                    let err = self.struct_span_err(
+                        path.span,
+                        "paths with multiple segments cannot be used in associated type constraints",
+                    );
+                    return Err(err);
+                }
+                _ => {
+                    let span = lo.to(self.prev_token.span);
+                    let err = self.struct_span_err(
+                        span,
+                        "only path types can be used in associated type constraints",
+                    );
+                    return Err(err);
+                }
+            },
+            _ => {
+                let span = lo.to(self.prev_token.span);
+                let err = self
+                    .struct_span_err(span, "only types can be used in associated type constraints");
+                return Err(err);
+            }
+        }
     }
 }

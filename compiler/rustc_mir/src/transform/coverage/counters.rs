@@ -14,7 +14,7 @@ use rustc_middle::mir::coverage::*;
 
 /// Manages the counter and expression indexes/IDs to generate `CoverageKind` components for MIR
 /// `Coverage` statements.
-pub(crate) struct CoverageCounters {
+pub(super) struct CoverageCounters {
     function_source_hash: u64,
     next_counter_id: u32,
     num_expressions: u32,
@@ -37,7 +37,7 @@ impl CoverageCounters {
         self.debug_counters.enable();
     }
 
-    /// Makes `CoverageKind` `Counter`s and `Expressions` for the `BasicCoverageBlocks` directly or
+    /// Makes `CoverageKind` `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
     /// indirectly associated with `CoverageSpans`, and returns additional `Expression`s
     /// representing intermediate values.
     pub fn make_bcb_counters(
@@ -120,7 +120,6 @@ struct BcbCounters<'a> {
     basic_coverage_blocks: &'a mut CoverageGraph,
 }
 
-// FIXME(richkadel): Add unit tests for `BcbCounters` functions/algorithms.
 impl<'a> BcbCounters<'a> {
     fn new(
         coverage_counters: &'a mut CoverageCounters,
@@ -141,7 +140,7 @@ impl<'a> BcbCounters<'a> {
     /// message for subsequent debugging.
     fn make_bcb_counters(
         &mut self,
-        coverage_spans: &Vec<CoverageSpan>,
+        coverage_spans: &[CoverageSpan],
     ) -> Result<Vec<CoverageKind>, Error> {
         debug!("make_bcb_counters(): adding a counter or expression to each BasicCoverageBlock");
         let num_bcbs = self.basic_coverage_blocks.num_nodes();
@@ -466,7 +465,7 @@ impl<'a> BcbCounters<'a> {
     fn choose_preferred_expression_branch(
         &self,
         traversal: &TraverseCoverageGraphWithLoops,
-        branches: &Vec<BcbBranch>,
+        branches: &[BcbBranch],
     ) -> BcbBranch {
         let branch_needs_a_counter =
             |branch: &BcbBranch| branch.counter(&self.basic_coverage_blocks).is_none();
@@ -510,7 +509,7 @@ impl<'a> BcbCounters<'a> {
     fn find_some_reloop_branch(
         &self,
         traversal: &TraverseCoverageGraphWithLoops,
-        branches: &Vec<BcbBranch>,
+        branches: &[BcbBranch],
     ) -> Option<BcbBranch> {
         let branch_needs_a_counter =
             |branch: &BcbBranch| branch.counter(&self.basic_coverage_blocks).is_none();

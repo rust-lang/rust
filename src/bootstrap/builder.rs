@@ -19,7 +19,7 @@ use crate::compile;
 use crate::config::TargetSelection;
 use crate::dist;
 use crate::doc;
-use crate::flags::Subcommand;
+use crate::flags::{Color, Subcommand};
 use crate::install;
 use crate::native;
 use crate::run;
@@ -384,7 +384,6 @@ impl<'a> Builder<'a> {
                 test::ExpandYamlAnchors,
                 test::Tidy,
                 test::Ui,
-                test::CompileFail,
                 test::RunPassValgrind,
                 test::MirOpt,
                 test::Codegen,
@@ -413,6 +412,7 @@ impl<'a> Builder<'a> {
                 test::TheBook,
                 test::UnstableBook,
                 test::RustcBook,
+                test::LintDocs,
                 test::RustcGuide,
                 test::EmbeddedBook,
                 test::EditionGuide,
@@ -424,6 +424,7 @@ impl<'a> Builder<'a> {
                 test::RustdocJSNotStd,
                 test::RustdocTheme,
                 test::RustdocUi,
+                test::RustdocJson,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
@@ -469,6 +470,7 @@ impl<'a> Builder<'a> {
                 dist::RustDev,
                 dist::Extended,
                 dist::BuildManifest,
+                dist::ReproducibleArtifacts,
             ),
             Kind::Install => describe!(
                 install::Docs,
@@ -734,6 +736,7 @@ impl<'a> Builder<'a> {
         if self.config.deny_warnings {
             cmd.arg("-Dwarnings");
         }
+        cmd.arg("-Znormalize-docs");
 
         // Remove make-related flags that can cause jobserver problems.
         cmd.env_remove("MAKEFLAGS");
@@ -809,6 +812,16 @@ impl<'a> Builder<'a> {
         cargo.env("REAL_LIBRARY_PATH_VAR", &util::dylib_path_var());
         if let Some(e) = env::var_os(util::dylib_path_var()) {
             cargo.env("REAL_LIBRARY_PATH", e);
+        }
+
+        match self.build.config.color {
+            Color::Always => {
+                cargo.arg("--color=always");
+            }
+            Color::Never => {
+                cargo.arg("--color=never");
+            }
+            Color::Auto => {} // nothing to do
         }
 
         if cmd != "install" {
@@ -1109,6 +1122,19 @@ impl<'a> Builder<'a> {
                 self.config.rust_debug_assertions.to_string()
             },
         );
+
+        // `dsymutil` adds time to builds on Apple platforms for no clear benefit, and also makes
+        // it more difficult for debuggers to find debug info. The compiler currently defaults to
+        // running `dsymutil` to preserve its historical default, but when compiling the compiler
+        // itself, we skip it by default since we know it's safe to do so in that case.
+        // See https://github.com/rust-lang/rust/issues/79361 for more info on this flag.
+        if target.contains("apple") {
+            if self.config.rust_run_dsymutil {
+                rustflags.arg("-Zrun-dsymutil=yes");
+            } else {
+                rustflags.arg("-Zrun-dsymutil=no");
+            }
+        }
 
         if self.config.cmd.bless() {
             // Bless `expect!` tests.
@@ -1508,7 +1534,7 @@ impl Rustflags {
     fn arg(&mut self, arg: &str) -> &mut Self {
         assert_eq!(arg.split(' ').count(), 1);
         if !self.0.is_empty() {
-            self.0.push_str(" ");
+            self.0.push(' ');
         }
         self.0.push_str(arg);
         self

@@ -1,8 +1,8 @@
 error[E0658]: kind="static-nobundle" is unstable
   --> $DIR/feature-gate-static-nobundle.rs:1:1
    |
-LL | #[link(name="foo", kind="static-nobundle")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[link(name = "foo", kind = "static-nobundle")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #37403 <https://github.com/rust-lang/rust/issues/37403> for more information
    = help: add `#![feature(static_nobundle)]` to the crate attributes to enable

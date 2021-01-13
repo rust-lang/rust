@@ -17,10 +17,10 @@ LL | const unsafe extern "C" fn closure() -> fn() { || {} }
    = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
 
 error[E0658]: floating point arithmetic is not allowed in constant functions
-  --> $DIR/const-extern-fn-min-const-fn.rs:7:38
+  --> $DIR/const-extern-fn-min-const-fn.rs:7:42
    |
-LL | const unsafe extern fn use_float() { 1.0 + 1.0; }
-   |                                      ^^^^^^^^^
+LL | const unsafe extern "C" fn use_float() { 1.0 + 1.0; }
+   |                                          ^^^^^^^^^
    |
    = note: see issue #57241 <https://github.com/rust-lang/rust/issues/57241> for more information
    = help: add `#![feature(const_fn_floating_point_arithmetic)]` to the crate attributes to enable

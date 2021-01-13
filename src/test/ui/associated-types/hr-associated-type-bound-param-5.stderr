@@ -12,7 +12,6 @@ LL |     type U = str;
    |
    = help: the following implementations were found:
              <&T as Clone>
-             <&mut T as Clone>
 
 error[E0277]: the trait bound `for<'b> <Vec<T> as X<'b, Vec<T>>>::U: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-param-5.rs:27:14
@@ -28,7 +27,6 @@ LL |     type U = str;
    |
    = help: the following implementations were found:
              <&T as Clone>
-             <&mut T as Clone>
 
 error[E0277]: the trait bound `for<'b> <Vec<T> as X<'b, Vec<T>>>::U: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-param-5.rs:33:14
@@ -44,7 +42,6 @@ LL |     type U = str;
    |
    = help: the following implementations were found:
              <&T as Clone>
-             <&mut T as Clone>
 
 error[E0277]: the trait bound `for<'b> <Box<T> as X<'b, Box<T>>>::U: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-param-5.rs:33:14
@@ -60,7 +57,6 @@ LL |     type U = str;
    |
    = help: the following implementations were found:
              <&T as Clone>
-             <&mut T as Clone>
 
 error: aborting due to 4 previous errors
 

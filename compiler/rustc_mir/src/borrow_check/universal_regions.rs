@@ -438,7 +438,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
             FR,
             self.mir_def.did,
-            &bound_inputs_and_output,
+            bound_inputs_and_output,
             &mut indices,
         );
         // Converse of above, if this is a function then the late-bound regions declared on its
@@ -522,7 +522,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);
 
                 let defining_ty =
-                    self.infcx.replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
+                    self.infcx.replace_free_regions_with_nll_infer_vars(FR, defining_ty);
 
                 match *defining_ty.kind() {
                     ty::Closure(def_id, substs) => DefiningTy::Closure(def_id, substs),
@@ -543,7 +543,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def.did.to_def_id(), closure_base_def_id);
                 let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
                 let substs =
-                    self.infcx.replace_free_regions_with_nll_infer_vars(FR, &identity_substs);
+                    self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_substs);
                 DefiningTy::Const(self.mir_def.did.to_def_id(), substs)
             }
         }
@@ -628,7 +628,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
             DefiningTy::FnDef(def_id, _) => {
                 let sig = tcx.fn_sig(def_id);
-                let sig = indices.fold_to_region_vids(tcx, &sig);
+                let sig = indices.fold_to_region_vids(tcx, sig);
                 sig.inputs_and_output()
             }
 
@@ -637,7 +637,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 // "output" (the type of the constant).
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let ty = tcx.type_of(self.mir_def.def_id_for_type_of());
-                let ty = indices.fold_to_region_vids(tcx, &ty);
+                let ty = indices.fold_to_region_vids(tcx, ty);
                 ty::Binder::dummy(tcx.intern_type_list(&[ty]))
             }
         }
@@ -648,7 +648,7 @@ trait InferCtxtExt<'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
         origin: NLLRegionVariableOrigin,
-        value: &T,
+        value: T,
     ) -> T
     where
         T: TypeFoldable<'tcx>;
@@ -657,7 +657,7 @@ trait InferCtxtExt<'tcx> {
         &self,
         origin: NLLRegionVariableOrigin,
         all_outlive_scope: LocalDefId,
-        value: &ty::Binder<T>,
+        value: ty::Binder<T>,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
     where
@@ -674,7 +674,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
         origin: NLLRegionVariableOrigin,
-        value: &T,
+        value: T,
     ) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -686,7 +686,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         &self,
         origin: NLLRegionVariableOrigin,
         all_outlive_scope: LocalDefId,
-        value: &ty::Binder<T>,
+        value: ty::Binder<T>,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
     where
@@ -700,7 +700,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
             debug!("replace_bound_regions_with_nll_infer_vars: br={:?}", br);
             let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: all_outlive_scope.to_def_id(),
-                bound_region: br,
+                bound_region: br.kind,
             }));
             let region_vid = self.next_nll_region_var(origin);
             indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
@@ -771,7 +771,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
 
     /// Replaces all free regions in `value` with region vids, as
     /// returned by `to_region_vid`.
-    pub fn fold_to_region_vids<T>(&self, tcx: TyCtxt<'tcx>, value: &T) -> T
+    pub fn fold_to_region_vids<T>(&self, tcx: TyCtxt<'tcx>, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -795,7 +795,7 @@ fn for_each_late_bound_region_defined_on<'tcx>(
             let region_def_id = tcx.hir().local_def_id(hir_id);
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: fn_def_id,
-                bound_region: ty::BoundRegion::BrNamed(region_def_id.to_def_id(), name),
+                bound_region: ty::BoundRegionKind::BrNamed(region_def_id.to_def_id(), name),
             }));
             f(liberated_region);
         }

@@ -1,0 +1,40 @@
+error[E0390]: only a single inherent implementation marked with `#[lang = "u8"]` is allowed for the `u8` primitive
+  --> $DIR/kinds-of-primitive-impl.rs:4:1
+   |
+LL | / impl u8 {
+LL | |
+LL | |     pub const B: u8 = 0;
+LL | | }
+   | |_^
+   |
+   = help: consider using a trait to implement this constant
+
+error[E0390]: only a single inherent implementation marked with `#[lang = "str"]` is allowed for the `str` primitive
+  --> $DIR/kinds-of-primitive-impl.rs:9:1
+   |
+LL | / impl str {
+LL | |
+LL | |     fn foo() {}
+LL | |     fn bar(self) {}
+LL | | }
+   | |_^
+   |
+   = help: consider using a trait to implement these methods
+
+error[E0390]: only a single inherent implementation marked with `#[lang = "char"]` is allowed for the `char` primitive
+  --> $DIR/kinds-of-primitive-impl.rs:15:1
+   |
+LL | / impl char {
+LL | |
+LL | |     pub const B: u8 = 0;
+LL | |     pub const C: u8 = 0;
+LL | |     fn foo() {}
+LL | |     fn bar(self) {}
+LL | | }
+   | |_^
+   |
+   = help: consider using a trait to implement these associated items
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0390`.

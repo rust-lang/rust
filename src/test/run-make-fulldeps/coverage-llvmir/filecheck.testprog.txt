@@ -1,0 +1,52 @@
+# Check for metadata, variables, declarations, and function definitions injected
+# into LLVM IR when compiling with -Zinstrument-coverage.
+
+WINDOWS:      $__llvm_profile_runtime_user = comdat any
+
+CHECK:        @__covrec_{{[A-F0-9]+}}u = linkonce_odr hidden constant
+CHECK-SAME:   section "[[INSTR_PROF_COVFUN]]"[[COMDAT_IF_SUPPORTED]], align 8
+
+CHECK:        @__llvm_coverage_mapping = private constant
+CHECK-SAME:   section "[[INSTR_PROF_COVMAP]]", align 8
+
+WINDOWS:      @__llvm_profile_runtime = external global i32
+
+CHECK:        @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called = [[PRIVATE_GLOBAL]]
+CHECK-SAME:   section "[[INSTR_PROF_CNTS]]", align 8
+
+CHECK:        @__profd__R{{[a-zA-Z0-9_]+}}testprog14will_be_called = [[PRIVATE_GLOBAL]]
+CHECK-SAME:   @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called,
+CHECK-SAME:   section "[[INSTR_PROF_DATA]]", align 8
+
+CHECK:        @__profc__R{{[a-zA-Z0-9_]+}}testprog4main = [[PRIVATE_GLOBAL]]
+CHECK-SAME:   section "[[INSTR_PROF_CNTS]]", align 8
+
+CHECK:        @__profd__R{{[a-zA-Z0-9_]+}}testprog4main = [[PRIVATE_GLOBAL]]
+CHECK-SAME:   @__profc__R{{[a-zA-Z0-9_]+}}testprog4main,
+CHECK-SAME:   section "[[INSTR_PROF_DATA]]", align 8
+
+CHECK:        @__llvm_prf_nm = private constant
+CHECK-SAME:   section "[[INSTR_PROF_NAME]]", align 1
+
+CHECK:        @llvm.used = appending global
+CHECK-SAME:   i8* bitcast ({ {{.*}} }* @__llvm_coverage_mapping to i8*)
+WINDOWS-SAME: i8* bitcast (i32 ()* @__llvm_profile_runtime_user to i8*)
+CHECK-SAME:   i8* bitcast ({ {{.*}} }* @__profd__R{{[a-zA-Z0-9_]*}}testprog4main to i8*)
+CHECK-SAME:   i8* getelementptr inbounds ({{.*}}* @__llvm_prf_nm, i32 0, i32 0)
+CHECK-SAME:   section "llvm.metadata"
+
+CHECK:        [[DEFINE_INTERNAL]] { {{.*}} } @_R{{[a-zA-Z0-9_]+}}testprog14will_be_called() unnamed_addr #{{[0-9]+}} {
+CHECK-NEXT:   start:
+CHECK-NOT:    [[DEFINE_INTERNAL]]
+CHECK:        %pgocount = load i64, i64* getelementptr inbounds
+CHECK-SAME:   * @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called,
+
+CHECK:        declare void @llvm.instrprof.increment(i8*, i64, i32, i32) #[[LLVM_INSTRPROF_INCREMENT_ATTR:[0-9]+]]
+
+WINDOWS:      define linkonce_odr hidden i32 @__llvm_profile_runtime_user() #[[LLVM_PROFILE_RUNTIME_USER_ATTR:[0-9]+]] comdat {
+WINDOWS-NEXT: %1 = load i32, i32* @__llvm_profile_runtime
+WINDOWS-NEXT: ret i32 %1
+WINDOWS-NEXT: }
+
+CHECK:        attributes #[[LLVM_INSTRPROF_INCREMENT_ATTR]] = { nounwind }
+WINDOWS:      attributes #[[LLVM_PROFILE_RUNTIME_USER_ATTR]] = { noinline }

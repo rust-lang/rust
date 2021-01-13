@@ -78,7 +78,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                     Concrete,
                 }
                 let mut failure_kind = FailureKind::Concrete;
-                walk_abstract_const(tcx, ct, |node| match node {
+                walk_abstract_const::<!, _>(tcx, ct, |node| match node {
                     Node::Leaf(leaf) => {
                         let leaf = leaf.subst(tcx, ct.substs);
                         if leaf.has_infer_types_or_consts() {
@@ -152,7 +152,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     if concrete.is_ok() && substs.has_param_types_or_consts() {
         match infcx.tcx.def_kind(def.did) {
             DefKind::AnonConst => {
-                let mir_body = infcx.tcx.optimized_mir_opt_const_arg(def);
+                let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(def);
 
                 if mir_body.is_polymorphic {
                     future_compat_lint();
@@ -574,19 +574,19 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     // on `ErrorReported`.
 }
 
-pub fn walk_abstract_const<'tcx, F>(
+pub fn walk_abstract_const<'tcx, R, F>(
     tcx: TyCtxt<'tcx>,
     ct: AbstractConst<'tcx>,
     mut f: F,
-) -> ControlFlow<()>
+) -> ControlFlow<R>
 where
-    F: FnMut(Node<'tcx>) -> ControlFlow<()>,
+    F: FnMut(Node<'tcx>) -> ControlFlow<R>,
 {
-    fn recurse<'tcx>(
+    fn recurse<'tcx, R>(
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
-        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<()>,
-    ) -> ControlFlow<()> {
+        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<R>,
+    ) -> ControlFlow<R> {
         let root = ct.root();
         f(root)?;
         match root {

@@ -1,0 +1,27 @@
+warning: the feature `impl_trait_in_bindings` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-78722.rs:4:12
+   |
+LL | #![feature(impl_trait_in_bindings)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+
+error: `async` blocks are not allowed in constants
+  --> $DIR/issue-78722.rs:14:20
+   |
+LL |         let f: F = async { 1 };
+   |                    ^^^^^^^^^^^
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/issue-78722.rs:14:13
+   |
+LL |         let f: F = async { 1 };
+   |             ^ constants cannot evaluate destructors
+...
+LL |     }],
+   |     - value is dropped here
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0493`.

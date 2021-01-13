@@ -50,7 +50,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = tcx.erase_regions(&main_ret_ty.no_bound_vars().unwrap());
+        let main_ret_ty = tcx.erase_regions(main_ret_ty.no_bound_vars().unwrap());
 
         let cmain_sig = Signature {
             params: vec![

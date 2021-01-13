@@ -16,9 +16,7 @@
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm/Passes/PassBuilder.h"
-#if LLVM_VERSION_GE(9, 0)
 #include "llvm/Passes/StandardInstrumentations.h"
-#endif
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
@@ -31,15 +29,11 @@
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
 #include "llvm/Transforms/Instrumentation.h"
-#if LLVM_VERSION_GE(9, 0)
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Support/TimeProfiler.h"
-#endif
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
-#if LLVM_VERSION_GE(9, 0)
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
-#endif
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
 
 using namespace llvm;
@@ -73,20 +67,18 @@ extern "C" void LLVMTimeTraceProfilerInitialize() {
   timeTraceProfilerInitialize(
       /* TimeTraceGranularity */ 0,
       /* ProcName */ "rustc");
-#elif LLVM_VERSION_GE(9, 0)
+#else
   timeTraceProfilerInitialize();
 #endif
 }
 
 extern "C" void LLVMTimeTraceProfilerFinish(const char* FileName) {
-#if LLVM_VERSION_GE(9, 0)
   StringRef FN(FileName);
   std::error_code EC;
   raw_fd_ostream OS(FN, EC, sys::fs::CD_CreateAlways);
 
   timeTraceProfilerWrite(OS);
   timeTraceProfilerCleanup();
-#endif
 }
 
 enum class LLVMRustPassKind {
@@ -127,22 +119,14 @@ extern "C" LLVMPassRef LLVMRustCreateAddressSanitizerFunctionPass(bool Recover) 
 extern "C" LLVMPassRef LLVMRustCreateModuleAddressSanitizerPass(bool Recover) {
   const bool CompileKernel = false;
 
-#if LLVM_VERSION_GE(9, 0)
   return wrap(createModuleAddressSanitizerLegacyPassPass(CompileKernel, Recover));
-#else
-  return wrap(createAddressSanitizerModulePass(CompileKernel, Recover));
-#endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateMemorySanitizerPass(int TrackOrigins, bool Recover) {
-#if LLVM_VERSION_GE(9, 0)
   const bool CompileKernel = false;
 
   return wrap(createMemorySanitizerLegacyPassPass(
       MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}));
-#else
-  return wrap(createMemorySanitizerLegacyPassPass(TrackOrigins, Recover));
-#endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateThreadSanitizerPass() {
@@ -466,7 +450,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool AsmComments,
     bool EmitStackSizeSection,
     bool RelaxELFRelocations,
-    bool UseInitArray) {
+    bool UseInitArray,
+    const char *SplitDwarfFile) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -492,6 +477,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.MCOptions.AsmVerbose = AsmComments;
   Options.MCOptions.PreserveAsmComments = AsmComments;
   Options.MCOptions.ABIName = ABIStr;
+  if (SplitDwarfFile) {
+      Options.MCOptions.SplitDwarfFile = SplitDwarfFile;
+  }
   Options.RelaxELFRelocations = RelaxELFRelocations;
   Options.UseInitArray = UseInitArray;
 
@@ -626,7 +614,7 @@ static TargetMachine::CodeGenFileType fromRust(LLVMRustFileType Type) {
 
 extern "C" LLVMRustResult
 LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
-                        LLVMModuleRef M, const char *Path,
+                        LLVMModuleRef M, const char *Path, const char *DwoPath,
                         LLVMRustFileType RustFileType) {
   llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
   auto FileType = fromRust(RustFileType);
@@ -642,8 +630,22 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
   }
 
   buffer_ostream BOS(OS);
-  unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, false);
-  PM->run(*unwrap(M));
+  if (DwoPath) {
+    raw_fd_ostream DOS(DwoPath, EC, sys::fs::F_None);
+    EC.clear();
+    if (EC)
+        ErrorInfo = EC.message();
+    if (ErrorInfo != "") {
+      LLVMRustSetLastError(ErrorInfo.c_str());
+      return LLVMRustResult::Failure;
+    }
+    buffer_ostream DBOS(DOS);
+    unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, false);
+    PM->run(*unwrap(M));
+  } else {
+    unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, false);
+    PM->run(*unwrap(M));
+  }
 
   // Apparently `addPassesToEmitFile` adds a pointer to our on-the-stack output
   // stream (OS), so the only real safe place to delete this is here? Don't we
@@ -656,8 +658,6 @@ extern "C" typedef void (*LLVMRustSelfProfileBeforePassCallback)(void*, // LlvmS
                                                       const char*,      // pass name
                                                       const char*);     // IR name
 extern "C" typedef void (*LLVMRustSelfProfileAfterPassCallback)(void*); // LlvmSelfProfiler
-
-#if LLVM_VERSION_GE(9, 0)
 
 std::string LLVMRustwrappedIrGetName(const llvm::Any &WrappedIr) {
   if (any_isa<const Module *>(WrappedIr))
@@ -706,7 +706,6 @@ void LLVMSelfProfileInitializeCallbacks(
         AfterPassCallback(LlvmSelfProfiler);
       });
 }
-#endif
 
 enum class LLVMRustOptStage {
   PreLinkNoLTO,
@@ -739,7 +738,6 @@ LLVMRustOptimizeWithNewPassManager(
     void* LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
     LLVMRustSelfProfileAfterPassCallback AfterPassCallback) {
-#if LLVM_VERSION_GE(9, 0)
   Module *TheModule = unwrap(ModuleRef);
   TargetMachine *TM = unwrap(TMRef);
   PassBuilder::OptimizationLevel OptLevel = fromRust(OptLevelRust);
@@ -970,11 +968,6 @@ LLVMRustOptimizeWithNewPassManager(
     UpgradeCallsToIntrinsic(&*I++); // must be post-increment, as we remove
 
   MPM.run(*TheModule, MAM);
-#else
-  // The new pass manager has been available for a long time,
-  // but we don't bother supporting it on old LLVM versions.
-  report_fatal_error("New pass manager only supported since LLVM 9");
-#endif
 }
 
 // Callback to demangle function name
@@ -1325,12 +1318,9 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
                               GlobalValue::LinkageTypes NewLinkage) {
     Ret->ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
   };
-#if LLVM_VERSION_GE(9, 0)
+
   thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage,
                                   Ret->GUIDPreservedSymbols);
-#else
-  thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage);
-#endif
 
   // Here we calculate an `ExportedGUIDs` set for use in the `isExported`
   // callback below. This callback below will dictate the linkage for all

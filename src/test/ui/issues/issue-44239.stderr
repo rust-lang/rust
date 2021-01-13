@@ -1,6 +1,9 @@
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/issue-44239.rs:6:26
+  --> $DIR/issue-44239.rs:8:26
    |
+LL |     let n: usize = 0;
+   |     ----- help: consider using `const` instead of `let`: `const n`
+...
 LL |         const N: usize = n;
    |                          ^ non-constant value
 

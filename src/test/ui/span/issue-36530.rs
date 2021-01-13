@@ -6,7 +6,7 @@
 
 #[foo]
 mod foo {
-    #![foo] //~ ERROR non-builtin inner attributes are unstable
+    #![foo] //~ ERROR custom inner attributes are unstable
 }
 
 fn main() {}

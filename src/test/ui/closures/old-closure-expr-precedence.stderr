@@ -1,0 +1,10 @@
+warning: unnecessary trailing semicolons
+  --> $DIR/old-closure-expr-precedence.rs:60:21
+   |
+LL |   if (true) { 12; };;; -num;
+   |                     ^^ help: remove these semicolons
+   |
+   = note: `#[warn(redundant_semicolons)]` on by default
+
+warning: 1 warning emitted
+

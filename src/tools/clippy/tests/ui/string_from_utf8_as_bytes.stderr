@@ -1,0 +1,10 @@
+error: calling a slice of `as_bytes()` with `from_utf8` should be not necessary
+  --> $DIR/string_from_utf8_as_bytes.rs:5:13
+   |
+LL |     let _ = std::str::from_utf8(&"Hello World!".as_bytes()[6..11]);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(&"Hello World!"[6..11])`
+   |
+   = note: `-D clippy::string-from-utf8-as-bytes` implied by `-D warnings`
+
+error: aborting due to previous error
+

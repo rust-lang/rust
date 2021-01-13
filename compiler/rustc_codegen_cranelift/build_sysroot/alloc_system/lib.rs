@@ -23,7 +23,7 @@
     all(target_arch = "wasm32", not(target_os = "emscripten")),
     feature(integer_atomics, stdsimd)
 )]
-#![cfg_attr(any(unix, target_os = "cloudabi", target_os = "redox"), feature(libc))]
+#![cfg_attr(any(unix, target_os = "redox"), feature(libc))]
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values.
 #[cfg(all(any(target_arch = "x86",
@@ -69,7 +69,7 @@ const MIN_ALIGN: usize = 16;
 /// independently of the standard library’s global allocator.
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 pub struct System;
-#[cfg(any(windows, unix, target_os = "cloudabi", target_os = "redox"))]
+#[cfg(any(windows, unix, target_os = "redox"))]
 mod realloc_fallback {
     use core::alloc::{GlobalAlloc, Layout};
     use core::cmp;
@@ -89,7 +89,7 @@ mod realloc_fallback {
         }
     }
 }
-#[cfg(any(unix, target_os = "cloudabi", target_os = "redox"))]
+#[cfg(any(unix, target_os = "redox"))]
 mod platform {
     extern crate libc;
     use core::ptr;

@@ -14,10 +14,10 @@ macro_rules! arena_types {
             [] layouts: rustc_target::abi::Layout,
             // AdtDef are interned and compared by address
             [] adt_def: rustc_middle::ty::AdtDef,
-            [] steal_mir: rustc_middle::ty::steal::Steal<rustc_middle::mir::Body<$tcx>>,
+            [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<$tcx>>,
             [decode] mir: rustc_middle::mir::Body<$tcx>,
             [] steal_promoted:
-                rustc_middle::ty::steal::Steal<
+                rustc_data_structures::steal::Steal<
                     rustc_index::vec::IndexVec<
                         rustc_middle::mir::Promoted,
                         rustc_middle::mir::Body<$tcx>
@@ -32,6 +32,7 @@ macro_rules! arena_types {
             [decode] borrowck_result:
                 rustc_middle::mir::BorrowCheckResult<$tcx>,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
+            [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
             // Required for the incremental on-disk cache
             [few] mir_keys: rustc_hir::def_id::DefIdSet,

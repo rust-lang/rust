@@ -21,6 +21,7 @@ pub fn clean(build: &Build, all: bool) {
     } else {
         rm_rf(&build.out.join("tmp"));
         rm_rf(&build.out.join("dist"));
+        rm_rf(&build.out.join("bootstrap"));
 
         for host in &build.hosts {
             let entries = match build.out.join(host.triple).read_dir() {

@@ -229,7 +229,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// of b will be `&<R0>.i32` and then `*b` will require that `<R0>` be bigger than the let and
     /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.resolve_vars_if_possible(&unresolved_ty)
+        self.resolve_vars_if_possible(unresolved_ty)
     }
 
     /// Try to resolve the type for the given node.
@@ -325,7 +325,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         pat.each_binding(|_, hir_id, span, _| {
             let typ = self.resolve_node_type(hir_id);
             let body_id = self.body_id;
-            let _ = dropck::check_drop_obligations(self, typ, span, body_id);
+            dropck::check_drop_obligations(self, typ, span, body_id);
         })
     }
 }
@@ -354,10 +354,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
     ) {
         assert!(
-            match fk {
-                intravisit::FnKind::Closure(..) => true,
-                _ => false,
-            },
+            matches!(fk, intravisit::FnKind::Closure(..)),
             "visit_fn invoked for something other than a closure"
         );
 
@@ -491,7 +488,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             if place_with_id.place.projections.is_empty() {
                 let typ = self.resolve_type(place_with_id.place.ty());
                 let body_id = self.body_id;
-                let _ = dropck::check_drop_obligations(self, typ, span, body_id);
+                dropck::check_drop_obligations(self, typ, span, body_id);
             }
         }
     }

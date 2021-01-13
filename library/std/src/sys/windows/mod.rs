@@ -35,6 +35,7 @@ pub mod rwlock;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
+pub mod thread_parker;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
@@ -269,4 +270,18 @@ pub fn abort_internal() -> ! {
         }
     }
     crate::intrinsics::abort();
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(target_vendor = "uwp")] {
+        #[link(name = "ws2_32")]
+        // For BCryptGenRandom
+        #[link(name = "bcrypt")]
+        extern "C" {}
+    } else {
+        #[link(name = "advapi32")]
+        #[link(name = "ws2_32")]
+        #[link(name = "userenv")]
+        extern "C" {}
+    }
 }

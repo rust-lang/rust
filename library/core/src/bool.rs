@@ -23,12 +23,10 @@ impl bool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(bool_to_option)]
-    ///
     /// assert_eq!(false.then(|| 0), None);
     /// assert_eq!(true.then(|| 0), Some(0));
     /// ```
-    #[unstable(feature = "bool_to_option", issue = "64260")]
+    #[stable(feature = "lazy_bool_to_option", since = "1.50.0")]
     #[inline]
     pub fn then<T, F: FnOnce() -> T>(self, f: F) -> Option<T> {
         if self { Some(f()) } else { None }

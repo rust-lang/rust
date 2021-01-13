@@ -365,26 +365,19 @@ pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
             visit_delim_span(dspan, vis);
             visit_tts(tokens, vis);
         }
-        MacArgs::Eq(eq_span, tokens) => {
+        MacArgs::Eq(eq_span, token) => {
             vis.visit_span(eq_span);
-            visit_tts(tokens, vis);
-            // The value in `#[key = VALUE]` must be visited as an expression for backward
-            // compatibility, so that macros can be expanded in that position.
-            if !vis.token_visiting_enabled() {
-                if let Some(TokenTree::Token(token)) = tokens.trees_ref().next() {
-                    if let token::Interpolated(..) = token.kind {
-                        // ^^ Do not `make_mut` unless we have to.
-                        match Lrc::make_mut(&mut tokens.0).get_mut(0) {
-                            Some((TokenTree::Token(token), _spacing)) => match &mut token.kind {
-                                token::Interpolated(nt) => match Lrc::make_mut(nt) {
-                                    token::NtExpr(expr) => vis.visit_expr(expr),
-                                    t => panic!("unexpected token in key-value attribute: {:?}", t),
-                                },
-                                t => panic!("unexpected token in key-value attribute: {:?}", t),
-                            },
-                            t => panic!("unexpected token in key-value attribute: {:?}", t),
-                        }
-                    }
+            if vis.token_visiting_enabled() {
+                visit_token(token, vis);
+            } else {
+                // The value in `#[key = VALUE]` must be visited as an expression for backward
+                // compatibility, so that macros can be expanded in that position.
+                match &mut token.kind {
+                    token::Interpolated(nt) => match Lrc::make_mut(nt) {
+                        token::NtExpr(expr) => vis.visit_expr(expr),
+                        t => panic!("unexpected token in key-value attribute: {:?}", t),
+                    },
+                    t => panic!("unexpected token in key-value attribute: {:?}", t),
                 }
             }
         }
@@ -441,11 +434,14 @@ pub fn noop_flat_map_arm<T: MutVisitor>(mut arm: Arm, vis: &mut T) -> SmallVec<[
 }
 
 pub fn noop_visit_ty_constraint<T: MutVisitor>(
-    AssocTyConstraint { id, ident, kind, span }: &mut AssocTyConstraint,
+    AssocTyConstraint { id, ident, gen_args, kind, span }: &mut AssocTyConstraint,
     vis: &mut T,
 ) {
     vis.visit_id(id);
     vis.visit_ident(ident);
+    if let Some(ref mut gen_args) = gen_args {
+        vis.visit_generic_args(gen_args);
+    }
     match kind {
         AssocTyConstraintKind::Equality { ref mut ty } => {
             vis.visit_ty(ty);
@@ -576,13 +572,14 @@ pub fn noop_visit_parenthesized_parameter_data<T: MutVisitor>(
 }
 
 pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
-    let Local { id, pat, ty, init, span, attrs } = local.deref_mut();
+    let Local { id, pat, ty, init, span, attrs, tokens } = local.deref_mut();
     vis.visit_id(id);
     vis.visit_pat(pat);
     visit_opt(ty, |ty| vis.visit_ty(ty));
     visit_opt(init, |init| vis.visit_expr(init));
     vis.visit_span(span);
     visit_thin_attrs(attrs, vis);
+    visit_lazy_tts(tokens, vis);
 }
 
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
@@ -791,8 +788,9 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
         GenericParamKind::Type { default } => {
             visit_opt(default, |default| vis.visit_ty(default));
         }
-        GenericParamKind::Const { ty, kw_span: _ } => {
+        GenericParamKind::Const { ty, kw_span: _, default } => {
             vis.visit_ty(ty);
+            visit_opt(default, |default| vis.visit_anon_const(default));
         }
     }
     smallvec![param]
@@ -1232,6 +1230,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             visit_opt(e1, |e1| vis.visit_expr(e1));
             visit_opt(e2, |e2| vis.visit_expr(e2));
         }
+        ExprKind::Underscore => {}
         ExprKind::Path(qself, path) => {
             vis.visit_qself(qself);
             vis.visit_path(path);
@@ -1288,7 +1287,11 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::Struct(path, fields, expr) => {
             vis.visit_path(path);
             fields.flat_map_in_place(|field| vis.flat_map_field(field));
-            visit_opt(expr, |expr| vis.visit_expr(expr));
+            match expr {
+                StructRest::Base(expr) => vis.visit_expr(expr),
+                StructRest::Rest(_span) => {}
+                StructRest::None => {}
+            }
         }
         ExprKind::Paren(expr) => {
             vis.visit_expr(expr);
@@ -1320,16 +1323,12 @@ pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Optio
 }
 
 pub fn noop_flat_map_stmt<T: MutVisitor>(
-    Stmt { kind, mut span, mut id, mut tokens }: Stmt,
+    Stmt { kind, mut span, mut id }: Stmt,
     vis: &mut T,
 ) -> SmallVec<[Stmt; 1]> {
     vis.visit_id(&mut id);
     vis.visit_span(&mut span);
-    visit_lazy_tts(&mut tokens, vis);
-    noop_flat_map_stmt_kind(kind, vis)
-        .into_iter()
-        .map(|kind| Stmt { id, kind, span, tokens: tokens.clone() })
-        .collect()
+    noop_flat_map_stmt_kind(kind, vis).into_iter().map(|kind| Stmt { id, kind, span }).collect()
 }
 
 pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
@@ -1346,9 +1345,10 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
         StmtKind::Semi(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Semi).collect(),
         StmtKind::Empty => smallvec![StmtKind::Empty],
         StmtKind::MacCall(mut mac) => {
-            let MacCallStmt { mac: mac_, style: _, attrs } = mac.deref_mut();
+            let MacCallStmt { mac: mac_, style: _, attrs, tokens } = mac.deref_mut();
             vis.visit_mac_call(mac_);
             visit_thin_attrs(attrs, vis);
+            visit_lazy_tts(tokens, vis);
             smallvec![StmtKind::MacCall(mac)]
         }
     }

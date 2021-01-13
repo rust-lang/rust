@@ -1,14 +1,13 @@
 use rustc_ast as ast;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::ErrorReported;
-use rustc_feature::UnstableFeatures;
+use rustc_errors::{ColorConfig, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, CrateType};
+use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::{lint, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
@@ -32,17 +31,17 @@ use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
 use crate::passes::span_of_attrs;
 
 #[derive(Clone, Default)]
-pub struct TestOptions {
+crate struct TestOptions {
     /// Whether to disable the default `extern crate my_crate;` when creating doctests.
-    pub no_crate_inject: bool,
+    crate no_crate_inject: bool,
     /// Whether to emit compilation warnings when compiling doctests. Setting this will suppress
     /// the default `#![allow(unused)]`.
-    pub display_warnings: bool,
+    crate display_warnings: bool,
     /// Additional crate-level attributes to add to doctests.
-    pub attrs: Vec<String>,
+    crate attrs: Vec<String>,
 }
 
-pub fn run(options: Options) -> Result<(), ErrorReported> {
+crate fn run(options: Options) -> Result<(), ErrorReported> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
@@ -70,11 +69,12 @@ pub fn run(options: Options) -> Result<(), ErrorReported> {
         lint_cap: Some(options.lint_cap.clone().unwrap_or_else(|| lint::Forbid)),
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
-        unstable_features: UnstableFeatures::from_environment(),
+        unstable_features: options.render_options.unstable_features,
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions { ..config::basic_debugging_options() },
         edition: options.edition,
         target_triple: options.target.clone(),
+        crate_name: options.crate_name.clone(),
         ..config::Options::default()
     };
 
@@ -91,7 +91,6 @@ pub fn run(options: Options) -> Result<(), ErrorReported> {
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
-        crate_name: options.crate_name.clone(),
         lint_caps,
         register_lints: None,
         override_queries: None,
@@ -248,8 +247,10 @@ fn run_test(
     edition: Edition,
     outdir: DirState,
     path: PathBuf,
+    test_id: &str,
 ) -> Result<(), TestFailure> {
-    let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts, edition);
+    let (test, line_offset, supports_color) =
+        make_test(test, Some(cratename), as_test_harness, opts, edition, Some(test_id));
 
     let output_file = outdir.path().join("rust_out");
 
@@ -294,6 +295,20 @@ fn run_test(
             path.to_str().expect("target path must be valid unicode").to_string()
         }
     });
+    if let ErrorOutputType::HumanReadable(kind) = options.error_format {
+        let (_, color_config) = kind.unzip();
+        match color_config {
+            ColorConfig::Never => {
+                compiler.arg("--color").arg("never");
+            }
+            ColorConfig::Always => {
+                compiler.arg("--color").arg("always");
+            }
+            ColorConfig::Auto => {
+                compiler.arg("--color").arg(if supports_color { "always" } else { "never" });
+            }
+        }
+    }
 
     compiler.arg("-");
     compiler.stdin(Stdio::piped());
@@ -321,7 +336,10 @@ fn run_test(
         (true, false) => {}
         (false, true) => {
             if !error_codes.is_empty() {
-                error_codes.retain(|err| !out.contains(&format!("error[{}]: ", err)));
+                // We used to check if the output contained "error[{}]: " but since we added the
+                // colored output, we can't anymore because of the color escape characters before
+                // the ":".
+                error_codes.retain(|err| !out.contains(&format!("error[{}]", err)));
 
                 if !error_codes.is_empty() {
                     return Err(TestFailure::MissingErrorCodes(error_codes));
@@ -363,18 +381,20 @@ fn run_test(
 }
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
-/// lines before the test code begins.
-pub fn make_test(
+/// lines before the test code begins as well as if the output stream supports colors or not.
+crate fn make_test(
     s: &str,
     cratename: Option<&str>,
     dont_insert_main: bool,
     opts: &TestOptions,
     edition: Edition,
-) -> (String, usize) {
+    test_id: Option<&str>,
+) -> (String, usize, bool) {
     let (crate_attrs, everything_else, crates) = partition_source(s);
     let everything_else = everything_else.trim();
     let mut line_offset = 0;
     let mut prog = String::new();
+    let mut supports_color = false;
 
     if opts.attrs.is_empty() && !opts.display_warnings {
         // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
@@ -400,7 +420,7 @@ pub fn make_test(
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::with_session_globals(edition, || {
-            use rustc_errors::emitter::EmitterWriter;
+            use rustc_errors::emitter::{Emitter, EmitterWriter};
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
             use rustc_session::parse::ParseSess;
@@ -412,8 +432,13 @@ pub fn make_test(
             // Any errors in parsing should also appear when the doctest is compiled for real, so just
             // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            supports_color =
+                EmitterWriter::stderr(ColorConfig::Auto, None, false, false, Some(80), false)
+                    .supports_color();
+
             let emitter =
                 EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
+
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
             let handler = Handler::with_emitter(false, None, box emitter);
             let sess = ParseSess::with_span_handler(handler, sm);
@@ -483,7 +508,7 @@ pub fn make_test(
         Err(ErrorReported) => {
             // If the parser panicked due to a fatal error, pass the test code through unchanged.
             // The error will be reported during compilation.
-            return (s.to_owned(), 0);
+            return (s.to_owned(), 0, false);
         }
     };
 
@@ -519,21 +544,46 @@ pub fn make_test(
         prog.push_str(everything_else);
     } else {
         let returns_result = everything_else.trim_end().ends_with("(())");
+        // Give each doctest main function a unique name.
+        // This is for example needed for the tooling around `-Z instrument-coverage`.
+        let inner_fn_name = if let Some(test_id) = test_id {
+            format!("_doctest_main_{}", test_id)
+        } else {
+            "_inner".into()
+        };
+        let inner_attr = if test_id.is_some() { "#[allow(non_snake_case)] " } else { "" };
         let (main_pre, main_post) = if returns_result {
             (
-                "fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {",
-                "}\n_inner().unwrap() }",
+                format!(
+                    "fn main() {{ {}fn {}() -> Result<(), impl core::fmt::Debug> {{\n",
+                    inner_attr, inner_fn_name
+                ),
+                format!("\n}} {}().unwrap() }}", inner_fn_name),
+            )
+        } else if test_id.is_some() {
+            (
+                format!("fn main() {{ {}fn {}() {{\n", inner_attr, inner_fn_name),
+                format!("\n}} {}() }}", inner_fn_name),
             )
         } else {
-            ("fn main() {\n", "\n}")
+            ("fn main() {\n".into(), "\n}".into())
         };
-        prog.extend([main_pre, everything_else, main_post].iter().cloned());
+        // Note on newlines: We insert a line/newline *before*, and *after*
+        // the doctest and adjust the `line_offset` accordingly.
+        // In the case of `-Z instrument-coverage`, this means that the generated
+        // inner `main` function spans from the doctest opening codeblock to the
+        // closing one. For example
+        // /// ``` <- start of the inner main
+        // /// <- code under doctest
+        // /// ``` <- end of the inner main
         line_offset += 1;
+
+        prog.extend([&main_pre, everything_else, &main_post].iter().cloned());
     }
 
     debug!("final doctest:\n{}", prog);
 
-    (prog, line_offset)
+    (prog, line_offset, supports_color)
 }
 
 // FIXME(aburka): use a real parser to deal with multiline attributes
@@ -586,15 +636,15 @@ fn partition_source(s: &str) -> (String, String, String) {
         match state {
             PartitionState::Attrs => {
                 before.push_str(line);
-                before.push_str("\n");
+                before.push('\n');
             }
             PartitionState::Crates => {
                 crates.push_str(line);
-                crates.push_str("\n");
+                crates.push('\n');
             }
             PartitionState::Other => {
                 after.push_str(line);
-                after.push_str("\n");
+                after.push('\n');
             }
         }
     }
@@ -606,7 +656,7 @@ fn partition_source(s: &str) -> (String, String, String) {
     (before, after, crates)
 }
 
-pub trait Tester {
+crate trait Tester {
     fn add_test(&mut self, test: String, config: LangString, line: usize);
     fn get_line(&self) -> usize {
         0
@@ -614,8 +664,8 @@ pub trait Tester {
     fn register_header(&mut self, _name: &str, _level: u32) {}
 }
 
-pub struct Collector {
-    pub tests: Vec<testing::TestDescAndFn>,
+crate struct Collector {
+    crate tests: Vec<testing::TestDescAndFn>,
 
     // The name of the test displayed to the user, separated by `::`.
     //
@@ -651,7 +701,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(
+    crate fn new(
         cratename: String,
         options: Options,
         use_headers: bool,
@@ -683,7 +733,7 @@ impl Collector {
         format!("{} - {}(line {})", filename, item_path, line)
     }
 
-    pub fn set_position(&mut self, position: Span) {
+    crate fn set_position(&mut self, position: Span) {
         self.position = position;
     }
 
@@ -726,27 +776,24 @@ impl Tester for Collector {
             _ => PathBuf::from(r"doctest.rs"),
         };
 
+        // For example `module/file.rs` would become `module_file_rs`
+        let file = filename
+            .to_string()
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect::<String>();
+        let test_id = format!(
+            "{file}_{line}_{number}",
+            file = file,
+            line = line,
+            number = {
+                // Increases the current test number, if this file already
+                // exists or it creates a new entry with a test number of 0.
+                self.visited_tests.entry((file.clone(), line)).and_modify(|v| *v += 1).or_insert(0)
+            },
+        );
         let outdir = if let Some(mut path) = options.persist_doctests.clone() {
-            // For example `module/file.rs` would become `module_file_rs`
-            let folder_name = filename
-                .to_string()
-                .chars()
-                .map(|c| if c == '/' || c == '.' { '_' } else { c })
-                .collect::<String>();
-
-            path.push(format!(
-                "{name}_{line}_{number}",
-                name = folder_name,
-                number = {
-                    // Increases the current test number, if this file already
-                    // exists or it creates a new entry with a test number of 0.
-                    self.visited_tests
-                        .entry((folder_name.clone(), line))
-                        .and_modify(|v| *v += 1)
-                        .or_insert(0)
-                },
-                line = line,
-            ));
+            path.push(&test_id);
 
             std::fs::create_dir_all(&path)
                 .expect("Couldn't create directory for doctest executables");
@@ -793,6 +840,7 @@ impl Tester for Collector {
                     edition,
                     outdir,
                     path,
+                    &test_id,
                 );
 
                 if let Err(err) = res {
@@ -939,7 +987,6 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
             self.collector.names.push(name);
         }
 
-        attrs.collapse_doc_comments();
         attrs.unindent_doc_comments();
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
@@ -979,8 +1026,8 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
-        let name = if let hir::ItemKind::Impl { ref self_ty, .. } = item.kind {
-            rustc_hir_pretty::id_to_string(&self.map, self_ty.hir_id)
+        let name = if let hir::ItemKind::Impl(impl_) = &item.kind {
+            rustc_hir_pretty::id_to_string(&self.map, impl_.self_ty.hir_id)
         } else {
             item.ident.to_string()
         };

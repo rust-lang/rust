@@ -20,7 +20,7 @@ error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scop
 LL | trait Shadow<'a> {
    |              -- first declared here
 LL |     type Bar<'a>;
-   |              ^^ lifetime 'a already in scope
+   |              ^^ lifetime `'a` already in scope
 
 error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scope
   --> $DIR/shadowing.rs:14:14
@@ -28,7 +28,7 @@ error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scop
 LL | impl<'a> NoShadow<'a> for &'a u32 {
    |      -- first declared here
 LL |     type Bar<'a> = i32;
-   |              ^^ lifetime 'a already in scope
+   |              ^^ lifetime `'a` already in scope
 
 error: aborting due to 4 previous errors
 

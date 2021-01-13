@@ -16,13 +16,13 @@ struct Collector<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        let fm = match it.kind {
-            hir::ItemKind::ForeignMod(ref fm) => fm,
+        let items = match it.kind {
+            hir::ItemKind::ForeignMod { items, .. } => items,
             _ => return,
         };
 
         let foreign_items =
-            fm.items.iter().map(|it| self.tcx.hir().local_def_id(it.hir_id).to_def_id()).collect();
+            items.iter().map(|it| self.tcx.hir().local_def_id(it.id.hir_id).to_def_id()).collect();
         self.modules.push(ForeignModule {
             foreign_items,
             def_id: self.tcx.hir().local_def_id(it.hir_id).to_def_id(),
@@ -31,4 +31,5 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
     fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem<'tcx>) {}
     fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem<'tcx>) {}
+    fn visit_foreign_item(&mut self, _it: &'tcx hir::ForeignItem<'tcx>) {}
 }

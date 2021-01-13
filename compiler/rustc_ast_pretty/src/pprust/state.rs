@@ -88,13 +88,6 @@ pub struct State<'a> {
     comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn + 'a),
     is_expanded: bool,
-    // If `true`, additional parenthesis (separate from `ExprKind::Paren`)
-    // are inserted to ensure that proper precedence is preserved
-    // in the pretty-printed output.
-    //
-    // This is usually `true`, except when performing the pretty-print/reparse
-    // check in `nt_to_tokenstream`
-    insert_extra_parens: bool,
 }
 
 crate const INDENT_UNIT: usize = 4;
@@ -109,17 +102,15 @@ pub fn print_crate<'a>(
     ann: &'a dyn PpAnn,
     is_expanded: bool,
     edition: Edition,
-    has_injected_crate: bool,
 ) -> String {
     let mut s = State {
         s: pp::mk_printer(),
         comments: Some(Comments::new(sm, filename, input)),
         ann,
         is_expanded,
-        insert_extra_parens: true,
     };
 
-    if is_expanded && has_injected_crate {
+    if is_expanded && !krate.attrs.iter().any(|attr| attr.has_name(sym::no_core)) {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
         // However, we don't want these attributes in the AST because
@@ -236,7 +227,6 @@ impl std::ops::DerefMut for State<'_> {
 }
 
 pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::DerefMut {
-    fn insert_extra_parens(&self) -> bool;
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
     fn print_ident(&mut self, ident: Ident);
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
@@ -455,10 +445,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             ),
             MacArgs::Empty | MacArgs::Eq(..) => {
                 self.print_path(&item.path, false, 0);
-                if let MacArgs::Eq(_, tokens) = &item.args {
+                if let MacArgs::Eq(_, token) = &item.args {
                     self.space();
                     self.word_space("=");
-                    self.print_tts(tokens, true);
+                    let token_str = self.token_to_string_ext(token, true);
+                    self.word(token_str);
                 }
             }
         }
@@ -820,16 +811,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn to_string(&self, f: impl FnOnce(&mut State<'_>)) -> String {
         let mut printer = State::new();
-        printer.insert_extra_parens = self.insert_extra_parens();
         f(&mut printer);
         printer.s.eof()
     }
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn insert_extra_parens(&self) -> bool {
-        self.insert_extra_parens
-    }
     fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
     }
@@ -866,17 +853,7 @@ impl<'a> PrintState<'a> for State<'a> {
 
 impl<'a> State<'a> {
     pub fn new() -> State<'a> {
-        State {
-            s: pp::mk_printer(),
-            comments: None,
-            ann: &NoAnn,
-            is_expanded: false,
-            insert_extra_parens: true,
-        }
-    }
-
-    pub(super) fn without_insert_extra_parens() -> State<'a> {
-        State { insert_extra_parens: false, ..State::new() }
+        State { s: pp::mk_printer(), comments: None, ann: &NoAnn, is_expanded: false }
     }
 
     // Synthesizes a comment that was not textually present in the original source
@@ -1681,8 +1658,7 @@ impl<'a> State<'a> {
     }
 
     /// Prints `expr` or `(expr)` when `needs_par` holds.
-    fn print_expr_cond_paren(&mut self, expr: &ast::Expr, mut needs_par: bool) {
-        needs_par &= self.insert_extra_parens;
+    fn print_expr_cond_paren(&mut self, expr: &ast::Expr, needs_par: bool) {
         if needs_par {
             self.popen();
         }
@@ -1729,7 +1705,7 @@ impl<'a> State<'a> {
         &mut self,
         path: &ast::Path,
         fields: &[ast::Field],
-        wth: &Option<P<ast::Expr>>,
+        rest: &ast::StructRest,
         attrs: &[ast::Attribute],
     ) {
         self.print_path(path, true, 0);
@@ -1750,22 +1726,21 @@ impl<'a> State<'a> {
             },
             |f| f.span,
         );
-        match *wth {
-            Some(ref expr) => {
+        match rest {
+            ast::StructRest::Base(_) | ast::StructRest::Rest(_) => {
                 self.ibox(INDENT_UNIT);
                 if !fields.is_empty() {
                     self.s.word(",");
                     self.s.space();
                 }
                 self.s.word("..");
-                self.print_expr(expr);
+                if let ast::StructRest::Base(ref expr) = *rest {
+                    self.print_expr(expr);
+                }
                 self.end();
             }
-            _ => {
-                if !fields.is_empty() {
-                    self.s.word(",")
-                }
-            }
+            ast::StructRest::None if !fields.is_empty() => self.s.word(","),
+            _ => {}
         }
         self.s.word("}");
     }
@@ -1891,8 +1866,8 @@ impl<'a> State<'a> {
             ast::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(element, count, attrs);
             }
-            ast::ExprKind::Struct(ref path, ref fields, ref wth) => {
-                self.print_expr_struct(path, &fields[..], wth, attrs);
+            ast::ExprKind::Struct(ref path, ref fields, ref rest) => {
+                self.print_expr_struct(path, &fields[..], rest, attrs);
             }
             ast::ExprKind::Tup(ref exprs) => {
                 self.print_expr_tup(&exprs[..], attrs);
@@ -2069,6 +2044,7 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(e, fake_prec);
                 }
             }
+            ast::ExprKind::Underscore => self.s.word("_"),
             ast::ExprKind::Path(None, ref path) => self.print_path(path, true, 0),
             ast::ExprKind::Path(Some(ref qself), ref path) => self.print_qpath(path, qself, true),
             ast::ExprKind::Break(opt_label, ref opt_expr) => {
@@ -2328,11 +2304,12 @@ impl<'a> State<'a> {
             self.print_path(path, false, depth);
         }
         self.s.word(">");
-        self.s.word("::");
-        let item_segment = path.segments.last().unwrap();
-        self.print_ident(item_segment.ident);
-        if let Some(ref args) = item_segment.args {
-            self.print_generic_args(args, colons_before_params)
+        for item_segment in &path.segments[qself.position..] {
+            self.s.word("::");
+            self.print_ident(item_segment.ident);
+            if let Some(ref args) = item_segment.args {
+                self.print_generic_args(args, colons_before_params)
+            }
         }
     }
 
@@ -2420,7 +2397,15 @@ impl<'a> State<'a> {
                 if mutbl == ast::Mutability::Mut {
                     self.s.word("mut ");
                 }
-                self.print_pat(inner);
+                if let PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Mut), ..) =
+                    inner.kind
+                {
+                    self.popen();
+                    self.print_pat(inner);
+                    self.pclose();
+                } else {
+                    self.print_pat(inner);
+                }
             }
             PatKind::Lit(ref e) => self.print_expr(&**e),
             PatKind::Range(ref begin, ref end, Spanned { node: ref end_kind, .. }) => {
@@ -2660,13 +2645,16 @@ impl<'a> State<'a> {
                         s.print_type(default)
                     }
                 }
-                ast::GenericParamKind::Const { ref ty, kw_span: _ } => {
+                ast::GenericParamKind::Const { ref ty, kw_span: _, ref default } => {
                     s.word_space("const");
                     s.print_ident(param.ident);
                     s.s.space();
                     s.word_space(":");
                     s.print_type(ty);
-                    s.print_type_bounds(":", &param.bounds)
+                    s.print_type_bounds(":", &param.bounds);
+                    if let Some(ref _default) = default {
+                        // FIXME(const_generics_defaults): print the `default` value here
+                    }
                 }
             }
         });
@@ -2779,7 +2767,7 @@ impl<'a> State<'a> {
                     self.print_explicit_self(&eself);
                 } else {
                     let invalid = if let PatKind::Ident(_, ident, _) = input.pat.kind {
-                        ident.name == kw::Invalid
+                        ident.name == kw::Empty
                     } else {
                         false
                     };

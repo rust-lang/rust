@@ -1,11 +1,10 @@
 //! checks for attributes
 
 use crate::utils::{
-    first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_help,
+    first_line_of_span, is_present_in_source, match_panic_def_id, snippet_opt, span_lint, span_lint_and_help,
     span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -15,6 +14,7 @@ use rustc_lint::{CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, 
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, SymbolStr};
@@ -40,7 +40,7 @@ static UNIX_SYSTEMS: &[&str] = &[
 ];
 
 // NOTE: windows is excluded from the list because it's also a valid target family.
-static NON_UNIX_SYSTEMS: &[&str] = &["cloudabi", "hermit", "none", "wasi"];
+static NON_UNIX_SYSTEMS: &[&str] = &["hermit", "none", "wasi"];
 
 declare_clippy_lint! {
     /// **What it does:** Checks for items annotated with `#[inline(always)]`,
@@ -427,7 +427,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMet
                             .map(|l| Symbol::intern(&l.name_lower()))
                             .collect::<Vec<_>>();
                         let sugg = find_best_match_for_name(
-                            symbols.iter(),
+                            &symbols,
                             Symbol::intern(&format!("clippy::{}", name_lower)),
                             None,
                         );
@@ -513,7 +513,7 @@ fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>
                 typeck_results
                     .qpath_res(qpath, path_expr.hir_id)
                     .opt_def_id()
-                    .map_or(true, |fun_id| !match_def_path(cx, fun_id, &paths::BEGIN_PANIC))
+                    .map_or(true, |fun_id| !match_panic_def_id(cx, fun_id))
             } else {
                 true
             }

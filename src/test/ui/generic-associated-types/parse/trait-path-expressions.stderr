@@ -1,0 +1,25 @@
+error: expected expression, found `)`
+  --> $DIR/trait-path-expressions.rs:9:39
+   |
+LL |   fn f1<'a>(arg : Box<dyn X< 1 = 32 >>) {}
+   |                              -        ^ expected expression
+   |                              |
+   |                              while parsing a const generic argument starting here
+
+error: only types can be used in associated type constraints
+  --> $DIR/trait-path-expressions.rs:19:30
+   |
+LL |   fn f2<'a>(arg : Box<dyn X< { 1 } = 32 >>) {}
+   |                              ^^^^^
+
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/trait-path-expressions.rs:1:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

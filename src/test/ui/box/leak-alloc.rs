@@ -1,26 +1,26 @@
 #![feature(allocator_api)]
 
-use std::alloc::{AllocError, AllocRef, Layout, System};
+use std::alloc::{AllocError, Allocator, Layout, System};
 use std::ptr::NonNull;
 
 use std::boxed::Box;
 
-struct Allocator {}
+struct Alloc {}
 
-unsafe impl AllocRef for Allocator {
-    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        System.alloc(layout)
+unsafe impl Allocator for Alloc {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        System.allocate(layout)
     }
 
-    unsafe fn dealloc(&self, ptr: NonNull<u8>, layout: Layout) {
-        System.dealloc(ptr, layout)
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        System.deallocate(ptr, layout)
     }
 }
 
 fn use_value(_: u32) {}
 
 fn main() {
-    let alloc = Allocator {};
+    let alloc = Alloc {};
     let boxed = Box::new_in(10, alloc.by_ref());
     let theref = Box::leak(boxed);
     drop(alloc);

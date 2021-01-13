@@ -8,6 +8,7 @@ use if_chain::if_chain;
 use rustc_ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericBounds, GenericParamKind, HirId,
@@ -257,7 +258,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
         // Skip trait implementations; see issue #605.
         if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id)) {
-            if let ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
+            if let ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
                 return;
             }
         }
@@ -553,7 +554,7 @@ impl Types {
                                     hir_ty.span,
                                     "`Vec<T>` is already on the heap, the boxing is unnecessary.",
                                     "try",
-                                    format!("Vec<{}>", ty_ty),
+                                    format!("Vec<{}>", snippet(cx, boxed_ty.span, "..")),
                                     Applicability::MachineApplicable,
                                 );
                                 return; // don't recurse into the type
@@ -737,8 +738,7 @@ fn is_any_trait(t: &hir::Ty<'_>) -> bool {
 fn get_bounds_if_impl_trait<'tcx>(cx: &LateContext<'tcx>, qpath: &QPath<'_>, id: HirId) -> Option<GenericBounds<'tcx>> {
     if_chain! {
         if let Some(did) = qpath_res(cx, qpath, id).opt_def_id();
-        if let Some(node) = cx.tcx.hir().get_if_local(did);
-        if let Node::GenericParam(generic_param) = node;
+        if let Some(Node::GenericParam(generic_param)) = cx.tcx.hir().get_if_local(did);
         if let GenericParamKind::Type { synthetic, .. } = generic_param.kind;
         if synthetic == Some(SyntheticTyParamKind::ImplTrait);
         then {
@@ -1104,7 +1104,9 @@ fn is_empty_block(expr: &Expr<'_>) -> bool {
         expr.kind,
         ExprKind::Block(
             Block {
-                stmts: &[], expr: None, ..
+                stmts: &[],
+                expr: None,
+                ..
             },
             _,
         )
@@ -1469,8 +1471,7 @@ fn check_loss_of_sign(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast
     // don't lint for positive constants
     let const_val = constant(cx, &cx.typeck_results(), op);
     if_chain! {
-        if let Some((const_val, _)) = const_val;
-        if let Constant::Int(n) = const_val;
+        if let Some((Constant::Int(n), _)) = const_val;
         if let ty::Int(ity) = *cast_from.kind();
         if sext(cx.tcx, n, ity) >= 0;
         then {
@@ -1632,7 +1633,14 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         if expr.span.from_expansion() {
             return;
         }
-        if let ExprKind::Cast(ref ex, _) = expr.kind {
+        if let ExprKind::Cast(ref ex, cast_to) = expr.kind {
+            if let TyKind::Path(QPath::Resolved(_, path)) = cast_to.kind {
+                if let Res::Def(_, def_id) = path.res {
+                    if cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr) {
+                        return;
+                    }
+                }
+            }
             let (cast_from, cast_to) = (cx.typeck_results().expr_ty(ex), cx.typeck_results().expr_ty(expr));
             lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
             if let Some(lit) = get_numeric_literal(ex) {
@@ -1711,7 +1719,7 @@ fn show_unnecessary_cast(cx: &LateContext<'_>, expr: &Expr<'_>, literal_str: &st
         expr.span,
         &format!("casting {} literal to `{}` is unnecessary", literal_kind_name, cast_to),
         "try",
-        format!("{}_{}", literal_str, cast_to),
+        format!("{}_{}", literal_str.trim_end_matches('.'), cast_to),
         Applicability::MachineApplicable,
     );
 }
@@ -2550,21 +2558,16 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
         }
 
         match item.kind {
-            ItemKind::Impl {
-                ref generics,
-                self_ty: ref ty,
-                ref items,
-                ..
-            } => {
+            ItemKind::Impl(ref impl_) => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
-                vis.visit_ty(ty);
+                vis.visit_ty(impl_.self_ty);
 
                 for target in &vis.found {
                     if differing_macro_contexts(item.span, target.span()) {
                         return;
                     }
 
-                    let generics_suggestion_span = generics.span.substitute_dummy({
+                    let generics_suggestion_span = impl_.generics.span.substitute_dummy({
                         let pos = snippet_opt(cx, item.span.until(target.span()))
                             .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)));
                         if let Some(pos) = pos {
@@ -2575,7 +2578,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     });
 
                     let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
-                    for item in items.iter().map(|item| cx.tcx.hir().impl_item(item.id)) {
+                    for item in impl_.items.iter().map(|item| cx.tcx.hir().impl_item(item.id)) {
                         ctr_vis.visit_impl_item(item);
                     }
 
@@ -2588,7 +2591,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             target.type_name()
                         ),
                         move |diag| {
-                            suggestion(cx, diag, generics.span, generics_suggestion_span, target, ctr_vis);
+                            suggestion(cx, diag, impl_.generics.span, generics_suggestion_span, target, ctr_vis);
                         },
                     );
                 }

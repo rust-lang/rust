@@ -1,3 +1,3 @@
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 
 pub unsafe auto trait Bar {}

@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes -Zmir-opt-level=0
+// compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
 #![feature(naked_functions)]
@@ -15,11 +15,9 @@ pub fn naked_empty() {
 // CHECK: Function Attrs: naked
 #[no_mangle]
 #[naked]
-// CHECK-NEXT: define void @naked_with_args(i{{[0-9]+( %0)?}})
+// CHECK-NEXT: define void @naked_with_args(i{{[0-9]+( %a)?}})
 pub fn naked_with_args(a: isize) {
     // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: %a = alloca i{{[0-9]+}}
-    &a; // keep variable in an alloca
     // CHECK: ret void
 }
 
@@ -34,53 +32,11 @@ pub fn naked_with_return() -> isize {
 }
 
 // CHECK: Function Attrs: naked
-// CHECK-NEXT: define i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+( %0)?}})
+// CHECK-NEXT: define i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+( %a)?}})
 #[no_mangle]
 #[naked]
 pub fn naked_with_args_and_return(a: isize) -> isize {
     // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: %a = alloca i{{[0-9]+}}
-    &a; // keep variable in an alloca
-    // CHECK: ret i{{[0-9]+}} %{{[0-9]+}}
-    a
-}
-
-// CHECK: Function Attrs: naked
-// CHECK-NEXT: define void @naked_recursive()
-#[no_mangle]
-#[naked]
-pub fn naked_recursive() {
-    // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: call void @naked_empty()
-
-    // FIXME(#39685) Avoid one block per call.
-    // CHECK-NEXT: br label %bb1
-    // CHECK: bb1:
-
-    naked_empty();
-
-    // CHECK-NEXT: %_4 = call i{{[0-9]+}} @naked_with_return()
-
-    // FIXME(#39685) Avoid one block per call.
-    // CHECK-NEXT: br label %bb2
-    // CHECK: bb2:
-
-    // CHECK-NEXT: %_3 = call i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}} %_4)
-
-    // FIXME(#39685) Avoid one block per call.
-    // CHECK-NEXT: br label %bb3
-    // CHECK: bb3:
-
-    // CHECK-NEXT: call void @naked_with_args(i{{[0-9]+}} %_3)
-
-    // FIXME(#39685) Avoid one block per call.
-    // CHECK-NEXT: br label %bb4
-    // CHECK: bb4:
-
-    naked_with_args(
-        naked_with_args_and_return(
-            naked_with_return()
-        )
-    );
-    // CHECK-NEXT: ret void
+    // CHECK: ret i{{[0-9]+}} 0
+    0
 }

@@ -1,4 +1,3 @@
-use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_driver::abort_on_err;
@@ -12,11 +11,10 @@ use rustc_hir::{
     intravisit::{self, NestedVisitorMap, Visitor},
     Path,
 };
-use rustc_interface::interface;
+use rustc_interface::{interface, Queries};
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::middle::privacy::AccessLevels;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::lint;
@@ -26,7 +24,7 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::mem;
 use std::rc::Rc;
 
@@ -36,52 +34,62 @@ use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::config::{OutputFormat, RenderInfo};
 use crate::passes::{self, Condition::*, ConditionalPass};
 
-pub use rustc_session::config::{CodegenOptions, DebuggingOptions, Input, Options};
-pub use rustc_session::search_paths::SearchPath;
+crate use rustc_session::config::{DebuggingOptions, Input, Options};
 
-pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
+crate type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
-pub struct DocContext<'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-    pub resolver: Rc<RefCell<interface::BoxedResolver>>,
+crate struct DocContext<'tcx> {
+    crate tcx: TyCtxt<'tcx>,
+    crate resolver: Rc<RefCell<interface::BoxedResolver>>,
+    /// Used for normalization.
+    ///
+    /// Most of this logic is copied from rustc_lint::late.
+    crate param_env: Cell<ParamEnv<'tcx>>,
     /// Later on moved into `CACHE_KEY`
-    pub renderinfo: RefCell<RenderInfo>,
+    crate renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `CACHE_KEY`
-    pub external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
+    crate external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
-    pub active_extern_traits: RefCell<FxHashSet<DefId>>,
+    crate active_extern_traits: RefCell<FxHashSet<DefId>>,
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
     /// Table `DefId` of type parameter -> substituted type
-    pub ty_substs: RefCell<FxHashMap<DefId, clean::Type>>,
+    crate ty_substs: RefCell<FxHashMap<DefId, clean::Type>>,
     /// Table `DefId` of lifetime parameter -> substituted lifetime
-    pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
+    crate lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
     /// Table `DefId` of const parameter -> substituted const
-    pub ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
+    crate ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
-    pub impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
-    pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
-    pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
+    crate impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
+    crate fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
+    crate all_fake_def_ids: RefCell<FxHashSet<DefId>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
-    pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
-    pub auto_traits: Vec<DefId>,
+    crate generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
+    crate auto_traits: Vec<DefId>,
     /// The options given to rustdoc that could be relevant to a pass.
-    pub render_options: RenderOptions,
+    crate render_options: RenderOptions,
     /// The traits in scope for a given module.
     ///
     /// See `collect_intra_doc_links::traits_implemented_by` for more details.
     /// `map<module, set<trait>>`
-    pub module_trait_cache: RefCell<FxHashMap<DefId, FxHashSet<DefId>>>,
+    crate module_trait_cache: RefCell<FxHashMap<DefId, FxHashSet<DefId>>>,
 }
 
 impl<'tcx> DocContext<'tcx> {
-    pub fn sess(&self) -> &Session {
+    crate fn sess(&self) -> &Session {
         &self.tcx.sess
     }
 
-    pub fn enter_resolver<F, R>(&self, f: F) -> R
+    crate fn with_param_env<T, F: FnOnce() -> T>(&self, def_id: DefId, f: F) -> T {
+        let old_param_env = self.param_env.replace(self.tcx.param_env(def_id));
+        let ret = f();
+        self.param_env.set(old_param_env);
+        ret
+    }
+
+    crate fn enter_resolver<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&mut resolve::Resolver<'_>) -> R,
     {
@@ -90,7 +98,7 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Call the closure with the given parameters set as
     /// the substitutions for a type alias' RHS.
-    pub fn enter_alias<F, R>(
+    crate fn enter_alias<F, R>(
         &self,
         ty_substs: FxHashMap<DefId, clean::Type>,
         lt_substs: FxHashMap<DefId, clean::Lifetime>,
@@ -112,15 +120,21 @@ impl<'tcx> DocContext<'tcx> {
         r
     }
 
-    // This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
-    // refactoring either librustdoc or librustc_middle. In particular, allowing new DefIds to be
-    // registered after the AST is constructed would require storing the defid mapping in a
-    // RefCell, decreasing the performance for normal compilation for very little gain.
-    //
-    // Instead, we construct 'fake' def ids, which start immediately after the last DefId.
-    // In the Debug impl for clean::Item, we explicitly check for fake
-    // def ids, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
-    pub fn next_def_id(&self, crate_num: CrateNum) -> DefId {
+    /// Create a new "fake" [`DefId`].
+    ///
+    /// This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
+    /// refactoring either rustdoc or [`rustc_middle`]. In particular, allowing new [`DefId`]s
+    /// to be registered after the AST is constructed would require storing the [`DefId`] mapping
+    /// in a [`RefCell`], decreasing the performance for normal compilation for very little gain.
+    ///
+    /// Instead, we construct "fake" [`DefId`]s, which start immediately after the last `DefId`.
+    /// In the [`Debug`] impl for [`clean::Item`], we explicitly check for fake `DefId`s,
+    /// as we'll end up with a panic if we use the `DefId` `Debug` impl for fake `DefId`s.
+    ///
+    /// [`RefCell`]: std::cell::RefCell
+    /// [`Debug`]: std::fmt::Debug
+    /// [`clean::Item`]: crate::clean::types::Item
+    crate fn next_def_id(&self, crate_num: CrateNum) -> DefId {
         let start_def_id = {
             let num_def_ids = if crate_num == LOCAL_CRATE {
                 self.tcx.hir().definitions().def_path_table().num_def_ids()
@@ -150,27 +164,12 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
-    pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
+    crate fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
         if self.all_fake_def_ids.borrow().contains(&def_id) {
             None
         } else {
             def_id.as_local().map(|def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
         }
-    }
-
-    pub fn stability(&self, id: HirId) -> Option<attr::Stability> {
-        self.tcx
-            .hir()
-            .opt_local_def_id(id)
-            .and_then(|def_id| self.tcx.lookup_stability(def_id.to_def_id()))
-            .cloned()
-    }
-
-    pub fn deprecation(&self, id: HirId) -> Option<attr::Deprecation> {
-        self.tcx
-            .hir()
-            .opt_local_def_id(id)
-            .and_then(|def_id| self.tcx.lookup_deprecation(def_id.to_def_id()))
     }
 }
 
@@ -178,7 +177,7 @@ impl<'tcx> DocContext<'tcx> {
 ///
 /// If the given `error_format` is `ErrorOutputType::Json` and no `SourceMap` is given, a new one
 /// will be created for the handler.
-pub fn new_handler(
+crate fn new_handler(
     error_format: ErrorOutputType,
     source_map: Option<Lrc<source_map::SourceMap>>,
     debugging_opts: &DebuggingOptions,
@@ -280,12 +279,9 @@ where
     (lint_opts, lint_caps)
 }
 
-pub fn run_core(
-    options: RustdocOptions,
-) -> (clean::Crate, RenderInfo, RenderOptions, Lrc<Session>) {
-    // Parse, resolve, and typecheck the given crate.
-
-    let RustdocOptions {
+/// Parse, resolve, and typecheck the given crate.
+crate fn create_config(
+    RustdocOptions {
         input,
         crate_name,
         proc_macro_crate,
@@ -301,21 +297,10 @@ pub fn run_core(
         lint_opts,
         describe_lints,
         lint_cap,
-        default_passes,
-        manual_passes,
         display_warnings,
-        render_options,
-        output_format,
         ..
-    } = options;
-
-    let extern_names: Vec<String> = externs
-        .iter()
-        .filter(|(_, entry)| entry.add_prelude)
-        .map(|(name, _)| name)
-        .cloned()
-        .collect();
-
+    }: RustdocOptions,
+) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
 
@@ -371,16 +356,17 @@ pub fn run_core(
         cg: codegen_options,
         externs,
         target_triple: target,
-        unstable_features: UnstableFeatures::from_environment(),
+        unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         actually_rustdoc: true,
         debugging_opts,
         error_format,
         edition,
         describe_lints,
+        crate_name,
         ..Options::default()
     };
 
-    let config = interface::Config {
+    interface::Config {
         opts: sessopts,
         crate_cfg: interface::parse_cfgspecs(cfgs),
         input,
@@ -390,7 +376,6 @@ pub fn run_core(
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
-        crate_name,
         lint_caps,
         register_lints: None,
         override_queries: Some(|_sess, providers, _external_providers| {
@@ -418,76 +403,55 @@ pub fn run_core(
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
-                tcx.sess.time("emit_ignored_resolution_errors", || {
-                    EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
-                });
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
-    };
-
-    interface::create_compiler_and_run(config, |compiler| {
-        compiler.enter(|queries| {
-            let sess = compiler.session();
-
-            // We need to hold on to the complete resolver, so we cause everything to be
-            // cloned for the analysis passes to use. Suboptimal, but necessary in the
-            // current architecture.
-            let resolver = {
-                let parts = abort_on_err(queries.expansion(), sess).peek();
-                let resolver = parts.1.borrow();
-
-                // Before we actually clone it, let's force all the extern'd crates to
-                // actually be loaded, just in case they're only referred to inside
-                // intra-doc-links
-                resolver.borrow_mut().access(|resolver| {
-                    sess.time("load_extern_crates", || {
-                        for extern_name in &extern_names {
-                            debug!("loading extern crate {}", extern_name);
-                            resolver
-                                .resolve_str_path_error(
-                                    DUMMY_SP,
-                                    extern_name,
-                                    TypeNS,
-                                    LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
-                                )
-                                .unwrap_or_else(|()| {
-                                    panic!("Unable to resolve external crate {}", extern_name)
-                                });
-                        }
-                    });
-                });
-
-                // Now we're good to clone the resolver because everything should be loaded
-                resolver.clone()
-            };
-
-            if sess.has_errors() {
-                sess.fatal("Compilation failed, aborting rustdoc");
-            }
-
-            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
-
-            let (krate, render_info, opts) = sess.time("run_global_ctxt", || {
-                global_ctxt.enter(|tcx| {
-                    run_global_ctxt(
-                        tcx,
-                        resolver,
-                        default_passes,
-                        manual_passes,
-                        render_options,
-                        output_format,
-                    )
-                })
-            });
-            (krate, render_info, opts, Lrc::clone(sess))
-        })
-    })
+    }
 }
 
-fn run_global_ctxt(
+crate fn create_resolver<'a>(
+    externs: config::Externs,
+    queries: &Queries<'a>,
+    sess: &Session,
+) -> Rc<RefCell<interface::BoxedResolver>> {
+    let extern_names: Vec<String> = externs
+        .iter()
+        .filter(|(_, entry)| entry.add_prelude)
+        .map(|(name, _)| name)
+        .cloned()
+        .collect();
+
+    let parts = abort_on_err(queries.expansion(), sess).peek();
+    let resolver = parts.1.borrow();
+
+    // Before we actually clone it, let's force all the extern'd crates to
+    // actually be loaded, just in case they're only referred to inside
+    // intra-doc-links
+    resolver.borrow_mut().access(|resolver| {
+        sess.time("load_extern_crates", || {
+            for extern_name in &extern_names {
+                debug!("loading extern crate {}", extern_name);
+                if let Err(()) = resolver
+                    .resolve_str_path_error(
+                        DUMMY_SP,
+                        extern_name,
+                        TypeNS,
+                        LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
+                  ) {
+                    warn!("unable to resolve external crate {} (do you have an unused `--extern` crate?)", extern_name)
+                  }
+            }
+        });
+    });
+
+    // Now we're good to clone the resolver because everything should be loaded
+    resolver.clone()
+}
+
+crate fn run_global_ctxt(
     tcx: TyCtxt<'_>,
     resolver: Rc<RefCell<interface::BoxedResolver>>,
     mut default_passes: passes::DefaultPassOption,
@@ -541,6 +505,7 @@ fn run_global_ctxt(
     let mut ctxt = DocContext {
         tcx,
         resolver,
+        param_env: Cell::new(ParamEnv::empty()),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
         renderinfo: RefCell::new(renderinfo),
@@ -565,7 +530,7 @@ fn run_global_ctxt(
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
     if let Some(ref m) = krate.module {
-        if let None | Some("") = m.doc_value() {
+        if m.doc_value().map(|d| d.is_empty()).unwrap_or(true) {
             let help = "The following guide may be of use:\n\
                 https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html";
             tcx.struct_lint_node(
@@ -663,6 +628,9 @@ fn run_global_ctxt(
 
     ctxt.sess().abort_if_errors();
 
+    // The main crate doc comments are always collapsed.
+    krate.collapsed = true;
+
     (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
 }
 
@@ -725,7 +693,7 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
 /// `DefId` or parameter index (`ty::ParamTy.index`) of a synthetic type parameter
 /// for `impl Trait` in argument position.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum ImplTraitParam {
+crate enum ImplTraitParam {
     DefId(DefId),
     ParamIndex(u32),
 }

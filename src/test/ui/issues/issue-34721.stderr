@@ -13,7 +13,7 @@ LL |         };
 LL |         x.zero()
    |         ^ value used here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `x`
+note: this function takes ownership of the receiver `self`, which moves `x`
   --> $DIR/issue-34721.rs:4:13
    |
 LL |     fn zero(self) -> Self;

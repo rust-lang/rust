@@ -6,6 +6,11 @@ LL |     Foo(Box::new(|_| ()));
    |
    = note: expected type `FnOnce<(&'a bool,)>`
               found type `FnOnce<(&bool,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-57843.rs:23:18
+   |
+LL |     Foo(Box::new(|_| ()));
+   |                  ^^^^^^
 
 error: aborting due to previous error
 

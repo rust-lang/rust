@@ -18,6 +18,9 @@ mod active;
 mod builtin_attrs;
 mod removed;
 
+#[cfg(test)]
+mod tests;
+
 use rustc_span::{edition::Edition, symbol::Symbol, Span};
 use std::fmt;
 use std::num::NonZeroU32;
@@ -59,7 +62,7 @@ pub enum Stability {
     Deprecated(&'static str, Option<&'static str>),
 }
 
-#[derive(Clone, Copy, Hash)]
+#[derive(Clone, Copy, Debug, Hash)]
 pub enum UnstableFeatures {
     /// Hard errors for unstable features are active, as on beta/stable channels.
     Disallow,
@@ -73,11 +76,20 @@ pub enum UnstableFeatures {
 }
 
 impl UnstableFeatures {
-    pub fn from_environment() -> UnstableFeatures {
+    /// This takes into account `RUSTC_BOOTSTRAP`.
+    ///
+    /// If `krate` is [`Some`], then setting `RUSTC_BOOTSTRAP=krate` will enable the nightly features.
+    /// Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
+    pub fn from_environment(krate: Option<&str>) -> Self {
         // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
         let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
+        // Returns whether `krate` should be counted as unstable
+        let is_unstable_crate = |var: &str| {
+            krate.map_or(false, |name| var.split(',').any(|new_krate| new_krate == name))
+        };
         // `true` if we should enable unstable features for bootstrapping.
-        let bootstrap = std::env::var("RUSTC_BOOTSTRAP").is_ok();
+        let bootstrap = std::env::var("RUSTC_BOOTSTRAP")
+            .map_or(false, |var| var == "1" || is_unstable_crate(&var));
         match (disable_unstable_features, bootstrap) {
             (_, true) => UnstableFeatures::Cheat,
             (true, _) => UnstableFeatures::Disallow,

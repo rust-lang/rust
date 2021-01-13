@@ -1,19 +1,14 @@
 error: unexpected token: `(7u32)`
-  --> $DIR/key-value-expansion.rs:14:25
+  --> $DIR/key-value-expansion.rs:21:6
    |
-LL |         #[rustc_dummy = $expr] // Any key-value attribute, not necessarily `doc`
-   |                         ^^^^^
-...
 LL | bug!((column!()));
-   | ------------------ in this macro invocation
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   |      ^^^^^^^^^^^
 
 error: unexpected token: `"bug" + "found"`
-  --> $DIR/key-value-expansion.rs:31:17
+  --> $DIR/key-value-expansion.rs:27:14
    |
-LL |         #[doc = $test]
-   |                 ^^^^^
+LL |         bug!("bug" + stringify!(found));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | bug!();
    | ------- in this macro invocation
@@ -30,10 +25,10 @@ error: unexpected token: `{
                                                              }));
     res
 }.as_str()`
-  --> $DIR/key-value-expansion.rs:42:17
+  --> $DIR/key-value-expansion.rs:48:23
    |
-LL |         #[doc = $x]
-   |                 ^^
+LL |         doc_comment! {format!("{coor}", coor = stringify!($t1)).as_str()}
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | some_macro!(u8);
    | ---------------- in this macro invocation

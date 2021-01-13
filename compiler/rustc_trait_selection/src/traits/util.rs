@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 pub use rustc_infer::traits::util::*;
@@ -125,7 +125,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
         let items = predicates.predicates.iter().rev().filter_map(|(pred, span)| {
             pred.subst_supertrait(tcx, &trait_ref)
                 .to_opt_poly_trait_ref()
-                .map(|trait_ref| item.clone_and_push(trait_ref, *span))
+                .map(|trait_ref| item.clone_and_push(trait_ref.value, *span))
         });
         debug!("expand_trait_aliases: items={:?}", items.clone());
 
@@ -182,7 +182,7 @@ impl Iterator for SupertraitDefIds<'tcx> {
                 .predicates
                 .iter()
                 .filter_map(|(pred, _)| pred.to_opt_poly_trait_ref())
-                .map(|trait_ref| trait_ref.def_id())
+                .map(|trait_ref| trait_ref.value.def_id())
                 .filter(|&super_def_id| visited.insert(super_def_id)),
         );
         Some(def_id)
@@ -205,12 +205,12 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
     let impl_trait_ref = selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
     let impl_trait_ref = impl_trait_ref.subst(selcx.tcx(), impl_substs);
     let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
-        super::normalize(selcx, param_env, ObligationCause::dummy(), &impl_trait_ref);
+        super::normalize(selcx, param_env, ObligationCause::dummy(), impl_trait_ref);
 
     let predicates = selcx.tcx().predicates_of(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
     let Normalized { value: predicates, obligations: normalization_obligations2 } =
-        super::normalize(selcx, param_env, ObligationCause::dummy(), &predicates);
+        super::normalize(selcx, param_env, ObligationCause::dummy(), predicates);
     let impl_obligations =
         predicates_for_generics(ObligationCause::dummy(), 0, param_env, predicates);
 
@@ -333,11 +333,12 @@ pub fn closure_trait_ref_and_return_type(
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
         TupleArgumentsFlag::Yes => tcx.intern_tup(sig.skip_binder().inputs()),
     };
+    debug_assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef {
         def_id: fn_trait_def_id,
         substs: tcx.mk_substs_trait(self_ty, &[arguments_tuple.into()]),
     };
-    ty::Binder::bind((trait_ref, sig.skip_binder().output()))
+    sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 
 pub fn generator_trait_ref_and_outputs(
@@ -346,11 +347,12 @@ pub fn generator_trait_ref_and_outputs(
     self_ty: Ty<'tcx>,
     sig: ty::PolyGenSig<'tcx>,
 ) -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
+    debug_assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef {
         def_id: fn_trait_def_id,
         substs: tcx.mk_substs_trait(self_ty, &[sig.skip_binder().resume_ty.into()]),
     };
-    ty::Binder::bind((trait_ref, sig.skip_binder().yield_ty, sig.skip_binder().return_ty))
+    sig.map_bound(|sig| (trait_ref, sig.yield_ty, sig.return_ty))
 }
 
 pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {

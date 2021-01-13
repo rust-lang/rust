@@ -65,7 +65,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         let mut _orig_values = OriginalQueryValues::default();
         let c_pred = self
-            .canonicalize_query(&obligation.param_env.and(obligation.predicate), &mut _orig_values);
+            .canonicalize_query(obligation.param_env.and(obligation.predicate), &mut _orig_values);
         // Run canonical query. If overflow occurs, rerun from scratch but this time
         // in standard trait query mode so that overflow is handled appropriately
         // within `SelectionContext`.

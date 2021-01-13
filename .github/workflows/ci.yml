@@ -43,7 +43,7 @@ jobs:
           - name: mingw-check
             os: ubuntu-latest-xl
             env: {}
-          - name: x86_64-gnu-llvm-8
+          - name: x86_64-gnu-llvm-9
             os: ubuntu-latest-xl
             env: {}
           - name: x86_64-gnu-tools
@@ -265,7 +265,7 @@ jobs:
           - name: x86_64-gnu-distcheck
             os: ubuntu-latest-xl
             env: {}
-          - name: x86_64-gnu-llvm-8
+          - name: x86_64-gnu-llvm-9
             env:
               RUST_BACKTRACE: 1
             os: ubuntu-latest-xl

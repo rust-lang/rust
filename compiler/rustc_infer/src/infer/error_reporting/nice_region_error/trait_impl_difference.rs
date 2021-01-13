@@ -86,7 +86,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         if let Some((expected, found)) =
-            self.infcx.expected_found_str_ty(&ExpectedFound { expected, found })
+            self.infcx.expected_found_str_ty(ExpectedFound { expected, found })
         {
             // Highlighted the differences when showing the "expected/found" note.
             err.note_expected_found(&"", expected, &"", found);
@@ -132,10 +132,7 @@ impl Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
                 [segment]
                     if segment
                         .res
-                        .map(|res| match res {
-                            Res::SelfTy(_, _) | Res::Def(hir::def::DefKind::TyParam, _) => true,
-                            _ => false,
-                        })
+                        .map(|res| matches!(res, Res::SelfTy(_, _) | Res::Def(hir::def::DefKind::TyParam, _)))
                         .unwrap_or(false) =>
                 {
                     self.types.push(path.span);

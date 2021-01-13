@@ -122,7 +122,9 @@ h3.impl, h3.method, h3.type {
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .content table td:first-child > a,
 .collapse-toggle, div.item-list .out-of-band,
-#source-sidebar, #sidebar-toggle {
+#source-sidebar, #sidebar-toggle,
+/* This selector is for the items listed in the "all items" page. */
+#main > ul.docblock > li > a {
 	font-family: "Fira Sans", sans-serif;
 }
 
@@ -553,21 +555,21 @@ h4 > code, h3 > code, .invisible > code {
 	border: none;
 }
 
-.content .stability code {
+.content .item-info code {
 	font-size: 90%;
 }
 
-.content .stability {
+.content .item-info {
 	position: relative;
 	margin-left: 33px;
 	margin-top: -13px;
 }
 
-.sub-variant > div > .stability {
+.sub-variant > div > .item-info {
 	margin-top: initial;
 }
 
-.content .stability::before {
+.content .item-info::before {
 	content: '⬑';
 	font-size: 25px;
 	position: absolute;
@@ -579,15 +581,15 @@ h4 > code, h3 > code, .invisible > code {
 	margin-left: 20px;
 }
 
-.content .impl-items .docblock, .content .impl-items .stability {
+.content .impl-items .docblock, .content .impl-items .item-info {
 	margin-bottom: .6em;
 }
 
-.content .impl-items > .stability {
+.content .impl-items > .item-info {
 	margin-left: 40px;
 }
 
-.methods > .stability, .content .impl-items > .stability {
+.methods > .item-info, .content .impl-items > .item-info {
 	margin-top: -8px;
 }
 
@@ -595,7 +597,7 @@ h4 > code, h3 > code, .invisible > code {
 	flex-basis: 100%;
 }
 
-#main > .stability {
+#main > .item-info {
 	margin-top: 0;
 }
 
@@ -655,11 +657,11 @@ a {
 }
 
 .docblock a:not(.srclink):not(.test-arrow):hover,
-.docblock-short a:not(.srclink):not(.test-arrow):hover, .stability a {
+.docblock-short a:not(.srclink):not(.test-arrow):hover, .item-info a {
 	text-decoration: underline;
 }
 
-.invisible > .srclink, h4 > code + .srclink {
+.invisible > .srclink, h4 > code + .srclink, h3 > code + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -857,25 +859,25 @@ body.blur > :not(#help) {
 	top: 0;
 }
 
-.impl-items .since, .impl .since {
+.impl-items .since, .impl .since, .methods .since {
 	flex-grow: 0;
 	padding-left: 12px;
 	padding-right: 2px;
 	position: initial;
 }
 
-.impl-items .srclink, .impl .srclink {
+.impl-items .srclink, .impl .srclink, .methods .srclink {
 	flex-grow: 0;
 	/* Override header settings otherwise it's too bold */
 	font-size: 17px;
 	font-weight: normal;
 }
 
-.impl-items code, .impl code {
+.impl-items code, .impl code, .methods code {
 	flex-grow: 1;
 }
 
-.impl-items h4, h4.impl, h3.impl {
+.impl-items h4, h4.impl, h3.impl, .methods h3 {
 	display: flex;
 	flex-basis: 100%;
 	font-size: 16px;
@@ -1079,20 +1081,29 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	cursor: pointer;
 }
 
-.tooltip .tooltiptext {
-	width: 120px;
+.tooltip::after {
 	display: none;
 	text-align: center;
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
 	margin-left: 5px;
-	top: -5px;
-	left: 105%;
-	z-index: 10;
 	font-size: 16px;
 }
 
-.tooltip .tooltiptext::after {
+.tooltip.ignore::after {
+	content: "This example is not tested";
+}
+.tooltip.compile_fail::after {
+	content: "This example deliberately fails to compile";
+}
+.tooltip.should_panic::after {
+	content: "This example panics";
+}
+.tooltip.edition::after {
+	content: "This code runs with edition " attr(data-edition);
+}
+
+.tooltip::before {
 	content: " ";
 	position: absolute;
 	top: 50%;
@@ -1100,9 +1111,10 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	margin-top: -5px;
 	border-width: 5px;
 	border-style: solid;
+	display: none;
 }
 
-.tooltip:hover .tooltiptext {
+.tooltip:hover::before, .tooltip:hover::after {
 	display: inline;
 }
 
@@ -1176,21 +1188,22 @@ pre.rust {
 	height: 35px;
 }
 
-#titles > div {
+#titles > button {
 	float: left;
 	width: 33.3%;
 	text-align: center;
 	font-size: 18px;
 	cursor: pointer;
+	border: 0;
 	border-top: 2px solid;
 }
 
-#titles > div:not(:last-child) {
+#titles > button:not(:last-child) {
 	margin-right: 1px;
 	width: calc(33.3% - 1px);
 }
 
-#titles > div > div.count {
+#titles > button > div.count {
 	display: inline-block;
 	font-size: 16px;
 }
@@ -1399,6 +1412,7 @@ h4 > .notable-traits {
 	.sidebar > .block.version {
 		border-bottom: none;
 		margin-top: 12px;
+		margin-bottom: 0;
 	}
 
 	nav.sub {
@@ -1459,7 +1473,7 @@ h4 > .notable-traits {
 		top: 24px;
 	}
 
-	#titles > div > div.count {
+	#titles > button > div.count {
 		float: left;
 		width: 100%;
 	}
@@ -1565,13 +1579,20 @@ h4 > .notable-traits {
 }
 
 @media (max-width: 416px) {
-	#titles, #titles > div {
+	#titles, #titles > button {
 		height: 73px;
+	}
+
+	/* This is to prevent the search bar from being underneath the <section>
+	 * element following it.
+	 */
+	#main, #search {
+		margin-top: 100px;
 	}
 
 	#main > table:not(.table-display) td {
 		word-break: break-word;
-		min-width: 10%;
+		width: 50%;
 	}
 
 	.search-container > div {

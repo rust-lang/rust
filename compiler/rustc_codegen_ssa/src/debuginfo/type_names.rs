@@ -94,7 +94,14 @@ pub fn push_debuginfo_type_name<'tcx>(
             push_debuginfo_type_name(tcx, inner_type, true, output, visited);
 
             if cpp_like_names {
-                output.push('*');
+                // Slices and `&str` are treated like C++ pointers when computing debug
+                // info for MSVC debugger. However, adding '*' at the end of these types' names
+                // causes the .natvis engine for WinDbg to fail to display their data, so we opt these
+                // types out to aid debugging in MSVC.
+                match *inner_type.kind() {
+                    ty::Slice(_) | ty::Str => {}
+                    _ => output.push('*'),
+                }
             }
         }
         ty::Array(inner_type, len) => {
@@ -120,8 +127,8 @@ pub fn push_debuginfo_type_name<'tcx>(
         }
         ty::Dynamic(ref trait_data, ..) => {
             if let Some(principal) = trait_data.principal() {
-                let principal = tcx
-                    .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &principal);
+                let principal =
+                    tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), principal);
                 push_item_name(tcx, principal.def_id, false, output);
                 push_type_params(tcx, principal.substs, output, visited);
             } else {
@@ -159,7 +166,7 @@ pub fn push_debuginfo_type_name<'tcx>(
 
             output.push_str("fn(");
 
-            let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+            let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
                     push_debuginfo_type_name(tcx, parameter_type, true, output, visited);

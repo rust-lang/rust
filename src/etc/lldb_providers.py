@@ -531,7 +531,7 @@ class StdHashMapSyntheticProvider:
         ctrl = table.GetChildMemberWithName("ctrl").GetChildAtIndex(0)
 
         self.size = table.GetChildMemberWithName("items").GetValueAsUnsigned()
-        self.pair_type = table.type.template_args[0]
+        self.pair_type = table.type.template_args[0].GetTypedefedType()
         self.pair_type_size = self.pair_type.GetByteSize()
 
         self.new_layout = not table.GetChildMemberWithName("data").IsValid()

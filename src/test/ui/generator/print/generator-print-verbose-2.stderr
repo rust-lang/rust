@@ -8,8 +8,8 @@ LL |     assert_send(|| {
    |     ^^^^^^^^^^^ `Cell<i32>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `Cell<i32>`
-   = note: required because of the requirements on the impl of `Send` for `&'_#3r Cell<i32>`
-   = note: required because it appears within the type `[main::{closure#1} upvar_tys=(&'_#3r Cell<i32>) _#17t]`
+   = note: required because of the requirements on the impl of `Send` for `&'_#4r Cell<i32>`
+   = note: required because it appears within the type `[main::{closure#1} upvar_tys=(&'_#4r Cell<i32>) _#17t]`
 
 error: generator cannot be shared between threads safely
   --> $DIR/generator-print-verbose-2.rs:12:5

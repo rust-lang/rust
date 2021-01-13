@@ -38,4 +38,14 @@ fn main() {
     x >= 8 || x >= 12;
     x < 12 || 12 < x;
     x >= 8 || x <= 12;
+
+    // Fix #6315
+    let y = 3.;
+    y >= 0. && y < 1.;
+    y < 0. || y > 1.;
+}
+
+// Fix #6373
+pub const fn in_range(a: i32) -> bool {
+    3 <= a && a <= 20
 }

@@ -1,0 +1,49 @@
+warning: missing documentation for the crate
+  --> $DIR/check.rs:4:1
+   |
+LL | / #![warn(missing_docs)]
+LL | |
+LL | |
+LL | | #![warn(rustdoc)]
+LL | |
+LL | | pub fn foo() {}
+   | |_______________^
+   |
+note: the lint level is defined here
+  --> $DIR/check.rs:4:9
+   |
+LL | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: missing documentation for a function
+  --> $DIR/check.rs:9:1
+   |
+LL | pub fn foo() {}
+   | ^^^^^^^^^^^^
+
+warning: missing code example in this documentation
+  --> $DIR/check.rs:4:1
+   |
+LL | / #![warn(missing_docs)]
+LL | |
+LL | |
+LL | | #![warn(rustdoc)]
+LL | |
+LL | | pub fn foo() {}
+   | |_______________^
+   |
+note: the lint level is defined here
+  --> $DIR/check.rs:7:9
+   |
+LL | #![warn(rustdoc)]
+   |         ^^^^^^^
+   = note: `#[warn(missing_doc_code_examples)]` implied by `#[warn(rustdoc)]`
+
+warning: missing code example in this documentation
+  --> $DIR/check.rs:9:1
+   |
+LL | pub fn foo() {}
+   | ^^^^^^^^^^^^^^^
+
+warning: 4 warnings emitted
+

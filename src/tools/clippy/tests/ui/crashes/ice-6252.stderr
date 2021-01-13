@@ -26,21 +26,7 @@ LL |     const VAL: T;
 LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `VAL` in implementation
 
-error: any use of this value will cause an error
-  --> $DIR/ice-6252.rs:5:5
-   |
-LL |     const VAL: T;
-   |     ^^^^^^^^^^^^^ no MIR body is available for DefId(0:5 ~ ice_6252[317d]::TypeVal::VAL)
-   |
-   = note: `#[deny(const_err)]` on by default
+error: aborting due to 3 previous errors
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ice-6252.rs:14:9
-   |
-LL |     [1; <Multiply<Five, Five>>::VAL];
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
-
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0046, E0080, E0412.
+Some errors have detailed explanations: E0046, E0412.
 For more information about an error, try `rustc --explain E0046`.

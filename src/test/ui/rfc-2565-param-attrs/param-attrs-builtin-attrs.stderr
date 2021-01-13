@@ -1,62 +1,62 @@
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/param-attrs-builtin-attrs.rs:5:9
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:5:11
    |
 LL |         #[test] a: i32,
-   |         ^^^^^^^
+   |           ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/param-attrs-builtin-attrs.rs:21:5
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:21:7
    |
 LL |     #[test] a: u32,
-   |     ^^^^^^^
+   |       ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/param-attrs-builtin-attrs.rs:36:5
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:36:7
    |
 LL |     #[test] a: u32,
-   |     ^^^^^^^
+   |       ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/param-attrs-builtin-attrs.rs:56:9
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:56:11
    |
 LL |         #[test] a: i32,
-   |         ^^^^^^^
+   |           ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/param-attrs-builtin-attrs.rs:71:9
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:71:11
    |
 LL |         #[test] a: i32,
-   |         ^^^^^^^
+   |           ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/param-attrs-builtin-attrs.rs:92:9
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:92:11
    |
 LL |         #[test] a: i32,
-   |         ^^^^^^^
+   |           ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/param-attrs-builtin-attrs.rs:111:9
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:111:11
    |
 LL |         #[test] a: i32,
-   |         ^^^^^^^
+   |           ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/param-attrs-builtin-attrs.rs:126:9
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:126:11
    |
 LL |         #[test] a: i32,
-   |         ^^^^^^^
+   |           ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/param-attrs-builtin-attrs.rs:146:9
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:146:11
    |
 LL |         #[test] a: i32,
-   |         ^^^^^^^
+   |           ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/param-attrs-builtin-attrs.rs:163:9
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:163:11
    |
 LL |         #[test] a: u32,
-   |         ^^^^^^^
+   |           ^^^^ not a non-macro attribute
 
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:3:9

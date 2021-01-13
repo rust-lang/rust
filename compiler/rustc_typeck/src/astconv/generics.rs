@@ -1,16 +1,17 @@
 use crate::astconv::{
-    AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
+    AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
+    GenericArgCountResult, GenericArgPosition,
 };
 use crate::errors::AssocTypeBindingNotAllowed;
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{GenericArg, GenericArgs};
+use rustc_hir::GenericArg;
 use rustc_middle::ty::{
     self, subst, subst::SubstsRef, GenericParamDef, GenericParamDefKind, Ty, TyCtxt,
 };
-use rustc_session::{lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS, Session};
+use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::{symbol::kw, MultiSpan, Span};
 
 use smallvec::SmallVec;
@@ -19,39 +20,72 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Report an error that a generic argument did not match the generic parameter that was
     /// expected.
     fn generic_arg_mismatch_err(
-        sess: &Session,
+        tcx: TyCtxt<'_>,
         arg: &GenericArg<'_>,
-        kind: &'static str,
+        param: &GenericParamDef,
+        possible_ordering_error: bool,
         help: Option<&str>,
     ) {
+        let sess = tcx.sess;
         let mut err = struct_span_err!(
             sess,
             arg.span(),
             E0747,
             "{} provided when a {} was expected",
             arg.descr(),
-            kind,
+            param.kind.descr(),
         );
 
-        let unordered = sess.features_untracked().const_generics;
-        let kind_ord = match kind {
-            "lifetime" => ParamKindOrd::Lifetime,
-            "type" => ParamKindOrd::Type,
-            "constant" => ParamKindOrd::Const { unordered },
-            // It's more concise to match on the string representation, though it means
-            // the match is non-exhaustive.
-            _ => bug!("invalid generic parameter kind {}", kind),
-        };
-        let arg_ord = match arg {
-            GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
-            GenericArg::Type(_) => ParamKindOrd::Type,
-            GenericArg::Const(_) => ParamKindOrd::Const { unordered },
-        };
+        if let GenericParamDefKind::Const { .. } = param.kind {
+            if let GenericArg::Type(hir::Ty { kind: hir::TyKind::Infer, .. }) = arg {
+                err.help("const arguments cannot yet be inferred with `_`");
+            }
+        }
+
+        // Specific suggestion set for diagnostics
+        match (arg, &param.kind) {
+            (
+                GenericArg::Type(hir::Ty { kind: hir::TyKind::Path { .. }, .. }),
+                GenericParamDefKind::Const { .. },
+            ) => {
+                let suggestions = vec![
+                    (arg.span().shrink_to_lo(), String::from("{ ")),
+                    (arg.span().shrink_to_hi(), String::from(" }")),
+                ];
+                err.multipart_suggestion(
+                    "if this generic argument was intended as a const parameter, \
+                try surrounding it with braces:",
+                    suggestions,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (
+                GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
+                GenericParamDefKind::Const { .. },
+            ) if tcx.type_of(param.def_id) == tcx.types.usize => {
+                let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id));
+                if let Ok(snippet) = snippet {
+                    err.span_suggestion(
+                        arg.span(),
+                        "array type provided where a `usize` was expected, try",
+                        format!("{{ {} }}", snippet),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            _ => {}
+        }
+
+        let kind_ord = param.kind.to_ord(tcx);
+        let arg_ord = arg.to_ord(&tcx.features());
 
         // This note is only true when generic parameters are strictly ordered by their kind.
-        if kind_ord.cmp(&arg_ord) != core::cmp::Ordering::Equal {
-            let (first, last) =
-                if kind_ord < arg_ord { (kind, arg.descr()) } else { (arg.descr(), kind) };
+        if possible_ordering_error && kind_ord.cmp(&arg_ord) != core::cmp::Ordering::Equal {
+            let (first, last) = if kind_ord < arg_ord {
+                (param.kind.descr(), arg.descr())
+            } else {
+                (arg.descr(), param.kind.descr())
+            };
             err.note(&format!("{} arguments must be provided before {} arguments", first, last));
             if let Some(help) = help {
                 err.help(help);
@@ -90,20 +124,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ///   instantiate a `GenericArg`.
     /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
     ///   creates a suitable inference variable.
-    pub fn create_substs_for_generic_args<'b>(
+    pub fn create_substs_for_generic_args<'a>(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
         parent_substs: &[subst::GenericArg<'tcx>],
         has_self: bool,
         self_ty: Option<Ty<'tcx>>,
         arg_count: GenericArgCountResult,
-        args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs<'b>>, bool),
-        mut provided_kind: impl FnMut(&GenericParamDef, &GenericArg<'_>) -> subst::GenericArg<'tcx>,
-        mut inferred_kind: impl FnMut(
-            Option<&[subst::GenericArg<'tcx>]>,
-            &GenericParamDef,
-            bool,
-        ) -> subst::GenericArg<'tcx>,
+        ctx: &mut impl CreateSubstsForGenericArgsCtxt<'a, 'tcx>,
     ) -> SubstsRef<'tcx> {
         // Collect the segments of the path; we need to substitute arguments
         // for parameters throughout the entire path (wherever there are
@@ -142,7 +170,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             substs.push(
                                 self_ty
                                     .map(|ty| ty.into())
-                                    .unwrap_or_else(|| inferred_kind(None, param, true)),
+                                    .unwrap_or_else(|| ctx.inferred_kind(None, param, true)),
                             );
                             params.next();
                         }
@@ -151,10 +179,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
 
             // Check whether this segment takes generic arguments and the user has provided any.
-            let (generic_args, infer_args) = args_for_def_id(def_id);
+            let (generic_args, infer_args) = ctx.args_for_def_id(def_id);
 
-            let mut args =
-                generic_args.iter().flat_map(|generic_args| generic_args.args.iter()).peekable();
+            let args_iter = generic_args.iter().flat_map(|generic_args| generic_args.args.iter());
+            let mut args = args_iter.clone().peekable();
 
             // If we encounter a type or const when we expect a lifetime, we infer the lifetimes.
             // If we later encounter a lifetime, we know that the arguments were provided in the
@@ -173,7 +201,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
                             | (GenericArg::Type(_), GenericParamDefKind::Type { .. }, _)
                             | (GenericArg::Const(_), GenericParamDefKind::Const, _) => {
-                                substs.push(provided_kind(param, arg));
+                                substs.push(ctx.provided_kind(param, arg));
                                 args.next();
                                 params.next();
                             }
@@ -184,8 +212,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             ) => {
                                 // We expected a lifetime argument, but got a type or const
                                 // argument. That means we're inferring the lifetimes.
-                                substs.push(inferred_kind(None, param, infer_args));
-                                force_infer_lt = Some(arg);
+                                substs.push(ctx.inferred_kind(None, param, infer_args));
+                                force_infer_lt = Some((arg, param));
                                 params.next();
                             }
                             (GenericArg::Lifetime(_), _, ExplicitLateBound::Yes) => {
@@ -195,7 +223,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // ignore it.
                                 args.next();
                             }
-                            (_, kind, _) => {
+                            (_, _, _) => {
                                 // We expected one kind of parameter, but the user provided
                                 // another. This is an error. However, if we already know that
                                 // the arguments don't match up with the parameters, we won't issue
@@ -221,8 +249,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                                     GenericParamDefKind::Const => {
                                                         ParamKindOrd::Const {
                                                             unordered: tcx
-                                                                .sess
-                                                                .features_untracked()
+                                                                .features()
                                                                 .const_generics,
                                                         }
                                                     }
@@ -239,9 +266,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                     param_types_present.dedup();
 
                                     Self::generic_arg_mismatch_err(
-                                        tcx.sess,
+                                        tcx,
                                         arg,
-                                        kind.descr(),
+                                        param,
+                                        !args_iter.clone().is_sorted_by_key(|arg| match arg {
+                                            GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
+                                            GenericArg::Type(_) => ParamKindOrd::Type,
+                                            GenericArg::Const(_) => ParamKindOrd::Const {
+                                                unordered: tcx.features().const_generics,
+                                            },
+                                        }),
                                         Some(&format!(
                                             "reorder the arguments: {}: `<{}>`",
                                             param_types_present
@@ -291,9 +325,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         {
                             let kind = arg.descr();
                             assert_eq!(kind, "lifetime");
-                            let provided =
+                            let (provided_arg, param) =
                                 force_infer_lt.expect("lifetimes ought to have been inferred");
-                            Self::generic_arg_mismatch_err(tcx.sess, provided, kind, None);
+                            Self::generic_arg_mismatch_err(tcx, provided_arg, param, false, None);
                         }
 
                         break;
@@ -302,7 +336,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (None, Some(&param)) => {
                         // If there are fewer arguments than parameters, it means
                         // we're inferring the remaining arguments.
-                        substs.push(inferred_kind(Some(&substs), param, infer_args));
+                        substs.push(ctx.inferred_kind(Some(&substs), param, infer_args));
                         params.next();
                     }
 
@@ -351,6 +385,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // that lifetimes will proceed types. So it suffices to check the number of each generic
         // arguments in order to validate them with respect to the generic parameters.
         let param_counts = def.own_counts();
+        let named_type_param_count = param_counts.types - has_self as usize;
         let arg_counts = args.own_counts();
         let infer_lifetimes = position != GenericArgPosition::Type && arg_counts.lifetimes == 0;
 
@@ -362,7 +397,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     defaults.types += has_default as usize
                 }
                 GenericParamDefKind::Const => {
-                    // FIXME(const_generics:defaults)
+                    // FIXME(const_generics_defaults)
                 }
             };
         }
@@ -389,11 +424,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // For kinds without defaults (e.g.., lifetimes), `required == permitted`.
             // For other kinds (i.e., types), `permitted` may be greater than `required`.
             if required <= provided && provided <= permitted {
-                return Ok(());
+                return true;
             }
 
             if silent {
-                return Err((0i32, None));
+                return false;
             }
 
             // Unfortunately lifetime and type parameter mismatches are typically styled
@@ -409,25 +444,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (required, "")
             };
 
-            let (spans, label) = if required == permitted && provided > permitted {
+            let (spans, labels) = if provided > permitted {
                 // In the case when the user has provided too many arguments,
                 // we want to point to the unexpected arguments.
-                let spans: Vec<Span> = args.args[offset + permitted..offset + provided]
+                let (spans, labels): (Vec<Span>, Vec<String>) = args.args
+                    [offset + permitted..offset + provided]
                     .iter()
-                    .map(|arg| arg.span())
-                    .collect();
+                    .map(|arg| (arg.span(), format!("unexpected {} argument", arg.short_descr())))
+                    .unzip();
                 unexpected_spans.extend(spans.clone());
-                (spans, format!("unexpected {} argument", kind))
+                (spans, labels)
             } else {
                 (
                     vec![span],
-                    format!(
+                    vec![format!(
                         "expected {}{} {} argument{}",
                         quantifier,
                         bound,
                         kind,
                         pluralize!(bound),
-                    ),
+                    )],
                 )
             };
 
@@ -439,105 +475,57 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ),
                 DiagnosticId::Error("E0107".into()),
             );
-            for span in spans {
+            for (span, label) in spans.into_iter().zip(labels) {
                 err.span_label(span, label.as_str());
             }
-
-            assert_ne!(bound, provided);
-            Err((bound as i32 - provided as i32, Some(err)))
+            err.emit();
+            false
         };
 
         let mut unexpected_spans = vec![];
 
-        let mut lifetime_count_correct = Ok(());
-        if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
-            lifetime_count_correct = check_kind_count(
-                "lifetime",
-                param_counts.lifetimes,
-                param_counts.lifetimes,
-                arg_counts.lifetimes,
-                0,
-                &mut unexpected_spans,
-                explicit_late_bound == ExplicitLateBound::Yes,
-            );
-        }
+        let lifetime_count_correct = check_kind_count(
+            "lifetime",
+            if infer_lifetimes { 0 } else { param_counts.lifetimes },
+            param_counts.lifetimes,
+            arg_counts.lifetimes,
+            0,
+            &mut unexpected_spans,
+            explicit_late_bound == ExplicitLateBound::Yes,
+        );
 
-        // FIXME(const_generics:defaults)
-        let mut const_count_correct = Ok(());
-        if !infer_args || arg_counts.consts > param_counts.consts {
-            const_count_correct = check_kind_count(
-                "const",
-                param_counts.consts,
-                param_counts.consts,
-                arg_counts.consts,
-                arg_counts.lifetimes + arg_counts.types,
-                &mut unexpected_spans,
-                false,
-            );
-        }
+        let kind_str = if param_counts.consts + arg_counts.consts == 0 {
+            "type"
+        } else if named_type_param_count + arg_counts.types == 0 {
+            "const"
+        } else {
+            "generic"
+        };
 
-        // Note that type errors are currently be emitted *after* const errors.
-        let mut type_count_correct = Ok(());
-        if !infer_args || arg_counts.types > param_counts.types - defaults.types - has_self as usize
-        {
-            type_count_correct = check_kind_count(
-                "type",
-                param_counts.types - defaults.types - has_self as usize,
-                param_counts.types - has_self as usize,
-                arg_counts.types,
-                arg_counts.lifetimes,
-                &mut unexpected_spans,
-                false,
-            );
-        }
-
-        // Emit a help message if it's possible that a type could be surrounded in braces
-        if let Err((c_mismatch, Some(ref mut _const_err))) = const_count_correct {
-            if let Err((_, Some(ref mut type_err))) = type_count_correct {
-                let possible_matches = args.args[arg_counts.lifetimes..]
-                    .iter()
-                    .filter(|arg| {
-                        matches!(
-                            arg,
-                            GenericArg::Type(hir::Ty { kind: hir::TyKind::Path { .. }, .. })
-                        )
-                    })
-                    .take(c_mismatch.max(0) as usize);
-                for arg in possible_matches {
-                    let suggestions = vec![
-                        (arg.span().shrink_to_lo(), String::from("{ ")),
-                        (arg.span().shrink_to_hi(), String::from(" }")),
-                    ];
-                    type_err.multipart_suggestion(
-                        "If this generic argument was intended as a const parameter, \
-                        try surrounding it with braces:",
-                        suggestions,
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-            }
-        }
-
-        let emit_correct =
-            |correct: Result<(), (_, Option<rustc_errors::DiagnosticBuilder<'_>>)>| match correct {
-                Ok(()) => Ok(()),
-                Err((_, None)) => Err(()),
-                Err((_, Some(mut err))) => {
-                    err.emit();
-                    Err(())
-                }
-            };
-
-        let arg_count_correct = emit_correct(lifetime_count_correct)
-            .and(emit_correct(const_count_correct))
-            .and(emit_correct(type_count_correct));
+        let arg_count_correct = check_kind_count(
+            kind_str,
+            if infer_args {
+                0
+            } else {
+                param_counts.consts + named_type_param_count - defaults.types
+            },
+            param_counts.consts + named_type_param_count,
+            arg_counts.consts + arg_counts.types,
+            arg_counts.lifetimes,
+            &mut unexpected_spans,
+            false,
+        );
 
         GenericArgCountResult {
             explicit_late_bound,
-            correct: arg_count_correct.map_err(|()| GenericArgCountMismatch {
-                reported: Some(ErrorReported),
-                invalid_args: unexpected_spans,
-            }),
+            correct: if lifetime_count_correct && arg_count_correct {
+                Ok(())
+            } else {
+                Err(GenericArgCountMismatch {
+                    reported: Some(ErrorReported),
+                    invalid_args: unexpected_spans,
+                })
+            },
         }
     }
 
@@ -548,18 +536,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         generics: &ty::Generics,
     ) -> bool {
         let explicit = !seg.infer_args;
-        let impl_trait =
-            generics.params.iter().any(|param| match param.kind {
-                ty::GenericParamDefKind::Type {
-                    synthetic:
-                        Some(
-                            hir::SyntheticTyParamKind::ImplTrait
-                            | hir::SyntheticTyParamKind::FromAttr,
-                        ),
-                    ..
-                } => true,
-                _ => false,
-            });
+        let impl_trait = generics.params.iter().any(|param| {
+            matches!(param.kind, ty::GenericParamDefKind::Type {
+                synthetic:
+                    Some(
+                        hir::SyntheticTyParamKind::ImplTrait
+                        | hir::SyntheticTyParamKind::FromAttr,
+                    ),
+                ..
+            })
+        });
 
         if explicit && impl_trait {
             let spans = seg

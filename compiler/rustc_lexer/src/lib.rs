@@ -267,8 +267,8 @@ pub fn is_whitespace(c: char) -> bool {
 pub fn is_id_start(c: char) -> bool {
     // This is XID_Start OR '_' (which formally is not a XID_Start).
     // We also add fast-path for ascii idents
-    ('a' <= c && c <= 'z')
-        || ('A' <= c && c <= 'Z')
+    ('a'..='z').contains(&c)
+        || ('A'..='Z').contains(&c)
         || c == '_'
         || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_start(c))
 }
@@ -279,9 +279,9 @@ pub fn is_id_start(c: char) -> bool {
 pub fn is_id_continue(c: char) -> bool {
     // This is exactly XID_Continue.
     // We also add fast-path for ascii idents
-    ('a' <= c && c <= 'z')
-        || ('A' <= c && c <= 'Z')
-        || ('0' <= c && c <= '9')
+    ('a'..='z').contains(&c)
+        || ('A'..='Z').contains(&c)
+        || ('0'..='9').contains(&c)
         || c == '_'
         || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_continue(c))
 }

@@ -1,8 +1,8 @@
 error[E0107]: wrong number of type arguments: expected at most 2, found 3
-  --> $DIR/generic-impl-more-params-with-defaults.rs:13:5
+  --> $DIR/generic-impl-more-params-with-defaults.rs:13:24
    |
 LL |     Vec::<isize, Heap, bool>::new();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected at most 2 type arguments
+   |                        ^^^^ unexpected type argument
 
 error: aborting due to previous error
 

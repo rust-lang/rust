@@ -49,7 +49,6 @@ cfg_if::cfg_if! {
         mod real_imp;
     } else if #[cfg(any(
         all(target_family = "windows", target_env = "gnu"),
-        target_os = "cloudabi",
         target_os = "psp",
         target_family = "unix",
         all(target_vendor = "fortanix", target_env = "sgx"),
@@ -105,9 +104,8 @@ pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any
 // implementation.
 #[rustc_std_internal_symbol]
 #[unwind(allowed)]
-pub unsafe extern "C" fn __rust_start_panic(payload: usize) -> u32 {
-    let payload = payload as *mut &mut dyn BoxMeUp;
-    let payload = (*payload).take_box();
+pub unsafe extern "C" fn __rust_start_panic(payload: *mut &mut dyn BoxMeUp) -> u32 {
+    let payload = Box::from_raw((*payload).take_box());
 
-    imp::panic(Box::from_raw(payload))
+    imp::panic(payload)
 }

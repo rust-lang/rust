@@ -106,6 +106,8 @@ macro_rules! define_Conf {
 
 pub use self::helpers::Conf;
 define_Conf! {
+    /// Lint: REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN. The minimum rust version that the project supports
+    (msrv, "msrv": Option<String>, None),
     /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses
     (blacklisted_names, "blacklisted_names": Vec<String>, ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
     /// Lint: COGNITIVE_COMPLEXITY. The maximum cognitive complexity a function can have
@@ -168,6 +170,8 @@ define_Conf! {
     (warn_on_all_wildcard_imports, "warn_on_all_wildcard_imports": bool, false),
     /// Lint: DISALLOWED_METHOD. The list of blacklisted methods to lint about. NB: `bar` is not here since it has legitimate uses
     (disallowed_methods, "disallowed_methods": Vec<String>, Vec::<String>::new()),
+    /// Lint: UNREADABLE_LITERAL. Should the fraction of a decimal be linted to include separators.
+    (unreadable_literal_lint_fractions, "unreadable_literal_lint_fractions": bool, true),
 }
 
 impl Default for Conf {

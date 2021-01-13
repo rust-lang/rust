@@ -214,11 +214,28 @@ pub enum SymbolManglingVersion {
 
 impl_stable_hash_via_hash!(SymbolManglingVersion);
 
-#[derive(Clone, Copy, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum DebugInfo {
     None,
     Limited,
     Full,
+}
+
+/// Some debuginfo requires link-time relocation and some does not. LLVM can partition the debuginfo
+/// into sections depending on whether or not it requires link-time relocation. Split DWARF
+/// provides a mechanism which allows the linker to skip the sections which don't require link-time
+/// relocation - either by putting those sections into DWARF object files, or keeping them in the
+/// object file in such a way that the linker will skip them.
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum SplitDwarfKind {
+    /// Disabled.
+    None,
+    /// Sections which do not require relocation are written into the object file but ignored
+    /// by the linker.
+    Single,
+    /// Sections which do not require relocation are written into a DWARF object (`.dwo`) file,
+    /// which is skipped by the linker by virtue of being a different file.
+    Split,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
@@ -533,6 +550,7 @@ impl_stable_hash_via_hash!(OutputFilenames);
 
 pub const RLINK_EXT: &str = "rlink";
 pub const RUST_CGU_EXT: &str = "rcgu";
+pub const DWARF_OBJECT_EXT: &str = "dwo";
 
 impl OutputFilenames {
     pub fn new(
@@ -566,7 +584,12 @@ impl OutputFilenames {
         self.temp_path_ext(extension, codegen_unit_name)
     }
 
-    /// Like temp_path, but also supports things where there is no corresponding
+    /// Like `temp_path`, but specifically for dwarf objects.
+    pub fn temp_path_dwo(&self, codegen_unit_name: Option<&str>) -> PathBuf {
+        self.temp_path_ext(DWARF_OBJECT_EXT, codegen_unit_name)
+    }
+
+    /// Like `temp_path`, but also supports things where there is no corresponding
     /// OutputType, like noopt-bitcode or lto-bitcode.
     pub fn temp_path_ext(&self, ext: &str, codegen_unit_name: Option<&str>) -> PathBuf {
         let mut extension = String::new();
@@ -592,6 +615,37 @@ impl OutputFilenames {
         let mut path = self.out_directory.join(&self.filestem);
         path.set_extension(extension);
         path
+    }
+
+    /// Returns the name of the Split DWARF file - this can differ depending on which Split DWARF
+    /// mode is being used, which is the logic that this function is intended to encapsulate.
+    pub fn split_dwarf_filename(
+        &self,
+        split_dwarf_kind: SplitDwarfKind,
+        cgu_name: Option<&str>,
+    ) -> Option<PathBuf> {
+        self.split_dwarf_path(split_dwarf_kind, cgu_name)
+            .map(|path| path.strip_prefix(&self.out_directory).unwrap_or(&path).to_path_buf())
+    }
+
+    /// Returns the path for the Split DWARF file - this can differ depending on which Split DWARF
+    /// mode is being used, which is the logic that this function is intended to encapsulate.
+    pub fn split_dwarf_path(
+        &self,
+        split_dwarf_kind: SplitDwarfKind,
+        cgu_name: Option<&str>,
+    ) -> Option<PathBuf> {
+        let obj_out = self.temp_path(OutputType::Object, cgu_name);
+        let dwo_out = self.temp_path_dwo(cgu_name);
+        match split_dwarf_kind {
+            SplitDwarfKind::None => None,
+            // Single mode doesn't change how DWARF is emitted, but does add Split DWARF attributes
+            // (pointing at the path which is being determined here). Use the path to the current
+            // object file.
+            SplitDwarfKind::Single => Some(obj_out),
+            // Split mode emits the DWARF into a different file, use that path.
+            SplitDwarfKind::Split => Some(dwo_out),
+        }
     }
 }
 
@@ -692,6 +746,10 @@ impl DebuggingOptions {
             deduplicate_diagnostics: self.deduplicate_diagnostics,
         }
     }
+
+    pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
+        self.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
+    }
 }
 
 // The type of entry function, so users can have their own entry functions
@@ -761,7 +819,7 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
         }
     }
     ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
-    ret.insert((sym::target_endian, Some(Symbol::intern(end))));
+    ret.insert((sym::target_endian, Some(Symbol::intern(end.as_str()))));
     ret.insert((sym::target_pointer_width, Some(Symbol::intern(&wordsz))));
     ret.insert((sym::target_env, Some(Symbol::intern(env))));
     ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
@@ -1250,12 +1308,11 @@ fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
         None => DEFAULT_EDITION,
     };
 
-    if !edition.is_stable() && !nightly_options::is_nightly_build() {
+    if !edition.is_stable() && !nightly_options::is_unstable_enabled(matches) {
         early_error(
             ErrorOutputType::default(),
             &format!(
-                "edition {} is unstable and only \
-                     available for nightly builds of rustc.",
+                "edition {} is unstable and only available with -Z unstable-options.",
                 edition,
             ),
         )
@@ -1296,8 +1353,10 @@ fn parse_output_types(
     if !debugging_opts.parse_only {
         for list in matches.opt_strs("emit") {
             for output_type in list.split(',') {
-                let mut parts = output_type.splitn(2, '=');
-                let shorthand = parts.next().unwrap();
+                let (shorthand, path) = match output_type.split_once('=') {
+                    None => (output_type, None),
+                    Some((shorthand, path)) => (shorthand, Some(PathBuf::from(path))),
+                };
                 let output_type = OutputType::from_shorthand(shorthand).unwrap_or_else(|| {
                     early_error(
                         error_format,
@@ -1308,7 +1367,6 @@ fn parse_output_types(
                         ),
                     )
                 });
-                let path = parts.next().map(PathBuf::from);
                 output_types.insert(output_type, path);
             }
         }
@@ -1432,7 +1490,7 @@ fn parse_target_triple(matches: &getopts::Matches, error_format: ErrorOutputType
                 early_error(error_format, &format!("target file {:?} does not exist", path))
             })
         }
-        Some(target) => TargetTriple::TargetTriple(target),
+        Some(target) => TargetTriple::from_alias(target),
         _ => TargetTriple::from_triple(host_triple()),
     }
 }
@@ -1452,11 +1510,10 @@ fn parse_opt_level(
     let max_c = matches
         .opt_strs_pos("C")
         .into_iter()
-        .flat_map(
-            |(i, s)| {
-                if let Some("opt-level") = s.splitn(2, '=').next() { Some(i) } else { None }
-            },
-        )
+        .flat_map(|(i, s)| {
+            // NB: This can match a string without `=`.
+            if let Some("opt-level") = s.splitn(2, '=').next() { Some(i) } else { None }
+        })
         .max();
     if max_o > max_c {
         OptLevel::Default
@@ -1491,11 +1548,10 @@ fn select_debuginfo(
     let max_c = matches
         .opt_strs_pos("C")
         .into_iter()
-        .flat_map(
-            |(i, s)| {
-                if let Some("debuginfo") = s.splitn(2, '=').next() { Some(i) } else { None }
-            },
-        )
+        .flat_map(|(i, s)| {
+            // NB: This can match a string without `=`.
+            if let Some("debuginfo") = s.splitn(2, '=').next() { Some(i) } else { None }
+        })
         .max();
     if max_g > max_c {
         DebugInfo::Full
@@ -1528,36 +1584,42 @@ fn parse_libs(
         .map(|s| {
             // Parse string of the form "[KIND=]lib[:new_name]",
             // where KIND is one of "dylib", "framework", "static".
-            let mut parts = s.splitn(2, '=');
-            let kind = parts.next().unwrap();
-            let (name, kind) = match (parts.next(), kind) {
-                (None, name) => (name, NativeLibKind::Unspecified),
-                (Some(name), "dylib") => (name, NativeLibKind::Dylib),
-                (Some(name), "framework") => (name, NativeLibKind::Framework),
-                (Some(name), "static") => (name, NativeLibKind::StaticBundle),
-                (Some(name), "static-nobundle") => (name, NativeLibKind::StaticNoBundle),
-                (_, s) => {
-                    early_error(
-                        error_format,
-                        &format!(
-                            "unknown library kind `{}`, expected \
-                             one of dylib, framework, or static",
-                            s
-                        ),
-                    );
+            let (name, kind) = match s.split_once('=') {
+                None => (s, NativeLibKind::Unspecified),
+                Some((kind, name)) => {
+                    let kind = match kind {
+                        "dylib" => NativeLibKind::Dylib,
+                        "framework" => NativeLibKind::Framework,
+                        "static" => NativeLibKind::StaticBundle,
+                        "static-nobundle" => NativeLibKind::StaticNoBundle,
+                        s => {
+                            early_error(
+                                error_format,
+                                &format!(
+                                    "unknown library kind `{}`, expected \
+                                     one of dylib, framework, or static",
+                                    s
+                                ),
+                            );
+                        }
+                    };
+                    (name.to_string(), kind)
                 }
             };
-            if kind == NativeLibKind::StaticNoBundle && !nightly_options::is_nightly_build() {
+            if kind == NativeLibKind::StaticNoBundle
+                && !nightly_options::match_is_nightly_build(matches)
+            {
                 early_error(
                     error_format,
                     "the library kind 'static-nobundle' is only \
                      accepted on the nightly compiler",
                 );
             }
-            let mut name_parts = name.splitn(2, ':');
-            let name = name_parts.next().unwrap();
-            let new_name = name_parts.next();
-            (name.to_owned(), new_name.map(|n| n.to_owned()), kind)
+            let (name, new_name) = match name.split_once(':') {
+                None => (name, None),
+                Some((name, new_name)) => (name.to_string(), Some(new_name.to_owned())),
+            };
+            (name, new_name, kind)
         })
         .collect()
 }
@@ -1578,20 +1640,13 @@ pub fn parse_externs(
     let is_unstable_enabled = debugging_opts.unstable_options;
     let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
     for arg in matches.opt_strs("extern") {
-        let mut parts = arg.splitn(2, '=');
-        let name = parts
-            .next()
-            .unwrap_or_else(|| early_error(error_format, "--extern value must not be empty"));
-        let path = parts.next().map(|s| s.to_string());
-
-        let mut name_parts = name.splitn(2, ':');
-        let first_part = name_parts.next();
-        let second_part = name_parts.next();
-        let (options, name) = match (first_part, second_part) {
-            (Some(opts), Some(name)) => (Some(opts), name),
-            (Some(name), None) => (None, name),
-            (None, None) => early_error(error_format, "--extern name must not be empty"),
-            _ => unreachable!(),
+        let (name, path) = match arg.split_once('=') {
+            None => (arg, None),
+            Some((name, path)) => (name.to_string(), Some(path.to_string())),
+        };
+        let (options, name) = match name.split_once(':') {
+            None => (None, name),
+            Some((opts, name)) => (Some(opts), name.to_string()),
         };
 
         let entry = externs.entry(name.to_owned());
@@ -1680,17 +1735,12 @@ fn parse_remap_path_prefix(
     matches
         .opt_strs("remap-path-prefix")
         .into_iter()
-        .map(|remap| {
-            let mut parts = remap.rsplitn(2, '='); // reverse iterator
-            let to = parts.next();
-            let from = parts.next();
-            match (from, to) {
-                (Some(from), Some(to)) => (PathBuf::from(from), PathBuf::from(to)),
-                _ => early_error(
-                    error_format,
-                    "--remap-path-prefix must contain '=' between FROM and TO",
-                ),
-            }
+        .map(|remap| match remap.rsplit_once('=') {
+            None => early_error(
+                error_format,
+                "--remap-path-prefix must contain '=' between FROM and TO",
+            ),
+            Some((from, to)) => (PathBuf::from(from), PathBuf::from(to)),
         })
         .collect()
 }
@@ -1764,7 +1814,36 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         // and reversible name mangling. Note, LLVM coverage tools can analyze coverage over
         // multiple runs, including some changes to source code; so mangled names must be consistent
         // across compilations.
-        debugging_opts.symbol_mangling_version = SymbolManglingVersion::V0;
+        match debugging_opts.symbol_mangling_version {
+            None => {
+                debugging_opts.symbol_mangling_version = Some(SymbolManglingVersion::V0);
+            }
+            Some(SymbolManglingVersion::Legacy) => {
+                early_warn(
+                    error_format,
+                    "-Z instrument-coverage requires symbol mangling version `v0`, \
+                    but `-Z symbol-mangling-version=legacy` was specified",
+                );
+            }
+            Some(SymbolManglingVersion::V0) => {}
+        }
+
+        if debugging_opts.mir_opt_level > 1 {
+            // Functions inlined during MIR transform can, at best, make it impossible to
+            // effectively cover inlined functions, and, at worst, break coverage map generation
+            // during LLVM codegen. For example, function counter IDs are only unique within a
+            // function. Inlining after these counters are injected can produce duplicate counters,
+            // resulting in an invalid coverage map (and ICE); so this option combination is not
+            // allowed.
+            early_warn(
+                error_format,
+                &format!(
+                    "`-Z mir-opt-level={}` (or any level > 1) enables function inlining, which \
+                    is incompatible with `-Z instrument-coverage`. Inlining will be disabled.",
+                    debugging_opts.mir_opt_level,
+                ),
+            );
+        }
     }
 
     if let Ok(graphviz_font) = std::env::var("RUSTC_GRAPHVIZ_FONT") {
@@ -1836,10 +1915,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         cg,
         error_format,
         externs,
+        unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         crate_name,
         alt_std_name: None,
         libs,
-        unstable_features: UnstableFeatures::from_environment(),
         debug_assertions,
         actually_rustdoc: false,
         trimmed_def_paths: TrimmedDefPaths::default(),
@@ -1960,17 +2039,21 @@ pub mod nightly_options {
     use rustc_feature::UnstableFeatures;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
-        is_nightly_build() && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
+        match_is_nightly_build(matches)
+            && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
     }
 
-    pub fn is_nightly_build() -> bool {
-        UnstableFeatures::from_environment().is_nightly_build()
+    pub fn match_is_nightly_build(matches: &getopts::Matches) -> bool {
+        is_nightly_build(matches.opt_str("crate-name").as_deref())
+    }
+
+    pub fn is_nightly_build(krate: Option<&str>) -> bool {
+        UnstableFeatures::from_environment(krate).is_nightly_build()
     }
 
     pub fn check_nightly_options(matches: &getopts::Matches, flags: &[RustcOptGroup]) {
         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
-        let really_allows_unstable_options =
-            UnstableFeatures::from_environment().is_nightly_build();
+        let really_allows_unstable_options = match_is_nightly_build(matches);
 
         for opt in flags.iter() {
             if opt.stability == OptionStability::Stable {
@@ -2089,6 +2172,7 @@ crate mod dep_tracking {
         SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
+    use crate::options::WasiExecModel;
     use crate::utils::NativeLibKind;
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
@@ -2144,6 +2228,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<RelocModel>);
     impl_dep_tracking_hash_via_hash!(Option<CodeModel>);
     impl_dep_tracking_hash_via_hash!(Option<TlsModel>);
+    impl_dep_tracking_hash_via_hash!(Option<WasiExecModel>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
@@ -2165,7 +2250,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Edition);
     impl_dep_tracking_hash_via_hash!(LinkerPluginLto);
     impl_dep_tracking_hash_via_hash!(SwitchWithOptPath);
-    impl_dep_tracking_hash_via_hash!(SymbolManglingVersion);
+    impl_dep_tracking_hash_via_hash!(Option<SymbolManglingVersion>);
     impl_dep_tracking_hash_via_hash!(Option<SourceFileHashAlgorithm>);
     impl_dep_tracking_hash_via_hash!(TrimmedDefPaths);
 

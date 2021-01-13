@@ -200,6 +200,11 @@ pub trait Emitter {
         true
     }
 
+    /// Checks if we can use colors in the current output stream.
+    fn supports_color(&self) -> bool {
+        false
+    }
+
     fn source_map(&self) -> Option<&Lrc<SourceMap>>;
 
     /// Formats the substitutions of the primary_span
@@ -504,6 +509,10 @@ impl Emitter for EmitterWriter {
     fn should_show_explain(&self) -> bool {
         !self.short_message
     }
+
+    fn supports_color(&self) -> bool {
+        self.dst.supports_color()
+    }
 }
 
 /// An emitter that does nothing when emitting a diagnostic.
@@ -635,6 +644,8 @@ impl EmitterWriter {
         code_offset: usize,
         margin: Margin,
     ) {
+        // Tabs are assumed to have been replaced by spaces in calling code.
+        assert!(!source_string.contains('\t'));
         let line_len = source_string.len();
         // Create the source line we will highlight.
         let left = margin.left(line_len);
@@ -698,7 +709,7 @@ impl EmitterWriter {
         }
 
         let source_string = match file.get_line(line.line_index - 1) {
-            Some(s) => s,
+            Some(s) => replace_tabs(&*s),
             None => return Vec::new(),
         };
 
@@ -1367,8 +1378,17 @@ impl EmitterWriter {
                     let file = annotated_file.file.clone();
                     let line = &annotated_file.lines[line_idx];
                     if let Some(source_string) = file.get_line(line.line_index - 1) {
-                        let leading_whitespace =
-                            source_string.chars().take_while(|c| c.is_whitespace()).count();
+                        let leading_whitespace = source_string
+                            .chars()
+                            .take_while(|c| c.is_whitespace())
+                            .map(|c| {
+                                match c {
+                                    // Tabs are displayed as 4 spaces
+                                    '\t' => 4,
+                                    _ => 1,
+                                }
+                            })
+                            .sum();
                         if source_string.chars().any(|c| !c.is_whitespace()) {
                             whitespace_margin = min(whitespace_margin, leading_whitespace);
                         }
@@ -1493,7 +1513,7 @@ impl EmitterWriter {
 
                             self.draw_line(
                                 &mut buffer,
-                                &unannotated_line,
+                                &replace_tabs(&unannotated_line),
                                 annotated_file.lines[line_idx + 1].line_index - 1,
                                 last_buffer_line_num,
                                 width_offset,
@@ -1589,7 +1609,7 @@ impl EmitterWriter {
                 );
                 // print the suggestion
                 draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
-                buffer.append(row_num, line, Style::NoStyle);
+                buffer.append(row_num, &replace_tabs(line), Style::NoStyle);
                 row_num += 1;
             }
 
@@ -1921,6 +1941,10 @@ impl FileWithAnnotatedLines {
     }
 }
 
+fn replace_tabs(str: &str) -> String {
+    str.replace('\t', "    ")
+}
+
 fn draw_col_separator(buffer: &mut StyledBuffer, line: usize, col: usize) {
     buffer.puts(line, col, "| ", Style::LineNumber);
 }
@@ -2055,6 +2079,14 @@ impl Destination {
             }
             Destination::Raw(ref mut t, false) => WritableDst::Raw(t),
             Destination::Raw(ref mut t, true) => WritableDst::ColoredRaw(Ansi::new(t)),
+        }
+    }
+
+    fn supports_color(&self) -> bool {
+        match *self {
+            Self::Terminal(ref stream) => stream.supports_color(),
+            Self::Buffered(ref buffer) => buffer.buffer().supports_color(),
+            Self::Raw(_, supports_color) => supports_color,
         }
     }
 }

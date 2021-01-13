@@ -11,7 +11,7 @@ extern crate thread_local_extern_static;
 use std::cell::Cell;
 
 #[cfg(target_thread_local)]
-extern {
+extern "C" {
     #[thread_local]
     static FOO: Cell<u32>;
 }

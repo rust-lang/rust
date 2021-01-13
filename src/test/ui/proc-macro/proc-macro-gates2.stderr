@@ -1,14 +1,14 @@
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-gates2.rs:12:11
+error: expected non-macro attribute, found attribute macro `empty_attr`
+  --> $DIR/proc-macro-gates2.rs:12:13
    |
 LL | fn _test6<#[empty_attr] T>() {}
-   |           ^^^^^^^^^^^^^
+   |             ^^^^^^^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-gates2.rs:17:9
+error: expected non-macro attribute, found attribute macro `empty_attr`
+  --> $DIR/proc-macro-gates2.rs:17:11
    |
 LL |         #[empty_attr]
-   |         ^^^^^^^^^^^^^
+   |           ^^^^^^^^^^ not a non-macro attribute
 
 error: aborting due to 2 previous errors
 

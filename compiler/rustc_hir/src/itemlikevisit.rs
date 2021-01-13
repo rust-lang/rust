@@ -1,4 +1,4 @@
-use super::{ImplItem, Item, TraitItem};
+use super::{ForeignItem, ImplItem, Item, TraitItem};
 
 /// The "item-like visitor" defines only the top-level methods
 /// that can be invoked by `Crate::visit_all_item_likes()`. Whether
@@ -47,6 +47,7 @@ pub trait ItemLikeVisitor<'hir> {
     fn visit_item(&mut self, item: &'hir Item<'hir>);
     fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>);
     fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>);
+    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>);
 }
 
 /// A parallel variant of `ItemLikeVisitor`.
@@ -54,4 +55,5 @@ pub trait ParItemLikeVisitor<'hir> {
     fn visit_item(&self, item: &'hir Item<'hir>);
     fn visit_trait_item(&self, trait_item: &'hir TraitItem<'hir>);
     fn visit_impl_item(&self, impl_item: &'hir ImplItem<'hir>);
+    fn visit_foreign_item(&self, foreign_item: &'hir ForeignItem<'hir>);
 }

@@ -4,11 +4,7 @@ error[E0390]: only a single inherent implementation marked with `#[lang = "mut_p
 LL | impl *mut Foo {}
    | ^^^^^^^^^^^^^^^^
    |
-help: consider using a trait to implement these methods
-  --> $DIR/E0390.rs:5:1
-   |
-LL | impl *mut Foo {}
-   | ^^^^^^^^^^^^^^^^
+   = help: consider using a trait
 
 error: aborting due to previous error
 

@@ -1,7 +1,6 @@
 use crate::check::FnCtxt;
 use rustc_ast as ast;
 
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -13,6 +12,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeFoldable};
 use rustc_span::hygiene::DesugaringKind;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Ident;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
@@ -149,6 +149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// Outside of this module, `check_pat_top` should always be used.
     /// Conversely, inside this module, `check_pat_top` should never be used.
+    #[instrument(skip(self, ti))]
     fn check_pat(
         &self,
         pat: &'tcx Pat<'tcx>,
@@ -156,8 +157,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
     ) {
-        debug!("check_pat(pat={:?},expected={:?},def_bm={:?})", pat, expected, def_bm);
-
         let path_res = match &pat.kind {
             PatKind::Path(qpath) => Some(self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span)),
             _ => None,
@@ -398,6 +397,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Ref(_, inner_ty, _) = expected.kind() {
                 if matches!(inner_ty.kind(), ty::Slice(_)) {
                     let tcx = self.tcx;
+                    trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
+                    self.typeck_results
+                        .borrow_mut()
+                        .treat_byte_string_as_slice
+                        .insert(lt.hir_id.local_id);
                     pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
                 }
             }
@@ -459,7 +463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Now that we know the types can be unified we find the unified type
         // and use it to type the entire expression.
-        let common_type = self.resolve_vars_if_possible(&lhs_ty.or(rhs_ty).unwrap_or(expected));
+        let common_type = self.resolve_vars_if_possible(lhs_ty.or(rhs_ty).unwrap_or(expected));
 
         // Subtyping doesn't matter here, as the value is some kind of scalar.
         let demand_eqtype = |x, y| {
@@ -1170,7 +1174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut unmentioned_err = None;
-        // Report an error if incorrect number of the fields were specified.
+        // Report an error if an incorrect number of fields was specified.
         if adt.is_union() {
             if fields.len() != 1 {
                 tcx.sess
@@ -1181,12 +1185,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.sess.struct_span_err(pat.span, "`..` cannot be used in union patterns").emit();
             }
         } else if !etc && !unmentioned_fields.is_empty() {
-            let no_accessible_unmentioned_fields = unmentioned_fields
-                .iter()
-                .find(|(field, _)| {
-                    field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
-                })
-                .is_none();
+            let no_accessible_unmentioned_fields = !unmentioned_fields.iter().any(|(field, _)| {
+                field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
+            });
 
             if no_accessible_unmentioned_fields {
                 unmentioned_err = Some(self.error_no_accessible_fields(pat, &fields));
@@ -1298,8 +1299,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ),
             );
             if plural == "" {
-                let input = unmentioned_fields.iter().map(|(_, field)| &field.name);
-                let suggested_name = find_best_match_for_name(input, ident.name, None);
+                let input =
+                    unmentioned_fields.iter().map(|(_, field)| field.name).collect::<Vec<_>>();
+                let suggested_name = find_best_match_for_name(&input, ident.name, None);
                 if let Some(suggested_name) = suggested_name {
                     err.span_suggestion(
                         ident.span,

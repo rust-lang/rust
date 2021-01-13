@@ -7,13 +7,13 @@ LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error: any use of this value will cause an error
-  --> $DIR/ub-nonnull.rs:18:29
+  --> $DIR/ub-nonnull.rs:18:30
    |
 LL | / const OUT_OF_BOUNDS_PTR: NonNull<u8> = { unsafe {
 LL | |     let ptr: &[u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
 LL | |     // Use address-of-element for pointer arithmetic. This could wrap around to NULL!
 LL | |     let out_of_bounds_ptr = &ptr[255];
-   | |                             ^^^^^^^^^ memory access failed: pointer must be in-bounds at offset 256, but is outside bounds of alloc10 which has size 1
+   | |                              ^^^^^^^^ memory access failed: pointer must be in-bounds at offset 256, but is outside bounds of alloc10 which has size 1
 LL | |     mem::transmute(out_of_bounds_ptr)
 LL | | } };
    | |____-

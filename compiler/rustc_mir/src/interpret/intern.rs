@@ -25,19 +25,20 @@ use rustc_target::abi::Size;
 use rustc_ast::Mutability;
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, Scalar, ValueVisitor};
+use crate::const_eval;
 
-pub trait CompileTimeMachine<'mir, 'tcx> = Machine<
+pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
     'mir,
     'tcx,
-    MemoryKind = !,
+    MemoryKind = T,
     PointerTag = (),
     ExtraFnVal = !,
     FrameExtra = (),
     AllocExtra = (),
-    MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
+    MemoryMap = FxHashMap<AllocId, (MemoryKind<T>, Allocation)>,
 >;
 
-struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> {
+struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>> {
     /// The ectx from which we intern.
     ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     /// Previously encountered safe references.
@@ -74,7 +75,7 @@ struct IsStaticOrFn;
 /// `immutable` things might become mutable if `ty` is not frozen.
 /// `ty` can be `None` if there is no potential interior mutability
 /// to account for (e.g. for vtables).
-fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
+fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>>(
     ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     leftover_allocations: &'rt mut FxHashSet<AllocId>,
     alloc_id: AllocId,
@@ -104,7 +105,10 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     // This match is just a canary for future changes to `MemoryKind`, which most likely need
     // changes in this function.
     match kind {
-        MemoryKind::Stack | MemoryKind::Vtable | MemoryKind::CallerLocation => {}
+        MemoryKind::Stack
+        | MemoryKind::Machine(const_eval::MemoryKind::Heap)
+        | MemoryKind::Vtable
+        | MemoryKind::CallerLocation => {}
     }
     // Set allocation mutability as appropriate. This is used by LLVM to put things into
     // read-only memory, and also by Miri when evaluating other globals that
@@ -138,7 +142,9 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     None
 }
 
-impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir, 'tcx, M> {
+impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>>
+    InternVisitor<'rt, 'mir, 'tcx, M>
+{
     fn intern_shallow(
         &mut self,
         alloc_id: AllocId,
@@ -149,8 +155,8 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir
     }
 }
 
-impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
-    for InternVisitor<'rt, 'mir, 'tcx, M>
+impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>>
+    ValueVisitor<'mir, 'tcx, M> for InternVisitor<'rt, 'mir, 'tcx, M>
 {
     type V = MPlaceTy<'tcx>;
 
@@ -287,7 +293,7 @@ pub enum InternKind {
 /// Any errors here would anyway be turned into `const_err` lints, whereas validation failures
 /// are hard errors.
 #[tracing::instrument(skip(ecx))]
-pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
+pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>>(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     intern_kind: InternKind,
     ret: MPlaceTy<'tcx>,
@@ -418,7 +424,9 @@ where
     Ok(())
 }
 
-impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
+    InterpCx<'mir, 'tcx, M>
+{
     /// A helper function that allocates memory for the layout given and gives you access to mutate
     /// it. Once your own mutation code is done, the backing `Allocation` is removed from the
     /// current `Memory` and returned.

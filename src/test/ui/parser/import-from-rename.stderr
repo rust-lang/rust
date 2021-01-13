@@ -3,6 +3,8 @@ error: expected `;`, found keyword `as`
    |
 LL | use foo::{bar} as baz;
    |                ^^ expected `;`
+   |
+   = note: glob-like brace syntax must be last on the path
 
 error: aborting due to previous error
 

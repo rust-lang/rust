@@ -189,7 +189,7 @@ impl TypeMap<'ll, 'tcx> {
         // something that provides more than the 64 bits of the DefaultHasher.
         let mut hasher = StableHasher::new();
         let mut hcx = cx.tcx.create_stable_hashing_context();
-        let type_ = cx.tcx.erase_regions(&type_);
+        let type_ = cx.tcx.erase_regions(type_);
         hcx.while_hashing_spans(false, |hcx| {
             hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
                 type_.hash_stable(hcx, &mut hasher);
@@ -427,7 +427,7 @@ fn subroutine_type_metadata(
     span: Span,
 ) -> MetadataCreationResult<'ll> {
     let signature =
-        cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &signature);
+        cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), signature);
 
     let signature_metadata: Vec<_> = iter::once(
         // return type
@@ -993,9 +993,15 @@ pub fn compile_unit_metadata(
     let producer = format!("clang LLVM ({})", rustc_producer);
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
-    let work_dir = tcx.sess.working_dir.0.to_string_lossy();
     let flags = "\0";
-    let split_name = "";
+
+    let out_dir = &tcx.output_filenames(LOCAL_CRATE).out_directory;
+    let split_name = tcx
+        .output_filenames(LOCAL_CRATE)
+        .split_dwarf_filename(tcx.sess.opts.debugging_opts.split_dwarf, Some(codegen_unit_name))
+        .unwrap_or_default();
+    let out_dir = out_dir.to_str().unwrap();
+    let split_name = split_name.to_str().unwrap();
 
     // FIXME(#60020):
     //
@@ -1020,8 +1026,8 @@ pub fn compile_unit_metadata(
             debug_context.builder,
             name_in_debuginfo.as_ptr().cast(),
             name_in_debuginfo.len(),
-            work_dir.as_ptr().cast(),
-            work_dir.len(),
+            out_dir.as_ptr().cast(),
+            out_dir.len(),
             llvm::ChecksumKind::None,
             ptr::null(),
             0,
@@ -1039,6 +1045,8 @@ pub fn compile_unit_metadata(
             split_name.as_ptr().cast(),
             split_name.len(),
             kind,
+            0,
+            tcx.sess.opts.debugging_opts.split_dwarf_inlining,
         );
 
         if tcx.sess.opts.debugging_opts.profile {
@@ -1152,10 +1160,7 @@ impl<'ll> MemberDescription<'ll> {
                 self.size.bits(),
                 self.align.bits() as u32,
                 self.offset.bits(),
-                match self.discriminant {
-                    None => None,
-                    Some(value) => Some(cx.const_u64(value)),
-                },
+                self.discriminant.map(|v| cx.const_u64(v)),
                 self.flags,
                 self.type_metadata,
             )
@@ -1412,10 +1417,11 @@ fn generator_layout_and_saved_local_names(
 
     let state_arg = mir::Local::new(1);
     for var in &body.var_debug_info {
-        if var.place.local != state_arg {
+        let place = if let mir::VarDebugInfoContents::Place(p) = var.value { p } else { continue };
+        if place.local != state_arg {
             continue;
         }
-        match var.place.projection[..] {
+        match place.projection[..] {
             [
                 // Deref of the `Pin<&mut Self>` state argument.
                 mir::ProjectionElem::Field(..),
@@ -2316,13 +2322,13 @@ fn set_members_of_composite_type(
             DIB(cx),
             composite_type_metadata,
             Some(type_array),
-            type_params,
+            Some(type_params),
         );
     }
 }
 
 /// Computes the type parameters for a type, if any, for the given metadata.
-fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'ll DIArray> {
+fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> &'ll DIArray {
     if let ty::Adt(def, substs) = *ty.kind() {
         if substs.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did);
@@ -2352,10 +2358,10 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'
                 })
                 .collect();
 
-            return Some(create_DIArray(DIB(cx), &template_params[..]));
+            return create_DIArray(DIB(cx), &template_params[..]);
         }
     }
-    return Some(create_DIArray(DIB(cx), &[]));
+    return create_DIArray(DIB(cx), &[]);
 
     fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
         let mut names = generics

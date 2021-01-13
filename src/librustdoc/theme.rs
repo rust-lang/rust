@@ -9,9 +9,9 @@ use rustc_errors::Handler;
 mod tests;
 
 #[derive(Debug, Clone, Eq)]
-pub struct CssPath {
-    pub name: String,
-    pub children: FxHashSet<CssPath>,
+crate struct CssPath {
+    crate name: String,
+    crate children: FxHashSet<CssPath>,
 }
 
 // This PartialEq implementation IS NOT COMMUTATIVE!!!
@@ -70,15 +70,15 @@ impl Events {
     }
 
     fn is_comment(&self) -> bool {
-        match *self {
-            Events::StartLineComment(_) | Events::StartComment(_) | Events::EndComment(_) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Events::StartLineComment(_) | Events::StartComment(_) | Events::EndComment(_)
+        )
     }
 }
 
 fn previous_is_line_comment(events: &[Events]) -> bool {
-    if let Some(&Events::StartLineComment(_)) = events.last() { true } else { false }
+    matches!(events.last(), Some(&Events::StartLineComment(_)))
 }
 
 fn is_line_comment(pos: usize, v: &[u8], events: &[Events]) -> bool {
@@ -212,7 +212,7 @@ fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> FxHashSet<CssPath> {
     paths.iter().cloned().collect()
 }
 
-pub fn load_css_paths(v: &[u8]) -> CssPath {
+crate fn load_css_paths(v: &[u8]) -> CssPath {
     let events = load_css_events(v);
     let mut pos = 0;
 
@@ -221,7 +221,7 @@ pub fn load_css_paths(v: &[u8]) -> CssPath {
     parent
 }
 
-pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) {
+crate fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) {
     if against.name == other.name {
         for child in &against.children {
             let mut found = false;
@@ -248,7 +248,7 @@ pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) 
     }
 }
 
-pub fn test_theme_against<P: AsRef<Path>>(
+crate fn test_theme_against<P: AsRef<Path>>(
     f: &P,
     against: &CssPath,
     diag: &Handler,

@@ -1,5 +1,5 @@
 error[E0277]: cannot add `()` to `usize`
-  --> $DIR/issue-13352.rs:9:13
+  --> $DIR/issue-13352.rs:7:13
    |
 LL |     2_usize + (loop {});
    |             ^ no implementation for `usize + ()`

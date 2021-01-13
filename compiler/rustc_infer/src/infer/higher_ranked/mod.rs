@@ -24,23 +24,23 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         // as-is, we need to do some extra work here in order to make sure
         // that function subtyping works correctly with respect to regions
         //
-        // Note: this is a subtle algorithm.  For a full explanation,
-        // please see the large comment at the end of the file in the (inlined) module
-        // `doc`.
+        // Note: this is a subtle algorithm.  For a full explanation, please see
+        // the rustc dev guide:
+        // <https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html>
 
         let span = self.trace.cause.span;
 
         self.infcx.commit_if_ok(|_| {
             // First, we instantiate each bound region in the supertype with a
             // fresh placeholder region.
-            let b_prime = self.infcx.replace_bound_vars_with_placeholders(&b);
+            let b_prime = self.infcx.replace_bound_vars_with_placeholders(b);
 
             // Next, we instantiate each bound region in the subtype
             // with a fresh region variable. These region variables --
             // but no other pre-existing region variables -- can name
             // the placeholders.
             let (a_prime, _) =
-                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, &a);
+                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
 
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
@@ -66,7 +66,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// the [rustc dev guide].
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-    pub fn replace_bound_vars_with_placeholders<T>(&self, binder: &ty::Binder<T>) -> T
+    pub fn replace_bound_vars_with_placeholders<T>(&self, binder: ty::Binder<T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -77,10 +77,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // (i.e., if there are no placeholders).
         let next_universe = self.universe().next_universe();
 
-        let fld_r = |br| {
+        let fld_r = |br: ty::BoundRegion| {
             self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
                 universe: next_universe,
-                name: br,
+                name: br.kind,
             }))
         };
 
@@ -95,7 +95,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.tcx.mk_const(ty::Const {
                 val: ty::ConstKind::Placeholder(ty::PlaceholderConst {
                     universe: next_universe,
-                    name: bound_var,
+                    name: ty::BoundConst { var: bound_var, ty },
                 }),
                 ty,
             })
@@ -113,10 +113,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!(
             "replace_bound_vars_with_placeholders(\
              next_universe={:?}, \
-             binder={:?}, \
              result={:?}, \
              map={:?})",
-            next_universe, binder, result, map,
+            next_universe, result, map,
         );
 
         result

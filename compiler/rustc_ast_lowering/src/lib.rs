@@ -37,7 +37,7 @@
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, DelimSpan, TokenStream, TokenTree};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast::{self as ast, *};
@@ -53,14 +53,15 @@ use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_session::config::nightly_options;
-use rustc_session::lint::{builtin::BARE_TRAIT_OBJECTS, BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::lint::builtin::{BARE_TRAIT_OBJECTS, MISSING_ABI};
+use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind};
+use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
+use rustc_target::spec::abi::Abi;
 
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeMap;
@@ -102,6 +103,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem<'hir>>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem<'hir>>,
+    foreign_items: BTreeMap<hir::ForeignItemId, hir::ForeignItem<'hir>>,
     bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
     exported_macros: Vec<hir::MacroDef<'hir>>,
     non_exported_macro_attrs: Vec<ast::Attribute>,
@@ -206,7 +208,7 @@ pub trait ResolverAstLowering {
     ) -> LocalDefId;
 }
 
-type NtToTokenstream = fn(&Nonterminal, &ParseSess, Span) -> TokenStream;
+type NtToTokenstream = fn(&Nonterminal, &ParseSess, CanSynthesizeMissingTokens) -> TokenStream;
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
 /// and if so, what meaning it has.
@@ -299,6 +301,7 @@ pub fn lower_crate<'a, 'hir>(
         items: BTreeMap::new(),
         trait_items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
+        foreign_items: BTreeMap::new(),
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
@@ -392,6 +395,42 @@ enum AnonymousLifetimeMode {
     PassThrough,
 }
 
+struct TokenStreamLowering<'a> {
+    parse_sess: &'a ParseSess,
+    synthesize_tokens: CanSynthesizeMissingTokens,
+    nt_to_tokenstream: NtToTokenstream,
+}
+
+impl<'a> TokenStreamLowering<'a> {
+    fn lower_token_stream(&mut self, tokens: TokenStream) -> TokenStream {
+        tokens.into_trees().flat_map(|tree| self.lower_token_tree(tree).into_trees()).collect()
+    }
+
+    fn lower_token_tree(&mut self, tree: TokenTree) -> TokenStream {
+        match tree {
+            TokenTree::Token(token) => self.lower_token(token),
+            TokenTree::Delimited(span, delim, tts) => {
+                TokenTree::Delimited(span, delim, self.lower_token_stream(tts)).into()
+            }
+        }
+    }
+
+    fn lower_token(&mut self, token: Token) -> TokenStream {
+        match token.kind {
+            token::Interpolated(nt) => {
+                let tts = (self.nt_to_tokenstream)(&nt, self.parse_sess, self.synthesize_tokens);
+                TokenTree::Delimited(
+                    DelimSpan::from_single(token.span),
+                    DelimToken::NoDelim,
+                    self.lower_token_stream(tts),
+                )
+                .into()
+            }
+            _ => TokenTree::Token(token).into(),
+        }
+    }
+}
+
 struct ImplTraitTypeIdVisitor<'a> {
     ids: &'a mut SmallVec<[NodeId; 1]>,
 }
@@ -426,7 +465,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         /// declared for every type and trait definition.
         struct MiscCollector<'tcx, 'lowering, 'hir> {
             lctx: &'tcx mut LoweringContext<'lowering, 'hir>,
-            hir_id_owner: Option<NodeId>,
         }
 
         impl MiscCollector<'_, '_, '_> {
@@ -453,30 +491,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 }
             }
-
-            fn with_hir_id_owner<T>(
-                &mut self,
-                owner: Option<NodeId>,
-                f: impl FnOnce(&mut Self) -> T,
-            ) -> T {
-                let old = mem::replace(&mut self.hir_id_owner, owner);
-                let r = f(self);
-                self.hir_id_owner = old;
-                r
-            }
         }
 
         impl<'tcx> Visitor<'tcx> for MiscCollector<'tcx, '_, '_> {
-            fn visit_pat(&mut self, p: &'tcx Pat) {
-                if let PatKind::Paren(..) | PatKind::Rest = p.kind {
-                    // Doesn't generate a HIR node
-                } else if let Some(owner) = self.hir_id_owner {
-                    self.lctx.lower_node_id_with_owner(p.id, owner);
-                }
-
-                visit::walk_pat(self, p)
-            }
-
             fn visit_item(&mut self, item: &'tcx Item) {
                 let hir_id = self.lctx.allocate_hir_id_counter(item.id);
 
@@ -500,24 +517,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     _ => {}
                 }
 
-                self.with_hir_id_owner(Some(item.id), |this| {
-                    visit::walk_item(this, item);
-                });
+                visit::walk_item(self, item);
             }
 
             fn visit_assoc_item(&mut self, item: &'tcx AssocItem, ctxt: AssocCtxt) {
                 self.lctx.allocate_hir_id_counter(item.id);
-                let owner = match (&item.kind, ctxt) {
-                    // Ignore patterns in trait methods without bodies.
-                    (AssocItemKind::Fn(_, _, _, None), AssocCtxt::Trait) => None,
-                    _ => Some(item.id),
-                };
-                self.with_hir_id_owner(owner, |this| visit::walk_assoc_item(this, item, ctxt));
+                visit::walk_assoc_item(self, item, ctxt);
             }
 
-            fn visit_foreign_item(&mut self, i: &'tcx ForeignItem) {
-                // Ignore patterns in foreign items
-                self.with_hir_id_owner(None, |this| visit::walk_foreign_item(this, i));
+            fn visit_foreign_item(&mut self, item: &'tcx ForeignItem) {
+                self.lctx.allocate_hir_id_counter(item.id);
+                visit::walk_foreign_item(self, item);
             }
 
             fn visit_ty(&mut self, t: &'tcx Ty) {
@@ -528,18 +538,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         // Mirrors visit::walk_fn_decl
                         for parameter in &f.decl.inputs {
                             // We don't lower the ids of argument patterns
-                            self.with_hir_id_owner(None, |this| {
-                                this.visit_pat(&parameter.pat);
-                            });
+                            self.visit_pat(&parameter.pat);
                             self.visit_ty(&parameter.ty)
                         }
                         self.visit_fn_ret_ty(&f.decl.output)
                     }
                     TyKind::ImplTrait(def_node_id, _) => {
                         self.lctx.allocate_hir_id_counter(def_node_id);
-                        self.with_hir_id_owner(Some(def_node_id), |this| {
-                            visit::walk_ty(this, t);
-                        });
+                        visit::walk_ty(self, t);
                     }
                     _ => visit::walk_ty(self, t),
                 }
@@ -549,7 +555,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_node_id(CRATE_NODE_ID);
         debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == Some(hir::CRATE_HIR_ID));
 
-        visit::walk_crate(&mut MiscCollector { lctx: &mut self, hir_id_owner: None }, c);
+        visit::walk_crate(&mut MiscCollector { lctx: &mut self }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
         let module = self.lower_mod(&c.module);
@@ -587,6 +593,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             items: self.items,
             trait_items: self.trait_items,
             impl_items: self.impl_items,
+            foreign_items: self.foreign_items,
             bodies: self.bodies,
             body_ids,
             trait_impls: self.trait_impls,
@@ -732,10 +739,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
-        span.fresh_expansion(ExpnData {
-            allow_internal_unstable,
-            ..ExpnData::default(ExpnKind::Desugaring(reason), span, self.sess.edition(), None)
-        })
+        span.mark_with_reason(allow_internal_unstable, reason, self.sess.edition())
     }
 
     fn with_anonymous_lifetime_mode<R>(
@@ -986,40 +990,75 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match *args {
             MacArgs::Empty => MacArgs::Empty,
             MacArgs::Delimited(dspan, delim, ref tokens) => {
-                MacArgs::Delimited(dspan, delim, self.lower_token_stream(tokens.clone()))
-            }
-            MacArgs::Eq(eq_span, ref tokens) => {
-                MacArgs::Eq(eq_span, self.lower_token_stream(tokens.clone()))
-            }
-        }
-    }
-
-    fn lower_token_stream(&mut self, tokens: TokenStream) -> TokenStream {
-        tokens.into_trees().flat_map(|tree| self.lower_token_tree(tree).into_trees()).collect()
-    }
-
-    fn lower_token_tree(&mut self, tree: TokenTree) -> TokenStream {
-        match tree {
-            TokenTree::Token(token) => self.lower_token(token),
-            TokenTree::Delimited(span, delim, tts) => {
-                TokenTree::Delimited(span, delim, self.lower_token_stream(tts)).into()
-            }
-        }
-    }
-
-    fn lower_token(&mut self, token: Token) -> TokenStream {
-        match token.kind {
-            token::Interpolated(nt) => {
-                let tts = (self.nt_to_tokenstream)(&nt, &self.sess.parse_sess, token.span);
-                TokenTree::Delimited(
-                    DelimSpan::from_single(token.span),
-                    DelimToken::NoDelim,
-                    self.lower_token_stream(tts),
+                // This is either a non-key-value attribute, or a `macro_rules!` body.
+                // We either not have any nonterminals present (in the case of an attribute),
+                // or have tokens available for all nonterminals in the case of a nested
+                // `macro_rules`: e.g:
+                //
+                // ```rust
+                // macro_rules! outer {
+                //     ($e:expr) => {
+                //         macro_rules! inner {
+                //             () => { $e }
+                //         }
+                //     }
+                // }
+                // ```
+                //
+                // In both cases, we don't want to synthesize any tokens
+                MacArgs::Delimited(
+                    dspan,
+                    delim,
+                    self.lower_token_stream(tokens.clone(), CanSynthesizeMissingTokens::No),
                 )
-                .into()
             }
-            _ => TokenTree::Token(token).into(),
+            // This is an inert key-value attribute - it will never be visible to macros
+            // after it gets lowered to HIR. Therefore, we can synthesize tokens with fake
+            // spans to handle nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
+            MacArgs::Eq(eq_span, ref token) => {
+                // In valid code the value is always representable as a single literal token.
+                fn unwrap_single_token(sess: &Session, tokens: TokenStream, span: Span) -> Token {
+                    if tokens.len() != 1 {
+                        sess.diagnostic()
+                            .delay_span_bug(span, "multiple tokens in key-value attribute's value");
+                    }
+                    match tokens.into_trees().next() {
+                        Some(TokenTree::Token(token)) => token,
+                        Some(TokenTree::Delimited(_, delim, tokens)) => {
+                            if delim != token::NoDelim {
+                                sess.diagnostic().delay_span_bug(
+                                    span,
+                                    "unexpected delimiter in key-value attribute's value",
+                                )
+                            }
+                            unwrap_single_token(sess, tokens, span)
+                        }
+                        None => Token::dummy(),
+                    }
+                }
+
+                let tokens = TokenStreamLowering {
+                    parse_sess: &self.sess.parse_sess,
+                    synthesize_tokens: CanSynthesizeMissingTokens::Yes,
+                    nt_to_tokenstream: self.nt_to_tokenstream,
+                }
+                .lower_token(token.clone());
+                MacArgs::Eq(eq_span, unwrap_single_token(self.sess, tokens, token.span))
+            }
         }
+    }
+
+    fn lower_token_stream(
+        &self,
+        tokens: TokenStream,
+        synthesize_tokens: CanSynthesizeMissingTokens,
+    ) -> TokenStream {
+        TokenStreamLowering {
+            parse_sess: &self.sess.parse_sess,
+            synthesize_tokens,
+            nt_to_tokenstream: self.nt_to_tokenstream,
+        }
+        .lower_token_stream(tokens)
     }
 
     /// Given an associated type constraint like one of these:
@@ -1038,6 +1077,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::TypeBinding<'hir> {
         debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", constraint, itctx);
+
+        if let Some(ref gen_args) = constraint.gen_args {
+            self.sess.span_fatal(
+                gen_args.span(),
+                "generic associated types in trait paths are currently not implemented",
+            );
+        }
 
         let kind = match constraint.kind {
             AssocTyConstraintKind::Equality { ref ty } => {
@@ -1244,6 +1290,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(&f.generic_params, |this| {
                 this.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
+                    let span = this.sess.source_map().next_point(t.span.shrink_to_lo());
                     hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
                         generic_params: this.lower_generic_params(
                             &f.generic_params,
@@ -1251,7 +1298,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             ImplTraitContext::disallowed(),
                         ),
                         unsafety: this.lower_unsafety(f.unsafety),
-                        abi: this.lower_extern(f.ext),
+                        abi: this.lower_extern(f.ext, span, t.id),
                         decl: this.lower_fn_decl(&f.decl, None, false, None),
                         param_names: this.lower_fn_params_to_names(&f.decl),
                     }))
@@ -1398,8 +1445,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             "`impl Trait` not allowed outside of {}",
                             allowed_in,
                         );
-                        if pos == ImplTraitPosition::Binding && nightly_options::is_nightly_build()
-                        {
+                        if pos == ImplTraitPosition::Binding && self.sess.is_nightly_build() {
                             err.help(
                                 "add `#![feature(impl_trait_in_bindings)]` to the crate \
                                    attributes to enable",
@@ -1741,7 +1787,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
         self.arena.alloc_from_iter(inputs.iter().map(|param| match param.pat.kind {
             PatKind::Ident(_, ident, _) => ident,
-            _ => Ident::new(kw::Invalid, param.pat.span),
+            _ => Ident::new(kw::Empty, param.pat.span),
         }))
     }
 
@@ -1831,12 +1877,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             output,
             c_variadic,
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
-                let is_mutable_pat = match arg.pat.kind {
-                    PatKind::Ident(BindingMode::ByValue(mt) | BindingMode::ByRef(mt), _, _) => {
-                        mt == Mutability::Mut
-                    }
-                    _ => false,
-                };
+                use BindingMode::{ByRef, ByValue};
+                let is_mutable_pat = matches!(
+                    arg.pat.kind,
+                    PatKind::Ident(ByValue(Mutability::Mut) | ByRef(Mutability::Mut), ..)
+                );
 
                 match arg.ty.kind {
                     TyKind::ImplicitSelf if is_mutable_pat => hir::ImplicitSelfKind::Mut,
@@ -2011,17 +2056,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //
         // For the "output" lifetime parameters, we just want to
         // generate `'_`.
-        let mut generic_args: Vec<_> = lifetime_params[..input_lifetimes_count]
-            .iter()
-            .map(|&(span, hir_name)| {
+        let mut generic_args = Vec::with_capacity(lifetime_params.len());
+        generic_args.extend(lifetime_params[..input_lifetimes_count].iter().map(
+            |&(span, hir_name)| {
                 // Input lifetime like `'a` or `'1`:
                 GenericArg::Lifetime(hir::Lifetime {
                     hir_id: self.next_id(),
                     span,
                     name: hir::LifetimeName::Param(hir_name),
                 })
-            })
-            .collect();
+            },
+        ));
         generic_args.extend(lifetime_params[input_lifetimes_count..].iter().map(|&(span, _)|
             // Output lifetime like `'_`.
             GenericArg::Lifetime(hir::Lifetime {
@@ -2217,13 +2262,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (hir::ParamName::Plain(param.ident), kind)
             }
-            GenericParamKind::Const { ref ty, kw_span: _ } => {
+            GenericParamKind::Const { ref ty, kw_span: _, ref default } => {
                 let ty = self
                     .with_anonymous_lifetime_mode(AnonymousLifetimeMode::ReportError, |this| {
                         this.lower_ty(&ty, ImplTraitContext::disallowed())
                     });
+                let default = default.as_ref().map(|def| self.lower_anon_const(def));
 
-                (hir::ParamName::Plain(param.ident), hir::GenericParamKind::Const { ty })
+                (hir::ParamName::Plain(param.ident), hir::GenericParamKind::Const { ty, default })
             }
         };
 
@@ -2312,29 +2358,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_block_noalloc(&mut self, b: &Block, targeted_by_break: bool) -> hir::Block<'hir> {
-        let mut stmts = vec![];
         let mut expr: Option<&'hir _> = None;
 
-        for (index, stmt) in b.stmts.iter().enumerate() {
-            if index == b.stmts.len() - 1 {
-                if let StmtKind::Expr(ref e) = stmt.kind {
-                    expr = Some(self.lower_expr(e));
-                } else {
-                    stmts.extend(self.lower_stmt(stmt));
-                }
-            } else {
-                stmts.extend(self.lower_stmt(stmt));
-            }
-        }
+        let stmts = self.arena.alloc_from_iter(
+            b.stmts
+                .iter()
+                .enumerate()
+                .filter_map(|(index, stmt)| {
+                    if index == b.stmts.len() - 1 {
+                        if let StmtKind::Expr(ref e) = stmt.kind {
+                            expr = Some(self.lower_expr(e));
+                            None
+                        } else {
+                            Some(self.lower_stmt(stmt))
+                        }
+                    } else {
+                        Some(self.lower_stmt(stmt))
+                    }
+                })
+                .flatten(),
+        );
+        let rules = self.lower_block_check_mode(&b.rules);
+        let hir_id = self.lower_node_id(b.id);
 
-        hir::Block {
-            hir_id: self.lower_node_id(b.id),
-            stmts: self.arena.alloc_from_iter(stmts),
-            expr,
-            rules: self.lower_block_check_mode(&b.rules),
-            span: b.span,
-            targeted_by_break,
-        }
+        hir::Block { hir_id, stmts, expr, rules, span: b.span, targeted_by_break }
     }
 
     /// Lowers a block directly to an expression, presuming that it
@@ -2730,6 +2777,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 span,
                 "trait objects without an explicit `dyn` are deprecated",
                 BuiltinLintDiagnostics::BareTraitObject(span, is_global),
+            )
+        }
+    }
+
+    fn maybe_lint_missing_abi(&mut self, span: Span, id: NodeId, default: Abi) {
+        // FIXME(davidtwco): This is a hack to detect macros which produce spans of the
+        // call site which do not have a macro backtrace. See #61963.
+        let is_macro_callsite = self
+            .sess
+            .source_map()
+            .span_to_snippet(span)
+            .map(|snippet| snippet.starts_with("#["))
+            .unwrap_or(true);
+        if !is_macro_callsite {
+            self.resolver.lint_buffer().buffer_lint_with_diagnostic(
+                MISSING_ABI,
+                id,
+                span,
+                "extern declarations without an explicit ABI are deprecated",
+                BuiltinLintDiagnostics::MissingAbi(span, default),
             )
         }
     }

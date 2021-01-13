@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/generic-function-call-in-array-length.rs:9:29
+  --> $DIR/generic-function-call-in-array-length.rs:8:29
    |
 LL | fn bar<const N: usize>() -> [u32; foo(N)] {
    |                             ^^^^^^^^^^^^^

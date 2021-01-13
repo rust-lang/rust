@@ -1,5 +1,3 @@
-// ignore-cloudabi no std::path support
-
 macro_rules! y {
     () => {}
 }

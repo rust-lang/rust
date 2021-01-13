@@ -220,9 +220,21 @@ pub fn set_linkage(llglobal: &Value, linkage: Linkage) {
     }
 }
 
+pub fn set_visibility(llglobal: &Value, visibility: Visibility) {
+    unsafe {
+        LLVMRustSetVisibility(llglobal, visibility);
+    }
+}
+
 pub fn set_alignment(llglobal: &Value, bytes: usize) {
     unsafe {
         ffi::LLVMSetAlignment(llglobal, bytes as c_uint);
+    }
+}
+
+pub fn set_comdat(llmod: &Module, llglobal: &Value, name: &str) {
+    unsafe {
+        LLVMRustSetComdat(llmod, llglobal, name.as_ptr().cast(), name.len());
     }
 }
 

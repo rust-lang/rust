@@ -1,6 +1,5 @@
 // run-fail
 // error-pattern:drop 1
-// ignore-cloudabi no std::process
 // ignore-emscripten no processes
 
 /// Structure which will not allow to be dropped twice.

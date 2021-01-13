@@ -1,5 +1,3 @@
-#![feature(const_fn)]
-
 // @has 'issue_76501/fn.bloop.html' '//pre' 'pub const fn bloop() -> i32'
 /// A useless function that always returns 1.
 pub const fn bloop() -> i32 {

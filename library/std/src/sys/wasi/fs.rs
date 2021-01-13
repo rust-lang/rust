@@ -549,19 +549,19 @@ fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
     }
 }
 
-pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let (dst, dst_file) = open_parent(dst)?;
-    dst.symlink(osstr2str(src.as_ref())?, osstr2str(dst_file.as_ref())?)
+pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
+    let (link, link_file) = open_parent(link)?;
+    link.symlink(osstr2str(original.as_ref())?, osstr2str(link_file.as_ref())?)
 }
 
-pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let (src, src_file) = open_parent(src)?;
-    let (dst, dst_file) = open_parent(dst)?;
-    src.link(
+pub fn link(original: &Path, link: &Path) -> io::Result<()> {
+    let (original, original_file) = open_parent(original)?;
+    let (link, link_file) = open_parent(link)?;
+    original.link(
         wasi::LOOKUPFLAGS_SYMLINK_FOLLOW,
-        osstr2str(src_file.as_ref())?,
-        &dst,
-        osstr2str(dst_file.as_ref())?,
+        osstr2str(original_file.as_ref())?,
+        &link,
+        osstr2str(link_file.as_ref())?,
     )
 }
 

@@ -83,9 +83,9 @@ impl<'a, 'tcx> Expectation<'tcx> {
     fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
         match self {
             NoExpectation => NoExpectation,
-            ExpectCastableToType(t) => ExpectCastableToType(fcx.resolve_vars_if_possible(&t)),
-            ExpectHasType(t) => ExpectHasType(fcx.resolve_vars_if_possible(&t)),
-            ExpectRvalueLikeUnsized(t) => ExpectRvalueLikeUnsized(fcx.resolve_vars_if_possible(&t)),
+            ExpectCastableToType(t) => ExpectCastableToType(fcx.resolve_vars_if_possible(t)),
+            ExpectHasType(t) => ExpectHasType(fcx.resolve_vars_if_possible(t)),
+            ExpectRvalueLikeUnsized(t) => ExpectRvalueLikeUnsized(fcx.resolve_vars_if_possible(t)),
         }
     }
 

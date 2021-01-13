@@ -74,18 +74,16 @@ impl WriterRelocate {
 
     /// Perform the collected relocations to be usable for JIT usage.
     #[cfg(feature = "jit")]
-    pub(super) fn relocate_for_jit(
-        mut self,
-        jit_product: &cranelift_simplejit::SimpleJITProduct,
-    ) -> Vec<u8> {
+    pub(super) fn relocate_for_jit(mut self, jit_module: &cranelift_jit::JITModule) -> Vec<u8> {
         use std::convert::TryInto;
 
         for reloc in self.relocs.drain(..) {
             match reloc.name {
                 super::DebugRelocName::Section(_) => unreachable!(),
                 super::DebugRelocName::Symbol(sym) => {
-                    let addr = jit_product
-                        .lookup_func(cranelift_module::FuncId::from_u32(sym.try_into().unwrap()));
+                    let addr = jit_module.get_finalized_function(
+                        cranelift_module::FuncId::from_u32(sym.try_into().unwrap()),
+                    );
                     let val = (addr as u64 as i64 + reloc.addend) as u64;
                     self.writer
                         .write_udata_at(reloc.offset as usize, val, reloc.size)

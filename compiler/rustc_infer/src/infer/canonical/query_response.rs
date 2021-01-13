@@ -59,7 +59,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
-        let canonical_result = self.canonicalize_response(&query_response);
+        let canonical_result = self.canonicalize_response(query_response);
 
         debug!("make_canonicalized_query_response: canonical_result = {:#?}", canonical_result);
 
@@ -83,7 +83,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     where
         T: Debug + TypeFoldable<'tcx>,
     {
-        self.canonicalize_response(&QueryResponse {
+        self.canonicalize_response(QueryResponse {
             var_values: inference_vars,
             region_constraints: QueryRegionConstraints::default(),
             certainty: Certainty::Proven, // Ambiguities are OK!
@@ -176,7 +176,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         ));
 
         let user_result: R =
-            query_response.substitute_projected(self.tcx, &result_subst, |q_r| &q_r.value);
+            query_response.substitute_projected(self.tcx, &result_subst, |q_r| q_r.value.clone());
 
         Ok(InferOk { value: user_result, obligations })
     }
@@ -238,7 +238,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         for (index, original_value) in original_values.var_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
             let result_value = query_response.substitute_projected(self.tcx, &result_subst, |v| {
-                &v.var_values[BoundVar::new(index)]
+                v.var_values[BoundVar::new(index)]
             });
             match (original_value.unpack(), result_value.unpack()) {
                 (
@@ -296,7 +296,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         // ...also include the other query region constraints from the query.
         output_query_region_constraints.outlives.extend(
-            query_response.value.region_constraints.outlives.iter().filter_map(|r_c| {
+            query_response.value.region_constraints.outlives.iter().filter_map(|&r_c| {
                 let r_c = substitute_value(self.tcx, &result_subst, r_c);
 
                 // Screen out `'a: 'a` cases -- we skip the binder here but
@@ -314,11 +314,11 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 .region_constraints
                 .member_constraints
                 .iter()
-                .map(|p_c| substitute_value(self.tcx, &result_subst, p_c)),
+                .map(|p_c| substitute_value(self.tcx, &result_subst, p_c.clone())),
         );
 
         let user_result: R =
-            query_response.substitute_projected(self.tcx, &result_subst, |q_r| &q_r.value);
+            query_response.substitute_projected(self.tcx, &result_subst, |q_r| q_r.value.clone());
 
         Ok(InferOk { value: user_result, obligations })
     }
@@ -502,7 +502,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         // `query_response.var_values` after applying the substitution
         // `result_subst`.
         let substituted_query_response = |index: BoundVar| -> GenericArg<'tcx> {
-            query_response.substitute_projected(self.tcx, &result_subst, |v| &v.var_values[index])
+            query_response.substitute_projected(self.tcx, &result_subst, |v| v.var_values[index])
         };
 
         // Unify the original value for each variable with the value
@@ -524,11 +524,11 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         unsubstituted_region_constraints: &'a [QueryOutlivesConstraint<'tcx>],
         result_subst: &'a CanonicalVarValues<'tcx>,
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
-        unsubstituted_region_constraints.iter().map(move |constraint| {
-            let ty::OutlivesPredicate(k1, r2) =
-                substitute_value(self.tcx, result_subst, constraint).skip_binder();
+        unsubstituted_region_constraints.iter().map(move |&constraint| {
+            let predicate = substitute_value(self.tcx, result_subst, constraint);
+            let ty::OutlivesPredicate(k1, r2) = predicate.skip_binder();
 
-            let predicate = match k1.unpack() {
+            let atom = match k1.unpack() {
                 GenericArgKind::Lifetime(r1) => {
                     ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r1, r2))
                 }
@@ -540,8 +540,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     // encounter this branch.
                     span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
                 }
-            }
-            .potentially_quantified(self.tcx, ty::PredicateKind::ForAll);
+            };
+            let predicate =
+                predicate.rebind(atom).potentially_quantified(self.tcx, ty::PredicateKind::ForAll);
 
             Obligation::new(cause.clone(), param_env, predicate)
         })

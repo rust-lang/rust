@@ -6,34 +6,28 @@
       <Item Name="[ptr]">pointer</Item>
     </Expand>
   </Type>
+
   <Type Name="core::ptr::Shared&lt;*&gt;">
     <DisplayString>{{ Shared {pointer} }}</DisplayString>
     <Expand>
       <Item Name="[ptr]">pointer</Item>
     </Expand>
   </Type>
+
   <Type Name="core::option::Option&lt;*&gt;">
-    <DisplayString Condition="RUST$ENUM$DISR == 0x0">{{ None }}</DisplayString>
-    <DisplayString Condition="RUST$ENUM$DISR == 0x1">{{ Some {__0} }}</DisplayString>
+    <DisplayString Condition="RUST$ENUM$DISR == 0x0">None</DisplayString>
+    <DisplayString Condition="RUST$ENUM$DISR == 0x1">Some({__0})</DisplayString>
     <Expand>
-      <Item Name="[size]" ExcludeView="simple">(ULONG)(RUST$ENUM$DISR != 0)</Item>
-      <Item Name="[value]" ExcludeView="simple">__0</Item>
-      <ArrayItems>
-        <Size>(ULONG)(RUST$ENUM$DISR != 0)</Size>
-        <ValuePointer>&amp;__0</ValuePointer>
-      </ArrayItems>
+      <Item Name="[value]" ExcludeView="simple" Condition="RUST$ENUM$DISR == 1">__0</Item>
     </Expand>
   </Type>
+
   <Type Name="core::option::Option&lt;*&gt;" Priority="MediumLow">
-    <DisplayString Condition="*(PVOID *)this == nullptr">{{ None }}</DisplayString>
-    <DisplayString>{{ Some {($T1 *)this} }}</DisplayString>
+    <DisplayString Condition="*(void**)this == nullptr">None</DisplayString>
+    <DisplayString>Some({($T1 *)this})</DisplayString>
     <Expand>
-      <Item Name="[size]" ExcludeView="simple">(ULONG)(*(PVOID *)this != nullptr)</Item>
-      <Item Name="[value]" ExcludeView="simple" Condition="*(PVOID *)this != nullptr">($T1 *)this</Item>
-      <ArrayItems>
-        <Size>(ULONG)(*(PVOID *)this != nullptr)</Size>
-        <ValuePointer>($T1 *)this</ValuePointer>
-      </ArrayItems>
+      <Item Name="Some" ExcludeView="simple" Condition="*(void**)this != nullptr">($T1 *)this</Item>
     </Expand>
   </Type>
+
 </AutoVisualizer>

@@ -3,6 +3,6 @@ struct Foo<'a, 'b> {
 }
 
 fn foo<'a, 'b>(x: &mut Foo<'a; 'b>) {}
-//~^ ERROR expected one of `,` or `>`, found `;`
+//~^ ERROR expected one of `,`, `:`, `=`, or `>`, found `;`
 
 fn main() {}

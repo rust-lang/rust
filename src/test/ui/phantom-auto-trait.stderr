@@ -1,0 +1,38 @@
+error[E0277]: `T` cannot be shared between threads safely
+  --> $DIR/phantom-auto-trait.rs:21:12
+   |
+LL | fn is_zen<T: Zen>(_: T) {}
+   |              --- required by this bound in `is_zen`
+...
+LL |     is_zen(x)
+   |            ^ `T` cannot be shared between threads safely
+   |
+   = note: required because of the requirements on the impl of `Zen` for `&T`
+   = note: required because it appears within the type `PhantomData<&T>`
+   = note: required because it appears within the type `Guard<'_, T>`
+help: consider restricting type parameter `T`
+   |
+LL | fn not_sync<T: Sync>(x: Guard<T>) {
+   |              ^^^^^^
+
+error[E0277]: `T` cannot be shared between threads safely
+  --> $DIR/phantom-auto-trait.rs:26:12
+   |
+LL | fn is_zen<T: Zen>(_: T) {}
+   |              --- required by this bound in `is_zen`
+...
+LL |     is_zen(x)
+   |            ^ `T` cannot be shared between threads safely
+   |
+   = note: required because of the requirements on the impl of `Zen` for `&T`
+   = note: required because it appears within the type `PhantomData<&T>`
+   = note: required because it appears within the type `Guard<'_, T>`
+   = note: required because it appears within the type `Nested<Guard<'_, T>>`
+help: consider restricting type parameter `T`
+   |
+LL | fn nested_not_sync<T: Sync>(x: Nested<Guard<T>>) {
+   |                     ^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

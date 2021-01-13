@@ -1,0 +1,29 @@
+error: only path types can be used in associated type constraints
+  --> $DIR/trait-path-types.rs:9:29
+   |
+LL |   fn f<'a>(arg : Box<dyn X< [u8; 1] = u32>>) {}
+   |                             ^^^^^^^
+
+error: only path types can be used in associated type constraints
+  --> $DIR/trait-path-types.rs:14:29
+   |
+LL |   fn f1<'a>(arg : Box<dyn X<(Y<'a>) = &'a ()>>) {}
+   |                             ^^^^^^^
+
+error: only types can be used in associated type constraints
+  --> $DIR/trait-path-types.rs:19:30
+   |
+LL |   fn f1<'a>(arg : Box<dyn X< 'a = u32 >>) {}
+   |                              ^^
+
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/trait-path-types.rs:1:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error: aborting due to 3 previous errors; 1 warning emitted
+

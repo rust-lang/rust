@@ -9,6 +9,7 @@ doctest = false
 
 [dependencies]
 rustc_target = { path = "../rustc_target" }
+rustc_feature = { path = "../rustc_feature" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_index = { path = "../rustc_index" }

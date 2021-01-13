@@ -1,21 +1,11 @@
-error[E0658]: const generics are unstable
-  --> $DIR/feature-gate-const_generics.rs:1:14
+error: `()` is forbidden as the type of a const generic parameter
+  --> $DIR/feature-gate-const_generics.rs:1:17
    |
 LL | fn foo<const X: ()>() {}
-   |              ^
+   |                 ^^
    |
-   = note: see issue #74878 <https://github.com/rust-lang/rust/issues/74878> for more information
-   = help: add `#![feature(min_const_generics)]` to the crate attributes to enable
+   = note: the only supported types are integers, `bool` and `char`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
-error[E0658]: const generics are unstable
-  --> $DIR/feature-gate-const_generics.rs:3:18
-   |
-LL | struct Foo<const X: usize>([(); X]);
-   |                  ^
-   |
-   = note: see issue #74878 <https://github.com/rust-lang/rust/issues/74878> for more information
-   = help: add `#![feature(min_const_generics)]` to the crate attributes to enable
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0658`.

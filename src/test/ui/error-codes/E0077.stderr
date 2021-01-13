@@ -1,4 +1,4 @@
-error[E0077]: SIMD vector element type should be machine type
+error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
   --> $DIR/E0077.rs:4:1
    |
 LL | struct Bad(String);

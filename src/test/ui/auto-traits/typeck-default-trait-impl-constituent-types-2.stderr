@@ -7,8 +7,6 @@ LL | fn is_mytrait<T: MyTrait>() {}
 LL |     is_mytrait::<(MyS2, MyS)>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ within `(MyS2, MyS)`, the trait `MyTrait` is not implemented for `MyS2`
    |
-   = help: the following implementations were found:
-             <MyS2 as MyTrait>
    = note: required because it appears within the type `(MyS2, MyS)`
 
 error: aborting due to previous error

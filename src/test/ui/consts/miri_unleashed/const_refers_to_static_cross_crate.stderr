@@ -35,11 +35,11 @@ LL |         U8_MUT => true,
    |         ^^^^^^
 
 warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static_cross_crate.rs:26:14
+  --> $DIR/const_refers_to_static_cross_crate.rs:26:15
    |
 LL | / const U8_MUT2: &u8 = {
 LL | |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
-   | |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
+   | |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
 LL | |
 LL | |
 LL | | };
@@ -136,6 +136,11 @@ help: skipping check that does not even have a feature gate
    |
 LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:32:20
+   |
+LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
   --> $DIR/const_refers_to_static_cross_crate.rs:32:20
    |

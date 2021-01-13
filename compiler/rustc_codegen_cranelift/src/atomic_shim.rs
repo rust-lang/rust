@@ -7,8 +7,7 @@ use crate::prelude::*;
 
 #[cfg(all(feature = "jit", unix))]
 #[no_mangle]
-static mut __cg_clif_global_atomic_mutex: libc::pthread_mutex_t =
-    libc::PTHREAD_MUTEX_INITIALIZER;
+static mut __cg_clif_global_atomic_mutex: libc::pthread_mutex_t = libc::PTHREAD_MUTEX_INITIALIZER;
 
 pub(crate) fn init_global_lock(
     module: &mut impl Module,

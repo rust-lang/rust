@@ -29,7 +29,7 @@ use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 
 use rustc_span::source_map::{respan, Spanned};
-use std::collections::BTreeSet;
+use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, take};
 use tracing::debug;
 
@@ -92,6 +92,12 @@ crate enum HasGenericParams {
     No,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+crate enum ConstantItemKind {
+    Const,
+    Static,
+}
+
 /// The rib kind restricts certain accesses,
 /// e.g. to a `Res::Local` of an outer item.
 #[derive(Copy, Clone, Debug)]
@@ -119,7 +125,7 @@ crate enum RibKind<'a> {
     ///
     /// The `bool` indicates if this constant may reference generic parameters
     /// and is used to only allow generic parameters to be used in trivial constant expressions.
-    ConstantItemRibKind(bool),
+    ConstantItemRibKind(bool, Option<(Ident, ConstantItemKind)>),
 
     /// We passed through a module.
     ModuleRibKind(Module<'a>),
@@ -145,7 +151,7 @@ impl RibKind<'_> {
             NormalRibKind
             | ClosureOrAsyncRibKind
             | FnItemRibKind
-            | ConstantItemRibKind(_)
+            | ConstantItemRibKind(..)
             | ModuleRibKind(_)
             | MacroDefinition(_)
             | ConstParamTyRibKind => false,
@@ -262,54 +268,60 @@ impl<'a> PathSource<'a> {
 
     crate fn is_expected(self, res: Res) -> bool {
         match self {
-            PathSource::Type => matches!(res, Res::Def(
+            PathSource::Type => matches!(
+                res,
+                Res::Def(
                     DefKind::Struct
-                    | DefKind::Union
-                    | DefKind::Enum
-                    | DefKind::Trait
-                    | DefKind::TraitAlias
-                    | DefKind::TyAlias
-                    | DefKind::AssocTy
-                    | DefKind::TyParam
-                    | DefKind::OpaqueTy
-                    | DefKind::ForeignTy,
+                        | DefKind::Union
+                        | DefKind::Enum
+                        | DefKind::Trait
+                        | DefKind::TraitAlias
+                        | DefKind::TyAlias
+                        | DefKind::AssocTy
+                        | DefKind::TyParam
+                        | DefKind::OpaqueTy
+                        | DefKind::ForeignTy,
                     _,
-                )
-                | Res::PrimTy(..)
-                | Res::SelfTy(..)),
+                ) | Res::PrimTy(..)
+                    | Res::SelfTy(..)
+            ),
             PathSource::Trait(AliasPossibility::No) => matches!(res, Res::Def(DefKind::Trait, _)),
             PathSource::Trait(AliasPossibility::Maybe) => {
                 matches!(res, Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
             }
-            PathSource::Expr(..) => matches!(res, Res::Def(
+            PathSource::Expr(..) => matches!(
+                res,
+                Res::Def(
                     DefKind::Ctor(_, CtorKind::Const | CtorKind::Fn)
-                    | DefKind::Const
-                    | DefKind::Static
-                    | DefKind::Fn
-                    | DefKind::AssocFn
-                    | DefKind::AssocConst
-                    | DefKind::ConstParam,
+                        | DefKind::Const
+                        | DefKind::Static
+                        | DefKind::Fn
+                        | DefKind::AssocFn
+                        | DefKind::AssocConst
+                        | DefKind::ConstParam,
                     _,
-                )
-                | Res::Local(..)
-                | Res::SelfCtor(..)),
-            PathSource::Pat => matches!(res, Res::Def(
+                ) | Res::Local(..)
+                    | Res::SelfCtor(..)
+            ),
+            PathSource::Pat => matches!(
+                res,
+                Res::Def(
                     DefKind::Ctor(_, CtorKind::Const) | DefKind::Const | DefKind::AssocConst,
                     _,
-                )
-                | Res::SelfCtor(..)),
-            PathSource::TupleStruct(..) => {
-                matches!(res, Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..))
-            }
-            PathSource::Struct => matches!(res, Res::Def(
+                ) | Res::SelfCtor(..)
+            ),
+            PathSource::TupleStruct(..) => res.expected_in_tuple_struct_pat(),
+            PathSource::Struct => matches!(
+                res,
+                Res::Def(
                     DefKind::Struct
-                    | DefKind::Union
-                    | DefKind::Variant
-                    | DefKind::TyAlias
-                    | DefKind::AssocTy,
+                        | DefKind::Union
+                        | DefKind::Variant
+                        | DefKind::TyAlias
+                        | DefKind::AssocTy,
                     _,
-                )
-                | Res::SelfTy(..)),
+                ) | Res::SelfTy(..)
+            ),
             PathSource::TraitItem(ns) => match res {
                 Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
@@ -588,7 +600,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     // Allow all following defaults to refer to this type parameter.
                     default_ban_rib.bindings.remove(&Ident::with_dummy_span(param.ident.name));
                 }
-                GenericParamKind::Const { ref ty, kw_span: _ } => {
+                GenericParamKind::Const { ref ty, kw_span: _, default: _ } => {
+                    // FIXME(const_generics_defaults): handle `default` value here
                     for bound in &param.bounds {
                         self.visit_param_bound(bound);
                     }
@@ -635,7 +648,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             // Note that we might not be inside of an repeat expression here,
                             // but considering that `IsRepeatExpr` is only relevant for
                             // non-trivial constants this is doesn't matter.
-                            self.with_constant_rib(IsRepeatExpr::No, true, |this| {
+                            self.with_constant_rib(IsRepeatExpr::No, true, None, |this| {
                                 this.smart_resolve_path(
                                     ty.id,
                                     qself.as_ref(),
@@ -677,7 +690,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
-        let parent_scope = ParentScope::module(graph_root);
+        let parent_scope = ParentScope::module(graph_root, resolver);
         let start_rib_kind = ModuleRibKind(graph_root);
         LateResolutionVisitor {
             r: resolver,
@@ -844,7 +857,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | ClosureOrAsyncRibKind
                 | FnItemRibKind
                 | ItemRibKind(..)
-                | ConstantItemRibKind(_)
+                | ConstantItemRibKind(..)
                 | ModuleRibKind(..)
                 | ForwardTyParamBanRibKind
                 | ConstParamTyRibKind => {
@@ -955,8 +968,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             });
                         };
 
-                        for item in trait_items {
-                            this.with_trait_items(trait_items, |this| {
+                        this.with_trait_items(trait_items, |this| {
+                            for item in trait_items {
                                 match &item.kind {
                                     AssocItemKind::Const(_, ty, default) => {
                                         this.visit_ty(ty);
@@ -971,6 +984,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             this.with_constant_rib(
                                                 IsRepeatExpr::No,
                                                 true,
+                                                None,
                                                 |this| this.visit_expr(expr),
                                             );
                                         }
@@ -985,8 +999,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         panic!("unexpanded macro in resolve!")
                                     }
                                 };
-                            });
-                        }
+                            }
+                        });
                     });
                 });
             }
@@ -1013,11 +1027,19 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
                     if let Some(expr) = expr {
+                        let constant_item_kind = match item.kind {
+                            ItemKind::Const(..) => ConstantItemKind::Const,
+                            ItemKind::Static(..) => ConstantItemKind::Static,
+                            _ => unreachable!(),
+                        };
                         // We already forbid generic params because of the above item rib,
                         // so it doesn't matter whether this is a trivial constant.
-                        this.with_constant_rib(IsRepeatExpr::No, true, |this| {
-                            this.visit_expr(expr)
-                        });
+                        this.with_constant_rib(
+                            IsRepeatExpr::No,
+                            true,
+                            Some((item.ident, constant_item_kind)),
+                            |this| this.visit_expr(expr),
+                        );
                     }
                 });
             }
@@ -1062,36 +1084,29 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 continue;
             }
 
-            let def_kind = match param.kind {
-                GenericParamKind::Type { .. } => DefKind::TyParam,
-                GenericParamKind::Const { .. } => DefKind::ConstParam,
-                _ => unreachable!(),
-            };
-
             let ident = param.ident.normalize_to_macros_2_0();
             debug!("with_generic_param_rib: {}", param.id);
 
-            if seen_bindings.contains_key(&ident) {
-                let span = seen_bindings.get(&ident).unwrap();
-                let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, *span);
-                self.report_error(param.ident.span, err);
+            match seen_bindings.entry(ident) {
+                Entry::Occupied(entry) => {
+                    let span = *entry.get();
+                    let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, span);
+                    self.report_error(param.ident.span, err);
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(param.ident.span);
+                }
             }
-            seen_bindings.entry(ident).or_insert(param.ident.span);
 
             // Plain insert (no renaming).
-            let res = Res::Def(def_kind, self.r.local_def_id(param.id).to_def_id());
-
-            match param.kind {
-                GenericParamKind::Type { .. } => {
-                    function_type_rib.bindings.insert(ident, res);
-                    self.r.record_partial_res(param.id, PartialRes::new(res));
-                }
-                GenericParamKind::Const { .. } => {
-                    function_value_rib.bindings.insert(ident, res);
-                    self.r.record_partial_res(param.id, PartialRes::new(res));
-                }
+            let (rib, def_kind) = match param.kind {
+                GenericParamKind::Type { .. } => (&mut function_type_rib, DefKind::TyParam),
+                GenericParamKind::Const { .. } => (&mut function_value_rib, DefKind::ConstParam),
                 _ => unreachable!(),
-            }
+            };
+            let res = Res::Def(def_kind, self.r.local_def_id(param.id).to_def_id());
+            self.r.record_partial_res(param.id, PartialRes::new(res));
+            rib.bindings.insert(ident, res);
         }
 
         self.ribs[ValueNS].push(function_value_rib);
@@ -1126,15 +1141,16 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         is_repeat: IsRepeatExpr,
         is_trivial: bool,
+        item: Option<(Ident, ConstantItemKind)>,
         f: impl FnOnce(&mut Self),
     ) {
         debug!("with_constant_rib: is_repeat={:?} is_trivial={}", is_repeat, is_trivial);
-        self.with_rib(ValueNS, ConstantItemRibKind(is_trivial), |this| {
+        self.with_rib(ValueNS, ConstantItemRibKind(is_trivial, item), |this| {
             this.with_rib(
                 TypeNS,
-                ConstantItemRibKind(is_repeat == IsRepeatExpr::Yes || is_trivial),
+                ConstantItemRibKind(is_repeat == IsRepeatExpr::Yes || is_trivial, item),
                 |this| {
-                    this.with_label_rib(ConstantItemRibKind(is_trivial), f);
+                    this.with_label_rib(ConstantItemRibKind(is_trivial, item), f);
                 },
             )
         });
@@ -1160,13 +1176,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     /// When evaluating a `trait` use its associated types' idents for suggestions in E0412.
     fn with_trait_items<T>(
         &mut self,
-        trait_items: &'ast Vec<P<AssocItem>>,
+        trait_items: &'ast [P<AssocItem>],
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
-        let trait_assoc_items = replace(
-            &mut self.diagnostic_metadata.current_trait_assoc_items,
-            Some(&trait_items[..]),
-        );
+        let trait_assoc_items =
+            replace(&mut self.diagnostic_metadata.current_trait_assoc_items, Some(&trait_items));
         let result = f(self);
         self.diagnostic_metadata.current_trait_assoc_items = trait_assoc_items;
         result
@@ -1276,6 +1290,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             this.with_constant_rib(
                                                 IsRepeatExpr::No,
                                                 true,
+                                                None,
                                                 |this| {
                                                     visit::walk_assoc_item(
                                                         this,
@@ -1650,7 +1665,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
 
         // Record as bound if it's valid:
-        let ident_valid = ident.name != kw::Invalid;
+        let ident_valid = ident.name != kw::Empty;
         if ident_valid {
             bindings.last_mut().unwrap().1.insert(ident);
         }
@@ -1780,13 +1795,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             path
         );
         let ns = source.namespace();
-        let is_expected = &|res| source.is_expected(res);
 
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
                 let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
 
-                let def_id = this.parent_scope.module.normal_ancestor_id;
+                let def_id = this.parent_scope.module.nearest_parent_mod;
                 let instead = res.is_some();
                 let suggestion =
                     if res.is_none() { this.report_missing_type_error(path) } else { None };
@@ -1854,7 +1868,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             drop(parent_err);
 
-            let def_id = this.parent_scope.module.normal_ancestor_id;
+            let def_id = this.parent_scope.module.nearest_parent_mod;
 
             if this.should_report_errs() {
                 this.r.use_injections.push(UseError {
@@ -1883,7 +1897,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             crate_lint,
         ) {
             Ok(Some(partial_res)) if partial_res.unresolved_segments() == 0 => {
-                if is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err {
+                if source.is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err
+                {
                     partial_res
                 } else {
                     report_errors(self, Some(partial_res.base_res()))
@@ -1900,11 +1915,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.r.trait_map.insert(id, traits);
                 }
 
-                let mut std_path = vec![Segment::from_ident(Ident::with_dummy_span(sym::std))];
-
-                std_path.extend(path);
-
                 if self.r.primitive_type_table.primitive_types.contains_key(&path[0].ident.name) {
+                    let mut std_path = Vec::with_capacity(1 + path.len());
+
+                    std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
+                    std_path.extend(path);
                     if let PathResult::Module(_) | PathResult::NonModule(_) =
                         self.resolve_path(&std_path, Some(ns), false, span, CrateLint::No)
                     {
@@ -1932,8 +1947,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             _ => report_errors(self, None),
         };
 
-        if let PathSource::TraitItem(..) = source {
-        } else {
+        if !matches!(source, PathSource::TraitItem(..)) {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
             self.r.record_partial_res(id, partial_res);
         }
@@ -1985,7 +1999,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
         let mut fin_res = None;
 
-        for (i, ns) in [primary_ns, TypeNS, ValueNS].iter().cloned().enumerate() {
+        for (i, &ns) in [primary_ns, TypeNS, ValueNS].iter().enumerate() {
             if i == 0 || ns != primary_ns {
                 match self.resolve_qpath(id, qself, path, ns, span, crate_lint)? {
                     Some(partial_res)
@@ -1995,7 +2009,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     }
                     partial_res => {
                         if fin_res.is_none() {
-                            fin_res = partial_res
+                            fin_res = partial_res;
                         }
                     }
                 }
@@ -2210,6 +2224,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_constant_rib(
             is_repeat,
             constant.value.is_potential_trivial_const_param(),
+            None,
             |this| {
                 visit::walk_anon_const(this, constant);
             },
@@ -2407,8 +2422,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 &mut found_traits,
                 &self.parent_scope,
             );
-            search_module =
-                unwrap_or!(self.r.hygienic_lexical_parent(search_module, &mut ident.span), break);
+            let mut span_data = ident.span.data();
+            search_module = unwrap_or!(
+                self.r.hygienic_lexical_parent(search_module, &mut span_data.ctxt),
+                break
+            );
+            ident.span = span_data.span();
         }
 
         if let Some(prelude) = self.r.prelude {

@@ -1,5 +1,3 @@
-// ignore-cloudabi no std::fs support
-
 #![feature(try_trait)]
 
 use std::ops::Try;

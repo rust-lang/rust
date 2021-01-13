@@ -1,0 +1,62 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/simple-struct-min-capture.rs:27:17
+   |
+LL |     let mut c = #[rustc_capture_analysis]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/simple-struct-min-capture.rs:3:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error: First Pass analysis includes:
+  --> $DIR/simple-struct-min-capture.rs:30:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         p.x += 10;
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing p[(0, 0)] -> MutBorrow
+  --> $DIR/simple-struct-min-capture.rs:33:9
+   |
+LL |         p.x += 10;
+   |         ^^^
+note: Capturing p[] -> ImmBorrow
+  --> $DIR/simple-struct-min-capture.rs:36:26
+   |
+LL |         println!("{:?}", p);
+   |                          ^
+
+error: Min Capture analysis includes:
+  --> $DIR/simple-struct-min-capture.rs:30:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         p.x += 10;
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture p[] -> MutBorrow
+  --> $DIR/simple-struct-min-capture.rs:33:9
+   |
+LL |         p.x += 10;
+   |         ^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.

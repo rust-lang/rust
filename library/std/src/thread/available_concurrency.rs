@@ -70,7 +70,6 @@ cfg_if::cfg_if! {
         }
     } else if #[cfg(any(
         target_os = "android",
-        target_os = "cloudabi",
         target_os = "emscripten",
         target_os = "fuchsia",
         target_os = "ios",

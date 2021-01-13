@@ -236,7 +236,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
 
         let s = if state.allowed_fail > 0 {
             format!(
-                ". {} passed; {} failed ({} allowed); {} ignored; {} measured; {} filtered out\n\n",
+                ". {} passed; {} failed ({} allowed); {} ignored; {} measured; {} filtered out",
                 state.passed,
                 state.failed + state.allowed_fail,
                 state.allowed_fail,
@@ -246,12 +246,19 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
             )
         } else {
             format!(
-                ". {} passed; {} failed; {} ignored; {} measured; {} filtered out\n\n",
+                ". {} passed; {} failed; {} ignored; {} measured; {} filtered out",
                 state.passed, state.failed, state.ignored, state.measured, state.filtered_out
             )
         };
 
         self.write_plain(&s)?;
+
+        if let Some(ref exec_time) = state.exec_time {
+            let time_str = format!("; finished in {}", exec_time);
+            self.write_plain(&time_str)?;
+        }
+
+        self.write_plain("\n\n")?;
 
         Ok(success)
     }

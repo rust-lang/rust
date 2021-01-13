@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::cstore::{EncodedMetadata, LibSource, NativeLib};
+use rustc_middle::middle::cstore::{EncodedMetadata, LibSource};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SanitizerSet};
@@ -21,7 +21,10 @@ use super::archive::ArchiveBuilder;
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::rpath::{self, RPathConfig};
-use crate::{looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FILENAME};
+use crate::{
+    looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
+    METADATA_FILENAME,
+};
 
 use cc::windows_registry;
 use tempfile::Builder as TempFileBuilder;
@@ -96,6 +99,9 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                         path.as_ref(),
                         target_cpu,
                     );
+                    if sess.opts.debugging_opts.split_dwarf == config::SplitDwarfKind::Split {
+                        link_dwarf_object(sess, &out_filename);
+                    }
                 }
             }
             if sess.opts.json_artifact_notifications {
@@ -107,22 +113,30 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     // Remove the temporary object file and metadata if we aren't saving temps
     sess.time("link_binary_remove_temps", || {
         if !sess.opts.cg.save_temps {
+            let remove_temps_from_module = |module: &CompiledModule| {
+                if let Some(ref obj) = module.object {
+                    remove(sess, obj);
+                }
+
+                if let Some(ref obj) = module.dwarf_object {
+                    remove(sess, obj);
+                }
+            };
+
             if sess.opts.output_types.should_codegen()
                 && !preserve_objects_for_their_debuginfo(sess)
             {
-                for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
-                    remove(sess, obj);
+                for module in &codegen_results.modules {
+                    remove_temps_from_module(module);
                 }
             }
+
             if let Some(ref metadata_module) = codegen_results.metadata_module {
-                if let Some(ref obj) = metadata_module.object {
-                    remove(sess, obj);
-                }
+                remove_temps_from_module(metadata_module);
             }
+
             if let Some(ref allocator_module) = codegen_results.allocator_module {
-                if let Some(ref obj) = allocator_module.object {
-                    remove(sess, obj);
-                }
+                remove_temps_from_module(allocator_module);
             }
         }
     });
@@ -279,12 +293,12 @@ pub fn emit_metadata(sess: &Session, metadata: &EncodedMetadata, tmpdir: &MaybeT
     out_filename
 }
 
-// Create an 'rlib'
-//
-// An rlib in its current incarnation is essentially a renamed .a file. The
-// rlib primarily contains the object file of the crate, but it also contains
-// all of the object files from native libraries. This is done by unzipping
-// native libraries and inserting all of the contents into this archive.
+/// Create an 'rlib'.
+///
+/// An rlib in its current incarnation is essentially a renamed .a file. The rlib primarily contains
+/// the object file of the crate, but it also contains all of the object files from native
+/// libraries. This is done by unzipping native libraries and inserting all of the contents into
+/// this archive.
 fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     codegen_results: &CodegenResults,
@@ -379,18 +393,17 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     ab
 }
 
-// Create a static archive
-//
-// This is essentially the same thing as an rlib, but it also involves adding
-// all of the upstream crates' objects into the archive. This will slurp in
-// all of the native libraries of upstream dependencies as well.
-//
-// Additionally, there's no way for us to link dynamic libraries, so we warn
-// about all dynamic library dependencies that they're not linked in.
-//
-// There's no need to include metadata in a static archive, so ensure to not
-// link in the metadata object file (and also don't prepare the archive with a
-// metadata file).
+/// Create a static archive.
+///
+/// This is essentially the same thing as an rlib, but it also involves adding all of the upstream
+/// crates' objects into the archive. This will slurp in all of the native libraries of upstream
+/// dependencies as well.
+///
+/// Additionally, there's no way for us to link dynamic libraries, so we warn about all dynamic
+/// library dependencies that they're not linked in.
+///
+/// There's no need to include metadata in a static archive, so ensure to not link in the metadata
+/// object file (and also don't prepare the archive with a metadata file).
 fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     codegen_results: &CodegenResults,
@@ -447,10 +460,73 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     }
 }
 
-// Create a dynamic library or executable
-//
-// This will invoke the system linker/cc to create the resulting file. This
-// links to all upstream files as well.
+fn escape_stdout_stderr_string(s: &[u8]) -> String {
+    str::from_utf8(s).map(|s| s.to_owned()).unwrap_or_else(|_| {
+        let mut x = "Non-UTF-8 output: ".to_string();
+        x.extend(s.iter().flat_map(|&b| ascii::escape_default(b)).map(char::from));
+        x
+    })
+}
+
+const LLVM_DWP_EXECUTABLE: &'static str = "rust-llvm-dwp";
+
+/// Invoke `llvm-dwp` (shipped alongside rustc) to link `dwo` files from Split DWARF into a `dwp`
+/// file.
+fn link_dwarf_object<'a>(sess: &'a Session, executable_out_filename: &Path) {
+    info!("preparing dwp to {}.dwp", executable_out_filename.to_str().unwrap());
+
+    let dwp_out_filename = executable_out_filename.with_extension("dwp");
+    let mut cmd = Command::new(LLVM_DWP_EXECUTABLE);
+    cmd.arg("-e");
+    cmd.arg(executable_out_filename);
+    cmd.arg("-o");
+    cmd.arg(&dwp_out_filename);
+
+    let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths(false);
+    if let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
+    }
+    let new_path = env::join_paths(new_path).unwrap();
+    cmd.env("PATH", new_path);
+
+    info!("{:?}", &cmd);
+    match sess.time("run_dwp", || cmd.output()) {
+        Ok(prog) if !prog.status.success() => {
+            sess.struct_err(&format!(
+                "linking dwarf objects with `{}` failed: {}",
+                LLVM_DWP_EXECUTABLE, prog.status
+            ))
+            .note(&format!("{:?}", &cmd))
+            .note(&escape_stdout_stderr_string(&prog.stdout))
+            .note(&escape_stdout_stderr_string(&prog.stderr))
+            .emit();
+            info!("linker stderr:\n{}", escape_stdout_stderr_string(&prog.stderr));
+            info!("linker stdout:\n{}", escape_stdout_stderr_string(&prog.stdout));
+        }
+        Ok(_) => {}
+        Err(e) => {
+            let dwp_not_found = e.kind() == io::ErrorKind::NotFound;
+            let mut err = if dwp_not_found {
+                sess.struct_err(&format!("linker `{}` not found", LLVM_DWP_EXECUTABLE))
+            } else {
+                sess.struct_err(&format!("could not exec the linker `{}`", LLVM_DWP_EXECUTABLE))
+            };
+
+            err.note(&e.to_string());
+
+            if !dwp_not_found {
+                err.note(&format!("{:?}", &cmd));
+            }
+
+            err.emit();
+        }
+    }
+}
+
+/// Create a dynamic library or executable.
+///
+/// This will invoke the system linker/cc to create the resulting file. This links to all upstream
+/// files as well.
 fn link_natively<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     crate_type: CrateType,
@@ -643,15 +719,16 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         }
     }
 
+    fn escape_string(s: &[u8]) -> String {
+        str::from_utf8(s).map(|s| s.to_owned()).unwrap_or_else(|_| {
+            let mut x = "Non-UTF-8 output: ".to_string();
+            x.extend(s.iter().flat_map(|&b| ascii::escape_default(b)).map(char::from));
+            x
+        })
+    }
+
     match prog {
         Ok(prog) => {
-            fn escape_string(s: &[u8]) -> String {
-                str::from_utf8(s).map(|s| s.to_owned()).unwrap_or_else(|_| {
-                    let mut x = "Non-UTF-8 output: ".to_string();
-                    x.extend(s.iter().flat_map(|&b| ascii::escape_default(b)).map(char::from));
-                    x
-                })
-            }
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
@@ -661,7 +738,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
                     prog.status
                 ))
                 .note(&format!("{:?}", &cmd))
-                .note(&escape_string(&output))
+                .note(&escape_stdout_stderr_string(&output))
                 .emit();
 
                 // If MSVC's `link.exe` was expected but the return code
@@ -714,8 +791,8 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
                 sess.abort_if_errors();
             }
-            info!("linker stderr:\n{}", escape_string(&prog.stderr));
-            info!("linker stdout:\n{}", escape_string(&prog.stdout));
+            info!("linker stderr:\n{}", escape_stdout_stderr_string(&prog.stderr));
+            info!("linker stdout:\n{}", escape_stdout_stderr_string(&prog.stdout));
         }
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
@@ -760,8 +837,21 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         && sess.opts.debuginfo != DebugInfo::None
         && !preserve_objects_for_their_debuginfo(sess)
     {
-        if let Err(e) = Command::new("dsymutil").arg(out_filename).output() {
-            sess.fatal(&format!("failed to run dsymutil: {}", e))
+        let prog = Command::new("dsymutil").arg(out_filename).output();
+        match prog {
+            Ok(prog) => {
+                if !prog.status.success() {
+                    let mut output = prog.stderr.clone();
+                    output.extend_from_slice(&prog.stdout);
+                    sess.struct_warn(&format!(
+                        "processing debug info with `dsymutil` failed: {}",
+                        prog.status
+                    ))
+                    .note(&escape_string(&output))
+                    .emit();
+                }
+            }
+            Err(e) => sess.fatal(&format!("unable to run `dsymutil`: {}", e)),
         }
     }
 }
@@ -805,7 +895,7 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         .unwrap_or_default();
 
     match sess.opts.target_triple.triple() {
-        "x86_64-apple-darwin" => {
+        "aarch64-apple-darwin" | "x86_64-apple-darwin" => {
             // On Apple platforms, the sanitizer is always built as a dylib, and
             // LLVM will link to `@rpath/*.dylib`, so we need to specify an
             // rpath to the library as well (the rpath should be absolute, see
@@ -946,6 +1036,13 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
         sess.crate_types().iter().any(|&x| x != CrateType::Rlib && x != CrateType::Staticlib);
     if !output_linked {
         return false;
+    }
+
+    // Single mode keeps debuginfo in the same object file, but in such a way that it it skipped
+    // by the linker - so it's expected that when codegen units are linked together that this
+    // debuginfo would be lost without keeping around the temps.
+    if sess.opts.debugging_opts.split_dwarf == config::SplitDwarfKind::Single {
+        return true;
     }
 
     // If we're on OSX then the equivalent of split dwarf is turned on by
@@ -1179,6 +1276,7 @@ fn exec_linker(
 
 fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
     let kind = match (crate_type, sess.crt_static(Some(crate_type)), sess.relocation_model()) {
+        (CrateType::Executable, _, _) if sess.is_wasi_reactor() => LinkOutputKind::WasiReactorExe,
         (CrateType::Executable, false, RelocModel::Pic) => LinkOutputKind::DynamicPicExe,
         (CrateType::Executable, false, _) => LinkOutputKind::DynamicNoPicExe,
         (CrateType::Executable, true, RelocModel::Pic) => LinkOutputKind::StaticPicExe,
@@ -1663,17 +1761,15 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     cmd.take_cmd()
 }
 
-// # Native library linking
-//
-// User-supplied library search paths (-L on the command line). These are
-// the same paths used to find Rust crates, so some of them may have been
-// added already by the previous crate linking code. This only allows them
-// to be found at compile time so it is still entirely up to outside
-// forces to make sure that library can be found at runtime.
-//
-// Also note that the native libraries linked here are only the ones located
-// in the current crate. Upstream crates with native library dependencies
-// may have their native library pulled in above.
+/// # Native library linking
+///
+/// User-supplied library search paths (-L on the command line). These are the same paths used to
+/// find Rust crates, so some of them may have been added already by the previous crate linking
+/// code. This only allows them to be found at compile time so it is still entirely up to outside
+/// forces to make sure that library can be found at runtime.
+///
+/// Also note that the native libraries linked here are only the ones located in the current crate.
+/// Upstream crates with native library dependencies may have their native library pulled in above.
 fn add_local_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
@@ -1713,11 +1809,10 @@ fn add_local_native_libraries(
     }
 }
 
-// # Rust Crate linking
-//
-// Rust crates are not considered at all when creating an rlib output. All
-// dependencies will be linked when producing the final output (instead of
-// the intermediate rlib version)
+/// # Rust Crate linking
+///
+/// Rust crates are not considered at all when creating an rlib output. All dependencies will be
+/// linked when producing the final output (instead of the intermediate rlib version).
 fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     cmd: &mut dyn Linker,
     sess: &'a Session,
@@ -1982,24 +2077,21 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     }
 }
 
-// Link in all of our upstream crates' native dependencies. Remember that
-// all of these upstream native dependencies are all non-static
-// dependencies. We've got two cases then:
-//
-// 1. The upstream crate is an rlib. In this case we *must* link in the
-// native dependency because the rlib is just an archive.
-//
-// 2. The upstream crate is a dylib. In order to use the dylib, we have to
-// have the dependency present on the system somewhere. Thus, we don't
-// gain a whole lot from not linking in the dynamic dependency to this
-// crate as well.
-//
-// The use case for this is a little subtle. In theory the native
-// dependencies of a crate are purely an implementation detail of the crate
-// itself, but the problem arises with generic and inlined functions. If a
-// generic function calls a native function, then the generic function must
-// be instantiated in the target crate, meaning that the native symbol must
-// also be resolved in the target crate.
+/// Link in all of our upstream crates' native dependencies. Remember that all of these upstream
+/// native dependencies are all non-static dependencies. We've got two cases then:
+///
+/// 1. The upstream crate is an rlib. In this case we *must* link in the native dependency because
+/// the rlib is just an archive.
+///
+/// 2. The upstream crate is a dylib. In order to use the dylib, we have to have the dependency
+/// present on the system somewhere. Thus, we don't gain a whole lot from not linking in the
+/// dynamic dependency to this crate as well.
+///
+/// The use case for this is a little subtle. In theory the native dependencies of a crate are
+/// purely an implementation detail of the crate itself, but the problem arises with generic and
+/// inlined functions. If a generic function calls a native function, then the generic function
+/// must be instantiated in the target crate, meaning that the native symbol must also be resolved
+/// in the target crate.
 fn add_upstream_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
@@ -2090,9 +2182,10 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("aarch64", "tvos") => "appletvos",
         ("x86_64", "tvos") => "appletvsimulator",
         ("arm", "ios") => "iphoneos",
+        ("aarch64", "ios") if llvm_target.contains("macabi") => "macosx",
         ("aarch64", "ios") => "iphoneos",
         ("x86", "ios") => "iphonesimulator",
-        ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx10.15",
+        ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",
         ("x86_64", "ios") => "iphonesimulator",
         _ => {
             sess.err(&format!("unsupported arch `{}` for os `{}`", arch, os));

@@ -19,7 +19,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let local_scope = self.local_scope();
-        self.as_operand(block, local_scope, expr)
+        self.as_operand(block, Some(local_scope), expr)
     }
 
     /// Returns an operand suitable for use until the end of the current scope expression and
@@ -79,7 +79,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let local_scope = self.local_scope();
-        self.as_call_operand(block, local_scope, expr)
+        self.as_call_operand(block, Some(local_scope), expr)
     }
 
     /// Compile `expr` into a value that can be used as an operand.

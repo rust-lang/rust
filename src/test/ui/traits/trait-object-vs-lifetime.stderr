@@ -27,8 +27,6 @@ error[E0747]: type provided when a lifetime was expected
    |
 LL |     let _: S<dyn 'static +, 'static>;
    |              ^^^^^^^^^^^^^
-   |
-   = note: lifetime arguments must be provided before type arguments
 
 error: aborting due to 5 previous errors
 

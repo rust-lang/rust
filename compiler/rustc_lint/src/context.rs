@@ -19,7 +19,6 @@ use self::TargetLint::*;
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast as ast;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_errors::{add_elided_lifetime_in_path_suggestion, struct_span_err, Applicability};
@@ -37,6 +36,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_session::SessionLintStore;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use rustc_target::abi::LayoutOf;
 
@@ -261,6 +261,7 @@ impl LintStore {
         }
     }
 
+    #[track_caller]
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
         let target = match self.by_name.get(new_name) {
             Some(&Id(lint_id)) => lint_id,
@@ -411,7 +412,7 @@ impl LintStore {
                         self.by_name.keys().map(|name| Symbol::intern(&name)).collect::<Vec<_>>();
 
                     let suggestion = find_best_match_for_name(
-                        symbols.iter(),
+                        &symbols,
                         Symbol::intern(&lint_name.to_lowercase()),
                         None,
                     );
@@ -596,6 +597,13 @@ pub trait LintContext: Sized {
                     db.help("to document an item produced by a macro, \
                                   the macro must produce the documentation as part of its expansion");
                 }
+                BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident) => {
+                    db.span_suggestion(span, "remove `mut` from the parameter", ident.to_string(), Applicability::MachineApplicable);
+                }
+                BuiltinLintDiagnostics::MissingAbi(span, default_abi) => {
+                    db.span_label(span, "ABI should be specified here");
+                    db.help(&format!("the default ABI is {}", default_abi.name()));
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
@@ -728,7 +736,7 @@ impl<'tcx> LateContext<'tcx> {
 
     /// Check if a `DefId`'s path matches the given absolute type path usage.
     ///
-    /// Anonymous scopes such as `extern` imports are matched with `kw::Invalid`;
+    /// Anonymous scopes such as `extern` imports are matched with `kw::Empty`;
     /// inherent `impl` blocks are matched with the name of the type.
     ///
     /// Instead of using this method, it is often preferable to instead use
@@ -786,7 +794,7 @@ impl<'tcx> LateContext<'tcx> {
 
             fn print_dyn_existential(
                 self,
-                _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+                _predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
             ) -> Result<Self::DynExistential, Self::Error> {
                 Ok(())
             }

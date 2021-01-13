@@ -15,7 +15,7 @@ LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
    |                                       doesn't satisfy `<_ as FnOnce<(&&str,)>>::Output = bool`
    |                                       doesn't satisfy `_: FnMut<(&&str,)>`
    | 
-  ::: $SRC_DIR/core/src/iter/adapters/mod.rs:LL:COL
+  ::: $SRC_DIR/core/src/iter/adapters/filter.rs:LL:COL
    |
 LL | pub struct Filter<I, P> {
    | ----------------------- doesn't satisfy `_: Iterator`

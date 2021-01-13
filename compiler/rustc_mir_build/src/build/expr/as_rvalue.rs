@@ -4,12 +4,15 @@ use rustc_index::vec::Idx;
 
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::build::expr::as_place::PlaceBase;
 use crate::thir::*;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
+
+use std::slice;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current
@@ -23,7 +26,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let local_scope = self.local_scope();
-        self.as_rvalue(block, local_scope, expr)
+        self.as_rvalue(block, Some(local_scope), expr)
     }
 
     /// Compile `expr`, yielding an rvalue.
@@ -96,7 +99,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
                 // The `Box<T>` temporary created here is not a part of the HIR,
-                // and therefore is not considered during generator OIBIT
+                // and therefore is not considered during generator auto-trait
                 // determination. See the comment about `box` at `yield_in_scope`.
                 let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span).internal());
                 this.cfg.push(
@@ -112,12 +115,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
-                // initialize the box contents:
+                // Initialize the box contents. No scope is needed since the
+                // `Box` is already scheduled to be dropped.
                 unpack!(
-                    block =
-                        this.into(this.hir.tcx().mk_place_deref(Place::from(result)), block, value)
+                    block = this.into(
+                        this.hir.tcx().mk_place_deref(Place::from(result)),
+                        None,
+                        block,
+                        value,
+                    )
                 );
-                block.and(Rvalue::Use(Operand::Move(Place::from(result))))
+                let result_operand = Operand::Move(Place::from(result));
+                this.record_operands_moved(slice::from_ref(&result_operand));
+                block.and(Rvalue::Use(result_operand))
             }
             ExprKind::Cast { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
@@ -161,6 +171,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|f| unpack!(block = this.as_operand(block, scope, f)))
                     .collect();
 
+                this.record_operands_moved(&fields);
                 block.and(Rvalue::Aggregate(box AggregateKind::Array(el_ty), fields))
             }
             ExprKind::Tuple { fields } => {
@@ -171,6 +182,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|f| unpack!(block = this.as_operand(block, scope, f)))
                     .collect();
 
+                this.record_operands_moved(&fields);
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
             ExprKind::Closure { closure_id, substs, upvars, movability } => {
@@ -222,6 +234,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     UpvarSubsts::Closure(substs) => box AggregateKind::Closure(closure_id, substs),
                 };
+                this.record_operands_moved(&operands);
                 block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
@@ -250,7 +263,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Deref { .. }
             | ExprKind::Index { .. }
             | ExprKind::VarRef { .. }
-            | ExprKind::SelfRef
+            | ExprKind::UpvarRef { .. }
             | ExprKind::Break { .. }
             | ExprKind::Continue { .. }
             | ExprKind::Return { .. }
@@ -381,50 +394,53 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         this.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
 
-        let arg_place = unpack!(block = this.as_place(block, arg));
+        let arg_place_builder = unpack!(block = this.as_place_builder(block, arg));
 
-        let mutability = match arg_place.as_ref() {
-            PlaceRef { local, projection: &[] } => this.local_decls[local].mutability,
-            PlaceRef { local, projection: &[ProjectionElem::Deref] } => {
-                debug_assert!(
-                    this.local_decls[local].is_ref_for_guard(),
-                    "Unexpected capture place",
-                );
-                this.local_decls[local].mutability
-            }
-            PlaceRef {
-                local,
-                projection: &[ref proj_base @ .., ProjectionElem::Field(upvar_index, _)],
-            }
-            | PlaceRef {
-                local,
-                projection:
-                    &[ref proj_base @ .., ProjectionElem::Field(upvar_index, _), ProjectionElem::Deref],
-            } => {
-                let place = PlaceRef { local, projection: proj_base };
+        let mutability = match arg_place_builder.base() {
+            // We are capturing a path that starts off a local variable in the parent.
+            // The mutability of the current capture is same as the mutability
+            // of the local declaration in the parent.
+            PlaceBase::Local(local) =>  this.local_decls[local].mutability,
+            // Parent is a closure and we are capturing a path that is captured
+            // by the parent itself. The mutability of the current capture
+            // is same as that of the capture in the parent closure.
+            PlaceBase::Upvar { .. } => {
+                let enclosing_upvars_resolved = arg_place_builder.clone().into_place(
+                    this.hir.tcx(),
+                    this.hir.typeck_results());
 
-                // Not projected from the implicit `self` in a closure.
-                debug_assert!(
-                    match place.local_or_deref_local() {
-                        Some(local) => local == Local::new(1),
-                        None => false,
-                    },
-                    "Unexpected capture place"
-                );
-                // Not in a closure
-                debug_assert!(
-                    this.upvar_mutbls.len() > upvar_index.index(),
-                    "Unexpected capture place"
-                );
-                this.upvar_mutbls[upvar_index.index()]
+                match enclosing_upvars_resolved.as_ref() {
+                    PlaceRef { local, projection: &[ProjectionElem::Field(upvar_index, _), ..] }
+                    | PlaceRef {
+                        local,
+                        projection: &[ProjectionElem::Deref, ProjectionElem::Field(upvar_index, _), ..] } => {
+                            // Not in a closure
+                            debug_assert!(
+                                local == Local::new(1),
+                                "Expected local to be Local(1), found {:?}",
+                                local
+                            );
+                            // Not in a closure
+                            debug_assert!(
+                                this.upvar_mutbls.len() > upvar_index.index(),
+                                "Unexpected capture place, upvar_mutbls={:#?}, upvar_index={:?}",
+                                this.upvar_mutbls, upvar_index
+                            );
+                            this.upvar_mutbls[upvar_index.index()]
+                        }
+                    _ => bug!("Unexpected capture place"),
+                }
             }
-            _ => bug!("Unexpected capture place"),
         };
 
         let borrow_kind = match mutability {
             Mutability::Not => BorrowKind::Unique,
             Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
         };
+
+        let arg_place = arg_place_builder.into_place(
+                    this.hir.tcx(),
+                    this.hir.typeck_results());
 
         this.cfg.push_assign(
             block,
@@ -433,9 +449,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place),
         );
 
-        // In constants, temp_lifetime is None. We should not need to drop
-        // anything because no values with a destructor can be created in
-        // a constant at this time, even if the type may need dropping.
+        // See the comment in `expr_as_temp` and on the `rvalue_scopes` field for why
+        // this can be `None`.
         if let Some(temp_lifetime) = temp_lifetime {
             this.schedule_drop_storage_and_value(upvar_span, temp_lifetime, temp);
         }

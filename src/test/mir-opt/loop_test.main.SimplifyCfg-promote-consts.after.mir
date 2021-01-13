@@ -25,7 +25,7 @@ fn main() -> () {
     }
 
     bb2: {
-        _1 = const ();                   // scope 0 at $DIR/loop_test.rs:10:5: 12:6
+        _1 = const ();                   // scope 0 at $DIR/loop_test.rs:12:6: 12:6
         StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageLive(_4);                 // scope 0 at $DIR/loop_test.rs:13:5: 16:6

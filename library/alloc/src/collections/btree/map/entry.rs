@@ -116,15 +116,16 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
         }
     }
 
-    #[unstable(feature = "or_insert_with_key", issue = "71024")]
-    /// Ensures a value is in the entry by inserting, if empty, the result of the default function,
-    /// which takes the key as its argument, and returns a mutable reference to the value in the
-    /// entry.
+    /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
+    /// This method allows for generating key-derived values for insertion by providing the default
+    /// function a reference to the key that was moved during the `.entry(key)` method call.
+    ///
+    /// The reference to the moved key is provided so that cloning or copying the key is
+    /// unnecessary, unlike with `.or_insert_with(|| ... )`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(or_insert_with_key)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
@@ -134,6 +135,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 9);
     /// ```
     #[inline]
+    #[stable(feature = "or_insert_with_key", since = "1.50.0")]
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
@@ -286,7 +288,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
                 // Safety: We have consumed self.handle and the reference returned.
                 let map = unsafe { self.dormant_map.awaken() };
                 let root = map.root.as_mut().unwrap();
-                root.push_internal_level().push(ins.k, ins.v, ins.right);
+                root.push_internal_level().push(ins.kv.0, ins.kv.1, ins.right);
                 map.length += 1;
                 val_ptr
             }
@@ -459,7 +461,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
         self.remove_kv().1
     }
 
-    // Body of `remove_entry`, separate to keep the above implementations short.
+    // Body of `remove_entry`, probably separate because the name reflects the returned pair.
     pub(super) fn remove_kv(self) -> (K, V) {
         let mut emptied_internal_root = false;
         let (old_kv, _) = self.handle.remove_kv_tracking(|| emptied_internal_root = true);

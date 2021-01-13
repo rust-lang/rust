@@ -43,8 +43,13 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
         }
 
         let param_env = tcx.param_env(body.source.def_id());
+        let def_id = body.source.def_id();
         let (bbs, local_decls) = body.basic_blocks_and_local_decls_mut();
         'outer: for bb_idx in bbs.indices() {
+            if !tcx.consider_optimizing(|| format!("MatchBranchSimplification {:?} ", def_id)) {
+                continue;
+            }
+
             let (discr, val, switch_ty, first, second) = match bbs[bb_idx].terminator().kind {
                 TerminatorKind::SwitchInt {
                     discr: ref discr @ (Operand::Copy(_) | Operand::Move(_)),

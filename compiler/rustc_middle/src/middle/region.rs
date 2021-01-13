@@ -332,7 +332,7 @@ pub struct ScopeTree {
 pub struct YieldData {
     /// The `Span` of the yield.
     pub span: Span,
-    /// The number of expressions and patterns appearing before the `yield` in the body plus one.
+    /// The number of expressions and patterns appearing before the `yield` in the body, plus one.
     pub expr_and_pat_count: usize,
     pub source: hir::YieldSource,
 }
@@ -449,9 +449,7 @@ impl ScopeTree {
     }
 
     /// Checks whether the given scope contains a `yield`. If so,
-    /// returns `Some((span, expr_count))` with the span of a yield we found and
-    /// the number of expressions and patterns appearing before the `yield` in the body + 1.
-    /// If there a are multiple yields in a scope, the one with the highest number is returned.
+    /// returns `Some(YieldData)`. If not, returns `None`.
     pub fn yield_in_scope(&self, scope: Scope) -> Option<YieldData> {
         self.yield_in_scope.get(&scope).cloned()
     }

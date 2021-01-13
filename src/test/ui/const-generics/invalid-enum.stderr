@@ -8,7 +8,7 @@ LL |   test_1::<CompileFlag::A>();
    |            help: try using the variant's enum: `CompileFlag`
 
 error[E0573]: expected type, found variant `CompileFlag::A`
-  --> $DIR/invalid-enum.rs:26:15
+  --> $DIR/invalid-enum.rs:25:15
    |
 LL |   test_2::<_, CompileFlag::A>(0);
    |               ^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |   test_2::<_, CompileFlag::A>(0);
    |               help: try using the variant's enum: `CompileFlag`
 
 error[E0573]: expected type, found variant `CompileFlag::A`
-  --> $DIR/invalid-enum.rs:31:18
+  --> $DIR/invalid-enum.rs:29:18
    |
 LL |   let _: Example<CompileFlag::A, _> = Example { x: 0 };
    |                  ^^^^^^^^^^^^^^
@@ -25,75 +25,51 @@ LL |   let _: Example<CompileFlag::A, _> = Example { x: 0 };
    |                  not a type
    |                  help: try using the variant's enum: `CompileFlag`
 
-error[E0107]: wrong number of const arguments: expected 1, found 0
-  --> $DIR/invalid-enum.rs:31:10
+error[E0747]: type provided when a constant was expected
+  --> $DIR/invalid-enum.rs:29:18
    |
 LL |   let _: Example<CompileFlag::A, _> = Example { x: 0 };
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
-
-error[E0107]: wrong number of type arguments: expected at most 1, found 2
-  --> $DIR/invalid-enum.rs:31:10
+   |                  ^^^^^^^^^^^^^^
    |
-LL |   let _: Example<CompileFlag::A, _> = Example { x: 0 };
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected at most 1 type argument
-   |
-help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+help: if this generic argument was intended as a const parameter, try surrounding it with braces:
    |
 LL |   let _: Example<{ CompileFlag::A }, _> = Example { x: 0 };
    |                  ^                ^
 
-error[E0107]: wrong number of const arguments: expected 1, found 0
-  --> $DIR/invalid-enum.rs:36:10
+error[E0747]: type provided when a constant was expected
+  --> $DIR/invalid-enum.rs:33:18
    |
 LL |   let _: Example<Example::ASSOC_FLAG, _> = Example { x: 0 };
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
-
-error[E0107]: wrong number of type arguments: expected at most 1, found 2
-  --> $DIR/invalid-enum.rs:36:10
+   |                  ^^^^^^^^^^^^^^^^^^^
    |
-LL |   let _: Example<Example::ASSOC_FLAG, _> = Example { x: 0 };
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected at most 1 type argument
-   |
-help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+help: if this generic argument was intended as a const parameter, try surrounding it with braces:
    |
 LL |   let _: Example<{ Example::ASSOC_FLAG }, _> = Example { x: 0 };
    |                  ^                     ^
 
-error[E0107]: wrong number of const arguments: expected 1, found 0
-  --> $DIR/invalid-enum.rs:21:3
-   |
-LL |   test_1::<CompileFlag::A>();
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
-
-error[E0107]: wrong number of type arguments: expected 0, found 1
+error[E0747]: type provided when a constant was expected
   --> $DIR/invalid-enum.rs:21:12
    |
 LL |   test_1::<CompileFlag::A>();
-   |            ^^^^^^^^^^^^^^ unexpected type argument
+   |            ^^^^^^^^^^^^^^
    |
-help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+help: if this generic argument was intended as a const parameter, try surrounding it with braces:
    |
 LL |   test_1::<{ CompileFlag::A }>();
    |            ^                ^
 
-error[E0107]: wrong number of const arguments: expected 1, found 0
-  --> $DIR/invalid-enum.rs:26:3
+error[E0747]: type provided when a constant was expected
+  --> $DIR/invalid-enum.rs:25:15
    |
 LL |   test_2::<_, CompileFlag::A>(0);
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
-
-error[E0107]: wrong number of type arguments: expected 1, found 2
-  --> $DIR/invalid-enum.rs:26:15
+   |               ^^^^^^^^^^^^^^
    |
-LL |   test_2::<_, CompileFlag::A>(0);
-   |               ^^^^^^^^^^^^^^ unexpected type argument
-   |
-help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+help: if this generic argument was intended as a const parameter, try surrounding it with braces:
    |
 LL |   test_2::<_, { CompileFlag::A }>(0);
    |               ^                ^
 
-error: aborting due to 11 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0107, E0573.
-For more information about an error, try `rustc --explain E0107`.
+Some errors have detailed explanations: E0573, E0747.
+For more information about an error, try `rustc --explain E0573`.

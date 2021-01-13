@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/E0277.rs:13:6
+  --> $DIR/E0277.rs:11:6
    |
 LL | fn f(p: Path) { }
    |      ^ doesn't have a size known at compile-time
@@ -13,7 +13,7 @@ LL | fn f(&p: Path) { }
    |      ^
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/E0277.rs:17:15
+  --> $DIR/E0277.rs:15:15
    |
 LL | fn some_func<T: Foo>(foo: T) {
    |                 --- required by this bound in `some_func`

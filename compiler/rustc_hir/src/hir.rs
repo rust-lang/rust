@@ -28,7 +28,7 @@ pub struct Lifetime {
     pub span: Span,
 
     /// Either "`'a`", referring to a named lifetime definition,
-    /// or "``" (i.e., `kw::Invalid`), for elision placeholders.
+    /// or "``" (i.e., `kw::Empty`), for elision placeholders.
     ///
     /// HIR lowering inserts these placeholders in type paths that
     /// refer to type definitions needing lifetime parameters,
@@ -282,6 +282,22 @@ impl GenericArg<'_> {
             GenericArg::Const(_) => "constant",
         }
     }
+
+    pub fn short_descr(&self) -> &'static str {
+        match self {
+            GenericArg::Lifetime(_) => "lifetime",
+            GenericArg::Type(_) => "type",
+            GenericArg::Const(_) => "const",
+        }
+    }
+
+    pub fn to_ord(&self, feats: &rustc_feature::Features) -> ast::ParamKindOrd {
+        match self {
+            GenericArg::Lifetime(_) => ast::ParamKindOrd::Lifetime,
+            GenericArg::Type(_) => ast::ParamKindOrd::Type,
+            GenericArg::Const(_) => ast::ParamKindOrd::Const { unordered: feats.const_generics },
+        }
+    }
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -370,9 +386,9 @@ impl GenericBound<'_> {
 
     pub fn span(&self) -> Span {
         match self {
-            &GenericBound::Trait(ref t, ..) => t.span,
-            &GenericBound::LangItemTrait(_, span, ..) => span,
-            &GenericBound::Outlives(ref l) => l.span,
+            GenericBound::Trait(t, ..) => t.span,
+            GenericBound::LangItemTrait(_, span, ..) => *span,
+            GenericBound::Outlives(l) => l.span,
         }
     }
 }
@@ -410,6 +426,8 @@ pub enum GenericParamKind<'hir> {
     },
     Const {
         ty: &'hir Ty<'hir>,
+        /// Optional default value for the const generic param
+        default: Option<AnonConst>,
     },
 }
 
@@ -528,9 +546,9 @@ pub enum WherePredicate<'hir> {
 impl WherePredicate<'_> {
     pub fn span(&self) -> Span {
         match self {
-            &WherePredicate::BoundPredicate(ref p) => p.span,
-            &WherePredicate::RegionPredicate(ref p) => p.span,
-            &WherePredicate::EqPredicate(ref p) => p.span,
+            WherePredicate::BoundPredicate(p) => p.span,
+            WherePredicate::RegionPredicate(p) => p.span,
+            WherePredicate::EqPredicate(p) => p.span,
         }
     }
 }
@@ -571,6 +589,7 @@ pub struct ModuleItems {
     pub items: BTreeSet<HirId>,
     pub trait_items: BTreeSet<TraitItemId>,
     pub impl_items: BTreeSet<ImplItemId>,
+    pub foreign_items: BTreeSet<ForeignItemId>,
 }
 
 /// A type representing only the top-level module.
@@ -598,12 +617,13 @@ pub struct Crate<'hir> {
     // over the ids in increasing order. In principle it should not
     // matter what order we visit things in, but in *practice* it
     // does, because it can affect the order in which errors are
-    // detected, which in turn can make compile-fail tests yield
+    // detected, which in turn can make UI tests yield
     // slightly different results.
     pub items: BTreeMap<HirId, Item<'hir>>,
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem<'hir>>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem<'hir>>,
+    pub foreign_items: BTreeMap<ForeignItemId, ForeignItem<'hir>>,
     pub bodies: BTreeMap<BodyId, Body<'hir>>,
     pub trait_impls: BTreeMap<DefId, Vec<HirId>>,
 
@@ -636,6 +656,10 @@ impl Crate<'hir> {
         &self.impl_items[&id]
     }
 
+    pub fn foreign_item(&self, id: ForeignItemId) -> &ForeignItem<'hir> {
+        &self.foreign_items[&id]
+    }
+
     pub fn body(&self, id: BodyId) -> &Body<'hir> {
         &self.bodies[&id]
     }
@@ -665,6 +689,10 @@ impl Crate<'_> {
         for impl_item in self.impl_items.values() {
             visitor.visit_impl_item(impl_item);
         }
+
+        for foreign_item in self.foreign_items.values() {
+            visitor.visit_foreign_item(foreign_item);
+        }
     }
 
     /// A parallel version of `visit_all_item_likes`.
@@ -686,6 +714,11 @@ impl Crate<'_> {
             {
                 par_for_each_in(&self.impl_items, |(_, impl_item)| {
                     visitor.visit_impl_item(impl_item);
+                });
+            },
+            {
+                par_for_each_in(&self.foreign_items, |(_, foreign_item)| {
+                    visitor.visit_foreign_item(foreign_item);
                 });
             }
         );
@@ -737,9 +770,9 @@ pub struct Pat<'hir> {
     pub default_binding_modes: bool,
 }
 
-impl Pat<'_> {
+impl<'hir> Pat<'hir> {
     // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_short_(&self, it: &mut impl FnMut(&Pat<'_>) -> bool) -> bool {
+    fn walk_short_(&self, it: &mut impl FnMut(&Pat<'hir>) -> bool) -> bool {
         if !it(self) {
             return false;
         }
@@ -762,12 +795,12 @@ impl Pat<'_> {
     /// Note that when visiting e.g. `Tuple(ps)`,
     /// if visiting `ps[0]` returns `false`,
     /// then `ps[1]` will not be visited.
-    pub fn walk_short(&self, mut it: impl FnMut(&Pat<'_>) -> bool) -> bool {
+    pub fn walk_short(&self, mut it: impl FnMut(&Pat<'hir>) -> bool) -> bool {
         self.walk_short_(&mut it)
     }
 
     // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_(&self, it: &mut impl FnMut(&Pat<'_>) -> bool) {
+    fn walk_(&self, it: &mut impl FnMut(&Pat<'hir>) -> bool) {
         if !it(self) {
             return;
         }
@@ -787,7 +820,7 @@ impl Pat<'_> {
     /// Walk the pattern in left-to-right order.
     ///
     /// If `it(pat)` returns `false`, the children are not visited.
-    pub fn walk(&self, mut it: impl FnMut(&Pat<'_>) -> bool) {
+    pub fn walk(&self, mut it: impl FnMut(&Pat<'hir>) -> bool) {
         self.walk_(&mut it)
     }
 
@@ -1137,6 +1170,7 @@ pub struct Arm<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub enum Guard<'hir> {
     If(&'hir Expr<'hir>),
+    IfLet(&'hir Pat<'hir>, &'hir Expr<'hir>),
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -1698,6 +1732,8 @@ pub enum MatchSource {
     IfDesugar { contains_else_clause: bool },
     /// An `if let _ = _ { .. }` (optionally with `else { .. }`).
     IfLetDesugar { contains_else_clause: bool },
+    /// An `if let _ = _ => { .. }` match guard.
+    IfLetGuardDesugar,
     /// A `while _ { .. }` (which was desugared to a `loop { match _ { .. } }`).
     WhileDesugar,
     /// A `while let _ = _ { .. }` (which was desugared to a
@@ -1716,7 +1752,7 @@ impl MatchSource {
         use MatchSource::*;
         match self {
             Normal => "match",
-            IfDesugar { .. } | IfLetDesugar { .. } => "if",
+            IfDesugar { .. } | IfLetDesugar { .. } | IfLetGuardDesugar => "if",
             WhileDesugar | WhileLetDesugar => "while",
             ForLoopDesugar => "for",
             TryDesugar => "?",
@@ -1832,7 +1868,7 @@ pub struct FnSig<'hir> {
 }
 
 // The bodies for items are stored "out of line", in a separate
-// hashmap in the `Crate`. Here we just record the node-id of the item
+// hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct TraitItemId {
@@ -1876,7 +1912,7 @@ pub enum TraitItemKind<'hir> {
 }
 
 // The bodies for items are stored "out of line", in a separate
-// hashmap in the `Crate`. Here we just record the node-id of the item
+// hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ImplItemId {
@@ -2120,7 +2156,7 @@ impl<'hir> InlineAsmOperand<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub struct InlineAsm<'hir> {
     pub template: &'hir [InlineAsmTemplatePiece],
-    pub operands: &'hir [InlineAsmOperand<'hir>],
+    pub operands: &'hir [(InlineAsmOperand<'hir>, Span)],
     pub options: InlineAsmOptions,
     pub line_spans: &'hir [Span],
 }
@@ -2261,12 +2297,6 @@ pub struct Mod<'hir> {
     pub item_ids: &'hir [ItemId],
 }
 
-#[derive(Debug, HashStable_Generic)]
-pub struct ForeignMod<'hir> {
-    pub abi: Abi,
-    pub items: &'hir [ForeignItem<'hir>],
-}
-
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct GlobalAsm {
     pub asm: Symbol,
@@ -2384,7 +2414,7 @@ impl StructField<'_> {
     // Still necessary in couple of places
     pub fn is_positional(&self) -> bool {
         let first = self.ident.as_str().as_bytes()[0];
-        first >= b'0' && first <= b'9'
+        (b'0'..=b'9').contains(&first)
     }
 }
 
@@ -2424,7 +2454,7 @@ impl VariantData<'hir> {
 }
 
 // The bodies for items are stored "out of line", in a separate
-// hashmap in the `Crate`. Here we just record the node-id of the item
+// hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
 #[derive(Copy, Clone, Encodable, Debug)]
 pub struct ItemId {
@@ -2513,7 +2543,7 @@ pub enum ItemKind<'hir> {
     /// A module.
     Mod(Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod(ForeignMod<'hir>),
+    ForeignMod { abi: Abi, items: &'hir [ForeignItemRef<'hir>] },
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir GlobalAsm),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
@@ -2532,22 +2562,25 @@ pub enum ItemKind<'hir> {
     TraitAlias(Generics<'hir>, GenericBounds<'hir>),
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
-    Impl {
-        unsafety: Unsafety,
-        polarity: ImplPolarity,
-        defaultness: Defaultness,
-        // We do not put a `Span` in `Defaultness` because it breaks foreign crate metadata
-        // decoding as `Span`s cannot be decoded when a `Session` is not available.
-        defaultness_span: Option<Span>,
-        constness: Constness,
-        generics: Generics<'hir>,
+    Impl(Impl<'hir>),
+}
 
-        /// The trait being implemented, if any.
-        of_trait: Option<TraitRef<'hir>>,
+#[derive(Debug, HashStable_Generic)]
+pub struct Impl<'hir> {
+    pub unsafety: Unsafety,
+    pub polarity: ImplPolarity,
+    pub defaultness: Defaultness,
+    // We do not put a `Span` in `Defaultness` because it breaks foreign crate metadata
+    // decoding as `Span`s cannot be decoded when a `Session` is not available.
+    pub defaultness_span: Option<Span>,
+    pub constness: Constness,
+    pub generics: Generics<'hir>,
 
-        self_ty: &'hir Ty<'hir>,
-        items: &'hir [ImplItemRef<'hir>],
-    },
+    /// The trait being implemented, if any.
+    pub of_trait: Option<TraitRef<'hir>>,
+
+    pub self_ty: &'hir Ty<'hir>,
+    pub items: &'hir [ImplItemRef<'hir>],
 }
 
 impl ItemKind<'_> {
@@ -2560,7 +2593,7 @@ impl ItemKind<'_> {
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics)
             | ItemKind::Trait(_, _, ref generics, _, _)
-            | ItemKind::Impl { ref generics, .. } => generics,
+            | ItemKind::Impl(Impl { ref generics, .. }) => generics,
             _ => return None,
         })
     }
@@ -2604,6 +2637,29 @@ pub enum AssocItemKind {
     Const,
     Fn { has_self: bool },
     Type,
+}
+
+// The bodies for items are stored "out of line", in a separate
+// hashmap in the `Crate`. Here we just record the hir-id of the item
+// so it can fetched later.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
+pub struct ForeignItemId {
+    pub hir_id: HirId,
+}
+
+/// A reference from a foreign block to one of its items. This
+/// contains the item's ID, naturally, but also the item's name and
+/// some other high-level details (like whether it is an associated
+/// type or method, and whether it is public). This allows other
+/// passes to find the impl they want without loading the ID (which
+/// means fewer edges in the incremental compilation graph).
+#[derive(Debug, HashStable_Generic)]
+pub struct ForeignItemRef<'hir> {
+    pub id: ForeignItemId,
+    #[stable_hasher(project(name))]
+    pub ident: Ident,
+    pub span: Span,
+    pub vis: Visibility<'hir>,
 }
 
 #[derive(Debug, HashStable_Generic)]

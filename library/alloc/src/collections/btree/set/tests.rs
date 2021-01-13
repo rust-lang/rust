@@ -1,9 +1,10 @@
 use super::super::DeterministicRng;
 use super::*;
 use crate::vec::Vec;
+use std::cmp::Ordering;
 use std::iter::FromIterator;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering::SeqCst};
 
 #[test]
 fn test_clone_eq() {
@@ -325,6 +326,17 @@ fn test_is_subset() {
 }
 
 #[test]
+fn test_retain() {
+    let xs = [1, 2, 3, 4, 5, 6];
+    let mut set: BTreeSet<i32> = xs.iter().cloned().collect();
+    set.retain(|&k| k % 2 == 0);
+    assert_eq!(set.len(), 3);
+    assert!(set.contains(&2));
+    assert!(set.contains(&4));
+    assert!(set.contains(&6));
+}
+
+#[test]
 fn test_drain_filter() {
     let mut x: BTreeSet<_> = [1].iter().copied().collect();
     let mut y: BTreeSet<_> = [1].iter().copied().collect();
@@ -344,7 +356,7 @@ fn test_drain_filter_drop_panic_leak() {
     struct D(i32);
     impl Drop for D {
         fn drop(&mut self) {
-            if DROPS.fetch_add(1, Ordering::SeqCst) == 1 {
+            if DROPS.fetch_add(1, SeqCst) == 1 {
                 panic!("panic in `drop`");
             }
         }
@@ -357,14 +369,14 @@ fn test_drain_filter_drop_panic_leak() {
 
     catch_unwind(move || {
         drop(set.drain_filter(|d| {
-            PREDS.fetch_add(1u32 << d.0, Ordering::SeqCst);
+            PREDS.fetch_add(1u32 << d.0, SeqCst);
             true
         }))
     })
     .ok();
 
-    assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
-    assert_eq!(DROPS.load(Ordering::SeqCst), 3);
+    assert_eq!(PREDS.load(SeqCst), 0x011);
+    assert_eq!(DROPS.load(SeqCst), 3);
 }
 
 #[test]
@@ -376,7 +388,7 @@ fn test_drain_filter_pred_panic_leak() {
     struct D(i32);
     impl Drop for D {
         fn drop(&mut self) {
-            DROPS.fetch_add(1, Ordering::SeqCst);
+            DROPS.fetch_add(1, SeqCst);
         }
     }
 
@@ -387,7 +399,7 @@ fn test_drain_filter_pred_panic_leak() {
 
     catch_unwind(AssertUnwindSafe(|| {
         drop(set.drain_filter(|d| {
-            PREDS.fetch_add(1u32 << d.0, Ordering::SeqCst);
+            PREDS.fetch_add(1u32 << d.0, SeqCst);
             match d.0 {
                 0 => true,
                 _ => panic!(),
@@ -396,8 +408,8 @@ fn test_drain_filter_pred_panic_leak() {
     }))
     .ok();
 
-    assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
-    assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+    assert_eq!(PREDS.load(SeqCst), 0x011);
+    assert_eq!(DROPS.load(SeqCst), 1);
     assert_eq!(set.len(), 2);
     assert_eq!(set.first().unwrap().0, 4);
     assert_eq!(set.last().unwrap().0, 8);
@@ -487,8 +499,6 @@ fn test_extend_ref() {
 
 #[test]
 fn test_recovery() {
-    use std::cmp::Ordering;
-
     #[derive(Debug)]
     struct Foo(&'static str, i32);
 
@@ -686,8 +696,10 @@ fn test_first_last() {
     assert_eq!(a.pop_last(), None);
 }
 
+// Unlike the function with the same name in map/tests, returns no values.
+// Which also means it returns different predetermined pseudo-random keys,
+// and the test cases using this function explore slightly different trees.
 fn rand_data(len: usize) -> Vec<u32> {
-    assert!(len <= 70029); // from that point on numbers repeat
     let mut rng = DeterministicRng::new();
     Vec::from_iter((0..len).map(|_| rng.next()))
 }

@@ -2,10 +2,10 @@
 
 #[repr(C)]
 pub struct TestUnion {
-    _val: u64
+    _val: u64,
 }
 
 #[link(name = "ctest", kind = "static")]
-extern {
+extern "C" {
     pub fn give_back(tu: TestUnion) -> u64;
 }

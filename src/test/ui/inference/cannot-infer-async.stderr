@@ -4,7 +4,9 @@ error[E0282]: type annotations needed
 LL |     let fut = async {
    |         --- consider giving `fut` a type
 LL |         make_unit()?;
-   |                    ^ cannot infer type
+   |                    ^ cannot infer type of error for `?` operator
+   |
+   = note: `?` implicitly converts the error value into a type implementing `From<std::io::Error>`
 
 error: aborting due to previous error
 

@@ -26,6 +26,6 @@ fn f4() {
     }
 
 fn f5() {
-    async //~ ERROR async closures are unstable
+    async
         let x = 0; //~ ERROR expected one of `move`, `|`, or `||`, found keyword `let`
     }

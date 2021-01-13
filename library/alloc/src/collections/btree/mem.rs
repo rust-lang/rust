@@ -6,6 +6,7 @@ use core::ptr;
 /// relevant function.
 ///
 /// If a panic occurs in the `change` closure, the entire process will be aborted.
+#[allow(dead_code)] // keep as illustration and for future use
 #[inline]
 pub fn take_mut<T>(v: &mut T, change: impl FnOnce(T) -> T) {
     replace(v, |value| (change(value), ()))

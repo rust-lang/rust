@@ -9,18 +9,18 @@ use rustc_span::DUMMY_SP;
 
 use super::*;
 
-pub struct BlanketImplFinder<'a, 'tcx> {
-    pub cx: &'a core::DocContext<'tcx>,
+crate struct BlanketImplFinder<'a, 'tcx> {
+    crate cx: &'a core::DocContext<'tcx>,
 }
 
 impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
-    pub fn new(cx: &'a core::DocContext<'tcx>) -> Self {
+    crate fn new(cx: &'a core::DocContext<'tcx>) -> Self {
         BlanketImplFinder { cx }
     }
 
     // FIXME(eddyb) figure out a better way to pass information about
     // parametrization of `ty` than `param_env_def_id`.
-    pub fn get_blanket_impls(&self, ty: Ty<'tcx>, param_env_def_id: DefId) -> Vec<Item> {
+    crate fn get_blanket_impls(&self, ty: Ty<'tcx>, param_env_def_id: DefId) -> Vec<Item> {
         let param_env = self.cx.tcx.param_env(param_env_def_id);
 
         debug!("get_blanket_impls({:?})", ty);
@@ -62,14 +62,30 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             "invoking predicate_may_hold: param_env={:?}, trait_ref={:?}, ty={:?}",
                             param_env, trait_ref, ty
                         );
-                        match infcx.evaluate_obligation(&traits::Obligation::new(
-                            cause,
-                            param_env,
-                            trait_ref.without_const().to_predicate(infcx.tcx),
-                        )) {
-                            Ok(eval_result) => eval_result.may_apply(),
-                            Err(traits::OverflowError) => true, // overflow doesn't mean yes *or* no
+                        let predicates = self
+                            .cx
+                            .tcx
+                            .predicates_of(impl_def_id)
+                            .instantiate(self.cx.tcx, impl_substs)
+                            .predicates
+                            .into_iter()
+                            .chain(Some(trait_ref.without_const().to_predicate(infcx.tcx)));
+                        for predicate in predicates {
+                            debug!("testing predicate {:?}", predicate);
+                            let obligation = traits::Obligation::new(
+                                traits::ObligationCause::dummy(),
+                                param_env,
+                                predicate,
+                            );
+                            match infcx.evaluate_obligation(&obligation) {
+                                Ok(eval_result) if eval_result.may_apply() => {}
+                                Err(traits::OverflowError) => {}
+                                _ => {
+                                    return false;
+                                }
+                            }
                         }
+                        true
                     } else {
                         false
                     }
@@ -87,7 +103,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     .cx
                     .tcx
                     .provided_trait_methods(trait_def_id)
-                    .map(|meth| meth.ident.to_string())
+                    .map(|meth| meth.ident.name)
                     .collect();
 
                 impls.push(Item {
@@ -96,9 +112,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     attrs: Default::default(),
                     visibility: Inherited,
                     def_id: self.cx.next_def_id(impl_def_id.krate),
-                    stability: None,
-                    deprecation: None,
-                    inner: ImplItem(Impl {
+                    kind: box ImplItem(Impl {
                         unsafety: hir::Unsafety::Normal,
                         generics: (
                             self.cx.tcx.generics_of(impl_def_id),
@@ -117,7 +131,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .in_definition_order()
                             .collect::<Vec<_>>()
                             .clean(self.cx),
-                        polarity: None,
+                        negative_polarity: false,
                         synthetic: false,
                         blanket_impl: Some(trait_ref.self_ty().clean(self.cx)),
                     }),

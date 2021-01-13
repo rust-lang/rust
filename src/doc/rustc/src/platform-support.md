@@ -152,22 +152,22 @@ not available.
 
 target | std | host | notes
 -------|-----|------|-------
+`aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
-`aarch64-unknown-cloudabi` | ✓ |  | ARM64 CloudABI
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ? |  |
-`aarch64-unknown-netbsd` | ? |  |
+`aarch64-unknown-netbsd` | ✓ | ✓ |
 `aarch64-unknown-openbsd` | ✓ | ✓ | ARM64 OpenBSD
 `aarch64-unknown-redox` | ? |  | ARM64 Redox OS
 `aarch64-uwp-windows-msvc` | ? |  |
 `aarch64-wrs-vxworks` | ? |  |
 `armv4t-unknown-linux-gnueabi` | ? |  |
+`armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
 `armv6-unknown-netbsd-eabihf` | ? |  |
 `armv7-apple-ios` | ✓ |  | ARMv7 iOS, Cortex-a8
-`armv7-unknown-cloudabi-eabihf` | ✓ |  | ARMv7 CloudABI, hardfloat
 `armv7-unknown-freebsd` | ✓ | ✓ | ARMv7 FreeBSD
-`armv7-unknown-netbsd-eabihf` | ? |  |
+`armv7-unknown-netbsd-eabihf` | ✓ | ✓ |
 `armv7-wrs-vxworks-eabihf` | ? |  |
 `armv7a-none-eabihf` | * | | ARM Cortex-A, hardfloat
 `armv7s-apple-ios` | ✓ |  |
@@ -176,10 +176,9 @@ target | std | host | notes
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
 `i686-pc-windows-msvc` | ✓ |  | 32-bit Windows XP support
-`i686-unknown-cloudabi` | ✓ |  | 32-bit CloudABI
 `i686-unknown-uefi` | ? |  | 32-bit UEFI
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
-`i686-unknown-netbsd` | ✓ |  | NetBSD/i386 with SSE2
+`i686-unknown-netbsd` | ✓ | ✓ | NetBSD/i386 with SSE2
 `i686-unknown-openbsd` | ✓ | ✓ | 32-bit OpenBSD
 `i686-uwp-windows-gnu` | ? |  |
 `i686-uwp-windows-msvc` | ? |  |
@@ -195,7 +194,7 @@ target | std | host | notes
 `msp430-none-elf` | * |  | 16-bit MSP430 microcontrollers
 `powerpc-unknown-linux-gnuspe` | ✓ |  | PowerPC SPE Linux
 `powerpc-unknown-linux-musl` | ? |  |
-`powerpc-unknown-netbsd` | ? |  |
+`powerpc-unknown-netbsd` | ✓ | ✓ |
 `powerpc-wrs-vxworks` | ? |  |
 `powerpc-wrs-vxworks-spe` | ? |  |
 `powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
@@ -210,12 +209,11 @@ target | std | host | notes
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7a Linux with NEON, MUSL
 `thumbv4t-none-eabi` | * |  | ARMv4T T32
-`x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst
+`x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 `x86_64-apple-tvos` | * | | x86 64-bit tvOS
 `x86_64-linux-kernel` | * |  | Linux kernel modules
 `x86_64-pc-solaris` | ? |  |
 `x86_64-pc-windows-msvc` | ✓ |  | 64-bit Windows XP support
-`x86_64-unknown-cloudabi` | ✓ |  | 64-bit CloudABI
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
 `x86_64-unknown-hermit` | ? |  |

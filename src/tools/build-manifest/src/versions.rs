@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 use tar::Archive;
 
 const DEFAULT_TARGET: &str = "x86_64-unknown-linux-gnu";
-const RUSTC_VERSION: &str = include_str!("../../../version");
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub(crate) enum PkgType {
@@ -177,10 +176,10 @@ impl Versions {
     ) -> Result<String, Error> {
         let component_name = package.tarball_component_name();
         let version = match self.channel.as_str() {
-            "stable" => RUSTC_VERSION.into(),
+            "stable" => self.rustc_version().into(),
             "beta" => "beta".into(),
             "nightly" => "nightly".into(),
-            _ => format!("{}-dev", RUSTC_VERSION),
+            _ => format!("{}-dev", self.rustc_version()),
         };
 
         if package.target_independent() {
@@ -199,6 +198,7 @@ impl Versions {
     }
 
     pub(crate) fn rustc_version(&self) -> &str {
-        RUSTC_VERSION
+        const RUSTC_VERSION: &str = include_str!("../../../version");
+        RUSTC_VERSION.trim()
     }
 }

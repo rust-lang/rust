@@ -4,13 +4,6 @@ error[E0015]: calls in constants are limited to constant functions, tuple struct
 LL |     a: [(); (|| { 0 })()]
    |             ^^^^^^^^^^^^
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-68542-closure-in-array-len.rs:6:13
-   |
-LL |     a: [(); (|| { 0 })()]
-   |             ^^^^^^^^^^^^ calling non-const function `Bug::a::{constant#0}::{closure#0}`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0015, E0080.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0015`.

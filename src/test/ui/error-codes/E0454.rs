@@ -1,4 +1,4 @@
-#[link(name = "")] extern {}
+#[link(name = "")] extern "C" {}
 //~^ ERROR E0454
 
 fn main() {

@@ -275,6 +275,20 @@ impl Socket {
         self.recv_from_with_flags(buf, 0)
     }
 
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    pub fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+        let n = cvt(unsafe { libc::recvmsg(self.0.raw(), msg, libc::MSG_CMSG_CLOEXEC) })?;
+        Ok(n as usize)
+    }
+
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.recv_from_with_flags(buf, MSG_PEEK)
     }
@@ -290,6 +304,20 @@ impl Socket {
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
         self.0.is_write_vectored()
+    }
+
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    pub fn send_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+        let n = cvt(unsafe { libc::sendmsg(self.0.raw(), msg, 0) })?;
+        Ok(n as usize)
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
@@ -349,6 +377,17 @@ impl Socket {
     pub fn nodelay(&self) -> io::Result<bool> {
         let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY)?;
         Ok(raw != 0)
+    }
+
+    #[cfg(any(target_os = "android", target_os = "linux",))]
+    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
+        setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int)
+    }
+
+    #[cfg(any(target_os = "android", target_os = "linux",))]
+    pub fn passcred(&self) -> io::Result<bool> {
+        let passcred: libc::c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED)?;
+        Ok(passcred != 0)
     }
 
     #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]

@@ -6,9 +6,9 @@
 // pretty-expanded FIXME #23616
 
 mod libc {
-    extern {
+    extern "C" {
         pub fn printf(x: ());
     }
 }
 
-pub fn main() { }
+pub fn main() {}

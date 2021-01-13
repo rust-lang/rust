@@ -293,7 +293,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}template: {}", ind, InlineAsmTemplatePiece::to_string(asm.template));
             println!("{}options: {:?}", ind, asm.options);
             println!("{}operands:", ind);
-            for op in asm.operands {
+            for (op, _op_sp) in asm.operands {
                 match op {
                     hir::InlineAsmOperand::In { expr, .. }
                     | hir::InlineAsmOperand::InOut { expr, .. }
@@ -395,7 +395,7 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
             println!("function of type {:#?}", item_ty);
         },
         hir::ItemKind::Mod(..) => println!("module"),
-        hir::ItemKind::ForeignMod(ref fm) => println!("foreign module with abi: {}", fm.abi),
+        hir::ItemKind::ForeignMod { abi, .. } => println!("foreign module with abi: {}", abi),
         hir::ItemKind::GlobalAsm(ref asm) => println!("global asm: {:?}", asm),
         hir::ItemKind::TyAlias(..) => {
             println!("type alias for {:?}", cx.tcx.type_of(did));
@@ -423,13 +423,13 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
         hir::ItemKind::TraitAlias(..) => {
             println!("trait alias");
         },
-        hir::ItemKind::Impl {
+        hir::ItemKind::Impl(hir::Impl {
             of_trait: Some(ref _trait_ref),
             ..
-        } => {
+        }) => {
             println!("trait impl");
         },
-        hir::ItemKind::Impl { of_trait: None, .. } => {
+        hir::ItemKind::Impl(hir::Impl { of_trait: None, .. }) => {
             println!("impl");
         },
     }
@@ -558,6 +558,11 @@ fn print_guard(cx: &LateContext<'_>, guard: &hir::Guard<'_>, indent: usize) {
     match guard {
         hir::Guard::If(expr) => {
             println!("{}If", ind);
+            print_expr(cx, expr, indent + 1);
+        },
+        hir::Guard::IfLet(pat, expr) => {
+            println!("{}IfLet", ind);
+            print_pat(cx, pat, indent + 1);
             print_expr(cx, expr, indent + 1);
         },
     }

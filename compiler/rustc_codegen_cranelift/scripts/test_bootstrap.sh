@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-cd $(dirname "$0")/../
+cd "$(dirname "$0")/../"
 
 ./build.sh
 source build/config.sh
@@ -11,7 +11,7 @@ git clone https://github.com/rust-lang/rust.git || true
 pushd rust
 git fetch
 git checkout -- .
-git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(')
+git checkout "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
 
 git apply - <<EOF
 diff --git a/.gitmodules b/.gitmodules
@@ -48,7 +48,7 @@ cat > config.toml <<EOF
 ninja = false
 
 [build]
-rustc = "$(pwd)/../build/cg_clif"
+rustc = "$(pwd)/../build/bin/cg_clif"
 cargo = "$(rustup which cargo)"
 full-bootstrap = true
 local-rebuild = true

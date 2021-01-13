@@ -1,5 +1,5 @@
 error: using function pointers as const generic parameters is forbidden
-  --> $DIR/fn-const-param-infer.rs:7:25
+  --> $DIR/fn-const-param-infer.rs:6:25
    |
 LL | struct Checked<const F: fn(usize) -> bool>;
    |                         ^^^^^^^^^^^^^^^^^

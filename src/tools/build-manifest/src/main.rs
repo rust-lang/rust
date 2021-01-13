@@ -57,7 +57,6 @@ static TARGETS: &[&str] = &[
     "aarch64-fuchsia",
     "aarch64-linux-android",
     "aarch64-pc-windows-msvc",
-    "aarch64-unknown-cloudabi",
     "aarch64-unknown-hermit",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
@@ -143,7 +142,6 @@ static TARGETS: &[&str] = &[
     "x86_64-rumprun-netbsd",
     "x86_64-sun-solaris",
     "x86_64-pc-solaris",
-    "x86_64-unknown-cloudabi",
     "x86_64-unknown-freebsd",
     "x86_64-unknown-illumos",
     "x86_64-unknown-linux-gnu",
@@ -301,6 +299,7 @@ impl Builder {
         let mut package = |name, targets| self.package(name, &mut manifest.pkg, targets);
         package("rustc", HOSTS);
         package("rustc-dev", HOSTS);
+        package("reproducible-artifacts", HOSTS);
         package("rustc-docs", HOSTS);
         package("cargo", HOSTS);
         package("rust-mingw", MINGW);

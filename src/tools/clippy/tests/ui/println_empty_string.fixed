@@ -8,4 +8,11 @@ fn main() {
     match "a" {
         _ => println!(),
     }
+
+    eprintln!();
+    eprintln!();
+
+    match "a" {
+        _ => eprintln!(),
+    }
 }

@@ -153,14 +153,6 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
                 self.add_inferreds_for_item(item.hir_id);
             }
 
-            hir::ItemKind::ForeignMod(ref foreign_mod) => {
-                for foreign_item in foreign_mod.items {
-                    if let hir::ForeignItemKind::Fn(..) = foreign_item.kind {
-                        self.add_inferreds_for_item(foreign_item.hir_id);
-                    }
-                }
-            }
-
             _ => {}
         }
     }
@@ -174,6 +166,12 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Fn(..) = impl_item.kind {
             self.add_inferreds_for_item(impl_item.hir_id);
+        }
+    }
+
+    fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
+        if let hir::ForeignItemKind::Fn(..) = foreign_item.kind {
+            self.add_inferreds_for_item(foreign_item.hir_id);
         }
     }
 }

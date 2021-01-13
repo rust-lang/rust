@@ -17,7 +17,8 @@ const ID_SEPARATOR: &str = ",";
 /// `CoverageKind` counter (to be added by `CoverageCounters::make_bcb_counters`), and an optional
 /// set of additional counters--if needed--to count incoming edges, if there are more than one.
 /// (These "edge counters" are eventually converted into new MIR `BasicBlock`s.)
-pub(crate) struct CoverageGraph {
+#[derive(Debug)]
+pub(super) struct CoverageGraph {
     bcbs: IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
     bb_to_bcb: IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     pub successors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
@@ -31,24 +32,28 @@ impl CoverageGraph {
 
         // Pre-transform MIR `BasicBlock` successors and predecessors into the BasicCoverageBlock
         // equivalents. Note that since the BasicCoverageBlock graph has been fully simplified, the
-        // each predecessor of a BCB leader_bb should be in a unique BCB, and each successor of a
-        // BCB last_bb should bin in its own unique BCB. Therefore, collecting the BCBs using
-        // `bb_to_bcb` should work without requiring a deduplication step.
+        // each predecessor of a BCB leader_bb should be in a unique BCB. It is possible for a
+        // `SwitchInt` to have multiple targets to the same destination `BasicBlock`, so
+        // de-duplication is required. This is done without reordering the successors.
 
+        let bcbs_len = bcbs.len();
+        let mut seen = IndexVec::from_elem_n(false, bcbs_len);
         let successors = IndexVec::from_fn_n(
             |bcb| {
+                for b in seen.iter_mut() {
+                    *b = false;
+                }
                 let bcb_data = &bcbs[bcb];
-                let bcb_successors =
+                let mut bcb_successors = Vec::new();
+                for successor in
                     bcb_filtered_successors(&mir_body, &bcb_data.terminator(mir_body).kind)
                         .filter_map(|&successor_bb| bb_to_bcb[successor_bb])
-                        .collect::<Vec<_>>();
-                debug_assert!({
-                    let mut sorted = bcb_successors.clone();
-                    sorted.sort_unstable();
-                    let initial_len = sorted.len();
-                    sorted.dedup();
-                    sorted.len() == initial_len
-                });
+                {
+                    if !seen[successor] {
+                        seen[successor] = true;
+                        bcb_successors.push(successor);
+                    }
+                }
                 bcb_successors
             },
             bcbs.len(),
@@ -117,18 +122,8 @@ impl CoverageGraph {
 
             match term.kind {
                 TerminatorKind::Return { .. }
-                // FIXME(richkadel): Add test(s) for `Abort` coverage.
                 | TerminatorKind::Abort
-                // FIXME(richkadel): Add test(s) for `Assert` coverage.
-                // Should `Assert` be handled like `FalseUnwind` instead? Since we filter out unwind
-                // branches when creating the BCB CFG, aren't `Assert`s (without unwinds) just like
-                // `FalseUnwinds` (which are kind of like `Goto`s)?
-                | TerminatorKind::Assert { .. }
-                // FIXME(richkadel): Add test(s) for `Yield` coverage, and confirm coverage is
-                // sensible for code using the `yield` keyword.
                 | TerminatorKind::Yield { .. }
-                // FIXME(richkadel): Also add coverage tests using async/await, and threading.
-
                 | TerminatorKind::SwitchInt { .. } => {
                     // The `bb` has more than one _outgoing_ edge, or exits the function. Save the
                     // current sequence of `basic_blocks` gathered to this point, as a new
@@ -146,6 +141,16 @@ impl CoverageGraph {
                     // `Terminator`s `successors()` list) checking the number of successors won't
                     // work.
                 }
+
+                // The following `TerminatorKind`s are either not expected outside an unwind branch,
+                // or they should not (under normal circumstances) branch. Coverage graphs are
+                // simplified by assuring coverage results are accurate for program executions that
+                // don't panic.
+                //
+                // Programs that panic and unwind may record slightly inaccurate coverage results
+                // for a coverage region containing the `Terminator` that began the panic. This
+                // is as intended. (See Issue #78544 for a possible future option to support
+                // coverage in test programs that panic.)
                 TerminatorKind::Goto { .. }
                 | TerminatorKind::Resume
                 | TerminatorKind::Unreachable
@@ -153,6 +158,7 @@ impl CoverageGraph {
                 | TerminatorKind::DropAndReplace { .. }
                 | TerminatorKind::Call { .. }
                 | TerminatorKind::GeneratorDrop
+                | TerminatorKind::Assert { .. }
                 | TerminatorKind::FalseEdge { .. }
                 | TerminatorKind::FalseUnwind { .. }
                 | TerminatorKind::InlineAsm { .. } => {}
@@ -275,12 +281,15 @@ impl graph::WithPredecessors for CoverageGraph {
 
 rustc_index::newtype_index! {
     /// A node in the [control-flow graph][CFG] of CoverageGraph.
-    pub(crate) struct BasicCoverageBlock {
+    pub(super) struct BasicCoverageBlock {
         DEBUG_FORMAT = "bcb{}",
+        const START_BCB = 0,
     }
 }
 
-/// A BasicCoverageBlockData (BCB) represents the maximal-length sequence of MIR BasicBlocks without
+/// `BasicCoverageBlockData` holds the data indexed by a `BasicCoverageBlock`.
+///
+/// A `BasicCoverageBlock` (BCB) represents the maximal-length sequence of MIR `BasicBlock`s without
 /// conditional branches, and form a new, simplified, coverage-specific Control Flow Graph, without
 /// altering the original MIR CFG.
 ///
@@ -305,7 +314,7 @@ rustc_index::newtype_index! {
 /// queries (`is_dominated_by()`, `predecessors`, `successors`, etc.) have branch (control flow)
 /// significance.
 #[derive(Debug, Clone)]
-pub(crate) struct BasicCoverageBlockData {
+pub(super) struct BasicCoverageBlockData {
     pub basic_blocks: Vec<BasicBlock>,
     pub counter_kind: Option<CoverageKind>,
     edge_from_bcbs: Option<FxHashMap<BasicCoverageBlock, CoverageKind>>,
@@ -385,7 +394,7 @@ impl BasicCoverageBlockData {
         let operand = counter_kind.as_operand_id();
         if let Some(replaced) = self
             .edge_from_bcbs
-            .get_or_insert_with(|| FxHashMap::default())
+            .get_or_insert_with(FxHashMap::default)
             .insert(from_bcb, counter_kind)
         {
             Error::from_string(format!(
@@ -431,7 +440,7 @@ impl BasicCoverageBlockData {
 /// the specific branching BCB, representing the edge between the two. The latter case
 /// distinguishes this incoming edge from other incoming edges to the same `target_bcb`.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) struct BcbBranch {
+pub(super) struct BcbBranch {
     pub edge_from_bcb: Option<BasicCoverageBlock>,
     pub target_bcb: BasicCoverageBlock,
 }
@@ -498,9 +507,8 @@ fn bcb_filtered_successors<'a, 'tcx>(
 /// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the
 /// CoverageGraph outside all loops. This supports traversing the BCB CFG in a way that
 /// ensures a loop is completely traversed before processing Blocks after the end of the loop.
-// FIXME(richkadel): Add unit tests for TraversalContext.
 #[derive(Debug)]
-pub(crate) struct TraversalContext {
+pub(super) struct TraversalContext {
     /// From one or more backedges returning to a loop header.
     pub loop_backedges: Option<(Vec<BasicCoverageBlock>, BasicCoverageBlock)>,
 
@@ -510,7 +518,7 @@ pub(crate) struct TraversalContext {
     pub worklist: Vec<BasicCoverageBlock>,
 }
 
-pub(crate) struct TraverseCoverageGraphWithLoops {
+pub(super) struct TraverseCoverageGraphWithLoops {
     pub backedges: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     pub context_stack: Vec<TraversalContext>,
     visited: BitSet<BasicCoverageBlock>,
@@ -642,7 +650,7 @@ impl TraverseCoverageGraphWithLoops {
     }
 }
 
-fn find_loop_backedges(
+pub(super) fn find_loop_backedges(
     basic_coverage_blocks: &CoverageGraph,
 ) -> IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>> {
     let num_bcbs = basic_coverage_blocks.num_nodes();

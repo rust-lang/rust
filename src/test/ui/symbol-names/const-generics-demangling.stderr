@@ -1,71 +1,71 @@
 error: symbol-name(_RMCs4fqI2P2rA04_25const_generics_demanglingINtB0_8UnsignedKhb_E)
-  --> $DIR/const-generics-demangling.rs:8:1
+  --> $DIR/const-generics-demangling.rs:7:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling(<const_generics_demangling[317d481089b8c8fe]::Unsigned<11: u8>>)
-  --> $DIR/const-generics-demangling.rs:8:1
+  --> $DIR/const-generics-demangling.rs:7:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(<const_generics_demangling::Unsigned<11>>)
-  --> $DIR/const-generics-demangling.rs:8:1
+  --> $DIR/const-generics-demangling.rs:7:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: symbol-name(_RMs_Cs4fqI2P2rA04_25const_generics_demanglingINtB2_6SignedKsn98_E)
-  --> $DIR/const-generics-demangling.rs:16:1
+  --> $DIR/const-generics-demangling.rs:15:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling(<const_generics_demangling[317d481089b8c8fe]::Signed<-152: i16>>)
-  --> $DIR/const-generics-demangling.rs:16:1
+  --> $DIR/const-generics-demangling.rs:15:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(<const_generics_demangling::Signed<-152>>)
-  --> $DIR/const-generics-demangling.rs:16:1
+  --> $DIR/const-generics-demangling.rs:15:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: symbol-name(_RMs0_Cs4fqI2P2rA04_25const_generics_demanglingINtB3_4BoolKb1_E)
-  --> $DIR/const-generics-demangling.rs:24:1
+  --> $DIR/const-generics-demangling.rs:23:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling(<const_generics_demangling[317d481089b8c8fe]::Bool<true: bool>>)
-  --> $DIR/const-generics-demangling.rs:24:1
+  --> $DIR/const-generics-demangling.rs:23:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(<const_generics_demangling::Bool<true>>)
-  --> $DIR/const-generics-demangling.rs:24:1
+  --> $DIR/const-generics-demangling.rs:23:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: symbol-name(_RMs1_Cs4fqI2P2rA04_25const_generics_demanglingINtB3_4CharKc2202_E)
-  --> $DIR/const-generics-demangling.rs:32:1
+  --> $DIR/const-generics-demangling.rs:31:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling(<const_generics_demangling[317d481089b8c8fe]::Char<'∂': char>>)
-  --> $DIR/const-generics-demangling.rs:32:1
+  --> $DIR/const-generics-demangling.rs:31:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(<const_generics_demangling::Char<'∂'>>)
-  --> $DIR/const-generics-demangling.rs:32:1
+  --> $DIR/const-generics-demangling.rs:31:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^

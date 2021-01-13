@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// let mut twins = vec!((1,1), (2,2));
+    /// let mut twins = vec!((1, 1), (2, 2));
     /// twins.sort_by_key(|x| { x.1; });
     /// ```
     pub UNIT_RETURN_EXPECTING_ORD,
@@ -43,7 +43,7 @@ fn get_trait_predicates_for_trait_id<'tcx>(
     for (pred, _) in generics.predicates {
         if_chain! {
             if let PredicateAtom::Trait(poly_trait_pred, _) = pred.skip_binders();
-            let trait_pred = cx.tcx.erase_late_bound_regions(&ty::Binder::bind(poly_trait_pred));
+            let trait_pred = cx.tcx.erase_late_bound_regions(ty::Binder::bind(poly_trait_pred));
             if let Some(trait_def_id) = trait_id;
             if trait_def_id == trait_pred.trait_ref.def_id;
             then {
@@ -61,7 +61,7 @@ fn get_projection_pred<'tcx>(
 ) -> Option<ProjectionPredicate<'tcx>> {
     generics.predicates.iter().find_map(|(proj_pred, _)| {
         if let ty::PredicateAtom::Projection(proj_pred) = proj_pred.skip_binders() {
-            let projection_pred = cx.tcx.erase_late_bound_regions(&ty::Binder::bind(proj_pred));
+            let projection_pred = cx.tcx.erase_late_bound_regions(ty::Binder::bind(proj_pred));
             if projection_pred.projection_ty.substs == pred.trait_ref.substs {
                 return Some(projection_pred);
             }
@@ -81,7 +81,7 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
             get_trait_predicates_for_trait_id(cx, generics, cx.tcx.lang_items().partial_ord_trait());
         // Trying to call erase_late_bound_regions on fn_sig.inputs() gives the following error
         // The trait `rustc::ty::TypeFoldable<'_>` is not implemented for `&[&rustc::ty::TyS<'_>]`
-        let inputs_output = cx.tcx.erase_late_bound_regions(&fn_sig.inputs_and_output());
+        let inputs_output = cx.tcx.erase_late_bound_regions(fn_sig.inputs_and_output());
         inputs_output
             .iter()
             .rev()
@@ -112,7 +112,7 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
         if let ExprKind::Closure(_, _fn_decl, body_id, span, _) = arg.kind;
         if let ty::Closure(_def_id, substs) = &cx.typeck_results().node_type(arg.hir_id).kind();
         let ret_ty = substs.as_closure().sig().output();
-        let ty = cx.tcx.erase_late_bound_regions(&ret_ty);
+        let ty = cx.tcx.erase_late_bound_regions(ret_ty);
         if ty.is_unit();
         then {
             if_chain! {

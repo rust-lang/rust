@@ -13,7 +13,7 @@
 // gdb-check:$1 = &[i32](len: 4) = {0, 1, 2, 3}
 
 // gdb-command: print vec
-// gdb-check:$2 = Vec<u64>(len: 4, cap: [...]) = {4, 5, 6, 7}
+// gdb-check:$2 = Vec<u64, alloc::alloc::Global>(len: 4, cap: [...]) = {4, 5, 6, 7}
 
 // gdb-command: print str_slice
 // gdb-check:$3 = "IAMA string slice!"
@@ -74,8 +74,8 @@
 // NOTE: While slices have a .natvis entry that works in VS & VS Code, it fails in CDB 10.0.18362.1
 
 // cdb-command: dx vec,d
-// cdb-check:vec,d [...] : { size=4 } [Type: [...]::Vec<u64>]
-// cdb-check:    [size]           : 4 [Type: [...]]
+// cdb-check:vec,d [...] : { len=4 } [Type: [...]::Vec<u64, alloc::alloc::Global>]
+// cdb-check:    [len]            : 4 [Type: [...]]
 // cdb-check:    [capacity]       : [...] [Type: [...]]
 // cdb-check:    [0]              : 4 [Type: unsigned __int64]
 // cdb-check:    [1]              : 5 [Type: unsigned __int64]
@@ -89,8 +89,10 @@
 // cdb-command: dx string
 // cdb-check:string           : "IAMA string!" [Type: [...]::String]
 // cdb-check:    [<Raw View>]     [Type: [...]::String]
-// cdb-check:    [size]           : 0xc [Type: [...]]
+// cdb-check:    [len]            : 0xc [Type: [...]]
 // cdb-check:    [capacity]       : 0xc [Type: [...]]
+
+// cdb-command: dx -r2 string
 // cdb-check:    [0]              : 73 'I' [Type: char]
 // cdb-check:    [1]              : 65 'A' [Type: char]
 // cdb-check:    [2]              : 77 'M' [Type: char]
@@ -109,11 +111,11 @@
 // NOTE: OsString doesn't have a .natvis entry yet.
 
 // cdb-command: dx some
-// cdb-check:some             : { Some 8 } [Type: [...]::Option<i16>]
+// cdb-check:some             : Some(8) [Type: [...]::Option<i16>]
 // cdb-command: dx none
-// cdb-check:none             : { None } [Type: [...]::Option<i64>]
+// cdb-check:none             : None [Type: [...]::Option<i64>]
 // cdb-command: dx some_string
-// cdb-check:some_string      : { Some "IAMA optional string!" } [[...]::Option<[...]::String>]
+// cdb-check:some_string      : Some("IAMA optional string!") [[...]::Option<[...]::String>]
 
 #![allow(unused_variables)]
 use std::ffi::OsString;

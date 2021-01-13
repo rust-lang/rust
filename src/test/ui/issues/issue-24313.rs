@@ -1,5 +1,4 @@
 // run-pass
-// ignore-cloudabi no processes
 // ignore-emscripten no threads
 // ignore-sgx no processes
 

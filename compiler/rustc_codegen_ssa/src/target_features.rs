@@ -4,6 +4,11 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
 
+// When adding features to the below lists
+// check whether they're named already elsewhere in rust
+// e.g. in stdarch and whether the given name matches LLVM's
+// if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted
+
 const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("aclass", Some(sym::arm_target_feature)),
     ("mclass", Some(sym::arm_target_feature)),
@@ -50,15 +55,23 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("aes", None),
     ("avx", None),
     ("avx2", None),
+    ("avx512bf16", Some(sym::avx512_target_feature)),
+    ("avx512bitalg", Some(sym::avx512_target_feature)),
     ("avx512bw", Some(sym::avx512_target_feature)),
     ("avx512cd", Some(sym::avx512_target_feature)),
     ("avx512dq", Some(sym::avx512_target_feature)),
     ("avx512er", Some(sym::avx512_target_feature)),
     ("avx512f", Some(sym::avx512_target_feature)),
+    ("avx512gfni", Some(sym::avx512_target_feature)),
     ("avx512ifma", Some(sym::avx512_target_feature)),
     ("avx512pf", Some(sym::avx512_target_feature)),
+    ("avx512vaes", Some(sym::avx512_target_feature)),
     ("avx512vbmi", Some(sym::avx512_target_feature)),
+    ("avx512vbmi2", Some(sym::avx512_target_feature)),
     ("avx512vl", Some(sym::avx512_target_feature)),
+    ("avx512vnni", Some(sym::avx512_target_feature)),
+    ("avx512vp2intersect", Some(sym::avx512_target_feature)),
+    ("avx512vpclmulqdq", Some(sym::avx512_target_feature)),
     ("avx512vpopcntdq", Some(sym::avx512_target_feature)),
     ("bmi1", None),
     ("bmi2", None),

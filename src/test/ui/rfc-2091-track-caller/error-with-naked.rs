@@ -1,21 +1,19 @@
-#![feature(naked_functions)]
+#![feature(asm, naked_functions)]
 
 #[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`
 #[naked]
-fn f() {}
+extern "C" fn f() {
+    asm!("", options(noreturn));
+}
 
 struct S;
 
 impl S {
     #[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`
     #[naked]
-    fn g() {}
-}
-
-extern "Rust" {
-    #[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`
-    #[naked]
-    fn h();
+    extern "C" fn g() {
+        asm!("", options(noreturn));
+    }
 }
 
 fn main() {}

@@ -36,6 +36,26 @@ fn main() {
         return;
     }
 
+    if true {
+        let mut countdown = 0;
+        if true {
+            countdown = 10;
+        }
+
+        if countdown > 7 {
+            countdown -= 4;
+        }
+        else if countdown > 2 {
+            if countdown < 1 || countdown > 5 || countdown != 9 {
+                countdown = 0;
+            }
+            countdown -= 5;
+        } else {
+            return;
+        }
+    } // Note: closing brace shows uncovered (vs. `0` for implicit else) because condition literal
+      // `true` was const-evaluated. The compiler knows the `if` block will be executed.
+
     let mut countdown = 0;
     if true {
         countdown = 1;

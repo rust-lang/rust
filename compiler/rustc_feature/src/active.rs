@@ -149,9 +149,6 @@ declare_features! (
     /// Allows using the `#[linkage = ".."]` attribute.
     (active, linkage, "1.0.0", Some(29603), None),
 
-    /// Allows features specific to OIBIT (auto traits).
-    (active, optin_builtin_traits, "1.0.0", Some(13231), None),
-
     /// Allows using `box` in patterns (RFC 469).
     (active, box_patterns, "1.0.0", Some(29641), None),
 
@@ -214,6 +211,10 @@ declare_features! (
     /// This is an attribute on `const fn` for the same
     /// purpose as `#[allow_internal_unstable]`.
     (active, rustc_allow_const_fn_unstable, "1.49.0", Some(69399), None),
+
+    /// Allows features specific to auto traits.
+    /// Renamed from `optin_builtin_traits`.
+    (active, auto_traits, "1.50.0", Some(13231), None),
 
     // no-tracking-issue-end
 
@@ -577,13 +578,10 @@ declare_features! (
     /// Allows calling `transmute` in const fn
     (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
-    /// The smallest useful subset of `const_generics`.
-    (active, min_const_generics, "1.47.0", Some(74878), None),
-
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
 
-    /// Allows non-trivial generic constants which have to be manually propageted upwards.
+    /// Allows non-trivial generic constants which have to be manually propagated upwards.
     (active, const_evaluatable_checked, "1.48.0", Some(76560), None),
 
     /// Allows basic arithmetic on floating point types in a `const fn`.
@@ -616,6 +614,21 @@ declare_features! (
     /// Enables `#[cfg(panic = "...")]` config key.
     (active, cfg_panic, "1.49.0", Some(77443), None),
 
+    /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
+    (active, capture_disjoint_fields, "1.49.0", Some(53488), None),
+
+    /// Allows arbitrary expressions in key-value attributes at parse time.
+    (active, extended_key_value_attributes, "1.50.0", Some(78835), None),
+
+    /// `:pat2018` and `:pat2021` macro matchers.
+    (active, edition_macro_pats, "1.51.0", Some(54883), None),
+
+    /// Allows const generics to have default values (e.g. `struct Foo<const N: usize = 3>(...);`).
+    (active, const_generics_defaults, "1.51.0", Some(44580), None),
+
+    /// Allows references to types with interior mutability within constants
+    (active, const_refs_to_cell, "1.51.0", Some(80384), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -639,9 +652,13 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::inline_const,
     sym::repr128,
     sym::unsized_locals,
+    sym::capture_disjoint_fields,
+    sym::const_generics_defaults,
 ];
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.
-pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] =
-    &[(sym::const_generics, sym::min_const_generics)];
+///
+/// Currently empty, but we will probably need this again in the future,
+/// so let's keep it in for now.
+pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[];

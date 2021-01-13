@@ -281,7 +281,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             }
 
             ty::ReFree(free_region) => match free_region.bound_region {
-                ty::BoundRegion::BrNamed(region_def_id, name) => {
+                ty::BoundRegionKind::BrNamed(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
                     let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
                     debug!(
@@ -307,7 +307,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     }
                 }
 
-                ty::BoundRegion::BrEnv => {
+                ty::BoundRegionKind::BrEnv => {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
                     if let DefiningTy::Closure(_, substs) = def_ty {
@@ -349,7 +349,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     }
                 }
 
-                ty::BoundRegion::BrAnon(_) => None,
+                ty::BoundRegionKind::BrAnon(_) => None,
             },
 
             ty::ReLateBound(..)
@@ -445,7 +445,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
             type_name, needle_fr
         );
-        if type_name.find(&format!("'{}", counter)).is_some() {
+        if type_name.contains(&format!("'{}", counter)) {
             // Only add a label if we can confirm that a region was labelled.
             RegionNameHighlight::CannotMatchHirTy(span, type_name)
         } else {

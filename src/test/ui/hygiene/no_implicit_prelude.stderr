@@ -1,14 +1,3 @@
-error: cannot find macro `panic` in this scope
-  --> $DIR/no_implicit_prelude.rs:16:9
-   |
-LL |         assert_eq!(0, 0);
-   |         ^^^^^^^^^^^^^^^^^
-   |
-   = note: consider importing one of these items:
-           core::panic
-           std::panic
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error[E0433]: failed to resolve: use of undeclared type `Vec`
   --> $DIR/no_implicit_prelude.rs:11:9
    |
@@ -38,7 +27,7 @@ LL |         ().clone()
            `use std::clone::Clone;`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0433, E0599.
 For more information about an error, try `rustc --explain E0433`.

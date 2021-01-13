@@ -1,8 +1,9 @@
 use super::*;
 
-fn generate_fake_backtrace() -> Backtrace {
-    Backtrace {
-        inner: Inner::Captured(Mutex::new(Capture {
+#[test]
+fn test_debug() {
+    let backtrace = Backtrace {
+        inner: Inner::Captured(LazilyResolvedCapture::new(Capture {
             actual_start: 1,
             resolved: true,
             frames: vec![
@@ -12,6 +13,7 @@ fn generate_fake_backtrace() -> Backtrace {
                         name: Some(b"std::backtrace::Backtrace::create".to_vec()),
                         filename: Some(BytesOrWide::Bytes(b"rust/backtrace.rs".to_vec())),
                         lineno: Some(100),
+                        colno: None,
                     }],
                 },
                 BacktraceFrame {
@@ -20,6 +22,7 @@ fn generate_fake_backtrace() -> Backtrace {
                         name: Some(b"__rust_maybe_catch_panic".to_vec()),
                         filename: None,
                         lineno: None,
+                        colno: None,
                     }],
                 },
                 BacktraceFrame {
@@ -29,11 +32,13 @@ fn generate_fake_backtrace() -> Backtrace {
                             name: Some(b"std::rt::lang_start_internal".to_vec()),
                             filename: Some(BytesOrWide::Bytes(b"rust/rt.rs".to_vec())),
                             lineno: Some(300),
+                            colno: Some(5),
                         },
                         BacktraceSymbol {
                             name: Some(b"std::rt::lang_start".to_vec()),
                             filename: Some(BytesOrWide::Bytes(b"rust/rt.rs".to_vec())),
                             lineno: Some(400),
+                            colno: None,
                         },
                     ],
                 },
@@ -54,27 +59,7 @@ fn test_debug() {
     \n]";
 
     assert_eq!(format!("{:#?}", backtrace), expected);
-}
 
-#[test]
-fn test_empty_frames_iterator() {
-    let empty_backtrace = Backtrace {
-        inner: Inner::Captured(Mutex::new(Capture {
-            actual_start: 1,
-            resolved: true,
-            frames: vec![],
-        }))
-    };
-
-    let iter = empty_backtrace.frames(); 
-
-    assert_eq!(iter.count(), 0);
-}
-
-#[test]
-fn test_frames_iterator() {
-    let backtrace = generate_fake_backtrace();
-    let iter = backtrace.frames();
-
-    assert_eq!(iter.count(), 3);
+    // Format the backtrace a second time, just to make sure lazily resolved state is stable
+    assert_eq!(format!("{:#?}", backtrace), expected);
 }

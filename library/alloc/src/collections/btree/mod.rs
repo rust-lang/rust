@@ -38,6 +38,7 @@ pub unsafe fn unwrap_unchecked<T>(val: Option<T>) -> T {
 #[cfg(test)]
 /// XorShiftRng
 struct DeterministicRng {
+    count: usize,
     x: u32,
     y: u32,
     z: u32,
@@ -47,11 +48,13 @@ struct DeterministicRng {
 #[cfg(test)]
 impl DeterministicRng {
     fn new() -> Self {
-        DeterministicRng { x: 0x193a6754, y: 0xa8a7d469, z: 0x97830e05, w: 0x113ba7bb }
+        DeterministicRng { count: 0, x: 0x193a6754, y: 0xa8a7d469, z: 0x97830e05, w: 0x113ba7bb }
     }
 
-    /// Guarantees that the first 70029 results are unique.
+    /// Guarantees that each returned number is unique.
     fn next(&mut self) -> u32 {
+        self.count += 1;
+        assert!(self.count <= 70029);
         let x = self.x;
         let t = x ^ (x << 11);
         self.x = self.y;

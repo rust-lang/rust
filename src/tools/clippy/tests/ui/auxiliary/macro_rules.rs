@@ -70,3 +70,27 @@ macro_rules! ref_arg_function {
         fn fun_example(ref _x: usize) {}
     };
 }
+
+#[macro_export]
+macro_rules! as_conv_with_arg {
+    (0u32 as u64) => {
+        ()
+    };
+}
+
+#[macro_export]
+macro_rules! as_conv {
+    () => {
+        0u32 as u64
+    };
+}
+
+#[macro_export]
+macro_rules! large_enum_variant {
+    () => {
+        enum LargeEnumInMacro {
+            A(i32),
+            B([i32; 8000]),
+        }
+    };
+}

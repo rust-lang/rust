@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub AWAIT_HOLDING_LOCK,
-    correctness,
+    pedantic,
     "Inside an async function, holding a MutexGuard while calling await"
 }
 
@@ -65,8 +65,8 @@ declare_clippy_lint! {
     /// use std::cell::RefCell;
     ///
     /// async fn foo(x: &RefCell<u32>) {
-    ///   let b = x.borrow_mut()();
-    ///   *ref += 1;
+    ///   let mut y = x.borrow_mut();
+    ///   *y += 1;
     ///   bar.await;
     /// }
     /// ```
@@ -77,14 +77,14 @@ declare_clippy_lint! {
     ///
     /// async fn foo(x: &RefCell<u32>) {
     ///   {
-    ///     let b = x.borrow_mut();
-    ///     *ref += 1;
+    ///      let mut y = x.borrow_mut();
+    ///      *y += 1;
     ///   }
     ///   bar.await;
     /// }
     /// ```
     pub AWAIT_HOLDING_REFCELL_REF,
-    correctness,
+    pedantic,
     "Inside an async function, holding a RefCell ref while calling await"
 }
 
@@ -99,7 +99,11 @@ impl LateLintPass<'_> for AwaitHolding {
             };
             let def_id = cx.tcx.hir().body_owner_def_id(body_id);
             let typeck_results = cx.tcx.typeck(def_id);
-            check_interior_types(cx, &typeck_results.generator_interior_types, body.value.span);
+            check_interior_types(
+                cx,
+                &typeck_results.generator_interior_types.as_ref().skip_binder(),
+                body.value.span,
+            );
         }
     }
 }

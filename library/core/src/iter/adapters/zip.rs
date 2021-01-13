@@ -1,10 +1,7 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
-
-use super::super::{
-    DoubleEndedIterator, ExactSizeIterator, FusedIterator, InPlaceIterable, Iterator, SourceIter,
-    TrustedLen,
-};
+use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
+use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -21,7 +18,7 @@ pub struct Zip<A, B> {
     len: usize,
 }
 impl<A: Iterator, B: Iterator> Zip<A, B> {
-    pub(in super::super) fn new(a: A, b: B) -> Zip<A, B> {
+    pub(in crate::iter) fn new(a: A, b: B) -> Zip<A, B> {
         ZipImpl::new(a, b)
     }
     fn super_nth(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
@@ -400,7 +397,7 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 ///    only be called at most `self.size() - idx - 1` times.
 /// 4. After `get_unchecked` is called, then only the following methods will be
 ///    called on `self`:
-///     * `std::clone::Clone::clone`
+///     * `std::clone::Clone::clone()`
 ///     * `std::iter::Iterator::size_hint()`
 ///     * `std::iter::Iterator::next_back()`
 ///     * `std::iter::Iterator::__iterator_get_unchecked()`

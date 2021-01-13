@@ -96,9 +96,9 @@ macro_rules! uint_module {
                 assert_eq!(B.rotate_left(0), B);
                 assert_eq!(C.rotate_left(0), C);
                 // Rotating by a multiple of word size should also have no effect
-                assert_eq!(A.rotate_left(64), A);
-                assert_eq!(B.rotate_left(64), B);
-                assert_eq!(C.rotate_left(64), C);
+                assert_eq!(A.rotate_left(128), A);
+                assert_eq!(B.rotate_left(128), B);
+                assert_eq!(C.rotate_left(128), C);
             }
 
             #[test]

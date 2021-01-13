@@ -1,0 +1,35 @@
+warning: unresolved link to `error`
+  --> $DIR/warning-crlf.rs:7:6
+   |
+LL | /// [error]
+   |      ^^^^^ no item named `error` in scope
+   |
+   = note: `#[warn(broken_intra_doc_links)]` on by default
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `error1`
+  --> $DIR/warning-crlf.rs:12:11
+   |
+LL | /// docs [error1]
+   |           ^^^^^^ no item named `error1` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `error2`
+  --> $DIR/warning-crlf.rs:15:11
+   |
+LL | /// docs [error2]
+   |           ^^^^^^ no item named `error2` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `error`
+  --> $DIR/warning-crlf.rs:23:20
+   |
+LL |  * It also has an [error].
+   |                    ^^^^^ no item named `error` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: 4 warnings emitted
+

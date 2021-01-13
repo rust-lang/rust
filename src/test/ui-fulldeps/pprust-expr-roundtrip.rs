@@ -155,7 +155,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             },
             17 => {
                 let path = Path::from_ident(Ident::from_str("S"));
-                g(ExprKind::Struct(path, vec![], Some(make_x())));
+                g(ExprKind::Struct(path, vec![], StructRest::Base(make_x())));
             },
             18 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Try(e)));

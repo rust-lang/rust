@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `&mut T: Clone` is not satisfied
+  --> $DIR/issue-79458.rs:6:5
+   |
+LL |     bar: &'a mut T
+   |     ^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `&mut T`
+   |
+   = help: the following implementations were found:
+             <&T as Clone>
+   = note: `Clone` is implemented for `&T`, but not for `&mut T`
+   = note: required by `clone`
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

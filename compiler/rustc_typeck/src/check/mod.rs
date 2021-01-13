@@ -108,7 +108,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{HirIdMap, Node};
+use rustc_hir::{HirIdMap, ImplicitSelfKind, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -270,7 +270,7 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
 
 /// If this `DefId` is a "primary tables entry", returns
 /// `Some((body_id, header, decl))` with information about
-/// it's body-id, fn-header and fn-decl (if any). Otherwise,
+/// its body-id, fn-header and fn-decl (if any). Otherwise,
 /// returns `None`.
 ///
 /// If this function returns `Some`, then `typeck_results(def_id)` will
@@ -362,7 +362,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &FxHashSet<LocalDe
 /// conclude that we don't have a defining use of `MyItem`. By mapping inference
 /// variables back to the actual generic parameters, we will correctly see that
 /// we have a defining use of `MyItem`
-fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: &T) -> T
+fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: T) -> T
 where
     T: TypeFoldable<'tcx>,
 {
@@ -510,15 +510,15 @@ fn typeck_with_fallback<'tcx>(
             check_abi(tcx, span, fn_sig.abi());
 
             // Compute the fty from point of view of inside the fn.
-            let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), &fn_sig);
+            let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
             let fn_sig = inh.normalize_associated_types_in(
                 body.value.span,
                 body_id.hir_id,
                 param_env,
-                &fn_sig,
+                fn_sig,
             );
 
-            let fn_sig = fixup_opaque_types(tcx, &fn_sig);
+            let fn_sig = fixup_opaque_types(tcx, fn_sig);
 
             let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None).0;
             fcx
@@ -543,11 +543,11 @@ fn typeck_with_fallback<'tcx>(
                     _ => fallback(),
                 });
 
-            let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
+            let expected_type = fcx.normalize_associated_types_in(body.value.span, expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
             let revealed_ty = if tcx.features().impl_trait_in_bindings {
-                fcx.instantiate_opaque_types_from_value(id, &expected_type, body.value.span)
+                fcx.instantiate_opaque_types_from_value(id, expected_type, body.value.span)
             } else {
                 expected_type
             };
@@ -1134,6 +1134,7 @@ impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
     }
     fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) {}
     fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
+    fn visit_foreign_item(&mut self, _: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
 fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {

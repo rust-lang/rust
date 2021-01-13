@@ -1,6 +1,6 @@
 use super::{probe, MethodCallee};
 
-use crate::astconv::AstConv;
+use crate::astconv::{AstConv, CreateSubstsForGenericArgsCtxt};
 use crate::check::{callee, FnCtxt};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
@@ -10,7 +10,7 @@ use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::subst::{self, Subst, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -90,8 +90,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // traits, no trait system method can be called before this point because they
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
-        let method_sig_rcvr =
-            self.normalize_associated_types_in(self.span, &method_sig.inputs()[0]);
+        let method_sig_rcvr = self.normalize_associated_types_in(self.span, method_sig.inputs()[0]);
         debug!(
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
             self_ty, method_sig_rcvr, method_sig, method_predicates
@@ -99,7 +98,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self.unify_receivers(self_ty, method_sig_rcvr, &pick, all_substs);
 
         let (method_sig, method_predicates) =
-            self.normalize_associated_types_in(self.span, &(method_sig, method_predicates));
+            self.normalize_associated_types_in(self.span, (method_sig, method_predicates));
 
         // Make sure nobody calls `drop()` explicitly.
         self.enforce_illegal_method_limitations(&pick);
@@ -229,7 +228,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     let original_poly_trait_ref = principal.with_self_ty(this.tcx, object_ty);
                     let upcast_poly_trait_ref = this.upcast(original_poly_trait_ref, trait_def_id);
                     let upcast_trait_ref =
-                        this.replace_bound_vars_with_fresh_vars(&upcast_poly_trait_ref);
+                        this.replace_bound_vars_with_fresh_vars(upcast_poly_trait_ref);
                     debug!(
                         "original_poly_trait_ref={:?} upcast_trait_ref={:?} target_trait={:?}",
                         original_poly_trait_ref, upcast_trait_ref, trait_def_id
@@ -249,10 +248,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.fresh_substs_for_item(self.span, trait_def_id)
             }
 
-            probe::WhereClausePick(ref poly_trait_ref) => {
+            probe::WhereClausePick(poly_trait_ref) => {
                 // Where clauses can have bound regions in them. We need to instantiate
                 // those to convert from a poly-trait-ref to a trait-ref.
-                self.replace_bound_vars_with_fresh_vars(&poly_trait_ref).substs
+                self.replace_bound_vars_with_fresh_vars(poly_trait_ref).substs
             }
         }
     }
@@ -307,6 +306,52 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // parameters from the type and those from the method.
         assert_eq!(generics.parent_count, parent_substs.len());
 
+        struct MethodSubstsCtxt<'a, 'tcx> {
+            cfcx: &'a ConfirmContext<'a, 'tcx>,
+            pick: &'a probe::Pick<'tcx>,
+            seg: &'a hir::PathSegment<'a>,
+        }
+        impl<'a, 'tcx> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for MethodSubstsCtxt<'a, 'tcx> {
+            fn args_for_def_id(
+                &mut self,
+                def_id: DefId,
+            ) -> (Option<&'a hir::GenericArgs<'a>>, bool) {
+                if def_id == self.pick.item.def_id {
+                    if let Some(ref data) = self.seg.args {
+                        return (Some(data), false);
+                    }
+                }
+                (None, false)
+            }
+
+            fn provided_kind(
+                &mut self,
+                param: &ty::GenericParamDef,
+                arg: &GenericArg<'_>,
+            ) -> subst::GenericArg<'tcx> {
+                match (&param.kind, arg) {
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                        AstConv::ast_region_to_region(self.cfcx.fcx, lt, Some(param)).into()
+                    }
+                    (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                        self.cfcx.to_ty(ty).into()
+                    }
+                    (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
+                        self.cfcx.const_arg_to_const(&ct.value, param.def_id).into()
+                    }
+                    _ => unreachable!(),
+                }
+            }
+
+            fn inferred_kind(
+                &mut self,
+                _substs: Option<&[subst::GenericArg<'tcx>]>,
+                param: &ty::GenericParamDef,
+                _infer_args: bool,
+            ) -> subst::GenericArg<'tcx> {
+                self.cfcx.var_for_def(self.cfcx.span, param)
+            }
+        }
         AstConv::create_substs_for_generic_args(
             self.tcx,
             pick.item.def_id,
@@ -314,29 +359,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             false,
             None,
             arg_count_correct,
-            // Provide the generic args, and whether types should be inferred.
-            |def_id| {
-                // The last component of the returned tuple here is unimportant.
-                if def_id == pick.item.def_id {
-                    if let Some(ref data) = seg.args {
-                        return (Some(data), false);
-                    }
-                }
-                (None, false)
-            },
-            // Provide substitutions for parameters for which (valid) arguments have been provided.
-            |param, arg| match (&param.kind, arg) {
-                (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                    AstConv::ast_region_to_region(self.fcx, lt, Some(param)).into()
-                }
-                (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => self.to_ty(ty).into(),
-                (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                    self.const_arg_to_const(&ct.value, param.def_id).into()
-                }
-                _ => unreachable!(),
-            },
-            // Provide substitutions for parameters for which arguments are inferred.
-            |_, param, _| self.var_for_def(self.span, param),
+            &mut MethodSubstsCtxt { cfcx: self, pick, seg },
         )
     }
 
@@ -400,7 +423,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // N.B., instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let method_sig = self.replace_bound_vars_with_fresh_vars(&sig);
+        let method_sig = self.replace_bound_vars_with_fresh_vars(sig);
         debug!("late-bound lifetimes from method instantiated, method_sig={:?}", method_sig);
 
         let method_sig = method_sig.subst(self.tcx, all_substs);
@@ -506,7 +529,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         upcast_trait_refs.into_iter().next().unwrap()
     }
 
-    fn replace_bound_vars_with_fresh_vars<T>(&self, value: &ty::Binder<T>) -> T
+    fn replace_bound_vars_with_fresh_vars<T>(&self, value: ty::Binder<T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {

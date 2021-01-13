@@ -2,6 +2,7 @@
 #![feature(bool_to_option)]
 #![feature(option_expect_none)]
 #![feature(box_patterns)]
+#![feature(drain_filter)]
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
@@ -20,15 +21,17 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
+use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::LangItem;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::middle::cstore::{CrateSource, LibSource, NativeLib};
+use rustc_middle::middle::cstore::{self, CrateSource, LibSource};
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::ty::query::Providers;
 use rustc_session::config::{OutputFilenames, OutputType, RUST_CGU_EXT};
+use rustc_session::utils::NativeLibKind;
 use rustc_span::symbol::Symbol;
 use std::path::{Path, PathBuf};
 
@@ -63,13 +66,15 @@ impl<M> ModuleCodegen<M> {
     pub fn into_compiled_module(
         self,
         emit_obj: bool,
+        emit_dwarf_obj: bool,
         emit_bc: bool,
         outputs: &OutputFilenames,
     ) -> CompiledModule {
         let object = emit_obj.then(|| outputs.temp_path(OutputType::Object, Some(&self.name)));
+        let dwarf_object = emit_dwarf_obj.then(|| outputs.temp_path_dwo(Some(&self.name)));
         let bytecode = emit_bc.then(|| outputs.temp_path(OutputType::Bitcode, Some(&self.name)));
 
-        CompiledModule { name: self.name.clone(), kind: self.kind, object, bytecode }
+        CompiledModule { name: self.name.clone(), kind: self.kind, object, dwarf_object, bytecode }
     }
 }
 
@@ -78,6 +83,7 @@ pub struct CompiledModule {
     pub name: String,
     pub kind: ModuleKind,
     pub object: Option<PathBuf>,
+    pub dwarf_object: Option<PathBuf>,
     pub bytecode: Option<PathBuf>,
 }
 
@@ -101,6 +107,19 @@ bitflags::bitflags! {
     }
 }
 
+#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
+pub struct NativeLib {
+    pub kind: NativeLibKind,
+    pub name: Option<Symbol>,
+    pub cfg: Option<ast::MetaItem>,
+}
+
+impl From<&cstore::NativeLib> for NativeLib {
+    fn from(lib: &cstore::NativeLib) -> Self {
+        NativeLib { kind: lib.kind, name: lib.name, cfg: lib.cfg.clone() }
+    }
+}
+
 /// Misc info we load from metadata to persist beyond the tcx.
 ///
 /// Note: though `CrateNum` is only meaningful within the same tcx, information within `CrateInfo`
@@ -115,9 +134,9 @@ pub struct CrateInfo {
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
     pub is_no_builtins: FxHashSet<CrateNum>,
-    pub native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLib>>>,
+    pub native_libraries: FxHashMap<CrateNum, Vec<NativeLib>>,
     pub crate_name: FxHashMap<CrateNum, String>,
-    pub used_libraries: Lrc<Vec<NativeLib>>,
+    pub used_libraries: Vec<NativeLib>,
     pub link_args: Lrc<Vec<String>>,
     pub used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
     pub used_crates_static: Vec<(CrateNum, LibSource)>,

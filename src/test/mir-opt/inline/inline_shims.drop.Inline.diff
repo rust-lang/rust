@@ -36,11 +36,15 @@
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-shims.rs:12:14: 12:37
 -                                          // + literal: Const { ty: unsafe fn(*mut std::option::Option<B>) {std::intrinsics::drop_in_place::<std::option::Option<B>>}, val: Value(Scalar(<ZST>)) }
++         StorageLive(_6);                 // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
++         StorageLive(_7);                 // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
 +         _6 = discriminant((*_5));        // scope 3 at $DIR/inline-shims.rs:12:14: 12:40
 +         switchInt(move _6) -> [0_isize: bb2, otherwise: bb3]; // scope 3 at $DIR/inline-shims.rs:12:14: 12:40
       }
   
       bb2: {
++         StorageDead(_7);                 // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
++         StorageDead(_6);                 // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
           StorageDead(_5);                 // scope 2 at $DIR/inline-shims.rs:12:39: 12:40
           return;                          // scope 0 at $DIR/inline-shims.rs:13:2: 13:2
 +     }

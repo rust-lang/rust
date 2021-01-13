@@ -3,7 +3,7 @@
 #![crate_name = "foo"]
 
 mod mod1 {
-    extern {
+    extern "C" {
         pub fn public_fn();
         fn private_fn();
     }

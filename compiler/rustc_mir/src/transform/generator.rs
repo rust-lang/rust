@@ -720,13 +720,13 @@ fn sanitize_witness<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     witness: Ty<'tcx>,
-    upvars: &Vec<Ty<'tcx>>,
+    upvars: Vec<Ty<'tcx>>,
     saved_locals: &GeneratorSavedLocals,
 ) {
     let did = body.source.def_id();
     let allowed_upvars = tcx.erase_regions(upvars);
     let allowed = match witness.kind() {
-        ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
+        &ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(s),
         _ => {
             tcx.sess.delay_span_bug(
                 body.span,
@@ -1303,7 +1303,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         let liveness_info =
             locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
 
-        sanitize_witness(tcx, body, interior, &upvars, &liveness_info.saved_locals);
+        sanitize_witness(tcx, body, interior, upvars, &liveness_info.saved_locals);
 
         if tcx.sess.opts.debugging_opts.validate_mir {
             let mut vis = EnsureGeneratorFieldAssignmentsNeverAlias {

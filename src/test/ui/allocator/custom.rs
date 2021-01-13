@@ -8,9 +8,8 @@
 
 extern crate helper;
 
-use std::alloc::{self, AllocRef, Global, Layout, System};
+use std::alloc::{self, Allocator, Global, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::ptr::NonNull;
 
 static HITS: AtomicUsize = AtomicUsize::new(0);
 
@@ -24,7 +23,7 @@ unsafe impl alloc::GlobalAlloc for A {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         HITS.fetch_add(1, Ordering::SeqCst);
-        AllocRef::dealloc(&System, NonNull::new(ptr).unwrap(), layout)
+        alloc::GlobalAlloc::dealloc(&System, ptr, layout)
     }
 }
 
@@ -39,10 +38,10 @@ fn main() {
     unsafe {
         let layout = Layout::from_size_align(4, 2).unwrap();
 
-        let memory = Global.alloc(layout.clone()).unwrap();
+        let memory = Global.allocate(layout.clone()).unwrap();
         helper::work_with(&memory);
         assert_eq!(HITS.load(Ordering::SeqCst), n + 1);
-        Global.dealloc(memory.as_non_null_ptr(), layout);
+        Global.deallocate(memory.as_non_null_ptr(), layout);
         assert_eq!(HITS.load(Ordering::SeqCst), n + 2);
 
         let s = String::with_capacity(10);
@@ -51,10 +50,10 @@ fn main() {
         drop(s);
         assert_eq!(HITS.load(Ordering::SeqCst), n + 4);
 
-        let memory = System.alloc(layout.clone()).unwrap();
-        assert_eq!(HITS.load(Ordering::SeqCst), n + 4);
+        let memory = System.allocate(layout.clone()).unwrap();
         helper::work_with(&memory);
-        System.dealloc(memory.as_non_null_ptr(), layout);
+        assert_eq!(HITS.load(Ordering::SeqCst), n + 4);
+        System.deallocate(memory.as_non_null_ptr(), layout);
         assert_eq!(HITS.load(Ordering::SeqCst), n + 4);
     }
 }

@@ -2,21 +2,21 @@
 + // MIR for `not_inlined_target_feature` after Inline
   
   fn not_inlined_target_feature() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/inline-compatibility.rs:18:44: 18:44
-      let _1: ();                          // in scope 0 at $DIR/inline-compatibility.rs:19:5: 19:21
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-compatibility.rs:17:44: 17:44
+      let _1: ();                          // in scope 0 at $DIR/inline-compatibility.rs:18:5: 18:21
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/inline-compatibility.rs:19:5: 19:21
-          _1 = target_feature() -> bb1;    // scope 0 at $DIR/inline-compatibility.rs:19:5: 19:21
+          StorageLive(_1);                 // scope 0 at $DIR/inline-compatibility.rs:18:5: 18:21
+          _1 = target_feature() -> bb1;    // scope 0 at $DIR/inline-compatibility.rs:18:5: 18:21
                                            // mir::Constant
-                                           // + span: $DIR/inline-compatibility.rs:19:5: 19:19
+                                           // + span: $DIR/inline-compatibility.rs:18:5: 18:19
                                            // + literal: Const { ty: unsafe fn() {target_feature}, val: Value(Scalar(<ZST>)) }
       }
   
       bb1: {
-          StorageDead(_1);                 // scope 0 at $DIR/inline-compatibility.rs:19:21: 19:22
-          _0 = const ();                   // scope 0 at $DIR/inline-compatibility.rs:18:44: 20:2
-          return;                          // scope 0 at $DIR/inline-compatibility.rs:20:2: 20:2
+          StorageDead(_1);                 // scope 0 at $DIR/inline-compatibility.rs:18:21: 18:22
+          _0 = const ();                   // scope 0 at $DIR/inline-compatibility.rs:17:44: 19:2
+          return;                          // scope 0 at $DIR/inline-compatibility.rs:19:2: 19:2
       }
   }
   

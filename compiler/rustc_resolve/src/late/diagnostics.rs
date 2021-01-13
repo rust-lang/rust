@@ -5,7 +5,6 @@ use crate::path_names_to_string;
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::visit::FnKind;
 use rustc_ast::{self as ast, Expr, ExprKind, Item, ItemKind, NodeId, Path, Ty, TyKind};
 use rustc_ast_pretty::pprust::path_segment_to_string;
@@ -16,9 +15,9 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
-use rustc_session::config::nightly_options;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::MacroKind;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 
@@ -181,7 +180,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             (
                 format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
                 if path_str == "async" && expected.starts_with("struct") {
-                    "`async` blocks are only allowed in the 2018 edition".to_string()
+                    "`async` blocks are only allowed in Rust 2018 or later".to_string()
                 } else {
                     format!("not found in {}", mod_str)
                 },
@@ -543,6 +542,26 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_label(base_span, fallback_label);
             }
         }
+        if let Some(err_code) = &err.code {
+            if err_code == &rustc_errors::error_code!(E0425) {
+                for label_rib in &self.label_ribs {
+                    for (label_ident, _) in &label_rib.bindings {
+                        if format!("'{}", ident) == label_ident.to_string() {
+                            let msg = "a label with a similar name exists";
+                            // FIXME: consider only emitting this suggestion if a label would be valid here
+                            // which is pretty much only the case for `break` expressions.
+                            err.span_suggestion(
+                                span,
+                                &msg,
+                                label_ident.name.to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
         (err, candidates)
     }
 
@@ -885,12 +904,12 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     Applicability::MaybeIncorrect,
                 );
                 if path_str == "try" && span.rust_2015() {
-                    err.note("if you want the `try` keyword, you need to be in the 2018 edition");
+                    err.note("if you want the `try` keyword, you need Rust 2018 or later");
                 }
             }
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
-                if nightly_options::is_nightly_build() {
+                if self.r.session.is_nightly_build() {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
                     if let Some(span) = self.def_span(def_id) {
@@ -1207,7 +1226,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         names.sort_by_cached_key(|suggestion| suggestion.candidate.as_str());
 
         match find_best_match_for_name(
-            names.iter().map(|suggestion| &suggestion.candidate),
+            &names.iter().map(|suggestion| suggestion.candidate).collect::<Vec<Symbol>>(),
             name,
             None,
         ) {
@@ -1593,9 +1612,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             .bindings
             .iter()
             .filter(|(id, _)| id.span.ctxt() == label.span.ctxt())
-            .map(|(id, _)| &id.name);
+            .map(|(id, _)| id.name)
+            .collect::<Vec<Symbol>>();
 
-        find_best_match_for_name(names, label.name, None).map(|symbol| {
+        find_best_match_for_name(&names, label.name, None).map(|symbol| {
             // Upon finding a similar name, get the ident that it was from - the span
             // contained within helps make a useful diagnostic. In addition, determine
             // whether this candidate is within scope.
@@ -1633,17 +1653,14 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         for missing in &self.missing_named_lifetime_spots {
             match missing {
                 MissingLifetimeSpot::Generics(generics) => {
-                    let (span, sugg) = if let Some(param) =
-                        generics.params.iter().find(|p| match p.kind {
-                            hir::GenericParamKind::Type {
-                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                ..
-                            } => false,
-                            hir::GenericParamKind::Lifetime {
-                                kind: hir::LifetimeParamKind::Elided,
-                            } => false,
-                            _ => true,
-                        }) {
+                    let (span, sugg) = if let Some(param) = generics.params.iter().find(|p| {
+                        !matches!(p.kind, hir::GenericParamKind::Type {
+                            synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                            ..
+                        } | hir::GenericParamKind::Lifetime {
+                            kind: hir::LifetimeParamKind::Elided,
+                        })
+                    }) {
                         (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
                     } else {
                         suggests_in_band = true;
@@ -1675,7 +1692,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 _ => {}
             }
         }
-        if nightly_options::is_nightly_build()
+        if self.tcx.sess.is_nightly_build()
             && !self.tcx.features().in_band_lifetimes
             && suggests_in_band
         {
@@ -1965,8 +1982,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         }
     }
 
-    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics` so
-    /// this function will emit an error if `min_const_generics` is enabled, the body identified by
+    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
+    /// This function will emit an error if `const_generics` is not enabled, the body identified by
     /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
     crate fn maybe_emit_forbidden_non_static_lifetime_error(
         &self,
@@ -1982,7 +1999,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             hir::LifetimeName::Implicit | hir::LifetimeName::Static | hir::LifetimeName::Underscore
         );
 
-        if self.tcx.features().min_const_generics && is_anon_const && !is_allowed_lifetime {
+        if !self.tcx.lazy_normalization() && is_anon_const && !is_allowed_lifetime {
             feature_err(
                 &self.tcx.sess.parse_sess,
                 sym::const_generics,

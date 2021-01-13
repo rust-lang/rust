@@ -23,7 +23,7 @@ use tracing::debug;
 
 pub mod mapgen;
 
-const COVMAP_VAR_ALIGN_BYTES: usize = 8;
+const VAR_ALIGN_BYTES: usize = 8;
 
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'tcx> {
@@ -177,17 +177,20 @@ pub(crate) fn write_mapping_to_buffer(
         );
     }
 }
+pub(crate) fn hash_str(strval: &str) -> u64 {
+    let strval = CString::new(strval).expect("null error converting hashable str to C string");
+    unsafe { llvm::LLVMRustCoverageHashCString(strval.as_ptr()) }
+}
 
-pub(crate) fn compute_hash(name: &str) -> u64 {
-    let name = CString::new(name).expect("null error converting hashable name to C string");
-    unsafe { llvm::LLVMRustCoverageComputeHash(name.as_ptr()) }
+pub(crate) fn hash_bytes(bytes: Vec<u8>) -> u64 {
+    unsafe { llvm::LLVMRustCoverageHashByteArray(bytes.as_ptr().cast(), bytes.len()) }
 }
 
 pub(crate) fn mapping_version() -> u32 {
     unsafe { llvm::LLVMRustCoverageMappingVersion() }
 }
 
-pub(crate) fn save_map_to_mod<'ll, 'tcx>(
+pub(crate) fn save_cov_data_to_mod<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     cov_data_val: &'ll llvm::Value,
 ) {
@@ -198,7 +201,7 @@ pub(crate) fn save_map_to_mod<'ll, 'tcx>(
     debug!("covmap var name: {:?}", covmap_var_name);
 
     let covmap_section_name = llvm::build_string(|s| unsafe {
-        llvm::LLVMRustCoverageWriteSectionNameToString(cx.llmod, s);
+        llvm::LLVMRustCoverageWriteMapSectionNameToString(cx.llmod, s);
     })
     .expect("Rust Coverage section name failed UTF-8 conversion");
     debug!("covmap section name: {:?}", covmap_section_name);
@@ -206,8 +209,43 @@ pub(crate) fn save_map_to_mod<'ll, 'tcx>(
     let llglobal = llvm::add_global(cx.llmod, cx.val_ty(cov_data_val), &covmap_var_name);
     llvm::set_initializer(llglobal, cov_data_val);
     llvm::set_global_constant(llglobal, true);
-    llvm::set_linkage(llglobal, llvm::Linkage::InternalLinkage);
+    llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
     llvm::set_section(llglobal, &covmap_section_name);
-    llvm::set_alignment(llglobal, COVMAP_VAR_ALIGN_BYTES);
+    llvm::set_alignment(llglobal, VAR_ALIGN_BYTES);
+    cx.add_used_global(llglobal);
+}
+
+pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    func_name_hash: u64,
+    func_record_val: &'ll llvm::Value,
+    is_used: bool,
+) {
+    // Assign a name to the function record. This is used to merge duplicates.
+    //
+    // In LLVM, a "translation unit" (effectively, a `Crate` in Rust) can describe functions that
+    // are included-but-not-used. If (or when) Rust generates functions that are
+    // included-but-not-used, note that a dummy description for a function included-but-not-used
+    // in a Crate can be replaced by full description provided by a different Crate. The two kinds
+    // of descriptions play distinct roles in LLVM IR; therefore, assign them different names (by
+    // appending "u" to the end of the function record var name, to prevent `linkonce_odr` merging.
+    let func_record_var_name =
+        format!("__covrec_{:X}{}", func_name_hash, if is_used { "u" } else { "" });
+    debug!("function record var name: {:?}", func_record_var_name);
+
+    let func_record_section_name = llvm::build_string(|s| unsafe {
+        llvm::LLVMRustCoverageWriteFuncSectionNameToString(cx.llmod, s);
+    })
+    .expect("Rust Coverage function record section name failed UTF-8 conversion");
+    debug!("function record section name: {:?}", func_record_section_name);
+
+    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(func_record_val), &func_record_var_name);
+    llvm::set_initializer(llglobal, func_record_val);
+    llvm::set_global_constant(llglobal, true);
+    llvm::set_linkage(llglobal, llvm::Linkage::LinkOnceODRLinkage);
+    llvm::set_visibility(llglobal, llvm::Visibility::Hidden);
+    llvm::set_section(llglobal, &func_record_section_name);
+    llvm::set_alignment(llglobal, VAR_ALIGN_BYTES);
+    llvm::set_comdat(cx.llmod, llglobal, &func_record_var_name);
     cx.add_used_global(llglobal);
 }

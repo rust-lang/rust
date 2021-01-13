@@ -30,11 +30,11 @@ impl<K, V> Root<K, V> {
     /// Pushes all key-value pairs to the end of the tree, incrementing a
     /// `length` variable along the way. The latter makes it easier for the
     /// caller to avoid a leak when the iterator panicks.
-    fn bulk_push<I>(&mut self, iter: I, length: &mut usize)
+    pub fn bulk_push<I>(&mut self, iter: I, length: &mut usize)
     where
         I: Iterator<Item = (K, V)>,
     {
-        let mut cur_node = self.node_as_mut().last_leaf_edge().into_node();
+        let mut cur_node = self.borrow_mut().last_leaf_edge().into_node();
         // Iterate through all key-value pairs, pushing them into nodes at the right level.
         for (key, value) in iter {
             // Try to push key-value pair into the current leaf node.
@@ -67,7 +67,7 @@ impl<K, V> Root<K, V> {
 
                 // Push key-value pair and new right subtree.
                 let tree_height = open_node.height() - 1;
-                let mut right_tree = Root::new_leaf();
+                let mut right_tree = Root::new();
                 for _ in 0..tree_height {
                     right_tree.push_internal_level();
                 }
@@ -81,28 +81,26 @@ impl<K, V> Root<K, V> {
             // the appended elements even if advancing the iterator panicks.
             *length += 1;
         }
-        self.fix_right_edge();
+        self.fix_right_border_of_plentiful();
     }
 
-    fn fix_right_edge(&mut self) {
-        // Handle underfull nodes, start from the top.
-        let mut cur_node = self.node_as_mut();
+    /// Stock up any underfull nodes on the right border of the tree.
+    /// The other nodes, those that are not the root nor a rightmost edge,
+    /// must have MIN_LEN elements to spare.
+    fn fix_right_border_of_plentiful(&mut self) {
+        let mut cur_node = self.borrow_mut();
         while let Internal(internal) = cur_node.force() {
             // Check if right-most child is underfull.
-            let mut last_edge = internal.last_edge();
-            let right_child_len = last_edge.reborrow().descend().len();
+            let mut last_kv = internal.last_kv().consider_for_balancing();
+            debug_assert!(last_kv.left_child_len() >= MIN_LEN * 2);
+            let right_child_len = last_kv.right_child_len();
             if right_child_len < MIN_LEN {
                 // We need to steal.
-                let mut last_kv = match last_edge.left_kv() {
-                    Ok(left) => left,
-                    Err(_) => unreachable!(),
-                };
                 last_kv.bulk_steal_left(MIN_LEN - right_child_len);
-                last_edge = last_kv.right_edge();
             }
 
             // Go further down.
-            cur_node = last_edge.descend();
+            cur_node = last_kv.into_right_child();
         }
     }
 }

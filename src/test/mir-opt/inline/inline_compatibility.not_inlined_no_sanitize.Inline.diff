@@ -2,21 +2,21 @@
 + // MIR for `not_inlined_no_sanitize` after Inline
   
   fn not_inlined_no_sanitize() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/inline-compatibility.rs:29:41: 29:41
-      let _1: ();                          // in scope 0 at $DIR/inline-compatibility.rs:30:5: 30:18
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-compatibility.rs:28:41: 28:41
+      let _1: ();                          // in scope 0 at $DIR/inline-compatibility.rs:29:5: 29:18
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/inline-compatibility.rs:30:5: 30:18
-          _1 = no_sanitize() -> bb1;       // scope 0 at $DIR/inline-compatibility.rs:30:5: 30:18
+          StorageLive(_1);                 // scope 0 at $DIR/inline-compatibility.rs:29:5: 29:18
+          _1 = no_sanitize() -> bb1;       // scope 0 at $DIR/inline-compatibility.rs:29:5: 29:18
                                            // mir::Constant
-                                           // + span: $DIR/inline-compatibility.rs:30:5: 30:16
+                                           // + span: $DIR/inline-compatibility.rs:29:5: 29:16
                                            // + literal: Const { ty: unsafe fn() {no_sanitize}, val: Value(Scalar(<ZST>)) }
       }
   
       bb1: {
-          StorageDead(_1);                 // scope 0 at $DIR/inline-compatibility.rs:30:18: 30:19
-          _0 = const ();                   // scope 0 at $DIR/inline-compatibility.rs:29:41: 31:2
-          return;                          // scope 0 at $DIR/inline-compatibility.rs:31:2: 31:2
+          StorageDead(_1);                 // scope 0 at $DIR/inline-compatibility.rs:29:18: 29:19
+          _0 = const ();                   // scope 0 at $DIR/inline-compatibility.rs:28:41: 30:2
+          return;                          // scope 0 at $DIR/inline-compatibility.rs:30:2: 30:2
       }
   }
   

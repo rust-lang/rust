@@ -271,7 +271,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,fn_sig,typeck")]
     #[rustc_clean(cfg="cfail3")]
-    pub extern fn make_method_extern(&self) { }
+    pub extern "C" fn make_method_extern(&self) { }
 }
 
 

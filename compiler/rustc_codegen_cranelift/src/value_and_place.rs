@@ -455,7 +455,7 @@ impl<'tcx> CPlace<'tcx> {
             from_ty: Ty<'tcx>,
             to_ty: Ty<'tcx>,
         ) {
-            match (&from_ty.kind(), &to_ty.kind()) {
+            match (from_ty.kind(), to_ty.kind()) {
                 (ty::Ref(_, a, _), ty::Ref(_, b, _))
                 | (
                     ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
@@ -466,11 +466,11 @@ impl<'tcx> CPlace<'tcx> {
                 (ty::FnPtr(_), ty::FnPtr(_)) => {
                     let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
                         ParamEnv::reveal_all(),
-                        &from_ty.fn_sig(fx.tcx),
+                        from_ty.fn_sig(fx.tcx),
                     );
                     let to_sig = fx.tcx.normalize_erasing_late_bound_regions(
                         ParamEnv::reveal_all(),
-                        &to_ty.fn_sig(fx.tcx),
+                        to_ty.fn_sig(fx.tcx),
                     );
                     assert_eq!(
                         from_sig, to_sig,
@@ -479,18 +479,20 @@ impl<'tcx> CPlace<'tcx> {
                     );
                     // fn(&T) -> for<'l> fn(&'l T) is allowed
                 }
-                (ty::Dynamic(from_traits, _), ty::Dynamic(to_traits, _)) => {
-                    let from_traits = fx
-                        .tcx
-                        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), from_traits);
-                    let to_traits = fx
-                        .tcx
-                        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to_traits);
-                    assert_eq!(
-                        from_traits, to_traits,
-                        "Can't write trait object of incompatible traits {:?} to place with traits {:?}\n\n{:#?}",
-                        from_traits, to_traits, fx,
-                    );
+                (&ty::Dynamic(from_traits, _), &ty::Dynamic(to_traits, _)) => {
+                    for (from, to) in from_traits.iter().zip(to_traits) {
+                        let from = fx
+                            .tcx
+                            .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), from);
+                        let to = fx
+                            .tcx
+                            .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to);
+                        assert_eq!(
+                            from, to,
+                            "Can't write trait object of incompatible traits {:?} to place with traits {:?}\n\n{:#?}",
+                            from_traits, to_traits, fx,
+                        );
+                    }
                     // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
                 }
                 _ => {

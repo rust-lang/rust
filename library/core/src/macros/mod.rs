@@ -2,6 +2,7 @@
 #[macro_export]
 #[allow_internal_unstable(core_panic, const_caller_location)]
 #[stable(feature = "core", since = "1.6.0")]
+#[rustc_diagnostic_item = "core_panic_macro"]
 macro_rules! panic {
     () => (
         $crate::panic!("explicit panic")
@@ -44,7 +45,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    panic!(r#"assertion failed: `(left == right)`
+                    $crate::panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
  right: `{:?}`"#, &*left_val, &*right_val)
                 }
@@ -58,7 +59,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    panic!(r#"assertion failed: `(left == right)`
+                    $crate::panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
  right: `{:?}`: {}"#, &*left_val, &*right_val,
                            $crate::format_args!($($arg)+))
@@ -95,7 +96,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    panic!(r#"assertion failed: `(left != right)`
+                    $crate::panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
  right: `{:?}`"#, &*left_val, &*right_val)
                 }
@@ -109,7 +110,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    panic!(r#"assertion failed: `(left != right)`
+                    $crate::panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
  right: `{:?}`: {}"#, &*left_val, &*right_val,
                            $crate::format_args!($($arg)+))
@@ -162,6 +163,7 @@ macro_rules! assert_ne {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "debug_assert_macro"]
 macro_rules! debug_assert {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert!($($arg)*); })
 }
@@ -466,7 +468,7 @@ macro_rules! writeln {
 ///
 /// # Panics
 ///
-/// This will always [`panic!`]
+/// This will always [`panic!`].
 ///
 /// # Examples
 ///
@@ -500,13 +502,13 @@ macro_rules! writeln {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unreachable {
     () => ({
-        panic!("internal error: entered unreachable code")
+        $crate::panic!("internal error: entered unreachable code")
     });
     ($msg:expr $(,)?) => ({
         $crate::unreachable!("{}", $msg)
     });
     ($fmt:expr, $($arg:tt)*) => ({
-        panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
+        $crate::panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
     });
 }
 
@@ -515,15 +517,15 @@ macro_rules! unreachable {
 /// This allows your code to type-check, which is useful if you are prototyping or
 /// implementing a trait that requires multiple methods which you don't plan of using all of.
 ///
-/// The difference between `unimplemented!` and [`todo!`](macro.todo.html) is that while `todo!`
+/// The difference between `unimplemented!` and [`todo!`] is that while `todo!`
 /// conveys an intent of implementing the functionality later and the message is "not yet
 /// implemented", `unimplemented!` makes no such claims. Its message is "not implemented".
 /// Also some IDEs will mark `todo!`s.
 ///
 /// # Panics
 ///
-/// This will always [panic!](macro.panic.html) because `unimplemented!` is just a
-/// shorthand for `panic!` with a fixed, specific message.
+/// This will always [`panic!`] because `unimplemented!` is just a shorthand for `panic!` with a
+/// fixed, specific message.
 ///
 /// Like `panic!`, this macro has a second form for displaying custom values.
 ///
@@ -584,8 +586,8 @@ macro_rules! unreachable {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unimplemented {
-    () => (panic!("not implemented"));
-    ($($arg:tt)+) => (panic!("not implemented: {}", $crate::format_args!($($arg)+)));
+    () => ($crate::panic!("not implemented"));
+    ($($arg:tt)+) => ($crate::panic!("not implemented: {}", $crate::format_args!($($arg)+)));
 }
 
 /// Indicates unfinished code.
@@ -600,7 +602,7 @@ macro_rules! unimplemented {
 ///
 /// # Panics
 ///
-/// This will always [panic!](macro.panic.html)
+/// This will always [`panic!`].
 ///
 /// # Examples
 ///
@@ -645,8 +647,8 @@ macro_rules! unimplemented {
 #[macro_export]
 #[stable(feature = "todo_macro", since = "1.40.0")]
 macro_rules! todo {
-    () => (panic!("not yet implemented"));
-    ($($arg:tt)+) => (panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
+    () => ($crate::panic!("not yet implemented"));
+    ($($arg:tt)+) => ($crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
 }
 
 /// Definitions of built-in macros.
@@ -1215,6 +1217,8 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[rustc_diagnostic_item = "assert_macro"]
+    #[allow_internal_unstable(core_panic)]
     macro_rules! assert {
         ($cond:expr $(,)?) => {{ /* compiler built-in */ }};
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};

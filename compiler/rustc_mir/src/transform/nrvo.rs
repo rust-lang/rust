@@ -38,18 +38,22 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             return;
         }
 
+        let def_id = body.source.def_id();
         let returned_local = match local_eligible_for_nrvo(body) {
             Some(l) => l,
             None => {
-                debug!("`{:?}` was ineligible for NRVO", body.source.def_id());
+                debug!("`{:?}` was ineligible for NRVO", def_id);
                 return;
             }
         };
 
+        if !tcx.consider_optimizing(|| format!("RenameReturnPlace {:?}", def_id)) {
+            return;
+        }
+
         debug!(
             "`{:?}` was eligible for NRVO, making {:?} the return place",
-            body.source.def_id(),
-            returned_local
+            def_id, returned_local
         );
 
         RenameToReturnPlace { tcx, to_rename: returned_local }.visit_body(body);

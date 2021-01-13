@@ -1,6 +1,6 @@
 use crate::utils::{
-    is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet, snippet_with_macro_callsite,
-    span_lint_and_sugg,
+    differing_macro_contexts, in_macro, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet,
+    snippet_with_macro_callsite, span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -92,8 +92,11 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
                 };
 
                 let expr_err_ty = cx.typeck_results().expr_ty(err_arg);
+                let differing_contexts = differing_macro_contexts(expr.span, err_arg.span);
 
-                let origin_snippet = if err_arg.span.from_expansion() {
+                let origin_snippet = if in_macro(expr.span) && in_macro(err_arg.span) && differing_contexts {
+                    snippet(cx, err_arg.span.ctxt().outer_expn_data().call_site, "_")
+                } else if err_arg.span.from_expansion() && !in_macro(expr.span) {
                     snippet_with_macro_callsite(cx, err_arg.span, "_")
                 } else {
                     snippet(cx, err_arg.span, "_")

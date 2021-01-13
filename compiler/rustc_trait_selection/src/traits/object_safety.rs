@@ -418,11 +418,11 @@ fn virtual_call_violation_for_method<'tcx>(
     }
 
     for (i, &input_ty) in sig.skip_binder().inputs()[1..].iter().enumerate() {
-        if contains_illegal_self_type_reference(tcx, trait_def_id, input_ty) {
+        if contains_illegal_self_type_reference(tcx, trait_def_id, sig.rebind(input_ty)) {
             return Some(MethodViolationCode::ReferencesSelfInput(i));
         }
     }
-    if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output().skip_binder()) {
+    if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output()) {
         return Some(MethodViolationCode::ReferencesSelfOutput);
     }
 
@@ -446,7 +446,7 @@ fn virtual_call_violation_for_method<'tcx>(
     }
 
     let receiver_ty =
-        tcx.liberate_late_bound_regions(method.def_id, &sig.map_bound(|sig| sig.inputs()[0]));
+        tcx.liberate_late_bound_regions(method.def_id, sig.map_bound(|sig| sig.inputs()[0]));
 
     // Until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
     // However, this is already considered object-safe. We allow it as a special case here.
@@ -551,8 +551,9 @@ fn object_ty_for_trait<'tcx>(
 
     let trait_ref = ty::TraitRef::identity(tcx, trait_def_id);
 
-    let trait_predicate =
-        ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+    let trait_predicate = ty::Binder::dummy(ty::ExistentialPredicate::Trait(
+        ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
+    ));
 
     let mut associated_types = traits::supertraits(tcx, ty::Binder::dummy(trait_ref))
         .flat_map(|super_trait_ref| {
@@ -569,24 +570,19 @@ fn object_ty_for_trait<'tcx>(
     let projection_predicates = associated_types.into_iter().map(|(super_trait_ref, item)| {
         // We *can* get bound lifetimes here in cases like
         // `trait MyTrait: for<'s> OtherTrait<&'s T, Output=bool>`.
-        //
-        // binder moved to (*)...
-        let super_trait_ref = super_trait_ref.skip_binder();
-        ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
-            ty: tcx.mk_projection(item.def_id, super_trait_ref.substs),
-            item_def_id: item.def_id,
-            substs: super_trait_ref.substs,
+        super_trait_ref.map_bound(|super_trait_ref| {
+            ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
+                ty: tcx.mk_projection(item.def_id, super_trait_ref.substs),
+                item_def_id: item.def_id,
+                substs: super_trait_ref.substs,
+            })
         })
     });
 
-    let existential_predicates =
-        tcx.mk_existential_predicates(iter::once(trait_predicate).chain(projection_predicates));
+    let existential_predicates = tcx
+        .mk_poly_existential_predicates(iter::once(trait_predicate).chain(projection_predicates));
 
-    let object_ty = tcx.mk_dynamic(
-        // (*) ... binder re-introduced here
-        ty::Binder::bind(existential_predicates),
-        lifetime,
-    );
+    let object_ty = tcx.mk_dynamic(existential_predicates, lifetime);
 
     debug!("object_ty_for_trait: object_ty=`{}`", object_ty);
 
@@ -771,7 +767,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
     }
 
     impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+        type BreakTy = ();
+
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             match t.kind() {
                 ty::Param(_) => {
                     if t == self.tcx.types.self_param {
@@ -812,7 +810,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             }
         }
 
-        fn visit_const(&mut self, ct: &ty::Const<'tcx>) -> ControlFlow<()> {
+        fn visit_const(&mut self, ct: &ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             // First check if the type of this constant references `Self`.
             self.visit_ty(ct.ty)?;
 
@@ -844,7 +842,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             }
         }
 
-        fn visit_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ControlFlow<()> {
+        fn visit_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::PredicateAtom::ConstEvaluatable(def, substs) = pred.skip_binders() {
                 // FIXME(const_evaluatable_checked): We should probably deduplicate the logic for
                 // `AbstractConst`s here, it might make sense to change `ConstEvaluatable` to

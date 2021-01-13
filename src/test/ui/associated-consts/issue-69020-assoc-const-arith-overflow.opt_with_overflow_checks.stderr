@@ -1,5 +1,5 @@
 error: this arithmetic operation will overflow
-  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:29:22
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:27:22
    |
 LL |     const NEG: i32 = -i32::MIN + T::NEG;
    |                      ^^^^^^^^^ attempt to negate `i32::MIN`, which would overflow
@@ -7,25 +7,25 @@ LL |     const NEG: i32 = -i32::MIN + T::NEG;
    = note: `#[deny(arithmetic_overflow)]` on by default
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:31:35
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:29:35
    |
 LL |     const NEG_REV: i32 = T::NEG + (-i32::MIN);
    |                                   ^^^^^^^^^^^ attempt to negate `i32::MIN`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:34:22
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:32:22
    |
 LL |     const ADD: i32 = (i32::MAX+1) + T::ADD;
    |                      ^^^^^^^^^^^^ attempt to compute `i32::MAX + 1_i32`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:36:36
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:34:36
    |
 LL |     const ADD_REV: i32 =  T::ADD + (i32::MAX+1);
    |                                    ^^^^^^^^^^^^ attempt to compute `i32::MAX + 1_i32`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:39:22
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:37:22
    |
 LL |     const DIV: i32 = (1/0) + T::DIV;
    |                      ^^^^^ attempt to divide `1_i32` by zero
@@ -33,19 +33,19 @@ LL |     const DIV: i32 = (1/0) + T::DIV;
    = note: `#[deny(unconditional_panic)]` on by default
 
 error: this operation will panic at runtime
-  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:41:35
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:39:35
    |
 LL |     const DIV_REV: i32 = T::DIV + (1/0);
    |                                   ^^^^^ attempt to divide `1_i32` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:44:22
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:42:22
    |
 LL |     const OOB: i32 = [1][1] + T::OOB;
    |                      ^^^^^^ index out of bounds: the length is 1 but the index is 1
 
 error: this operation will panic at runtime
-  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:46:35
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:44:35
    |
 LL |     const OOB_REV: i32 = T::OOB + [1][1];
    |                                   ^^^^^^ index out of bounds: the length is 1 but the index is 1

@@ -1,0 +1,87 @@
+- // MIR for `wrapping` before LowerIntrinsics
++ // MIR for `wrapping` after LowerIntrinsics
+  
+  fn wrapping(_1: T, _2: T) -> () {
+      debug a => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:6:26: 6:27
+      debug b => _2;                       // in scope 0 at $DIR/lower_intrinsics.rs:6:32: 6:33
+      let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:6:38: 6:38
+      let _3: T;                           // in scope 0 at $DIR/lower_intrinsics.rs:7:9: 7:11
+      let mut _4: T;                       // in scope 0 at $DIR/lower_intrinsics.rs:7:45: 7:46
+      let mut _5: T;                       // in scope 0 at $DIR/lower_intrinsics.rs:7:48: 7:49
+      let mut _7: T;                       // in scope 0 at $DIR/lower_intrinsics.rs:8:45: 8:46
+      let mut _8: T;                       // in scope 0 at $DIR/lower_intrinsics.rs:8:48: 8:49
+      let mut _10: T;                      // in scope 0 at $DIR/lower_intrinsics.rs:9:45: 9:46
+      let mut _11: T;                      // in scope 0 at $DIR/lower_intrinsics.rs:9:48: 9:49
+      scope 1 {
+          debug _x => _3;                  // in scope 1 at $DIR/lower_intrinsics.rs:7:9: 7:11
+          let _6: T;                       // in scope 1 at $DIR/lower_intrinsics.rs:8:9: 8:11
+          scope 2 {
+              debug _y => _6;              // in scope 2 at $DIR/lower_intrinsics.rs:8:9: 8:11
+              let _9: T;                   // in scope 2 at $DIR/lower_intrinsics.rs:9:9: 9:11
+              scope 3 {
+                  debug _z => _9;          // in scope 3 at $DIR/lower_intrinsics.rs:9:9: 9:11
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:7:9: 7:11
+          StorageLive(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:7:45: 7:46
+          _4 = _1;                         // scope 0 at $DIR/lower_intrinsics.rs:7:45: 7:46
+          StorageLive(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:7:48: 7:49
+          _5 = _2;                         // scope 0 at $DIR/lower_intrinsics.rs:7:48: 7:49
+-         _3 = wrapping_add::<T>(move _4, move _5) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:7:14: 7:50
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:7:14: 7:44
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {std::intrinsics::wrapping_add::<T>}, val: Value(Scalar(<ZST>)) }
++         _3 = Add(move _4, move _5);      // scope 0 at $DIR/lower_intrinsics.rs:7:14: 7:50
++         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:7:14: 7:50
+      }
+  
+      bb1: {
+          StorageDead(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:7:49: 7:50
+          StorageDead(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:7:49: 7:50
+          StorageLive(_6);                 // scope 1 at $DIR/lower_intrinsics.rs:8:9: 8:11
+          StorageLive(_7);                 // scope 1 at $DIR/lower_intrinsics.rs:8:45: 8:46
+          _7 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:8:45: 8:46
+          StorageLive(_8);                 // scope 1 at $DIR/lower_intrinsics.rs:8:48: 8:49
+          _8 = _2;                         // scope 1 at $DIR/lower_intrinsics.rs:8:48: 8:49
+-         _6 = wrapping_sub::<T>(move _7, move _8) -> bb2; // scope 1 at $DIR/lower_intrinsics.rs:8:14: 8:50
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:8:14: 8:44
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {std::intrinsics::wrapping_sub::<T>}, val: Value(Scalar(<ZST>)) }
++         _6 = Sub(move _7, move _8);      // scope 1 at $DIR/lower_intrinsics.rs:8:14: 8:50
++         goto -> bb2;                     // scope 1 at $DIR/lower_intrinsics.rs:8:14: 8:50
+      }
+  
+      bb2: {
+          StorageDead(_8);                 // scope 1 at $DIR/lower_intrinsics.rs:8:49: 8:50
+          StorageDead(_7);                 // scope 1 at $DIR/lower_intrinsics.rs:8:49: 8:50
+          StorageLive(_9);                 // scope 2 at $DIR/lower_intrinsics.rs:9:9: 9:11
+          StorageLive(_10);                // scope 2 at $DIR/lower_intrinsics.rs:9:45: 9:46
+          _10 = _1;                        // scope 2 at $DIR/lower_intrinsics.rs:9:45: 9:46
+          StorageLive(_11);                // scope 2 at $DIR/lower_intrinsics.rs:9:48: 9:49
+          _11 = _2;                        // scope 2 at $DIR/lower_intrinsics.rs:9:48: 9:49
+-         _9 = wrapping_mul::<T>(move _10, move _11) -> bb3; // scope 2 at $DIR/lower_intrinsics.rs:9:14: 9:50
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:9:14: 9:44
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {std::intrinsics::wrapping_mul::<T>}, val: Value(Scalar(<ZST>)) }
++         _9 = Mul(move _10, move _11);    // scope 2 at $DIR/lower_intrinsics.rs:9:14: 9:50
++         goto -> bb3;                     // scope 2 at $DIR/lower_intrinsics.rs:9:14: 9:50
+      }
+  
+      bb3: {
+          StorageDead(_11);                // scope 2 at $DIR/lower_intrinsics.rs:9:49: 9:50
+          StorageDead(_10);                // scope 2 at $DIR/lower_intrinsics.rs:9:49: 9:50
+          _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:6:38: 10:2
+          StorageDead(_9);                 // scope 2 at $DIR/lower_intrinsics.rs:10:1: 10:2
+          StorageDead(_6);                 // scope 1 at $DIR/lower_intrinsics.rs:10:1: 10:2
+          StorageDead(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:10:1: 10:2
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:10:2: 10:2
+      }
+  
+      bb4 (cleanup): {
+          resume;                          // scope 0 at $DIR/lower_intrinsics.rs:6:1: 10:2
+      }
+  }
+  

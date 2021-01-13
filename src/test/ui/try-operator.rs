@@ -1,7 +1,6 @@
 // run-pass
 
 #![allow(dead_code)]
-// ignore-cloudabi no std::fs
 
 use std::fs::File;
 use std::io::{Read, self};

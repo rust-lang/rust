@@ -23,22 +23,28 @@ LL |     debug_assert_ne!(1, 2, "{}",);
    |                             ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:54:19
+  --> $DIR/macro-comma-behavior.rs:52:19
    |
 LL |     format_args!("{}",);
    |                   ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:72:21
+  --> $DIR/macro-comma-behavior.rs:68:21
    |
 LL |     unimplemented!("{}",);
    |                     ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:81:24
+  --> $DIR/macro-comma-behavior.rs:77:24
    |
 LL |             write!(f, "{}",)?;
    |                        ^^
 
-error: aborting due to 7 previous errors
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/macro-comma-behavior.rs:81:26
+   |
+LL |             writeln!(f, "{}",)?;
+   |                          ^^
+
+error: aborting due to 8 previous errors
 

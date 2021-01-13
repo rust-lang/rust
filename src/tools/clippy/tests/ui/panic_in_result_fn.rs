@@ -1,4 +1,5 @@
 #![warn(clippy::panic_in_result_fn)]
+#![allow(clippy::unnecessary_wraps)]
 
 struct A;
 

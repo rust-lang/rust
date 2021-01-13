@@ -61,12 +61,11 @@ crate fn eval_nullary_intrinsic<'tcx>(
             ConstValue::Slice { data: alloc, start: 0, end: alloc.len() }
         }
         sym::needs_drop => ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env)),
-        sym::size_of | sym::min_align_of | sym::pref_align_of => {
+        sym::min_align_of | sym::pref_align_of => {
             let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
             let n = match name {
                 sym::pref_align_of => layout.align.pref.bytes(),
                 sym::min_align_of => layout.align.abi.bytes(),
-                sym::size_of => layout.size.bytes(),
                 _ => bug!(),
             };
             ConstValue::from_machine_usize(n, &tcx)
@@ -75,13 +74,35 @@ crate fn eval_nullary_intrinsic<'tcx>(
             ensure_monomorphic_enough(tcx, tp_ty)?;
             ConstValue::from_u64(tcx.type_id_hash(tp_ty))
         }
-        sym::variant_count => {
-            if let ty::Adt(ref adt, _) = tp_ty.kind() {
-                ConstValue::from_machine_usize(adt.variants.len() as u64, &tcx)
-            } else {
-                ConstValue::from_machine_usize(0u64, &tcx)
-            }
-        }
+        sym::variant_count => match tp_ty.kind() {
+            ty::Adt(ref adt, _) => ConstValue::from_machine_usize(adt.variants.len() as u64, &tcx),
+            ty::Projection(_)
+            | ty::Opaque(_, _)
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Placeholder(_)
+            | ty::Infer(_) => throw_inval!(TooGeneric),
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Dynamic(_, _)
+            | ty::Closure(_, _)
+            | ty::Generator(_, _, _)
+            | ty::GeneratorWitness(_)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Error(_) => ConstValue::from_machine_usize(0u64, &tcx),
+        },
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
 }
@@ -103,8 +124,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let (dest, ret) = match ret {
             None => match intrinsic_name {
                 sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
-                sym::unreachable => throw_ub!(Unreachable),
-                sym::abort => M::abort(self)?,
+                sym::abort => M::abort(self, "the program aborted execution".to_owned())?,
                 // Unsupported diverging intrinsic.
                 _ => return Ok(false),
             },
@@ -121,9 +141,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             sym::min_align_of_val | sym::size_of_val => {
-                let place = self.deref_operand(args[0])?;
+                // Avoid `deref_operand` -- this is not a deref, the ptr does not have to be
+                // dereferencable!
+                let place = self.ref_to_mplace(self.read_immediate(args[0])?)?;
                 let (size, align) = self
-                    .size_and_align_of(place.meta, place.layout)?
+                    .size_and_align_of_mplace(place)?
                     .ok_or_else(|| err_unsup_format!("`extern type` does not have known layout"))?;
 
                 let result = match intrinsic_name {
@@ -138,13 +160,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::min_align_of
             | sym::pref_align_of
             | sym::needs_drop
-            | sym::size_of
             | sym::type_id
             | sym::type_name
             | sym::variant_count => {
                 let gid = GlobalId { instance, promoted: None };
                 let ty = match intrinsic_name {
-                    sym::min_align_of | sym::pref_align_of | sym::size_of | sym::variant_count => {
+                    sym::min_align_of | sym::pref_align_of | sym::variant_count => {
                         self.tcx.types.usize
                     }
                     sym::needs_drop => self.tcx.types.bool,
@@ -190,28 +211,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let out_val = numeric_intrinsic(intrinsic_name, bits, kind)?;
                 self.write_scalar(out_val, dest)?;
             }
-            sym::wrapping_add
-            | sym::wrapping_sub
-            | sym::wrapping_mul
-            | sym::add_with_overflow
-            | sym::sub_with_overflow
-            | sym::mul_with_overflow => {
+            sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                 let lhs = self.read_immediate(args[0])?;
                 let rhs = self.read_immediate(args[1])?;
-                let (bin_op, ignore_overflow) = match intrinsic_name {
-                    sym::wrapping_add => (BinOp::Add, true),
-                    sym::wrapping_sub => (BinOp::Sub, true),
-                    sym::wrapping_mul => (BinOp::Mul, true),
-                    sym::add_with_overflow => (BinOp::Add, false),
-                    sym::sub_with_overflow => (BinOp::Sub, false),
-                    sym::mul_with_overflow => (BinOp::Mul, false),
+                let bin_op = match intrinsic_name {
+                    sym::add_with_overflow => BinOp::Add,
+                    sym::sub_with_overflow => BinOp::Sub,
+                    sym::mul_with_overflow => BinOp::Mul,
                     _ => bug!("Already checked for int ops"),
                 };
-                if ignore_overflow {
-                    self.binop_ignore_overflow(bin_op, lhs, rhs, dest)?;
-                } else {
-                    self.binop_with_overflow(bin_op, lhs, rhs, dest)?;
-                }
+                self.binop_with_overflow(bin_op, lhs, rhs, dest)?;
             }
             sym::saturating_add | sym::saturating_sub => {
                 let l = self.read_immediate(args[0])?;
@@ -315,6 +324,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let result = Scalar::from_uint(truncated_bits, layout.size);
                 self.write_scalar(result, dest)?;
             }
+            sym::copy | sym::copy_nonoverlapping => {
+                let elem_ty = instance.substs.type_at(0);
+                let elem_layout = self.layout_of(elem_ty)?;
+                let count = self.read_scalar(args[2])?.to_machine_usize(self)?;
+                let elem_align = elem_layout.align.abi;
+
+                let size = elem_layout.size.checked_mul(count, self).ok_or_else(|| {
+                    err_ub_format!("overflow computing total size of `{}`", intrinsic_name)
+                })?;
+                let src = self.read_scalar(args[0])?.check_init()?;
+                let src = self.memory.check_ptr_access(src, size, elem_align)?;
+                let dest = self.read_scalar(args[1])?.check_init()?;
+                let dest = self.memory.check_ptr_access(dest, size, elem_align)?;
+
+                if let (Some(src), Some(dest)) = (src, dest) {
+                    self.memory.copy(
+                        src,
+                        dest,
+                        size,
+                        intrinsic_name == sym::copy_nonoverlapping,
+                    )?;
+                }
+            }
             sym::offset => {
                 let ptr = self.read_scalar(args[0])?.check_init()?;
                 let offset_count = self.read_scalar(args[1])?.to_machine_isize(self)?;
@@ -384,6 +416,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             sym::transmute => {
                 self.copy_op_transmute(args[0], dest)?;
+            }
+            sym::assert_inhabited => {
+                let ty = instance.substs.type_at(0);
+                let layout = self.layout_of(ty)?;
+
+                if layout.abi.is_uninhabited() {
+                    // The run-time intrinsic panics just to get a good backtrace; here we abort
+                    // since there is no problem showing a backtrace even for aborts.
+                    M::abort(
+                        self,
+                        format!(
+                            "aborted execution: attempted to instantiate uninhabited type `{}`",
+                            ty
+                        ),
+                    )?;
+                }
             }
             sym::simd_insert => {
                 let index = u64::from(self.read_scalar(args[1])?.to_u32()?);

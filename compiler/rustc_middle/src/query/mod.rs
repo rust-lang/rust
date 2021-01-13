@@ -130,8 +130,8 @@ rustc_queries! {
             storage(ArenaCacheSelector<'tcx>)
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
-                let generics: Option<ty::Generics> = tcx.queries.on_disk_cache
-                                                        .try_load_query_result(tcx, id);
+                let generics: Option<ty::Generics> = tcx.queries.on_disk_cache.as_ref()
+                                                        .and_then(|c| c.try_load_query_result(tcx, id));
                 generics
             }
         }
@@ -312,6 +312,20 @@ rustc_queries! {
             desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.did.to_def_id()) }
         }
 
+        query mir_for_ctfe(
+            key: DefId
+        ) -> &'tcx mir::Body<'tcx> {
+            desc { |tcx| "caching mir of `{}` for CTFE", tcx.def_path_str(key) }
+            cache_on_disk_if { key.is_local() }
+        }
+
+        query mir_for_ctfe_of_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::Body<'tcx> {
+            desc {
+                |tcx| "MIR for CTFE of the const argument `{}`",
+                tcx.def_path_str(key.0.to_def_id())
+            }
+        }
+
         query mir_promoted(key: ty::WithOptConstParam<LocalDefId>) ->
             (
                 &'tcx Steal<mir::Body<'tcx>>,
@@ -331,17 +345,26 @@ rustc_queries! {
             desc { |tcx| "optimizing MIR for `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
-        query optimized_mir_of_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::Body<'tcx> {
-            desc {
-                |tcx| "optimizing MIR for the const argument `{}`",
-                tcx.def_path_str(key.0.to_def_id())
-            }
-        }
 
         /// Returns coverage summary info for a function, after executing the `InstrumentCoverage`
         /// MIR pass (assuming the -Zinstrument-coverage option is enabled).
         query coverageinfo(key: DefId) -> mir::CoverageInfo {
             desc { |tcx| "retrieving coverage info from MIR for `{}`", tcx.def_path_str(key) }
+            storage(ArenaCacheSelector<'tcx>)
+            cache_on_disk_if { key.is_local() }
+        }
+
+        /// Returns the name of the file that contains the function body, if instrumented for coverage.
+        query covered_file_name(key: DefId) -> Option<Symbol> {
+            desc { |tcx| "retrieving the covered file name, if instrumented, for `{}`", tcx.def_path_str(key) }
+            storage(ArenaCacheSelector<'tcx>)
+            cache_on_disk_if { key.is_local() }
+        }
+
+        /// Returns the `CodeRegions` for a function that has instrumented coverage, in case the
+        /// function was optimized out before codegen, and before being added to the Coverage Map.
+        query covered_code_regions(key: DefId) -> Vec<&'tcx mir::coverage::CodeRegion> {
+            desc { |tcx| "retrieving the covered `CodeRegion`s, if instrumented, for `{}`", tcx.def_path_str(key) }
             storage(ArenaCacheSelector<'tcx>)
             cache_on_disk_if { key.is_local() }
         }
@@ -367,7 +390,7 @@ rustc_queries! {
 
     TypeChecking {
         /// Erases regions from `ty` to yield a new type.
-        /// Normally you would just use `tcx.erase_regions(&value)`,
+        /// Normally you would just use `tcx.erase_regions(value)`,
         /// however, which uses this query as a kind of cache.
         query erase_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
             // This query is not expected to have input -- as a result, it
@@ -561,11 +584,13 @@ rustc_queries! {
             desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
         }
 
-        query impl_trait_ref(key: DefId) -> Option<ty::TraitRef<'tcx>> {
-            desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(key) }
+        /// Given an `impl_id`, return the trait it implements.
+        /// Return `None` if this is an inherent impl.
+        query impl_trait_ref(impl_id: DefId) -> Option<ty::TraitRef<'tcx>> {
+            desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         }
-        query impl_polarity(key: DefId) -> ty::ImplPolarity {
-            desc { |tcx| "computing implementation polarity of `{}`", tcx.def_path_str(key) }
+        query impl_polarity(impl_id: DefId) -> ty::ImplPolarity {
+            desc { |tcx| "computing implementation polarity of `{}`", tcx.def_path_str(impl_id) }
         }
 
         query issue33140_self_ty(key: DefId) -> Option<ty::Ty<'tcx>> {
@@ -635,6 +660,10 @@ rustc_queries! {
             desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
         }
 
+        query check_mod_naked_functions(key: LocalDefId) -> () {
+            desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
+        }
+
         query check_mod_item_types(key: LocalDefId) -> () {
             desc { |tcx| "checking item types in {}", describe_as_module(key, tcx) }
         }
@@ -688,8 +717,8 @@ rustc_queries! {
             cache_on_disk_if { true }
             load_cached(tcx, id) {
                 let typeck_results: Option<ty::TypeckResults<'tcx>> = tcx
-                    .queries.on_disk_cache
-                    .try_load_query_result(tcx, id);
+                    .queries.on_disk_cache.as_ref()
+                    .and_then(|c| c.try_load_query_result(tcx, id));
 
                 typeck_results.map(|x| &*tcx.arena.alloc(x))
             }
@@ -898,12 +927,17 @@ rustc_queries! {
     }
 
     TypeChecking {
-        query trait_of_item(def_id: DefId) -> Option<DefId> {
-            desc { |tcx| "finding trait defining `{}`", tcx.def_path_str(def_id) }
+        /// Given an `associated_item`, find the trait it belongs to.
+        /// Return `None` if the `DefId` is not an associated item.
+        query trait_of_item(associated_item: DefId) -> Option<DefId> {
+            desc { |tcx| "finding trait defining `{}`", tcx.def_path_str(associated_item) }
         }
     }
 
     Codegen {
+        query is_ctfe_mir_available(key: DefId) -> bool {
+            desc { |tcx| "checking if item has ctfe mir available: `{}`", tcx.def_path_str(key) }
+        }
         query is_mir_available(key: DefId) -> bool {
             desc { |tcx| "checking if item has mir available: `{}`", tcx.def_path_str(key) }
         }
@@ -929,20 +963,29 @@ rustc_queries! {
     }
 
     TypeChecking {
-        query all_local_trait_impls(key: CrateNum) -> &'tcx BTreeMap<DefId, Vec<hir::HirId>> {
+        /// Return all `impl` blocks in the current crate.
+        ///
+        /// To allow caching this between crates, you must pass in [`LOCAL_CRATE`] as the crate number.
+        /// Passing in any other crate will cause an ICE.
+        ///
+        /// [`LOCAL_CRATE`]: rustc_hir::def_id::LOCAL_CRATE
+        query all_local_trait_impls(local_crate: CrateNum) -> &'tcx BTreeMap<DefId, Vec<hir::HirId>> {
             desc { "local trait impls" }
         }
-        query trait_impls_of(key: DefId) -> ty::trait_def::TraitImpls {
+
+        /// Given a trait `trait_id`, return all known `impl` blocks.
+        query trait_impls_of(trait_id: DefId) -> ty::trait_def::TraitImpls {
             storage(ArenaCacheSelector<'tcx>)
-            desc { |tcx| "trait impls of `{}`", tcx.def_path_str(key) }
+            desc { |tcx| "trait impls of `{}`", tcx.def_path_str(trait_id) }
         }
-        query specialization_graph_of(key: DefId) -> specialization_graph::Graph {
+
+        query specialization_graph_of(trait_id: DefId) -> specialization_graph::Graph {
             storage(ArenaCacheSelector<'tcx>)
-            desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(key) }
+            desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
             cache_on_disk_if { true }
         }
-        query object_safety_violations(key: DefId) -> &'tcx [traits::ObjectSafetyViolation] {
-            desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
+        query object_safety_violations(trait_id: DefId) -> &'tcx [traits::ObjectSafetyViolation] {
+            desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(trait_id) }
         }
 
         /// Gets the ParameterEnvironment for a given item; this environment
@@ -950,6 +993,7 @@ rustc_queries! {
         /// type-checking etc, and it does not normalize specializable
         /// associated types. This is almost always what you want,
         /// unless you are doing MIR optimizations, in which case you
+        /// might want to use `reveal_all()` method to change modes.
         query param_env(def_id: DefId) -> ty::ParamEnv<'tcx> {
             desc { |tcx| "computing normalized predicates of `{}`", tcx.def_path_str(def_id) }
         }
@@ -1210,10 +1254,15 @@ rustc_queries! {
     }
 
     TypeChecking {
+        /// Given a crate and a trait, look up all impls of that trait in the crate.
+        /// Return `(impl_id, self_ty)`.
         query implementations_of_trait(_: (CrateNum, DefId))
             -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
             desc { "looking up implementations of a trait in a crate" }
         }
+
+        /// Given a crate, look up all trait impls in that crate.
+        /// Return `(impl_id, self_ty)`.
         query all_trait_implementations(_: CrateNum)
             -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
             desc { "looking up all (?) trait implementations" }
@@ -1269,6 +1318,15 @@ rustc_queries! {
         query visibility(def_id: DefId) -> ty::Visibility {
             eval_always
             desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
+        }
+
+        /// Computes the set of modules from which this type is visibly uninhabited.
+        /// To check whether a type is uninhabited at all (not just from a given module), you could
+        /// check whether the forest is empty.
+        query type_uninhabited_from(
+            key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
+        ) -> ty::inhabitedness::DefIdForest {
+            desc { "computing the inhabitedness of `{:?}`", key }
         }
     }
 

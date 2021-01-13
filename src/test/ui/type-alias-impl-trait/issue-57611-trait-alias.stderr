@@ -6,6 +6,11 @@ LL |     type Bar = impl Baz<Self, Self>;
    |
    = note: expected type `FnOnce<(&X,)>`
               found type `FnOnce<(&X,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-57611-trait-alias.rs:25:9
+   |
+LL |         |x| x
+   |         ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/issue-57611-trait-alias.rs:17:16
@@ -15,6 +20,11 @@ LL |     type Bar = impl Baz<Self, Self>;
    |
    = note: expected type `for<'r> Fn<(&'r X,)>`
               found type `Fn<(&'<empty> X,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-57611-trait-alias.rs:25:9
+   |
+LL |         |x| x
+   |         ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/issue-57611-trait-alias.rs:17:16
@@ -24,6 +34,11 @@ LL |     type Bar = impl Baz<Self, Self>;
    |
    = note: expected type `FnOnce<(&X,)>`
               found type `FnOnce<(&'<empty> X,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-57611-trait-alias.rs:25:9
+   |
+LL |         |x| x
+   |         ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/issue-57611-trait-alias.rs:17:16
@@ -33,6 +48,11 @@ LL |     type Bar = impl Baz<Self, Self>;
    |
    = note: expected type `for<'r> Fn<(&'r X,)>`
               found type `Fn<(&'<empty> X,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-57611-trait-alias.rs:25:9
+   |
+LL |         |x| x
+   |         ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/issue-57611-trait-alias.rs:17:16
@@ -42,6 +62,11 @@ LL |     type Bar = impl Baz<Self, Self>;
    |
    = note: expected type `FnOnce<(&X,)>`
               found type `FnOnce<(&'<empty> X,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-57611-trait-alias.rs:25:9
+   |
+LL |         |x| x
+   |         ^^^^^
 
 error: aborting due to 5 previous errors
 

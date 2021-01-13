@@ -1071,28 +1071,28 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     }
 }
 
-pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = cstr(src)?;
-    let dst = cstr(dst)?;
-    cvt(unsafe { libc::symlink(src.as_ptr(), dst.as_ptr()) })?;
+pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
+    let original = cstr(original)?;
+    let link = cstr(link)?;
+    cvt(unsafe { libc::symlink(original.as_ptr(), link.as_ptr()) })?;
     Ok(())
 }
 
-pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = cstr(src)?;
-    let dst = cstr(dst)?;
+pub fn link(original: &Path, link: &Path) -> io::Result<()> {
+    let original = cstr(original)?;
+    let link = cstr(link)?;
     cfg_if::cfg_if! {
         if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android"))] {
             // VxWorks, Redox, and old versions of Android lack `linkat`, so use
             // `link` instead. POSIX leaves it implementation-defined whether
             // `link` follows symlinks, so rely on the `symlink_hard_link` test
             // in library/std/src/fs/tests.rs to check the behavior.
-            cvt(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })?;
+            cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
         } else {
             // Use `linkat` with `AT_FDCWD` instead of `link` as `linkat` gives
             // us a flag to specify how symlinks should be handled. Pass 0 as
             // the flags argument, meaning don't follow symlinks.
-            cvt(unsafe { libc::linkat(libc::AT_FDCWD, src.as_ptr(), libc::AT_FDCWD, dst.as_ptr(), 0) })?;
+            cvt(unsafe { libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0) })?;
         }
     }
     Ok(())
@@ -1204,88 +1204,20 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    use crate::cmp;
-    use crate::sync::atomic::{AtomicBool, Ordering};
-
-    // Kernel prior to 4.5 don't have copy_file_range
-    // We store the availability in a global to avoid unnecessary syscalls
-    static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
-
-    unsafe fn copy_file_range(
-        fd_in: libc::c_int,
-        off_in: *mut libc::loff_t,
-        fd_out: libc::c_int,
-        off_out: *mut libc::loff_t,
-        len: libc::size_t,
-        flags: libc::c_uint,
-    ) -> libc::c_long {
-        libc::syscall(libc::SYS_copy_file_range, fd_in, off_in, fd_out, off_out, len, flags)
-    }
-
     let (mut reader, reader_metadata) = open_from(from)?;
     let max_len = u64::MAX;
     let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
 
-    let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
-    let mut written = 0u64;
-    while written < max_len {
-        let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64) as usize;
-            let copy_result = unsafe {
-                // We actually don't have to adjust the offsets,
-                // because copy_file_range adjusts the file offset automatically
-                cvt(copy_file_range(
-                    reader.as_raw_fd(),
-                    ptr::null_mut(),
-                    writer.as_raw_fd(),
-                    ptr::null_mut(),
-                    bytes_to_copy,
-                    0,
-                ))
-            };
-            if let Err(ref copy_err) = copy_result {
-                match copy_err.raw_os_error() {
-                    Some(libc::ENOSYS | libc::EPERM | libc::EOPNOTSUPP) => {
-                        HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
-                    }
-                    _ => {}
-                }
-            }
-            copy_result
-        } else {
-            Err(io::Error::from_raw_os_error(libc::ENOSYS))
-        };
-        match copy_result {
-            Ok(0) if written == 0 => {
-                // fallback to work around several kernel bugs where copy_file_range will fail to
-                // copy any bytes and return 0 instead of an error if
-                // - reading virtual files from the proc filesystem which appear to have 0 size
-                //   but are not empty. noted in coreutils to affect kernels at least up to 5.6.19.
-                // - copying from an overlay filesystem in docker. reported to occur on fedora 32.
-                return io::copy(&mut reader, &mut writer);
-            }
-            Ok(0) => return Ok(written), // reached EOF
-            Ok(ret) => written += ret as u64,
-            Err(err) => {
-                match err.raw_os_error() {
-                    Some(
-                        libc::ENOSYS | libc::EXDEV | libc::EINVAL | libc::EPERM | libc::EOPNOTSUPP,
-                    ) => {
-                        // Try fallback io::copy if either:
-                        // - Kernel version is < 4.5 (ENOSYS)
-                        // - Files are mounted on different fs (EXDEV)
-                        // - copy_file_range is broken in various ways on RHEL/CentOS 7 (EOPNOTSUPP)
-                        // - copy_file_range is disallowed, for example by seccomp (EPERM)
-                        // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
-                        assert_eq!(written, 0);
-                        return io::copy(&mut reader, &mut writer);
-                    }
-                    _ => return Err(err),
-                }
-            }
-        }
+    use super::kernel_copy::{copy_regular_files, CopyResult};
+
+    match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
+        CopyResult::Ended(bytes) => Ok(bytes),
+        CopyResult::Error(e, _) => Err(e),
+        CopyResult::Fallback(written) => match io::copy::generic_copy(&mut reader, &mut writer) {
+            Ok(bytes) => Ok(bytes + written),
+            Err(e) => Err(e),
+        },
     }
-    Ok(written)
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]

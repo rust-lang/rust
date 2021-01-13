@@ -133,7 +133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .replace_bound_vars_with_fresh_vars(
                             call_expr.span,
                             infer::FnCall,
-                            &closure_sig,
+                            closure_sig,
                         )
                         .0;
                     let adjustments = self.adjust_steps(autoderef);
@@ -290,16 +290,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::FnPtr(sig) => (sig, None),
             ref t => {
                 let mut unit_variant = None;
-                if let &ty::Adt(adt_def, ..) = t {
+                if let ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
-                        if let hir::ExprKind::Call(ref expr, _) = call_expr.kind {
+                        if let hir::ExprKind::Call(expr, _) = call_expr.kind {
                             unit_variant =
                                 self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
                         }
                     }
                 }
 
-                if let hir::ExprKind::Call(ref callee, _) = call_expr.kind {
+                if let hir::ExprKind::Call(callee, _) = call_expr.kind {
                     let mut err = type_error_struct!(
                         self.tcx.sess,
                         callee.span,
@@ -389,7 +389,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // In that case, we check each argument against "error" in order to
                 // set up all the node type bindings.
                 (
-                    ty::Binder::bind(self.tcx.mk_fn_sig(
+                    ty::Binder::dummy(self.tcx.mk_fn_sig(
                         self.err_args(arg_exprs.len()).into_iter(),
                         self.tcx.ty_error(),
                         false,
@@ -407,8 +407,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
         let fn_sig =
-            self.replace_bound_vars_with_fresh_vars(call_expr.span, infer::FnCall, &fn_sig).0;
-        let fn_sig = self.normalize_associated_types_in(call_expr.span, &fn_sig);
+            self.replace_bound_vars_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig).0;
+        let fn_sig = self.normalize_associated_types_in(call_expr.span, fn_sig);
 
         // Call the generic checker.
         let expected_arg_tys = self.expected_inputs_for_expected_output(

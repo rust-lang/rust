@@ -6,6 +6,18 @@ LL | #[rustc_args_required_const(0usize)]
    |
    = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 
+error: malformed `rustc_args_required_const` attribute input
+  --> $DIR/invalid-rustc_args_required_const-arguments.rs:26:1
+   |
+LL | #[rustc_args_required_const]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_args_required_const(N)]`
+
+error: malformed `rustc_args_required_const` attribute input
+  --> $DIR/invalid-rustc_args_required_const-arguments.rs:29:1
+   |
+LL | #[rustc_args_required_const = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_args_required_const(N)]`
+
 error: index exceeds number of arguments
   --> $DIR/invalid-rustc_args_required_const-arguments.rs:3:29
    |
@@ -44,5 +56,5 @@ error: index exceeds number of arguments
 LL |     #[rustc_args_required_const(1)]
    |                                 ^ there is only 1 argument
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 

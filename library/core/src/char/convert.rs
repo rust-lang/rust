@@ -47,6 +47,7 @@ use super::MAX;
 ///
 /// assert_eq!(None, c);
 /// ```
+#[doc(alias = "chr")]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_u32(i: u32) -> Option<char> {
@@ -109,6 +110,48 @@ impl From<char> for u32 {
     #[inline]
     fn from(c: char) -> Self {
         c as u32
+    }
+}
+
+#[stable(feature = "more_char_conversions", since = "1.51.0")]
+impl From<char> for u64 {
+    /// Converts a [`char`] into a [`u64`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::mem;
+    ///
+    /// let c = '👤';
+    /// let u = u64::from(c);
+    /// assert!(8 == mem::size_of_val(&u))
+    /// ```
+    #[inline]
+    fn from(c: char) -> Self {
+        // The char is casted to the value of the code point, then zero-extended to 64 bit.
+        // See [https://doc.rust-lang.org/reference/expressions/operator-expr.html#semantics]
+        c as u64
+    }
+}
+
+#[stable(feature = "more_char_conversions", since = "1.51.0")]
+impl From<char> for u128 {
+    /// Converts a [`char`] into a [`u128`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::mem;
+    ///
+    /// let c = '⚙';
+    /// let u = u128::from(c);
+    /// assert!(16 == mem::size_of_val(&u))
+    /// ```
+    #[inline]
+    fn from(c: char) -> Self {
+        // The char is casted to the value of the code point, then zero-extended to 128 bit.
+        // See [https://doc.rust-lang.org/reference/expressions/operator-expr.html#semantics]
+        c as u128
     }
 }
 

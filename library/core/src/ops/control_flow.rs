@@ -56,6 +56,20 @@ impl<B, C> ControlFlow<B, C> {
             ControlFlow::Break(x) => Some(x),
         }
     }
+
+    /// Maps `ControlFlow<B, C>` to `ControlFlow<T, C>` by applying a function
+    /// to the break value in case it exists.
+    #[inline]
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    pub fn map_break<T, F>(self, f: F) -> ControlFlow<T, C>
+    where
+        F: FnOnce(B) -> T,
+    {
+        match self {
+            ControlFlow::Continue(x) => ControlFlow::Continue(x),
+            ControlFlow::Break(x) => ControlFlow::Break(f(x)),
+        }
+    }
 }
 
 impl<R: Try> ControlFlow<R, R::Ok> {

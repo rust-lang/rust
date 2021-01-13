@@ -345,9 +345,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         match tcx.hir().get_if_local(def_id) {
             Some(Node::ImplItem(ImplItem { ident, hir_id, .. })) => {
                 match tcx.hir().find(tcx.hir().get_parent_item(*hir_id)) {
-                    Some(Node::Item(Item { kind: ItemKind::Impl { self_ty, .. }, .. })) => {
-                        Some((*ident, self_ty))
-                    }
+                    Some(Node::Item(Item {
+                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
+                        ..
+                    })) => Some((*ident, self_ty)),
                     _ => None,
                 }
             }
@@ -367,7 +368,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                                 let impl_did = tcx.hir().local_def_id(*impl_node);
                                 match tcx.hir().get_if_local(impl_did.to_def_id()) {
                                     Some(Node::Item(Item {
-                                        kind: ItemKind::Impl { self_ty, .. },
+                                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
                                         ..
                                     })) if trait_objects.iter().all(|did| {
                                         // FIXME: we should check `self_ty` against the receiver
@@ -414,7 +415,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             tcx,
             ctxt.param_env,
             ctxt.assoc_item.def_id,
-            self.infcx.resolve_vars_if_possible(&ctxt.substs),
+            self.infcx.resolve_vars_if_possible(ctxt.substs),
         ) {
             Ok(Some(instance)) => instance,
             _ => return false,
@@ -474,7 +475,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 struct TraitObjectVisitor(Vec<DefId>);
 
 impl TypeVisitor<'_> for TraitObjectVisitor {
-    fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<()> {
+    fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Dynamic(preds, RegionKind::ReStatic) => {
                 if let Some(def_id) = preds.principal_def_id() {

@@ -80,10 +80,10 @@ struct ImplWfCheck<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        if let hir::ItemKind::Impl { ref items, .. } = item.kind {
+        if let hir::ItemKind::Impl(ref impl_) = item.kind {
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
-            enforce_impl_params_are_constrained(self.tcx, impl_def_id, items);
-            enforce_impl_items_are_distinct(self.tcx, items);
+            enforce_impl_params_are_constrained(self.tcx, impl_def_id, impl_.items);
+            enforce_impl_items_are_distinct(self.tcx, impl_.items);
             if self.min_specialization {
                 check_min_specialization(self.tcx, impl_def_id.to_def_id(), item.span);
             }
@@ -93,6 +93,8 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
     fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem<'tcx>) {}
 
     fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem<'tcx>) {}
+
+    fn visit_foreign_item(&mut self, _foreign_item: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
 fn enforce_impl_params_are_constrained(

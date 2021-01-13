@@ -11,6 +11,7 @@ use core::str::FromStr;
 #[macro_use]
 mod int_macros;
 
+mod i128;
 mod i16;
 mod i32;
 mod i64;
@@ -19,6 +20,7 @@ mod i8;
 #[macro_use]
 mod uint_macros;
 
+mod u128;
 mod u16;
 mod u32;
 mod u64;

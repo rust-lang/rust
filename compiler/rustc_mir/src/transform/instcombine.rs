@@ -29,8 +29,10 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
             optimization_finder.optimizations
         };
 
-        // Then carry out those optimizations.
-        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
+        if !optimizations.is_empty() {
+            // Then carry out those optimizations.
+            MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
+        }
     }
 }
 
@@ -39,13 +41,21 @@ pub struct InstCombineVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
+impl<'tcx> InstCombineVisitor<'tcx> {
+    fn should_combine(&self, rvalue: &Rvalue<'tcx>, location: Location) -> bool {
+        self.tcx.consider_optimizing(|| {
+            format!("InstCombine - Rvalue: {:?} Location: {:?}", rvalue, location)
+        })
+    }
+}
+
 impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        if self.optimizations.and_stars.remove(&location) {
+        if self.optimizations.and_stars.remove(&location) && self.should_combine(rvalue, location) {
             debug!("replacing `&*`: {:?}", rvalue);
             let new_place = match rvalue {
                 Rvalue::Ref(_, _, place) => {
@@ -67,21 +77,27 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
-            debug!("replacing `Len([_; N])`: {:?}", rvalue);
-            *rvalue = Rvalue::Use(Operand::Constant(box constant));
+            if self.should_combine(rvalue, location) {
+                debug!("replacing `Len([_; N])`: {:?}", rvalue);
+                *rvalue = Rvalue::Use(Operand::Constant(box constant));
+            }
         }
 
         if let Some(operand) = self.optimizations.unneeded_equality_comparison.remove(&location) {
-            debug!("replacing {:?} with {:?}", rvalue, operand);
-            *rvalue = Rvalue::Use(operand);
+            if self.should_combine(rvalue, location) {
+                debug!("replacing {:?} with {:?}", rvalue, operand);
+                *rvalue = Rvalue::Use(operand);
+            }
         }
 
         if let Some(place) = self.optimizations.unneeded_deref.remove(&location) {
-            debug!("unneeded_deref: replacing {:?} with {:?}", rvalue, place);
-            *rvalue = Rvalue::Use(Operand::Copy(place));
+            if self.should_combine(rvalue, location) {
+                debug!("unneeded_deref: replacing {:?} with {:?}", rvalue, place);
+                *rvalue = Rvalue::Use(Operand::Copy(place));
+            }
         }
 
-        self.super_rvalue(rvalue, location)
+        // We do not call super_rvalue as we are not interested in any other parts of the tree
     }
 }
 
@@ -285,7 +301,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 
         self.find_unneeded_equality_comparison(rvalue, location);
 
-        self.super_rvalue(rvalue, location)
+        // We do not call super_rvalue as we are not interested in any other parts of the tree
     }
 }
 
@@ -295,4 +311,22 @@ struct OptimizationList<'tcx> {
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
     unneeded_equality_comparison: FxHashMap<Location, Operand<'tcx>>,
     unneeded_deref: FxHashMap<Location, Place<'tcx>>,
+}
+
+impl<'tcx> OptimizationList<'tcx> {
+    fn is_empty(&self) -> bool {
+        match self {
+            OptimizationList {
+                and_stars,
+                arrays_lengths,
+                unneeded_equality_comparison,
+                unneeded_deref,
+            } => {
+                and_stars.is_empty()
+                    && arrays_lengths.is_empty()
+                    && unneeded_equality_comparison.is_empty()
+                    && unneeded_deref.is_empty()
+            }
+        }
+    }
 }

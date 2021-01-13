@@ -179,9 +179,10 @@ macro_rules! options {
     {
         let mut op = $defaultfn();
         for option in matches.opt_strs($prefix) {
-            let mut iter = option.splitn(2, '=');
-            let key = iter.next().unwrap();
-            let value = iter.next();
+            let (key, value) = match option.split_once('=') {
+                None => (option, None),
+                Some((k, v)) => (k.to_string(), Some(v)),
+            };
             let option_to_lookup = key.replace("-", "_");
             let mut found = false;
             for &(candidate, setter, type_desc, _) in $stat {
@@ -268,6 +269,7 @@ macro_rules! options {
         pub const parse_switch_with_opt_path: &str =
             "an optional path to the profiling data output directory";
         pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
+        pub const parse_split_dwarf_kind: &str = "one of: `none`, `single` or `split`";
         pub const parse_symbol_mangling_version: &str = "either `legacy` or `v0` (RFC 2603)";
         pub const parse_src_file_hash: &str = "either `md5` or `sha1`";
         pub const parse_relocation_model: &str =
@@ -277,6 +279,7 @@ macro_rules! options {
         pub const parse_tls_model: &str =
             "one of supported TLS models (`rustc --print tls-models`)";
         pub const parse_target_feature: &str = parse_string;
+        pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     }
 
     #[allow(dead_code)]
@@ -675,13 +678,26 @@ macro_rules! options {
             true
         }
 
-        fn parse_symbol_mangling_version(
-            slot: &mut SymbolManglingVersion,
+        fn parse_split_dwarf_kind(
+            slot: &mut SplitDwarfKind,
             v: Option<&str>,
         ) -> bool {
             *slot = match v {
-                Some("legacy") => SymbolManglingVersion::Legacy,
-                Some("v0") => SymbolManglingVersion::V0,
+                Some("none") => SplitDwarfKind::None,
+                Some("split") => SplitDwarfKind::Split,
+                Some("single") => SplitDwarfKind::Single,
+                _ => return false,
+            };
+            true
+        }
+
+        fn parse_symbol_mangling_version(
+            slot: &mut Option<SymbolManglingVersion>,
+            v: Option<&str>,
+        ) -> bool {
+            *slot = match v {
+                Some("legacy") => Some(SymbolManglingVersion::Legacy),
+                Some("v0") => Some(SymbolManglingVersion::V0),
                 _ => return false,
             };
             true
@@ -706,6 +722,15 @@ macro_rules! options {
                 }
                 None => false,
             }
+        }
+
+        fn parse_wasi_exec_model(slot: &mut Option<WasiExecModel>, v: Option<&str>) -> bool {
+            match v {
+                Some("command")  => *slot = Some(WasiExecModel::Command),
+                Some("reactor") => *slot = Some(WasiExecModel::Reactor),
+                _ => return false,
+            }
+            true
         }
     }
 ) }
@@ -900,7 +925,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "emits a future-incompatibility report for lints (RFC 2834)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
-    fewer_names: bool = (false, parse_bool, [TRACKED],
+    fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
     force_overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -945,8 +970,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`, \
         and is mutually exclusive with `-C profile-generate`/`-C profile-use`); \
-        implies `-C link-dead-code` (unless targeting MSVC, or explicitly disabled) \
-        and `-Z symbol-mangling-version=v0`; disables/overrides some Rust \
+        implies `-Z symbol-mangling-version=v0`; disables/overrides some Rust \
         optimizations (default: no)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
@@ -996,6 +1020,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)"),
     no_profiler_runtime: bool = (false, parse_no_flag, [TRACKED],
         "prevent automatic injection of the profiler_builtins crate"),
+    normalize_docs: bool = (false, parse_bool, [TRACKED],
+        "normalize associated items in rustdoc when generating documentation"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
@@ -1008,7 +1034,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled)"),
-    polonius: bool = (false, parse_bool, [UNTRACKED],
+    polonius: bool = (false, parse_bool, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     polymorphize: bool = (false, parse_bool, [TRACKED],
           "perform polymorphization analysis"),
@@ -1086,9 +1112,14 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
-    symbol_mangling_version: SymbolManglingVersion = (SymbolManglingVersion::Legacy,
+    split_dwarf: SplitDwarfKind = (SplitDwarfKind::None, parse_split_dwarf_kind, [UNTRACKED],
+        "enable generation of split dwarf"),
+    split_dwarf_inlining: bool = (true, parse_bool, [UNTRACKED],
+        "provide minimal debug info in the object/executable to facilitate online \
+         symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),
+    symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
-        "which mangling version to use for symbol names"),
+        "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),
     terminal_width: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
@@ -1113,6 +1144,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "choose the TLS model to use (`rustc --print tls-models` for details)"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
         "for every macro invocation, print its name and arguments (default: no)"),
+    trap_unreachable: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "generate trap instructions for unreachable intrinsics (default: use target setting, usually yes)"),
     treat_err_as_bug: Option<usize> = (None, parse_treat_err_as_bug, [TRACKED],
         "treat error number `val` that occurs as bug"),
     trim_diagnostic_paths: bool = (true, parse_bool, [UNTRACKED],
@@ -1143,9 +1176,17 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "in general, enable more debug printouts (default: no)"),
     verify_llvm_ir: bool = (false, parse_bool, [TRACKED],
         "verify LLVM IR (default: no)"),
+    wasi_exec_model: Option<WasiExecModel> = (None, parse_wasi_exec_model, [TRACKED],
+        "whether to build a wasi command or reactor"),
 
     // This list is in alphabetical order.
     //
     // If you add a new option, please update:
-    // - src/librustc_interface/tests.rs
+    // - compiler/rustc_interface/src/tests.rs
+}
+
+#[derive(Clone, Hash)]
+pub enum WasiExecModel {
+    Command,
+    Reactor,
 }

@@ -46,6 +46,10 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
         let should_cleanup = !opts_to_apply.is_empty();
 
         for opt_to_apply in opts_to_apply {
+            if !tcx.consider_optimizing(|| format!("EarlyOtherwiseBranch {:?}", &opt_to_apply)) {
+                break;
+            }
+
             trace!("SUCCESS: found optimization possibility to apply: {:?}", &opt_to_apply);
 
             let statements_before =
@@ -212,9 +216,10 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
         let discr = self.find_switch_discriminant_info(bb, switch)?;
 
         // go through each target, finding a discriminant read, and a switch
-        let results = discr.targets_with_values.iter().map(|(value, target)| {
-            self.find_discriminant_switch_pairing(&discr, target.clone(), value.clone())
-        });
+        let results = discr
+            .targets_with_values
+            .iter()
+            .map(|(value, target)| self.find_discriminant_switch_pairing(&discr, *target, *value));
 
         // if the optimization did not apply for one of the targets, then abort
         if results.clone().any(|x| x.is_none()) || results.len() == 0 {
@@ -276,6 +281,33 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                 trace!(
                     "NO: The second switch did not have only 1 target (besides otherwise) that had the same value as the value from the first switch that got us here"
                 );
+                return None;
+            }
+
+            // when the second place is a projection of the first one, it's not safe to calculate their discriminant values sequentially.
+            // for example, this should not be optimized:
+            //
+            // ```rust
+            // enum E<'a> { Empty, Some(&'a E<'a>), }
+            // let Some(Some(_)) = e;
+            // ```
+            //
+            // ```mir
+            // bb0: {
+            //   _2 = discriminant(*_1)
+            //   switchInt(_2) -> [...]
+            // }
+            // bb1: {
+            //   _3 = discriminant(*(((*_1) as Some).0: &E))
+            //   switchInt(_3) -> [...]
+            // }
+            // ```
+            let discr_place = discr_info.place_of_adt_discr_read;
+            let this_discr_place = this_bb_discr_info.place_of_adt_discr_read;
+            if discr_place.local == this_discr_place.local
+                && this_discr_place.projection.starts_with(discr_place.projection)
+            {
+                trace!("NO: one target is the projection of another");
                 return None;
             }
 

@@ -13,12 +13,12 @@ pub fn inject(
     resolver: &mut dyn ResolverExpand,
     sess: &Session,
     alt_std_name: Option<Symbol>,
-) -> (ast::Crate, Option<Symbol>) {
+) -> ast::Crate {
     let rust_2018 = sess.parse_sess.edition >= Edition::Edition2018;
 
     // the first name in this list is the crate name of the crate with the prelude
     let names: &[Symbol] = if sess.contains_name(&krate.attrs, sym::no_core) {
-        return (krate, None);
+        return krate;
     } else if sess.contains_name(&krate.attrs, sym::no_std) {
         if sess.contains_name(&krate.attrs, sym::compiler_builtins) {
             &[sym::core]
@@ -81,5 +81,5 @@ pub fn inject(
 
     krate.module.items.insert(0, use_item);
 
-    (krate, Some(name))
+    krate
 }

@@ -28,7 +28,7 @@ LL | use foo2::Bar;
    |
 
 error[E0573]: expected type, found function `Bar`
-  --> $DIR/privacy-ns2.rs:43:14
+  --> $DIR/privacy-ns2.rs:42:14
    |
 LL |     let _x : Bar();
    |              ^^^^^ not a type
@@ -43,66 +43,54 @@ LL | use foo1::Bar;
    |
 
 error[E0603]: trait `Bar` is private
-  --> $DIR/privacy-ns2.rs:63:15
+  --> $DIR/privacy-ns2.rs:61:15
    |
 LL |     use foo3::Bar;
    |               ^^^ private trait
    |
 note: the trait `Bar` is defined here
-  --> $DIR/privacy-ns2.rs:55:5
+  --> $DIR/privacy-ns2.rs:53:5
    |
 LL |     trait Bar {
    |     ^^^^^^^^^
 
 error[E0603]: trait `Bar` is private
-  --> $DIR/privacy-ns2.rs:67:15
+  --> $DIR/privacy-ns2.rs:65:15
    |
 LL |     use foo3::Bar;
    |               ^^^ private trait
    |
 note: the trait `Bar` is defined here
-  --> $DIR/privacy-ns2.rs:55:5
+  --> $DIR/privacy-ns2.rs:53:5
    |
 LL |     trait Bar {
    |     ^^^^^^^^^
 
 error[E0603]: trait `Bar` is private
-  --> $DIR/privacy-ns2.rs:74:16
+  --> $DIR/privacy-ns2.rs:72:16
    |
 LL |     use foo3::{Bar,Baz};
    |                ^^^ private trait
    |
 note: the trait `Bar` is defined here
-  --> $DIR/privacy-ns2.rs:55:5
+  --> $DIR/privacy-ns2.rs:53:5
    |
 LL |     trait Bar {
    |     ^^^^^^^^^
 
-error[E0107]: wrong number of const arguments: expected 0, found 1
+error[E0747]: constant provided when a type was expected
   --> $DIR/privacy-ns2.rs:41:18
    |
 LL |     let _x : Box<Bar>;
-   |                  ^^^ unexpected const argument
+   |                  ^^^
 
-error[E0107]: wrong number of type arguments: expected at least 1, found 0
-  --> $DIR/privacy-ns2.rs:41:14
-   |
-LL |     let _x : Box<Bar>;
-   |              ^^^^^^^^ expected at least 1 type argument
-
-error[E0107]: wrong number of const arguments: expected 0, found 1
-  --> $DIR/privacy-ns2.rs:49:17
+error[E0747]: constant provided when a type was expected
+  --> $DIR/privacy-ns2.rs:48:17
    |
 LL |     let _x: Box<Bar>;
-   |                 ^^^ unexpected const argument
+   |                 ^^^
 
-error[E0107]: wrong number of type arguments: expected at least 1, found 0
-  --> $DIR/privacy-ns2.rs:49:13
-   |
-LL |     let _x: Box<Bar>;
-   |             ^^^^^^^^ expected at least 1 type argument
+error: aborting due to 8 previous errors
 
-error: aborting due to 10 previous errors
-
-Some errors have detailed explanations: E0107, E0423, E0573, E0603.
-For more information about an error, try `rustc --explain E0107`.
+Some errors have detailed explanations: E0423, E0573, E0603, E0747.
+For more information about an error, try `rustc --explain E0423`.

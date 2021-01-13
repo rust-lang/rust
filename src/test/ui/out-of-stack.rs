@@ -3,7 +3,6 @@
 #![allow(unused_must_use)]
 #![allow(unconditional_recursion)]
 // ignore-android: FIXME (#20004)
-// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
 

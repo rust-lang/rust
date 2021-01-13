@@ -87,3 +87,24 @@ pub fn h() {}
 /// <!--
 //~^ ERROR Unclosed HTML comment
 pub fn i() {}
+
+/// hello
+///
+/// ```
+/// uiapp.run(&env::args().collect::<Vec<_>>());
+/// ```
+pub fn j() {}
+
+// Check that nested codeblocks are working as well
+/// hello
+///
+/// ``````markdown
+/// normal markdown
+///
+/// ```
+/// uiapp.run(&env::args().collect::<Vec<_>>());
+/// ```
+///
+/// <Vec<_> shouldn't warn!
+/// ``````
+pub fn k() {}

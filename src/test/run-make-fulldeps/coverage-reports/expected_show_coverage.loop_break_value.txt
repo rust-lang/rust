@@ -1,0 +1,14 @@
+    1|       |#![allow(unused_assignments, unused_variables)]
+    2|       |
+    3|      1|fn main() {
+    4|      1|    let result
+    5|      1|        =
+    6|      1|            loop
+    7|      1|        {
+    8|      1|            break
+    9|      1|            10
+   10|      1|            ;
+   11|      1|        }
+   12|      1|    ;
+   13|      1|}
+

@@ -348,11 +348,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 8 {
+        if major >= 9 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=8.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=9.0\n\n", version)
 }
 
 fn configure_cmake(
@@ -802,6 +802,7 @@ fn supported_sanitizers(
     };
 
     match &*target.triple {
+        "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "aarch64-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
         "aarch64-unknown-linux-gnu" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan"])

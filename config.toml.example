@@ -426,6 +426,14 @@ changelog-seen = 2
 # FIXME(#61117): Some tests fail when this option is enabled.
 #debuginfo-level-tests = 0
 
+# Whether to run `dsymutil` on Apple platforms to gather debug info into .dSYM
+# bundles. `dsymutil` adds time to builds for no clear benefit, and also makes
+# it more difficult for debuggers to find debug info. The compiler currently
+# defaults to running `dsymutil` to preserve its historical default, but when
+# compiling the compiler itself, we skip it by default since we know it's safe
+# to do so in that case.
+#run-dsymutil = false
+
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 
@@ -445,6 +453,11 @@ changelog-seen = 2
 # allow using stable features, whereas the nightly and dev channels allow using
 # nightly features
 #channel = "dev"
+
+# A descriptive string to be appended to `rustc --version` output, which is
+# also used in places like debuginfo `DW_AT_producer`. This may be useful for
+# supplementary build information, like distro-specific package versions.
+#description = ""
 
 # The root location of the musl installation directory.
 #musl-root = "..."
@@ -656,3 +669,7 @@ changelog-seen = 2
 
 # Whether to allow failures when building tools
 #missing-tools = false
+
+# List of compression formats to use when generating dist tarballs. The list of
+# formats is provided to rust-installer, which must support all of them.
+#compression-formats = ["gz", "xz"]

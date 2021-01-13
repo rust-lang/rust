@@ -1,5 +1,5 @@
 error: `panic` should not be present in production code
-  --> $DIR/panicking_macros.rs:6:5
+  --> $DIR/panicking_macros.rs:8:5
    |
 LL |     panic!();
    |     ^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     panic!();
    = note: `-D clippy::panic` implied by `-D warnings`
 
 error: `panic` should not be present in production code
-  --> $DIR/panicking_macros.rs:7:5
+  --> $DIR/panicking_macros.rs:9:5
    |
 LL |     panic!("message");
    |     ^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     panic!("message");
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `panic` should not be present in production code
-  --> $DIR/panicking_macros.rs:8:5
+  --> $DIR/panicking_macros.rs:10:5
    |
 LL |     panic!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     panic!("{} {}", "panic with", "multiple arguments");
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `todo` should not be present in production code
-  --> $DIR/panicking_macros.rs:14:5
+  --> $DIR/panicking_macros.rs:16:5
    |
 LL |     todo!();
    |     ^^^^^^^^
@@ -31,19 +31,19 @@ LL |     todo!();
    = note: `-D clippy::todo` implied by `-D warnings`
 
 error: `todo` should not be present in production code
-  --> $DIR/panicking_macros.rs:15:5
+  --> $DIR/panicking_macros.rs:17:5
    |
 LL |     todo!("message");
    |     ^^^^^^^^^^^^^^^^^
 
 error: `todo` should not be present in production code
-  --> $DIR/panicking_macros.rs:16:5
+  --> $DIR/panicking_macros.rs:18:5
    |
 LL |     todo!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `unimplemented` should not be present in production code
-  --> $DIR/panicking_macros.rs:22:5
+  --> $DIR/panicking_macros.rs:24:5
    |
 LL |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^^
@@ -51,38 +51,62 @@ LL |     unimplemented!();
    = note: `-D clippy::unimplemented` implied by `-D warnings`
 
 error: `unimplemented` should not be present in production code
-  --> $DIR/panicking_macros.rs:23:5
+  --> $DIR/panicking_macros.rs:25:5
    |
 LL |     unimplemented!("message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `unimplemented` should not be present in production code
-  --> $DIR/panicking_macros.rs:24:5
+  --> $DIR/panicking_macros.rs:26:5
    |
 LL |     unimplemented!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `unreachable` should not be present in production code
-  --> $DIR/panicking_macros.rs:30:5
+error: usage of the `unreachable!` macro
+  --> $DIR/panicking_macros.rs:32:5
    |
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unreachable` implied by `-D warnings`
 
-error: `unreachable` should not be present in production code
-  --> $DIR/panicking_macros.rs:31:5
+error: usage of the `unreachable!` macro
+  --> $DIR/panicking_macros.rs:33:5
    |
 LL |     unreachable!("message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `unreachable` should not be present in production code
-  --> $DIR/panicking_macros.rs:32:5
+error: usage of the `unreachable!` macro
+  --> $DIR/panicking_macros.rs:34:5
    |
 LL |     unreachable!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: `panic` should not be present in production code
+  --> $DIR/panicking_macros.rs:40:5
+   |
+LL |     panic!();
+   |     ^^^^^^^^^
+
+error: `todo` should not be present in production code
+  --> $DIR/panicking_macros.rs:41:5
+   |
+LL |     todo!();
+   |     ^^^^^^^^
+
+error: `unimplemented` should not be present in production code
+  --> $DIR/panicking_macros.rs:42:5
+   |
+LL |     unimplemented!();
+   |     ^^^^^^^^^^^^^^^^^
+
+error: usage of the `unreachable!` macro
+  --> $DIR/panicking_macros.rs:43:5
+   |
+LL |     unreachable!();
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
 

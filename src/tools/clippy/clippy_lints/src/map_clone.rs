@@ -8,13 +8,15 @@ use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `iterator.map(|x| x.clone())` and suggests
-    /// `iterator.cloned()` instead
+    /// **What it does:** Checks for usage of `map(|x| x.clone())` or
+    /// dereferencing closures for `Copy` types, on `Iterator` or `Option`,
+    /// and suggests `cloned()` or `copied()` instead
     ///
     /// **Why is this bad?** Readability, this can be written more concisely
     ///
@@ -75,14 +77,19 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                                     }
                                 }
                             },
-                            hir::ExprKind::MethodCall(ref method, _, ref obj, _) => {
-                                if ident_eq(name, &obj[0]) && method.ident.as_str() == "clone"
-                                    && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
-
-                                    let obj_ty = cx.typeck_results().expr_ty(&obj[0]);
-                                    if let ty::Ref(_, ty, _) = obj_ty.kind() {
-                                        let copy = is_copy(cx, ty);
-                                        lint(cx, e.span, args[0].span, copy);
+                            hir::ExprKind::MethodCall(ref method, _, [obj], _) => if_chain! {
+                                if ident_eq(name, obj) && method.ident.name == sym::clone;
+                                if match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT);
+                                // no autoderefs
+                                if !cx.typeck_results().expr_adjustments(obj).iter()
+                                    .any(|a| matches!(a.kind, Adjust::Deref(Some(..))));
+                                then {
+                                    let obj_ty = cx.typeck_results().expr_ty(obj);
+                                    if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
+                                        if matches!(mutability, Mutability::Not) {
+                                            let copy = is_copy(cx, ty);
+                                            lint(cx, e.span, args[0].span, copy);
+                                        }
                                     } else {
                                         lint_needless_cloning(cx, e.span, args[0].span);
                                     }

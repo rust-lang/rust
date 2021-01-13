@@ -2,6 +2,6 @@
 #[link(name = "")] //~ ERROR: with empty name
 #[link(name = "foo")]
 #[link(name = "foo", kind = "bar")] //~ ERROR: unknown kind
-extern {}
+extern "C" {}
 
 fn main() {}

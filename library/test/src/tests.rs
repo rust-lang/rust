@@ -669,6 +669,7 @@ fn should_sort_failures_before_printing_them() {
         allowed_fail: 0,
         filtered_out: 0,
         measured: 0,
+        exec_time: None,
         metrics: MetricMap::new(),
         failures: vec![(test_b, Vec::new()), (test_a, Vec::new())],
         options: Options::new(),

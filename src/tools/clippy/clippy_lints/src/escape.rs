@@ -1,5 +1,5 @@
 use rustc_hir::intravisit;
-use rustc_hir::{self, Body, FnDecl, HirId, HirIdSet, ItemKind, Node};
+use rustc_hir::{self, Body, FnDecl, HirId, HirIdSet, ItemKind, Impl, Node};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         let parent_node = cx.tcx.hir().find(parent_id);
 
         if let Some(Node::Item(item)) = parent_node {
-            if let ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
+            if let ItemKind::Impl(Impl { of_trait: Some(_), .. }) = item.kind {
                 return;
             }
         }

@@ -383,16 +383,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     self.describe_field_from_ty(&ty, field, variant_index)
                 }
                 ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-                    // `tcx.upvars_mentioned(def_id)` returns an `Option`, which is `None` in case
-                    // the closure comes from another crate. But in that case we wouldn't
-                    // be borrowck'ing it, so we can just unwrap:
-                    let (&var_id, _) = self
-                        .infcx
-                        .tcx
-                        .upvars_mentioned(def_id)
-                        .unwrap()
-                        .get_index(field.index())
-                        .unwrap();
+                    // We won't be borrowck'ing here if the closure came from another crate,
+                    // so it's safe to call `expect_local`.
+                    //
+                    // We know the field exists so it's safe to call operator[] and `unwrap` here.
+                    let (&var_id, _) =
+                        self.infcx.tcx.typeck(def_id.expect_local()).closure_captures[&def_id]
+                            .get_index(field.index())
+                            .unwrap();
 
                     self.infcx.tcx.hir().name(var_id).to_string()
                 }
@@ -498,7 +496,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // lifetimes without names with the value `'0`.
         match ty.kind() {
             ty::Ref(
-                ty::RegionKind::ReLateBound(_, br)
+                ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br })
                 | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
                 _,
                 _,
@@ -519,7 +517,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let region = match ty.kind() {
             ty::Ref(region, _, _) => {
                 match region {
-                    ty::RegionKind::ReLateBound(_, br)
+                    ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br })
                     | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
                         printer.region_highlight_mode.highlighting_bound_region(*br, counter)
                     }
@@ -956,7 +954,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         def_id: DefId,
         target_place: PlaceRef<'tcx>,
-        places: &Vec<Operand<'tcx>>,
+        places: &[Operand<'tcx>],
     ) -> Option<(Span, Option<GeneratorKind>, Span)> {
         debug!(
             "closure_span: def_id={:?} target_place={:?} places={:?}",
@@ -967,9 +965,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {
-            for ((upvar_hir_id, upvar), place) in
-                self.infcx.tcx.upvars_mentioned(def_id)?.iter().zip(places)
+            for (upvar_hir_id, place) in
+                self.infcx.tcx.typeck(def_id.expect_local()).closure_captures[&def_id]
+                    .keys()
+                    .zip(places)
             {
+                let span = self.infcx.tcx.upvars_mentioned(local_did)?[upvar_hir_id].span;
                 match place {
                     Operand::Copy(place) | Operand::Move(place)
                         if target_place == place.as_ref() =>
@@ -991,7 +992,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let usage_span =
                             match self.infcx.tcx.typeck(local_did).upvar_capture(upvar_id) {
                                 ty::UpvarCapture::ByValue(Some(span)) => span,
-                                _ => upvar.span,
+                                _ => span,
                             };
                         return Some((*args_span, generator_kind, usage_span));
                     }

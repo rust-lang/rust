@@ -77,7 +77,7 @@
                     <div class="col-md-12 form-horizontal">
                         <div class="input-group">
                             <label class="input-group-addon" id="filter-label" for="filter-input">Filter:</label>
-                            <input type="text" class="form-control" placeholder="Keywords or search string" id="filter-input" ng-model="search" />
+                            <input type="text" class="form-control" placeholder="Keywords or search string" id="filter-input" ng-model="search" ng-model-options="{debounce: 50}"/>
                             <span class="input-group-btn">
                                 <button class="btn btn-default" type="button" ng-click="search = ''">
                                     Clear
@@ -89,7 +89,7 @@
             </div>
 
             <article class="panel panel-default" id="{{lint.id}}"
-                ng-repeat="lint in data | filter:byLevels | filter:byGroups | filter:search | orderBy:'id' track by lint.id" on-finish-render="ngRepeatFinished">
+                ng-repeat="lint in data | filter:byLevels | filter:byGroups | filter:bySearch | orderBy:'id' track by lint.id">
                 <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
                     <h2 class="panel-title">
                         <div class="panel-title-name">
@@ -119,6 +119,7 @@
                             {{title}}
                         </h4>
                         <div class="list-group-item-text" ng-bind-html="text | markdown"></div>
+                        <a ng-if="title == 'Known problems'" href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+is%3Aopen+{{lint.id}}">Search on GitHub</a>
                     </li>
                 </ul>
             </article>
@@ -180,6 +181,22 @@
             }
         }
 
+        function searchLint(lint, term) {
+            for (const field in lint.docs) {
+                // Continue if it's not a property
+                if (!lint.docs.hasOwnProperty(field)) {
+                    continue;
+                }
+
+                // Return if not found
+                if (lint.docs[field].toLowerCase().indexOf(term) !== -1) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         angular.module("clippy", [])
         .filter('markdown', function ($sce) {
             return function (text) {
@@ -214,6 +231,37 @@
             $scope.byGroups = function (lint) {
                 return $scope.groups[lint.group];
             };
+
+            $scope.bySearch = function (lint, index, array) {
+                let searchStr = $scope.search;
+                // It can be `null` I haven't missed this value 
+                if (searchStr == null || searchStr.length < 3) {
+                    return true;
+                }
+                searchStr = searchStr.toLowerCase();
+
+                // Search by id
+                if (lint.id.indexOf(searchStr.replace("-", "_")) !== -1) {
+                    return true;
+                }
+
+                // Search the description
+                // The use of `for`-loops instead of `foreach` enables us to return early 
+                let terms = searchStr.split(" ");
+                for (index = 0; index < terms.length; index++) {
+                    if (lint.id.indexOf(terms[index]) !== -1) {
+                        continue;
+                    }
+
+                    if (searchLint(lint, terms[index])) {
+                        continue;
+                    }
+
+                    return false;
+                }
+
+                return true;
+            }
 
             // Get data
             $scope.open = {};

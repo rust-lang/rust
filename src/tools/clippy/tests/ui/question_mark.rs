@@ -1,5 +1,6 @@
 // run-rustfix
 #![allow(unreachable_code)]
+#![allow(clippy::unnecessary_wraps)]
 
 fn some_func(a: Option<u32>) -> Option<u32> {
     if a.is_none() {

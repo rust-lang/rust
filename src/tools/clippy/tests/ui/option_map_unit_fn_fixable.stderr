@@ -1,5 +1,5 @@
 error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:38:5
+  --> $DIR/option_map_unit_fn_fixable.rs:39:5
    |
 LL |     x.field.map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^^^^^^^-
@@ -9,7 +9,7 @@ LL |     x.field.map(do_nothing);
    = note: `-D clippy::option-map-unit-fn` implied by `-D warnings`
 
 error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:40:5
+  --> $DIR/option_map_unit_fn_fixable.rs:41:5
    |
 LL |     x.field.map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^^^^^^^-
@@ -17,7 +17,7 @@ LL |     x.field.map(do_nothing);
    |     help: try this: `if let Some(x_field) = x.field { do_nothing(x_field) }`
 
 error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:42:5
+  --> $DIR/option_map_unit_fn_fixable.rs:43:5
    |
 LL |     x.field.map(diverge);
    |     ^^^^^^^^^^^^^^^^^^^^-
@@ -25,7 +25,7 @@ LL |     x.field.map(diverge);
    |     help: try this: `if let Some(x_field) = x.field { diverge(x_field) }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:48:5
+  --> $DIR/option_map_unit_fn_fixable.rs:49:5
    |
 LL |     x.field.map(|value| x.do_option_nothing(value + captured));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -33,7 +33,7 @@ LL |     x.field.map(|value| x.do_option_nothing(value + captured));
    |     help: try this: `if let Some(value) = x.field { x.do_option_nothing(value + captured) }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:50:5
+  --> $DIR/option_map_unit_fn_fixable.rs:51:5
    |
 LL |     x.field.map(|value| { x.do_option_plus_one(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -41,7 +41,7 @@ LL |     x.field.map(|value| { x.do_option_plus_one(value + captured); });
    |     help: try this: `if let Some(value) = x.field { x.do_option_plus_one(value + captured); }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:53:5
+  --> $DIR/option_map_unit_fn_fixable.rs:54:5
    |
 LL |     x.field.map(|value| do_nothing(value + captured));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -49,7 +49,7 @@ LL |     x.field.map(|value| do_nothing(value + captured));
    |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured) }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:55:5
+  --> $DIR/option_map_unit_fn_fixable.rs:56:5
    |
 LL |     x.field.map(|value| { do_nothing(value + captured) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -57,7 +57,7 @@ LL |     x.field.map(|value| { do_nothing(value + captured) });
    |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured) }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:57:5
+  --> $DIR/option_map_unit_fn_fixable.rs:58:5
    |
 LL |     x.field.map(|value| { do_nothing(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -65,7 +65,7 @@ LL |     x.field.map(|value| { do_nothing(value + captured); });
    |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured); }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:59:5
+  --> $DIR/option_map_unit_fn_fixable.rs:60:5
    |
 LL |     x.field.map(|value| { { do_nothing(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -73,7 +73,7 @@ LL |     x.field.map(|value| { { do_nothing(value + captured); } });
    |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured); }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:62:5
+  --> $DIR/option_map_unit_fn_fixable.rs:63:5
    |
 LL |     x.field.map(|value| diverge(value + captured));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -81,7 +81,7 @@ LL |     x.field.map(|value| diverge(value + captured));
    |     help: try this: `if let Some(value) = x.field { diverge(value + captured) }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:64:5
+  --> $DIR/option_map_unit_fn_fixable.rs:65:5
    |
 LL |     x.field.map(|value| { diverge(value + captured) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -89,7 +89,7 @@ LL |     x.field.map(|value| { diverge(value + captured) });
    |     help: try this: `if let Some(value) = x.field { diverge(value + captured) }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:66:5
+  --> $DIR/option_map_unit_fn_fixable.rs:67:5
    |
 LL |     x.field.map(|value| { diverge(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -97,7 +97,7 @@ LL |     x.field.map(|value| { diverge(value + captured); });
    |     help: try this: `if let Some(value) = x.field { diverge(value + captured); }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:68:5
+  --> $DIR/option_map_unit_fn_fixable.rs:69:5
    |
 LL |     x.field.map(|value| { { diverge(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -105,7 +105,7 @@ LL |     x.field.map(|value| { { diverge(value + captured); } });
    |     help: try this: `if let Some(value) = x.field { diverge(value + captured); }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:73:5
+  --> $DIR/option_map_unit_fn_fixable.rs:74:5
    |
 LL |     x.field.map(|value| { let y = plus_one(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -113,7 +113,7 @@ LL |     x.field.map(|value| { let y = plus_one(value + captured); });
    |     help: try this: `if let Some(value) = x.field { let y = plus_one(value + captured); }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:75:5
+  --> $DIR/option_map_unit_fn_fixable.rs:76:5
    |
 LL |     x.field.map(|value| { plus_one(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -121,7 +121,7 @@ LL |     x.field.map(|value| { plus_one(value + captured); });
    |     help: try this: `if let Some(value) = x.field { plus_one(value + captured); }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:77:5
+  --> $DIR/option_map_unit_fn_fixable.rs:78:5
    |
 LL |     x.field.map(|value| { { plus_one(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -129,7 +129,7 @@ LL |     x.field.map(|value| { { plus_one(value + captured); } });
    |     help: try this: `if let Some(value) = x.field { plus_one(value + captured); }`
 
 error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:80:5
+  --> $DIR/option_map_unit_fn_fixable.rs:81:5
    |
 LL |     x.field.map(|ref value| { do_nothing(value + captured) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -137,7 +137,7 @@ LL |     x.field.map(|ref value| { do_nothing(value + captured) });
    |     help: try this: `if let Some(ref value) = x.field { do_nothing(value + captured) }`
 
 error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
-  --> $DIR/option_map_unit_fn_fixable.rs:82:5
+  --> $DIR/option_map_unit_fn_fixable.rs:83:5
    |
 LL |     option().map(do_nothing);}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^-

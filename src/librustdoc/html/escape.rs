@@ -7,7 +7,7 @@ use std::fmt;
 
 /// Wrapper struct which will emit the HTML-escaped version of the contained
 /// string when passed to a format string.
-pub struct Escape<'a>(pub &'a str);
+crate struct Escape<'a>(pub &'a str);
 
 impl<'a> fmt::Display for Escape<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {

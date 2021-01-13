@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/feature-gate-const_evaluatable_checked.rs:9:30
+  --> $DIR/feature-gate-const_evaluatable_checked.rs:8:30
    |
 LL | fn test<const N: usize>() -> Arr<N> where Arr<N>: Default {
    |                              ^^^^^^

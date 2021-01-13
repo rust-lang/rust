@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::str::from_utf8;
+use std::str::{from_utf8, from_utf8_unchecked};
 
 #[test]
 fn test_le() {
@@ -1970,4 +1970,103 @@ fn test_str_escapes() {
     let x = "\\\\\
     ";
     assert_eq!(x, r"\\"); // extraneous whitespace stripped
+}
+
+#[test]
+fn const_str_ptr() {
+    const A: [u8; 2] = ['h' as u8, 'i' as u8];
+    const B: &'static [u8; 2] = &A;
+    const C: *const u8 = B as *const u8;
+
+    // Miri does not deduplicate consts (https://github.com/rust-lang/miri/issues/131)
+    #[cfg(not(miri))]
+    {
+        let foo = &A as *const u8;
+        assert_eq!(foo, C);
+    }
+
+    unsafe {
+        assert_eq!(from_utf8_unchecked(&A), "hi");
+        assert_eq!(*C, A[0]);
+        assert_eq!(*(&B[0] as *const u8), A[0]);
+    }
+}
+
+#[test]
+fn utf8() {
+    let yen: char = '¥'; // 0xa5
+    let c_cedilla: char = 'ç'; // 0xe7
+    let thorn: char = 'þ'; // 0xfe
+    let y_diaeresis: char = 'ÿ'; // 0xff
+    let pi: char = 'Π'; // 0x3a0
+
+    assert_eq!(yen as isize, 0xa5);
+    assert_eq!(c_cedilla as isize, 0xe7);
+    assert_eq!(thorn as isize, 0xfe);
+    assert_eq!(y_diaeresis as isize, 0xff);
+    assert_eq!(pi as isize, 0x3a0);
+
+    assert_eq!(pi as isize, '\u{3a0}' as isize);
+    assert_eq!('\x0a' as isize, '\n' as isize);
+
+    let bhutan: String = "འབྲུག་ཡུལ།".to_string();
+    let japan: String = "日本".to_string();
+    let uzbekistan: String = "Ўзбекистон".to_string();
+    let austria: String = "Österreich".to_string();
+
+    let bhutan_e: String =
+        "\u{f60}\u{f56}\u{fb2}\u{f74}\u{f42}\u{f0b}\u{f61}\u{f74}\u{f63}\u{f0d}".to_string();
+    let japan_e: String = "\u{65e5}\u{672c}".to_string();
+    let uzbekistan_e: String =
+        "\u{40e}\u{437}\u{431}\u{435}\u{43a}\u{438}\u{441}\u{442}\u{43e}\u{43d}".to_string();
+    let austria_e: String = "\u{d6}sterreich".to_string();
+
+    let oo: char = 'Ö';
+    assert_eq!(oo as isize, 0xd6);
+
+    fn check_str_eq(a: String, b: String) {
+        let mut i: isize = 0;
+        for ab in a.bytes() {
+            println!("{}", i);
+            println!("{}", ab);
+            let bb: u8 = b.as_bytes()[i as usize];
+            println!("{}", bb);
+            assert_eq!(ab, bb);
+            i += 1;
+        }
+    }
+
+    check_str_eq(bhutan, bhutan_e);
+    check_str_eq(japan, japan_e);
+    check_str_eq(uzbekistan, uzbekistan_e);
+    check_str_eq(austria, austria_e);
+}
+
+#[test]
+fn utf8_chars() {
+    // Chars of 1, 2, 3, and 4 bytes
+    let chs: Vec<char> = vec!['e', 'é', '€', '\u{10000}'];
+    let s: String = chs.iter().cloned().collect();
+    let schs: Vec<char> = s.chars().collect();
+
+    assert_eq!(s.len(), 10);
+    assert_eq!(s.chars().count(), 4);
+    assert_eq!(schs.len(), 4);
+    assert_eq!(schs.iter().cloned().collect::<String>(), s);
+
+    assert!((from_utf8(s.as_bytes()).is_ok()));
+    // invalid prefix
+    assert!((!from_utf8(&[0x80]).is_ok()));
+    // invalid 2 byte prefix
+    assert!((!from_utf8(&[0xc0]).is_ok()));
+    assert!((!from_utf8(&[0xc0, 0x10]).is_ok()));
+    // invalid 3 byte prefix
+    assert!((!from_utf8(&[0xe0]).is_ok()));
+    assert!((!from_utf8(&[0xe0, 0x10]).is_ok()));
+    assert!((!from_utf8(&[0xe0, 0xff, 0x10]).is_ok()));
+    // invalid 4 byte prefix
+    assert!((!from_utf8(&[0xf0]).is_ok()));
+    assert!((!from_utf8(&[0xf0, 0x10]).is_ok()));
+    assert!((!from_utf8(&[0xf0, 0xff, 0x10]).is_ok()));
+    assert!((!from_utf8(&[0xf0, 0xff, 0xff, 0x10]).is_ok()));
 }

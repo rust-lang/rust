@@ -33,7 +33,7 @@
       }
   
       bb2: {
-          _0 = const ();                   // scope 1 at $DIR/unreachable_diverging.rs:14:5: 19:6
+          _0 = const ();                   // scope 1 at $DIR/unreachable_diverging.rs:19:6: 19:6
           StorageDead(_1);                 // scope 0 at $DIR/unreachable_diverging.rs:20:1: 20:2
           StorageDead(_2);                 // scope 0 at $DIR/unreachable_diverging.rs:20:1: 20:2
           return;                          // scope 0 at $DIR/unreachable_diverging.rs:20:2: 20:2
@@ -50,7 +50,7 @@
       }
   
       bb4: {
--         _5 = const ();                   // scope 2 at $DIR/unreachable_diverging.rs:15:9: 17:10
+-         _5 = const ();                   // scope 2 at $DIR/unreachable_diverging.rs:17:10: 17:10
 -         goto -> bb6;                     // scope 2 at $DIR/unreachable_diverging.rs:15:9: 17:10
 -     }
 - 

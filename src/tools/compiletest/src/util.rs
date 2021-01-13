@@ -12,7 +12,6 @@ mod tests;
 const OS_TABLE: &[(&str, &str)] = &[
     ("android", "android"),
     ("androideabi", "android"),
-    ("cloudabi", "cloudabi"),
     ("cuda", "cuda"),
     ("darwin", "macos"),
     ("dragonfly", "dragonfly"),
@@ -83,6 +82,7 @@ const ARCH_TABLE: &[(&str, &str)] = &[
 ];
 
 pub const ASAN_SUPPORTED_TARGETS: &[&str] = &[
+    "aarch64-apple-darwin",
     "aarch64-fuchsia",
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
@@ -91,13 +91,18 @@ pub const ASAN_SUPPORTED_TARGETS: &[&str] = &[
     "x86_64-unknown-linux-gnu",
 ];
 
-pub const LSAN_SUPPORTED_TARGETS: &[&str] =
-    &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
+pub const LSAN_SUPPORTED_TARGETS: &[&str] = &[
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+];
 
 pub const MSAN_SUPPORTED_TARGETS: &[&str] =
     &["aarch64-unknown-linux-gnu", "x86_64-unknown-freebsd", "x86_64-unknown-linux-gnu"];
 
 pub const TSAN_SUPPORTED_TARGETS: &[&str] = &[
+    "aarch64-apple-darwin",
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
     "x86_64-unknown-freebsd",

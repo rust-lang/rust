@@ -1,0 +1,25 @@
+error[E0080]: values of the type `[u8; SIZE]` are too big for the current architecture
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL |     intrinsics::size_of::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     inside `std::mem::size_of::<[u8; SIZE]>` at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |     inside `main` at $DIR/issue-55878.rs:7:26
+   | 
+  ::: $DIR/issue-55878.rs:7:26
+   |
+LL |     println!("Size: {}", std::mem::size_of::<[u8; u64::MAX as usize]>());
+   |                          ----------------------------------------------
+
+error: erroneous constant used
+  --> $DIR/issue-55878.rs:7:26
+   |
+LL |     println!("Size: {}", std::mem::size_of::<[u8; u64::MAX as usize]>());
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

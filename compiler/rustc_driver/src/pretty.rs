@@ -32,9 +32,6 @@ use crate::abort_on_err;
 // Note that since the `&PrinterSupport` is freshly constructed on each
 // call, it would not make sense to try to attach the lifetime of `self`
 // to the lifetime of the `&PrinterObject`.
-//
-// (The `use_once_payload` is working around the current lack of once
-// functions in the compiler.)
 
 /// Constructs a `PrinterSupport` object and passes it to `f`.
 fn call_with_pp_support<'tcx, A, F>(
@@ -366,8 +363,15 @@ impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
 
 fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     let src_name = input.source_name();
-    let src =
-        String::clone(&sess.source_map().get_source_file(&src_name).unwrap().src.as_ref().unwrap());
+    let src = String::clone(
+        &sess
+            .source_map()
+            .get_source_file(&src_name)
+            .expect("get_source_file")
+            .src
+            .as_ref()
+            .expect("src"),
+    );
     (src, src_name)
 }
 
@@ -407,7 +411,6 @@ pub fn print_after_parsing(
                 annotation.pp_ann(),
                 false,
                 parse.edition,
-                parse.injected_crate_name.get().is_some(),
             )
         })
     } else {
@@ -449,7 +452,6 @@ pub fn print_after_hir_lowering<'tcx>(
                     annotation.pp_ann(),
                     true,
                     parse.edition,
-                    parse.injected_crate_name.get().is_some(),
                 )
             })
         }

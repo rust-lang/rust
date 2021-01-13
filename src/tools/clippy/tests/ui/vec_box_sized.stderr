@@ -18,5 +18,11 @@ error: `Vec<T>` is already on the heap, the boxing is unnecessary.
 LL |     struct B(Vec<Vec<Box<(u32)>>>);
    |                  ^^^^^^^^^^^^^^^ help: try: `Vec<u32>`
 
-error: aborting due to 3 previous errors
+error: `Vec<T>` is already on the heap, the boxing is unnecessary.
+  --> $DIR/vec_box_sized.rs:46:23
+   |
+LL |         pub fn f() -> Vec<Box<S>> {
+   |                       ^^^^^^^^^^^ help: try: `Vec<S>`
+
+error: aborting due to 4 previous errors
 

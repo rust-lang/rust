@@ -12,7 +12,7 @@ use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, PlaceRef,
-    Rvalue, SourceScope, Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
+    Rvalue, SourceScope, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeFoldable};
@@ -183,6 +183,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_local(&mut self, local: &Local, context: PlaceContext, location: Location) {
+        if self.body.local_decls.get(*local).is_none() {
+            self.fail(
+                location,
+                format!("local {:?} has no corresponding declaration in `body.local_decls`", local),
+            );
+        }
+
         if self.reachable_blocks.contains(location.block) && context.is_use() {
             // Uses of locals must occur while the local's storage is allocated.
             self.storage_liveness.seek_after_primary_effect(location);
@@ -191,12 +198,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 self.fail(location, format!("use of local {:?}, which has no storage here", local));
             }
         }
-    }
-
-    fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'tcx>) {
-        // Debuginfo can contain field projections, which count as a use of the base local. Skip
-        // debuginfo so that we avoid the storage liveness assertion in that case.
-        self.visit_source_info(&var_debug_info.source_info);
     }
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {

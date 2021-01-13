@@ -1,0 +1,38 @@
+    1|       |#![allow(unused_assignments)]
+    2|       |// expect-exit-status-1
+    3|       |
+    4|      6|fn call(return_error: bool) -> Result<(),()> {
+    5|      6|    if return_error {
+    6|      1|        Err(())
+    7|       |    } else {
+    8|      5|        Ok(())
+    9|       |    }
+   10|      6|}
+   11|       |
+   12|      1|fn main() -> Result<(),()> {
+   13|      1|    let mut
+   14|      1|        countdown = 10
+   15|       |    ;
+   16|       |    for
+   17|      6|        _
+   18|       |    in
+   19|      6|        0..10
+   20|       |    {
+   21|      6|        countdown
+   22|      6|            -= 1
+   23|      6|        ;
+   24|      6|        if
+   25|      6|            countdown < 5
+   26|       |        {
+   27|      1|            call(/*return_error=*/ true)?;
+   28|      0|            call(/*return_error=*/ false)?;
+   29|       |        }
+   30|       |        else
+   31|       |        {
+   32|      5|            call(/*return_error=*/ false)?;
+                                                       ^0
+   33|       |        }
+   34|       |    }
+   35|      0|    Ok(())
+   36|      1|}
+

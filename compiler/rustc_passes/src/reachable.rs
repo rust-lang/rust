@@ -262,7 +262,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::TyAlias(..)
                     | hir::ItemKind::Static(..)
                     | hir::ItemKind::Mod(..)
-                    | hir::ItemKind::ForeignMod(..)
+                    | hir::ItemKind::ForeignMod { .. }
                     | hir::ItemKind::Impl { .. }
                     | hir::ItemKind::Trait(..)
                     | hir::ItemKind::TraitAlias(..)
@@ -349,7 +349,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         }
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemKind::Impl { of_trait: Some(ref trait_ref), ref items, .. } = item.kind {
+        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
+            item.kind
+        {
             if !self.access_levels.is_reachable(item.hir_id) {
                 // FIXME(#53488) remove `let`
                 let tcx = self.tcx;
@@ -377,6 +379,10 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
         // processed in visit_item above
+    }
+
+    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {
+        // We never export foreign functions as they have no body to export.
     }
 }
 

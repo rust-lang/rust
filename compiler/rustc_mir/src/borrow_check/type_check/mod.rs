@@ -749,7 +749,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     (&adt_def.variants[VariantIdx::new(0)], substs)
                 }
                 ty::Closure(_, substs) => {
-                    return match substs.as_closure().upvar_tys().nth(field.index()) {
+                    return match substs
+                        .as_closure()
+                        .tupled_upvars_ty()
+                        .tuple_element_ty(field.index())
+                    {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
                             field_count: substs.as_closure().upvar_tys().count(),
@@ -784,7 +788,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         };
 
         if let Some(field) = variant.fields.get(field.index()) {
-            Ok(self.cx.normalize(&field.ty(tcx, substs), location))
+            Ok(self.cx.normalize(field.ty(tcx, substs), location))
         } else {
             Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
         }
@@ -1245,7 +1249,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             anon_owner_def_id,
                             dummy_body_id,
                             param_env,
-                            &anon_ty,
+                            anon_ty,
                             locations.span(body),
                         ));
                     debug!(
@@ -1271,7 +1275,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
 
                     for (&opaque_def_id, opaque_decl) in &opaque_type_map {
-                        let resolved_ty = infcx.resolve_vars_if_possible(&opaque_decl.concrete_ty);
+                        let resolved_ty = infcx.resolve_vars_if_possible(opaque_decl.concrete_ty);
                         let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
                             *def_id == opaque_def_id
                         } else {
@@ -1296,7 +1300,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let subst_opaque_defn_ty =
                             opaque_defn_ty.concrete_type.subst(tcx, opaque_decl.substs);
                         let renumbered_opaque_defn_ty =
-                            renumber::renumber_regions(infcx, &subst_opaque_defn_ty);
+                            renumber::renumber_regions(infcx, subst_opaque_defn_ty);
 
                         debug!(
                             "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",
@@ -1601,7 +1605,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let (sig, map) = self.infcx.replace_bound_vars_with_fresh_vars(
                     term.source_info.span,
                     LateBoundRegionConversionTime::FnCall,
-                    &sig,
+                    sig,
                 );
                 let sig = self.normalize(sig, term_location);
                 self.check_call_dest(body, term, &sig, destination, term_location);
@@ -1851,8 +1855,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.assert_iscleanup(body, block_data, unwind, true);
                 }
             }
-            TerminatorKind::InlineAsm { ref destination, .. } => {
-                if let &Some(target) = destination {
+            TerminatorKind::InlineAsm { destination, .. } => {
+                if let Some(target) = destination {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }
             }
@@ -1900,7 +1904,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Erase the regions from `ty` to get a global type.  The
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
-        let erased_ty = tcx.erase_regions(&ty);
+        let erased_ty = tcx.erase_regions(ty);
         if !erased_ty.is_sized(tcx.at(span), self.param_env) {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return
@@ -1984,44 +1988,48 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // If the length is larger than 1, the repeat expression will need to copy the
                 // element, so we require the `Copy` trait.
                 if len.try_eval_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
-                    if let Operand::Move(_) = operand {
-                        // While this is located in `nll::typeck` this error is not an NLL error, it's
-                        // a required check to make sure that repeated elements implement `Copy`.
-                        let span = body.source_info(location).span;
-                        let ty = operand.ty(body, tcx);
-                        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
-                            let ccx = ConstCx::new_with_param_env(tcx, body, self.param_env);
-                            // To determine if `const_in_array_repeat_expressions` feature gate should
-                            // be mentioned, need to check if the rvalue is promotable.
-                            let should_suggest =
-                                should_suggest_const_in_array_repeat_expressions_attribute(
-                                    &ccx, operand,
-                                );
-                            debug!("check_rvalue: should_suggest={:?}", should_suggest);
+                    match operand {
+                        Operand::Copy(..) | Operand::Constant(..) => {
+                            // These are always okay: direct use of a const, or a value that can evidently be copied.
+                        }
+                        Operand::Move(_) => {
+                            // Make sure that repeated elements implement `Copy`.
+                            let span = body.source_info(location).span;
+                            let ty = operand.ty(body, tcx);
+                            if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
+                                let ccx = ConstCx::new_with_param_env(tcx, body, self.param_env);
+                                // To determine if `const_in_array_repeat_expressions` feature gate should
+                                // be mentioned, need to check if the rvalue is promotable.
+                                let should_suggest =
+                                    should_suggest_const_in_array_repeat_expressions_attribute(
+                                        &ccx, operand,
+                                    );
+                                debug!("check_rvalue: should_suggest={:?}", should_suggest);
 
-                            let def_id = body.source.def_id().expect_local();
-                            self.infcx.report_selection_error(
-                                &traits::Obligation::new(
-                                    ObligationCause::new(
-                                        span,
-                                        self.tcx().hir().local_def_id_to_hir_id(def_id),
-                                        traits::ObligationCauseCode::RepeatVec(should_suggest),
-                                    ),
-                                    self.param_env,
-                                    ty::Binder::bind(ty::TraitRef::new(
-                                        self.tcx().require_lang_item(
-                                            LangItem::Copy,
-                                            Some(self.last_span),
+                                let def_id = body.source.def_id().expect_local();
+                                self.infcx.report_selection_error(
+                                    &traits::Obligation::new(
+                                        ObligationCause::new(
+                                            span,
+                                            self.tcx().hir().local_def_id_to_hir_id(def_id),
+                                            traits::ObligationCauseCode::RepeatVec(should_suggest),
                                         ),
-                                        tcx.mk_substs_trait(ty, &[]),
-                                    ))
-                                    .without_const()
-                                    .to_predicate(self.tcx()),
-                                ),
-                                &traits::SelectionError::Unimplemented,
-                                false,
-                                false,
-                            );
+                                        self.param_env,
+                                        ty::Binder::bind(ty::TraitRef::new(
+                                            self.tcx().require_lang_item(
+                                                LangItem::Copy,
+                                                Some(self.last_span),
+                                            ),
+                                            tcx.mk_substs_trait(ty, &[]),
+                                        ))
+                                        .without_const()
+                                        .to_predicate(self.tcx()),
+                                    ),
+                                    &traits::SelectionError::Unimplemented,
+                                    false,
+                                    false,
+                                );
+                            }
                         }
                     }
                 }

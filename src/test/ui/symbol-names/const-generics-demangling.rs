@@ -1,7 +1,6 @@
 // build-fail
 // compile-flags: -Z symbol-mangling-version=v0
-
-#![feature(min_const_generics, rustc_attrs)]
+#![feature(rustc_attrs)]
 
 pub struct Unsigned<const F: u8>;
 

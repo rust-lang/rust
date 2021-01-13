@@ -14,6 +14,7 @@ pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
 pub mod inspector;
+#[cfg(feature = "internal-lints")]
 pub mod internal_lints;
 pub mod numeric_literal;
 pub mod paths;
@@ -21,6 +22,7 @@ pub mod ptr;
 pub mod qualify_min_const_fn;
 pub mod sugg;
 pub mod usage;
+pub mod visitors;
 
 pub use self::attrs::*;
 pub use self::diagnostics::*;
@@ -39,7 +41,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::{
     def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, HirId, ImplItem, ImplItemKind, Item, ItemKind,
@@ -50,6 +52,8 @@ use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
+use rustc_semver::RustcVersion;
+use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym as rustc_sym;
@@ -60,6 +64,49 @@ use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
+
+pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
+    if let Ok(version) = RustcVersion::parse(msrv) {
+        return Some(version);
+    } else if let Some(sess) = sess {
+        if let Some(span) = span {
+            sess.span_err(span, &format!("`{}` is not a valid Rust version", msrv));
+        }
+    }
+    None
+}
+
+pub fn meets_msrv(msrv: Option<&RustcVersion>, lint_msrv: &RustcVersion) -> bool {
+    msrv.map_or(true, |msrv| msrv.meets(*lint_msrv))
+}
+
+macro_rules! extract_msrv_attr {
+    (LateContext) => {
+        extract_msrv_attr!(@LateContext, ());
+    };
+    (EarlyContext) => {
+        extract_msrv_attr!(@EarlyContext);
+    };
+    (@$context:ident$(, $call:tt)?) => {
+        fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'tcx>, attrs: &'tcx [rustc_ast::ast::Attribute]) {
+            use $crate::utils::get_unique_inner_attr;
+            match get_unique_inner_attr(cx.sess$($call)?, attrs, "msrv") {
+                Some(msrv_attr) => {
+                    if let Some(msrv) = msrv_attr.value_str() {
+                        self.msrv = $crate::utils::parse_msrv(
+                            &msrv.to_string(),
+                            Some(cx.sess$($call)?),
+                            Some(msrv_attr.span),
+                        );
+                    } else {
+                        cx.sess$($call)?.span_err(msrv_attr.span, "bad clippy attribute");
+                    }
+                },
+                _ => (),
+            }
+        }
+    };
+}
 
 /// Returns `true` if the two spans come from differing expansions (i.e., one is
 /// from a macro and one isn't).
@@ -363,7 +410,10 @@ pub fn implements_trait<'tcx>(
     if ty.has_infer_types() {
         return false;
     }
-    let ty = cx.tcx.erase_regions(&ty);
+    let ty = cx.tcx.erase_regions(ty);
+    if ty.has_escaping_bound_vars() {
+        return false;
+    }
     let ty_params = cx.tcx.mk_substs(ty_params.iter());
     cx.tcx.type_implements_trait((trait_id, ty, ty_params, cx.param_env))
 }
@@ -389,8 +439,8 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     if_chain! {
         if parent_impl != hir::CRATE_HIR_ID;
         if let hir::Node::Item(item) = cx.tcx.hir().get(parent_impl);
-        if let hir::ItemKind::Impl{ of_trait: trait_ref, .. } = &item.kind;
-        then { return trait_ref.as_ref(); }
+        if let hir::ItemKind::Impl(impl_) = &item.kind;
+        then { return impl_.of_trait.as_ref(); }
     }
     None
 }
@@ -468,6 +518,13 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_>, def_id: DefId) -> bool {
         .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id.to_def_id())
 }
 
+/// Returns `true` if the expression is in the program's `#[panic_handler]`.
+pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
+    let parent = cx.tcx.hir().get_parent_item(e.hir_id);
+    let def_id = cx.tcx.hir().local_def_id(parent).to_def_id();
+    Some(def_id) == cx.tcx.lang_items().panic_impl()
+}
+
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
@@ -514,6 +571,67 @@ pub fn contains_name(name: Symbol, expr: &Expr<'_>) -> bool {
     let mut cn = ContainsName { name, result: false };
     cn.visit_expr(expr);
     cn.result
+}
+
+/// Returns `true` if `expr` contains a return expression
+pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
+    struct RetCallFinder {
+        found: bool,
+    }
+
+    impl<'tcx> hir::intravisit::Visitor<'tcx> for RetCallFinder {
+        type Map = Map<'tcx>;
+
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
+            if self.found {
+                return;
+            }
+            if let hir::ExprKind::Ret(..) = &expr.kind {
+                self.found = true;
+            } else {
+                hir::intravisit::walk_expr(self, expr);
+            }
+        }
+
+        fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
+            hir::intravisit::NestedVisitorMap::None
+        }
+    }
+
+    let mut visitor = RetCallFinder { found: false };
+    visitor.visit_expr(expr);
+    visitor.found
+}
+
+struct FindMacroCalls<'a, 'b> {
+    names: &'a [&'b str],
+    result: Vec<Span>,
+}
+
+impl<'a, 'b, 'tcx> Visitor<'tcx> for FindMacroCalls<'a, 'b> {
+    type Map = Map<'tcx>;
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+        if self.names.iter().any(|fun| is_expn_of(expr.span, fun).is_some()) {
+            self.result.push(expr.span);
+        }
+        // and check sub-expressions
+        intravisit::walk_expr(self, expr);
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+}
+
+/// Finds calls of the specified macros in a function body.
+pub fn find_macro_calls(names: &[&str], body: &Body<'_>) -> Vec<Span> {
+    let mut fmc = FindMacroCalls {
+        names,
+        result: Vec::new(),
+    };
+    fmc.visit_expr(&body.value);
+    fmc.result
 }
 
 /// Converts a span to a code snippet if available, otherwise use default.
@@ -657,6 +775,34 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
 /// ```
 pub fn indent_of<T: LintContext>(cx: &T, span: Span) -> Option<usize> {
     snippet_opt(cx, line_span(cx, span)).and_then(|snip| snip.find(|c: char| !c.is_whitespace()))
+}
+
+/// Returns the positon just before rarrow
+///
+/// ```rust,ignore
+/// fn into(self) -> () {}
+///              ^
+/// // in case of unformatted code
+/// fn into2(self)-> () {}
+///               ^
+/// fn into3(self)   -> () {}
+///               ^
+/// ```
+pub fn position_before_rarrow(s: &str) -> Option<usize> {
+    s.rfind("->").map(|rpos| {
+        let mut rpos = rpos;
+        let chars: Vec<char> = s.chars().collect();
+        while rpos > 1 {
+            if let Some(c) = chars.get(rpos - 1) {
+                if c.is_whitespace() {
+                    rpos -= 1;
+                    continue;
+                }
+            }
+            break;
+        }
+        rpos
+    })
 }
 
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
@@ -887,7 +1033,7 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
 pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> {
     let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
-    cx.tcx.erase_late_bound_regions(&ret_ty)
+    cx.tcx.erase_late_bound_regions(ret_ty)
 }
 
 /// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
@@ -1196,7 +1342,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
 /// Usage:
 ///
 /// ```rust,ignore
-/// if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
+/// if let Some(args) = match_function_call(cx, cmp_max_call, &paths::CMP_MAX);
 /// ```
 pub fn match_function_call<'tcx>(
     cx: &LateContext<'tcx>,
@@ -1220,7 +1366,7 @@ pub fn match_function_call<'tcx>(
 pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
     cx.tcx.infer_ctxt().enter(|infcx| {
         let cause = rustc_middle::traits::ObligationCause::dummy();
-        infcx.at(&cause, param_env).normalize(&ty).is_ok()
+        infcx.at(&cause, param_env).normalize(ty).is_ok()
     })
 }
 
@@ -1229,6 +1375,24 @@ pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -
     // accepts only that. We should probably move to Symbols in Clippy as well.
     let syms = syms.iter().map(|p| Symbol::intern(p)).collect::<Vec<Symbol>>();
     cx.match_def_path(did, &syms)
+}
+
+pub fn match_panic_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx [Expr<'tcx>]> {
+    match_function_call(cx, expr, &paths::BEGIN_PANIC)
+        .or_else(|| match_function_call(cx, expr, &paths::BEGIN_PANIC_FMT))
+        .or_else(|| match_function_call(cx, expr, &paths::PANIC_ANY))
+        .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC))
+        .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC_FMT))
+        .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC_STR))
+}
+
+pub fn match_panic_def_id(cx: &LateContext<'_>, did: DefId) -> bool {
+    match_def_path(cx, did, &paths::BEGIN_PANIC)
+        || match_def_path(cx, did, &paths::BEGIN_PANIC_FMT)
+        || match_def_path(cx, did, &paths::PANIC_ANY)
+        || match_def_path(cx, did, &paths::PANICKING_PANIC)
+        || match_def_path(cx, did, &paths::PANICKING_PANIC_FMT)
+        || match_def_path(cx, did, &paths::PANICKING_PANIC_STR)
 }
 
 /// Returns the list of condition expressions and the list of blocks in a
@@ -1315,8 +1479,8 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             false
         },
         ty::Dynamic(binder, _) => {
-            for predicate in binder.skip_binder().iter() {
-                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
+            for predicate in binder.iter() {
+                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
                     if must_use_attr(&cx.tcx.get_attrs(trait_ref.def_id)).is_some() {
                         return true;
                     }
@@ -1366,7 +1530,7 @@ pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
 /// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-        matches!(item.kind, ItemKind::Impl{ of_trait: Some(_), .. })
+        matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
     } else {
         false
     }

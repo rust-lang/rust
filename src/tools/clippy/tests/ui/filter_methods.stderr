@@ -1,5 +1,5 @@
 error: called `filter(..).map(..)` on an `Iterator`
-  --> $DIR/filter_methods.rs:5:21
+  --> $DIR/filter_methods.rs:6:21
    |
 LL |     let _: Vec<_> = vec![5; 6].into_iter().filter(|&x| x == 0).map(|x| x * 2).collect();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _: Vec<_> = vec![5; 6].into_iter().filter(|&x| x == 0).map(|x| x * 
    = help: this is more succinctly expressed by calling `.filter_map(..)` instead
 
 error: called `filter(..).flat_map(..)` on an `Iterator`
-  --> $DIR/filter_methods.rs:7:21
+  --> $DIR/filter_methods.rs:8:21
    |
 LL |       let _: Vec<_> = vec![5_i8; 6]
    |  _____________________^
@@ -20,7 +20,7 @@ LL | |         .flat_map(|x| x.checked_mul(2))
    = help: this is more succinctly expressed by calling `.flat_map(..)` and filtering by returning `iter::empty()`
 
 error: called `filter_map(..).flat_map(..)` on an `Iterator`
-  --> $DIR/filter_methods.rs:13:21
+  --> $DIR/filter_methods.rs:14:21
    |
 LL |       let _: Vec<_> = vec![5_i8; 6]
    |  _____________________^
@@ -32,7 +32,7 @@ LL | |         .flat_map(|x| x.checked_mul(2))
    = help: this is more succinctly expressed by calling `.flat_map(..)` and filtering by returning `iter::empty()`
 
 error: called `filter_map(..).map(..)` on an `Iterator`
-  --> $DIR/filter_methods.rs:19:21
+  --> $DIR/filter_methods.rs:20:21
    |
 LL |       let _: Vec<_> = vec![5_i8; 6]
    |  _____________________^

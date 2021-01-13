@@ -26,7 +26,7 @@ pub fn renumber_mir<'tcx>(
 
 /// Replaces all regions appearing in `value` with fresh inference
 /// variables.
-pub fn renumber_regions<'tcx, T>(infcx: &InferCtxt<'_, 'tcx>, value: &T) -> T
+pub fn renumber_regions<'tcx, T>(infcx: &InferCtxt<'_, 'tcx>, value: T) -> T
 where
     T: TypeFoldable<'tcx>,
 {
@@ -43,7 +43,7 @@ struct NLLVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> NLLVisitor<'a, 'tcx> {
-    fn renumber_regions<T>(&mut self, value: &T) -> T
+    fn renumber_regions<T>(&mut self, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -70,7 +70,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
         _: Location,
     ) -> Option<PlaceElem<'tcx>> {
         if let PlaceElem::Field(field, ty) = elem {
-            let new_ty = self.renumber_regions(&ty);
+            let new_ty = self.renumber_regions(ty);
 
             if new_ty != ty {
                 return Some(PlaceElem::Field(field, new_ty));
@@ -83,7 +83,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
     fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, location: Location) {
         debug!("visit_substs(substs={:?}, location={:?})", substs, location);
 
-        *substs = self.renumber_regions(&{ *substs });
+        *substs = self.renumber_regions(*substs);
 
         debug!("visit_substs: substs={:?}", substs);
     }

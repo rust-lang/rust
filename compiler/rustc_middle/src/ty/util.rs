@@ -18,7 +18,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use smallvec::SmallVec;
 use std::{cmp, fmt};
@@ -160,7 +160,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // We want the type_id be independent of the types free regions, so we
         // erase them. The erase_regions() call will also anonymize bound
         // regions, which is desirable too.
-        let ty = self.erase_regions(&ty);
+        let ty = self.erase_regions(ty);
 
         hcx.while_hashing_spans(false, |hcx| {
             hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -221,7 +221,13 @@ impl<'tcx> TyCtxt<'tcx> {
         mut ty: Ty<'tcx>,
         normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>,
     ) -> Ty<'tcx> {
-        loop {
+        for iteration in 0.. {
+            if !self.sess.recursion_limit().value_within_limit(iteration) {
+                return self.ty_error_with_message(
+                    DUMMY_SP,
+                    &format!("reached the recursion limit finding the struct tail for {}", ty),
+                );
+            }
             match *ty.kind() {
                 ty::Adt(def, substs) => {
                     if !def.is_struct() {
@@ -497,7 +503,8 @@ impl<'tcx> TyCtxt<'tcx> {
         closure_substs: SubstsRef<'tcx>,
     ) -> Option<ty::Binder<Ty<'tcx>>> {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);
-        let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+        let br = ty::BoundRegion { kind: ty::BrEnv };
+        let env_region = ty::ReLateBound(ty::INNERMOST, br);
         let closure_kind_ty = closure_substs.as_closure().kind_ty();
         let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
         let env_ty = match closure_kind {
@@ -1127,6 +1134,37 @@ pub fn needs_drop_components(
         | ty::Infer(_)
         | ty::Closure(..)
         | ty::Generator(..) => Ok(smallvec![ty]),
+    }
+}
+
+// Does the equivalent of
+// ```
+// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+// folder.tcx().intern_*(&v)
+// ```
+pub fn fold_list<'tcx, F, T>(
+    list: &'tcx ty::List<T>,
+    folder: &mut F,
+    intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
+) -> &'tcx ty::List<T>
+where
+    F: TypeFolder<'tcx>,
+    T: TypeFoldable<'tcx> + PartialEq + Copy,
+{
+    let mut iter = list.iter();
+    // Look for the first element that changed
+    if let Some((i, new_t)) = iter.by_ref().enumerate().find_map(|(i, t)| {
+        let new_t = t.fold_with(folder);
+        if new_t == t { None } else { Some((i, new_t)) }
+    }) {
+        // An element changed, prepare to intern the resulting list
+        let mut new_list = SmallVec::<[_; 8]>::with_capacity(list.len());
+        new_list.extend_from_slice(&list[..i]);
+        new_list.push(new_t);
+        new_list.extend(iter.map(|t| t.fold_with(folder)));
+        intern(folder.tcx(), &new_list)
+    } else {
+        list
     }
 }
 

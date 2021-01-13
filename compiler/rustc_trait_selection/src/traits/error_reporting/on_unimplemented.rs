@@ -36,7 +36,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) -> Option<DefId> {
         let tcx = self.tcx;
         let param_env = obligation.param_env;
-        let trait_ref = tcx.erase_late_bound_regions(&trait_ref);
+        let trait_ref = tcx.erase_late_bound_regions(trait_ref);
         let trait_self_ty = trait_ref.self_ty();
 
         let mut self_match_impls = vec![];
@@ -219,8 +219,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
         if let ty::Dynamic(traits, _) = self_ty.kind() {
-            for t in traits.skip_binder() {
-                if let ty::ExistentialPredicate::Trait(trait_ref) = t {
+            for t in traits.iter() {
+                if let ty::ExistentialPredicate::Trait(trait_ref) = t.skip_binder() {
                     flags.push((sym::_Self, Some(self.tcx.def_path_str(trait_ref.def_id))))
                 }
             }

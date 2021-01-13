@@ -67,7 +67,7 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -294,7 +294,7 @@ where
                                                     or \"none\"",
                                                 )
                                                 .span_label(
-                                                    mi.name_value_literal().unwrap().span,
+                                                    mi.name_value_literal_span().unwrap(),
                                                     msg,
                                                 )
                                                 .emit();
@@ -621,7 +621,7 @@ pub fn eval_condition(
     }
 }
 
-#[derive(Encodable, Decodable, Clone, HashStable_Generic)]
+#[derive(Debug, Encodable, Decodable, Clone, HashStable_Generic)]
 pub struct Deprecation {
     pub since: Option<Symbol>,
     /// The note to issue a reason.

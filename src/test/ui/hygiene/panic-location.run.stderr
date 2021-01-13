@@ -1,2 +1,2 @@
-thread 'main' panicked at 'capacity overflow', $SRC_DIR/alloc/src/collections/vec_deque.rs:LL:COL
+thread 'main' panicked at 'capacity overflow', $SRC_DIR/alloc/src/collections/vec_deque/mod.rs:LL:COL
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

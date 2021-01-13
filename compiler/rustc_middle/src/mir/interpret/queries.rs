@@ -67,7 +67,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> EvalToConstValueResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs = self.erase_regions(&param_env.and(cid));
+        let inputs = self.erase_regions(param_env.and(cid));
         if let Some(span) = span {
             self.at(span).eval_to_const_value_raw(inputs)
         } else {

@@ -39,6 +39,14 @@ fn bak(constraints: impl  Iterator + std::fmt::Debug) {
     }
 }
 
+#[rustfmt::skip]
+fn baw<>(constraints: impl Iterator) {
+    for constraint in constraints {
+        qux(constraint);
+//~^ ERROR `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
+    }
+}
+
 fn qux(_: impl std::fmt::Debug) {}
 
 fn main() {}

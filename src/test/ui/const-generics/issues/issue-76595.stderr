@@ -1,8 +1,8 @@
-error[E0107]: wrong number of type arguments: expected 1, found 0
+error[E0107]: wrong number of generic arguments: expected 2, found 1
   --> $DIR/issue-76595.rs:15:5
    |
 LL |     test::<2>();
-   |     ^^^^^^^^^ expected 1 type argument
+   |     ^^^^^^^^^ expected 2 generic arguments
 
 error: aborting due to previous error
 

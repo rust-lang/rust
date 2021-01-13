@@ -1,5 +1,3 @@
-#![feature(deprecated)]
-
 // @has deprecated/index.html '//*[@class="docblock-short"]/span[@class="stab deprecated"]' \
 //      'Deprecated'
 // @has - '//*[@class="docblock-short"]' 'Deprecated docs'

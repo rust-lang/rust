@@ -26,7 +26,7 @@ LL | extern "vectorcall" fn f3() {}
 error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-abi.rs:18:8
    |
-LL | extern "rust-call" fn f4() {}
+LL | extern "rust-call" fn f4(_: ()) {}
    |        ^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
@@ -113,7 +113,7 @@ LL |     extern "vectorcall" fn m3();
 error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-abi.rs:33:12
    |
-LL |     extern "rust-call" fn m4();
+LL |     extern "rust-call" fn m4(_: ());
    |            ^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
@@ -183,7 +183,7 @@ LL |     extern "vectorcall" fn dm3() {}
 error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-abi.rs:42:12
    |
-LL |     extern "rust-call" fn dm4() {}
+LL |     extern "rust-call" fn dm4(_: ()) {}
    |            ^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
@@ -270,7 +270,7 @@ LL |     extern "vectorcall" fn m3() {}
 error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-abi.rs:60:12
    |
-LL |     extern "rust-call" fn m4() {}
+LL |     extern "rust-call" fn m4(_: ()) {}
    |            ^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
@@ -357,7 +357,7 @@ LL |     extern "vectorcall" fn im3() {}
 error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-abi.rs:76:12
    |
-LL |     extern "rust-call" fn im4() {}
+LL |     extern "rust-call" fn im4(_: ()) {}
    |            ^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
@@ -444,7 +444,7 @@ LL | type A3 = extern "vectorcall" fn();
 error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-abi.rs:89:18
    |
-LL | type A4 = extern "rust-call" fn();
+LL | type A4 = extern "rust-call" fn(_: ());
    |                  ^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information

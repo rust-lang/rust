@@ -1,7 +1,7 @@
 #![feature(decl_macro)]
 
 mod foo {
-    pub macro m() { Vec::new(); ().clone() }
+    pub macro m() { Vec::<i32>::new(); ().clone() }
     fn f() { ::bar::m!(); }
 }
 
@@ -13,7 +13,7 @@ mod bar {
     }
     fn f() {
         ::foo::m!();
-        assert_eq!(0, 0); //~ ERROR cannot find macro `panic` in this scope
+        assert!(true);
     }
 }
 

@@ -75,6 +75,6 @@ impl<CTX> HashStable<CTX> for PredecessorCache {
     }
 }
 
-CloneTypeFoldableAndLiftImpls! {
+TrivialTypeFoldableAndLiftImpls! {
     PredecessorCache,
 }

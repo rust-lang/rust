@@ -1,5 +1,5 @@
 error: this returns a `Result<_, ()>
-  --> $DIR/result_unit_error.rs:4:1
+  --> $DIR/result_unit_error.rs:5:1
    |
 LL | pub fn returns_unit_error() -> Result<u32, ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | pub fn returns_unit_error() -> Result<u32, ()> {
    = help: use a custom Error type instead
 
 error: this returns a `Result<_, ()>
-  --> $DIR/result_unit_error.rs:13:5
+  --> $DIR/result_unit_error.rs:14:5
    |
 LL |     fn get_that_error(&self) -> Result<bool, ()>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     fn get_that_error(&self) -> Result<bool, ()>;
    = help: use a custom Error type instead
 
 error: this returns a `Result<_, ()>
-  --> $DIR/result_unit_error.rs:15:5
+  --> $DIR/result_unit_error.rs:16:5
    |
 LL |     fn get_this_one_too(&self) -> Result<bool, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     fn get_this_one_too(&self) -> Result<bool, ()> {
    = help: use a custom Error type instead
 
 error: this returns a `Result<_, ()>
-  --> $DIR/result_unit_error.rs:33:5
+  --> $DIR/result_unit_error.rs:34:5
    |
 LL |     pub fn unit_error(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

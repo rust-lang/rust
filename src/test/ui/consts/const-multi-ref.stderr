@@ -4,13 +4,16 @@ error[E0764]: mutable references are not allowed in constants
 LL |     let p = &mut a;
    |             ^^^^^^ `&mut` is only allowed in `const fn`
 
-error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+error[E0658]: cannot borrow here, since the borrowed element may contain interior mutability
   --> $DIR/const-multi-ref.rs:16:13
    |
 LL |     let p = &a;
    |             ^^
+   |
+   = note: see issue #80384 <https://github.com/rust-lang/rust/issues/80384> for more information
+   = help: add `#![feature(const_refs_to_cell)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0492, E0764.
-For more information about an error, try `rustc --explain E0492`.
+Some errors have detailed explanations: E0658, E0764.
+For more information about an error, try `rustc --explain E0658`.

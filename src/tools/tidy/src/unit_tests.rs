@@ -31,8 +31,6 @@ pub fn check(root_path: &Path, bad: &mut bool) {
                 // UI tests with different names
                 || path.ends_with("src/thread/local/dynamic_tests.rs")
                 || path.ends_with("src/sync/mpsc/sync_tests.rs")
-                // Has copyright banner
-                || path.ends_with("src/sys/cloudabi/abi/cloudabi.rs")
         }
     };
 

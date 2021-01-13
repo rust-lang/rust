@@ -8,13 +8,13 @@ use crate::passes::Pass;
 #[cfg(test)]
 mod tests;
 
-pub const UNINDENT_COMMENTS: Pass = Pass {
+crate const UNINDENT_COMMENTS: Pass = Pass {
     name: "unindent-comments",
     run: unindent_comments,
     description: "removes excess indentation on comments in order for markdown to like it",
 };
 
-pub fn unindent_comments(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
+crate fn unindent_comments(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
     CommentCleaner.fold_crate(krate)
 }
 
@@ -23,12 +23,12 @@ struct CommentCleaner;
 impl fold::DocFolder for CommentCleaner {
     fn fold_item(&mut self, mut i: Item) -> Option<Item> {
         i.attrs.unindent_doc_comments();
-        self.fold_item_recur(i)
+        Some(self.fold_item_recur(i))
     }
 }
 
 impl clean::Attributes {
-    pub fn unindent_doc_comments(&mut self) {
+    crate fn unindent_doc_comments(&mut self) {
         unindent_fragments(&mut self.doc_strings);
     }
 }
@@ -68,7 +68,7 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
     let min_indent = match docs
         .iter()
         .map(|fragment| {
-            fragment.doc.lines().fold(usize::MAX, |min_indent, line| {
+            fragment.doc.as_str().lines().fold(usize::MAX, |min_indent, line| {
                 if line.chars().all(|c| c.is_whitespace()) {
                     min_indent
                 } else {
@@ -87,7 +87,7 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
     };
 
     for fragment in docs {
-        if fragment.doc.lines().count() == 0 {
+        if fragment.doc.as_str().lines().count() == 0 {
             continue;
         }
 
@@ -97,18 +97,6 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
             min_indent
         };
 
-        fragment.doc = fragment
-            .doc
-            .lines()
-            .map(|line| {
-                if line.chars().all(|c| c.is_whitespace()) {
-                    line.to_string()
-                } else {
-                    assert!(line.len() >= min_indent);
-                    line[min_indent..].to_string()
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
+        fragment.indent = min_indent;
     }
 }

@@ -94,9 +94,9 @@ fn to_camel_case(s: &str) -> String {
                 }
 
                 if new_word {
-                    camel_cased_component.push_str(&c.to_uppercase().to_string());
+                    camel_cased_component.extend(c.to_uppercase());
                 } else {
-                    camel_cased_component.push_str(&c.to_lowercase().to_string());
+                    camel_cased_component.extend(c.to_lowercase());
                 }
 
                 prev_is_lower_case = c.is_lowercase();
@@ -127,14 +127,20 @@ impl NonCamelCaseTypes {
         if !is_camel_case(name) {
             cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, |lint| {
                 let msg = format!("{} `{}` should have an upper camel case name", sort, name);
-                lint.build(&msg)
-                    .span_suggestion(
+                let mut err = lint.build(&msg);
+                let cc = to_camel_case(name);
+                // We cannot provide meaningful suggestions
+                // if the characters are in the category of "Lowercase Letter".
+                if *name != cc {
+                    err.span_suggestion(
                         ident.span,
                         "convert the identifier to upper camel case",
                         to_camel_case(name),
                         Applicability::MaybeIncorrect,
-                    )
-                    .emit()
+                    );
+                }
+
+                err.emit();
             })
         }
     }
@@ -263,17 +269,36 @@ impl NonSnakeCase {
                 let sc = NonSnakeCase::to_snake_case(name);
                 let msg = format!("{} `{}` should have a snake case name", sort, name);
                 let mut err = lint.build(&msg);
-                // We have a valid span in almost all cases, but we don't have one when linting a crate
-                // name provided via the command line.
-                if !ident.span.is_dummy() {
-                    err.span_suggestion(
-                        ident.span,
-                        "convert the identifier to snake case",
-                        sc,
-                        Applicability::MaybeIncorrect,
-                    );
-                } else {
-                    err.help(&format!("convert the identifier to snake case: `{}`", sc));
+                // We cannot provide meaningful suggestions
+                // if the characters are in the category of "Uppercase Letter".
+                if *name != sc {
+                    // We have a valid span in almost all cases, but we don't have one when linting a crate
+                    // name provided via the command line.
+                    if !ident.span.is_dummy() {
+                        let sc_ident = Ident::from_str_and_span(&sc, ident.span);
+                        let (message, suggestion) = if sc_ident.is_reserved() {
+                            // We shouldn't suggest a reserved identifier to fix non-snake-case identifiers.
+                            // Instead, recommend renaming the identifier entirely or, if permitted,
+                            // escaping it to create a raw identifier.
+                            if sc_ident.name.can_be_raw() {
+                                ("rename the identifier or convert it to a snake case raw identifier", sc_ident.to_string())
+                            } else {
+                                err.note(&format!("`{}` cannot be used as a raw identifier", sc));
+                                ("rename the identifier", String::new())
+                            }
+                        } else {
+                            ("convert the identifier to snake case", sc)
+                        };
+
+                        err.span_suggestion(
+                            ident.span,
+                            message,
+                            suggestion,
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        err.help(&format!("convert the identifier to snake case: `{}`", sc));
+                    }
                 }
 
                 err.emit();
@@ -387,7 +412,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'_>, p: &hir::Pat<'_>) {
-        if let &PatKind::Binding(_, hid, ident, _) = &p.kind {
+        if let PatKind::Binding(_, hid, ident, _) = p.kind {
             if let hir::Node::Pat(parent_pat) = cx.tcx.hir().get(cx.tcx.hir().get_parent_node(hid))
             {
                 if let PatKind::Struct(_, field_pats, _) = &parent_pat.kind {
@@ -441,14 +466,20 @@ impl NonUpperCaseGlobals {
         if name.chars().any(|c| c.is_lowercase()) {
             cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, |lint| {
                 let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
-                lint.build(&format!("{} `{}` should have an upper case name", sort, name))
-                    .span_suggestion(
+                let mut err =
+                    lint.build(&format!("{} `{}` should have an upper case name", sort, name));
+                // We cannot provide meaningful suggestions
+                // if the characters are in the category of "Lowercase Letter".
+                if *name != uc {
+                    err.span_suggestion(
                         ident.span,
                         "convert the identifier to upper case",
                         uc,
                         Applicability::MaybeIncorrect,
-                    )
-                    .emit();
+                    );
+                }
+
+                err.emit();
             })
         }
     }

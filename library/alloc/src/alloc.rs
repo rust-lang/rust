@@ -23,6 +23,8 @@ extern "Rust" {
     // (the code expanding that attribute macro generates those functions), or to call
     // the default implementations in libstd (`__rdl_alloc` etc. in `library/std/src/alloc.rs`)
     // otherwise.
+    // The rustc fork of LLVM also special-cases these function names to be able to optimize them
+    // like `malloc`, `realloc`, and `free`, respectively.
     #[rustc_allocator]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
@@ -36,7 +38,7 @@ extern "Rust" {
 
 /// The global memory allocator.
 ///
-/// This type implements the [`AllocRef`] trait by forwarding calls
+/// This type implements the [`Allocator`] trait by forwarding calls
 /// to the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
@@ -57,7 +59,7 @@ pub use std::alloc::Global;
 /// if there is one, or the `std` crate’s default.
 ///
 /// This function is expected to be deprecated in favor of the `alloc` method
-/// of the [`Global`] type when it and the [`AllocRef`] trait become stable.
+/// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
 ///
@@ -91,7 +93,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 /// if there is one, or the `std` crate’s default.
 ///
 /// This function is expected to be deprecated in favor of the `dealloc` method
-/// of the [`Global`] type when it and the [`AllocRef`] trait become stable.
+/// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
 ///
@@ -109,7 +111,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 /// if there is one, or the `std` crate’s default.
 ///
 /// This function is expected to be deprecated in favor of the `realloc` method
-/// of the [`Global`] type when it and the [`AllocRef`] trait become stable.
+/// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
 ///
@@ -127,7 +129,7 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// if there is one, or the `std` crate’s default.
 ///
 /// This function is expected to be deprecated in favor of the `alloc_zeroed` method
-/// of the [`Global`] type when it and the [`AllocRef`] trait become stable.
+/// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
 ///
@@ -168,7 +170,7 @@ impl Global {
         }
     }
 
-    // SAFETY: Same as `AllocRef::grow`
+    // SAFETY: Same as `Allocator::grow`
     #[inline]
     unsafe fn grow_impl(
         &self,
@@ -209,7 +211,7 @@ impl Global {
             old_size => unsafe {
                 let new_ptr = self.alloc_impl(new_layout, zeroed)?;
                 ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_size);
-                self.dealloc(ptr, old_layout);
+                self.deallocate(ptr, old_layout);
                 Ok(new_ptr)
             },
         }
@@ -218,19 +220,19 @@ impl Global {
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[cfg(not(test))]
-unsafe impl AllocRef for Global {
+unsafe impl Allocator for Global {
     #[inline]
-    fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.alloc_impl(layout, false)
     }
 
     #[inline]
-    fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.alloc_impl(layout, true)
     }
 
     #[inline]
-    unsafe fn dealloc(&self, ptr: NonNull<u8>, layout: Layout) {
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         if layout.size() != 0 {
             // SAFETY: `layout` is non-zero in size,
             // other conditions must be upheld by the caller
@@ -275,7 +277,7 @@ unsafe impl AllocRef for Global {
         match new_layout.size() {
             // SAFETY: conditions must be upheld by the caller
             0 => unsafe {
-                self.dealloc(ptr, old_layout);
+                self.deallocate(ptr, old_layout);
                 Ok(NonNull::slice_from_raw_parts(new_layout.dangling(), 0))
             },
 
@@ -295,9 +297,9 @@ unsafe impl AllocRef for Global {
             // `new_ptr`. Thus, the call to `copy_nonoverlapping` is safe. The safety contract
             // for `dealloc` must be upheld by the caller.
             new_size => unsafe {
-                let new_ptr = self.alloc(new_layout)?;
+                let new_ptr = self.allocate(new_layout)?;
                 ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_size);
-                self.dealloc(ptr, old_layout);
+                self.deallocate(ptr, old_layout);
                 Ok(new_ptr)
             },
         }
@@ -311,7 +313,7 @@ unsafe impl AllocRef for Global {
 #[inline]
 unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
-    match Global.alloc(layout) {
+    match Global.allocate(layout) {
         Ok(ptr) => ptr.as_mut_ptr(),
         Err(_) => handle_alloc_error(layout),
     }
@@ -320,16 +322,16 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 #[cfg_attr(not(test), lang = "box_free")]
 #[inline]
 // This signature has to be the same as `Box`, otherwise an ICE will happen.
-// When an additional parameter to `Box` is added (like `A: AllocRef`), this has to be added here as
+// When an additional parameter to `Box` is added (like `A: Allocator`), this has to be added here as
 // well.
-// For example if `Box` is changed to  `struct Box<T: ?Sized, A: AllocRef>(Unique<T>, A)`,
-// this function has to be changed to `fn box_free<T: ?Sized, A: AllocRef>(Unique<T>, A)` as well.
-pub(crate) unsafe fn box_free<T: ?Sized, A: AllocRef>(ptr: Unique<T>, alloc: A) {
+// For example if `Box` is changed to  `struct Box<T: ?Sized, A: Allocator>(Unique<T>, A)`,
+// this function has to be changed to `fn box_free<T: ?Sized, A: Allocator>(Unique<T>, A)` as well.
+pub(crate) unsafe fn box_free<T: ?Sized, A: Allocator>(ptr: Unique<T>, alloc: A) {
     unsafe {
         let size = size_of_val(ptr.as_ref());
         let align = min_align_of_val(ptr.as_ref());
         let layout = Layout::from_size_align_unchecked(size, align);
-        alloc.dealloc(ptr.cast().into(), layout)
+        alloc.deallocate(ptr.cast().into(), layout)
     }
 }
 
@@ -356,8 +358,9 @@ extern "Rust" {
 /// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
 /// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
 #[stable(feature = "global_alloc", since = "1.28.0")]
-#[cfg(not(any(test, bootstrap)))]
+#[cfg(not(test))]
 #[rustc_allocator_nounwind]
+#[cold]
 pub fn handle_alloc_error(layout: Layout) -> ! {
     unsafe {
         __rust_alloc_error_handler(layout.size(), layout.align());
@@ -368,22 +371,7 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
 #[cfg(test)]
 pub use std::alloc::handle_alloc_error;
 
-// In stage0 (bootstrap) `__rust_alloc_error_handler`,
-// might not be generated yet, because an old compiler is used,
-// so use the old direct call.
-#[cfg(all(bootstrap, not(test)))]
-#[stable(feature = "global_alloc", since = "1.28.0")]
-#[doc(hidden)]
-#[rustc_allocator_nounwind]
-pub fn handle_alloc_error(layout: Layout) -> ! {
-    extern "Rust" {
-        #[lang = "oom"]
-        fn oom_impl(layout: Layout) -> !;
-    }
-    unsafe { oom_impl(layout) }
-}
-
-#[cfg(not(any(target_os = "hermit", test, bootstrap)))]
+#[cfg(not(any(target_os = "hermit", test)))]
 #[doc(hidden)]
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
@@ -407,5 +395,28 @@ pub mod __alloc_error_handler {
             fn oom_impl(layout: Layout) -> !;
         }
         unsafe { oom_impl(layout) }
+    }
+}
+
+/// Specialize clones into pre-allocated, uninitialized memory.
+/// Used by `Box::clone` and `Rc`/`Arc::make_mut`.
+pub(crate) trait WriteCloneIntoRaw: Sized {
+    unsafe fn write_clone_into_raw(&self, target: *mut Self);
+}
+
+impl<T: Clone> WriteCloneIntoRaw for T {
+    #[inline]
+    default unsafe fn write_clone_into_raw(&self, target: *mut Self) {
+        // Having allocated *first* may allow the optimizer to create
+        // the cloned value in-place, skipping the local and move.
+        unsafe { target.write(self.clone()) };
+    }
+}
+
+impl<T: Copy> WriteCloneIntoRaw for T {
+    #[inline]
+    unsafe fn write_clone_into_raw(&self, target: *mut Self) {
+        // We can always copy in-place, without ever involving a local value.
+        unsafe { target.copy_from_nonoverlapping(self, 1) };
     }
 }

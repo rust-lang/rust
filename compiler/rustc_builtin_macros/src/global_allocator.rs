@@ -4,7 +4,7 @@ use rustc_ast::expand::allocator::{
     AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
 };
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Attribute, Expr, FnHeader, FnSig, Generics, Param};
+use rustc_ast::{self as ast, Attribute, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
 use rustc_ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -14,7 +14,7 @@ pub fn expand(
     ecx: &mut ExtCtxt<'_>,
     _span: Span,
     meta_item: &ast::MetaItem,
-    item: Annotatable,
+    mut item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::global_allocator);
 
@@ -22,6 +22,17 @@ pub fn expand(
         ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
         vec![item]
     };
+    let orig_item = item.clone();
+    let mut is_stmt = false;
+
+    // Allow using `#[global_allocator]` on an item statement
+    if let Annotatable::Stmt(stmt) = &item {
+        if let StmtKind::Item(item_) = &stmt.kind {
+            item = Annotatable::Item(item_.clone());
+            is_stmt = true;
+        }
+    }
+
     let item = match item {
         Annotatable::Item(item) => match item.kind {
             ItemKind::Static(..) => item,
@@ -41,9 +52,14 @@ pub fn expand(
     let const_ty = ecx.ty(span, TyKind::Tup(Vec::new()));
     let const_body = ecx.expr_block(ecx.block(span, stmts));
     let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
+    let const_item = if is_stmt {
+        Annotatable::Stmt(P(ecx.stmt_item(span, const_item)))
+    } else {
+        Annotatable::Item(const_item)
+    };
 
     // Return the original item and the new methods.
-    vec![Annotatable::Item(item), Annotatable::Item(const_item)]
+    vec![orig_item, const_item]
 }
 
 struct AllocFnFactory<'a, 'b> {

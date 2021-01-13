@@ -5,7 +5,7 @@ LL |     loop {}
    |     ^^^^^^^
    |
    = note: `-D clippy::empty-loop` implied by `-D warnings`
-   = help: You should either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
+   = help: you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body
 
 error: empty `loop {}` wastes CPU cycles
   --> $DIR/empty_loop.rs:11:9
@@ -13,7 +13,7 @@ error: empty `loop {}` wastes CPU cycles
 LL |         loop {}
    |         ^^^^^^^
    |
-   = help: You should either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
+   = help: you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body
 
 error: empty `loop {}` wastes CPU cycles
   --> $DIR/empty_loop.rs:15:9
@@ -21,7 +21,7 @@ error: empty `loop {}` wastes CPU cycles
 LL |         'inner: loop {}
    |         ^^^^^^^^^^^^^^^
    |
-   = help: You should either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
+   = help: you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body
 
 error: aborting due to 3 previous errors
 

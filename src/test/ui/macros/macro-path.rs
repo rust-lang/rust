@@ -8,7 +8,7 @@ mod m {
 
 macro_rules! foo {
     ($p:path) => ({
-        fn f() -> $p { 10 };
+        fn f() -> $p { 10 }
         f()
     })
 }

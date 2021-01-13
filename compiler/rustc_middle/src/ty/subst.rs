@@ -152,7 +152,7 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.fold_with(folder).into(),
             GenericArgKind::Type(ty) => ty.fold_with(folder).into(),
@@ -160,7 +160,7 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
@@ -363,7 +363,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         // This code is hot enough that it's worth specializing for the most
         // common length lists, to avoid the overhead of `SmallVec` creation.
         // The match arms are in order of frequency. The 1, 2, and 0 cases are
@@ -392,7 +392,7 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
@@ -405,12 +405,12 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
 // there is more information available (for better errors).
 
 pub trait Subst<'tcx>: Sized {
-    fn subst(&self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> Self {
+    fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
 
     fn subst_spanned(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         substs: &[GenericArg<'tcx>],
         span: Option<Span>,
@@ -419,13 +419,13 @@ pub trait Subst<'tcx>: Sized {
 
 impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for T {
     fn subst_spanned(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         substs: &[GenericArg<'tcx>],
         span: Option<Span>,
     ) -> T {
         let mut folder = SubstFolder { tcx, substs, span, binders_passed: 0 };
-        (*self).fold_with(&mut folder)
+        self.fold_with(&mut folder)
     }
 }
 
@@ -448,7 +448,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: ty::Binder<T>) -> ty::Binder<T> {
         self.binders_passed += 1;
         let t = t.super_fold_with(self);
         self.binders_passed -= 1;
@@ -634,7 +634,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
             return val;
         }
 
-        let result = ty::fold::shift_vars(self.tcx(), &val, self.binders_passed);
+        let result = ty::fold::shift_vars(self.tcx(), val, self.binders_passed);
         debug!("shift_vars: shifted result = {:?}", result);
 
         result

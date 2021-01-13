@@ -1,0 +1,43 @@
+    1|       |#![allow(unused_assignments)]
+    2|       |// expect-exit-status-1
+    3|       |
+    4|      1|fn main() -> Result<(),u8> {
+    5|      1|    let mut countdown = 10;
+    6|       |    while
+    7|      7|        countdown
+    8|      7|            >
+    9|      7|        0
+   10|       |    {
+   11|       |        if
+   12|      7|            countdown
+   13|      7|                <
+   14|      7|            5
+   15|       |        {
+   16|       |            return
+   17|       |                if
+   18|      1|                    countdown
+   19|      1|                        >
+   20|      1|                    8
+   21|       |                {
+   22|      0|                    Ok(())
+   23|       |                }
+   24|       |                else
+   25|       |                {
+   26|      1|                    Err(1)
+   27|       |                }
+   28|       |                ;
+   29|      6|        }
+   30|      6|        countdown
+   31|      6|            -=
+   32|      6|        1
+   33|       |        ;
+   34|       |    }
+   35|      0|    Ok(())
+   36|      1|}
+   37|       |
+   38|       |// ISSUE(77553): Originally, this test had `Err(1)` on line 22 (instead of `Ok(())`) and
+   39|       |// `std::process::exit(2)` on line 26 (instead of `Err(1)`); and this worked as expected on Linux
+   40|       |// and MacOS. But on Windows (MSVC, at least), the call to `std::process::exit()` exits the program
+   41|       |// without saving the InstrProf coverage counters. The use of `std::process:exit()` is not critical
+   42|       |// to the coverage test for early returns, but this is a limitation that should be fixed.
+

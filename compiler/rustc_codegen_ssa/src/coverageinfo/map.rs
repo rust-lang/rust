@@ -170,30 +170,30 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // `expression_index`s lower than the referencing `Expression`. Therefore, it is
         // reasonable to look up the new index of an expression operand while the `new_indexes`
         // vector is only complete up to the current `ExpressionIndex`.
-        let id_to_counter =
-            |new_indexes: &IndexVec<InjectedExpressionIndex, Option<MappedExpressionIndex>>,
-             id: ExpressionOperandId| {
-                if id == ExpressionOperandId::ZERO {
-                    Some(Counter::zero())
-                } else if id.index() < self.counters.len() {
-                    // Note: Some codegen-injected Counters may be only referenced by `Expression`s,
-                    // and may not have their own `CodeRegion`s,
-                    let index = CounterValueReference::from(id.index());
-                    Some(Counter::counter_value_reference(index))
-                } else {
-                    let index = self.expression_index(u32::from(id));
-                    self.expressions
-                        .get(index)
-                        .expect("expression id is out of range")
-                        .as_ref()
-                        // If an expression was optimized out, assume it would have produced a count
-                        // of zero. This ensures that expressions dependent on optimized-out
-                        // expressions are still valid.
-                        .map_or(Some(Counter::zero()), |_| {
-                            new_indexes[index].map(|new_index| Counter::expression(new_index))
-                        })
-                }
-            };
+        let id_to_counter = |new_indexes: &IndexVec<
+            InjectedExpressionIndex,
+            Option<MappedExpressionIndex>,
+        >,
+                             id: ExpressionOperandId| {
+            if id == ExpressionOperandId::ZERO {
+                Some(Counter::zero())
+            } else if id.index() < self.counters.len() {
+                // Note: Some codegen-injected Counters may be only referenced by `Expression`s,
+                // and may not have their own `CodeRegion`s,
+                let index = CounterValueReference::from(id.index());
+                Some(Counter::counter_value_reference(index))
+            } else {
+                let index = self.expression_index(u32::from(id));
+                self.expressions
+                    .get(index)
+                    .expect("expression id is out of range")
+                    .as_ref()
+                    // If an expression was optimized out, assume it would have produced a count
+                    // of zero. This ensures that expressions dependent on optimized-out
+                    // expressions are still valid.
+                    .map_or(Some(Counter::zero()), |_| new_indexes[index].map(Counter::expression))
+            }
+        };
 
         for (original_index, expression) in
             self.expressions.iter_enumerated().filter_map(|(original_index, entry)| {

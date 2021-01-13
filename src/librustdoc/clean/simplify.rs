@@ -15,13 +15,14 @@ use std::collections::BTreeMap;
 
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
+use rustc_span::Symbol;
 
 use crate::clean;
 use crate::clean::GenericArgs as PP;
 use crate::clean::WherePredicate as WP;
 use crate::core::DocContext;
 
-pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
+crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components
     let mut params: BTreeMap<_, Vec<_>> = BTreeMap::new();
     let mut lifetimes = Vec::new();
@@ -74,11 +75,11 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     clauses
 }
 
-pub fn merge_bounds(
+crate fn merge_bounds(
     cx: &clean::DocContext<'_>,
     bounds: &mut Vec<clean::GenericBound>,
     trait_did: DefId,
-    name: &str,
+    name: Symbol,
     rhs: &clean::Type,
 ) -> bool {
     !bounds.iter_mut().any(|b| {
@@ -100,7 +101,7 @@ pub fn merge_bounds(
         match last.args {
             PP::AngleBracketed { ref mut bindings, .. } => {
                 bindings.push(clean::TypeBinding {
-                    name: name.to_string(),
+                    name,
                     kind: clean::TypeBindingKind::Equality { ty: rhs.clone() },
                 });
             }

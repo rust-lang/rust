@@ -3,7 +3,6 @@
 #include "llvm/ProfileData/Coverage/CoverageMappingWriter.h"
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/Support/LEB128.h"
 
 #include <iostream>
 
@@ -13,15 +12,14 @@ extern "C" void LLVMRustCoverageWriteFilenamesSectionToBuffer(
     const char* const Filenames[],
     size_t FilenamesLen,
     RustStringRef BufferOut) {
-  // LLVM 11's CoverageFilenamesSectionWriter uses its new `Version4` format,
-  // so we're manually writing the `Version3` format ourselves.
-  RawRustStringOstream OS(BufferOut);
-  encodeULEB128(FilenamesLen, OS);
+  SmallVector<StringRef,32> FilenameRefs;
   for (size_t i = 0; i < FilenamesLen; i++) {
-    StringRef Filename(Filenames[i]);
-    encodeULEB128(Filename.size(), OS);
-    OS << Filename;
+    FilenameRefs.push_back(StringRef(Filenames[i]));
   }
+  auto FilenamesWriter = coverage::CoverageFilenamesSectionWriter(
+    makeArrayRef(FilenameRefs));
+  RawRustStringOstream OS(BufferOut);
+  FilenamesWriter.write(OS);
 }
 
 extern "C" void LLVMRustCoverageWriteMappingToBuffer(
@@ -45,18 +43,38 @@ extern "C" LLVMValueRef LLVMRustCoverageCreatePGOFuncNameVar(LLVMValueRef F, con
   return wrap(createPGOFuncNameVar(*cast<Function>(unwrap(F)), FuncNameRef));
 }
 
-extern "C" uint64_t LLVMRustCoverageComputeHash(const char *Name) {
-  StringRef NameRef(Name);
-  return IndexedInstrProf::ComputeHash(NameRef);
+extern "C" uint64_t LLVMRustCoverageHashCString(const char *StrVal) {
+  StringRef StrRef(StrVal);
+  return IndexedInstrProf::ComputeHash(StrRef);
 }
 
-extern "C" void LLVMRustCoverageWriteSectionNameToString(LLVMModuleRef M,
-                                                         RustStringRef Str) {
+extern "C" uint64_t LLVMRustCoverageHashByteArray(
+    const char *Bytes,
+    unsigned NumBytes) {
+  StringRef StrRef(Bytes, NumBytes);
+  return IndexedInstrProf::ComputeHash(StrRef);
+}
+
+static void WriteSectionNameToString(LLVMModuleRef M,
+                                     InstrProfSectKind SK,
+                                     RustStringRef Str) {
   Triple TargetTriple(unwrap(M)->getTargetTriple());
-  auto name = getInstrProfSectionName(IPSK_covmap,
-                                      TargetTriple.getObjectFormat());
+  auto name = getInstrProfSectionName(SK, TargetTriple.getObjectFormat());
   RawRustStringOstream OS(Str);
   OS << name;
+}
+
+extern "C" void LLVMRustCoverageWriteMapSectionNameToString(LLVMModuleRef M,
+                                                            RustStringRef Str) {
+  WriteSectionNameToString(M, IPSK_covmap, Str);
+}
+
+extern "C" void LLVMRustCoverageWriteFuncSectionNameToString(LLVMModuleRef M,
+                                                             RustStringRef Str) {
+#if LLVM_VERSION_GE(11, 0)
+  WriteSectionNameToString(M, IPSK_covfun, Str);
+// else do nothing; the `Version` check will abort codegen on the Rust side
+#endif
 }
 
 extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
@@ -66,5 +84,9 @@ extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
 }
 
 extern "C" uint32_t LLVMRustCoverageMappingVersion() {
+#if LLVM_VERSION_GE(11, 0)
+  return coverage::CovMapVersion::Version4;
+#else
   return coverage::CovMapVersion::Version3;
+#endif
 }

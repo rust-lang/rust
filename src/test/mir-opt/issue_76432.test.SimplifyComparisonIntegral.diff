@@ -21,7 +21,7 @@
       let mut _19: *const T;               // in scope 0 at $DIR/issue_76432.rs:9:54: 9:68
       let mut _20: *const T;               // in scope 0 at $DIR/issue_76432.rs:9:70: 9:84
       let mut _21: *const T;               // in scope 0 at $DIR/issue_76432.rs:9:70: 9:84
-      let mut _22: !;                      // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let mut _22: !;                      // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       scope 1 {
           debug v => _2;                   // in scope 1 at $DIR/issue_76432.rs:7:9: 7:10
           let _13: &T;                     // in scope 1 at $DIR/issue_76432.rs:9:10: 9:16
@@ -64,11 +64,11 @@
       }
   
       bb1: {
-          StorageLive(_22);                // scope 1 at $SRC_DIR/std/src/macros.rs:LL:COL
-          begin_panic::<&str>(const "internal error: entered unreachable code"); // scope 1 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_22);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          core::panicking::panic(const "internal error: entered unreachable code"); // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // mir::Constant
-                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
-                                           // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
+                                           // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // + literal: Const { ty: fn(&'static str) -> ! {core::panicking::panic}, val: Value(Scalar(<ZST>)) }
                                            // ty::Const
                                            // + ty: &str
                                            // + val: Value(Slice { data: Allocation { bytes: [105, 110, 116, 101, 114, 110, 97, 108, 32, 101, 114, 114, 111, 114, 58, 32, 101, 110, 116, 101, 114, 101, 100, 32, 117, 110, 114, 101, 97, 99, 104, 97, 98, 108, 101, 32, 99, 111, 100, 101], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [1099511627775], len: Size { raw: 40 } }, size: Size { raw: 40 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 40 })

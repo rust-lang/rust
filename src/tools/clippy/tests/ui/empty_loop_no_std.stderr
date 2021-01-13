@@ -1,0 +1,19 @@
+error: empty `loop {}` wastes CPU cycles
+  --> $DIR/empty_loop_no_std.rs:14:5
+   |
+LL |     loop {}
+   |     ^^^^^^^
+   |
+   = note: `-D clippy::empty-loop` implied by `-D warnings`
+   = help: you should either use `panic!()` or add a call pausing or sleeping the thread to the loop body
+
+error: empty `loop {}` wastes CPU cycles
+  --> $DIR/empty_loop_no_std.rs:26:5
+   |
+LL |     loop {}
+   |     ^^^^^^^
+   |
+   = help: you should either use `panic!()` or add a call pausing or sleeping the thread to the loop body
+
+error: aborting due to 2 previous errors
+

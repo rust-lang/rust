@@ -8,6 +8,11 @@ LL |     call_bare(f)
    |
    = note: expected fn pointer `for<'r> fn(&'r str)`
                  found closure `[closure@$DIR/closure-reform-bad.rs:10:13: 10:50]`
+note: closures can only be coerced to `fn` types if they do not capture any variables
+  --> $DIR/closure-reform-bad.rs:10:43
+   |
+LL |     let f = |s: &str| println!("{}{}", s, string);
+   |                                           ^^^^^^ `string` captured here
 
 error: aborting due to previous error
 

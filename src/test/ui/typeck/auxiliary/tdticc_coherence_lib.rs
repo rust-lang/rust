@@ -1,4 +1,4 @@
-#![feature(optin_builtin_traits, core)]
+#![feature(auto_traits, core)]
 #![crate_type = "rlib"]
 
 pub auto trait DefaultedTrait { }

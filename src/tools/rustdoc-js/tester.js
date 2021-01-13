@@ -190,6 +190,30 @@ function loadThings(thingsToLoad, kindOfLoad, funcToCall, fileContent) {
     return content;
 }
 
+function contentToDiffLine(key, value) {
+    return `"${key}": "${value}",`;
+}
+
+// This function is only called when no matching result was found and therefore will only display
+// the diff between the two items.
+function betterLookingDiff(entry, data) {
+    let output = ' {\n';
+    let spaces = '     ';
+    for (let key in entry) {
+        if (!entry.hasOwnProperty(key)) {
+            continue;
+        }
+        let value = data[key];
+        if (value !== entry[key]) {
+            output += '-' + spaces + contentToDiffLine(key, entry[key]) + '\n';
+            output += '+' + spaces + contentToDiffLine(key, value) + '\n';
+        } else {
+            output += spaces + contentToDiffLine(key, value) + '\n';
+        }
+    }
+    return output + ' }';
+}
+
 function lookForEntry(entry, data) {
     for (var i = 0; i < data.length; ++i) {
         var allGood = true;
@@ -281,6 +305,13 @@ function runSearch(query, expected, index, loaded, loadedFile, queryName) {
             if (entry_pos === null) {
                 error_text.push(queryName + "==> Result not found in '" + key + "': '" +
                                 JSON.stringify(entry[i]) + "'");
+                // By default, we just compare the two first items.
+                let item_to_diff = 0;
+                if ((ignore_order === false || exact_check === true) && i < results[key].length) {
+                    item_to_diff = i;
+                }
+                error_text.push("Diff of first error:\n" +
+                    betterLookingDiff(entry[i], results[key][item_to_diff]));
             } else if (exact_check === true && prev_pos + 1 !== entry_pos) {
                 error_text.push(queryName + "==> Exact check failed at position " + (prev_pos + 1) +
                                 ": expected '" + JSON.stringify(entry[i]) + "' but found '" +

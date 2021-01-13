@@ -1,6 +1,6 @@
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
-use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
 use rustc_ast as ast;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, DiagnosticBuilder};
@@ -42,8 +42,8 @@ pub enum TypeError<'tcx> {
     ArgCount,
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
-    RegionsInsufficientlyPolymorphic(BoundRegion, Region<'tcx>),
-    RegionsOverlyPolymorphic(BoundRegion, Region<'tcx>),
+    RegionsInsufficientlyPolymorphic(BoundRegionKind, Region<'tcx>),
+    RegionsOverlyPolymorphic(BoundRegionKind, Region<'tcx>),
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<Ty<'tcx>>),
@@ -58,7 +58,7 @@ pub enum TypeError<'tcx> {
     CyclicTy(Ty<'tcx>),
     CyclicConst(&'tcx ty::Const<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
-    ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
+    ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>>),
     ObjectUnsafeCoercion(DefId),
     ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
 
@@ -94,7 +94,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
         }
 
-        let br_string = |br: ty::BoundRegion| match br {
+        let br_string = |br: ty::BoundRegionKind| match br {
             ty::BrNamed(_, name) => format!(" {}", name),
             _ => String::new(),
         };
@@ -647,14 +647,11 @@ impl<T> Trait<T> for X {
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
         // We don't want to suggest calling an assoc fn in a scope where that isn't feasible.
-        let callable_scope = match body_owner {
-            Some(
+        let callable_scope = matches!(body_owner, Some(
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
                 | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
                 | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
-            ) => true,
-            _ => false,
-        };
+            ));
         let impl_comparison = matches!(
             cause_code,
             ObligationCauseCode::CompareImplMethodObligation { .. }
@@ -832,7 +829,8 @@ fn foo(&self) -> Self::T { String::new() }
                 }
             }
             Some(hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl { items, .. }, ..
+                kind: hir::ItemKind::Impl(hir::Impl { items, .. }),
+                ..
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {

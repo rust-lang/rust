@@ -11,10 +11,6 @@
 extern crate test;
 
 use self::test::black_box;
-use std::{f32, f64};
-#[cfg(not(target_os = "emscripten"))]
-use std::{i128, u128};
-use std::{i16, i32, i64, i8, u16, u32, u64, u8};
 
 macro_rules! test {
     ($val:expr, $src_ty:ident -> $dest_ty:ident, $expected:expr) => (

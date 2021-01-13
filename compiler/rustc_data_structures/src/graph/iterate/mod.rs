@@ -149,8 +149,6 @@ struct Event<N> {
 /// those successors), we will pop off that node's `Settled` event.
 ///
 /// [CLR]: https://en.wikipedia.org/wiki/Introduction_to_Algorithms
-/// [`NodeStatus`]: ./enum.NodeStatus.html
-/// [`TriColorVisitor::node_examined`]: ./trait.TriColorVisitor.html#method.node_examined
 pub struct TriColorDepthFirstSearch<'graph, G>
 where
     G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,

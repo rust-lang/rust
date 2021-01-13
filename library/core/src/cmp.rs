@@ -29,7 +29,7 @@ use self::Ordering::*;
 ///
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
-/// so floating point types implement `PartialEq` but not [`Eq`].
+/// so floating point types implement `PartialEq` but not [`trait@Eq`].
 ///
 /// Formally, the equality must be (for all `a`, `b` and `c`):
 ///
@@ -325,6 +325,120 @@ pub enum Ordering {
 }
 
 impl Ordering {
+    /// Returns `true` if the ordering is the `Equal` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_eq(), false);
+    /// assert_eq!(Ordering::Equal.is_eq(), true);
+    /// assert_eq!(Ordering::Greater.is_eq(), false);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_eq(self) -> bool {
+        matches!(self, Equal)
+    }
+
+    /// Returns `true` if the ordering is not the `Equal` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_ne(), true);
+    /// assert_eq!(Ordering::Equal.is_ne(), false);
+    /// assert_eq!(Ordering::Greater.is_ne(), true);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_ne(self) -> bool {
+        !matches!(self, Equal)
+    }
+
+    /// Returns `true` if the ordering is the `Less` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_lt(), true);
+    /// assert_eq!(Ordering::Equal.is_lt(), false);
+    /// assert_eq!(Ordering::Greater.is_lt(), false);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_lt(self) -> bool {
+        matches!(self, Less)
+    }
+
+    /// Returns `true` if the ordering is the `Greater` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_gt(), false);
+    /// assert_eq!(Ordering::Equal.is_gt(), false);
+    /// assert_eq!(Ordering::Greater.is_gt(), true);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_gt(self) -> bool {
+        matches!(self, Greater)
+    }
+
+    /// Returns `true` if the ordering is either the `Less` or `Equal` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_le(), true);
+    /// assert_eq!(Ordering::Equal.is_le(), true);
+    /// assert_eq!(Ordering::Greater.is_le(), false);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_le(self) -> bool {
+        !matches!(self, Greater)
+    }
+
+    /// Returns `true` if the ordering is either the `Greater` or `Equal` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_ge(), false);
+    /// assert_eq!(Ordering::Equal.is_ge(), true);
+    /// assert_eq!(Ordering::Greater.is_ge(), true);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_ge(self) -> bool {
+        !matches!(self, Less)
+    }
+
     /// Reverses the `Ordering`.
     ///
     /// * `Less` becomes `Greater`.
@@ -641,14 +755,12 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(clamp)]
-    ///
     /// assert!((-3).clamp(-2, 1) == -2);
     /// assert!(0.clamp(-2, 1) == 0);
     /// assert!(2.clamp(-2, 1) == 1);
     /// ```
     #[must_use]
-    #[unstable(feature = "clamp", issue = "44095")]
+    #[stable(feature = "clamp", since = "1.50.0")]
     fn clamp(self, min: Self, max: Self) -> Self
     where
         Self: Sized,
@@ -1124,7 +1236,7 @@ mod impls {
     impl PartialOrd for bool {
         #[inline]
         fn partial_cmp(&self, other: &bool) -> Option<Ordering> {
-            (*self as u8).partial_cmp(&(*other as u8))
+            Some(self.cmp(other))
         }
     }
 

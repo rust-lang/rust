@@ -1,6 +1,6 @@
 // run-rustfix
 #![allow(dead_code)]
-#![allow(unused_variables)]
+#![allow(unused_variables, clippy::unnecessary_wraps)]
 
 fn option_unwrap_or() {
     // int case

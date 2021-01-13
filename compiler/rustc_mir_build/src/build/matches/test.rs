@@ -671,6 +671,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (&TestKind::Range { .. }, _) => None,
 
             (&TestKind::Eq { .. } | &TestKind::Len { .. }, _) => {
+                // The call to `self.test(&match_pair)` below is not actually used to generate any
+                // MIR. Instead, we just want to compare with `test` (the parameter of the method)
+                // to see if it is the same.
+                //
+                // However, at this point we can still encounter or-patterns that were extracted
+                // from previous calls to `sort_candidate`, so we need to manually address that
+                // case to avoid panicking in `self.test()`.
+                if let PatKind::Or { .. } = &*match_pair.pattern.kind {
+                    return None;
+                }
+
                 // These are all binary tests.
                 //
                 // FIXME(#29623) we can be more clever here

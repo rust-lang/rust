@@ -20,17 +20,17 @@
 #![crate_name = "test"]
 #![unstable(feature = "test", issue = "50297")]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
-#![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
+#![cfg_attr(unix, feature(libc))]
 #![feature(rustc_private)]
 #![feature(nll)]
-#![feature(bool_to_option)]
 #![feature(available_concurrency)]
-#![feature(set_stdio)]
+#![feature(internal_output_capture)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
 #![feature(test)]
 #![feature(total_cmp)]
+#![feature(str_split_once)]
 
 // Public reexports
 pub use self::bench::{black_box, Bencher};
@@ -89,7 +89,6 @@ mod tests;
 use event::{CompletedTest, TestEvent};
 use helpers::concurrency::get_concurrency;
 use helpers::exit_code::get_exit_code;
-use helpers::sink::Sink;
 use options::{Concurrent, RunStrategy};
 use test_result::*;
 use time::TestExecTime;
@@ -267,14 +266,14 @@ where
             running_tests.remove(test);
         }
         timed_out
-    };
+    }
 
     fn calc_timeout(running_tests: &TestMap) -> Option<Duration> {
         running_tests.values().min().map(|next_timeout| {
             let now = Instant::now();
             if *next_timeout >= now { *next_timeout - now } else { Duration::new(0, 0) }
         })
-    };
+    }
 
     if concurrency == 1 {
         while !remaining.is_empty() {
@@ -531,14 +530,9 @@ fn run_test_in_process(
     // Buffer for capturing standard I/O
     let data = Arc::new(Mutex::new(Vec::new()));
 
-    let oldio = if !nocapture {
-        Some((
-            io::set_print(Some(Sink::new_boxed(&data))),
-            io::set_panic(Some(Sink::new_boxed(&data))),
-        ))
-    } else {
-        None
-    };
+    if !nocapture {
+        io::set_output_capture(Some(data.clone()));
+    }
 
     let start = report_time.then(Instant::now);
     let result = catch_unwind(AssertUnwindSafe(testfn));
@@ -547,16 +541,13 @@ fn run_test_in_process(
         TestExecTime(duration)
     });
 
-    if let Some((printio, panicio)) = oldio {
-        io::set_print(printio);
-        io::set_panic(panicio);
-    }
+    io::set_output_capture(None);
 
     let test_result = match result {
         Ok(()) => calc_result(&desc, Ok(()), &time_opts, &exec_time),
         Err(e) => calc_result(&desc, Err(e.as_ref()), &time_opts, &exec_time),
     };
-    let stdout = data.lock().unwrap().to_vec();
+    let stdout = data.lock().unwrap_or_else(|e| e.into_inner()).to_vec();
     let message = CompletedTest::new(desc, test_result, exec_time, stdout);
     monitor_ch.send(message).unwrap();
 }

@@ -37,12 +37,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     /// `funclet_bb` member if it is not `None`.
     fn funclet<'b, Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &'b mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &'b FunctionCx<'a, 'tcx, Bx>,
     ) -> Option<&'b Bx::Funclet> {
-        match self.funclet_bb {
-            Some(funcl) => fx.funclets[funcl].as_ref(),
-            None => None,
-        }
+        self.funclet_bb.and_then(|funcl| fx.funclets[funcl].as_ref())
     }
 
     fn lltarget<Bx: BuilderMethods<'a, 'tcx>>(
@@ -255,7 +252,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
         let llval = match self.fn_abi.ret.mode {
-            PassMode::Ignore | PassMode::Indirect(..) => {
+            PassMode::Ignore | PassMode::Indirect { .. } => {
                 bx.ret_void();
                 return;
             }
@@ -306,7 +303,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         unwind: Option<mir::BasicBlock>,
     ) {
         let ty = location.ty(self.mir, bx.tcx()).ty;
-        let ty = self.monomorphize(&ty);
+        let ty = self.monomorphize(ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
         if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
@@ -454,7 +451,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Inhabited,
             ZeroValid,
             UninitValid,
-        };
+        }
         let panic_intrinsic = intrinsic.and_then(|i| match i {
             sym::assert_inhabited => Some(AssertIntrinsic::Inhabited),
             sym::assert_zero_valid => Some(AssertIntrinsic::ZeroValid),
@@ -525,7 +522,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         mut bx: Bx,
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
-        args: &Vec<mir::Operand<'tcx>>,
+        args: &[mir::Operand<'tcx>],
         destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
         fn_span: Span,
@@ -576,7 +573,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .iter()
             .map(|op_arg| {
                 let op_ty = op_arg.ty(self.mir, bx.tcx());
-                self.monomorphize(&op_ty)
+                self.monomorphize(op_ty)
             })
             .collect::<Vec<_>>();
 
@@ -900,7 +897,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
-                    let literal = self.monomorphize(&value.literal);
+                    let literal = self.monomorphize(value.literal);
                     if let ty::FnDef(def_id, substs) = *literal.ty.kind() {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             bx.tcx(),
@@ -1101,7 +1098,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Force by-ref if we have to load through a cast pointer.
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => match arg.mode {
-                PassMode::Indirect(..) | PassMode::Cast(_) => {
+                PassMode::Indirect { .. } | PassMode::Cast(_) => {
                     let scratch = PlaceRef::alloca(bx, arg.layout);
                     op.val.store(bx, scratch);
                     (scratch.llval, scratch.align, true)
@@ -1398,6 +1395,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         dst: PlaceRef<'tcx, Bx::Value>,
     ) {
         let src = self.codegen_operand(bx, src);
+
+        // Special-case transmutes between scalars as simple bitcasts.
+        match (&src.layout.abi, &dst.layout.abi) {
+            (abi::Abi::Scalar(src_scalar), abi::Abi::Scalar(dst_scalar)) => {
+                // HACK(eddyb) LLVM doesn't like `bitcast`s between pointers and non-pointers.
+                if (src_scalar.value == abi::Pointer) == (dst_scalar.value == abi::Pointer) {
+                    assert_eq!(src.layout.size, dst.layout.size);
+
+                    // NOTE(eddyb) the `from_immediate` and `to_immediate_scalar`
+                    // conversions allow handling `bool`s the same as `u8`s.
+                    let src = bx.from_immediate(src.immediate());
+                    let src_as_dst = bx.bitcast(src, bx.backend_type(dst.layout));
+                    Immediate(bx.to_immediate_scalar(src_as_dst, dst_scalar)).store(bx, dst);
+                    return;
+                }
+            }
+            _ => {}
+        }
+
         let llty = bx.backend_type(src.layout);
         let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr_to(llty));
         let align = src.layout.align.abi.min(dst.align);

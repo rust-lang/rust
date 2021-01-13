@@ -1,6 +1,9 @@
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/issue-3521.rs:6:15
+  --> $DIR/issue-3521.rs:8:15
    |
+LL |     let foo: isize = 100;
+   |     ------- help: consider using `const` instead of `let`: `const foo`
+...
 LL |         Bar = foo
    |               ^^^ non-constant value
 

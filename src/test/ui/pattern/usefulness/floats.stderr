@@ -1,0 +1,24 @@
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/floats.rs:10:11
+   |
+LL |     match 0.0 {
+   |           ^^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `f64`
+
+error: unreachable pattern
+  --> $DIR/floats.rs:16:7
+   |
+LL |       0.02f64 => {}
+   |       ^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/floats.rs:2:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

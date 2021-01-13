@@ -75,28 +75,6 @@ where
     }
 }
 
-// Use an equal-pointer optimization when types are `Eq`
-// We can't make `A` and `B` the same type because `min_specialization` won't
-// allow it.
-impl<A, B> SlicePartialEq<B> for [A]
-where
-    A: MarkerEq<B>,
-{
-    default fn equal(&self, other: &[B]) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-
-        // While performance would suffer if `guaranteed_eq` just returned `false`
-        // for all arguments, correctness and return value of this function are not affected.
-        if self.as_ptr().guaranteed_eq(other.as_ptr() as *const A) {
-            return true;
-        }
-
-        self.iter().zip(other.iter()).all(|(x, y)| x == y)
-    }
-}
-
 // Use memcmp for bytewise equality when the types allow
 impl<A, B> SlicePartialEq<B> for [A]
 where
@@ -107,11 +85,6 @@ where
             return false;
         }
 
-        // While performance would suffer if `guaranteed_eq` just returned `false`
-        // for all arguments, correctness and return value of this function are not affected.
-        if self.as_ptr().guaranteed_eq(other.as_ptr() as *const A) {
-            return true;
-        }
         // SAFETY: `self` and `other` are references and are thus guaranteed to be valid.
         // The two slices have been checked to have the same size above.
         unsafe {

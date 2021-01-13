@@ -1,8 +1,8 @@
 fn main() {
-    [1; <Multiply<Five, Five>>::VAL]; //~ ERROR evaluation of constant value failed
+    [1; <Multiply<Five, Five>>::VAL];
 }
 trait TypeVal<T> {
-    const VAL: T; //~ ERROR any use of this value will cause an error
+    const VAL: T;
 }
 struct Five;
 struct Multiply<N, M> {

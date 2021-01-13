@@ -23,6 +23,21 @@ declare_clippy_lint! {
     /// [package]
     /// name = "clippy"
     /// version = "0.0.212"
+    /// description = "A bunch of helpful lints to avoid common pitfalls in Rust"
+    /// repository = "https://github.com/rust-lang/rust-clippy"
+    /// readme = "README.md"
+    /// license = "MIT OR Apache-2.0"
+    /// keywords = ["clippy", "lint", "plugin"]
+    /// categories = ["development-tools", "development-tools::cargo-plugins"]
+    /// ```
+    ///
+    /// Should include an authors field like:
+    ///
+    /// ```toml
+    /// # This `Cargo.toml` includes all common metadata
+    /// [package]
+    /// name = "clippy"
+    /// version = "0.0.212"
     /// authors = ["Someone <someone@rust-lang.org>"]
     /// description = "A bunch of helpful lints to avoid common pitfalls in Rust"
     /// repository = "https://github.com/rust-lang/rust-clippy"

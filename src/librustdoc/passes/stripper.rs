@@ -5,15 +5,15 @@ use std::mem;
 use crate::clean::{self, GetDefId, Item};
 use crate::fold::{DocFolder, StripItem};
 
-pub struct Stripper<'a> {
-    pub retained: &'a mut DefIdSet,
-    pub access_levels: &'a AccessLevels<DefId>,
-    pub update_retained: bool,
+crate struct Stripper<'a> {
+    crate retained: &'a mut DefIdSet,
+    crate access_levels: &'a AccessLevels<DefId>,
+    crate update_retained: bool,
 }
 
 impl<'a> DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        match i.inner {
+        match *i.kind {
             clean::StrippedItem(..) => {
                 // We need to recurse into stripped modules to strip things
                 // like impl methods but when doing so we must not add any
@@ -22,7 +22,7 @@ impl<'a> DocFolder for Stripper<'a> {
                 let old = mem::replace(&mut self.update_retained, false);
                 let ret = self.fold_item_recur(i);
                 self.update_retained = old;
-                return ret;
+                return Some(ret);
             }
             // These items can all get re-exported
             clean::OpaqueTyItem(..)
@@ -50,18 +50,18 @@ impl<'a> DocFolder for Stripper<'a> {
             }
 
             clean::StructFieldItem(..) => {
-                if i.visibility != clean::Public {
-                    return StripItem(i).strip();
+                if !i.visibility.is_public() {
+                    return Some(StripItem(i).strip());
                 }
             }
 
             clean::ModuleItem(..) => {
-                if i.def_id.is_local() && i.visibility != clean::Public {
+                if i.def_id.is_local() && !i.visibility.is_public() {
                     debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
-                    let ret = StripItem(self.fold_item_recur(i).unwrap()).strip();
+                    let ret = StripItem(self.fold_item_recur(i)).strip();
                     self.update_retained = old;
-                    return ret;
+                    return Some(ret);
                 }
             }
 
@@ -86,7 +86,7 @@ impl<'a> DocFolder for Stripper<'a> {
             clean::KeywordItem(..) => {}
         }
 
-        let fastreturn = match i.inner {
+        let fastreturn = match *i.kind {
             // nothing left to do for traits (don't want to filter their
             // methods out, visibility controlled by the trait)
             clean::TraitItem(..) => true,
@@ -107,23 +107,21 @@ impl<'a> DocFolder for Stripper<'a> {
             self.fold_item_recur(i)
         };
 
-        if let Some(ref i) = i {
-            if self.update_retained {
-                self.retained.insert(i.def_id);
-            }
+        if self.update_retained {
+            self.retained.insert(i.def_id);
         }
-        i
+        Some(i)
     }
 }
 
 /// This stripper discards all impls which reference stripped items
-pub struct ImplStripper<'a> {
-    pub retained: &'a DefIdSet,
+crate struct ImplStripper<'a> {
+    crate retained: &'a DefIdSet,
 }
 
 impl<'a> DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        if let clean::ImplItem(ref imp) = i.inner {
+        if let clean::ImplItem(ref imp) = *i.kind {
             // emptied none trait impls can be stripped
             if imp.trait_.is_none() && imp.items.is_empty() {
                 return None;
@@ -153,20 +151,18 @@ impl<'a> DocFolder for ImplStripper<'a> {
                 }
             }
         }
-        self.fold_item_recur(i)
+        Some(self.fold_item_recur(i))
     }
 }
 
 /// This stripper discards all private import statements (`use`, `extern crate`)
-pub struct ImportStripper;
+crate struct ImportStripper;
 
 impl DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        match i.inner {
-            clean::ExternCrateItem(..) | clean::ImportItem(..) if i.visibility != clean::Public => {
-                None
-            }
-            _ => self.fold_item_recur(i),
+        match *i.kind {
+            clean::ExternCrateItem(..) | clean::ImportItem(..) if !i.visibility.is_public() => None,
+            _ => Some(self.fold_item_recur(i)),
         }
     }
 }

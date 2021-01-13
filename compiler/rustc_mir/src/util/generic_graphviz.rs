@@ -116,9 +116,13 @@ impl<
 
         write!(w, r#"<table border="0" cellborder="1" cellspacing="0">"#)?;
 
-        // FIXME(richkadel): Need generic way to know if node header should have a different color
+        // FIXME(richkadel): If/when migrating the MIR graphviz to this generic implementation,
+        // we need generic way to know if node header should have a different color. For example,
+        // for MIR:
+        //
         // let (blk, bgcolor) = if data.is_cleanup {
-        //    (format!("{:?} (cleanup)", node), "lightblue")
+        //     let color = if dark_mode { "royalblue" } else { "lightblue" };
+        //     (format!("{:?} (cleanup)", node), color)
         // } else {
         //     let color = if dark_mode { "dimgray" } else { "gray" };
         //     (format!("{:?}", node), color)

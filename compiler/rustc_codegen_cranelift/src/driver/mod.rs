@@ -1,4 +1,4 @@
-//! Drivers are responsible for calling [`codegen_mono_items`] and performing any further actions
+//! Drivers are responsible for calling [`codegen_mono_item`] and performing any further actions
 //! like JIT executing or writing object files.
 
 use std::any::Any;
@@ -7,6 +7,7 @@ use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::mir::mono::{Linkage as RLinkage, MonoItem, Visibility};
 
 use crate::prelude::*;
+use crate::CodegenMode;
 
 mod aot;
 #[cfg(feature = "jit")]
@@ -20,32 +21,33 @@ pub(crate) fn codegen_crate(
 ) -> Box<dyn Any> {
     tcx.sess.abort_if_errors();
 
-    if config.use_jit {
-        let is_executable = tcx
-            .sess
-            .crate_types()
-            .contains(&rustc_session::config::CrateType::Executable);
-        if !is_executable {
-            tcx.sess.fatal("can't jit non-executable crate");
+    match config.codegen_mode {
+        CodegenMode::Aot => aot::run_aot(tcx, metadata, need_metadata_module),
+        CodegenMode::Jit | CodegenMode::JitLazy => {
+            let is_executable = tcx
+                .sess
+                .crate_types()
+                .contains(&rustc_session::config::CrateType::Executable);
+            if !is_executable {
+                tcx.sess.fatal("can't jit non-executable crate");
+            }
+
+            #[cfg(feature = "jit")]
+            let _: ! = jit::run_jit(tcx, config.codegen_mode);
+
+            #[cfg(not(feature = "jit"))]
+            tcx.sess
+                .fatal("jit support was disabled when compiling rustc_codegen_cranelift");
         }
-
-        #[cfg(feature = "jit")]
-        let _: ! = jit::run_jit(tcx);
-
-        #[cfg(not(feature = "jit"))]
-        tcx.sess
-            .fatal("jit support was disabled when compiling rustc_codegen_cranelift");
     }
-
-    aot::run_aot(tcx, metadata, need_metadata_module)
 }
 
-fn codegen_mono_items<'tcx>(
+fn predefine_mono_items<'tcx>(
     cx: &mut crate::CodegenCx<'tcx, impl Module>,
-    mono_items: Vec<(MonoItem<'tcx>, (RLinkage, Visibility))>,
+    mono_items: &[(MonoItem<'tcx>, (RLinkage, Visibility))],
 ) {
     cx.tcx.sess.time("predefine functions", || {
-        for &(mono_item, (linkage, visibility)) in &mono_items {
+        for &(mono_item, (linkage, visibility)) in mono_items {
             match mono_item {
                 MonoItem::Fn(instance) => {
                     let (name, sig) = get_function_name_and_sig(
@@ -61,40 +63,6 @@ fn codegen_mono_items<'tcx>(
             }
         }
     });
-
-    for (mono_item, (linkage, visibility)) in mono_items {
-        let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-        codegen_mono_item(cx, mono_item, linkage);
-    }
-}
-
-fn codegen_mono_item<'tcx, M: Module>(
-    cx: &mut crate::CodegenCx<'tcx, M>,
-    mono_item: MonoItem<'tcx>,
-    linkage: Linkage,
-) {
-    let tcx = cx.tcx;
-    match mono_item {
-        MonoItem::Fn(inst) => {
-            let _inst_guard =
-                crate::PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).name));
-            debug_assert!(!inst.substs.needs_infer());
-            tcx.sess
-                .time("codegen fn", || crate::base::codegen_fn(cx, inst, linkage));
-        }
-        MonoItem::Static(def_id) => {
-            crate::constant::codegen_static(&mut cx.constants_cx, def_id);
-        }
-        MonoItem::GlobalAsm(hir_id) => {
-            let item = tcx.hir().expect_item(hir_id);
-            if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
-                cx.global_asm.push_str(&*asm.as_str());
-                cx.global_asm.push_str("\n\n");
-            } else {
-                bug!("Expected GlobalAsm found {:?}", item);
-            }
-        }
-    }
 }
 
 fn time<R>(tcx: TyCtxt<'_>, name: &'static str, f: impl FnOnce() -> R) -> R {

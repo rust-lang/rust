@@ -66,7 +66,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
 
     let fmt = substr.nonself_args[0].clone();
 
-    let mut stmts = vec![];
+    let mut stmts = Vec::with_capacity(fields.len() + 2);
     match vdata {
         ast::VariantData::Tuple(..) | ast::VariantData::Unit(..) => {
             // tuple struct/"normal" variant
@@ -132,6 +132,7 @@ fn stmt_let_underscore(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<ast::Expr>) -> as
         id: ast::DUMMY_NODE_ID,
         span: sp,
         attrs: ast::AttrVec::new(),
+        tokens: None,
     });
-    ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp, tokens: None }
+    ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp }
 }

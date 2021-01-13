@@ -13,7 +13,6 @@ use crate::errors::{
 };
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, ErrorReported, FatalError};
 use rustc_hir as hir;
@@ -26,6 +25,7 @@ use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
@@ -165,6 +165,23 @@ pub struct GenericArgCountResult {
     pub correct: Result<(), GenericArgCountMismatch>,
 }
 
+pub trait CreateSubstsForGenericArgsCtxt<'a, 'tcx> {
+    fn args_for_def_id(&mut self, def_id: DefId) -> (Option<&'a GenericArgs<'a>>, bool);
+
+    fn provided_kind(
+        &mut self,
+        param: &ty::GenericParamDef,
+        arg: &GenericArg<'_>,
+    ) -> subst::GenericArg<'tcx>;
+
+    fn inferred_kind(
+        &mut self,
+        substs: Option<&[subst::GenericArg<'tcx>]>,
+        param: &ty::GenericParamDef,
+        infer_args: bool,
+    ) -> subst::GenericArg<'tcx>;
+}
+
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn ast_region_to_region(
         &self,
@@ -179,11 +196,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             Some(rl::Region::LateBound(debruijn, id, _)) => {
                 let name = lifetime_name(id.expect_local());
-                tcx.mk_region(ty::ReLateBound(debruijn, ty::BrNamed(id, name)))
+                let br = ty::BoundRegion { kind: ty::BrNamed(id, name) };
+                tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
             Some(rl::Region::LateBoundAnon(debruijn, index)) => {
-                tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(index)))
+                let br = ty::BoundRegion { kind: ty::BrAnon(index) };
+                tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
             Some(rl::Region::EarlyBound(index, id, _)) => {
@@ -320,82 +339,111 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             infer_args,
         );
 
+        // Skip processing if type has no generic parameters.
+        // Traits always have `Self` as a generic parameter, which means they will not return early
+        // here and so associated type bindings will be handled regardless of whether there are any
+        // non-`Self` generic parameters.
+        if generic_params.params.len() == 0 {
+            return (tcx.intern_substs(&[]), vec![], arg_count);
+        }
+
         let is_object = self_ty.map_or(false, |ty| ty == self.tcx().types.trait_object_dummy_self);
-        let default_needs_object_self = |param: &ty::GenericParamDef| {
-            if let GenericParamDefKind::Type { has_default, .. } = param.kind {
-                if is_object && has_default {
-                    let default_ty = tcx.at(span).type_of(param.def_id);
-                    let self_param = tcx.types.self_param;
-                    if default_ty.walk().any(|arg| arg == self_param.into()) {
-                        // There is no suitable inference default for a type parameter
-                        // that references self, in an object type.
-                        return true;
+
+        struct SubstsForAstPathCtxt<'a, 'tcx> {
+            astconv: &'a (dyn AstConv<'tcx> + 'a),
+            def_id: DefId,
+            generic_args: &'a GenericArgs<'a>,
+            span: Span,
+            missing_type_params: Vec<String>,
+            inferred_params: Vec<Span>,
+            infer_args: bool,
+            is_object: bool,
+        }
+
+        impl<'tcx, 'a> SubstsForAstPathCtxt<'tcx, 'a> {
+            fn default_needs_object_self(&mut self, param: &ty::GenericParamDef) -> bool {
+                let tcx = self.astconv.tcx();
+                if let GenericParamDefKind::Type { has_default, .. } = param.kind {
+                    if self.is_object && has_default {
+                        let default_ty = tcx.at(self.span).type_of(param.def_id);
+                        let self_param = tcx.types.self_param;
+                        if default_ty.walk().any(|arg| arg == self_param.into()) {
+                            // There is no suitable inference default for a type parameter
+                            // that references self, in an object type.
+                            return true;
+                        }
                     }
                 }
+
+                false
             }
+        }
 
-            false
-        };
-
-        let mut missing_type_params = vec![];
-        let mut inferred_params = vec![];
-        let substs = Self::create_substs_for_generic_args(
-            tcx,
-            def_id,
-            parent_substs,
-            self_ty.is_some(),
-            self_ty,
-            arg_count.clone(),
-            // Provide the generic args, and whether types should be inferred.
-            |did| {
-                if did == def_id {
-                    (Some(generic_args), infer_args)
+        impl<'a, 'tcx> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for SubstsForAstPathCtxt<'a, 'tcx> {
+            fn args_for_def_id(&mut self, did: DefId) -> (Option<&'a GenericArgs<'a>>, bool) {
+                if did == self.def_id {
+                    (Some(self.generic_args), self.infer_args)
                 } else {
                     // The last component of this tuple is unimportant.
                     (None, false)
                 }
-            },
-            // Provide substitutions for parameters for which (valid) arguments have been provided.
-            |param, arg| match (&param.kind, arg) {
-                (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                    self.ast_region_to_region(&lt, Some(param)).into()
-                }
-                (GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
-                    if *has_default {
-                        tcx.check_optional_stability(
-                            param.def_id,
-                            Some(arg.id()),
-                            arg.span(),
-                            |_, _| {
-                                // Default generic parameters may not be marked
-                                // with stability attributes, i.e. when the
-                                // default parameter was defined at the same time
-                                // as the rest of the type. As such, we ignore missing
-                                // stability attributes.
+            }
+
+            fn provided_kind(
+                &mut self,
+                param: &ty::GenericParamDef,
+                arg: &GenericArg<'_>,
+            ) -> subst::GenericArg<'tcx> {
+                let tcx = self.astconv.tcx();
+                match (&param.kind, arg) {
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                        self.astconv.ast_region_to_region(&lt, Some(param)).into()
+                    }
+                    (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
+                        if has_default {
+                            tcx.check_optional_stability(
+                                param.def_id,
+                                Some(arg.id()),
+                                arg.span(),
+                                |_, _| {
+                                    // Default generic parameters may not be marked
+                                    // with stability attributes, i.e. when the
+                                    // default parameter was defined at the same time
+                                    // as the rest of the type. As such, we ignore missing
+                                    // stability attributes.
+                                },
+                            )
+                        }
+                        if let (hir::TyKind::Infer, false) =
+                            (&ty.kind, self.astconv.allow_ty_infer())
+                        {
+                            self.inferred_params.push(ty.span);
+                            tcx.ty_error().into()
+                        } else {
+                            self.astconv.ast_ty_to_ty(&ty).into()
+                        }
+                    }
+                    (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
+                        ty::Const::from_opt_const_arg_anon_const(
+                            tcx,
+                            ty::WithOptConstParam {
+                                did: tcx.hir().local_def_id(ct.value.hir_id),
+                                const_param_did: Some(param.def_id),
                             },
                         )
+                        .into()
                     }
-                    if let (hir::TyKind::Infer, false) = (&ty.kind, self.allow_ty_infer()) {
-                        inferred_params.push(ty.span);
-                        tcx.ty_error().into()
-                    } else {
-                        self.ast_ty_to_ty(&ty).into()
-                    }
+                    _ => unreachable!(),
                 }
-                (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                    ty::Const::from_opt_const_arg_anon_const(
-                        tcx,
-                        ty::WithOptConstParam {
-                            did: tcx.hir().local_def_id(ct.value.hir_id),
-                            const_param_did: Some(param.def_id),
-                        },
-                    )
-                    .into()
-                }
-                _ => unreachable!(),
-            },
-            // Provide substitutions for parameters for which arguments are inferred.
-            |substs, param, infer_args| {
+            }
+
+            fn inferred_kind(
+                &mut self,
+                substs: Option<&[subst::GenericArg<'tcx>]>,
+                param: &ty::GenericParamDef,
+                infer_args: bool,
+            ) -> subst::GenericArg<'tcx> {
+                let tcx = self.astconv.tcx();
                 match param.kind {
                     GenericParamDefKind::Lifetime => tcx.lifetimes.re_static.into(),
                     GenericParamDefKind::Type { has_default, .. } => {
@@ -407,48 +455,72 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             // other type parameters may reference `Self` in their
                             // defaults. This will lead to an ICE if we are not
                             // careful!
-                            if default_needs_object_self(param) {
-                                missing_type_params.push(param.name.to_string());
+                            if self.default_needs_object_self(param) {
+                                self.missing_type_params.push(param.name.to_string());
                                 tcx.ty_error().into()
                             } else {
                                 // This is a default type parameter.
-                                self.normalize_ty(
-                                    span,
-                                    tcx.at(span).type_of(param.def_id).subst_spanned(
-                                        tcx,
-                                        substs.unwrap(),
-                                        Some(span),
-                                    ),
-                                )
-                                .into()
+                                self.astconv
+                                    .normalize_ty(
+                                        self.span,
+                                        tcx.at(self.span).type_of(param.def_id).subst_spanned(
+                                            tcx,
+                                            substs.unwrap(),
+                                            Some(self.span),
+                                        ),
+                                    )
+                                    .into()
                             }
                         } else if infer_args {
                             // No type parameters were provided, we can infer all.
-                            let param =
-                                if !default_needs_object_self(param) { Some(param) } else { None };
-                            self.ty_infer(param, span).into()
+                            let param = if !self.default_needs_object_self(param) {
+                                Some(param)
+                            } else {
+                                None
+                            };
+                            self.astconv.ty_infer(param, self.span).into()
                         } else {
                             // We've already errored above about the mismatch.
                             tcx.ty_error().into()
                         }
                     }
                     GenericParamDefKind::Const => {
-                        let ty = tcx.at(span).type_of(param.def_id);
-                        // FIXME(const_generics:defaults)
+                        let ty = tcx.at(self.span).type_of(param.def_id);
+                        // FIXME(const_generics_defaults)
                         if infer_args {
                             // No const parameters were provided, we can infer all.
-                            self.ct_infer(ty, Some(param), span).into()
+                            self.astconv.ct_infer(ty, Some(param), self.span).into()
                         } else {
                             // We've already errored above about the mismatch.
                             tcx.const_error(ty).into()
                         }
                     }
                 }
-            },
+            }
+        }
+
+        let mut substs_ctx = SubstsForAstPathCtxt {
+            astconv: self,
+            def_id,
+            span,
+            generic_args,
+            missing_type_params: vec![],
+            inferred_params: vec![],
+            infer_args,
+            is_object,
+        };
+        let substs = Self::create_substs_for_generic_args(
+            tcx,
+            def_id,
+            parent_substs,
+            self_ty.is_some(),
+            self_ty,
+            arg_count.clone(),
+            &mut substs_ctx,
         );
 
         self.complain_about_missing_type_params(
-            missing_type_params,
+            substs_ctx.missing_type_params,
             def_id,
             span,
             generic_args.args.is_empty(),
@@ -698,7 +770,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Try to find an unbound in bounds.
         let mut unbound = None;
         for ab in ast_bounds {
-            if let &hir::GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = ab {
+            if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = ab {
                 if unbound.is_none() {
                     unbound = Some(&ptr.trait_ref);
                 } else {
@@ -753,34 +825,25 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ast_bounds: &[hir::GenericBound<'_>],
         bounds: &mut Bounds<'tcx>,
     ) {
-        let mut trait_bounds = Vec::new();
-        let mut region_bounds = Vec::new();
-
         let constness = self.default_constness_for_trait_bounds();
         for ast_bound in ast_bounds {
             match *ast_bound {
                 hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::None) => {
-                    trait_bounds.push((b, constness))
+                    self.instantiate_poly_trait_ref(b, constness, param_ty, bounds);
                 }
                 hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::MaybeConst) => {
-                    trait_bounds.push((b, Constness::NotConst))
+                    self.instantiate_poly_trait_ref(b, Constness::NotConst, param_ty, bounds);
                 }
                 hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
                 hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => self
                     .instantiate_lang_item_trait_ref(
                         lang_item, span, hir_id, args, param_ty, bounds,
                     ),
-                hir::GenericBound::Outlives(ref l) => region_bounds.push(l),
+                hir::GenericBound::Outlives(ref l) => bounds
+                    .region_bounds
+                    .push((ty::Binder::bind(self.ast_region_to_region(l, None)), l.span)),
             }
         }
-
-        for (bound, constness) in trait_bounds {
-            let _ = self.instantiate_poly_trait_ref(bound, constness, param_ty, bounds);
-        }
-
-        bounds.region_bounds.extend(
-            region_bounds.into_iter().map(|r| (self.ast_region_to_region(r, None), r.span)),
-        );
     }
 
     /// Translates a list of bounds from the HIR into the `Bounds` data structure.
@@ -1193,22 +1256,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             })
         });
 
-        // Calling `skip_binder` is okay because the predicates are re-bound.
         let regular_trait_predicates = existential_trait_refs
-            .map(|trait_ref| ty::ExistentialPredicate::Trait(trait_ref.skip_binder()));
-        let auto_trait_predicates = auto_traits
-            .into_iter()
-            .map(|trait_ref| ty::ExistentialPredicate::AutoTrait(trait_ref.trait_ref().def_id()));
+            .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait));
+        let auto_trait_predicates = auto_traits.into_iter().map(|trait_ref| {
+            ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(trait_ref.trait_ref().def_id()))
+        });
         let mut v = regular_trait_predicates
             .chain(auto_trait_predicates)
             .chain(
-                existential_projections
-                    .map(|x| ty::ExistentialPredicate::Projection(x.skip_binder())),
+                existential_projections.map(|x| x.map_bound(ty::ExistentialPredicate::Projection)),
             )
             .collect::<SmallVec<[_; 8]>>();
-        v.sort_by(|a, b| a.stable_cmp(tcx, b));
+        v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         v.dedup();
-        let existential_predicates = ty::Binder::bind(tcx.mk_existential_predicates(v.into_iter()));
+        let existential_predicates = tcx.mk_poly_existential_predicates(v.into_iter());
 
         // Use explicitly-specified region bound.
         let region_bound = if !lifetime.is_elided() {
@@ -1302,7 +1363,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             || {
                 traits::transitive_bounds(
                     tcx,
-                    predicates.iter().filter_map(|(p, _)| p.to_opt_poly_trait_ref()),
+                    predicates.iter().filter_map(|(p, _)| {
+                        p.to_opt_poly_trait_ref().map(|trait_ref| trait_ref.value)
+                    }),
                 )
             },
             || param_name.to_string(),
@@ -1515,7 +1578,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                     let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggested_name) = find_best_match_for_name(
-                        adt_def.variants.iter().map(|variant| &variant.ident.name),
+                        &adt_def
+                            .variants
+                            .iter()
+                            .map(|variant| variant.ident.name)
+                            .collect::<Vec<Symbol>>(),
                         assoc_ident.name,
                         None,
                     ) {
@@ -1944,11 +2011,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         "generic `Self` types are currently not permitted in anonymous constants",
                     );
                     if let Some(hir::Node::Item(&hir::Item {
-                        kind: hir::ItemKind::Impl { self_ty, .. },
+                        kind: hir::ItemKind::Impl(ref impl_),
                         ..
                     })) = tcx.hir().get_if_local(def_id)
                     {
-                        err.span_note(self_ty.span, "not a concrete type");
+                        err.span_note(impl_.self_ty.span, "not a concrete type");
                     }
                     err.emit();
                     tcx.ty_error()
@@ -2228,8 +2295,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     fn validate_late_bound_regions(
         &self,
-        constrained_regions: FxHashSet<ty::BoundRegion>,
-        referenced_regions: FxHashSet<ty::BoundRegion>,
+        constrained_regions: FxHashSet<ty::BoundRegionKind>,
+        referenced_regions: FxHashSet<ty::BoundRegionKind>,
         generate_err: impl Fn(&str) -> rustc_errors::DiagnosticBuilder<'tcx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
@@ -2264,7 +2331,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn compute_object_lifetime_bound(
         &self,
         span: Span,
-        existential_predicates: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
+        existential_predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
     ) -> Option<ty::Region<'tcx>> // if None, use the default
     {
         let tcx = self.tcx();

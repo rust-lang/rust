@@ -2,19 +2,39 @@ error[E0308]: mismatched types
   --> $DIR/hrtb-perfect-forwarding.rs:46:5
    |
 LL |     foo_hrtb_bar_not(&mut t);
-   |     ^^^^^^^^^^^^^^^^ one type is more general than the other
+   |     ^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Bar<&'a isize>`
               found type `Bar<&'b isize>`
+note: the required lifetime does not necessarily outlive the lifetime `'b` as defined on the function body at 39:21
+  --> $DIR/hrtb-perfect-forwarding.rs:39:21
+   |
+LL | fn foo_hrtb_bar_not<'b,T>(mut t: T)
+   |                     ^^
+note: the lifetime requirement is introduced here
+  --> $DIR/hrtb-perfect-forwarding.rs:40:15
+   |
+LL |     where T : for<'a> Foo<&'a isize> + Bar<&'b isize>
+   |               ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/hrtb-perfect-forwarding.rs:46:5
    |
 LL |     foo_hrtb_bar_not(&mut t);
-   |     ^^^^^^^^^^^^^^^^ one type is more general than the other
+   |     ^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Bar<&'a isize>`
               found type `Bar<&'b isize>`
+note: the lifetime `'b` as defined on the function body at 39:21 doesn't meet the lifetime requirements
+  --> $DIR/hrtb-perfect-forwarding.rs:39:21
+   |
+LL | fn foo_hrtb_bar_not<'b,T>(mut t: T)
+   |                     ^^
+note: the lifetime requirement is introduced here
+  --> $DIR/hrtb-perfect-forwarding.rs:40:15
+   |
+LL |     where T : for<'a> Foo<&'a isize> + Bar<&'b isize>
+   |               ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

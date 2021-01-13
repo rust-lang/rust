@@ -1,0 +1,26 @@
+error: irrefutable if-let guard
+  --> $DIR/warns.rs:7:24
+   |
+LL |         Some(x) if let () = x => {}
+   |                        ^^
+   |
+note: the lint level is defined here
+  --> $DIR/warns.rs:4:8
+   |
+LL | #[deny(irrefutable_let_patterns)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/warns.rs:16:25
+   |
+LL |         x if let None | None = x => {}
+   |                         ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/warns.rs:13:8
+   |
+LL | #[deny(unreachable_patterns)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

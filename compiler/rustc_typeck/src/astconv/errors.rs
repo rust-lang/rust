@@ -1,11 +1,11 @@
 use crate::astconv::AstConv;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
 use rustc_session::parse::feature_err;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -180,7 +180,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .collect();
 
         if let (Some(suggested_name), true) = (
-            find_best_match_for_name(all_candidate_names.iter(), assoc_name.name, None),
+            find_best_match_for_name(&all_candidate_names, assoc_name.name, None),
             assoc_name.span != DUMMY_SP,
         ) {
             err.span_suggestion(

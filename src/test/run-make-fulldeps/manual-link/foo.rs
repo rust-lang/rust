@@ -1,9 +1,11 @@
 #![crate_type = "rlib"]
 
-extern {
+extern "C" {
     fn bar();
 }
 
 pub fn foo() {
-    unsafe { bar(); }
+    unsafe {
+        bar();
+    }
 }

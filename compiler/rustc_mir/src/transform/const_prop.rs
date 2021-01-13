@@ -25,6 +25,7 @@ use rustc_middle::ty::{
 use rustc_session::lint;
 use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
+use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 
 use crate::const_eval::ConstEvalErr;
@@ -180,11 +181,21 @@ impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx> {
     compile_time_machine!(<'mir, 'tcx>);
 
+    type MemoryKind = !;
+
     type MemoryExtra = ();
+
+    fn load_mir(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _instance: ty::InstanceDef<'tcx>,
+    ) -> InterpResult<'tcx, &'tcx Body<'tcx>> {
+        throw_machine_stop_str!("calling functions isn't supported in ConstProp")
+    }
 
     fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
+        _abi: Abi,
         _args: &[OpTy<'tcx>],
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
         _unwind: Option<BasicBlock>,
@@ -800,7 +811,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
         }
 
-        trace!("attepting to replace {:?} with {:?}", rval, value);
+        trace!("attempting to replace {:?} with {:?}", rval, value);
         if let Err(e) = self.ecx.const_validate_operand(
             value,
             vec![],
@@ -887,6 +898,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;
 
         if mir_opt_level == 0 {
+            return false;
+        }
+
+        if !self.tcx.consider_optimizing(|| format!("ConstantPropagation - OpTy: {:?}", op)) {
             return false;
         }
 

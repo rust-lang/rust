@@ -33,12 +33,12 @@ struct Collector<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        let fm = match it.kind {
-            hir::ItemKind::ForeignMod(ref fm) => fm,
+        let abi = match it.kind {
+            hir::ItemKind::ForeignMod { abi, .. } => abi,
             _ => return,
         };
 
-        if fm.abi == Abi::Rust || fm.abi == Abi::RustIntrinsic || fm.abi == Abi::PlatformIntrinsic {
+        if abi == Abi::Rust || abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             return;
         }
 
@@ -127,11 +127,12 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
     fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem<'tcx>) {}
     fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem<'tcx>) {}
+    fn visit_foreign_item(&mut self, _it: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
 impl Collector<'tcx> {
     fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLib) {
-        if lib.name.as_ref().map(|&s| s == kw::Invalid).unwrap_or(false) {
+        if lib.name.as_ref().map(|&s| s == kw::Empty).unwrap_or(false) {
             match span {
                 Some(span) => {
                     struct_span_err!(
@@ -191,13 +192,13 @@ impl Collector<'tcx> {
     fn process_command_line(&mut self) {
         // First, check for errors
         let mut renames = FxHashSet::default();
-        for &(ref name, ref new_name, _) in &self.tcx.sess.opts.libs {
-            if let &Some(ref new_name) = new_name {
+        for (name, new_name, _) in &self.tcx.sess.opts.libs {
+            if let Some(ref new_name) = new_name {
                 let any_duplicate = self
                     .libs
                     .iter()
                     .filter_map(|lib| lib.name.as_ref())
-                    .any(|n| n.as_str() == *name);
+                    .any(|n| &n.as_str() == name);
                 if new_name.is_empty() {
                     self.tcx.sess.err(&format!(
                         "an empty renaming target was specified for library `{}`",
@@ -239,7 +240,7 @@ impl Collector<'tcx> {
                             if kind != NativeLibKind::Unspecified {
                                 lib.kind = kind;
                             }
-                            if let &Some(ref new_name) = new_name {
+                            if let Some(new_name) = new_name {
                                 lib.name = Some(Symbol::intern(new_name));
                             }
                             return true;

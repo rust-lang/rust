@@ -1,82 +1,76 @@
-error: lint `clippy::str_to_string` has been removed: `using `str::to_string` is common even today and specialization will likely happen soon`
-  --> $DIR/deprecated.rs:1:8
-   |
-LL | #[warn(clippy::str_to_string)]
-   |        ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D renamed-and-removed-lints` implied by `-D warnings`
-
-error: lint `clippy::string_to_string` has been removed: `using `string::to_string` is common even today and specialization will likely happen soon`
-  --> $DIR/deprecated.rs:2:8
-   |
-LL | #[warn(clippy::string_to_string)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: lint `clippy::unstable_as_slice` has been removed: ``Vec::as_slice` has been stabilized in 1.7`
-  --> $DIR/deprecated.rs:3:8
+  --> $DIR/deprecated.rs:1:8
    |
 LL | #[warn(clippy::unstable_as_slice)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D renamed-and-removed-lints` implied by `-D warnings`
 
 error: lint `clippy::unstable_as_mut_slice` has been removed: ``Vec::as_mut_slice` has been stabilized in 1.7`
-  --> $DIR/deprecated.rs:4:8
+  --> $DIR/deprecated.rs:2:8
    |
 LL | #[warn(clippy::unstable_as_mut_slice)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::misaligned_transmute` has been removed: `this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr`
-  --> $DIR/deprecated.rs:5:8
+  --> $DIR/deprecated.rs:3:8
    |
 LL | #[warn(clippy::misaligned_transmute)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::unused_collect` has been removed: ``collect` has been marked as #[must_use] in rustc and that covers all cases of this lint`
-  --> $DIR/deprecated.rs:6:8
+  --> $DIR/deprecated.rs:4:8
    |
 LL | #[warn(clippy::unused_collect)]
    |        ^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::invalid_ref` has been removed: `superseded by rustc lint `invalid_value``
-  --> $DIR/deprecated.rs:7:8
+  --> $DIR/deprecated.rs:5:8
    |
 LL | #[warn(clippy::invalid_ref)]
    |        ^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::into_iter_on_array` has been removed: `this lint has been uplifted to rustc and is now called `array_into_iter``
-  --> $DIR/deprecated.rs:8:8
+  --> $DIR/deprecated.rs:6:8
    |
 LL | #[warn(clippy::into_iter_on_array)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::unused_label` has been removed: `this lint has been uplifted to rustc and is now called `unused_labels``
-  --> $DIR/deprecated.rs:9:8
+  --> $DIR/deprecated.rs:7:8
    |
 LL | #[warn(clippy::unused_label)]
    |        ^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::regex_macro` has been removed: `the regex! macro has been removed from the regex crate in 2018`
-  --> $DIR/deprecated.rs:10:8
+  --> $DIR/deprecated.rs:8:8
    |
 LL | #[warn(clippy::regex_macro)]
    |        ^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::drop_bounds` has been removed: `this lint has been uplifted to rustc and is now called `drop_bounds``
-  --> $DIR/deprecated.rs:11:8
+  --> $DIR/deprecated.rs:9:8
    |
 LL | #[warn(clippy::drop_bounds)]
    |        ^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::temporary_cstring_as_ptr` has been removed: `this lint has been uplifted to rustc and is now called `temporary_cstring_as_ptr``
-  --> $DIR/deprecated.rs:12:8
+  --> $DIR/deprecated.rs:10:8
    |
 LL | #[warn(clippy::temporary_cstring_as_ptr)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::str_to_string` has been removed: `using `str::to_string` is common even today and specialization will likely happen soon`
+error: lint `clippy::panic_params` has been removed: `this lint has been uplifted to rustc and is now called `panic_fmt``
+  --> $DIR/deprecated.rs:11:8
+   |
+LL | #[warn(clippy::panic_params)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::unstable_as_slice` has been removed: ``Vec::as_slice` has been stabilized in 1.7`
   --> $DIR/deprecated.rs:1:8
    |
-LL | #[warn(clippy::str_to_string)]
-   |        ^^^^^^^^^^^^^^^^^^^^^
+LL | #[warn(clippy::unstable_as_slice)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: aborting due to 12 previous errors
 

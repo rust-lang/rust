@@ -393,10 +393,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 if self.expand_node(a_region, b_vid, b_data) {
                     changes.push(b_vid);
                 }
-                match *b_data {
-                    VarValue::Value(ReStatic) | VarValue::ErrorValue => false,
-                    _ => true,
-                }
+                !matches!(b_data, VarValue::Value(ReStatic) | VarValue::ErrorValue)
             });
         }
     }
@@ -972,11 +969,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
 
             VerifyBound::IsEmpty => {
-                if let ty::ReEmpty(_) = min {
-                    true
-                } else {
-                    false
-                }
+                matches!(min, ty::ReEmpty(_))
             }
 
             VerifyBound::AnyBound(bs) => {
@@ -1001,7 +994,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        tcx.fold_regions(&value, &mut false, |r, _db| match r {
+        tcx.fold_regions(value, &mut false, |r, _db| match r {
             ty::ReVar(rid) => self.resolve_var(*rid),
             _ => r,
         })

@@ -9,11 +9,11 @@ impl<T> PrintName<T> {
 
 const fn no_codegen<T>() {
     if false {
-        let _ = PrintName::<T>::VOID; //~ERROR evaluation of constant value failed
+        let _ = PrintName::<T>::VOID; //~ERROR could not evaluate static initializer
     }
 }
 
-pub static FOO: () = no_codegen::<i32>(); //~ERROR could not evaluate static initializer
+pub static FOO: () = no_codegen::<i32>();
 
 fn main() {
     FOO

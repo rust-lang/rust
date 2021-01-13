@@ -15,6 +15,31 @@ use crate::config::{Config, TargetSelection};
 use crate::setup::Profile;
 use crate::{Build, DocTests};
 
+pub enum Color {
+    Always,
+    Never,
+    Auto,
+}
+
+impl Default for Color {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+impl std::str::FromStr for Color {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "always" => Ok(Self::Always),
+            "never" => Ok(Self::Never),
+            "auto" => Ok(Self::Auto),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
     pub verbose: usize, // number of -v args; each extra -v after the first is passed to Cargo
@@ -34,6 +59,7 @@ pub struct Flags {
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
     pub dry_run: bool,
+    pub color: Color,
 
     // This overrides the deny-warnings configuration option,
     // which passes -Dwarnings to the compiler invocations.
@@ -42,6 +68,9 @@ pub struct Flags {
     pub deny_warnings: Option<bool>,
 
     pub llvm_skip_rebuild: Option<bool>,
+
+    pub rust_profile_use: Option<String>,
+    pub rust_profile_generate: Option<String>,
 }
 
 pub enum Subcommand {
@@ -184,6 +213,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         );
         opts.optopt("", "error-format", "rustc error format", "FORMAT");
         opts.optflag("", "json-output", "use message-format=json");
+        opts.optopt("", "color", "whether to use color in cargo and rustc output", "STYLE");
         opts.optopt(
             "",
             "llvm-skip-rebuild",
@@ -192,6 +222,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
              VALUE overrides the skip-rebuild option in config.toml.",
             "VALUE",
         );
+        opts.optopt("", "rust-profile-generate", "rustc error format", "FORMAT");
+        opts.optopt("", "rust-profile-use", "rustc error format", "FORMAT");
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
@@ -644,6 +676,11 @@ Arguments:
             llvm_skip_rebuild: matches.opt_str("llvm-skip-rebuild").map(|s| s.to_lowercase()).map(
                 |s| s.parse::<bool>().expect("`llvm-skip-rebuild` should be either true or false"),
             ),
+            color: matches
+                .opt_get_default("color", Color::Auto)
+                .expect("`color` should be `always`, `never`, or `auto`"),
+            rust_profile_use: matches.opt_str("rust-profile-use"),
+            rust_profile_generate: matches.opt_str("rust-profile-generate"),
         }
     }
 }

@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-72787.rs:11:32
+  --> $DIR/issue-72787.rs:10:32
    |
 LL |     Condition<{ LHS <= RHS }>: True
    |                                ^^^^
@@ -7,7 +7,7 @@ LL |     Condition<{ LHS <= RHS }>: True
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-72787.rs:26:42
+  --> $DIR/issue-72787.rs:25:42
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |                                          ^^^^
@@ -15,7 +15,7 @@ LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-72787.rs:26:42
+  --> $DIR/issue-72787.rs:25:42
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |                                          ^^^^
@@ -23,7 +23,7 @@ LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-72787.rs:26:42
+  --> $DIR/issue-72787.rs:25:42
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |                                          ^^^^
@@ -31,7 +31,7 @@ LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-72787.rs:26:42
+  --> $DIR/issue-72787.rs:25:42
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |                                          ^^^^

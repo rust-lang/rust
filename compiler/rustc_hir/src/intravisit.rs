@@ -64,6 +64,10 @@ where
     fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>) {
         self.visitor.visit_impl_item(impl_item);
     }
+
+    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {
+        self.visitor.visit_foreign_item(foreign_item);
+    }
 }
 
 pub trait IntoVisitor<'hir> {
@@ -87,6 +91,10 @@ where
 
     fn visit_impl_item(&self, impl_item: &'hir ImplItem<'hir>) {
         self.0.into_visitor().visit_impl_item(impl_item);
+    }
+
+    fn visit_foreign_item(&self, foreign_item: &'hir ForeignItem<'hir>) {
+        self.0.into_visitor().visit_foreign_item(foreign_item);
     }
 }
 
@@ -128,6 +136,7 @@ pub trait Map<'hir> {
     fn item(&self, id: HirId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
     fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
+    fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir>;
 }
 
 /// An erased version of `Map<'hir>`, using dynamic dispatch.
@@ -149,6 +158,9 @@ impl<'hir> Map<'hir> for ErasedMap<'hir> {
     }
     fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
         self.0.impl_item(id)
+    }
+    fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
+        self.0.foreign_item(id)
     }
 }
 
@@ -277,6 +289,14 @@ pub trait Visitor<'v>: Sized {
         walk_list!(self, visit_impl_item, opt_item);
     }
 
+    /// Like `visit_nested_item()`, but for foreign items. See
+    /// `visit_nested_item()` for advice on when to override this
+    /// method.
+    fn visit_nested_foreign_item(&mut self, id: ForeignItemId) {
+        let opt_item = self.nested_visit_map().inter().map(|map| map.foreign_item(id));
+        walk_list!(self, visit_foreign_item, opt_item);
+    }
+
     /// Invoked to visit the body of a function, method or closure. Like
     /// visit_nested_item, does nothing by default unless you override
     /// `nested_visit_map` to return other than `None`, in which case it will walk
@@ -377,6 +397,9 @@ pub trait Visitor<'v>: Sized {
     }
     fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) {
         walk_impl_item(self, ii)
+    }
+    fn visit_foreign_item_ref(&mut self, ii: &'v ForeignItemRef<'v>) {
+        walk_foreign_item_ref(self, ii)
     }
     fn visit_impl_item_ref(&mut self, ii: &'v ImplItemRef<'v>) {
         walk_impl_item_ref(self, ii)
@@ -566,9 +589,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             // `visit_mod()` takes care of visiting the `Item`'s `HirId`.
             visitor.visit_mod(module, item.span, item.hir_id)
         }
-        ItemKind::ForeignMod(ref foreign_module) => {
+        ItemKind::ForeignMod { abi: _, items } => {
             visitor.visit_id(item.hir_id);
-            walk_list!(visitor, visit_foreign_item, foreign_module.items);
+            walk_list!(visitor, visit_foreign_item_ref, items);
         }
         ItemKind::GlobalAsm(_) => {
             visitor.visit_id(item.hir_id);
@@ -588,7 +611,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
             visitor.visit_enum_def(enum_definition, generics, item.hir_id, item.span)
         }
-        ItemKind::Impl {
+        ItemKind::Impl(Impl {
             unsafety: _,
             defaultness: _,
             polarity: _,
@@ -598,7 +621,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             ref of_trait,
             ref self_ty,
             items,
-        } => {
+        }) => {
             visitor.visit_id(item.hir_id);
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_trait_ref, of_trait);
@@ -854,7 +877,12 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
     match param.kind {
         GenericParamKind::Lifetime { .. } => {}
         GenericParamKind::Type { ref default, .. } => walk_list!(visitor, visit_ty, default),
-        GenericParamKind::Const { ref ty } => visitor.visit_ty(ty),
+        GenericParamKind::Const { ref ty, ref default } => {
+            visitor.visit_ty(ty);
+            if let Some(ref default) = default {
+                visitor.visit_anon_const(default);
+            }
+        }
     }
     walk_list!(visitor, visit_param_bound, param.bounds);
 }
@@ -868,8 +896,8 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
     visitor: &mut V,
     predicate: &'v WherePredicate<'v>,
 ) {
-    match predicate {
-        &WherePredicate::BoundPredicate(WhereBoundPredicate {
+    match *predicate {
+        WherePredicate::BoundPredicate(WhereBoundPredicate {
             ref bounded_ty,
             bounds,
             bound_generic_params,
@@ -879,11 +907,11 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_generic_param, bound_generic_params);
         }
-        &WherePredicate::RegionPredicate(WhereRegionPredicate { ref lifetime, bounds, .. }) => {
+        WherePredicate::RegionPredicate(WhereRegionPredicate { ref lifetime, bounds, .. }) => {
             visitor.visit_lifetime(lifetime);
             walk_list!(visitor, visit_param_bound, bounds);
         }
-        &WherePredicate::EqPredicate(WhereEqPredicate {
+        WherePredicate::EqPredicate(WhereEqPredicate {
             hir_id, ref lhs_ty, ref rhs_ty, ..
         }) => {
             visitor.visit_id(hir_id);
@@ -1010,6 +1038,17 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_ty(ty);
         }
     }
+}
+
+pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    foreign_item_ref: &'v ForeignItemRef<'v>,
+) {
+    // N.B., deliberately force a compilation error if/when new fields are added.
+    let ForeignItemRef { id, ident, span: _, ref vis } = *foreign_item_ref;
+    visitor.visit_nested_foreign_item(id);
+    visitor.visit_ident(ident);
+    visitor.visit_vis(vis);
 }
 
 pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, impl_item_ref: &'v ImplItemRef<'v>) {
@@ -1157,7 +1196,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, optional_expression);
         }
         ExprKind::InlineAsm(ref asm) => {
-            for op in asm.operands {
+            for (op, _op_sp) in asm.operands {
                 match op {
                     InlineAsmOperand::In { expr, .. }
                     | InlineAsmOperand::InOut { expr, .. }
@@ -1194,6 +1233,10 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) {
     if let Some(ref g) = arm.guard {
         match g {
             Guard::If(ref e) => visitor.visit_expr(e),
+            Guard::IfLet(ref pat, ref e) => {
+                visitor.visit_pat(pat);
+                visitor.visit_expr(e);
+            }
         }
     }
     visitor.visit_expr(&arm.body);

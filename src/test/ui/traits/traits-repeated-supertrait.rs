@@ -2,7 +2,7 @@
 // Test a case of a trait which extends the same supertrait twice, but
 // with difference type parameters. Test that we can invoke the
 // various methods in various ways successfully.
-// See also `compile-fail/trait-repeated-supertrait-ambig.rs`.
+// See also `ui/traits/trait-repeated-supertrait-ambig.rs`.
 
 
 trait CompareTo<T> {

@@ -47,6 +47,7 @@ fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, boo
         if span == rustc_span::DUMMY_SP {
             return;
         }
+
         cx.struct_span_lint(REDUNDANT_SEMICOLONS, span, |lint| {
             let (msg, rem) = if multiple {
                 ("unnecessary trailing semicolons", "remove these semicolons")

@@ -1,0 +1,70 @@
+    1|       |#![feature(unwind_attributes)]
+    2|       |#![allow(unused_assignments)]
+    3|       |
+    4|       |#[unwind(aborts)]
+    5|     12|fn might_abort(should_abort: bool) {
+    6|     12|    if should_abort {
+    7|      0|        println!("aborting...");
+    8|      0|        panic!("panics and aborts");
+    9|     12|    } else {
+   10|     12|        println!("Don't Panic");
+   11|     12|    }
+   12|     12|}
+   13|       |
+   14|      1|fn main() -> Result<(), u8> {
+   15|      1|    let mut countdown = 10;
+   16|     11|    while countdown > 0 {
+   17|     10|        if countdown < 5 {
+   18|      4|            might_abort(false);
+   19|      6|        }
+   20|       |        // See discussion (below the `Notes` section) on coverage results for the closing brace.
+   21|     10|        if countdown < 5 { might_abort(false); } // Counts for different regions on one line.
+                                       ^4                     ^6
+   22|       |        // For the following example, the closing brace is the last character on the line.
+   23|       |        // This shows the character after the closing brace is highlighted, even if that next
+   24|       |        // character is a newline.
+   25|     10|        if countdown < 5 { might_abort(false); }
+                                       ^4                     ^6
+   26|     10|        countdown -= 1;
+   27|       |    }
+   28|      1|    Ok(())
+   29|      1|}
+   30|       |
+   31|       |// Notes:
+   32|       |//   1. Compare this program and its coverage results to those of the similar tests
+   33|       |//      `panic_unwind.rs` and `try_error_result.rs`.
+   34|       |//   2. This test confirms the coverage generated when a program includes `TerminatorKind::Abort`.
+   35|       |//   3. The test does not invoke the abort. By executing to a successful completion, the coverage
+   36|       |//      results show where the program did and did not execute.
+   37|       |//   4. If the program actually aborted, the coverage counters would not be saved (which "works as
+   38|       |//      intended"). Coverage results would show no executed coverage regions.
+   39|       |//   6. If `should_abort` is `true` and the program aborts, the program exits with a `132` status
+   40|       |//      (on Linux at least).
+   41|       |
+   42|       |/*
+   43|       |
+   44|       |Expect the following coverage results:
+   45|       |
+   46|       |```text
+   47|       |    16|     11|    while countdown > 0 {
+   48|       |    17|     10|        if countdown < 5 {
+   49|       |    18|      4|            might_abort(false);
+   50|       |    19|      6|        }
+   51|       |```
+   52|       |
+   53|       |This is actually correct.
+   54|       |
+   55|       |The condition `countdown < 5` executed 10 times (10 loop iterations).
+   56|       |
+   57|       |It evaluated to `true` 4 times, and executed the `might_abort()` call.
+   58|       |
+   59|       |It skipped the body of the `might_abort()` call 6 times. If an `if` does not include an explicit
+   60|       |`else`, the coverage implementation injects a counter, at the character immediately after the `if`s
+   61|       |closing brace, to count the "implicit" `else`. This is the only way to capture the coverage of the
+   62|       |non-true condition.
+   63|       |
+   64|       |As another example of why this is important, say the condition was `countdown < 50`, which is always
+   65|       |`true`. In that case, we wouldn't have a test for what happens if `might_abort()` is not called.
+   66|       |The closing brace would have a count of `0`, highlighting the missed coverage.
+   67|       |*/
+

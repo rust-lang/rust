@@ -1,12 +1,8 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(stable_features)]
-
-#![feature(const_indexing)]
+const A: [i32; 0] = [];
+const B: i32 = A[1];
+//~^ index out of bounds: the length is 0 but the index is 1
+//~| ERROR any use of this value will cause an error
 
 fn main() {
-    const ARR: [i32; 6] = [42, 43, 44, 45, 46, 47];
-    const IDX: usize = 3;
-    const VAL: i32 = ARR[IDX];
-    const BLUB: [i32; (ARR[0] - 41) as usize] = [5];
+    let _ = B;
 }

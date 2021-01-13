@@ -8,7 +8,7 @@ enum MyWeirdOption<T> {
 //~^ ERROR parameter `T` is never used
     None = 0,
     Some = std::mem::size_of::<T>(),
-    //~^ ERROR constant expression depends on a generic parameter
+    //~^ ERROR generic parameters may not be used in const operations
 }
 
 fn main() {

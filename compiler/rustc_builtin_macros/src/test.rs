@@ -4,6 +4,7 @@ use crate::util::check_builtin_macro_attribute;
 
 use rustc_ast as ast;
 use rustc_ast::attr;
+use rustc_ast::ptr::P;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
 use rustc_session::Session;
@@ -78,8 +79,16 @@ pub fn expand_test_or_bench(
         return vec![];
     }
 
-    let item = match item {
-        Annotatable::Item(i) => i,
+    let (item, is_stmt) = match item {
+        Annotatable::Item(i) => (i, false),
+        Annotatable::Stmt(stmt) if matches!(stmt.kind, ast::StmtKind::Item(_)) => {
+            // FIXME: Use an 'if let' guard once they are implemented
+            if let ast::StmtKind::Item(i) = stmt.into_inner().kind {
+                (i, true)
+            } else {
+                unreachable!()
+            }
+        }
         other => {
             cx.struct_span_err(
                 other.span(),
@@ -304,14 +313,25 @@ pub fn expand_test_or_bench(
 
     tracing::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
-    vec![
-        // Access to libtest under a hygienic name
-        Annotatable::Item(test_extern),
-        // The generated test case
-        Annotatable::Item(test_const),
-        // The original item
-        Annotatable::Item(item),
-    ]
+    if is_stmt {
+        vec![
+            // Access to libtest under a hygienic name
+            Annotatable::Stmt(P(cx.stmt_item(sp, test_extern))),
+            // The generated test case
+            Annotatable::Stmt(P(cx.stmt_item(sp, test_const))),
+            // The original item
+            Annotatable::Stmt(P(cx.stmt_item(sp, item))),
+        ]
+    } else {
+        vec![
+            // Access to libtest under a hygienic name
+            Annotatable::Item(test_extern),
+            // The generated test case
+            Annotatable::Item(test_const),
+            // The original item
+            Annotatable::Item(item),
+        ]
+    }
 }
 
 fn item_path(mod_path: &[Ident], item_ident: &Ident) -> String {

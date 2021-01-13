@@ -34,6 +34,7 @@ macro_rules! compat_fn {
     )*) => ($(
         $(#[$meta])*
         pub mod $symbol {
+            #[allow(unused_imports)]
             use super::*;
             use crate::sync::atomic::{AtomicUsize, Ordering};
             use crate::mem;
@@ -90,6 +91,7 @@ macro_rules! compat_fn {
             }
         }
 
+        $(#[$meta])*
         pub use $symbol::call as $symbol;
     )*)
 }

@@ -19,5 +19,5 @@ failures:
 failures:
     it_fails
 
-test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

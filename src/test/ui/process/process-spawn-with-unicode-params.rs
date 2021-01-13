@@ -7,7 +7,6 @@
 // non-ASCII characters.  The child process ensures all the strings are
 // intact.
 
-// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
 

@@ -5,17 +5,11 @@ LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
 error[E0736]: cannot use `#[track_caller]` with `#[naked]`
-  --> $DIR/error-with-naked.rs:16:5
+  --> $DIR/error-with-naked.rs:12:5
    |
 LL |     #[track_caller]
    |     ^^^^^^^^^^^^^^^
 
-error[E0736]: cannot use `#[track_caller]` with `#[naked]`
-  --> $DIR/error-with-naked.rs:10:5
-   |
-LL |     #[track_caller]
-   |     ^^^^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0736`.

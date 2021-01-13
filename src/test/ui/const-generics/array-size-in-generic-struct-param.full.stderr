@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/array-size-in-generic-struct-param.rs:9:38
+  --> $DIR/array-size-in-generic-struct-param.rs:8:38
    |
 LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
    |                                      ^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/array-size-in-generic-struct-param.rs:20:10
+  --> $DIR/array-size-in-generic-struct-param.rs:19:10
    |
 LL |     arr: [u8; CFG.arr_size],
    |          ^^^^^^^^^^^^^^^^^^

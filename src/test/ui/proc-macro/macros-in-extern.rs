@@ -11,12 +11,14 @@ fn main() {
 }
 
 #[link(name = "rust_test_helpers", kind = "static")]
-extern {
+extern "C" {
     #[empty_attr]
     fn some_definitely_unknown_symbol_which_should_be_removed();
 
     #[identity_attr]
     fn rust_get_test_int() -> isize;
 
-    identity!(fn rust_dbg_extern_identity_u32(arg: u32) -> u32;);
+    identity!(
+        fn rust_dbg_extern_identity_u32(arg: u32) -> u32;
+    );
 }

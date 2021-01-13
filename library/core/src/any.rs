@@ -14,6 +14,29 @@
 //!
 //! [`Box`]: ../../std/boxed/struct.Box.html
 //!
+//! # Smart pointers and `dyn Any`
+//!
+//! One piece of behavior to keep in mind when using `Any` as a trait object,
+//! especially with types like `Box<dyn Any>` or `Arc<dyn Any>`, is that simply
+//! calling `.type_id()` on the value will produce the `TypeId` of the
+//! *container*, not the underlying trait object. This can be avoided by
+//! converting the smart pointer into a `&dyn Any` instead, which will return
+//! the object's `TypeId`. For example:
+//!
+//! ```
+//! use std::any::{Any, TypeId};
+//!
+//! let boxed: Box<dyn Any> = Box::new(3_i32);
+//!
+//! // You're more likely to want this:
+//! let actual_id = (&*boxed).type_id();
+//! // ... than this:
+//! let boxed_id = boxed.type_id();
+//!
+//! assert_eq!(actual_id, TypeId::of::<i32>());
+//! assert_eq!(boxed_id, TypeId::of::<Box<dyn Any>>());
+//! ```
+//!
 //! # Examples
 //!
 //! Consider a situation where we want to log out a value passed to a function.

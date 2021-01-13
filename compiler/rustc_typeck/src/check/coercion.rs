@@ -606,7 +606,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // Uncertain or unimplemented.
                 Ok(None) => {
                     if trait_pred.def_id() == unsize_did {
-                        let trait_pred = self.resolve_vars_if_possible(&trait_pred);
+                        let trait_pred = self.resolve_vars_if_possible(trait_pred);
                         let self_ty = trait_pred.skip_binder().self_ty();
                         let unsize_ty = trait_pred.skip_binder().trait_ref.substs[1].expect_ty();
                         debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
@@ -732,7 +732,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 let InferOk { value: a_sig, mut obligations } =
-                    self.normalize_associated_types_in_as_infer_ok(self.cause.span, &a_sig);
+                    self.normalize_associated_types_in_as_infer_ok(self.cause.span, a_sig);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
                 let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(
@@ -926,11 +926,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     false
                 }
             };
-            if is_capturing_closure(&prev_ty.kind()) || is_capturing_closure(&new_ty.kind()) {
+            if is_capturing_closure(prev_ty.kind()) || is_capturing_closure(new_ty.kind()) {
                 (None, None)
             } else {
-                match (&prev_ty.kind(), &new_ty.kind()) {
-                    (&ty::FnDef(..), &ty::FnDef(..)) => {
+                match (prev_ty.kind(), new_ty.kind()) {
+                    (ty::FnDef(..), ty::FnDef(..)) => {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
                         match self
@@ -943,21 +943,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    (&ty::Closure(_, substs), &ty::FnDef(..)) => {
+                    (ty::Closure(_, substs), ty::FnDef(..)) => {
                         let b_sig = new_ty.fn_sig(self.tcx);
                         let a_sig = self
                             .tcx
                             .signature_unclosure(substs.as_closure().sig(), b_sig.unsafety());
                         (Some(a_sig), Some(b_sig))
                     }
-                    (&ty::FnDef(..), &ty::Closure(_, substs)) => {
+                    (ty::FnDef(..), ty::Closure(_, substs)) => {
                         let a_sig = prev_ty.fn_sig(self.tcx);
                         let b_sig = self
                             .tcx
                             .signature_unclosure(substs.as_closure().sig(), a_sig.unsafety());
                         (Some(a_sig), Some(b_sig))
                     }
-                    (&ty::Closure(_, substs_a), &ty::Closure(_, substs_b)) => (
+                    (ty::Closure(_, substs_a), ty::Closure(_, substs_b)) => (
                         Some(self.tcx.signature_unclosure(
                             substs_a.as_closure().sig(),
                             hir::Unsafety::Normal,
@@ -973,8 +973,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
             // The signature must match.
-            let a_sig = self.normalize_associated_types_in(new.span, &a_sig);
-            let b_sig = self.normalize_associated_types_in(new.span, &b_sig);
+            let a_sig = self.normalize_associated_types_in(new.span, a_sig);
+            let b_sig = self.normalize_associated_types_in(new.span, b_sig);
             let sig = self
                 .at(cause, self.param_env)
                 .trace(prev_ty, new_ty)
@@ -1490,7 +1490,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         *sp,
                         &format!(
                             "return type inferred to be `{}` here",
-                            fcx.resolve_vars_if_possible(&expected)
+                            fcx.resolve_vars_if_possible(expected)
                         ),
                     );
                 }

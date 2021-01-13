@@ -1,0 +1,45 @@
+// WARNING: This output format is intended for human consumers only
+// and is subject to change without notice. Knock yourself out.
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at main.rs:8:11: 8:11
+    let _1: i32;                         // in scope 0 at main.rs:9:5: 9:10
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at main.rs:9:5: 9:10
+        _1 = foo() -> bb1;               // scope 0 at main.rs:9:5: 9:10
+                                         // mir::Constant
+                                         // + span: main.rs:9:5: 9:8
+                                         // + literal: Const { ty: fn() -> i32 {foo}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_1);                 // scope 0 at main.rs:9:10: 9:11
+        _0 = const ();                   // scope 0 at main.rs:8:11: 10:2
+        return;                          // scope 0 at main.rs:10:2: 10:2
+    }
+}
+
+fn foo() -> i32 {
+    let mut _0: i32;                     // return place in scope 0 at main.rs:4:19: 4:22
+
+    bb0: {
+        _0 = const 11_i32;               // scope 0 at main.rs:5:5: 5:10
+        return;                          // scope 0 at main.rs:6:2: 6:2
+    }
+}
+
+// MIR FOR CTFE
+fn foo() -> i32 {
+    let mut _0: i32;                     // return place in scope 0 at main.rs:4:19: 4:22
+    let mut _1: (i32, bool);             // in scope 0 at main.rs:5:5: 5:10
+
+    bb0: {
+        _1 = CheckedAdd(const 5_i32, const 6_i32); // scope 0 at main.rs:5:5: 5:10
+        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 5_i32, const 6_i32) -> bb1; // scope 0 at main.rs:5:5: 5:10
+    }
+
+    bb1: {
+        _0 = move (_1.0: i32);           // scope 0 at main.rs:5:5: 5:10
+        return;                          // scope 0 at main.rs:6:2: 6:2
+    }
+}

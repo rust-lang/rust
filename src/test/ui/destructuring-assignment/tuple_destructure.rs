@@ -16,6 +16,8 @@ fn main() {
     assert_eq!((a, b), (2, 2));
     (b, ..) = (5, 6, 7);
     assert_eq!(b, 5);
+    (a, _) = (8, 9);
+    assert_eq!(a, 8);
 
     // Test for a non-Copy type (String):
     let (mut c, mut d);

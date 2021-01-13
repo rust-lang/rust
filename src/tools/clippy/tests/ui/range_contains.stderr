@@ -72,5 +72,17 @@ error: manual `!RangeInclusive::contains` implementation
 LL |     999 < x || 1 > x;
    |     ^^^^^^^^^^^^^^^^ help: use: `!(1..=999).contains(&x)`
 
-error: aborting due to 12 previous errors
+error: manual `Range::contains` implementation
+  --> $DIR/range_contains.rs:44:5
+   |
+LL |     y >= 0. && y < 1.;
+   |     ^^^^^^^^^^^^^^^^^ help: use: `(0. ..1.).contains(&y)`
+
+error: manual `!RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:45:5
+   |
+LL |     y < 0. || y > 1.;
+   |     ^^^^^^^^^^^^^^^^ help: use: `!(0. ..=1.).contains(&y)`
+
+error: aborting due to 14 previous errors
 

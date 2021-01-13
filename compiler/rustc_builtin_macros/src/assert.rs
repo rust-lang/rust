@@ -1,8 +1,8 @@
 use rustc_errors::{Applicability, DiagnosticBuilder};
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, TokenKind};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use rustc_ast::token;
+use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
@@ -26,31 +26,39 @@ pub fn expand_assert<'cx>(
     // `core::panic` and `std::panic` are different macros, so we use call-site
     // context to pick up whichever is currently in scope.
     let sp = cx.with_call_site_ctxt(sp);
-    let tokens = custom_message.unwrap_or_else(|| {
-        TokenStream::from(TokenTree::token(
-            TokenKind::lit(
-                token::Str,
+
+    let panic_call = if let Some(tokens) = custom_message {
+        // Pass the custom message to panic!().
+        cx.expr(
+            sp,
+            ExprKind::MacCall(MacCall {
+                path: Path::from_ident(Ident::new(sym::panic, sp)),
+                args: P(MacArgs::Delimited(
+                    DelimSpan::from_single(sp),
+                    MacDelimiter::Parenthesis,
+                    tokens,
+                )),
+                prior_type_ascription: None,
+            }),
+        )
+    } else {
+        // Pass our own message directly to $crate::panicking::panic(),
+        // because it might contain `{` and `}` that should always be
+        // passed literally.
+        cx.expr_call_global(
+            sp,
+            cx.std_path(&[sym::panicking, sym::panic]),
+            vec![cx.expr_str(
+                DUMMY_SP,
                 Symbol::intern(&format!(
                     "assertion failed: {}",
                     pprust::expr_to_string(&cond_expr).escape_debug()
                 )),
-                None,
-            ),
-            DUMMY_SP,
-        ))
-    });
-    let args = P(MacArgs::Delimited(DelimSpan::from_single(sp), MacDelimiter::Parenthesis, tokens));
-    let panic_call = MacCall {
-        path: Path::from_ident(Ident::new(sym::panic, sp)),
-        args,
-        prior_type_ascription: None,
+            )],
+        )
     };
-    let if_expr = cx.expr_if(
-        sp,
-        cx.expr(sp, ExprKind::Unary(UnOp::Not, cond_expr)),
-        cx.expr(sp, ExprKind::MacCall(panic_call)),
-        None,
-    );
+    let if_expr =
+        cx.expr_if(sp, cx.expr(sp, ExprKind::Unary(UnOp::Not, cond_expr)), panic_call, None);
     MacEager::expr(if_expr)
 }
 

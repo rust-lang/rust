@@ -142,6 +142,7 @@ mod native;
 mod run;
 mod sanity;
 mod setup;
+mod tarball;
 mod test;
 mod tool;
 mod toolstate;
@@ -178,6 +179,7 @@ const LLVM_TOOLS: &[&str] = &[
     "llvm-size",     // used to prints the size of the linker sections of a program
     "llvm-strip",    // used to discard symbols from binary files to reduce their size
     "llvm-ar",       // used for creating and modifying archive files
+    "llvm-as",       // used to convert LLVM assembly to LLVM bitcode
     "llvm-dis",      // used to disassemble LLVM bitcode
     "llc",           // used to compile LLVM bytecode
     "opt",           // used to optimize LLVM bytecode
@@ -1067,10 +1069,6 @@ impl Build {
         self.package_vers(&self.version)
     }
 
-    fn llvm_tools_vers(&self) -> String {
-        self.rust_version()
-    }
-
     fn llvm_link_tools_dynamically(&self, target: TargetSelection) -> bool {
         target.contains("linux-gnu") || target.contains("apple-darwin")
     }
@@ -1081,7 +1079,13 @@ impl Build {
     /// Note that this is a descriptive string which includes the commit date,
     /// sha, version, etc.
     fn rust_version(&self) -> String {
-        self.rust_info.version(self, &self.version)
+        let mut version = self.rust_info.version(self, &self.version);
+        if let Some(ref s) = self.config.description {
+            version.push_str(" (");
+            version.push_str(s);
+            version.push(')');
+        }
+        version
     }
 
     /// Returns the full commit hash.
@@ -1140,7 +1144,7 @@ impl Build {
                     && (dep != "profiler_builtins"
                         || target
                             .map(|t| self.config.profiler_enabled(t))
-                            .unwrap_or(self.config.any_profiler_enabled()))
+                            .unwrap_or_else(|| self.config.any_profiler_enabled()))
                     && (dep != "rustc_codegen_llvm" || self.config.llvm_enabled())
                 {
                     list.push(*dep);
@@ -1173,27 +1177,6 @@ impl Build {
             paths.push((path, dependency_type));
         }
         paths
-    }
-
-    /// Copies a file from `src` to `dst` and doesn't use links, so
-    /// that the copy can be modified without affecting the original.
-    pub fn really_copy(&self, src: &Path, dst: &Path) {
-        if self.config.dry_run {
-            return;
-        }
-        self.verbose_than(1, &format!("Copy {:?} to {:?}", src, dst));
-        if src == dst {
-            return;
-        }
-        let _ = fs::remove_file(&dst);
-        let metadata = t!(src.symlink_metadata());
-        if let Err(e) = fs::copy(src, dst) {
-            panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
-        }
-        t!(fs::set_permissions(dst, metadata.permissions()));
-        let atime = FileTime::from_last_access_time(&metadata);
-        let mtime = FileTime::from_last_modification_time(&metadata);
-        t!(filetime::set_file_times(dst, atime, mtime));
     }
 
     /// Copies a file from `src` to `dst`

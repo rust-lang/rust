@@ -15,9 +15,6 @@
           (_3.1: u8) = const 2_u8;         // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
 -         (_2.0: (u8, u8)) = move _3;      // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
 +         (_2.0: (u8, u8)) = const (1_u8, 2_u8); // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
-+                                          // ty::Const
-+                                          // + ty: (u8, u8)
-+                                          // + val: Value(ByRef { alloc: Allocation { bytes: [1, 2], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, offset: Size { raw: 0 } })
 +                                          // mir::Constant
 +                                          // + span: $DIR/issue-67019.rs:11:10: 11:19
 +                                          // + literal: Const { ty: (u8, u8), val: Value(ByRef { alloc: Allocation { bytes: [1, 2], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }

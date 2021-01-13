@@ -1,5 +1,5 @@
 error: `#[doc(alias = "...")]` isn't allowed on associated constant in trait implementation block
-  --> $DIR/doc-alias-assoc-const.rs:11:11
+  --> $DIR/doc-alias-assoc-const.rs:10:11
    |
 LL |     #[doc(alias = "CONST_BAZ")]
    |           ^^^^^^^^^^^^^^^^^^^

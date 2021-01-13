@@ -15,6 +15,8 @@ fn main() {
     let stderr = ::std::io::stderr();
     let mut stderr = stderr.lock();
 
+    // FIXME support lazy jit when multi threading
+    #[cfg(not(lazy_jit))]
     std::thread::spawn(move || {
         println!("Hello from another thread!");
     });
@@ -53,6 +55,7 @@ fn main() {
 
     assert_eq!(0b0000000000000000000000000010000010000000000000000000000000000000_0000000000100000000000000000000000001000000000000100000000000000u128.leading_zeros(), 26);
     assert_eq!(0b0000000000000000000000000010000000000000000000000000000000000000_0000000000000000000000000000000000001000000000000000000010000000u128.trailing_zeros(), 7);
+    assert_eq!(core::intrinsics::saturating_sub(0, -170141183460469231731687303715884105728i128), 170141183460469231731687303715884105727i128);
 
     let _d = 0i128.checked_div(2i128);
     let _d = 0u128.checked_div(2u128);

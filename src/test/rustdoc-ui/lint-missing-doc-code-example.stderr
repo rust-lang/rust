@@ -1,8 +1,9 @@
 error: missing code example in this documentation
-  --> $DIR/lint-missing-doc-code-example.rs:49:1
+  --> $DIR/lint-missing-doc-code-example.rs:19:1
    |
-LL | /// Doc
-   | ^^^^^^^
+LL | / mod module1 {
+LL | | }
+   | |_^
    |
 note: the lint level is defined here
   --> $DIR/lint-missing-doc-code-example.rs:2:9
@@ -11,7 +12,13 @@ LL | #![deny(missing_doc_code_examples)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing code example in this documentation
-  --> $DIR/lint-missing-doc-code-example.rs:63:1
+  --> $DIR/lint-missing-doc-code-example.rs:37:3
+   |
+LL |   /// doc
+   |   ^^^^^^^
+
+error: missing code example in this documentation
+  --> $DIR/lint-missing-doc-code-example.rs:49:1
    |
 LL | /// Doc
    | ^^^^^^^
@@ -23,17 +30,10 @@ LL | /// Doc
    | ^^^^^^^
 
 error: missing code example in this documentation
-  --> $DIR/lint-missing-doc-code-example.rs:19:1
+  --> $DIR/lint-missing-doc-code-example.rs:63:1
    |
-LL | / mod module1 {
-LL | | }
-   | |_^
-
-error: missing code example in this documentation
-  --> $DIR/lint-missing-doc-code-example.rs:37:3
-   |
-LL |   /// doc
-   |   ^^^^^^^
+LL | /// Doc
+   | ^^^^^^^
 
 error: aborting due to 5 previous errors
 

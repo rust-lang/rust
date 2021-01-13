@@ -441,6 +441,32 @@ impl f32 {
         self.abs_private() < Self::INFINITY
     }
 
+    /// Returns `true` if the number is [subnormal].
+    ///
+    /// ```
+    /// #![feature(is_subnormal)]
+    /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f32
+    /// let max = f32::MAX;
+    /// let lower_than_min = 1.0e-40_f32;
+    /// let zero = 0.0_f32;
+    ///
+    /// assert!(!min.is_subnormal());
+    /// assert!(!max.is_subnormal());
+    ///
+    /// assert!(!zero.is_subnormal());
+    /// assert!(!f32::NAN.is_subnormal());
+    /// assert!(!f32::INFINITY.is_subnormal());
+    /// // Values between `0` and `min` are Subnormal.
+    /// assert!(lower_than_min.is_subnormal());
+    /// ```
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[unstable(feature = "is_subnormal", issue = "79288")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[inline]
+    pub const fn is_subnormal(self) -> bool {
+        matches!(self.classify(), FpCategory::Subnormal)
+    }
+
     /// Returns `true` if the number is neither zero, infinite,
     /// [subnormal], or `NaN`.
     ///
@@ -934,5 +960,40 @@ impl f32 {
         right ^= (((right >> 31) as u32) >> 1) as i32;
 
         left.cmp(&right)
+    }
+
+    /// Restrict a value to a certain interval unless it is NaN.
+    ///
+    /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
+    /// less than `min`. Otherwise this returns `self`.
+    ///
+    /// Note that this function returns NaN if the initial value was NaN as
+    /// well.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `min > max`, `min` is NaN, or `max` is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!((-3.0f32).clamp(-2.0, 1.0) == -2.0);
+    /// assert!((0.0f32).clamp(-2.0, 1.0) == 0.0);
+    /// assert!((2.0f32).clamp(-2.0, 1.0) == 1.0);
+    /// assert!((f32::NAN).clamp(-2.0, 1.0).is_nan());
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[inline]
+    pub fn clamp(self, min: f32, max: f32) -> f32 {
+        assert!(min <= max);
+        let mut x = self;
+        if x < min {
+            x = min;
+        }
+        if x > max {
+            x = max;
+        }
+        x
     }
 }

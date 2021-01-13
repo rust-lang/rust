@@ -13,29 +13,32 @@ where
         return Ok(());
     }
 
+    struct FoundParam;
     struct UsedParamsNeedSubstVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
-    };
+    }
 
     impl<'tcx> TypeVisitor<'tcx> for UsedParamsNeedSubstVisitor<'tcx> {
-        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<()> {
+        type BreakTy = FoundParam;
+
+        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             if !c.needs_subst() {
                 return ControlFlow::CONTINUE;
             }
 
             match c.val {
-                ty::ConstKind::Param(..) => ControlFlow::BREAK,
+                ty::ConstKind::Param(..) => ControlFlow::Break(FoundParam),
                 _ => c.super_visit_with(self),
             }
         }
 
-        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             if !ty.needs_subst() {
                 return ControlFlow::CONTINUE;
             }
 
             match *ty.kind() {
-                ty::Param(_) => ControlFlow::BREAK,
+                ty::Param(_) => ControlFlow::Break(FoundParam),
                 ty::Closure(def_id, substs)
                 | ty::Generator(def_id, substs, ..)
                 | ty::FnDef(def_id, substs) => {
@@ -74,7 +77,7 @@ where
     }
 
     let mut vis = UsedParamsNeedSubstVisitor { tcx };
-    if ty.visit_with(&mut vis).is_break() {
+    if matches!(ty.visit_with(&mut vis), ControlFlow::Break(FoundParam)) {
         throw_inval!(TooGeneric);
     } else {
         Ok(())

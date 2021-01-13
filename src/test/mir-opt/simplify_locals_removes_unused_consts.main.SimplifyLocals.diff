@@ -42,9 +42,6 @@
                                            // mir::Constant
                                            // + span: $DIR/simplify-locals-removes-unused-consts.rs:14:5: 14:12
                                            // + literal: Const { ty: fn(((), ())) {use_zst}, val: Value(Scalar(<ZST>)) }
-                                           // ty::Const
-                                           // + ty: ((), ())
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify-locals-removes-unused-consts.rs:14:5: 14:22
                                            // + literal: Const { ty: ((), ()), val: Value(Scalar(<ZST>)) }

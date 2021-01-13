@@ -1,36 +1,36 @@
 use crate::html::markdown::{ErrorCodes, IdMap, Markdown, Playground};
 use crate::rustc_span::edition::Edition;
-use rustc_feature::UnstableFeatures;
 use std::fs;
 use std::path::Path;
 use std::str;
 
 #[derive(Clone, Debug)]
-pub struct ExternalHtml {
+crate struct ExternalHtml {
     /// Content that will be included inline in the <head> section of a
     /// rendered Markdown file or generated documentation
-    pub in_header: String,
+    crate in_header: String,
     /// Content that will be included inline between <body> and the content of
     /// a rendered Markdown file or generated documentation
-    pub before_content: String,
+    crate before_content: String,
     /// Content that will be included inline between the content and </body> of
     /// a rendered Markdown file or generated documentation
-    pub after_content: String,
+    crate after_content: String,
 }
 
 impl ExternalHtml {
-    pub fn load(
+    crate fn load(
         in_header: &[String],
         before_content: &[String],
         after_content: &[String],
         md_before_content: &[String],
         md_after_content: &[String],
+        nightly_build: bool,
         diag: &rustc_errors::Handler,
         id_map: &mut IdMap,
         edition: Edition,
         playground: &Option<Playground>,
     ) -> Option<ExternalHtml> {
-        let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+        let codes = ErrorCodes::from(nightly_build);
         let ih = load_external_files(in_header, diag)?;
         let bc = load_external_files(before_content, diag)?;
         let m_bc = load_external_files(md_before_content, diag)?;
@@ -50,12 +50,12 @@ impl ExternalHtml {
     }
 }
 
-pub enum LoadStringError {
+crate enum LoadStringError {
     ReadFail,
     BadUtf8,
 }
 
-pub fn load_string<P: AsRef<Path>>(
+crate fn load_string<P: AsRef<Path>>(
     file_path: P,
     diag: &rustc_errors::Handler,
 ) -> Result<String, LoadStringError> {

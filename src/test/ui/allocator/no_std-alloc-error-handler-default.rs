@@ -1,6 +1,5 @@
 // run-pass
 // ignore-android no libc
-// ignore-cloudabi no libc
 // ignore-emscripten no libc
 // ignore-sgx no libc
 // ignore-wasm32 no libc

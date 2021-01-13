@@ -14,16 +14,6 @@ note: ...which requires const-evaluating + checking `Foo::bytes::{constant#0}`..
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires const-evaluating + checking `std::mem::size_of`...
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-   |
-LL | pub const fn size_of<T>() -> usize {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `std::intrinsics::size_of`...
-  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
-   |
-LL |     pub fn size_of<T>() -> usize;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires computing layout of `Foo`...
    = note: ...which requires normalizing `[u8; _]`...
    = note: ...which again requires simplifying constant for the type system `Foo::bytes::{constant#0}`, completing the cycle

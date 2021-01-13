@@ -28,6 +28,7 @@ Inline assembly is currently supported on the following architectures:
 - NVPTX
 - Hexagon
 - MIPS32r2 and MIPS64r2
+- wasm32
 
 ## Basic usage
 
@@ -521,6 +522,7 @@ Here is the list of currently supported register classes:
 | RISC-V | `reg` | `x1`, `x[5-7]`, `x[9-15]`, `x[16-31]` (non-RV32E) | `r` |
 | RISC-V | `freg` | `f[0-31]` | `f` |
 | Hexagon | `reg` | `r[0-28]` | `r` |
+| wasm32 | `local` | None\* | `r` |
 
 > **Note**: On x86 we treat `reg_byte` differently from `reg` because the compiler can allocate `al` and `ah` separately whereas `reg` reserves the whole register.
 >
@@ -529,6 +531,8 @@ Here is the list of currently supported register classes:
 > Note #3: NVPTX doesn't have a fixed register set, so named registers are not supported.
 >
 > Note #4: On ARM the frame pointer is either `r7` or `r11` depending on the platform.
+>
+> Note #5: WebAssembly doesn't have registers, so named registers are not supported.
 
 Additional register classes may be added in the future based on demand (e.g. MMX, x87, etc).
 
@@ -562,6 +566,7 @@ Each register class has constraints on which value types they can be used with. 
 | RISC-V | `freg` | `f` | `f32` |
 | RISC-V | `freg` | `d` | `f64` |
 | Hexagon | `reg` | None | `i8`, `i16`, `i32`, `f32` |
+| wasm32 | `local` | None | `i8` `i16` `i32` `i64` `f32` `f64` |
 
 > **Note**: For the purposes of the above table pointers, function pointers and `isize`/`usize` are treated as the equivalent integer type (`i16`/`i32`/`i64` depending on the target).
 

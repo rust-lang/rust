@@ -19,7 +19,7 @@ use super::NoSolution;
 pub use rustc_middle::traits::query::NormalizationResult;
 
 pub trait AtExt<'tcx> {
-    fn normalize<T>(&self, value: &T) -> Result<Normalized<'tcx, T>, NoSolution>
+    fn normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<'tcx>;
 }
@@ -38,7 +38,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
     /// normalizing, but for now should be used only when we actually
     /// know that normalization will succeed, since error reporting
     /// and other details are still "under development".
-    fn normalize<T>(&self, value: &T) -> Result<Normalized<'tcx, T>, NoSolution>
+    fn normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -49,7 +49,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             self.param_env,
         );
         if !value.has_projections() {
-            return Ok(Normalized { value: value.clone(), obligations: vec![] });
+            return Ok(Normalized { value, obligations: vec![] });
         }
 
         let mut normalizer = QueryNormalizer {
@@ -97,6 +97,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         self.infcx.tcx
     }
 
+    #[instrument(skip(self))]
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if !ty.has_projections() {
             return ty;
@@ -145,7 +146,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 }
             }
 
-            ty::Projection(ref data) if !data.has_escaping_bound_vars() => {
+            ty::Projection(data) if !data.has_escaping_bound_vars() => {
                 // This is kind of hacky -- we need to be able to
                 // handle normalization within binders because
                 // otherwise we wind up a need to normalize when doing
@@ -165,7 +166,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // so we cannot canonicalize it.
                 let c_data = self
                     .infcx
-                    .canonicalize_hr_query_hack(&self.param_env.and(*data), &mut orig_values);
+                    .canonicalize_hr_query_hack(self.param_env.and(data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 match tcx.normalize_projection_ty(c_data) {
@@ -180,7 +181,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                             self.cause,
                             self.param_env,
                             &orig_values,
-                            &result,
+                            result,
                         ) {
                             Ok(InferOk { value: result, obligations }) => {
                                 debug!("QueryNormalizer: result = {:#?}", result);

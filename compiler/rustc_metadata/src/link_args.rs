@@ -26,11 +26,11 @@ struct Collector<'tcx> {
 
 impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        let fm = match it.kind {
-            hir::ItemKind::ForeignMod(ref fm) => fm,
+        let abi = match it.kind {
+            hir::ItemKind::ForeignMod { abi, .. } => abi,
             _ => return,
         };
-        if fm.abi == Abi::Rust || fm.abi == Abi::RustIntrinsic || fm.abi == Abi::PlatformIntrinsic {
+        if abi == Abi::Rust || abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             return;
         }
 
@@ -45,6 +45,7 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
     fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem<'tcx>) {}
     fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem<'tcx>) {}
+    fn visit_foreign_item(&mut self, _it: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
 impl<'tcx> Collector<'tcx> {

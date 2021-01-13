@@ -15,7 +15,7 @@ use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{
-    ArgAbi, ArgAttribute, ArgAttributes, Conv, FnAbi, PassMode, Reg, RegKind,
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
 };
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy};
@@ -176,7 +176,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
         match *self {
             LayoutError::Unknown(ty) => write!(f, "the type `{}` has an unknown layout", ty),
             LayoutError::SizeOverflow(ty) => {
-                write!(f, "the type `{}` is too big for the current architecture", ty)
+                write!(f, "values of the type `{}` are too big for the current architecture", ty)
             }
         }
     }
@@ -631,30 +631,106 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
 
             // SIMD vector types.
-            ty::Adt(def, ..) if def.repr.simd() => {
-                let element = self.layout_of(ty.simd_type(tcx))?;
-                let count = ty.simd_size(tcx);
-                assert!(count > 0);
-                let scalar = match element.abi {
-                    Abi::Scalar(ref scalar) => scalar.clone(),
-                    _ => {
+            ty::Adt(def, substs) if def.repr.simd() => {
+                // Supported SIMD vectors are homogeneous ADTs with at least one field:
+                //
+                // * #[repr(simd)] struct S(T, T, T, T);
+                // * #[repr(simd)] struct S { x: T, y: T, z: T, w: T }
+                // * #[repr(simd)] struct S([T; 4])
+                //
+                // where T is a primitive scalar (integer/float/pointer).
+
+                // SIMD vectors with zero fields are not supported.
+                // (should be caught by typeck)
+                if def.non_enum_variant().fields.is_empty() {
+                    tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
+                }
+
+                // Type of the first ADT field:
+                let f0_ty = def.non_enum_variant().fields[0].ty(tcx, substs);
+
+                // Heterogeneous SIMD vectors are not supported:
+                // (should be caught by typeck)
+                for fi in &def.non_enum_variant().fields {
+                    if fi.ty(tcx, substs) != f0_ty {
+                        tcx.sess.fatal(&format!("monomorphising heterogeneous SIMD type `{}`", ty));
+                    }
+                }
+
+                // The element type and number of elements of the SIMD vector
+                // are obtained from:
+                //
+                // * the element type and length of the single array field, if
+                // the first field is of array type, or
+                //
+                // * the homogenous field type and the number of fields.
+                let (e_ty, e_len, is_array) = if let ty::Array(e_ty, _) = f0_ty.kind() {
+                    // First ADT field is an array:
+
+                    // SIMD vectors with multiple array fields are not supported:
+                    // (should be caught by typeck)
+                    if def.non_enum_variant().fields.len() != 1 {
                         tcx.sess.fatal(&format!(
-                            "monomorphising SIMD type `{}` with \
-                                                 a non-machine element type `{}`",
-                            ty, element.ty
+                            "monomorphising SIMD type `{}` with more than one array field",
+                            ty
                         ));
                     }
+
+                    // Extract the number of elements from the layout of the array field:
+                    let len = if let Ok(TyAndLayout {
+                        layout: Layout { fields: FieldsShape::Array { count, .. }, .. },
+                        ..
+                    }) = self.layout_of(f0_ty)
+                    {
+                        count
+                    } else {
+                        return Err(LayoutError::Unknown(ty));
+                    };
+
+                    (*e_ty, *len, true)
+                } else {
+                    // First ADT field is not an array:
+                    (f0_ty, def.non_enum_variant().fields.len() as _, false)
                 };
-                let size =
-                    element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
+
+                // SIMD vectors of zero length are not supported.
+                //
+                // Can't be caught in typeck if the array length is generic.
+                if e_len == 0 {
+                    tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
+                }
+
+                // Compute the ABI of the element type:
+                let e_ly = self.layout_of(e_ty)?;
+                let e_abi = if let Abi::Scalar(ref scalar) = e_ly.abi {
+                    scalar.clone()
+                } else {
+                    // This error isn't caught in typeck, e.g., if
+                    // the element type of the vector is generic.
+                    tcx.sess.fatal(&format!(
+                        "monomorphising SIMD type `{}` with a non-primitive-scalar \
+                        (integer/float/pointer) element type `{}`",
+                        ty, e_ty
+                    ))
+                };
+
+                // Compute the size and alignment of the vector:
+                let size = e_ly.size.checked_mul(e_len, dl).ok_or(LayoutError::SizeOverflow(ty))?;
                 let align = dl.vector_align(size);
                 let size = size.align_to(align.abi);
 
+                // Compute the placement of the vector fields:
+                let fields = if is_array {
+                    FieldsShape::Arbitrary { offsets: vec![Size::ZERO], memory_index: vec![0] }
+                } else {
+                    FieldsShape::Array { stride: e_ly.size, count: e_len }
+                };
+
                 tcx.intern_layout(Layout {
                     variants: Variants::Single { index: VariantIdx::new(0) },
-                    fields: FieldsShape::Array { stride: element.size, count },
-                    abi: Abi::Vector { element: scalar, count },
-                    largest_niche: element.largest_niche.clone(),
+                    fields,
+                    abi: Abi::Vector { element: e_abi, count: e_len },
+                    largest_niche: e_ly.largest_niche.clone(),
                     size,
                     align,
                 })
@@ -1558,7 +1634,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let layout = tcx.intern_layout(Layout {
             variants: Variants::Multiple {
-                tag: tag,
+                tag,
                 tag_encoding: TagEncoding::Direct,
                 tag_field: tag_index,
                 variants,
@@ -1756,7 +1832,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 match tail.kind() {
                     ty::Param(_) | ty::Projection(_) => {
                         debug_assert!(tail.has_param_types_or_consts());
-                        Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(&tail) })
+                        Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
                     }
                     _ => bug!(
                         "SizeSkeleton::compute({}): layout errored ({}), yet \
@@ -2029,121 +2105,148 @@ where
     }
 
     fn field(this: TyAndLayout<'tcx>, cx: &C, i: usize) -> C::TyAndLayout {
-        let tcx = cx.tcx();
-        let tag_layout = |tag: &Scalar| -> C::TyAndLayout {
-            let layout = Layout::scalar(cx, tag.clone());
-            MaybeResult::from(Ok(TyAndLayout {
-                layout: tcx.intern_layout(layout),
-                ty: tag.value.to_ty(tcx),
-            }))
-        };
+        enum TyMaybeWithLayout<C: LayoutOf> {
+            Ty(C::Ty),
+            TyAndLayout(C::TyAndLayout),
+        }
 
-        cx.layout_of(match *this.ty.kind() {
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::FnPtr(_)
-            | ty::Never
-            | ty::FnDef(..)
-            | ty::GeneratorWitness(..)
-            | ty::Foreign(..)
-            | ty::Dynamic(..) => bug!("TyAndLayout::field_type({:?}): not applicable", this),
+        fn ty_and_layout_kind<
+            C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout: MaybeResult<TyAndLayout<'tcx>>>
+                + HasTyCtxt<'tcx>
+                + HasParamEnv<'tcx>,
+        >(
+            this: TyAndLayout<'tcx>,
+            cx: &C,
+            i: usize,
+            ty: C::Ty,
+        ) -> TyMaybeWithLayout<C> {
+            let tcx = cx.tcx();
+            let tag_layout = |tag: &Scalar| -> C::TyAndLayout {
+                let layout = Layout::scalar(cx, tag.clone());
+                MaybeResult::from(Ok(TyAndLayout {
+                    layout: tcx.intern_layout(layout),
+                    ty: tag.value.to_ty(tcx),
+                }))
+            };
 
-            // Potentially-fat pointers.
-            ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-                assert!(i < this.fields.count());
+            match *ty.kind() {
+                ty::Bool
+                | ty::Char
+                | ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::FnPtr(_)
+                | ty::Never
+                | ty::FnDef(..)
+                | ty::GeneratorWitness(..)
+                | ty::Foreign(..)
+                | ty::Dynamic(..) => bug!("TyAndLayout::field_type({:?}): not applicable", this),
 
-                // Reuse the fat `*T` type as its own thin pointer data field.
-                // This provides information about, e.g., DST struct pointees
-                // (which may have no non-DST form), and will work as long
-                // as the `Abi` or `FieldsShape` is checked by users.
-                if i == 0 {
-                    let nil = tcx.mk_unit();
-                    let ptr_ty = if this.ty.is_unsafe_ptr() {
-                        tcx.mk_mut_ptr(nil)
-                    } else {
-                        tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
-                    };
-                    return MaybeResult::from(cx.layout_of(ptr_ty).to_result().map(
-                        |mut ptr_layout| {
-                            ptr_layout.ty = this.ty;
-                            ptr_layout
-                        },
-                    ));
-                }
+                // Potentially-fat pointers.
+                ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+                    assert!(i < this.fields.count());
 
-                match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
-                    ty::Slice(_) | ty::Str => tcx.types.usize,
-                    ty::Dynamic(_, _) => {
-                        tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
-                        /* FIXME: use actual fn pointers
-                        Warning: naively computing the number of entries in the
-                        vtable by counting the methods on the trait + methods on
-                        all parent traits does not work, because some methods can
-                        be not object safe and thus excluded from the vtable.
-                        Increase this counter if you tried to implement this but
-                        failed to do it without duplicating a lot of code from
-                        other places in the compiler: 2
-                        tcx.mk_tup(&[
-                            tcx.mk_array(tcx.types.usize, 3),
-                            tcx.mk_array(Option<fn()>),
-                        ])
-                        */
+                    // Reuse the fat `*T` type as its own thin pointer data field.
+                    // This provides information about, e.g., DST struct pointees
+                    // (which may have no non-DST form), and will work as long
+                    // as the `Abi` or `FieldsShape` is checked by users.
+                    if i == 0 {
+                        let nil = tcx.mk_unit();
+                        let ptr_ty = if ty.is_unsafe_ptr() {
+                            tcx.mk_mut_ptr(nil)
+                        } else {
+                            tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
+                        };
+                        return TyMaybeWithLayout::TyAndLayout(MaybeResult::from(
+                            cx.layout_of(ptr_ty).to_result().map(|mut ptr_layout| {
+                                ptr_layout.ty = ty;
+                                ptr_layout
+                            }),
+                        ));
                     }
-                    _ => bug!("TyAndLayout::field_type({:?}): not applicable", this),
+
+                    match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
+                        ty::Slice(_) | ty::Str => TyMaybeWithLayout::Ty(tcx.types.usize),
+                        ty::Dynamic(_, _) => {
+                            TyMaybeWithLayout::Ty(tcx.mk_imm_ref(
+                                tcx.lifetimes.re_static,
+                                tcx.mk_array(tcx.types.usize, 3),
+                            ))
+                            /* FIXME: use actual fn pointers
+                            Warning: naively computing the number of entries in the
+                            vtable by counting the methods on the trait + methods on
+                            all parent traits does not work, because some methods can
+                            be not object safe and thus excluded from the vtable.
+                            Increase this counter if you tried to implement this but
+                            failed to do it without duplicating a lot of code from
+                            other places in the compiler: 2
+                            tcx.mk_tup(&[
+                                tcx.mk_array(tcx.types.usize, 3),
+                                tcx.mk_array(Option<fn()>),
+                            ])
+                            */
+                        }
+                        _ => bug!("TyAndLayout::field_type({:?}): not applicable", this),
+                    }
                 }
+
+                // Arrays and slices.
+                ty::Array(element, _) | ty::Slice(element) => TyMaybeWithLayout::Ty(element),
+                ty::Str => TyMaybeWithLayout::Ty(tcx.types.u8),
+
+                // Tuples, generators and closures.
+                ty::Closure(_, ref substs) => {
+                    ty_and_layout_kind(this, cx, i, substs.as_closure().tupled_upvars_ty())
+                }
+
+                ty::Generator(def_id, ref substs, _) => match this.variants {
+                    Variants::Single { index } => TyMaybeWithLayout::Ty(
+                        substs
+                            .as_generator()
+                            .state_tys(def_id, tcx)
+                            .nth(index.as_usize())
+                            .unwrap()
+                            .nth(i)
+                            .unwrap(),
+                    ),
+                    Variants::Multiple { ref tag, tag_field, .. } => {
+                        if i == tag_field {
+                            return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                        }
+                        TyMaybeWithLayout::Ty(substs.as_generator().prefix_tys().nth(i).unwrap())
+                    }
+                },
+
+                ty::Tuple(tys) => TyMaybeWithLayout::Ty(tys[i].expect_ty()),
+
+                // ADTs.
+                ty::Adt(def, substs) => {
+                    match this.variants {
+                        Variants::Single { index } => {
+                            TyMaybeWithLayout::Ty(def.variants[index].fields[i].ty(tcx, substs))
+                        }
+
+                        // Discriminant field for enums (where applicable).
+                        Variants::Multiple { ref tag, .. } => {
+                            assert_eq!(i, 0);
+                            return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                        }
+                    }
+                }
+
+                ty::Projection(_)
+                | ty::Bound(..)
+                | ty::Placeholder(..)
+                | ty::Opaque(..)
+                | ty::Param(_)
+                | ty::Infer(_)
+                | ty::Error(_) => bug!("TyAndLayout::field_type: unexpected type `{}`", this.ty),
             }
+        }
 
-            // Arrays and slices.
-            ty::Array(element, _) | ty::Slice(element) => element,
-            ty::Str => tcx.types.u8,
-
-            // Tuples, generators and closures.
-            ty::Closure(_, ref substs) => substs.as_closure().upvar_tys().nth(i).unwrap(),
-
-            ty::Generator(def_id, ref substs, _) => match this.variants {
-                Variants::Single { index } => substs
-                    .as_generator()
-                    .state_tys(def_id, tcx)
-                    .nth(index.as_usize())
-                    .unwrap()
-                    .nth(i)
-                    .unwrap(),
-                Variants::Multiple { ref tag, tag_field, .. } => {
-                    if i == tag_field {
-                        return tag_layout(tag);
-                    }
-                    substs.as_generator().prefix_tys().nth(i).unwrap()
-                }
-            },
-
-            ty::Tuple(tys) => tys[i].expect_ty(),
-
-            // SIMD vector types.
-            ty::Adt(def, ..) if def.repr.simd() => this.ty.simd_type(tcx),
-
-            // ADTs.
-            ty::Adt(def, substs) => {
-                match this.variants {
-                    Variants::Single { index } => def.variants[index].fields[i].ty(tcx, substs),
-
-                    // Discriminant field for enums (where applicable).
-                    Variants::Multiple { ref tag, .. } => {
-                        assert_eq!(i, 0);
-                        return tag_layout(tag);
-                    }
-                }
-            }
-
-            ty::Projection(_)
-            | ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::Opaque(..)
-            | ty::Param(_)
-            | ty::Infer(_)
-            | ty::Error(_) => bug!("TyAndLayout::field_type: unexpected type `{}`", this.ty),
+        cx.layout_of(match ty_and_layout_kind(this, cx, i, this.ty) {
+            TyMaybeWithLayout::Ty(result) => result,
+            TyMaybeWithLayout::TyAndLayout(result) => return result,
         })
     }
 
@@ -2352,7 +2455,8 @@ impl<'tcx> ty::Instance<'tcx> {
             ty::Generator(_, substs, _) => {
                 let sig = substs.as_generator().poly_sig();
 
-                let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+                let br = ty::BoundRegion { kind: ty::BrEnv };
+                let env_region = ty::ReLateBound(ty::INNERMOST, br);
                 let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
                 let pin_did = tcx.require_lang_item(LangItem::Pin, None);
@@ -2545,7 +2649,7 @@ where
     ) -> Self {
         debug!("FnAbi::new_internal({:?}, {:?})", sig, extra_args);
 
-        let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+        let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
 
         use rustc_target::spec::abi::Abi::*;
         let conv = match cx.tcx().sess.target.adjust_abi(sig.abi) {
@@ -2619,7 +2723,7 @@ where
                                       is_return: bool| {
             // Booleans are always an i1 that needs to be zero-extended.
             if scalar.is_bool() {
-                attrs.set(ArgAttribute::ZExt);
+                attrs.ext(ArgExtension::Zext);
                 return;
             }
 
@@ -2745,7 +2849,7 @@ where
             || abi == SpecAbi::RustIntrinsic
             || abi == SpecAbi::PlatformIntrinsic
         {
-            let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>, is_ret: bool| {
+            let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>| {
                 if arg.is_ignore() {
                     return;
                 }
@@ -2783,9 +2887,9 @@ where
                     _ => return,
                 }
 
-                // Return structures up to 2 pointers in size by value, matching `ScalarPair`. LLVM
-                // will usually return these in 2 registers, which is more efficient than by-ref.
-                let max_by_val_size = if is_ret { Pointer.size(cx) * 2 } else { Pointer.size(cx) };
+                // Pass and return structures up to 2 pointers in size by value, matching `ScalarPair`.
+                // LLVM will usually pass these in 2 registers, which is more efficient than by-ref.
+                let max_by_val_size = Pointer.size(cx) * 2;
                 let size = arg.layout.size;
 
                 if arg.layout.is_unsized() || size > max_by_val_size {
@@ -2797,12 +2901,9 @@ where
                     arg.cast_to(Reg { kind: RegKind::Integer, size });
                 }
             };
-            fixup(&mut self.ret, true);
+            fixup(&mut self.ret);
             for arg in &mut self.args {
-                fixup(arg, false);
-            }
-            if let PassMode::Indirect(ref mut attrs, _) = self.ret.mode {
-                attrs.set(ArgAttribute::StructRet);
+                fixup(arg);
             }
             return;
         }

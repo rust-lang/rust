@@ -1,32 +1,32 @@
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/attrs-resolution-errors.rs:2:5
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/attrs-resolution-errors.rs:2:7
    |
 LL |     #[test]
-   |     ^^^^^^^
+   |       ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/attrs-resolution-errors.rs:8:5
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/attrs-resolution-errors.rs:8:7
    |
 LL |     #[test]
-   |     ^^^^^^^
+   |       ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/attrs-resolution-errors.rs:23:13
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/attrs-resolution-errors.rs:23:15
    |
 LL |             #[test] bar
-   |             ^^^^^^^
+   |               ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/attrs-resolution-errors.rs:30:9
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/attrs-resolution-errors.rs:30:11
    |
 LL |         #[test]
-   |         ^^^^^^^
+   |           ^^^^ not a non-macro attribute
 
-error: expected an inert attribute, found an attribute macro
-  --> $DIR/attrs-resolution-errors.rs:36:9
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/attrs-resolution-errors.rs:36:11
    |
 LL |         #[test]
-   |         ^^^^^^^
+   |           ^^^^ not a non-macro attribute
 
 error: aborting due to 5 previous errors
 

@@ -1,5 +1,3 @@
-#![feature(doc_alias)]
-
 pub struct Bar;
 pub trait Foo {
     type X;
@@ -7,7 +5,7 @@ pub trait Foo {
 }
 
 #[doc(alias = "foo")] //~ ERROR
-extern {}
+extern "C" {}
 
 #[doc(alias = "bar")] //~ ERROR
 impl Bar {
@@ -19,5 +17,7 @@ impl Bar {
 impl Foo for Bar {
     #[doc(alias = "assoc")] //~ ERROR
     type X = i32;
-    fn foo() -> Self::X { 0 }
+    fn foo() -> Self::X {
+        0
+    }
 }

@@ -1,4 +1,3 @@
-#![feature(doc_alias)]
 #![feature(trait_alias)]
 
 pub struct Foo;

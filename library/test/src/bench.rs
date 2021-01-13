@@ -2,8 +2,7 @@
 pub use std::hint::black_box;
 
 use super::{
-    event::CompletedTest, helpers::sink::Sink, options::BenchMode, test_result::TestResult,
-    types::TestDesc, Sender,
+    event::CompletedTest, options::BenchMode, test_result::TestResult, types::TestDesc, Sender,
 };
 
 use crate::stats;
@@ -185,21 +184,14 @@ where
     let mut bs = Bencher { mode: BenchMode::Auto, summary: None, bytes: 0 };
 
     let data = Arc::new(Mutex::new(Vec::new()));
-    let oldio = if !nocapture {
-        Some((
-            io::set_print(Some(Sink::new_boxed(&data))),
-            io::set_panic(Some(Sink::new_boxed(&data))),
-        ))
-    } else {
-        None
-    };
+
+    if !nocapture {
+        io::set_output_capture(Some(data.clone()));
+    }
 
     let result = catch_unwind(AssertUnwindSafe(|| bs.bench(f)));
 
-    if let Some((printio, panicio)) = oldio {
-        io::set_print(printio);
-        io::set_panic(panicio);
-    }
+    io::set_output_capture(None);
 
     let test_result = match result {
         //bs.bench(f) {

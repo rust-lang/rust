@@ -227,7 +227,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let (inputs_and_output, iobinders, _) = crate::chalk::lowering::collect_bound_vars(
             &self.interner,
             self.interner.tcx,
-            &sig.inputs_and_output().subst(self.interner.tcx, bound_vars),
+            sig.inputs_and_output().subst(self.interner.tcx, bound_vars),
         );
 
         let argument_types = inputs_and_output[..inputs_and_output.len() - 1]
@@ -461,7 +461,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Arc<chalk_solve::rust_ir::OpaqueTyDatum<RustInterner<'tcx>>> {
         let bound_vars = ty::fold::shift_vars(
             self.interner.tcx,
-            &bound_vars_for_item(self.interner.tcx, opaque_ty_id.0),
+            bound_vars_for_item(self.interner.tcx, opaque_ty_id.0),
             1,
         );
         let where_clauses = self.where_clauses_for(opaque_ty_id.0, bound_vars);
@@ -648,7 +648,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
 /// Creates a `InternalSubsts` that maps each generic parameter to a higher-ranked
 /// var bound at index `0`. For types, we use a `BoundVar` index equal to
-/// the type parameter index. For regions, we use the `BoundRegion::BrNamed`
+/// the type parameter index. For regions, we use the `BoundRegionKind::BrNamed`
 /// variant (which has a `DefId`).
 fn bound_vars_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
     InternalSubsts::for_item(tcx, def_id, |param, substs| match param.kind {
@@ -662,12 +662,10 @@ fn bound_vars_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
             ))
             .into(),
 
-        ty::GenericParamDefKind::Lifetime => tcx
-            .mk_region(ty::RegionKind::ReLateBound(
-                ty::INNERMOST,
-                ty::BoundRegion::BrAnon(substs.len() as u32),
-            ))
-            .into(),
+        ty::GenericParamDefKind::Lifetime => {
+            let br = ty::BoundRegion { kind: ty::BrAnon(substs.len() as u32) };
+            tcx.mk_region(ty::RegionKind::ReLateBound(ty::INNERMOST, br)).into()
+        }
 
         ty::GenericParamDefKind::Const => tcx
             .mk_const(ty::Const {

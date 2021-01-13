@@ -20,7 +20,6 @@ cfg_if::cfg_if! {
         unix,
         windows,
         target_os = "psp",
-        target_os = "cloudabi",
         all(target_vendor = "fortanix", target_env = "sgx"),
     ))] {
         mod libunwind;

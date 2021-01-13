@@ -51,7 +51,7 @@ fn main() {
         B(i32),
         C,
         D,
-    };
+    }
     let x = E::A(2);
     {
         // lint

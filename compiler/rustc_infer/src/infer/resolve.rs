@@ -111,19 +111,17 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
 /// involve some hashing and so forth).
 pub struct UnresolvedTypeFinder<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-
-    /// Used to find the type parameter name and location for error reporting.
-    pub first_unresolved: Option<(Ty<'tcx>, Option<Span>)>,
 }
 
 impl<'a, 'tcx> UnresolvedTypeFinder<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
-        UnresolvedTypeFinder { infcx, first_unresolved: None }
+        UnresolvedTypeFinder { infcx }
     }
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+    type BreakTy = (Ty<'tcx>, Option<Span>);
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         let t = self.infcx.shallow_resolve(t);
         if t.has_infer_types() {
             if let ty::Infer(infer_ty) = *t.kind() {
@@ -144,8 +142,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
                 } else {
                     None
                 };
-                self.first_unresolved = Some((t, ty_var_span));
-                ControlFlow::BREAK
+                ControlFlow::Break((t, ty_var_span))
             } else {
                 // Otherwise, visit its contents.
                 t.super_visit_with(self)
@@ -164,7 +161,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
 /// Full type resolution replaces all type and region variables with
 /// their concrete results. If any variable cannot be replaced (never unified, etc)
 /// then an `Err` result is returned.
-pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>, value: &T) -> FixupResult<'tcx, T>
+pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>, value: T) -> FixupResult<'tcx, T>
 where
     T: TypeFoldable<'tcx>,
 {

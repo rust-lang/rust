@@ -1,7 +1,7 @@
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    eq_expr_value, higher, match_def_path, multispan_sugg, paths, qpath_res, snippet, span_lint_and_then,
+    eq_expr_value, higher, match_def_path, meets_msrv, multispan_sugg, paths, qpath_res, snippet, span_lint_and_then,
 };
 
 use if_chain::if_chain;
@@ -10,12 +10,15 @@ use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::BinOpKind;
 use rustc_hir::{BorrowKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
 use rustc_span::Span;
+
+const MANUAL_STRIP_MSRV: RustcVersion = RustcVersion::new(1, 45, 0);
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -51,7 +54,18 @@ declare_clippy_lint! {
     "suggests using `strip_{prefix,suffix}` over `str::{starts,ends}_with` and slicing"
 }
 
-declare_lint_pass!(ManualStrip => [MANUAL_STRIP]);
+pub struct ManualStrip {
+    msrv: Option<RustcVersion>,
+}
+
+impl ManualStrip {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
+
+impl_lint_pass!(ManualStrip => [MANUAL_STRIP]);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum StripKind {
@@ -61,6 +75,10 @@ enum StripKind {
 
 impl<'tcx> LateLintPass<'tcx> for ManualStrip {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if !meets_msrv(self.msrv.as_ref(), &MANUAL_STRIP_MSRV) {
+            return;
+        }
+
         if_chain! {
             if let Some((cond, then, _)) = higher::if_block(&expr);
             if let ExprKind::MethodCall(_, _, [target_arg, pattern], _) = cond.kind;
@@ -114,6 +132,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 // Returns `Some(arg)` if `expr` matches `arg.len()` and `None` otherwise.
@@ -199,8 +219,7 @@ fn find_stripping<'tcx>(
                 if is_ref_str(self.cx, ex);
                 let unref = peel_ref(ex);
                 if let ExprKind::Index(indexed, index) = &unref.kind;
-                if let Some(range) = higher::range(index);
-                if let higher::Range { start, end, .. } = range;
+                if let Some(higher::Range { start, end, .. }) = higher::range(index);
                 if let ExprKind::Path(path) = &indexed.kind;
                 if qpath_res(self.cx, path, ex.hir_id) == self.target;
                 then {

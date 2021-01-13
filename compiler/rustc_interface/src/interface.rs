@@ -25,8 +25,9 @@ use std::sync::{Arc, Mutex};
 pub type Result<T> = result::Result<T, ErrorReported>;
 
 /// Represents a compiler session.
+///
 /// Can be used to run `rustc_interface` queries.
-/// Created by passing `Config` to `run_compiler`.
+/// Created by passing [`Config`] to [`run_compiler`].
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
@@ -34,7 +35,6 @@ pub struct Compiler {
     pub(crate) input_path: Option<PathBuf>,
     pub(crate) output_dir: Option<PathBuf>,
     pub(crate) output_file: Option<PathBuf>,
-    pub(crate) crate_name: Option<String>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries:
         Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::Providers)>,
@@ -55,6 +55,9 @@ impl Compiler {
     }
     pub fn output_file(&self) -> &Option<PathBuf> {
         &self.output_file
+    }
+    pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
+        &self.register_lints
     }
     pub fn build_output_filenames(
         &self,
@@ -137,7 +140,6 @@ pub struct Config {
     /// Set to capture stderr output during compiler execution
     pub stderr: Option<Arc<Mutex<Vec<u8>>>>,
 
-    pub crate_name: Option<String>,
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
     /// This is a callback from the driver that is called when we're registering lints;
@@ -182,7 +184,6 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
         input_path: config.input_path,
         output_dir: config.output_dir,
         output_file: config.output_file,
-        crate_name: config.crate_name,
         register_lints: config.register_lints,
         override_queries: config.override_queries,
     };

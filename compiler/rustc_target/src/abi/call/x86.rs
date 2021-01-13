@@ -92,9 +92,14 @@ where
 
         for arg in &mut fn_abi.args {
             let attrs = match arg.mode {
-                PassMode::Ignore | PassMode::Indirect(_, None) => continue,
+                PassMode::Ignore
+                | PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
+                    continue;
+                }
                 PassMode::Direct(ref mut attrs) => attrs,
-                PassMode::Pair(..) | PassMode::Indirect(_, Some(_)) | PassMode::Cast(_) => {
+                PassMode::Pair(..)
+                | PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ }
+                | PassMode::Cast(_) => {
                     unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
                 }
             };

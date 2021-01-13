@@ -63,7 +63,7 @@ pub trait Printer<'tcx>: Sized {
 
     fn print_dyn_existential(
         self,
-        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error>;
 
     fn print_const(self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error>;
@@ -203,7 +203,7 @@ pub trait Printer<'tcx>: Sized {
                                     self.tcx().type_of(param.def_id).subst(self.tcx(), substs),
                                 )
                     }
-                    ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
+                    ty::GenericParamDefKind::Const => false, // FIXME(const_generics_defaults)
                 }
             })
             .count();
@@ -343,7 +343,9 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P>
+    for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>
+{
     type Output = P::DynExistential;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {

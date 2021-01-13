@@ -1,5 +1,4 @@
 // compile-flags: -Z unpretty=mir
-// ignore-cloudabi no std::path
 
 use std::path::MAIN_SEPARATOR;
 

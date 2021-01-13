@@ -1,6 +1,6 @@
 // Make sure specialization cannot change impl polarity
 
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 #![feature(negative_impls)]
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 

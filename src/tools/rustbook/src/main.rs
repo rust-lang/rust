@@ -9,6 +9,7 @@ use mdbook::errors::Result as Result3;
 use mdbook::MDBook;
 
 fn main() {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     let d_message = "-d, --dest-dir=[dest-dir]
 'The output directory for your book{n}(Defaults to ./book when omitted)'";
     let dir_message = "[dir]

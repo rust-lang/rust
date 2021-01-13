@@ -26,7 +26,7 @@ type Type_5_<'a> = Type_1_<'a, ()>;
 
 
 type Type_7 = Box<(),,>;
-//~^ error: expected one of `>`, const, identifier, lifetime, or type, found `,`
+//~^ error: expected one of `>`, a const expression, lifetime, or type, found `,`
 
 
 //type Type_8<'a,,> = &'a (); // error: expected ident, found `,`

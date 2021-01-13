@@ -21,7 +21,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         trace!("get_vtable(trait_ref={:?})", poly_trait_ref);
 
-        let (ty, poly_trait_ref) = self.tcx.erase_regions(&(ty, poly_trait_ref));
+        let (ty, poly_trait_ref) = self.tcx.erase_regions((ty, poly_trait_ref));
 
         // All vtables must be monomorphic, bail out otherwise.
         ensure_monomorphic_enough(*self.tcx, ty)?;
@@ -37,7 +37,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let methods = if let Some(poly_trait_ref) = poly_trait_ref {
             let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
-            let trait_ref = self.tcx.erase_regions(&trait_ref);
+            let trait_ref = self.tcx.erase_regions(trait_ref);
 
             self.tcx.vtable_methods(trait_ref)
         } else {
@@ -56,11 +56,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // If you touch this code, be sure to also make the corresponding changes to
         // `get_vtable` in `rust_codegen_llvm/meth.rs`.
         // /////////////////////////////////////////////////////////////////////////////////////////
-        let vtable = self.memory.allocate(
-            ptr_size * u64::try_from(methods.len()).unwrap().checked_add(3).unwrap(),
-            ptr_align,
-            MemoryKind::Vtable,
-        );
+        let vtable_size = ptr_size * u64::try_from(methods.len()).unwrap().checked_add(3).unwrap();
+        let vtable = self.memory.allocate(vtable_size, ptr_align, MemoryKind::Vtable);
 
         let drop = Instance::resolve_drop_in_place(tcx, ty);
         let drop = self.memory.create_fn_alloc(FnVal::Instance(drop));
@@ -92,6 +89,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
             }
         }
+
+        M::after_static_mem_initialized(self, vtable, vtable_size)?;
 
         self.memory.mark_immutable(vtable.alloc_id)?;
         assert!(self.vtables.insert((ty, poly_trait_ref), vtable).is_none());
@@ -143,7 +142,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let drop_instance = self.memory.get_fn(drop_fn)?.as_instance()?;
         trace!("Found drop fn: {:?}", drop_instance);
         let fn_sig = drop_instance.ty(*self.tcx, self.param_env).fn_sig(*self.tcx);
-        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, &fn_sig);
+        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig);
         // The drop function takes `*mut T` where `T` is the type being dropped, so get that.
         let args = fn_sig.inputs();
         if args.len() != 1 {

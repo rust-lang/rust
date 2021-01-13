@@ -1,6 +1,8 @@
 // See rsbegin.rs for details.
 
-#![feature(no_core, lang_items, optin_builtin_traits)]
+#![feature(no_core)]
+#![feature(lang_items)]
+#![feature(auto_traits)]
 #![crate_type = "rlib"]
 #![no_core]
 

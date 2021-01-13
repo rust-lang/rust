@@ -14,6 +14,8 @@
 //! A few exceptions are allowed as there's known bugs in rustdoc, but this
 //! should catch the majority of "broken link" cases.
 
+#![feature(str_split_once)]
+
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -232,11 +234,12 @@ fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Opti
         {
             return;
         }
-        let mut parts = url.splitn(2, '#');
-        let url = parts.next().unwrap();
-        let fragment = parts.next();
-        let mut parts = url.splitn(2, '?');
-        let url = parts.next().unwrap();
+        let (url, fragment) = match url.split_once('#') {
+            None => (url, None),
+            Some((url, fragment)) => (url, Some(fragment)),
+        };
+        // NB: the `splitn` always succeeds, even if the delimiter is not present.
+        let url = url.splitn(2, '?').next().unwrap();
 
         // Once we've plucked out the URL, parse it using our base url and
         // then try to extract a file path.

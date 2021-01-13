@@ -156,18 +156,18 @@ pub trait StructuralPartialEq {
 /// Required trait for constants used in pattern matches.
 ///
 /// Any type that derives `Eq` automatically implements this trait, *regardless*
-/// of whether its type-parameters implement `Eq`.
+/// of whether its type parameters implement `Eq`.
 ///
-/// This is a hack to workaround a limitation in our type-system.
+/// This is a hack to work around a limitation in our type system.
 ///
-/// Background:
+/// # Background
 ///
 /// We want to require that types of consts used in pattern matches
 /// have the attribute `#[derive(PartialEq, Eq)]`.
 ///
 /// In a more ideal world, we could check that requirement by just checking that
-/// the given type implements both (1.) the `StructuralPartialEq` trait *and*
-/// (2.) the `Eq` trait. However, you can have ADTs that *do* `derive(PartialEq, Eq)`,
+/// the given type implements both the `StructuralPartialEq` trait *and*
+/// the `Eq` trait. However, you can have ADTs that *do* `derive(PartialEq, Eq)`,
 /// and be a case that we want the compiler to accept, and yet the constant's
 /// type fails to implement `Eq`.
 ///
@@ -176,8 +176,11 @@ pub trait StructuralPartialEq {
 /// ```rust
 /// #[derive(PartialEq, Eq)]
 /// struct Wrap<X>(X);
+///
 /// fn higher_order(_: &()) { }
+///
 /// const CFN: Wrap<fn(&())> = Wrap(higher_order);
+///
 /// fn main() {
 ///     match CFN {
 ///         CFN => {}
@@ -772,7 +775,7 @@ pub auto trait Unpin {}
 ///
 /// If a type contains a `PhantomPinned`, it will not implement `Unpin` by default.
 #[stable(feature = "pin", since = "1.33.0")]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PhantomPinned;
 
 #[stable(feature = "pin", since = "1.33.0")]

@@ -21,6 +21,12 @@ impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
         opt_finder.visit_body(body);
         let should_simplify = !opt_finder.optimizations.is_empty();
         for (loc, target) in opt_finder.optimizations {
+            if !tcx
+                .consider_optimizing(|| format!("RemoveUnneededDrops {:?} ", body.source.def_id()))
+            {
+                break;
+            }
+
             let terminator = body.basic_blocks_mut()[loc.block].terminator_mut();
             debug!("SUCCESS: replacing `drop` with goto({:?})", target);
             terminator.kind = TerminatorKind::Goto { target };

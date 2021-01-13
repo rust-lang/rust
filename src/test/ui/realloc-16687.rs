@@ -7,7 +7,7 @@
 #![feature(allocator_api)]
 #![feature(slice_ptr_get)]
 
-use std::alloc::{handle_alloc_error, AllocRef, Global, Layout};
+use std::alloc::{handle_alloc_error, Allocator, Global, Layout};
 use std::ptr::{self, NonNull};
 
 fn main() {
@@ -42,7 +42,7 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?})", layout);
         }
 
-        let ptr = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+        let ptr = Global.allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
         if PRINT {
             println!("allocate({:?}) = {:?}", layout, ptr);
@@ -56,7 +56,7 @@ unsafe fn test_triangle() -> bool {
             println!("deallocate({:?}, {:?}", ptr, layout);
         }
 
-        Global.dealloc(NonNull::new_unchecked(ptr), layout);
+        Global.deallocate(NonNull::new_unchecked(ptr), layout);
     }
 
     unsafe fn reallocate(ptr: *mut u8, old: Layout, new: Layout) -> *mut u8 {

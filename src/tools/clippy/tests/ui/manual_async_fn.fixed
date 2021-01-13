@@ -7,7 +7,19 @@ use std::future::Future;
 
 async fn fut() -> i32 { 42 }
 
-async fn empty_fut()  {}
+#[rustfmt::skip]
+async fn fut2() -> i32 { 42 }
+
+#[rustfmt::skip]
+async fn fut3() -> i32 { 42 }
+
+async fn empty_fut() {}
+
+#[rustfmt::skip]
+async fn empty_fut2() {}
+
+#[rustfmt::skip]
+async fn empty_fut3() {}
 
 async fn core_fut() -> i32 { 42 }
 

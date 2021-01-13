@@ -1,8 +1,8 @@
-error: expected one of `,` or `>`, found `=`
-  --> $DIR/issue-34334.rs:2:29
+error: only path types can be used in associated type constraints
+  --> $DIR/issue-34334.rs:2:17
    |
 LL |     let sr: Vec<(u32, _, _) = vec![];
-   |         --                  ^ expected one of `,` or `>`
+   |         --      ^^^^^^^^^^^
    |         |
    |         while parsing the type for `sr`
 

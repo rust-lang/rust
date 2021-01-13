@@ -70,7 +70,7 @@ impl AscribeUserTypeCx<'me, 'tcx> {
                 DUMMY_SP,
                 hir::CRATE_HIR_ID,
                 self.param_env,
-                &value,
+                value,
             )
             .into_value_registering_obligations(self.infcx, self.fulfill_cx)
     }
@@ -184,7 +184,7 @@ where
 {
     let (param_env, Normalize { value }) = key.into_parts();
     let Normalized { value, obligations } =
-        infcx.at(&ObligationCause::dummy(), param_env).normalize(&value)?;
+        infcx.at(&ObligationCause::dummy(), param_env).normalize(value)?;
     fulfill_cx.register_predicate_obligations(infcx, obligations);
     Ok(value)
 }

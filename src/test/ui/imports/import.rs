@@ -1,12 +1,17 @@
-// run-pass
-mod foo {
-    pub fn x(y: isize) { println!("{}", y); }
+use zed::bar;
+use zed::baz; //~ ERROR unresolved import `zed::baz` [E0432]
+              //~| no `baz` in `zed`
+              //~| HELP a similar name exists in the module
+              //~| SUGGESTION bar
+
+
+mod zed {
+    pub fn bar() { println!("bar"); }
+    use foo; //~ ERROR unresolved import `foo` [E0432]
+             //~^ no `foo` in the root
 }
 
-mod bar {
-    use foo::x;
-    use foo::x as z;
-    pub fn thing() { x(10); z(10); }
+fn main() {
+    zed::foo(); //~ ERROR `foo` is private
+    bar();
 }
-
-pub fn main() { bar::thing(); }

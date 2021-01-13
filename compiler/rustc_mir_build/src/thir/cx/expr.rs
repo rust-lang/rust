@@ -6,6 +6,8 @@ use crate::thir::*;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::vec::Idx;
+use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
+use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::ty::adjustment::{
@@ -386,13 +388,12 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
             };
+
             let upvars = cx
-                .tcx
-                .upvars_mentioned(def_id)
-                .iter()
-                .flat_map(|upvars| upvars.iter())
+                .typeck_results()
+                .closure_min_captures_flattened(def_id)
                 .zip(substs.upvar_tys())
-                .map(|((&var_hir_id, _), ty)| capture_upvar(cx, expr, var_hir_id, ty))
+                .map(|(captured_place, ty)| capture_upvar(cx, expr, captured_place, ty))
                 .collect();
             ExprKind::Closure { closure_id: def_id, substs, upvars, movability }
         }
@@ -407,7 +408,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             operands: asm
                 .operands
                 .iter()
-                .map(|op| {
+                .map(|(op, _op_sp)| {
                     match *op {
                         hir::InlineAsmOperand::In { reg, ref expr } => {
                             InlineAsmOperand::In { reg, expr: expr.to_ref() }
@@ -775,10 +776,10 @@ impl ToBorrowKind for hir::Mutability {
 fn convert_arm<'tcx>(cx: &mut Cx<'_, 'tcx>, arm: &'tcx hir::Arm<'tcx>) -> Arm<'tcx> {
     Arm {
         pattern: cx.pattern_from_hir(&arm.pat),
-        guard: match arm.guard {
-            Some(hir::Guard::If(ref e)) => Some(Guard::If(e.to_ref())),
-            _ => None,
-        },
+        guard: arm.guard.as_ref().map(|g| match g {
+            hir::Guard::If(ref e) => Guard::If(e.to_ref()),
+            hir::Guard::IfLet(ref pat, ref e) => Guard::IfLet(cx.pattern_from_hir(pat), e.to_ref()),
+        }),
         body: arm.body.to_ref(),
         lint_level: LintLevel::Explicit(arm.hir_id),
         scope: region::Scope { id: arm.hir_id.local_id, data: region::ScopeData::Node },
@@ -812,8 +813,7 @@ fn convert_path_expr<'a, 'tcx>(
             let item_id = cx.tcx.hir().get_parent_node(hir_id);
             let item_def_id = cx.tcx.hir().local_def_id(item_id);
             let generics = cx.tcx.generics_of(item_def_id);
-            let local_def_id = cx.tcx.hir().local_def_id(hir_id);
-            let index = generics.param_def_id_to_index[&local_def_id.to_def_id()];
+            let index = generics.param_def_id_to_index[&def_id];
             let name = cx.tcx.hir().name(hir_id);
             let val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
             ExprKind::Literal {
@@ -879,130 +879,26 @@ fn convert_path_expr<'a, 'tcx>(
             ExprKind::Deref { arg: Expr { ty, temp_lifetime, span: expr.span, kind }.to_ref() }
         }
 
-        Res::Local(var_hir_id) => convert_var(cx, expr, var_hir_id),
+        Res::Local(var_hir_id) => convert_var(cx, var_hir_id),
 
         _ => span_bug!(expr.span, "res `{:?}` not yet implemented", res),
     }
 }
 
-fn convert_var<'tcx>(
-    cx: &mut Cx<'_, 'tcx>,
-    expr: &'tcx hir::Expr<'tcx>,
-    var_hir_id: hir::HirId,
-) -> ExprKind<'tcx> {
-    let upvar_index = cx
-        .typeck_results()
-        .closure_captures
-        .get(&cx.body_owner)
-        .and_then(|upvars| upvars.get_full(&var_hir_id).map(|(i, _, _)| i));
+fn convert_var<'tcx>(cx: &mut Cx<'_, 'tcx>, var_hir_id: hir::HirId) -> ExprKind<'tcx> {
+    // We want upvars here not captures.
+    // Captures will be handled in MIR.
+    let is_upvar = cx
+        .tcx
+        .upvars_mentioned(cx.body_owner)
+        .map_or(false, |upvars| upvars.contains_key(&var_hir_id));
 
-    debug!(
-        "convert_var({:?}): upvar_index={:?}, body_owner={:?}",
-        var_hir_id, upvar_index, cx.body_owner
-    );
+    debug!("convert_var({:?}): is_upvar={}, body_owner={:?}", var_hir_id, is_upvar, cx.body_owner);
 
-    let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-
-    match upvar_index {
-        None => ExprKind::VarRef { id: var_hir_id },
-
-        Some(upvar_index) => {
-            let closure_def_id = cx.body_owner;
-            let upvar_id = ty::UpvarId {
-                var_path: ty::UpvarPath { hir_id: var_hir_id },
-                closure_expr_id: closure_def_id.expect_local(),
-            };
-            let var_ty = cx.typeck_results().node_type(var_hir_id);
-
-            // FIXME free regions in closures are not right
-            let closure_ty = cx
-                .typeck_results()
-                .node_type(cx.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id));
-
-            // FIXME we're just hard-coding the idea that the
-            // signature will be &self or &mut self and hence will
-            // have a bound region with number 0
-            let region = ty::ReFree(ty::FreeRegion {
-                scope: closure_def_id,
-                bound_region: ty::BoundRegion::BrAnon(0),
-            });
-            let region = cx.tcx.mk_region(region);
-
-            let self_expr = if let ty::Closure(_, closure_substs) = closure_ty.kind() {
-                match cx.infcx.closure_kind(closure_substs).unwrap() {
-                    ty::ClosureKind::Fn => {
-                        let ref_closure_ty = cx.tcx.mk_ref(
-                            region,
-                            ty::TypeAndMut { ty: closure_ty, mutbl: hir::Mutability::Not },
-                        );
-                        Expr {
-                            ty: closure_ty,
-                            temp_lifetime,
-                            span: expr.span,
-                            kind: ExprKind::Deref {
-                                arg: Expr {
-                                    ty: ref_closure_ty,
-                                    temp_lifetime,
-                                    span: expr.span,
-                                    kind: ExprKind::SelfRef,
-                                }
-                                .to_ref(),
-                            },
-                        }
-                    }
-                    ty::ClosureKind::FnMut => {
-                        let ref_closure_ty = cx.tcx.mk_ref(
-                            region,
-                            ty::TypeAndMut { ty: closure_ty, mutbl: hir::Mutability::Mut },
-                        );
-                        Expr {
-                            ty: closure_ty,
-                            temp_lifetime,
-                            span: expr.span,
-                            kind: ExprKind::Deref {
-                                arg: Expr {
-                                    ty: ref_closure_ty,
-                                    temp_lifetime,
-                                    span: expr.span,
-                                    kind: ExprKind::SelfRef,
-                                }
-                                .to_ref(),
-                            },
-                        }
-                    }
-                    ty::ClosureKind::FnOnce => Expr {
-                        ty: closure_ty,
-                        temp_lifetime,
-                        span: expr.span,
-                        kind: ExprKind::SelfRef,
-                    },
-                }
-            } else {
-                Expr { ty: closure_ty, temp_lifetime, span: expr.span, kind: ExprKind::SelfRef }
-            };
-
-            // at this point we have `self.n`, which loads up the upvar
-            let field_kind =
-                ExprKind::Field { lhs: self_expr.to_ref(), name: Field::new(upvar_index) };
-
-            // ...but the upvar might be an `&T` or `&mut T` capture, at which
-            // point we need an implicit deref
-            match cx.typeck_results().upvar_capture(upvar_id) {
-                ty::UpvarCapture::ByValue(_) => field_kind,
-                ty::UpvarCapture::ByRef(borrow) => ExprKind::Deref {
-                    arg: Expr {
-                        temp_lifetime,
-                        ty: cx.tcx.mk_ref(
-                            borrow.region,
-                            ty::TypeAndMut { ty: var_ty, mutbl: borrow.kind.to_mutbl_lossy() },
-                        ),
-                        span: expr.span,
-                        kind: field_kind,
-                    }
-                    .to_ref(),
-                },
-            }
-        }
+    if is_upvar {
+        ExprKind::UpvarRef { closure_def_id: cx.body_owner, var_hir_id }
+    } else {
+        ExprKind::VarRef { id: var_hir_id }
     }
 }
 
@@ -1084,27 +980,55 @@ fn overloaded_place<'a, 'tcx>(
     ExprKind::Deref { arg: ref_expr.to_ref() }
 }
 
-fn capture_upvar<'tcx>(
+fn capture_upvar<'a, 'tcx>(
     cx: &mut Cx<'_, 'tcx>,
     closure_expr: &'tcx hir::Expr<'tcx>,
-    var_hir_id: hir::HirId,
+    captured_place: &'a ty::CapturedPlace<'tcx>,
     upvar_ty: Ty<'tcx>,
 ) -> ExprRef<'tcx> {
-    let upvar_id = ty::UpvarId {
-        var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.hir_id),
-    };
-    let upvar_capture = cx.typeck_results().upvar_capture(upvar_id);
+    let upvar_capture = captured_place.info.capture_kind;
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
-    let var_ty = cx.typeck_results().node_type(var_hir_id);
-    let captured_var = Expr {
+    let var_ty = captured_place.place.base_ty;
+
+    // The result of capture analysis in `rustc_typeck/check/upvar.rs`represents a captured path
+    // as it's seen for use within the closure and not at the time of closure creation.
+    //
+    // That is we see expect to see it start from a captured upvar and not something that is local
+    // to the closure's parent.
+    let var_hir_id = match captured_place.place.base {
+        HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+        base => bug!("Expected an upvar, found {:?}", base),
+    };
+
+    let mut captured_place_expr = Expr {
         temp_lifetime,
         ty: var_ty,
         span: closure_expr.span,
-        kind: convert_var(cx, closure_expr, var_hir_id),
+        kind: convert_var(cx, var_hir_id),
     };
+
+    for proj in captured_place.place.projections.iter() {
+        let kind = match proj.kind {
+            HirProjectionKind::Deref => ExprKind::Deref { arg: captured_place_expr.to_ref() },
+            HirProjectionKind::Field(field, ..) => {
+                // Variant index will always be 0, because for multi-variant
+                // enums, we capture the enum entirely.
+                ExprKind::Field {
+                    lhs: captured_place_expr.to_ref(),
+                    name: Field::new(field as usize),
+                }
+            }
+            HirProjectionKind::Index | HirProjectionKind::Subslice => {
+                // We don't capture these projections, so we can ignore them here
+                continue;
+            }
+        };
+
+        captured_place_expr = Expr { temp_lifetime, ty: proj.ty, span: closure_expr.span, kind };
+    }
+
     match upvar_capture {
-        ty::UpvarCapture::ByValue(_) => captured_var.to_ref(),
+        ty::UpvarCapture::ByValue(_) => captured_place_expr.to_ref(),
         ty::UpvarCapture::ByRef(upvar_borrow) => {
             let borrow_kind = match upvar_borrow.kind {
                 ty::BorrowKind::ImmBorrow => BorrowKind::Shared,
@@ -1115,7 +1039,7 @@ fn capture_upvar<'tcx>(
                 temp_lifetime,
                 ty: upvar_ty,
                 span: closure_expr.span,
-                kind: ExprKind::Borrow { borrow_kind, arg: captured_var.to_ref() },
+                kind: ExprKind::Borrow { borrow_kind, arg: captured_place_expr.to_ref() },
             }
             .to_ref()
         }

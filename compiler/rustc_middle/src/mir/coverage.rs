@@ -21,9 +21,9 @@ rustc_index::newtype_index! {
 impl ExpressionOperandId {
     /// An expression operand for a "zero counter", as described in the following references:
     ///
-    /// * <https://github.com/rust-lang/llvm-project/blob/llvmorg-8.0.0/llvm/docs/CoverageMappingFormat.rst#counter>
-    /// * <https://github.com/rust-lang/llvm-project/blob/llvmorg-8.0.0/llvm/docs/CoverageMappingFormat.rst#tag>
-    /// * <https://github.com/rust-lang/llvm-project/blob/llvmorg-8.0.0/llvm/docs/CoverageMappingFormat.rst#counter-expressions>
+    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/docs/CoverageMappingFormat.rst#counter>
+    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/docs/CoverageMappingFormat.rst#tag>
+    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/docs/CoverageMappingFormat.rst#counter-expressions>
     ///
     /// This operand can be used to count two or more separate code regions with a single counter,
     /// if they run sequentially with no branches, by injecting the `Counter` in a `BasicBlock` for
@@ -118,17 +118,11 @@ impl CoverageKind {
     }
 
     pub fn is_counter(&self) -> bool {
-        match self {
-            Self::Counter { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Counter { .. })
     }
 
     pub fn is_expression(&self) -> bool {
-        match self {
-            Self::Expression { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Expression { .. })
     }
 
     pub fn is_unreachable(&self) -> bool {

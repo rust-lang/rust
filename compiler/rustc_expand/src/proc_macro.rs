@@ -1,8 +1,9 @@
 use crate::base::{self, *};
 use crate::proc_macro_server;
 
+use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability, ErrorReported};
@@ -74,43 +75,26 @@ impl MultiItemModifier for ProcMacroDerive {
         _meta_item: &ast::MetaItem,
         item: Annotatable,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+        // We need special handling for statement items
+        // (e.g. `fn foo() { #[derive(Debug)] struct Bar; }`)
+        let mut is_stmt = false;
         let item = match item {
-            Annotatable::Arm(..)
-            | Annotatable::Field(..)
-            | Annotatable::FieldPat(..)
-            | Annotatable::GenericParam(..)
-            | Annotatable::Param(..)
-            | Annotatable::StructField(..)
-            | Annotatable::Variant(..) => panic!("unexpected annotatable"),
-            Annotatable::Item(item) => item,
-            Annotatable::ImplItem(_)
-            | Annotatable::TraitItem(_)
-            | Annotatable::ForeignItem(_)
-            | Annotatable::Stmt(_)
-            | Annotatable::Expr(_) => {
-                ecx.span_err(
-                    span,
-                    "proc-macro derives may only be applied to a struct, enum, or union",
-                );
-                return ExpandResult::Ready(Vec::new());
-            }
-        };
-        match item.kind {
-            ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..) => {}
-            _ => {
-                ecx.span_err(
-                    span,
-                    "proc-macro derives may only be applied to a struct, enum, or union",
-                );
-                return ExpandResult::Ready(Vec::new());
-            }
-        }
+            Annotatable::Item(item) => token::NtItem(item),
+            Annotatable::Stmt(stmt) => {
+                is_stmt = true;
+                assert!(stmt.is_item());
 
-        let item = token::NtItem(item);
+                // A proc macro can't observe the fact that we're passing
+                // them an `NtStmt` - it can only see the underlying tokens
+                // of the wrapped item
+                token::NtStmt(stmt.into_inner())
+            }
+            _ => unreachable!(),
+        };
         let input = if item.pretty_printing_compatibility_hack() {
             TokenTree::token(token::Interpolated(Lrc::new(item)), DUMMY_SP).into()
         } else {
-            nt_to_tokenstream(&item, &ecx.sess.parse_sess, DUMMY_SP)
+            nt_to_tokenstream(&item, &ecx.sess.parse_sess, CanSynthesizeMissingTokens::Yes)
         };
 
         let server = proc_macro_server::Rustc::new(ecx);
@@ -135,7 +119,13 @@ impl MultiItemModifier for ProcMacroDerive {
         loop {
             match parser.parse_item() {
                 Ok(None) => break,
-                Ok(Some(item)) => items.push(Annotatable::Item(item)),
+                Ok(Some(item)) => {
+                    if is_stmt {
+                        items.push(Annotatable::Stmt(P(ecx.stmt_item(span, item))));
+                    } else {
+                        items.push(Annotatable::Item(item));
+                    }
+                }
                 Err(mut err) => {
                     err.emit();
                     break;

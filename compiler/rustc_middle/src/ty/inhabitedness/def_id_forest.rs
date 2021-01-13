@@ -3,6 +3,9 @@ use crate::ty::{DefId, DefIdTree};
 use rustc_hir::CRATE_HIR_ID;
 use smallvec::SmallVec;
 use std::mem;
+use std::sync::Arc;
+
+use DefIdForest::*;
 
 /// Represents a forest of `DefId`s closed under the ancestor relation. That is,
 /// if a `DefId` representing a module is contained in the forest then all
@@ -11,45 +14,77 @@ use std::mem;
 ///
 /// This is used to represent a set of modules in which a type is visibly
 /// uninhabited.
-#[derive(Clone)]
-pub struct DefIdForest {
-    /// The minimal set of `DefId`s required to represent the whole set.
-    /// If A and B are DefIds in the `DefIdForest`, and A is a descendant
-    /// of B, then only B will be in `root_ids`.
-    /// We use a `SmallVec` here because (for its use for caching inhabitedness)
-    /// its rare that this will contain even two IDs.
-    root_ids: SmallVec<[DefId; 1]>,
+///
+/// We store the minimal set of `DefId`s required to represent the whole set. If A and B are
+/// `DefId`s in the `DefIdForest`, and A is a parent of B, then only A will be stored. When this is
+/// used with `type_uninhabited_from`, there will very rarely be more than one `DefId` stored.
+#[derive(Clone, HashStable)]
+pub enum DefIdForest {
+    Empty,
+    Single(DefId),
+    /// This variant is very rare.
+    /// Invariant: >1 elements
+    /// We use `Arc` because this is used in the output of a query.
+    Multiple(Arc<[DefId]>),
+}
+
+/// Tests whether a slice of roots contains a given DefId.
+#[inline]
+fn slice_contains(tcx: TyCtxt<'tcx>, slice: &[DefId], id: DefId) -> bool {
+    slice.iter().any(|root_id| tcx.is_descendant_of(id, *root_id))
 }
 
 impl<'tcx> DefIdForest {
     /// Creates an empty forest.
     pub fn empty() -> DefIdForest {
-        DefIdForest { root_ids: SmallVec::new() }
+        DefIdForest::Empty
     }
 
     /// Creates a forest consisting of a single tree representing the entire
     /// crate.
     #[inline]
     pub fn full(tcx: TyCtxt<'tcx>) -> DefIdForest {
-        let crate_id = tcx.hir().local_def_id(CRATE_HIR_ID);
-        DefIdForest::from_id(crate_id.to_def_id())
+        DefIdForest::from_id(tcx.hir().local_def_id(CRATE_HIR_ID).to_def_id())
     }
 
     /// Creates a forest containing a `DefId` and all its descendants.
     pub fn from_id(id: DefId) -> DefIdForest {
-        let mut root_ids = SmallVec::new();
-        root_ids.push(id);
-        DefIdForest { root_ids }
+        DefIdForest::Single(id)
+    }
+
+    fn as_slice(&self) -> &[DefId] {
+        match self {
+            Empty => &[],
+            Single(id) => std::slice::from_ref(id),
+            Multiple(root_ids) => root_ids,
+        }
+    }
+
+    // Only allocates in the rare `Multiple` case.
+    fn from_slice(root_ids: &[DefId]) -> DefIdForest {
+        match root_ids {
+            [] => Empty,
+            [id] => Single(*id),
+            _ => DefIdForest::Multiple(root_ids.into()),
+        }
     }
 
     /// Tests whether the forest is empty.
     pub fn is_empty(&self) -> bool {
-        self.root_ids.is_empty()
+        match self {
+            Empty => true,
+            Single(..) | Multiple(..) => false,
+        }
+    }
+
+    /// Iterate over the set of roots.
+    fn iter(&self) -> impl Iterator<Item = DefId> + '_ {
+        self.as_slice().iter().copied()
     }
 
     /// Tests whether the forest contains a given DefId.
     pub fn contains(&self, tcx: TyCtxt<'tcx>, id: DefId) -> bool {
-        self.root_ids.iter().any(|root_id| tcx.is_descendant_of(id, *root_id))
+        slice_contains(tcx, self.as_slice(), id)
     }
 
     /// Calculate the intersection of a collection of forests.
@@ -58,35 +93,28 @@ impl<'tcx> DefIdForest {
         I: IntoIterator<Item = DefIdForest>,
     {
         let mut iter = iter.into_iter();
-        let mut ret = if let Some(first) = iter.next() {
-            first
+        let mut ret: SmallVec<[_; 1]> = if let Some(first) = iter.next() {
+            SmallVec::from_slice(first.as_slice())
         } else {
             return DefIdForest::full(tcx);
         };
 
-        let mut next_ret = SmallVec::new();
-        let mut old_ret: SmallVec<[DefId; 1]> = SmallVec::new();
+        let mut next_ret: SmallVec<[_; 1]> = SmallVec::new();
         for next_forest in iter {
             // No need to continue if the intersection is already empty.
-            if ret.is_empty() {
-                break;
+            if ret.is_empty() || next_forest.is_empty() {
+                return DefIdForest::empty();
             }
 
-            for id in ret.root_ids.drain(..) {
-                if next_forest.contains(tcx, id) {
-                    next_ret.push(id);
-                } else {
-                    old_ret.push(id);
-                }
-            }
-            ret.root_ids.extend(old_ret.drain(..));
+            // We keep the elements in `ret` that are also in `next_forest`.
+            next_ret.extend(ret.iter().copied().filter(|&id| next_forest.contains(tcx, id)));
+            // We keep the elements in `next_forest` that are also in `ret`.
+            next_ret.extend(next_forest.iter().filter(|&id| slice_contains(tcx, &ret, id)));
 
-            next_ret.extend(next_forest.root_ids.into_iter().filter(|&id| ret.contains(tcx, id)));
-
-            mem::swap(&mut next_ret, &mut ret.root_ids);
-            next_ret.drain(..);
+            mem::swap(&mut next_ret, &mut ret);
+            next_ret.clear();
         }
-        ret
+        DefIdForest::from_slice(&ret)
     }
 
     /// Calculate the union of a collection of forests.
@@ -94,20 +122,26 @@ impl<'tcx> DefIdForest {
     where
         I: IntoIterator<Item = DefIdForest>,
     {
-        let mut ret = DefIdForest::empty();
-        let mut next_ret = SmallVec::new();
+        let mut ret: SmallVec<[_; 1]> = SmallVec::new();
+        let mut next_ret: SmallVec<[_; 1]> = SmallVec::new();
         for next_forest in iter {
-            next_ret.extend(ret.root_ids.drain(..).filter(|&id| !next_forest.contains(tcx, id)));
+            // Union with the empty set is a no-op.
+            if next_forest.is_empty() {
+                continue;
+            }
 
-            for id in next_forest.root_ids {
-                if !next_ret.contains(&id) {
+            // We add everything in `ret` that is not in `next_forest`.
+            next_ret.extend(ret.iter().copied().filter(|&id| !next_forest.contains(tcx, id)));
+            // We add everything in `next_forest` that we haven't added yet.
+            for id in next_forest.iter() {
+                if !slice_contains(tcx, &next_ret, id) {
                     next_ret.push(id);
                 }
             }
 
-            mem::swap(&mut next_ret, &mut ret.root_ids);
-            next_ret.drain(..);
+            mem::swap(&mut next_ret, &mut ret);
+            next_ret.clear();
         }
-        ret
+        DefIdForest::from_slice(&ret)
     }
 }

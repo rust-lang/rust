@@ -10,6 +10,7 @@ doctest = false
 [dependencies]
 either = "1.5.0"
 rustc_graphviz = { path = "../rustc_graphviz" }
+gsgdt = "0.1.2"
 itertools = "0.9"
 tracing = "0.1"
 polonius-engine = "0.12.0"
@@ -31,3 +32,6 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_apfloat = { path = "../rustc_apfloat" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+
+[dev-dependencies]
+coverage_test_macros = { path = "src/transform/coverage/test_macros" }

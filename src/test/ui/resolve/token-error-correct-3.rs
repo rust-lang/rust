@@ -1,5 +1,3 @@
-// ignore-cloudabi no std::fs support
-
 // Test that we do some basic error correction in the tokeniser (and don't spew
 // too many bogus errors).
 

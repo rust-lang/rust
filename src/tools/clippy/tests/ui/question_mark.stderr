@@ -1,5 +1,5 @@
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:5:5
+  --> $DIR/question_mark.rs:6:5
    |
 LL | /     if a.is_none() {
 LL | |         return None;
@@ -9,7 +9,7 @@ LL | |     }
    = note: `-D clippy::question-mark` implied by `-D warnings`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:50:9
+  --> $DIR/question_mark.rs:51:9
    |
 LL | /         if (self.opt).is_none() {
 LL | |             return None;
@@ -17,7 +17,7 @@ LL | |         }
    | |_________^ help: replace it with: `(self.opt)?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:54:9
+  --> $DIR/question_mark.rs:55:9
    |
 LL | /         if self.opt.is_none() {
 LL | |             return None
@@ -25,7 +25,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:58:17
+  --> $DIR/question_mark.rs:59:17
    |
 LL |           let _ = if self.opt.is_none() {
    |  _________________^
@@ -36,7 +36,7 @@ LL | |         };
    | |_________^ help: replace it with: `Some(self.opt?)`
 
 error: this if-let-else may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:64:17
+  --> $DIR/question_mark.rs:65:17
    |
 LL |           let _ = if let Some(x) = self.opt {
    |  _________________^
@@ -47,7 +47,7 @@ LL | |         };
    | |_________^ help: replace it with: `self.opt?`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:81:9
+  --> $DIR/question_mark.rs:82:9
    |
 LL | /         if self.opt.is_none() {
 LL | |             return None;
@@ -55,7 +55,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt.as_ref()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:89:9
+  --> $DIR/question_mark.rs:90:9
    |
 LL | /         if self.opt.is_none() {
 LL | |             return None;
@@ -63,7 +63,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt.as_ref()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:97:9
+  --> $DIR/question_mark.rs:98:9
    |
 LL | /         if self.opt.is_none() {
 LL | |             return None;
@@ -71,7 +71,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt.as_ref()?;`
 
 error: this if-let-else may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:104:26
+  --> $DIR/question_mark.rs:105:26
    |
 LL |           let v: &Vec<_> = if let Some(ref v) = self.opt {
    |  __________________________^
@@ -82,7 +82,7 @@ LL | |         };
    | |_________^ help: replace it with: `self.opt.as_ref()?`
 
 error: this if-let-else may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:114:17
+  --> $DIR/question_mark.rs:115:17
    |
 LL |           let v = if let Some(v) = self.opt {
    |  _________________^
@@ -93,7 +93,7 @@ LL | |         };
    | |_________^ help: replace it with: `self.opt?`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:129:5
+  --> $DIR/question_mark.rs:130:5
    |
 LL | /     if f().is_none() {
 LL | |         return None;

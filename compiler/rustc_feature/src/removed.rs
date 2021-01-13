@@ -71,6 +71,10 @@ declare_features! (
     /// Allows using custom attributes (RFC 572).
     (removed, custom_attribute, "1.0.0", Some(29642), None,
      Some("removed in favor of `#![register_tool]` and `#![register_attr]`")),
+    /// Allows features specific to OIBIT (now called auto traits).
+    /// Renamed to `auto_traits`.
+    (removed, optin_builtin_traits, "1.0.0", Some(13231), None,
+     Some("renamed to `auto_traits`")),
     (removed, pushpop_unsafe, "1.2.0", None, None, None),
     (removed, needs_allocator, "1.4.0", Some(27389), None,
      Some("subsumed by `#![feature(allocator_internals)]`")),
@@ -113,7 +117,6 @@ declare_features! (
      Some("removed in favor of `#![feature(marker_trait_attr)]`")),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), None, Some("removed due to lack of demand")),
-
     /// Allows comparing raw pointers during const eval.
     (removed, const_compare_raw_pointers, "1.46.0", Some(53020), None,
      Some("cannot be allowed in const eval in any meaningful way")),

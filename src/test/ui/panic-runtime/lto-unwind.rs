@@ -3,7 +3,6 @@
 
 // compile-flags:-C lto -C panic=unwind
 // no-prefer-dynamic
-// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
 

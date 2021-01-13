@@ -9,6 +9,9 @@ use super::search::{self, SearchResult};
 use super::unwrap_unchecked;
 
 /// Finds the leaf edges delimiting a specified range in or underneath a node.
+///
+/// The result is meaningful only if the tree is ordered by key, like the tree
+/// in a `BTreeMap` is.
 fn range_search<BorrowType, K, V, Q, R>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
@@ -122,6 +125,9 @@ fn full_range<BorrowType, K, V>(
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     /// Creates a pair of leaf edges delimiting a specified range in or underneath a node.
+    ///
+    /// The result is meaningful only if the tree is ordered by key, like the tree
+    /// in a `BTreeMap` is.
     pub fn range_search<Q, R>(
         self,
         range: R,
@@ -152,6 +158,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     /// Splits a unique reference into a pair of leaf edges delimiting a specified range.
     /// The result are non-unique references allowing (some) mutation, which must be used
     /// carefully.
+    ///
+    /// The result is meaningful only if the tree is ordered by key, like the tree
+    /// in a `BTreeMap` is.
     pub fn range_search<Q, R>(
         self,
         range: R,
@@ -359,20 +368,6 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
         });
         // Doing this last is faster, according to benchmarks.
         kv.into_kv_valmut()
-    }
-}
-
-impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
-    /// Moves the leaf edge handle to the next leaf edge.
-    ///
-    /// # Safety
-    /// There must be another KV in the direction travelled.
-    pub unsafe fn move_next_unchecked(&mut self) {
-        super::mem::take_mut(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv();
-            let kv = unsafe { unwrap_unchecked(kv.ok()) };
-            kv.next_leaf_edge()
-        })
     }
 }
 

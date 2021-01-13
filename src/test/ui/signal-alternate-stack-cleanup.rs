@@ -3,7 +3,6 @@
 // main thread exit while still being in use by signal handlers. This test
 // triggers this situation by sending signal from atexit handler.
 //
-// ignore-cloudabi no signal handling support
 // ignore-wasm32-bare no libc
 // ignore-windows
 // ignore-sgx no libc
@@ -14,11 +13,11 @@ extern crate libc;
 
 use libc::*;
 
-unsafe extern fn signal_handler(signum: c_int, _: *mut siginfo_t, _: *mut c_void) {
+unsafe extern "C" fn signal_handler(signum: c_int, _: *mut siginfo_t, _: *mut c_void) {
     assert_eq!(signum, SIGWINCH);
 }
 
-extern fn send_signal() {
+extern "C" fn send_signal() {
     unsafe {
         raise(SIGWINCH);
     }

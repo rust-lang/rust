@@ -5,7 +5,7 @@
 // causing a type mismatch.
 
 // The test is nearly the same as the one in
-// compile-fail/type-mismatch-same-crate-name.rs
+// ui/type/type-mismatch-same-crate-name.rs
 // but deals with the case where one of the crates
 // is only introduced as an indirect dependency.
 // and the type is accessed via a re-export.

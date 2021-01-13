@@ -202,7 +202,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     ) {
         // this helps to reduce duplicate errors, as well as making
         // debug output much nicer to read and so on.
-        let obligation = infcx.resolve_vars_if_possible(&obligation);
+        let obligation = infcx.resolve_vars_if_possible(obligation);
 
         debug!(?obligation, "register_predicate_obligation");
 
@@ -298,7 +298,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         if !change {
             debug!(
                 "process_predicate: pending obligation {:?} still stalled on {:?}",
-                self.selcx.infcx().resolve_vars_if_possible(&pending_obligation.obligation),
+                self.selcx.infcx().resolve_vars_if_possible(pending_obligation.obligation.clone()),
                 pending_obligation.stalled_on
             );
             return ProcessResult::Unchanged;
@@ -338,14 +338,14 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
         if obligation.predicate.has_infer_types_or_consts() {
             obligation.predicate =
-                self.selcx.infcx().resolve_vars_if_possible(&obligation.predicate);
+                self.selcx.infcx().resolve_vars_if_possible(obligation.predicate);
         }
 
         debug!(?obligation, ?obligation.cause, "process_obligation");
 
         let infcx = self.selcx.infcx();
 
-        match obligation.predicate.kind() {
+        match *obligation.predicate.kind() {
             ty::PredicateKind::ForAll(binder) => match binder.skip_binder() {
                 // Evaluation will discard candidates using the leak check.
                 // This means we need to pass it the bound version of our
@@ -384,9 +384,9 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
             },
-            &ty::PredicateKind::Atom(atom) => match atom {
-                ty::PredicateAtom::Trait(ref data, _) => {
-                    let trait_obligation = obligation.with(Binder::dummy(*data));
+            ty::PredicateKind::Atom(atom) => match atom {
+                ty::PredicateAtom::Trait(data, _) => {
+                    let trait_obligation = obligation.with(Binder::dummy(data));
 
                     self.process_trait_obligation(
                         obligation,
@@ -639,7 +639,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
                 debug!(
                     "process_predicate: pending obligation {:?} now stalled on {:?}",
-                    infcx.resolve_vars_if_possible(obligation),
+                    infcx.resolve_vars_if_possible(obligation.clone()),
                     stalled_on
                 );
 
@@ -684,7 +684,7 @@ fn trait_ref_infer_vars<'a, 'tcx>(
 ) -> Vec<TyOrConstInferVar<'tcx>> {
     selcx
         .infcx()
-        .resolve_vars_if_possible(&trait_ref)
+        .resolve_vars_if_possible(trait_ref)
         .skip_binder()
         .substs
         .iter()

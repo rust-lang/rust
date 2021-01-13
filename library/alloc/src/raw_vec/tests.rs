@@ -20,13 +20,13 @@ fn allocator_param() {
     struct BoundedAlloc {
         fuel: Cell<usize>,
     }
-    unsafe impl AllocRef for BoundedAlloc {
-        fn alloc(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe impl Allocator for BoundedAlloc {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
             let size = layout.size();
             if size > self.fuel.get() {
                 return Err(AllocError);
             }
-            match Global.alloc(layout) {
+            match Global.allocate(layout) {
                 ok @ Ok(_) => {
                     self.fuel.set(self.fuel.get() - size);
                     ok
@@ -34,8 +34,8 @@ fn allocator_param() {
                 err @ Err(_) => err,
             }
         }
-        unsafe fn dealloc(&self, ptr: NonNull<u8>, layout: Layout) {
-            unsafe { Global.dealloc(ptr, layout) }
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            unsafe { Global.deallocate(ptr, layout) }
         }
     }
 

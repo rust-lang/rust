@@ -1,0 +1,60 @@
+error[E0599]: no method named `clone` found for struct `Qux` in the current scope
+  --> $DIR/explicitly-unimplemented-error-message.rs:34:9
+   |
+LL | struct Qux;
+   | ----------- method `clone` not found for this
+...
+LL |     Qux.clone();
+   |         ^^^^^ method not found in `Qux`
+   | 
+  ::: $SRC_DIR/core/src/clone.rs:LL:COL
+   |
+LL |     fn clone(&self) -> Self;
+   |        -----
+   |        |
+   |        the method is available for `Arc<Qux>` here
+   |        the method is available for `Rc<Qux>` here
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the trait `Clone` defines an item `clone`, but is explicitely unimplemented
+
+error[E0599]: no method named `bar` found for type `u32` in the current scope
+  --> $DIR/explicitly-unimplemented-error-message.rs:39:11
+   |
+LL |     0_u32.bar();
+   |           ^^^ method not found in `u32`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the trait `Bar` defines an item `bar`, but is explicitely unimplemented
+
+error[E0599]: no method named `foo` found for struct `Qux` in the current scope
+  --> $DIR/explicitly-unimplemented-error-message.rs:44:9
+   |
+LL | struct Qux;
+   | ----------- method `foo` not found for this
+...
+LL |     Qux.foo();
+   |         ^^^ method not found in `Qux`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `foo`, but are explicitely unimplemented:
+           Foo
+           FooBar
+
+error[E0599]: no method named `foo` found for type `u32` in the current scope
+  --> $DIR/explicitly-unimplemented-error-message.rs:49:11
+   |
+LL |     0_u32.foo();
+   |           ^^^ method not found in `u32`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Foo` defines an item `foo`, perhaps you need to implement it
+  --> $DIR/explicitly-unimplemented-error-message.rs:18:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+   = note: the trait `FooBar` defines an item `foo`, but is explicitely unimplemented
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

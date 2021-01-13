@@ -1,8 +1,7 @@
 //https://github.com/rust-lang/rust/issues/31364
 
 const fn a() -> usize {
-    //~^ ERROR cycle detected when const-evaluating + checking `a` [E0391]
-    b()
+    b() //~ ERROR evaluation of constant value failed [E0080]
 }
 const fn b() -> usize {
     a()

@@ -138,7 +138,7 @@ impl ReentrantMutex {
                 self.owner.swap(0, SeqCst);
                 // SAFETY: the caller must gurantee that `self.ptr()` is valid i32.
                 unsafe {
-                    wasm32::atomic_notify(self.ptr() as *mut i32, 1);
+                    wasm32::memory_atomic_notify(self.ptr() as *mut i32, 1);
                 } // wake up one waiter, if any
             }
             ref mut n => *n -= 1,

@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-62456.rs:7:20
+  --> $DIR/issue-62456.rs:6:20
    |
 LL |     let _ = [0u64; N + 1];
    |                    ^^^^^

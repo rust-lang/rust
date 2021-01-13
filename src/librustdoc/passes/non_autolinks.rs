@@ -7,10 +7,9 @@ use core::ops::Range;
 use pulldown_cmark::{Event, LinkType, Parser, Tag};
 use regex::Regex;
 use rustc_errors::Applicability;
-use rustc_feature::UnstableFeatures;
 use rustc_session::lint;
 
-pub const CHECK_NON_AUTOLINKS: Pass = Pass {
+crate const CHECK_NON_AUTOLINKS: Pass = Pass {
     name: "check-non-autolinks",
     run: check_non_autolinks,
     description: "detects URLS that could be written using angle brackets",
@@ -53,8 +52,8 @@ impl<'a, 'tcx> NonAutolinksLinter<'a, 'tcx> {
     }
 }
 
-pub fn check_non_autolinks(krate: Crate, cx: &DocContext<'_>) -> Crate {
-    if !UnstableFeatures::from_environment().is_nightly_build() {
+crate fn check_non_autolinks(krate: Crate, cx: &DocContext<'_>) -> Crate {
+    if !cx.tcx.sess.is_nightly_build() {
         krate
     } else {
         let mut coll = NonAutolinksLinter::new(cx);
@@ -69,7 +68,7 @@ impl<'a, 'tcx> DocFolder for NonAutolinksLinter<'a, 'tcx> {
             Some(hir_id) => hir_id,
             None => {
                 // If non-local, no need to check anything.
-                return self.fold_item_recur(item);
+                return Some(self.fold_item_recur(item));
             }
         };
         let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
@@ -134,6 +133,6 @@ impl<'a, 'tcx> DocFolder for NonAutolinksLinter<'a, 'tcx> {
             }
         }
 
-        self.fold_item_recur(item)
+        Some(self.fold_item_recur(item))
     }
 }

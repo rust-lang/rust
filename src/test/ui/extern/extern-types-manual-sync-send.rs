@@ -3,15 +3,15 @@
 
 #![feature(extern_types)]
 
-extern {
+extern "C" {
     type A;
 }
 
-unsafe impl Sync for A { }
-unsafe impl Send for A { }
+unsafe impl Sync for A {}
+unsafe impl Send for A {}
 
-fn assert_sync<T: ?Sized + Sync>() { }
-fn assert_send<T: ?Sized + Send>() { }
+fn assert_sync<T: ?Sized + Sync>() {}
+fn assert_send<T: ?Sized + Send>() {}
 
 fn main() {
     assert_sync::<A>();
