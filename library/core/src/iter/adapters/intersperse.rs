@@ -2,7 +2,7 @@ use super::Peekable;
 
 /// An iterator adapter that places a separator between all elements.
 ///
-/// This `struct` is created by [`Iterator::intersperse`]. See it's documentation
+/// This `struct` is created by [`Iterator::intersperse`]. See its documentation
 /// for more information.
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 #[derive(Debug, Clone)]
@@ -59,7 +59,7 @@ where
 
 /// An iterator adapter that places a separator between all elements.
 ///
-/// This `struct` is created by [`Iterator::intersperse_with`]. See it's
+/// This `struct` is created by [`Iterator::intersperse_with`]. See its
 /// documentation for more information.
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 pub struct IntersperseWith<I, G>

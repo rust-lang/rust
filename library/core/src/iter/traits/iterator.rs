@@ -571,6 +571,9 @@ pub trait Iterator {
 
     /// Places a copy of `separator` between all elements.
     ///
+    /// In case the separator does not implement [`Clone`] or needs to be
+    /// computed every time, use [`intersperse_with`].
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -578,9 +581,12 @@ pub trait Iterator {
     /// ```
     /// #![feature(iter_intersperse)]
     ///
-    /// let hello = ["Hello", "World"].iter().copied().intersperse(" ").collect::<String>();
-    /// assert_eq!(hello, "Hello World");
+    /// let hello = ["Hello", "World", "!"].iter().copied().intersperse(" ").collect::<String>();
+    /// assert_eq!(hello, "Hello World !");
     /// ```
+    ///
+    /// [`Clone`]: crate::clone::Clone
+    /// [`intersperse_with`]: Iterator::intersperse_with
     #[inline]
     #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
     fn intersperse(self, separator: Self::Item) -> Intersperse<Self>
@@ -600,11 +606,13 @@ pub trait Iterator {
     /// ```
     /// #![feature(iter_intersperse)]
     ///
-    /// let src = ["Hello", "to", "all", "people"].iter().copied();
-    /// let mut separator = [" ❤️ ", " 😀 "].iter().copied().cycle();
+    /// let src = ["Hello", "to", "all", "people", "!!"].iter().copied();
     ///
-    /// let result = src.intersperse_with(|| separator.next().unwrap()).collect::<String>();
-    /// assert_eq!(result, "Hello ❤️ to 😀 all ❤️ people");
+    /// let mut happy_emojis = [" ❤️ ", " 😀 "].iter().copied();
+    /// let separator = || happy_emojis.next().unwrap_or(" 🦀 ");
+    ///
+    /// let result = src.intersperse_with(separator).collect::<String>();
+    /// assert_eq!(result, "Hello ❤️ to 😀 all 🦀 people 🦀 !!");
     /// ```
     #[inline]
     #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
