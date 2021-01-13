@@ -813,8 +813,7 @@ fn convert_path_expr<'a, 'tcx>(
             let item_id = cx.tcx.hir().get_parent_node(hir_id);
             let item_def_id = cx.tcx.hir().local_def_id(item_id);
             let generics = cx.tcx.generics_of(item_def_id);
-            let local_def_id = cx.tcx.hir().local_def_id(hir_id);
-            let index = generics.param_def_id_to_index[&local_def_id.to_def_id()];
+            let index = generics.param_def_id_to_index[&def_id];
             let name = cx.tcx.hir().name(hir_id);
             let val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
             ExprKind::Literal {
