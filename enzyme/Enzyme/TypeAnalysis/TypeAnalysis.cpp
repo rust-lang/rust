@@ -3060,7 +3060,8 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
 TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
   assert(fn.KnownValues.size() ==
          fn.Function->getFunctionType()->getNumParams());
-
+  assert(fn.Function);
+  assert(!fn.Function->empty());
   auto found = analyzedFunctions.find(fn);
   if (found != analyzedFunctions.end()) {
     auto &analysis = found->second;

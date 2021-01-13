@@ -84,6 +84,11 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
                 "failed to find fn to differentiate", *CI, " - found - ", *fn);
     return false;
   }
+  if (cast<Function>(fn)->empty()) {
+    EmitFailure("EmptyFunctionToDifferentiate", CI->getDebugLoc(), CI,
+                "failed to find fn to differentiate", *CI, " - found - ", *fn);
+    return false;
+  }
   auto FT = cast<Function>(fn)->getFunctionType();
   assert(fn);
 
