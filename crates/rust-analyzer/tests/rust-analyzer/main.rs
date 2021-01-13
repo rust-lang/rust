@@ -785,7 +785,7 @@ fn main() {}
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap()),
                 "version": null
               },
               "edits": [
@@ -846,7 +846,7 @@ fn main() {}
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap()),
                 "version": null
               },
               "edits": [
