@@ -505,3 +505,23 @@ fn ptr_metadata_bounds() {
     {
     }
 }
+
+#[test]
+#[cfg(not(bootstrap))]
+fn dyn_metadata() {
+    #[derive(Debug)]
+    #[repr(align(32))]
+    struct Something([u8; 47]);
+
+    let value = Something([0; 47]);
+    let trait_object: &dyn Debug = &value;
+    let meta = metadata(trait_object);
+
+    assert_eq!(meta.size_of(), 64);
+    assert_eq!(meta.size_of(), std::mem::size_of::<Something>());
+    assert_eq!(meta.align_of(), 32);
+    assert_eq!(meta.align_of(), std::mem::align_of::<Something>());
+    assert_eq!(meta.layout(), std::alloc::Layout::new::<Something>());
+
+    assert!(format!("{:?}", meta).starts_with("DynMetadata(0x"));
+}
