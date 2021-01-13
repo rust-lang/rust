@@ -1,0 +1,28 @@
+SOURCE_FILE@0..37
+  FN@0..36
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..36
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      EXPR_STMT@15..21
+        YIELD_EXPR@15..20
+          YIELD_KW@15..20 "yield"
+        SEMICOLON@20..21 ";"
+      WHITESPACE@21..26 "\n    "
+      EXPR_STMT@26..34
+        YIELD_EXPR@26..33
+          YIELD_KW@26..31 "yield"
+          WHITESPACE@31..32 " "
+          LITERAL@32..33
+            INT_NUMBER@32..33 "1"
+        SEMICOLON@33..34 ";"
+      WHITESPACE@34..35 "\n"
+      R_CURLY@35..36 "}"
+  WHITESPACE@36..37 "\n"
