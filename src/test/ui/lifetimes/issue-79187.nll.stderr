@@ -1,0 +1,14 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-79187.rs:5:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-79187.rs:5:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^
+
+error: aborting due to 2 previous errors
+

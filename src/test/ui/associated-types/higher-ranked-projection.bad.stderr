@@ -2,10 +2,15 @@ error[E0308]: mismatched types
   --> $DIR/higher-ranked-projection.rs:25:5
    |
 LL |     foo(());
-   |     ^^^ one type is more general than the other
+   |     ^^^ lifetime mismatch
    |
    = note: expected type `&'a ()`
               found type `&()`
+note: the lifetime requirement is introduced here
+  --> $DIR/higher-ranked-projection.rs:15:33
+   |
+LL |     where for<'a> &'a T: Mirror<Image=U>
+   |                                 ^^^^^^^
 
 error: aborting due to previous error
 

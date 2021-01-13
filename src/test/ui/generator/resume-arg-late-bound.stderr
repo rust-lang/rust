@@ -2,19 +2,47 @@ error[E0308]: mismatched types
   --> $DIR/resume-arg-late-bound.rs:15:5
    |
 LL |     test(gen);
-   |     ^^^^ one type is more general than the other
+   |     ^^^^ lifetime mismatch
    |
    = note: expected type `for<'a> Generator<&'a mut bool>`
               found type `Generator<&mut bool>`
+note: the required lifetime does not necessarily outlive the anonymous lifetime #1 defined on the body at 11:15
+  --> $DIR/resume-arg-late-bound.rs:11:15
+   |
+LL |       let gen = |arg: &mut bool| {
+   |  _______________^
+LL | |         yield ();
+LL | |         *arg = true;
+LL | |     };
+   | |_____^
+note: the lifetime requirement is introduced here
+  --> $DIR/resume-arg-late-bound.rs:8:17
+   |
+LL | fn test(a: impl for<'a> Generator<&'a mut bool>) {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/resume-arg-late-bound.rs:15:5
    |
 LL |     test(gen);
-   |     ^^^^ one type is more general than the other
+   |     ^^^^ lifetime mismatch
    |
    = note: expected type `for<'a> Generator<&'a mut bool>`
               found type `Generator<&mut bool>`
+note: the anonymous lifetime #1 defined on the body at 11:15 doesn't meet the lifetime requirements
+  --> $DIR/resume-arg-late-bound.rs:11:15
+   |
+LL |       let gen = |arg: &mut bool| {
+   |  _______________^
+LL | |         yield ();
+LL | |         *arg = true;
+LL | |     };
+   | |_____^
+note: the lifetime requirement is introduced here
+  --> $DIR/resume-arg-late-bound.rs:8:17
+   |
+LL | fn test(a: impl for<'a> Generator<&'a mut bool>) {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
