@@ -1,35 +1,43 @@
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
-  --> $DIR/method-call-lifetime-args-fail.rs:16:7
+error[E0107]: this associated function takes 2 lifetime arguments but only 1 lifetime argument was supplied
+  --> $DIR/method-call-lifetime-args-fail.rs:18:7
    |
 LL |     S.early::<'static>();
-   |       ^^^^^ expected 2 lifetime arguments
+   |       ^^^^^   ------- supplied 1 lifetime argument
+   |       |
+   |       expected 2 lifetime arguments
+   |
+note: associated function defined here, with 2 lifetime parameters: `'a`, `'b`
+  --> $DIR/method-call-lifetime-args-fail.rs:8:8
+   |
+LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
+   |        ^^^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     S.early::<'static, 'b>();
+   |                      ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 3
-  --> $DIR/method-call-lifetime-args-fail.rs:18:33
+error[E0107]: this associated function takes 2 lifetime arguments but 3 lifetime arguments were supplied
+  --> $DIR/method-call-lifetime-args-fail.rs:20:7
    |
 LL |     S.early::<'static, 'static, 'static>();
-   |                                 ^^^^^^^ unexpected lifetime argument
+   |       ^^^^^                   --------- help: remove this lifetime argument
+   |       |
+   |       expected 2 lifetime arguments
+   |
+note: associated function defined here, with 2 lifetime parameters: `'a`, `'b`
+  --> $DIR/method-call-lifetime-args-fail.rs:8:8
+   |
+LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
+   |        ^^^^^ --  --
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:27:15
+  --> $DIR/method-call-lifetime-args-fail.rs:29:15
    |
 LL |     S::late::<'static>(S, &0, &0);
    |               ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:4:13
-   |
-LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
-   |             ^^
-
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:29:15
-   |
-LL |     S::late::<'static, 'static>(S, &0, &0);
-   |               ^^^^^^^
-   |
-note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:4:13
+  --> $DIR/method-call-lifetime-args-fail.rs:6:13
    |
 LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
    |             ^^
@@ -37,59 +45,59 @@ LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:31:15
    |
-LL |     S::late::<'static, 'static, 'static>(S, &0, &0);
+LL |     S::late::<'static, 'static>(S, &0, &0);
    |               ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:4:13
+  --> $DIR/method-call-lifetime-args-fail.rs:6:13
    |
 LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
    |             ^^
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:34:21
+  --> $DIR/method-call-lifetime-args-fail.rs:33:15
+   |
+LL |     S::late::<'static, 'static, 'static>(S, &0, &0);
+   |               ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/method-call-lifetime-args-fail.rs:6:13
+   |
+LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
+   |             ^^
+
+error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/method-call-lifetime-args-fail.rs:36:21
    |
 LL |     S::late_early::<'static, 'static>(S, &0);
    |                     ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:7:19
+  --> $DIR/method-call-lifetime-args-fail.rs:9:19
    |
 LL |     fn late_early<'a, 'b>(self, _: &'a u8) -> &'b u8 { loop {} }
    |                   ^^
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:36:21
+  --> $DIR/method-call-lifetime-args-fail.rs:38:21
    |
 LL |     S::late_early::<'static, 'static, 'static>(S, &0);
    |                     ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:7:19
+  --> $DIR/method-call-lifetime-args-fail.rs:9:19
    |
 LL |     fn late_early<'a, 'b>(self, _: &'a u8) -> &'b u8 { loop {} }
    |                   ^^
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:40:24
+  --> $DIR/method-call-lifetime-args-fail.rs:42:24
    |
 LL |     S::late_implicit::<'static>(S, &0, &0);
    |                        ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:5:31
-   |
-LL |     fn late_implicit(self, _: &u8, _: &u8) {}
-   |                               ^
-
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:42:24
-   |
-LL |     S::late_implicit::<'static, 'static>(S, &0, &0);
-   |                        ^^^^^^^
-   |
-note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:5:31
+  --> $DIR/method-call-lifetime-args-fail.rs:7:31
    |
 LL |     fn late_implicit(self, _: &u8, _: &u8) {}
    |                               ^
@@ -97,98 +105,130 @@ LL |     fn late_implicit(self, _: &u8, _: &u8) {}
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:44:24
    |
-LL |     S::late_implicit::<'static, 'static, 'static>(S, &0, &0);
+LL |     S::late_implicit::<'static, 'static>(S, &0, &0);
    |                        ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:5:31
+  --> $DIR/method-call-lifetime-args-fail.rs:7:31
    |
 LL |     fn late_implicit(self, _: &u8, _: &u8) {}
    |                               ^
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:47:30
+  --> $DIR/method-call-lifetime-args-fail.rs:46:24
+   |
+LL |     S::late_implicit::<'static, 'static, 'static>(S, &0, &0);
+   |                        ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/method-call-lifetime-args-fail.rs:7:31
+   |
+LL |     fn late_implicit(self, _: &u8, _: &u8) {}
+   |                               ^
+
+error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/method-call-lifetime-args-fail.rs:49:30
    |
 LL |     S::late_implicit_early::<'static, 'static>(S, &0);
    |                              ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:8:41
+  --> $DIR/method-call-lifetime-args-fail.rs:10:41
    |
 LL |     fn late_implicit_early<'b>(self, _: &u8) -> &'b u8 { loop {} }
    |                                         ^
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:49:30
+  --> $DIR/method-call-lifetime-args-fail.rs:51:30
    |
 LL |     S::late_implicit_early::<'static, 'static, 'static>(S, &0);
    |                              ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:8:41
+  --> $DIR/method-call-lifetime-args-fail.rs:10:41
    |
 LL |     fn late_implicit_early<'b>(self, _: &u8) -> &'b u8 { loop {} }
    |                                         ^
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:52:35
+  --> $DIR/method-call-lifetime-args-fail.rs:54:35
    |
 LL |     S::late_implicit_self_early::<'static, 'static>(&S);
    |                                   ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:9:37
+  --> $DIR/method-call-lifetime-args-fail.rs:11:37
    |
 LL |     fn late_implicit_self_early<'b>(&self) -> &'b u8 { loop {} }
    |                                     ^
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:54:35
+  --> $DIR/method-call-lifetime-args-fail.rs:56:35
    |
 LL |     S::late_implicit_self_early::<'static, 'static, 'static>(&S);
    |                                   ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:9:37
+  --> $DIR/method-call-lifetime-args-fail.rs:11:37
    |
 LL |     fn late_implicit_self_early<'b>(&self) -> &'b u8 { loop {} }
    |                                     ^
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:57:28
+  --> $DIR/method-call-lifetime-args-fail.rs:59:28
    |
 LL |     S::late_unused_early::<'static, 'static>(S);
    |                            ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:10:26
+  --> $DIR/method-call-lifetime-args-fail.rs:12:26
    |
 LL |     fn late_unused_early<'a, 'b>(self) -> &'b u8 { loop {} }
    |                          ^^
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-fail.rs:59:28
+  --> $DIR/method-call-lifetime-args-fail.rs:61:28
    |
 LL |     S::late_unused_early::<'static, 'static, 'static>(S);
    |                            ^^^^^^^
    |
 note: the late bound lifetime parameter is introduced here
-  --> $DIR/method-call-lifetime-args-fail.rs:10:26
+  --> $DIR/method-call-lifetime-args-fail.rs:12:26
    |
 LL |     fn late_unused_early<'a, 'b>(self) -> &'b u8 { loop {} }
    |                          ^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
-  --> $DIR/method-call-lifetime-args-fail.rs:63:5
+error[E0107]: this associated function takes 2 lifetime arguments but only 1 lifetime argument was supplied
+  --> $DIR/method-call-lifetime-args-fail.rs:65:8
    |
 LL |     S::early::<'static>(S);
-   |     ^^^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+   |        ^^^^^   ------- supplied 1 lifetime argument
+   |        |
+   |        expected 2 lifetime arguments
+   |
+note: associated function defined here, with 2 lifetime parameters: `'a`, `'b`
+  --> $DIR/method-call-lifetime-args-fail.rs:8:8
+   |
+LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
+   |        ^^^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     S::early::<'static, 'b>(S);
+   |                       ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 3
-  --> $DIR/method-call-lifetime-args-fail.rs:65:34
+error[E0107]: this associated function takes 2 lifetime arguments but 3 lifetime arguments were supplied
+  --> $DIR/method-call-lifetime-args-fail.rs:67:8
    |
 LL |     S::early::<'static, 'static, 'static>(S);
-   |                                  ^^^^^^^ unexpected lifetime argument
+   |        ^^^^^                   --------- help: remove this lifetime argument
+   |        |
+   |        expected 2 lifetime arguments
+   |
+note: associated function defined here, with 2 lifetime parameters: `'a`, `'b`
+  --> $DIR/method-call-lifetime-args-fail.rs:8:8
+   |
+LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
+   |        ^^^^^ --  --
 
 error: aborting due to 18 previous errors
 

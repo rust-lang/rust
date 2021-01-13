@@ -22,6 +22,12 @@ LL |     std::mem::size_of(u16);
    |     ^^^^^^^^^^^^^^^^^ --- supplied 1 argument
    |     |
    |     expected 0 arguments
+   |
+note: function defined here
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |              ^^^^^^^
 
 error: aborting due to 3 previous errors
 

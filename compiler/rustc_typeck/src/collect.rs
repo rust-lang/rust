@@ -1498,13 +1498,11 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
         Ptr(mut_ty) | Rptr(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
         OpaqueDef(_, generic_args) => are_suggestable_generic_args(generic_args),
         Path(hir::QPath::TypeRelative(ty, segment)) => {
-            is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.generic_args().args)
+            is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.args().args)
         }
         Path(hir::QPath::Resolved(ty_opt, hir::Path { segments, .. })) => {
             ty_opt.map_or(false, is_suggestable_infer_ty)
-                || segments
-                    .iter()
-                    .any(|segment| are_suggestable_generic_args(segment.generic_args().args))
+                || segments.iter().any(|segment| are_suggestable_generic_args(segment.args().args))
         }
         _ => false,
     }

@@ -2,7 +2,8 @@
 //
 // edition:2018
 
-async fn copy() -> Result<()> //~ ERROR wrong number of type arguments
+async fn copy() -> Result<()>
+//~^ ERROR this enum takes 2 type arguments but only 1 type argument was supplied
 {
     Ok(())
     //~^ ERROR type annotations needed

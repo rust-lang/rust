@@ -881,6 +881,7 @@ rustc_queries! {
         query def_kind(def_id: DefId) -> DefKind {
             desc { |tcx| "looking up definition kind of `{}`", tcx.def_path_str(def_id) }
         }
+
         query def_span(def_id: DefId) -> Span {
             desc { |tcx| "looking up span for `{}`", tcx.def_path_str(def_id) }
             // FIXME(mw): DefSpans are not really inputs since they are derived from
@@ -890,15 +891,23 @@ rustc_queries! {
             // regardless of HIR hashing.
             eval_always
         }
+
+        query def_ident_span(def_id: DefId) -> Option<Span> {
+            desc { |tcx| "looking up span for `{}`'s identifier", tcx.def_path_str(def_id) }
+        }
+
         query lookup_stability(def_id: DefId) -> Option<&'tcx attr::Stability> {
             desc { |tcx| "looking up stability of `{}`", tcx.def_path_str(def_id) }
         }
+
         query lookup_const_stability(def_id: DefId) -> Option<&'tcx attr::ConstStability> {
             desc { |tcx| "looking up const stability of `{}`", tcx.def_path_str(def_id) }
         }
+
         query lookup_deprecation_entry(def_id: DefId) -> Option<DeprecationEntry> {
             desc { |tcx| "checking whether `{}` is deprecated", tcx.def_path_str(def_id) }
         }
+
         query item_attrs(def_id: DefId) -> &'tcx [ast::Attribute] {
             desc { |tcx| "collecting attributes of `{}`", tcx.def_path_str(def_id) }
         }

@@ -129,6 +129,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     generator_kind => { cdata.generator_kind(def_id.index) }
     def_kind => { cdata.def_kind(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
+    def_ident_span => {
+        cdata.try_item_ident(def_id.index, &tcx.sess).ok().map(|ident| ident.span)
+    }
     lookup_stability => {
         cdata.get_stability(def_id.index).map(|s| tcx.intern_stability(s))
     }

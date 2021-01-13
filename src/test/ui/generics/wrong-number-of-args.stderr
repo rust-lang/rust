@@ -1,0 +1,449 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/wrong-number-of-args.rs:44:14
+   |
+LL |     type A = Ty;
+   |              ^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     type A<'a> = Ty<'a>;
+   |           ^^^^   ^^^^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/wrong-number-of-args.rs:54:17
+   |
+LL |     type C = Ty<usize>;
+   |                 ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     type C<'a> = Ty<'a, usize>;
+   |           ^^^^      ^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/wrong-number-of-args.rs:100:22
+   |
+LL |     type B = Box<dyn GenericLifetime>;
+   |                      ^^^^^^^^^^^^^^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     type B<'a> = Box<dyn GenericLifetime<'a>>;
+   |           ^^^^           ^^^^^^^^^^^^^^^^^^^
+
+error[E0107]: this struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/wrong-number-of-args.rs:6:14
+   |
+LL |     type B = Ty<'static>;
+   |              ^^--------- help: remove these generics
+   |              |
+   |              expected 0 lifetime arguments
+   |
+note: struct defined here, with 0 lifetime parameters
+  --> $DIR/wrong-number-of-args.rs:2:12
+   |
+LL |     struct Ty;
+   |            ^^
+
+error[E0107]: this struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/wrong-number-of-args.rs:10:14
+   |
+LL |     type C = Ty<'static, usize>;
+   |              ^^ --------- help: remove this lifetime argument
+   |              |
+   |              expected 0 lifetime arguments
+   |
+note: struct defined here, with 0 lifetime parameters
+  --> $DIR/wrong-number-of-args.rs:2:12
+   |
+LL |     struct Ty;
+   |            ^^
+
+error[E0107]: this struct takes 0 type arguments but 1 type argument was supplied
+  --> $DIR/wrong-number-of-args.rs:10:14
+   |
+LL |     type C = Ty<'static, usize>;
+   |              ^^        ------- help: remove this type argument
+   |              |
+   |              expected 0 type arguments
+   |
+note: struct defined here, with 0 type parameters
+  --> $DIR/wrong-number-of-args.rs:2:12
+   |
+LL |     struct Ty;
+   |            ^^
+
+error[E0107]: this struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/wrong-number-of-args.rs:16:14
+   |
+LL |     type D = Ty<'static, usize, { 0 }>;
+   |              ^^ --------- help: remove this lifetime argument
+   |              |
+   |              expected 0 lifetime arguments
+   |
+note: struct defined here, with 0 lifetime parameters
+  --> $DIR/wrong-number-of-args.rs:2:12
+   |
+LL |     struct Ty;
+   |            ^^
+
+error[E0107]: this struct takes 0 generic arguments but 2 generic arguments were supplied
+  --> $DIR/wrong-number-of-args.rs:16:14
+   |
+LL |     type D = Ty<'static, usize, { 0 }>;
+   |              ^^        -------------- help: remove these generic arguments
+   |              |
+   |              expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/wrong-number-of-args.rs:2:12
+   |
+LL |     struct Ty;
+   |            ^^
+
+error[E0107]: missing generics for struct `type_and_type::Ty`
+  --> $DIR/wrong-number-of-args.rs:26:14
+   |
+LL |     type A = Ty;
+   |              ^^ expected 2 type arguments
+   |
+note: struct defined here, with 2 type parameters: `A`, `B`
+  --> $DIR/wrong-number-of-args.rs:24:12
+   |
+LL |     struct Ty<A, B>;
+   |            ^^ -  -
+help: use angle brackets to add missing type arguments
+   |
+LL |     type A = Ty<A, B>;
+   |                ^^^^^^
+
+error[E0107]: this struct takes 2 type arguments but only 1 type argument was supplied
+  --> $DIR/wrong-number-of-args.rs:30:14
+   |
+LL |     type B = Ty<usize>;
+   |              ^^ ----- supplied 1 type argument
+   |              |
+   |              expected 2 type arguments
+   |
+note: struct defined here, with 2 type parameters: `A`, `B`
+  --> $DIR/wrong-number-of-args.rs:24:12
+   |
+LL |     struct Ty<A, B>;
+   |            ^^ -  -
+help: add missing type argument
+   |
+LL |     type B = Ty<usize, B>;
+   |                      ^^^
+
+error[E0107]: this struct takes 2 type arguments but 3 type arguments were supplied
+  --> $DIR/wrong-number-of-args.rs:36:14
+   |
+LL |     type D = Ty<usize, String, char>;
+   |              ^^              ------ help: remove this type argument
+   |              |
+   |              expected 2 type arguments
+   |
+note: struct defined here, with 2 type parameters: `A`, `B`
+  --> $DIR/wrong-number-of-args.rs:24:12
+   |
+LL |     struct Ty<A, B>;
+   |            ^^ -  -
+
+error[E0107]: missing generics for struct `lifetime_and_type::Ty`
+  --> $DIR/wrong-number-of-args.rs:44:14
+   |
+LL |     type A = Ty;
+   |              ^^ expected 1 type argument
+   |
+note: struct defined here, with 1 type parameter: `T`
+  --> $DIR/wrong-number-of-args.rs:42:12
+   |
+LL |     struct Ty<'a, T>;
+   |            ^^     -
+help: use angle brackets to add missing type argument
+   |
+LL |     type A = Ty<T>;
+   |                ^^^
+
+error[E0107]: this struct takes 1 type argument but 0 type arguments were supplied
+  --> $DIR/wrong-number-of-args.rs:50:14
+   |
+LL |     type B = Ty<'static>;
+   |              ^^ expected 1 type argument
+   |
+note: struct defined here, with 1 type parameter: `T`
+  --> $DIR/wrong-number-of-args.rs:42:12
+   |
+LL |     struct Ty<'a, T>;
+   |            ^^     -
+help: add missing type argument
+   |
+LL |     type B = Ty<'static, T>;
+   |                        ^^^
+
+error[E0107]: missing generics for struct `type_and_type_and_type::Ty`
+  --> $DIR/wrong-number-of-args.rs:64:14
+   |
+LL |     type A = Ty;
+   |              ^^ expected at least 2 type arguments
+   |
+note: struct defined here, with at least 2 type parameters: `A`, `B`
+  --> $DIR/wrong-number-of-args.rs:62:12
+   |
+LL |     struct Ty<A, B, C = &'static str>;
+   |            ^^ -  -
+help: use angle brackets to add missing type arguments
+   |
+LL |     type A = Ty<A, B>;
+   |                ^^^^^^
+
+error[E0107]: this struct takes at least 2 type arguments but only 1 type argument was supplied
+  --> $DIR/wrong-number-of-args.rs:68:14
+   |
+LL |     type B = Ty<usize>;
+   |              ^^ ----- supplied 1 type argument
+   |              |
+   |              expected at least 2 type arguments
+   |
+note: struct defined here, with at least 2 type parameters: `A`, `B`
+  --> $DIR/wrong-number-of-args.rs:62:12
+   |
+LL |     struct Ty<A, B, C = &'static str>;
+   |            ^^ -  -
+help: add missing type argument
+   |
+LL |     type B = Ty<usize, B>;
+   |                      ^^^
+
+error[E0107]: this struct takes at most 3 type arguments but 4 type arguments were supplied
+  --> $DIR/wrong-number-of-args.rs:76:14
+   |
+LL |     type E = Ty<usize, String, char, f64>;
+   |              ^^                    ----- help: remove this type argument
+   |              |
+   |              expected at most 3 type arguments
+   |
+note: struct defined here, with at most 3 type parameters: `A`, `B`, `C`
+  --> $DIR/wrong-number-of-args.rs:62:12
+   |
+LL |     struct Ty<A, B, C = &'static str>;
+   |            ^^ -  -  -
+
+error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
+  --> $DIR/wrong-number-of-args.rs:96:22
+   |
+LL |     type A = Box<dyn NonGeneric<usize>>;
+   |                      ^^^^^^^^^^------- help: remove these generics
+   |                      |
+   |                      expected 0 type arguments
+   |
+note: trait defined here, with 0 type parameters
+  --> $DIR/wrong-number-of-args.rs:84:11
+   |
+LL |     trait NonGeneric {
+   |           ^^^^^^^^^^
+
+error[E0107]: this trait takes 1 lifetime argument but 2 lifetime arguments were supplied
+  --> $DIR/wrong-number-of-args.rs:104:22
+   |
+LL |     type C = Box<dyn GenericLifetime<'static, 'static>>;
+   |                      ^^^^^^^^^^^^^^^        --------- help: remove this lifetime argument
+   |                      |
+   |                      expected 1 lifetime argument
+   |
+note: trait defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/wrong-number-of-args.rs:88:11
+   |
+LL |     trait GenericLifetime<'a> {
+   |           ^^^^^^^^^^^^^^^ --
+
+error[E0107]: missing generics for trait `GenericType`
+  --> $DIR/wrong-number-of-args.rs:108:22
+   |
+LL |     type D = Box<dyn GenericType>;
+   |                      ^^^^^^^^^^^ expected 1 type argument
+   |
+note: trait defined here, with 1 type parameter: `A`
+  --> $DIR/wrong-number-of-args.rs:92:11
+   |
+LL |     trait GenericType<A> {
+   |           ^^^^^^^^^^^ -
+help: use angle brackets to add missing type argument
+   |
+LL |     type D = Box<dyn GenericType<A>>;
+   |                                 ^^^
+
+error[E0107]: this trait takes 1 type argument but 2 type arguments were supplied
+  --> $DIR/wrong-number-of-args.rs:112:22
+   |
+LL |     type E = Box<dyn GenericType<String, usize>>;
+   |                      ^^^^^^^^^^^       ------- help: remove this type argument
+   |                      |
+   |                      expected 1 type argument
+   |
+note: trait defined here, with 1 type parameter: `A`
+  --> $DIR/wrong-number-of-args.rs:92:11
+   |
+LL |     trait GenericType<A> {
+   |           ^^^^^^^^^^^ -
+
+error[E0107]: missing generics for struct `HashMap`
+  --> $DIR/wrong-number-of-args.rs:121:18
+   |
+LL |         type A = HashMap;
+   |                  ^^^^^^^ expected at least 2 type arguments
+   |
+note: struct defined here, with at least 2 type parameters: `K`, `V`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+   |
+LL | pub struct HashMap<K, V, S = RandomState> {
+   |            ^^^^^^^ -  -
+help: use angle brackets to add missing type arguments
+   |
+LL |         type A = HashMap<K, V>;
+   |                         ^^^^^^
+
+error[E0107]: this struct takes at least 2 type arguments but only 1 type argument was supplied
+  --> $DIR/wrong-number-of-args.rs:125:18
+   |
+LL |         type B = HashMap<String>;
+   |                  ^^^^^^^ ------ supplied 1 type argument
+   |                  |
+   |                  expected at least 2 type arguments
+   |
+note: struct defined here, with at least 2 type parameters: `K`, `V`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+   |
+LL | pub struct HashMap<K, V, S = RandomState> {
+   |            ^^^^^^^ -  -
+help: add missing type argument
+   |
+LL |         type B = HashMap<String, V>;
+   |                                ^^^
+
+error[E0107]: this struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/wrong-number-of-args.rs:129:18
+   |
+LL |         type C = HashMap<'static>;
+   |                  ^^^^^^^--------- help: remove these generics
+   |                  |
+   |                  expected 0 lifetime arguments
+   |
+note: struct defined here, with 0 lifetime parameters
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+   |
+LL | pub struct HashMap<K, V, S = RandomState> {
+   |            ^^^^^^^
+
+error[E0107]: this struct takes at least 2 type arguments but 0 type arguments were supplied
+  --> $DIR/wrong-number-of-args.rs:129:18
+   |
+LL |         type C = HashMap<'static>;
+   |                  ^^^^^^^ expected at least 2 type arguments
+   |
+note: struct defined here, with at least 2 type parameters: `K`, `V`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+   |
+LL | pub struct HashMap<K, V, S = RandomState> {
+   |            ^^^^^^^ -  -
+help: add missing type arguments
+   |
+LL |         type C = HashMap<'static, K, V>;
+   |                                 ^^^^^^
+
+error[E0107]: this struct takes at most 3 type arguments but 4 type arguments were supplied
+  --> $DIR/wrong-number-of-args.rs:135:18
+   |
+LL |         type D = HashMap<usize, String, char, f64>;
+   |                  ^^^^^^^                    ----- help: remove this type argument
+   |                  |
+   |                  expected at most 3 type arguments
+   |
+note: struct defined here, with at most 3 type parameters: `K`, `V`, `S`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+   |
+LL | pub struct HashMap<K, V, S = RandomState> {
+   |            ^^^^^^^ -  -  -
+
+error[E0107]: missing generics for enum `std::result::Result`
+  --> $DIR/wrong-number-of-args.rs:141:18
+   |
+LL |         type A = Result;
+   |                  ^^^^^^ expected 2 type arguments
+   |
+note: enum defined here, with 2 type parameters: `T`, `E`
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   |          ^^^^^^ -  -
+help: use angle brackets to add missing type arguments
+   |
+LL |         type A = Result<T, E>;
+   |                        ^^^^^^
+
+error[E0107]: this enum takes 2 type arguments but only 1 type argument was supplied
+  --> $DIR/wrong-number-of-args.rs:145:18
+   |
+LL |         type B = Result<String>;
+   |                  ^^^^^^ ------ supplied 1 type argument
+   |                  |
+   |                  expected 2 type arguments
+   |
+note: enum defined here, with 2 type parameters: `T`, `E`
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   |          ^^^^^^ -  -
+help: add missing type argument
+   |
+LL |         type B = Result<String, E>;
+   |                               ^^^
+
+error[E0107]: this enum takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/wrong-number-of-args.rs:149:18
+   |
+LL |         type C = Result<'static>;
+   |                  ^^^^^^--------- help: remove these generics
+   |                  |
+   |                  expected 0 lifetime arguments
+   |
+note: enum defined here, with 0 lifetime parameters
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   |          ^^^^^^
+
+error[E0107]: this enum takes 2 type arguments but 0 type arguments were supplied
+  --> $DIR/wrong-number-of-args.rs:149:18
+   |
+LL |         type C = Result<'static>;
+   |                  ^^^^^^ expected 2 type arguments
+   |
+note: enum defined here, with 2 type parameters: `T`, `E`
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   |          ^^^^^^ -  -
+help: add missing type arguments
+   |
+LL |         type C = Result<'static, T, E>;
+   |                                ^^^^^^
+
+error[E0107]: this enum takes 2 type arguments but 3 type arguments were supplied
+  --> $DIR/wrong-number-of-args.rs:155:18
+   |
+LL |         type D = Result<usize, String, char>;
+   |                  ^^^^^^              ------ help: remove this type argument
+   |                  |
+   |                  expected 2 type arguments
+   |
+note: enum defined here, with 2 type parameters: `T`, `E`
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   |          ^^^^^^ -  -
+
+error: aborting due to 30 previous errors
+
+Some errors have detailed explanations: E0106, E0107.
+For more information about an error, try `rustc --explain E0106`.

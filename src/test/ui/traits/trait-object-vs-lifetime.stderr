@@ -4,17 +4,35 @@ error[E0224]: at least one trait is required for an object type
 LL |     let _: S<'static, dyn 'static +>;
    |                       ^^^^^^^^^^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 1, found 2
-  --> $DIR/trait-object-vs-lifetime.rs:11:23
-   |
-LL |     let _: S<'static, 'static>;
-   |                       ^^^^^^^ unexpected lifetime argument
-
-error[E0107]: wrong number of type arguments: expected 1, found 0
+error[E0107]: this struct takes 1 lifetime argument but 2 lifetime arguments were supplied
   --> $DIR/trait-object-vs-lifetime.rs:11:12
    |
 LL |     let _: S<'static, 'static>;
-   |            ^^^^^^^^^^^^^^^^^^^ expected 1 type argument
+   |            ^        --------- help: remove this lifetime argument
+   |            |
+   |            expected 1 lifetime argument
+   |
+note: struct defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/trait-object-vs-lifetime.rs:4:8
+   |
+LL | struct S<'a, T>(&'a u8, T);
+   |        ^ --
+
+error[E0107]: this struct takes 1 type argument but 0 type arguments were supplied
+  --> $DIR/trait-object-vs-lifetime.rs:11:12
+   |
+LL |     let _: S<'static, 'static>;
+   |            ^ expected 1 type argument
+   |
+note: struct defined here, with 1 type parameter: `T`
+  --> $DIR/trait-object-vs-lifetime.rs:4:8
+   |
+LL | struct S<'a, T>(&'a u8, T);
+   |        ^     -
+help: add missing type argument
+   |
+LL |     let _: S<'static, 'static, T>;
+   |                              ^^^
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/trait-object-vs-lifetime.rs:14:14

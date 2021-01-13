@@ -7,11 +7,21 @@ LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0107]: wrong number of type arguments: expected 1, found 0
+error[E0107]: missing generics for trait `Fn`
   --> $DIR/issue-23024.rs:9:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    |                                       ^^ expected 1 type argument
+   |
+note: trait defined here, with 1 type parameter: `Args`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL | pub trait Fn<Args>: FnMut<Args> {
+   |           ^^ ----
+help: use angle brackets to add missing type argument
+   |
+LL |     println!("{:?}",(vfnfer[0] as dyn Fn<Args>)(3));
+   |                                         ^^^^^^
 
 error[E0191]: the value of the associated type `Output` (from trait `FnOnce`) must be specified
   --> $DIR/issue-23024.rs:9:39

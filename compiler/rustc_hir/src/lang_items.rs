@@ -157,7 +157,7 @@ where
 }
 
 language_item_table! {
-//  Variant name,            Name,                    Method name,             Target;
+//  Variant name,            Name,                     Method name,                Target;
     Bool,                    sym::bool,                bool_impl,                  Target::Impl;
     Char,                    sym::char,                char_impl,                  Target::Impl;
     Str,                     sym::str,                 str_impl,                   Target::Impl;

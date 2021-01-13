@@ -13,5 +13,5 @@ fn test<T, const P: usize>() where Bool<{core::mem::size_of::<T>() > 4}>: True {
 
 fn main() {
     test::<2>();
-    //~^ ERROR wrong number of generic arguments
+    //~^ ERROR this function takes 2 generic arguments but only 1 generic argument was supplied
 }

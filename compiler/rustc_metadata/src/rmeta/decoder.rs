@@ -721,21 +721,25 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self.raw_proc_macros.unwrap()[pos]
     }
 
-    fn item_ident(&self, item_index: DefIndex, sess: &Session) -> Ident {
+    fn try_item_ident(&self, item_index: DefIndex, sess: &Session) -> Result<Ident, String> {
         let name = self
             .def_key(item_index)
             .disambiguated_data
             .data
             .get_opt_name()
-            .expect("no name in item_ident");
+            .ok_or_else(|| format!("Missing opt name for {:?}", item_index))?;
         let span = self
             .root
             .tables
             .ident_span
             .get(self, item_index)
-            .map(|data| data.decode((self, sess)))
-            .unwrap_or_else(|| panic!("Missing ident span for {:?} ({:?})", name, item_index));
-        Ident::new(name, span)
+            .ok_or_else(|| format!("Missing ident span for {:?} ({:?})", name, item_index))?
+            .decode((self, sess));
+        Ok(Ident::new(name, span))
+    }
+
+    fn item_ident(&self, item_index: DefIndex, sess: &Session) -> Ident {
+        self.try_item_ident(item_index, sess).unwrap()
     }
 
     fn def_kind(&self, index: DefIndex) -> DefKind {

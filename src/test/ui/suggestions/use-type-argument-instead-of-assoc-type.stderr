@@ -1,10 +1,16 @@
-error[E0107]: wrong number of type arguments: expected 2, found 4
-  --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:32
+error[E0107]: this trait takes 2 type arguments but 4 type arguments were supplied
+  --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:16
    |
 LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
-   |                                ^^^^^  ^^^^^ unexpected type argument
-   |                                |
-   |                                unexpected type argument
+   |                ^             -------------- help: remove these type arguments
+   |                |
+   |                expected 2 type arguments
+   |
+note: trait defined here, with 2 type parameters: `X`, `Y`
+  --> $DIR/use-type-argument-instead-of-assoc-type.rs:1:11
+   |
+LL | pub trait T<X, Y> {
+   |           ^ -  -
 
 error[E0191]: the value of the associated types `A` (from trait `T`), `C` (from trait `T`) must be specified
   --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:16

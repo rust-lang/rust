@@ -847,7 +847,7 @@ fn foo(&self) -> Self::T { String::new() }
     }
 
     /// Given a slice of `hir::GenericBound`s, if any of them corresponds to the `trait_ref`
-    /// requirement, provide a strucuted suggestion to constrain it to a given type `ty`.
+    /// requirement, provide a structured suggestion to constrain it to a given type `ty`.
     fn constrain_generic_bound_associated_type_structured_suggestion(
         self,
         db: &mut DiagnosticBuilder<'_>,

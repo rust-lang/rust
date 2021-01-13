@@ -9,11 +9,19 @@ LL |     struct Foo {
 LL |         x: T,
    |            ^ use of generic parameter from outer function
 
-error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/issue-3214.rs:8:26
+error[E0107]: this struct takes 0 type arguments but 1 type argument was supplied
+  --> $DIR/issue-3214.rs:8:22
    |
 LL |     impl<T> Drop for Foo<T> {
-   |                          ^ unexpected type argument
+   |                      ^^^--- help: remove these generics
+   |                      |
+   |                      expected 0 type arguments
+   |
+note: struct defined here, with 0 type parameters
+  --> $DIR/issue-3214.rs:4:12
+   |
+LL |     struct Foo {
+   |            ^^^
 
 error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
   --> $DIR/issue-3214.rs:8:10

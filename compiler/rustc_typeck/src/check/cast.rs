@@ -418,13 +418,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
-                use crate::structured_errors::{SizedUnsizedCastError, StructuredDiagnostic};
-                SizedUnsizedCastError::new(
-                    &fcx.tcx.sess,
-                    self.span,
-                    self.expr_ty,
-                    fcx.ty_to_string(self.cast_ty),
-                )
+                use crate::structured_errors::{SizedUnsizedCast, StructuredDiagnostic};
+
+                SizedUnsizedCast {
+                    sess: &fcx.tcx.sess,
+                    span: self.span,
+                    expr_ty: self.expr_ty,
+                    cast_ty: fcx.ty_to_string(self.cast_ty),
+                }
                 .diagnostic()
                 .emit();
             }

@@ -1328,7 +1328,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &DocContext<'_>) -> Type {
                 let mut ty_substs = FxHashMap::default();
                 let mut lt_substs = FxHashMap::default();
                 let mut ct_substs = FxHashMap::default();
-                let generic_args = provided_params.generic_args();
+                let generic_args = provided_params.args();
                 {
                     let mut indices: GenericParamCount = Default::default();
                     for param in generics.params.iter() {
@@ -1943,7 +1943,7 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
 
 impl Clean<PathSegment> for hir::PathSegment<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> PathSegment {
-        PathSegment { name: self.ident.name, args: self.generic_args().clean(cx) }
+        PathSegment { name: self.ident.name, args: self.args().clean(cx) }
     }
 }
 

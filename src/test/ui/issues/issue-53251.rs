@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 struct S;
 
 impl S {
@@ -9,8 +11,8 @@ macro_rules! impl_add {
         $(
             fn $n() {
                 S::f::<i64>();
-                //~^ ERROR wrong number of type arguments
-                //~| ERROR wrong number of type arguments
+                //~^ ERROR this associated function takes 0 type arguments but 1 type argument was supplied
+                //~| ERROR this associated function takes 0 type arguments but 1 type argument was supplied
             }
         )*
     }
@@ -18,4 +20,4 @@ macro_rules! impl_add {
 
 impl_add!(a b);
 
-fn main() {}
+fn main() { }

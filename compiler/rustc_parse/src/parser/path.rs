@@ -230,10 +230,11 @@ impl<'a> Parser<'a> {
                 } else {
                     // `(T, U) -> R`
                     let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
+                    let inputs_span = lo.to(self.prev_token.span);
                     let span = ident.span.to(self.prev_token.span);
                     let output =
                         self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
-                    ParenthesizedArgs { inputs, output, span }.into()
+                    ParenthesizedArgs { span, inputs, inputs_span, output }.into()
                 };
 
                 PathSegment { ident, args, id: ast::DUMMY_NODE_ID }

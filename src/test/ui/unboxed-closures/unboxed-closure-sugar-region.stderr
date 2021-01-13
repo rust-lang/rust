@@ -1,8 +1,14 @@
-error[E0107]: wrong number of lifetime arguments: expected 1, found 0
+error[E0107]: this trait takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/unboxed-closure-sugar-region.rs:30:51
    |
 LL | fn test2(x: &dyn Foo<(isize,),Output=()>, y: &dyn Foo(isize)) {
-   |                                                   ^^^^^^^^^^ expected 1 lifetime argument
+   |                                                   ^^^ expected 1 lifetime argument
+   |
+note: trait defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/unboxed-closure-sugar-region.rs:10:7
+   |
+LL | trait Foo<'a,T> {
+   |       ^^^ --
 
 error: aborting due to previous error
 

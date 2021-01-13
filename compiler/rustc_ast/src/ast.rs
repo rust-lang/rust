@@ -242,11 +242,20 @@ impl Into<Option<P<GenericArgs>>> for ParenthesizedArgs {
 /// A path like `Foo(A, B) -> C`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct ParenthesizedArgs {
-    /// Overall span
+    /// ```text
+    /// Foo(A, B) -> C
+    /// ^^^^^^^^^^^^^^
+    /// ```
     pub span: Span,
 
     /// `(A, B)`
     pub inputs: Vec<P<Ty>>,
+
+    /// ```text
+    /// Foo(A, B) -> C
+    ///    ^^^^^^
+    /// ```
+    pub inputs_span: Span,
 
     /// `C`
     pub output: FnRetTy,

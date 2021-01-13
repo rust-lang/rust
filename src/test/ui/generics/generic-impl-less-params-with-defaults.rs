@@ -9,5 +9,5 @@ impl<A, B, C> Foo<A, B, C> {
 
 fn main() {
     Foo::<isize>::new();
-    //~^ ERROR wrong number of type arguments
+    //~^ ERROR this struct takes at least 2 type arguments but only 1 type argument was supplied
 }

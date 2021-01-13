@@ -1,8 +1,20 @@
-error[E0107]: wrong number of type arguments: expected at least 1, found 0
+error[E0107]: missing generics for struct `Box`
   --> $DIR/issue-14092.rs:1:11
    |
 LL | fn fn1(0: Box) {}
    |           ^^^ expected at least 1 type argument
+   |
+note: struct defined here, with at least 1 type parameter: `T`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+LL | pub struct Box<
+   |            ^^^
+LL |     T: ?Sized,
+   |     -
+help: use angle brackets to add missing type argument
+   |
+LL | fn fn1(0: Box<T>) {}
+   |              ^^^
 
 error: aborting due to previous error
 

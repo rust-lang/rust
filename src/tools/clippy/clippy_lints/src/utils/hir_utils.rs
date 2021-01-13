@@ -744,7 +744,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                     for segment in path.segments {
                         segment.ident.name.hash(&mut self.s);
-                        self.hash_generic_args(segment.generic_args().args);
+                        self.hash_generic_args(segment.args().args);
                     }
                 },
                 QPath::TypeRelative(ref ty, ref segment) => {

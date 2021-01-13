@@ -582,9 +582,9 @@ impl SourceMap {
     /// Extracts the source surrounding the given `Span` using the `extract_source` function. The
     /// extract function takes three arguments: a string slice containing the source, an index in
     /// the slice for the beginning of the span and an index in the slice for the end of the span.
-    fn span_to_source<F>(&self, sp: Span, extract_source: F) -> Result<String, SpanSnippetError>
+    fn span_to_source<F, T>(&self, sp: Span, extract_source: F) -> Result<T, SpanSnippetError>
     where
-        F: Fn(&str, usize, usize) -> Result<String, SpanSnippetError>,
+        F: Fn(&str, usize, usize) -> Result<T, SpanSnippetError>,
     {
         let local_begin = self.lookup_byte_offset(sp.lo());
         let local_end = self.lookup_byte_offset(sp.hi());
@@ -648,10 +648,10 @@ impl SourceMap {
 
     /// Extends the given `Span` to just after the previous occurrence of `c`. Return the same span
     /// if no character could be found or if an error occurred while retrieving the code snippet.
-    pub fn span_extend_to_prev_char(&self, sp: Span, c: char) -> Span {
+    pub fn span_extend_to_prev_char(&self, sp: Span, c: char, accept_newlines: bool) -> Span {
         if let Ok(prev_source) = self.span_to_prev_source(sp) {
-            let prev_source = prev_source.rsplit(c).next().unwrap_or("").trim_start();
-            if !prev_source.is_empty() && !prev_source.contains('\n') {
+            let prev_source = prev_source.rsplit(c).next().unwrap_or("");
+            if !prev_source.is_empty() && (!prev_source.contains('\n') || accept_newlines) {
                 return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
             }
         }
@@ -676,6 +676,25 @@ impl SourceMap {
                 } else if !prev_source.contains('\n') || accept_newlines {
                     return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
                 }
+            }
+        }
+
+        sp
+    }
+
+    /// Returns the source snippet as `String` after the given `Span`.
+    pub fn span_to_next_source(&self, sp: Span) -> Result<String, SpanSnippetError> {
+        self.span_to_source(sp, |src, _, end_index| {
+            src.get(end_index..).map(|s| s.to_string()).ok_or(SpanSnippetError::IllFormedSpan(sp))
+        })
+    }
+
+    /// Extends the given `Span` to just after the next occurrence of `c`.
+    pub fn span_extend_to_next_char(&self, sp: Span, c: char, accept_newlines: bool) -> Span {
+        if let Ok(next_source) = self.span_to_next_source(sp) {
+            let next_source = next_source.split(c).next().unwrap_or("");
+            if !next_source.is_empty() && (!next_source.contains('\n') || accept_newlines) {
+                return sp.with_hi(BytePos(sp.hi().0 + next_source.len() as u32));
             }
         }
 

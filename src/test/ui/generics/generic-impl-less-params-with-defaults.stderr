@@ -1,8 +1,20 @@
-error[E0107]: wrong number of type arguments: expected at least 2, found 1
+error[E0107]: this struct takes at least 2 type arguments but only 1 type argument was supplied
   --> $DIR/generic-impl-less-params-with-defaults.rs:11:5
    |
 LL |     Foo::<isize>::new();
-   |     ^^^^^^^^^^^^^^^^^ expected at least 2 type arguments
+   |     ^^^   ----- supplied 1 type argument
+   |     |
+   |     expected at least 2 type arguments
+   |
+note: struct defined here, with at least 2 type parameters: `A`, `B`
+  --> $DIR/generic-impl-less-params-with-defaults.rs:3:8
+   |
+LL | struct Foo<A, B, C = (A, B)>(
+   |        ^^^ -  -
+help: add missing type argument
+   |
+LL |     Foo::<isize, B>::new();
+   |                ^^^
 
 error: aborting due to previous error
 
