@@ -1881,7 +1881,7 @@ impl<T: ?Sized> Weak<T> {
 
         if is_dangling(ptr) {
             // If the pointer is dangling, we return the sentinel directly. This cannot be
-            // a valid payload address, as it is at least as aligned as RcBox (usize).
+            // a valid payload address, as the payload is at least as aligned as RcBox (usize).
             ptr as *const T
         } else {
             // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
