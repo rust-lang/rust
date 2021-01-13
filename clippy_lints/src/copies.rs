@@ -1,7 +1,12 @@
-use clippy_utils::diagnostics::span_lint_and_note;
-use clippy_utils::{eq_expr_value, in_macro, search_same, SpanlessEq, SpanlessHash};
-use clippy_utils::{get_parent_expr, if_sequence};
-use rustc_hir::{Block, Expr, ExprKind};
+use crate::utils::{both, count_eq, eq_expr_value, in_macro, search_same, SpanlessEq, SpanlessHash};
+use crate::utils::{
+    first_line_of_span, get_parent_expr, higher, if_sequence, indent_of, parent_node_is_if_expr, reindent_multiline,
+    snippet, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
+};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::{Block, Expr, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -136,7 +141,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     pub SHARED_CODE_IN_IF_BLOCKS,
-    pedantic,
+    nursery,
     "`if` statement with shared code in all blocks"
 }
 
@@ -180,7 +185,7 @@ fn lint_same_then_else<'tcx>(
 ) {
     // We only lint ifs with multiple blocks
     // TODO xFrednet 2021-01-01: Check if it's an else if block
-    if blocks.len() < 2 {
+    if blocks.len() < 2 || parent_node_is_if_expr(expr, cx) {
         return;
     }
 
@@ -190,7 +195,7 @@ fn lint_same_then_else<'tcx>(
     let mut start_eq = usize::MAX;
     let mut end_eq = usize::MAX;
     let mut expr_eq = true;
-    for (index, win) in blocks.windows(2).enumerate() {
+    for win in blocks.windows(2) {
         let l_stmts = win[0].stmts;
         let r_stmts = win[1].stmts;
 
@@ -202,9 +207,7 @@ fn lint_same_then_else<'tcx>(
         let block_expr_eq = both(&win[0].expr, &win[1].expr, |l, r| evaluator.eq_expr(l, r));
 
         // IF_SAME_THEN_ELSE
-        // We only lint the first two blocks (index == 0). Further blocks will be linted when that if
-        // statement is checked
-        if index == 0 && block_expr_eq && l_stmts.len() == r_stmts.len() && l_stmts.len() == current_start_eq {
+        if block_expr_eq && l_stmts.len() == r_stmts.len() && l_stmts.len() == current_start_eq {
             span_lint_and_note(
                 cx,
                 IF_SAME_THEN_ELSE,
@@ -215,16 +218,24 @@ fn lint_same_then_else<'tcx>(
             );
 
             return;
+        } else {
+            println!(
+                "{:?}\n - expr_eq: {:10}, l_stmts.len(): {:10}, r_stmts.len(): {:10}",
+                win[0].span,
+                block_expr_eq,
+                l_stmts.len(),
+                r_stmts.len()
+            )
         }
 
         start_eq = start_eq.min(current_start_eq);
         end_eq = end_eq.min(current_end_eq);
         expr_eq &= block_expr_eq;
+    }
 
-        // We can return if the eq count is 0 from both sides or if it has no unconditional else case
-        if !has_unconditional_else || (start_eq == 0 && end_eq == 0 && (has_expr && !expr_eq)) {
-            return;
-        }
+    // SHARED_CODE_IN_IF_BLOCKS prerequisites
+    if !has_unconditional_else || (start_eq == 0 && end_eq == 0 && (has_expr && !expr_eq)) {
+        return;
     }
 
     if has_expr && !expr_eq {
@@ -275,11 +286,14 @@ fn lint_same_then_else<'tcx>(
             end_eq -= moved_start;
         }
 
-        let mut end_linable = true;
-        if let Some(expr) = block.expr {
+        let end_linable = if let Some(expr) = block.expr {
             intravisit::walk_expr(&mut walker, expr);
-            end_linable = walker.uses.iter().any(|x| !block_defs.contains(x));
-        }
+            walker.uses.iter().any(|x| !block_defs.contains(x))
+        } else if end_eq == 0 {
+            false
+        } else {
+            true
+        };
 
         emit_shared_code_in_if_blocks_lint(cx, start_eq, end_eq, end_linable, blocks, expr);
     }
@@ -351,7 +365,7 @@ fn emit_shared_code_in_if_blocks_lint(
             SHARED_CODE_IN_IF_BLOCKS,
             *span,
             "All code blocks contain the same code",
-            "Consider moving the code out like this",
+            "Consider moving the statements out like this",
             sugg.clone(),
             Applicability::Unspecified,
         );

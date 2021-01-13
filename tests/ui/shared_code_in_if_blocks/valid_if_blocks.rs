@@ -152,6 +152,16 @@ fn trigger_other_lint() {
             ":D"
         }
     };
+
+    if x == 0 {
+        println!("I'm single");
+    } else if x == 68 {
+        println!("I'm a doppelgänger");
+        // Don't listen to my clone below
+    } else {
+        // Don't listen to my clone above
+        println!("I'm a doppelgänger");
+    }
 }
 
 fn main() {}
