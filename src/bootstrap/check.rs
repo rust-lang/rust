@@ -73,7 +73,7 @@ impl Step for Std {
         );
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
-        builder.info(&format!("Checking std artifacts ({} -> {})", &compiler.host, target));
+        builder.info(&format!("Checking stage{} std artifacts ({} -> {})", builder.top_stage, &compiler.host, target));
         run_cargo(
             builder,
             cargo,
@@ -113,8 +113,8 @@ impl Step for Std {
             }
 
             builder.info(&format!(
-                "Checking std test/bench/example targets ({} -> {})",
-                &compiler.host, target
+                "Checking stage{} std test/bench/example targets ({} -> {})",
+                builder.top_stage, &compiler.host, target
             ));
             run_cargo(
                 builder,
@@ -169,14 +169,14 @@ impl Step for Rustc {
             cargo.arg("--all-targets");
         }
 
-        // Explicitly pass -p for all compiler krates -- this will force cargo
+        // Explicitly pass -p for all compiler crates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
         // than just the leaf crate.
         for krate in builder.in_tree_crates("rustc-main", Some(target)) {
             cargo.arg("-p").arg(krate.name);
         }
 
-        builder.info(&format!("Checking compiler artifacts ({} -> {})", &compiler.host, target));
+        builder.info(&format!("Checking stage{} compiler artifacts ({} -> {})", builder.top_stage, &compiler.host, target));
         run_cargo(
             builder,
             cargo,
@@ -233,8 +233,8 @@ impl Step for CodegenBackend {
         rustc_cargo_env(builder, &mut cargo, target);
 
         builder.info(&format!(
-            "Checking {} artifacts ({} -> {})",
-            backend, &compiler.host.triple, target.triple
+            "Checking stage{} {} artifacts ({} -> {})",
+            builder.top_stage, backend, &compiler.host.triple, target.triple
         ));
 
         run_cargo(
@@ -290,7 +290,8 @@ macro_rules! tool_check_step {
                 }
 
                 builder.info(&format!(
-                    "Checking {} artifacts ({} -> {})",
+                    "Checking stage{} {} artifacts ({} -> {})",
+                    builder.top_stage,
                     stringify!($name).to_lowercase(),
                     &compiler.host.triple,
                     target.triple

@@ -1187,7 +1187,11 @@ impl<'a> Builder<'a> {
         // For other crates, however, we know that we've already got a standard
         // library up and running, so we can use the normal compiler to compile
         // build scripts in that situation.
-        if mode == Mode::Std {
+        //
+        // Note that when we're checking the compiler for any stage other than 0,
+        // we may not have built the MIR for the standard library, only the check metadata.
+        // If so, we need to use stage 0 for build scripts still.
+        if mode == Mode::Std || self.kind == Kind::Check {
             cargo
                 .env("RUSTC_SNAPSHOT", &self.initial_rustc)
                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
