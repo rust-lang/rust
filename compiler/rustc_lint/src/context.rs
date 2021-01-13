@@ -600,6 +600,10 @@ pub trait LintContext: Sized {
                 BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident) => {
                     db.span_suggestion(span, "remove `mut` from the parameter", ident.to_string(), Applicability::MachineApplicable);
                 }
+                BuiltinLintDiagnostics::MissingAbi(span, default_abi) => {
+                    db.span_label(span, "ABI should be specified here");
+                    db.help(&format!("the default ABI is {}", default_abi.name()));
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));

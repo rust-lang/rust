@@ -17,8 +17,8 @@ error: functions generic over types or consts must be mangled
    |
 LL | #[no_mangle]
    | ------------ help: remove this attribute
-LL | pub extern fn bar<T>() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub extern "C" fn bar<T>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

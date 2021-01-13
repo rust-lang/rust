@@ -47,7 +47,7 @@ fn main() {
         //~^ ERROR functions cannot be both `const` and `async`
     }
 
-    extern {
+    extern "C" {
         async fn fe1(); //~ ERROR functions in `extern` blocks cannot have qualifiers
         unsafe fn fe2(); //~ ERROR functions in `extern` blocks cannot have qualifiers
         const fn fe3(); //~ ERROR functions in `extern` blocks cannot have qualifiers

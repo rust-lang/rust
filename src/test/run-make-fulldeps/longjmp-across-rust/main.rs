@@ -1,6 +1,6 @@
 #[link(name = "foo", kind = "static")]
-extern {
-    fn test_start(f: extern fn());
+extern "C" {
+    fn test_start(f: extern "C" fn());
     fn test_end();
 }
 
@@ -13,11 +13,10 @@ fn main() {
 struct A;
 
 impl Drop for A {
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }
 
-extern fn test_middle() {
+extern "C" fn test_middle() {
     let _a = A;
     foo();
 }

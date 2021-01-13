@@ -3896,6 +3896,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "rustc_target",
  "tracing",
 ]
 

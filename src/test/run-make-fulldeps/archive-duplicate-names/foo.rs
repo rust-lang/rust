@@ -1,7 +1,7 @@
 #![crate_type = "rlib"]
 
 #[link(name = "foo", kind = "static")]
-extern {
+extern "C" {
     fn foo();
     fn bar();
 }

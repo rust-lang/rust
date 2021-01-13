@@ -24,8 +24,8 @@ fn syntax() {
         fn f() {}
     }
 
-    extern {
+    extern "C" {
         fn f();
-        fn f() {}
+        fn f();
     }
 }

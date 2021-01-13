@@ -7,7 +7,7 @@
 // correctly, then linking will fail.
 
 /// ```
-/// extern {
+/// extern "C" {
 ///     fn __sanitizer_print_stack_trace();
 /// }
 ///

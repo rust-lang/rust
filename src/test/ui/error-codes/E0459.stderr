@@ -1,7 +1,7 @@
 error[E0459]: `#[link(...)]` specified without `name = "foo"`
   --> $DIR/E0459.rs:1:1
    |
-LL | #[link(kind = "dylib")] extern {}
+LL | #[link(kind = "dylib")] extern "C" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^ missing `name` argument
 
 error: aborting due to previous error

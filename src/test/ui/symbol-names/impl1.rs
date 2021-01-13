@@ -60,7 +60,7 @@ fn main() {
         }
 
         // Test type mangling, by putting them in an `impl` header.
-        impl Bar for [&'_ (dyn Foo<Assoc = extern fn(&u8, ...)> + AutoTrait); 3] {
+        impl Bar for [&'_ (dyn Foo<Assoc = extern "C" fn(&u8, ...)> + AutoTrait); 3] {
             #[rustc_symbol_name]
             //[legacy]~^ ERROR symbol-name(_ZN209_$LT$$u5b$$RF$dyn$u20$impl1..Foo$u2b$Assoc$u20$$u3d$$u20$extern$u20$$u22$C$u22$$u20$fn$LP$$RF$u8$C$$u20$...$RP$$u2b$impl1..AutoTrait$u3b$$u20$3$u5d$$u20$as$u20$impl1..main..$u7b$$u7b$closure$u7d$$u7d$..Bar$GT$6method
             //[legacy]~| ERROR demangling(<[&dyn impl1::Foo+Assoc = extern "C" fn(&u8, ::.)+impl1::AutoTrait; 3] as impl1::main::{{closure}}::Bar>::method

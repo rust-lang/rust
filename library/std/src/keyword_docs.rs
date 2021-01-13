@@ -401,7 +401,7 @@ mod enum_keyword {}
 ///
 /// ```rust
 /// #[no_mangle]
-/// pub extern fn callable_from_c(x: i32) -> bool {
+/// pub extern "C" fn callable_from_c(x: i32) -> bool {
 ///     x % 3 == 0
 /// }
 /// ```

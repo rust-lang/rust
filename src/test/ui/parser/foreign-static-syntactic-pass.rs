@@ -5,7 +5,7 @@
 fn main() {}
 
 #[cfg(FALSE)]
-extern {
-    static X: u8 = 0;
-    static mut Y: u8 = 0;
+extern "C" {
+    static X: u8;
+    static mut Y: u8;
 }

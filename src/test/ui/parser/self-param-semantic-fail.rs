@@ -23,7 +23,7 @@ fn free() {
     //~^ ERROR `self` parameter is only allowed in associated functions
 }
 
-extern {
+extern "C" {
     fn f1(self);
     //~^ ERROR `self` parameter is only allowed in associated functions
     fn f2(mut self);
@@ -40,8 +40,8 @@ extern {
     fn f7(self: u8);
     //~^ ERROR `self` parameter is only allowed in associated functions
     fn f8(mut self: u8);
-    //~^ ERROR `self` parameter is only allowed in associated functions
-    //~| ERROR patterns aren't allowed in
+//~^ ERROR `self` parameter is only allowed in associated functions
+//~| ERROR patterns aren't allowed in
 }
 
 type X1 = fn(self);

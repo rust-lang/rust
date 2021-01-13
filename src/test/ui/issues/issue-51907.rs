@@ -1,15 +1,15 @@
 // run-pass
 trait Foo {
-    extern fn borrow(&self);
-    extern fn take(self: Box<Self>);
+    extern "C" fn borrow(&self);
+    extern "C" fn take(self: Box<Self>);
 }
 
 struct Bar;
 impl Foo for Bar {
     #[allow(improper_ctypes_definitions)]
-    extern fn borrow(&self) {}
+    extern "C" fn borrow(&self) {}
     #[allow(improper_ctypes_definitions)]
-    extern fn take(self: Box<Self>) {}
+    extern "C" fn take(self: Box<Self>) {}
 }
 
 fn main() {

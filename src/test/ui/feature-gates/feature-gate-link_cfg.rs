@@ -1,5 +1,5 @@
 #[link(name = "foo", cfg(foo))]
 //~^ ERROR: is unstable
-extern {}
+extern "C" {}
 
 fn main() {}

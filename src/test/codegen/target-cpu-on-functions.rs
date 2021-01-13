@@ -9,7 +9,7 @@
 
 // CHECK-LABEL: define {{.*}} @exported() {{.*}} #0
 #[no_mangle]
-pub extern fn exported() {
+pub extern "C" fn exported() {
     not_exported();
 }
 

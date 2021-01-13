@@ -6,6 +6,6 @@ extern crate bar;
 static A: bar::A = bar::A;
 
 #[no_mangle]
-pub extern fn a(a: u32, b: u32) -> u32 {
+pub extern "C" fn a(a: u32, b: u32) -> u32 {
     a / b
 }

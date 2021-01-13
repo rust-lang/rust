@@ -9,6 +9,6 @@
 #![feature(link_args)]
 
 #[link_args = "aFdEfSeVEEE"]
-extern {}
+extern "C" {}
 
-fn main() { }
+fn main() {}

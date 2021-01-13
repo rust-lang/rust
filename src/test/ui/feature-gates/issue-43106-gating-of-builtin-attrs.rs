@@ -536,7 +536,7 @@ mod link_name {
     //~^ WARN attribute should be applied to a foreign function or static [unused_attributes]
     //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     //~| HELP try `#[link(name = "1900")]` instead
-    extern { }
+    extern "C" { }
     //~^ NOTE not a foreign function or static
 
     mod inner { #![link_name="1900"] }

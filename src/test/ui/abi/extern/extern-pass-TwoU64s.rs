@@ -8,17 +8,18 @@
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct TwoU64s {
-    one: u64, two: u64
+    one: u64,
+    two: u64,
 }
 
 #[link(name = "rust_test_helpers", kind = "static")]
-extern {
+extern "C" {
     pub fn rust_dbg_extern_identity_TwoU64s(v: TwoU64s) -> TwoU64s;
 }
 
 pub fn main() {
     unsafe {
-        let x = TwoU64s {one: 22, two: 23};
+        let x = TwoU64s { one: 22, two: 23 };
         let y = rust_dbg_extern_identity_TwoU64s(x);
         assert_eq!(x, y);
     }

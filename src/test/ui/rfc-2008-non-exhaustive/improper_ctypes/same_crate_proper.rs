@@ -9,7 +9,7 @@
 pub enum NonExhaustiveEnum {
     Unit,
     Tuple(u32),
-    Struct { field: u32 }
+    Struct { field: u32 },
 }
 
 #[non_exhaustive]
@@ -25,16 +25,19 @@ pub struct UnitStruct;
 
 #[non_exhaustive]
 #[repr(C)]
-pub struct TupleStruct (pub u16, pub u16);
+pub struct TupleStruct(pub u16, pub u16);
 
 #[repr(C)]
 pub enum NonExhaustiveVariants {
-    #[non_exhaustive] Unit,
-    #[non_exhaustive] Tuple(u32),
-    #[non_exhaustive] Struct { field: u32 }
+    #[non_exhaustive]
+    Unit,
+    #[non_exhaustive]
+    Tuple(u32),
+    #[non_exhaustive]
+    Struct { field: u32 },
 }
 
-extern {
+extern "C" {
     // Unit structs aren't tested here because they will trigger `improper_ctypes` anyway.
     pub fn non_exhaustive_enum(_: NonExhaustiveEnum);
     pub fn non_exhaustive_normal_struct(_: NormalStruct);
@@ -42,4 +45,4 @@ extern {
     pub fn non_exhaustive_variant(_: NonExhaustiveVariants);
 }
 
-fn main() { }
+fn main() {}

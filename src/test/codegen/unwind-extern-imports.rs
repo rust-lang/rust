@@ -4,7 +4,7 @@
 #![crate_type = "lib"]
 #![feature(unwind_attributes)]
 
-extern {
+extern "C" {
 // CHECK: Function Attrs:{{.*}}nounwind
 // CHECK-NEXT: declare void @extern_fn
     fn extern_fn();

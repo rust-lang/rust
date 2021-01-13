@@ -2,7 +2,7 @@
 // ignore-wasm32-bare no libc for ffi testing
 
 #[link(name = "rust_test_helpers", kind = "static")]
-extern {
+extern "C" {
     pub fn rust_dbg_extern_identity_double(v: f64) -> f64;
 }
 

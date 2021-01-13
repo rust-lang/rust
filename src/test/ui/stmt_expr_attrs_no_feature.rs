@@ -89,7 +89,7 @@ item_mac!(e);
 
 // check that the gate visitor works right:
 
-extern {
+extern "C" {
     #[cfg(unset)]
     fn x(a: [u8; #[rustc_dummy] 5]);
     fn y(a: [u8; #[rustc_dummy] 5]); //~ ERROR attributes on expressions are experimental
