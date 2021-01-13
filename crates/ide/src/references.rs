@@ -13,9 +13,9 @@ pub(crate) mod rename;
 
 use hir::Semantics;
 use ide_db::{
+    base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
-    search::Reference,
-    search::{ReferenceAccess, ReferenceKind, SearchScope},
+    search::{FileReference, ReferenceAccess, ReferenceKind, SearchScope, UsageSearchResult},
     RootDatabase,
 };
 use syntax::{
@@ -29,7 +29,7 @@ use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeI
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
     declaration: Declaration,
-    references: Vec<Reference>,
+    references: UsageSearchResult,
 }
 
 #[derive(Debug, Clone)]
@@ -48,8 +48,19 @@ impl ReferenceSearchResult {
         &self.declaration.nav
     }
 
-    pub fn references(&self) -> &[Reference] {
+    pub fn references(&self) -> &UsageSearchResult {
         &self.references
+    }
+
+    pub fn references_with_declaration(mut self) -> UsageSearchResult {
+        let decl_ref = FileReference {
+            range: self.declaration.nav.focus_or_full_range(),
+            kind: self.declaration.kind,
+            access: self.declaration.access,
+        };
+        let file_id = self.declaration.nav.file_id;
+        self.references.references.entry(file_id).or_default().push(decl_ref);
+        self.references
     }
 
     /// Total number of references
@@ -63,21 +74,11 @@ impl ReferenceSearchResult {
 // allow turning ReferenceSearchResult into an iterator
 // over References
 impl IntoIterator for ReferenceSearchResult {
-    type Item = Reference;
-    type IntoIter = std::vec::IntoIter<Reference>;
+    type Item = (FileId, Vec<FileReference>);
+    type IntoIter = std::collections::hash_map::IntoIter<FileId, Vec<FileReference>>;
 
-    fn into_iter(mut self) -> Self::IntoIter {
-        let mut v = Vec::with_capacity(self.len());
-        v.push(Reference {
-            file_range: FileRange {
-                file_id: self.declaration.nav.file_id,
-                range: self.declaration.nav.focus_or_full_range(),
-            },
-            kind: self.declaration.kind,
-            access: self.declaration.access,
-        });
-        v.append(&mut self.references);
-        v.into_iter()
+    fn into_iter(self) -> Self::IntoIter {
+        self.references_with_declaration().into_iter()
     }
 }
 
@@ -109,13 +110,12 @@ pub(crate) fn find_all_refs(
 
     let RangeInfo { range, info: def } = find_name(&sema, &syntax, position, opt_name)?;
 
-    let references = def
-        .usages(sema)
-        .set_scope(search_scope)
-        .all()
-        .into_iter()
-        .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
-        .collect();
+    let mut usages = def.usages(sema).set_scope(search_scope).all();
+    usages
+        .references
+        .values_mut()
+        .for_each(|it| it.retain(|r| search_kind == ReferenceKind::Other || search_kind == r.kind));
+    usages.references.retain(|_, it| !it.is_empty());
 
     let nav = def.try_to_nav(sema.db)?;
     let decl_range = nav.focus_or_full_range();
@@ -139,7 +139,7 @@ pub(crate) fn find_all_refs(
 
     let declaration = Declaration { nav, kind, access: decl_access(&def, &syntax, decl_range) };
 
-    Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }))
+    Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references: usages }))
 }
 
 fn find_name(
@@ -255,7 +255,8 @@ fn try_find_self_references(
     syntax: &SyntaxNode,
     position: FilePosition,
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
-    let self_token = syntax.token_at_offset(position.offset).find(|t| t.kind() == T![self])?;
+    let FilePosition { file_id, offset } = position;
+    let self_token = syntax.token_at_offset(offset).find(|t| t.kind() == T![self])?;
     let parent = self_token.parent();
     match_ast! {
         match parent {
@@ -276,7 +277,7 @@ fn try_find_self_references(
 
     let declaration = Declaration {
         nav: NavigationTarget {
-            file_id: position.file_id,
+            file_id,
             full_range: self_param.syntax().text_range(),
             focus_range: Some(param_self_token.text_range()),
             name: param_self_token.text().clone(),
@@ -292,7 +293,7 @@ fn try_find_self_references(
             ReferenceAccess::Read
         }),
     };
-    let references = function
+    let refs = function
         .body()
         .map(|body| {
             body.syntax()
@@ -306,14 +307,16 @@ fn try_find_self_references(
                         None
                     }
                 })
-                .map(|token| Reference {
-                    file_range: FileRange { file_id: position.file_id, range: token.text_range() },
+                .map(|token| FileReference {
+                    range: token.text_range(),
                     kind: ReferenceKind::SelfKw,
                     access: declaration.access, // FIXME: properly check access kind here instead of copying it from the declaration
                 })
                 .collect()
         })
         .unwrap_or_default();
+    let mut references = UsageSearchResult::default();
+    references.references.insert(file_id, refs);
 
     Some(RangeInfo::new(
         param_self_token.text_range(),
@@ -1018,12 +1021,14 @@ impl Foo {
             actual += "\n\n";
         }
 
-        for r in &refs.references {
-            format_to!(actual, "{:?} {:?} {:?}", r.file_range.file_id, r.file_range.range, r.kind);
-            if let Some(access) = r.access {
-                format_to!(actual, " {:?}", access);
+        for (file_id, references) in refs.references {
+            for r in references {
+                format_to!(actual, "{:?} {:?} {:?}", file_id, r.range, r.kind);
+                if let Some(access) = r.access {
+                    format_to!(actual, " {:?}", access);
+                }
+                actual += "\n";
             }
-            actual += "\n";
         }
         expect.assert_eq(&actual)
     }

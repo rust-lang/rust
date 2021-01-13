@@ -47,22 +47,23 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
 
     let mut calls = CallLocations::default();
 
-    for reference in refs.info.references() {
-        let file_id = reference.file_range.file_id;
+    for (&file_id, references) in refs.info.references().iter() {
         let file = sema.parse(file_id);
         let file = file.syntax();
-        let token = file.token_at_offset(reference.file_range.range.start()).next()?;
-        let token = sema.descend_into_macros(token);
-        let syntax = token.parent();
+        for reference in references {
+            let token = file.token_at_offset(reference.range.start()).next()?;
+            let token = sema.descend_into_macros(token);
+            let syntax = token.parent();
 
-        // This target is the containing function
-        if let Some(nav) = syntax.ancestors().find_map(|node| {
-            let fn_ = ast::Fn::cast(node)?;
-            let def = sema.to_def(&fn_)?;
-            def.try_to_nav(sema.db)
-        }) {
-            let relative_range = reference.file_range.range;
-            calls.add(&nav, relative_range);
+            // This target is the containing function
+            if let Some(nav) = syntax.ancestors().find_map(|node| {
+                let fn_ = ast::Fn::cast(node)?;
+                let def = sema.to_def(&fn_)?;
+                def.try_to_nav(sema.db)
+            }) {
+                let relative_range = reference.range;
+                calls.add(&nav, relative_range);
+            }
         }
     }
 

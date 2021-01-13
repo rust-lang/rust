@@ -1,8 +1,8 @@
-use ide_db::{defs::Definition, search::Reference};
+use ide_db::{base_db::FileId, defs::Definition, search::FileReference};
 use syntax::{
     algo::find_node_at_range,
     ast::{self, ArgListOwner},
-    AstNode, SyntaxKind, SyntaxNode, TextRange, T,
+    AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, T,
 };
 use test_utils::mark;
 use SyntaxKind::WHITESPACE;
@@ -58,32 +58,41 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
         param.syntax().text_range(),
         |builder| {
             builder.delete(range_to_remove(param.syntax()));
-            for usage in fn_def.usages(&ctx.sema).all() {
-                process_usage(ctx, builder, usage, param_position);
+            for (file_id, references) in fn_def.usages(&ctx.sema).all() {
+                process_usages(ctx, builder, file_id, references, param_position);
             }
         },
     )
 }
 
-fn process_usage(
+fn process_usages(
     ctx: &AssistContext,
     builder: &mut AssistBuilder,
-    usage: Reference,
+    file_id: FileId,
+    references: Vec<FileReference>,
     arg_to_remove: usize,
-) -> Option<()> {
-    let source_file = ctx.sema.parse(usage.file_range.file_id);
-    let call_expr: ast::CallExpr =
-        find_node_at_range(source_file.syntax(), usage.file_range.range)?;
+) {
+    let source_file = ctx.sema.parse(file_id);
+    builder.edit_file(file_id);
+    for usage in references {
+        if let Some(text_range) = process_usage(&source_file, usage, arg_to_remove) {
+            builder.delete(text_range);
+        }
+    }
+}
+
+fn process_usage(
+    source_file: &SourceFile,
+    FileReference { range, .. }: FileReference,
+    arg_to_remove: usize,
+) -> Option<TextRange> {
+    let call_expr: ast::CallExpr = find_node_at_range(source_file.syntax(), range)?;
     let call_expr_range = call_expr.expr()?.syntax().text_range();
-    if !call_expr_range.contains_range(usage.file_range.range) {
+    if !call_expr_range.contains_range(range) {
         return None;
     }
     let arg = call_expr.arg_list()?.args().nth(arg_to_remove)?;
-
-    builder.edit_file(usage.file_range.file_id);
-    builder.delete(range_to_remove(arg.syntax()));
-
-    Some(())
+    Some(range_to_remove(arg.syntax()))
 }
 
 fn range_to_remove(node: &SyntaxNode) -> TextRange {

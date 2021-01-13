@@ -18,9 +18,43 @@ use crate::{
     RootDatabase,
 };
 
+#[derive(Debug, Default, Clone)]
+pub struct UsageSearchResult {
+    pub references: FxHashMap<FileId, Vec<FileReference>>,
+}
+
+impl UsageSearchResult {
+    pub fn is_empty(&self) -> bool {
+        self.references.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.references.len()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&FileId, &Vec<FileReference>)> + '_ {
+        self.references.iter()
+    }
+
+    pub fn file_ranges(&self) -> impl Iterator<Item = FileRange> + '_ {
+        self.references.iter().flat_map(|(&file_id, refs)| {
+            refs.iter().map(move |&FileReference { range, .. }| FileRange { file_id, range })
+        })
+    }
+}
+
+impl IntoIterator for UsageSearchResult {
+    type Item = (FileId, Vec<FileReference>);
+    type IntoIter = <FxHashMap<FileId, Vec<FileReference>> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.references.into_iter()
+    }
+}
+
 #[derive(Debug, Clone)]
-pub struct Reference {
-    pub file_range: FileRange,
+pub struct FileReference {
+    pub range: TextRange,
     pub kind: ReferenceKind,
     pub access: Option<ReferenceAccess>,
 }
@@ -252,23 +286,23 @@ impl<'a> FindUsages<'a> {
 
     pub fn at_least_one(self) -> bool {
         let mut found = false;
-        self.search(&mut |_reference| {
+        self.search(&mut |_, _| {
             found = true;
             true
         });
         found
     }
 
-    pub fn all(self) -> Vec<Reference> {
-        let mut res = Vec::new();
-        self.search(&mut |reference| {
-            res.push(reference);
+    pub fn all(self) -> UsageSearchResult {
+        let mut res = UsageSearchResult::default();
+        self.search(&mut |file_id, reference| {
+            res.references.entry(file_id).or_default().push(reference);
             false
         });
         res
     }
 
-    fn search(self, sink: &mut dyn FnMut(Reference) -> bool) {
+    fn search(self, sink: &mut dyn FnMut(FileId, FileReference) -> bool) {
         let _p = profile::span("FindUsages:search");
         let sema = self.sema;
 
@@ -320,16 +354,14 @@ impl<'a> FindUsages<'a> {
     fn found_lifetime(
         &self,
         lifetime: &ast::Lifetime,
-        sink: &mut dyn FnMut(Reference) -> bool,
+        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify_lifetime(self.sema, lifetime) {
             Some(NameRefClass::Definition(def)) if &def == self.def => {
-                let reference = Reference {
-                    file_range: self.sema.original_range(lifetime.syntax()),
-                    kind: ReferenceKind::Lifetime,
-                    access: None,
-                };
-                sink(reference)
+                let FileRange { file_id, range } = self.sema.original_range(lifetime.syntax());
+                let reference =
+                    FileReference { range, kind: ReferenceKind::Lifetime, access: None };
+                sink(file_id, reference)
             }
             _ => false, // not a usage
         }
@@ -338,7 +370,7 @@ impl<'a> FindUsages<'a> {
     fn found_name_ref(
         &self,
         name_ref: &ast::NameRef,
-        sink: &mut dyn FnMut(Reference) -> bool,
+        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, &name_ref) {
             Some(NameRefClass::Definition(def)) if &def == self.def => {
@@ -352,46 +384,50 @@ impl<'a> FindUsages<'a> {
                     ReferenceKind::Other
                 };
 
-                let reference = Reference {
-                    file_range: self.sema.original_range(name_ref.syntax()),
-                    kind,
-                    access: reference_access(&def, &name_ref),
-                };
-                sink(reference)
+                let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
+                let reference =
+                    FileReference { range, kind, access: reference_access(&def, &name_ref) };
+                sink(file_id, reference)
             }
             Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
+                let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = match self.def {
-                    Definition::Field(_) if &field == self.def => Reference {
-                        file_range: self.sema.original_range(name_ref.syntax()),
+                    Definition::Field(_) if &field == self.def => FileReference {
+                        range,
                         kind: ReferenceKind::FieldShorthandForField,
                         access: reference_access(&field, &name_ref),
                     },
-                    Definition::Local(l) if &local == l => Reference {
-                        file_range: self.sema.original_range(name_ref.syntax()),
+                    Definition::Local(l) if &local == l => FileReference {
+                        range,
                         kind: ReferenceKind::FieldShorthandForLocal,
                         access: reference_access(&Definition::Local(local), &name_ref),
                     },
                     _ => return false, // not a usage
                 };
-                sink(reference)
+                sink(file_id, reference)
             }
             _ => false, // not a usage
         }
     }
 
-    fn found_name(&self, name: &ast::Name, sink: &mut dyn FnMut(Reference) -> bool) -> bool {
+    fn found_name(
+        &self,
+        name: &ast::Name,
+        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+    ) -> bool {
         match NameClass::classify(self.sema, name) {
             Some(NameClass::PatFieldShorthand { local_def: _, field_ref }) => {
-                let reference = match self.def {
-                    Definition::Field(_) if &field_ref == self.def => Reference {
-                        file_range: self.sema.original_range(name.syntax()),
-                        kind: ReferenceKind::FieldShorthandForField,
-                        // FIXME: mutable patterns should have `Write` access
-                        access: Some(ReferenceAccess::Read),
-                    },
-                    _ => return false, // not a usage
+                if !matches!(self.def, Definition::Field(_) if &field_ref == self.def) {
+                    return false;
+                }
+                let FileRange { file_id, range } = self.sema.original_range(name.syntax());
+                let reference = FileReference {
+                    range,
+                    kind: ReferenceKind::FieldShorthandForField,
+                    // FIXME: mutable patterns should have `Write` access
+                    access: Some(ReferenceAccess::Read),
                 };
-                sink(reference)
+                sink(file_id, reference)
             }
             _ => false, // not a usage
         }

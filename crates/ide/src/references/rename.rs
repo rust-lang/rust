@@ -6,9 +6,10 @@ use std::{
 };
 
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
-use ide_db::base_db::{AnchoredPathBuf, FileId, FileRange, SourceDatabaseExt};
 use ide_db::{
+    base_db::{AnchoredPathBuf, FileId, FileRange, SourceDatabaseExt},
     defs::{Definition, NameClass, NameRefClass},
+    search::FileReference,
     RootDatabase,
 };
 use syntax::{
@@ -20,8 +21,8 @@ use test_utils::mark;
 use text_edit::TextEdit;
 
 use crate::{
-    FilePosition, FileSystemEdit, RangeInfo, Reference, ReferenceKind, ReferenceSearchResult,
-    SourceChange, SourceFileEdit, TextRange, TextSize,
+    FilePosition, FileSystemEdit, RangeInfo, ReferenceKind, ReferenceSearchResult, SourceChange,
+    SourceFileEdit, TextRange, TextSize,
 };
 
 type RenameResult<T> = Result<T, RenameError>;
@@ -173,39 +174,46 @@ fn find_all_refs(
         .ok_or_else(|| format_err!("No references found at position"))
 }
 
-fn source_edit_from_reference(
+fn source_edit_from_references(
     sema: &Semantics<RootDatabase>,
-    reference: Reference,
+    file_id: FileId,
+    references: &[FileReference],
     new_name: &str,
 ) -> SourceFileEdit {
-    let mut replacement_text = String::new();
-    let range = match reference.kind {
-        ReferenceKind::FieldShorthandForField => {
-            mark::hit!(test_rename_struct_field_for_shorthand);
-            replacement_text.push_str(new_name);
-            replacement_text.push_str(": ");
-            TextRange::new(reference.file_range.range.start(), reference.file_range.range.start())
-        }
-        ReferenceKind::FieldShorthandForLocal => {
-            mark::hit!(test_rename_local_for_field_shorthand);
-            replacement_text.push_str(": ");
-            replacement_text.push_str(new_name);
-            TextRange::new(reference.file_range.range.end(), reference.file_range.range.end())
-        }
-        ReferenceKind::RecordFieldExprOrPat => {
-            mark::hit!(test_rename_field_expr_pat);
-            replacement_text.push_str(new_name);
-            edit_text_range_for_record_field_expr_or_pat(sema, reference.file_range, new_name)
-        }
-        _ => {
-            replacement_text.push_str(new_name);
-            reference.file_range.range
-        }
-    };
-    SourceFileEdit {
-        file_id: reference.file_range.file_id,
-        edit: TextEdit::replace(range, replacement_text),
+    let mut edit = TextEdit::builder();
+    for reference in references {
+        let mut replacement_text = String::new();
+        let range = match reference.kind {
+            ReferenceKind::FieldShorthandForField => {
+                mark::hit!(test_rename_struct_field_for_shorthand);
+                replacement_text.push_str(new_name);
+                replacement_text.push_str(": ");
+                TextRange::new(reference.range.start(), reference.range.start())
+            }
+            ReferenceKind::FieldShorthandForLocal => {
+                mark::hit!(test_rename_local_for_field_shorthand);
+                replacement_text.push_str(": ");
+                replacement_text.push_str(new_name);
+                TextRange::new(reference.range.end(), reference.range.end())
+            }
+            ReferenceKind::RecordFieldExprOrPat => {
+                mark::hit!(test_rename_field_expr_pat);
+                replacement_text.push_str(new_name);
+                edit_text_range_for_record_field_expr_or_pat(
+                    sema,
+                    FileRange { file_id, range: reference.range },
+                    new_name,
+                )
+            }
+            _ => {
+                replacement_text.push_str(new_name);
+                reference.range
+            }
+        };
+        edit.replace(range, replacement_text);
     }
+
+    SourceFileEdit { file_id, edit: edit.finish() }
 }
 
 fn edit_text_range_for_record_field_expr_or_pat(
@@ -276,10 +284,9 @@ fn rename_mod(
     }
 
     let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
-    let ref_edits = refs
-        .references
-        .into_iter()
-        .map(|reference| source_edit_from_reference(sema, reference, new_name));
+    let ref_edits = refs.references().iter().map(|(&file_id, references)| {
+        source_edit_from_references(sema, file_id, references, new_name)
+    });
     source_file_edits.extend(ref_edits);
 
     Ok(RangeInfo::new(range, SourceChange::from_edits(source_file_edits, file_system_edits)))
@@ -331,17 +338,12 @@ fn rename_to_self(
 
     let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
 
-    let (param_ref, usages): (Vec<Reference>, Vec<Reference>) = refs
-        .into_iter()
-        .partition(|reference| param_range.intersect(reference.file_range.range).is_some());
-
-    if param_ref.is_empty() {
-        bail!("Parameter to rename not found");
-    }
-
-    let mut edits = usages
-        .into_iter()
-        .map(|reference| source_edit_from_reference(sema, reference, "self"))
+    let mut edits = refs
+        .references()
+        .iter()
+        .map(|(&file_id, references)| {
+            source_edit_from_references(sema, file_id, references, "self")
+        })
         .collect::<Vec<_>>();
 
     edits.push(SourceFileEdit {
@@ -467,7 +469,9 @@ fn rename_reference(
 
     let edit = refs
         .into_iter()
-        .map(|reference| source_edit_from_reference(sema, reference, new_name))
+        .map(|(file_id, references)| {
+            source_edit_from_references(sema, file_id, &references, new_name)
+        })
         .collect::<Vec<_>>();
 
     Ok(RangeInfo::new(range, SourceChange::from(edit)))

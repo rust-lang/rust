@@ -92,7 +92,7 @@ pub use ide_db::base_db::{
 };
 pub use ide_db::{
     call_info::CallInfo,
-    search::{Reference, ReferenceAccess, ReferenceKind},
+    search::{FileReference, ReferenceAccess, ReferenceKind},
 };
 pub use ide_db::{
     label::Label,
