@@ -1,8 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+* add `TextRange::ordering` method
+
 ## 1.0.0 :tada:
 
-* the carate is renmaed to `text-size` from `text_unit`
+* the carate is renamed to `text-size` from `text_unit`
 
 Transition table:
 - `TextUnit::of_char(c)`                ⟹ `TextSize::of(c)`

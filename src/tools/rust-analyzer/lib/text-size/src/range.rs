@@ -1,3 +1,5 @@
+use cmp::Ordering;
+
 use {
     crate::TextSize,
     std::{
@@ -293,6 +295,50 @@ impl TextRange {
             start: self.start.checked_sub(offset)?,
             end: self.end.checked_sub(offset)?,
         })
+    }
+
+    /// Relative order of the two ranges (overlapping ranges are considered
+    /// equal).
+    ///
+    ///
+    /// This is useful when, for example, binary searching an array of disjoint
+    /// ranges.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use text_size::*;
+    /// # use std::cmp::Ordering;
+    ///
+    /// let a = TextRange::new(0.into(), 3.into());
+    /// let b = TextRange::new(4.into(), 5.into());
+    /// assert_eq!(a.ordering(b), Ordering::Less);
+    ///
+    /// let a = TextRange::new(0.into(), 3.into());
+    /// let b = TextRange::new(3.into(), 5.into());
+    /// assert_eq!(a.ordering(b), Ordering::Less);
+    ///
+    /// let a = TextRange::new(0.into(), 3.into());
+    /// let b = TextRange::new(2.into(), 5.into());
+    /// assert_eq!(a.ordering(b), Ordering::Equal);
+    ///
+    /// let a = TextRange::new(0.into(), 3.into());
+    /// let b = TextRange::new(2.into(), 2.into());
+    /// assert_eq!(a.ordering(b), Ordering::Equal);
+    ///
+    /// let a = TextRange::new(2.into(), 3.into());
+    /// let b = TextRange::new(2.into(), 2.into());
+    /// assert_eq!(a.ordering(b), Ordering::Greater);
+    /// ```
+    #[inline]
+    pub fn ordering(self, other: TextRange) -> Ordering {
+        if self.end() <= other.start() {
+            Ordering::Less
+        } else if other.end() <= self.start() {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
     }
 }
 
