@@ -1174,7 +1174,7 @@ pub struct SplitAsciiWhitespace<'a> {
 /// See its documentation for more.
 ///
 /// [`split_inclusive`]: str::split_inclusive
-#[stable(feature = "split_inclusive", since = "1.49.0")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 pub struct SplitInclusive<'a, P: Pattern<'a>>(pub(super) SplitInternal<'a, P>);
 
 #[stable(feature = "split_whitespace", since = "1.1.0")]
@@ -1239,7 +1239,7 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl FusedIterator for SplitAsciiWhitespace<'_> {}
 
-#[stable(feature = "split_inclusive", since = "1.49.0")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
     type Item = &'a str;
 
@@ -1249,7 +1249,7 @@ impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
     }
 }
 
-#[stable(feature = "split_inclusive", since = "1.49.0")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitInclusive").field("0", &self.0).finish()
@@ -1257,14 +1257,14 @@ impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a,
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "split_inclusive", since = "1.49.0")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitInclusive<'a, P> {
     fn clone(&self) -> Self {
         SplitInclusive(self.0.clone())
     }
 }
 
-#[stable(feature = "split_inclusive", since = "1.49.0")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     for SplitInclusive<'a, P>
 {
@@ -1274,7 +1274,7 @@ impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     }
 }
 
-#[stable(feature = "split_inclusive", since = "1.49.0")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
 
 impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
