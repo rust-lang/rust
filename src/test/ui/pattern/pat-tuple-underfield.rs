@@ -2,6 +2,7 @@ struct S(i32, f32);
 enum E {
     S(i32, f32),
 }
+struct Point4(i32, i32, i32, i32);
 
 fn main() {
     match S(0, 1.0) {
@@ -41,5 +42,12 @@ fn main() {
         E::S => {}
         //~^ ERROR expected unit struct, unit variant or constant, found tuple variant `E::S`
         //~| HELP use the tuple variant pattern syntax instead
+    }
+
+    match Point4(0, 1, 2, 3) {
+        Point4(   a   ,     _    ) => {}
+        //~^ ERROR this pattern has 2 fields, but the corresponding tuple struct has 4 fields
+        //~| HELP use `_` to explicitly ignore each field
+        //~| HELP use `..` to ignore the rest of the fields
     }
 }
