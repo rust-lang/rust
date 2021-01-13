@@ -1335,11 +1335,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if matches!(generator_kind, GeneratorKind::Async(_)))
                 {
                     err.note(
-                        "async blocks are not executed immediately and either must take a \
+                        "async blocks are not executed immediately and must either take a \
                     reference or ownership of outside variables they use",
                     );
-                    err.help("see https://rust-lang.github.io/async-book/03_async_await/01_chapter.html#awaiting-on-a-multithreaded-executor \
-                        for more information");
                 } else {
                     let msg = format!("function requires argument type to outlive `{}`", fr_name);
                     err.span_note(constraint_span, &msg);
