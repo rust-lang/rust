@@ -1617,7 +1617,7 @@ pub enum Foo {}
 
 ## `imports_granularity`
 
-Merge together related imports based on their paths.
+How imports should be grouped into `use` statements. Imports will be merged or split to the configured level of granularity.
 
 - **Default value**: `Preserve`
 - **Possible values**: `Preserve`, `Crate`, `Module`
@@ -1625,7 +1625,7 @@ Merge together related imports based on their paths.
 
 #### `Preserve` (default):
 
-Do not perform any merging and preserve the original structure written by the developer.
+Do not change the granularity of any imports and preserve the original structure written by the developer.
 
 ```rust
 use foo::b;
