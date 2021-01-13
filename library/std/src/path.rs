@@ -2386,13 +2386,26 @@ impl Path {
         fs::read_dir(self)
     }
 
-    /// Returns `true` if the path points at an existing entity.
+    /// Returns `true` if the path points at an existing entity and syscall succeeds.
     ///
     /// This function will traverse symbolic links to query information about the
     /// destination file. In case of broken symbolic links this will return `false`.
     ///
-    /// If you cannot access the directory containing the file, e.g., because of a
-    /// permission error, this will return `false`.
+    /// # Caveats
+    ///
+    /// Checking if a file exists and then attempting to use it is vulnerable to race
+    /// conditions. It is better to attempt the operation and handle the error when it
+    /// fails.
+    ///
+    /// If you cannot access the metadata of the file, e.g., because of a permission
+    /// error on the containing directory, this will return `false`. In many cases this
+    /// is not desirable as it silently ignores error that might be serious.
+    ///
+    /// Sometimes existence of a file is not what's actually interesting for an
+    /// application but its accessibility. This function does **not** check if the file
+    /// is accessible by the calling user. Calling `access` on Unix (or a similar
+    /// syscall) would be more appropriate. Rust `std` currently does not provide such
+    /// method.
     ///
     /// # Examples
     ///
@@ -2405,6 +2418,18 @@ impl Path {
     ///
     /// This is a convenience function that coerces errors to false. If you want to
     /// check errors, call [`fs::metadata`].
+    ///
+    /// An example of proper error handling.
+    /// ```no_run
+    /// use std::path::Path;
+    /// use std::io::ErrorKind;
+    /// use std::fs::metadata;
+    /// let exists = metadata(Path::new("does_not_exist.txt"))
+    ///     .map(|_| true)
+    ///     .or_else(|error| if error.kind() == ErrorKind::NotFound { Ok(false) } else { Err(error) } )
+    ///     .expect("failed to check existence of a file");
+    /// assert!(!exists);
+    /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn exists(&self) -> bool {
         fs::metadata(self).is_ok()
