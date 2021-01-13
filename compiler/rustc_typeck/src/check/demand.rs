@@ -32,6 +32,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty) {
             return;
         }
+        self.suggest_no_capture_closure(err, expected, expr_ty);
         self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
         self.suggest_missing_parentheses(err, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
@@ -360,14 +361,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    fn replace_prefix(&self, s: &str, old: &str, new: &str) -> Option<String> {
-        if let Some(stripped) = s.strip_prefix(old) {
-            Some(new.to_string() + stripped)
-        } else {
-            None
-        }
-    }
-
     /// This function is used to determine potential "simple" improvements or users' errors and
     /// provide them useful help. For example:
     ///
@@ -398,6 +391,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
+        let replace_prefix = |s: &str, old: &str, new: &str| {
+            s.strip_prefix(old).map(|stripped| new.to_string() + stripped)
+        };
+
         let is_struct_pat_shorthand_field =
             self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, sp);
 
@@ -413,7 +410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(src) = self.replace_prefix(&src, "b\"", "\"") {
+                            if let Some(src) = replace_prefix(&src, "b\"", "\"") {
                                 return Some((
                                     sp,
                                     "consider removing the leading `b`",
@@ -427,7 +424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(src) = self.replace_prefix(&src, "\"", "b\"") {
+                            if let Some(src) = replace_prefix(&src, "\"", "b\"") {
                                 return Some((
                                     sp,
                                     "consider adding a leading `b`",
@@ -552,11 +549,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // we may want to suggest removing a `&`.
                 if sm.is_imported(expr.span) {
                     if let Ok(src) = sm.span_to_snippet(sp) {
-                        if let Some(src) = self.replace_prefix(&src, "&", "") {
+                        if let Some(src) = src.strip_prefix('&') {
                             return Some((
                                 sp,
                                 "consider removing the borrow",
-                                src,
+                                src.to_string(),
                                 Applicability::MachineApplicable,
                             ));
                         }
@@ -588,22 +585,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     let new_prefix = "&mut ".to_owned() + derefs;
                                     match mutbl_a {
                                         hir::Mutability::Mut => {
-                                            if let Some(s) =
-                                                self.replace_prefix(&src, "&mut ", &new_prefix)
-                                            {
-                                                Some((s, Applicability::MachineApplicable))
-                                            } else {
-                                                None
-                                            }
+                                            replace_prefix(&src, "&mut ", &new_prefix)
+                                                .map(|s| (s, Applicability::MachineApplicable))
                                         }
                                         hir::Mutability::Not => {
-                                            if let Some(s) =
-                                                self.replace_prefix(&src, "&", &new_prefix)
-                                            {
-                                                Some((s, Applicability::Unspecified))
-                                            } else {
-                                                None
-                                            }
+                                            replace_prefix(&src, "&", &new_prefix)
+                                                .map(|s| (s, Applicability::Unspecified))
                                         }
                                     }
                                 }
@@ -611,22 +598,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     let new_prefix = "&".to_owned() + derefs;
                                     match mutbl_a {
                                         hir::Mutability::Mut => {
-                                            if let Some(s) =
-                                                self.replace_prefix(&src, "&mut ", &new_prefix)
-                                            {
-                                                Some((s, Applicability::MachineApplicable))
-                                            } else {
-                                                None
-                                            }
+                                            replace_prefix(&src, "&mut ", &new_prefix)
+                                                .map(|s| (s, Applicability::MachineApplicable))
                                         }
                                         hir::Mutability::Not => {
-                                            if let Some(s) =
-                                                self.replace_prefix(&src, "&", &new_prefix)
-                                            {
-                                                Some((s, Applicability::MachineApplicable))
-                                            } else {
-                                                None
-                                            }
+                                            replace_prefix(&src, "&", &new_prefix)
+                                                .map(|s| (s, Applicability::MachineApplicable))
                                         }
                                     }
                                 }

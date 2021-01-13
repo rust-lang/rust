@@ -611,7 +611,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
             visitor.visit_enum_def(enum_definition, generics, item.hir_id, item.span)
         }
-        ItemKind::Impl {
+        ItemKind::Impl(Impl {
             unsafety: _,
             defaultness: _,
             polarity: _,
@@ -621,7 +621,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             ref of_trait,
             ref self_ty,
             items,
-        } => {
+        }) => {
             visitor.visit_id(item.hir_id);
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_trait_ref, of_trait);
@@ -877,7 +877,12 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
     match param.kind {
         GenericParamKind::Lifetime { .. } => {}
         GenericParamKind::Type { ref default, .. } => walk_list!(visitor, visit_ty, default),
-        GenericParamKind::Const { ref ty } => visitor.visit_ty(ty),
+        GenericParamKind::Const { ref ty, ref default } => {
+            visitor.visit_ty(ty);
+            if let Some(ref default) = default {
+                visitor.visit_anon_const(default);
+            }
+        }
     }
     walk_list!(visitor, visit_param_bound, param.bounds);
 }
@@ -891,8 +896,8 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
     visitor: &mut V,
     predicate: &'v WherePredicate<'v>,
 ) {
-    match predicate {
-        &WherePredicate::BoundPredicate(WhereBoundPredicate {
+    match *predicate {
+        WherePredicate::BoundPredicate(WhereBoundPredicate {
             ref bounded_ty,
             bounds,
             bound_generic_params,
@@ -902,11 +907,11 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_generic_param, bound_generic_params);
         }
-        &WherePredicate::RegionPredicate(WhereRegionPredicate { ref lifetime, bounds, .. }) => {
+        WherePredicate::RegionPredicate(WhereRegionPredicate { ref lifetime, bounds, .. }) => {
             visitor.visit_lifetime(lifetime);
             walk_list!(visitor, visit_param_bound, bounds);
         }
-        &WherePredicate::EqPredicate(WhereEqPredicate {
+        WherePredicate::EqPredicate(WhereEqPredicate {
             hir_id, ref lhs_ty, ref rhs_ty, ..
         }) => {
             visitor.visit_id(hir_id);
@@ -1191,7 +1196,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, optional_expression);
         }
         ExprKind::InlineAsm(ref asm) => {
-            for op in asm.operands {
+            for (op, _op_sp) in asm.operands {
                 match op {
                     InlineAsmOperand::In { expr, .. }
                     | InlineAsmOperand::InOut { expr, .. }
@@ -1228,6 +1233,10 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) {
     if let Some(ref g) = arm.guard {
         match g {
             Guard::If(ref e) => visitor.visit_expr(e),
+            Guard::IfLet(ref pat, ref e) => {
+                visitor.visit_pat(pat);
+                visitor.visit_expr(e);
+            }
         }
     }
     visitor.visit_expr(&arm.body);

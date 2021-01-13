@@ -34,6 +34,7 @@
 //! the target's settings, though `target-feature` and `link-args` will *add*
 //! to the list specified by the target, rather than replace.
 
+use crate::abi::Endian;
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_serialize::json::{Json, ToJson};
@@ -407,6 +408,8 @@ pub enum LinkOutputKind {
     DynamicDylib,
     /// Dynamic library with bundled libc ("statically linked").
     StaticDylib,
+    /// WASI module with a lifetime past the _initialize entry point
+    WasiReactorExe,
 }
 
 impl LinkOutputKind {
@@ -418,6 +421,7 @@ impl LinkOutputKind {
             LinkOutputKind::StaticPicExe => "static-pic-exe",
             LinkOutputKind::DynamicDylib => "dynamic-dylib",
             LinkOutputKind::StaticDylib => "static-dylib",
+            LinkOutputKind::WasiReactorExe => "wasi-reactor-exe",
         }
     }
 
@@ -429,6 +433,7 @@ impl LinkOutputKind {
             "static-pic-exe" => LinkOutputKind::StaticPicExe,
             "dynamic-dylib" => LinkOutputKind::DynamicDylib,
             "static-dylib" => LinkOutputKind::StaticDylib,
+            "wasi-reactor-exe" => LinkOutputKind::WasiReactorExe,
             _ => return None,
         })
     }
@@ -504,6 +509,7 @@ supported_targets! {
     ("armv4t-unknown-linux-gnueabi", armv4t_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-gnueabi", armv5te_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-musleabi", armv5te_unknown_linux_musleabi),
+    ("armv5te-unknown-linux-uclibceabi", armv5te_unknown_linux_uclibceabi),
     ("armv7-unknown-linux-gnueabi", armv7_unknown_linux_gnueabi),
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("thumbv7neon-unknown-linux-gnueabihf", thumbv7neon_unknown_linux_gnueabihf),
@@ -704,8 +710,8 @@ pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
     pub is_builtin: bool,
 
-    /// String to use as the `target_endian` `cfg` variable. Defaults to "little".
-    pub endian: String,
+    /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
+    pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
     pub c_int_width: String,
     /// OS name to use for conditional compilation (`target_os`). Defaults to "none".
@@ -1009,7 +1015,7 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             is_builtin: false,
-            endian: "little".to_string(),
+            endian: Endian::Little,
             c_int_width: "32".to_string(),
             os: "none".to_string(),
             env: String::new(),
@@ -1376,7 +1382,7 @@ impl Target {
                         let kind = LinkOutputKind::from_str(&k).ok_or_else(|| {
                             format!("{}: '{}' is not a valid value for CRT object kind. \
                                      Use '(dynamic,static)-(nopic,pic)-exe' or \
-                                     '(dynamic,static)-dylib'", name, k)
+                                     '(dynamic,static)-dylib' or 'wasi-reactor-exe'", name, k)
                         })?;
 
                         let v = v.as_array().ok_or_else(||
@@ -1438,8 +1444,10 @@ impl Target {
             } );
         }
 
+        if let Some(s) = obj.find("target-endian").and_then(Json::as_string) {
+            base.endian = s.parse()?;
+        }
         key!(is_builtin, bool);
-        key!(endian = "target-endian");
         key!(c_int_width = "target-c-int-width");
         key!(os);
         key!(env);
@@ -1797,6 +1805,24 @@ impl TargetTriple {
     pub fn from_path(path: &Path) -> Result<Self, io::Error> {
         let canonicalized_path = path.canonicalize()?;
         Ok(TargetTriple::TargetPath(canonicalized_path))
+    }
+
+    /// Creates a target triple from its alias
+    pub fn from_alias(triple: String) -> Self {
+        macro_rules! target_aliases {
+            ( $(($alias:literal, $target:literal ),)+ ) => {
+                match triple.as_str() {
+                    $( $alias => TargetTriple::from_triple($target), )+
+                    _ => TargetTriple::TargetTriple(triple),
+                }
+            }
+        }
+
+        target_aliases! {
+            // `x86_64-pc-solaris` is an alias for `x86_64_sun_solaris` for backwards compatibility reasons.
+            // (See <https://github.com/rust-lang/rust/issues/40531>.)
+            ("x86_64-pc-solaris", "x86_64-sun-solaris"),
+        }
     }
 
     /// Returns a string triple for this target.

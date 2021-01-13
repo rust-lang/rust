@@ -6,7 +6,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::Node;
+use rustc_hir::{HirId, Node};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::util::IntTypeExt;
@@ -22,7 +22,6 @@ use super::{bad_placeholder_type, is_suggestable_infer_ty};
 /// This should be called using the query `tcx.opt_const_param_of`.
 pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DefId> {
     use hir::*;
-
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     if let Node::AnonConst(_) = tcx.hir().get(hir_id) {
@@ -62,9 +61,9 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             }
 
             Node::Ty(&Ty { kind: TyKind::Path(_), .. })
-            | Node::Expr(&Expr { kind: ExprKind::Struct(..), .. })
-            | Node::Expr(&Expr { kind: ExprKind::Path(_), .. })
-            | Node::TraitRef(..) => {
+            | Node::Expr(&Expr { kind: ExprKind::Path(_) | ExprKind::Struct(..), .. })
+            | Node::TraitRef(..)
+            | Node::Pat(_) => {
                 let path = match parent_node {
                     Node::Ty(&Ty { kind: TyKind::Path(QPath::Resolved(_, path)), .. })
                     | Node::TraitRef(&TraitRef { path, .. }) => &*path,
@@ -79,6 +78,20 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         let _tables = tcx.typeck(body_owner);
                         &*path
                     }
+                    Node::Pat(pat) => {
+                        if let Some(path) = get_path_containing_arg_in_pat(pat, hir_id) {
+                            path
+                        } else {
+                            tcx.sess.delay_span_bug(
+                                tcx.def_span(def_id),
+                                &format!(
+                                    "unable to find const parent for {} in pat {:?}",
+                                    hir_id, pat
+                                ),
+                            );
+                            return None;
+                        }
+                    }
                     _ => {
                         tcx.sess.delay_span_bug(
                             tcx.def_span(def_id),
@@ -91,7 +104,6 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 // We've encountered an `AnonConst` in some path, so we need to
                 // figure out which generic parameter it corresponds to and return
                 // the relevant type.
-
                 let (arg_index, segment) = path
                     .segments
                     .iter()
@@ -142,6 +154,34 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
     } else {
         None
     }
+}
+
+fn get_path_containing_arg_in_pat<'hir>(
+    pat: &'hir hir::Pat<'hir>,
+    arg_id: HirId,
+) -> Option<&'hir hir::Path<'hir>> {
+    use hir::*;
+
+    let is_arg_in_path = |p: &hir::Path<'_>| {
+        p.segments
+            .iter()
+            .filter_map(|seg| seg.args)
+            .flat_map(|args| args.args)
+            .any(|arg| arg.id() == arg_id)
+    };
+    let mut arg_path = None;
+    pat.walk(|pat| match pat.kind {
+        PatKind::Struct(QPath::Resolved(_, path), _, _)
+        | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
+        | PatKind::Path(QPath::Resolved(_, path))
+            if is_arg_in_path(path) =>
+        {
+            arg_path = Some(path);
+            false
+        }
+        _ => true,
+    });
+    arg_path
 }
 
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
@@ -203,9 +243,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         icx.to_ty(ty)
                     }
                 }
-                ItemKind::TyAlias(ref self_ty, _) | ItemKind::Impl { ref self_ty, .. } => {
-                    icx.to_ty(self_ty)
-                }
+                ItemKind::TyAlias(ref self_ty, _)
+                | ItemKind::Impl(hir::Impl { ref self_ty, .. }) => icx.to_ty(self_ty),
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
                     tcx.mk_fn_def(def_id.to_def_id(), substs)

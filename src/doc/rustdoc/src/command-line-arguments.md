@@ -237,6 +237,26 @@ for a target triple that's different than your host triple.
 
 All of the usual caveats of cross-compiling code apply.
 
+## `--default-theme`: set the default theme
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --default-theme=ayu
+```
+
+Sets the default theme (for users whose browser has not remembered a
+previous theme selection from the on-page theme picker).
+
+The supplied value should be the lowercase version of the theme name.
+The set of available themes can be seen in the theme picker in the
+generated output.
+
+Note that the set of available themes - and their appearance - is not
+necessarily stable from one rustdoc version to the next.  If the
+requested theme does not exist, the builtin default (currently
+`light`) is used instead.
+
 ## `--markdown-css`: include more CSS files when rendering markdown
 
 Using this flag looks like this:

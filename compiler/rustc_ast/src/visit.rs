@@ -15,7 +15,6 @@
 
 use crate::ast::*;
 use crate::token;
-use crate::tokenstream::TokenTree;
 
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -578,7 +577,12 @@ pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Generi
     match param.kind {
         GenericParamKind::Lifetime => (),
         GenericParamKind::Type { ref default } => walk_list!(visitor, visit_ty, default),
-        GenericParamKind::Const { ref ty, .. } => visitor.visit_ty(ty),
+        GenericParamKind::Const { ref ty, ref default, .. } => {
+            visitor.visit_ty(ty);
+            if let Some(default) = default {
+                visitor.visit_anon_const(default);
+            }
+        }
     }
 }
 
@@ -900,13 +904,9 @@ pub fn walk_mac_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a MacArgs) {
         MacArgs::Delimited(_dspan, _delim, _tokens) => {}
         // The value in `#[key = VALUE]` must be visited as an expression for backward
         // compatibility, so that macros can be expanded in that position.
-        MacArgs::Eq(_eq_span, tokens) => match tokens.trees_ref().next() {
-            Some(TokenTree::Token(token)) => match &token.kind {
-                token::Interpolated(nt) => match &**nt {
-                    token::NtExpr(expr) => visitor.visit_expr(expr),
-                    t => panic!("unexpected token in key-value attribute: {:?}", t),
-                },
-                token::Literal(..) | token::Ident(..) => {}
+        MacArgs::Eq(_eq_span, token) => match &token.kind {
+            token::Interpolated(nt) => match &**nt {
+                token::NtExpr(expr) => visitor.visit_expr(expr),
                 t => panic!("unexpected token in key-value attribute: {:?}", t),
             },
             t => panic!("unexpected token in key-value attribute: {:?}", t),

@@ -501,7 +501,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 Ok(sig)
             }
-            hir::ItemKind::Impl {
+            hir::ItemKind::Impl(hir::Impl {
                 unsafety,
                 polarity,
                 defaultness,
@@ -511,7 +511,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 ref of_trait,
                 ref self_ty,
                 items: _,
-            } => {
+            }) => {
                 let mut text = String::new();
                 if let hir::Defaultness::Default { .. } = defaultness {
                     text.push_str("default ");
@@ -614,9 +614,12 @@ impl<'hir> Sig for hir::Generics<'hir> {
                 start: offset + text.len(),
                 end: offset + text.len() + param_text.as_str().len(),
             });
-            if let hir::GenericParamKind::Const { ref ty } = param.kind {
+            if let hir::GenericParamKind::Const { ref ty, ref default } = param.kind {
                 param_text.push_str(": ");
                 param_text.push_str(&ty_to_string(&ty));
+                if let Some(ref _default) = default {
+                    // FIXME(const_generics_defaults): push the `default` value here
+                }
             }
             if !param.bounds.is_empty() {
                 param_text.push_str(": ");

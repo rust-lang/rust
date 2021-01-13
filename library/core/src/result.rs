@@ -368,8 +368,6 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an [`Option<T>`], consuming `self`,
     /// and discarding the error, if any.
     ///
-    /// [`Option<T>`]: Option
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -394,8 +392,6 @@ impl<T, E> Result<T, E> {
     ///
     /// Converts `self` into an [`Option<E>`], consuming `self`,
     /// and discarding the success value, if any.
-    ///
-    /// [`Option<E>`]: Option
     ///
     /// # Examples
     ///
@@ -1009,8 +1005,6 @@ impl<T: fmt::Debug, E> Result<T, E> {
     /// Panics if the value is an [`Ok`], with a custom panic message provided
     /// by the [`Ok`]'s value.
     ///
-    ///
-    ///
     /// # Examples
     ///
     /// ```{.should_panic}
@@ -1184,7 +1178,9 @@ impl<T, E> Result<Result<T, E>, E> {
     /// Converts from `Result<Result<T, E>, E>` to `Result<T, E>`
     ///
     /// # Examples
+    ///
     /// Basic usage:
+    ///
     /// ```
     /// #![feature(result_flattening)]
     /// let x: Result<Result<&'static str, u32>, u32> = Ok(Ok("hello"));
@@ -1197,7 +1193,7 @@ impl<T, E> Result<Result<T, E>, E> {
     /// assert_eq!(Err(6), x.flatten());
     /// ```
     ///
-    /// Flattening once only removes one level of nesting:
+    /// Flattening only removes one level of nesting at a time:
     ///
     /// ```
     /// #![feature(result_flattening)]

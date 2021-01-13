@@ -13,7 +13,7 @@ LL |     let _closure = || orig;
    |                    |
    |                    value used here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `orig`
+note: this function takes ownership of the receiver `self`, which moves `orig`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;

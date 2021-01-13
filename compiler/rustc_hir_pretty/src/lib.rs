@@ -138,9 +138,6 @@ impl std::ops::DerefMut for State<'_> {
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn insert_extra_parens(&self) -> bool {
-        true
-    }
     fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
     }
@@ -687,7 +684,7 @@ impl<'a> State<'a> {
                 self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, item.ident.name, item.span, true);
             }
-            hir::ItemKind::Impl {
+            hir::ItemKind::Impl(hir::Impl {
                 unsafety,
                 polarity,
                 defaultness,
@@ -697,7 +694,7 @@ impl<'a> State<'a> {
                 ref of_trait,
                 ref self_ty,
                 items,
-            } => {
+            }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_defaultness(defaultness);
@@ -1462,7 +1459,7 @@ impl<'a> State<'a> {
 
                 let mut args = vec![];
                 args.push(AsmArg::Template(ast::InlineAsmTemplatePiece::to_string(&a.template)));
-                args.extend(a.operands.iter().map(|o| AsmArg::Operand(o)));
+                args.extend(a.operands.iter().map(|(o, _)| AsmArg::Operand(o)));
                 if !a.options.is_empty() {
                     args.push(AsmArg::Options(a.options));
                 }
@@ -2002,6 +1999,15 @@ impl<'a> State<'a> {
                     self.print_expr(&e);
                     self.s.space();
                 }
+                hir::Guard::IfLet(pat, e) => {
+                    self.word_nbsp("if");
+                    self.word_nbsp("let");
+                    self.print_pat(&pat);
+                    self.s.space();
+                    self.word_space("=");
+                    self.print_expr(&e);
+                    self.s.space();
+                }
             }
         }
         self.word_space("=>");
@@ -2196,9 +2202,12 @@ impl<'a> State<'a> {
                     self.print_type(&default)
                 }
             }
-            GenericParamKind::Const { ref ty } => {
+            GenericParamKind::Const { ref ty, ref default } => {
                 self.word_space(":");
-                self.print_type(ty)
+                self.print_type(ty);
+                if let Some(ref _default) = default {
+                    // FIXME(const_generics_defaults): print the `default` value here
+                }
             }
         }
     }
@@ -2221,19 +2230,19 @@ impl<'a> State<'a> {
             }
 
             match predicate {
-                &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    ref bound_generic_params,
-                    ref bounded_ty,
+                hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                    bound_generic_params,
+                    bounded_ty,
                     bounds,
                     ..
                 }) => {
                     self.print_formal_generic_params(bound_generic_params);
                     self.print_type(&bounded_ty);
-                    self.print_bounds(":", bounds);
+                    self.print_bounds(":", *bounds);
                 }
-                &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
-                    ref lifetime,
-                    ref bounds,
+                hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
+                    lifetime,
+                    bounds,
                     ..
                 }) => {
                     self.print_lifetime(lifetime);
@@ -2252,10 +2261,8 @@ impl<'a> State<'a> {
                         }
                     }
                 }
-                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    ref lhs_ty,
-                    ref rhs_ty,
-                    ..
+                hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
+                    lhs_ty, rhs_ty, ..
                 }) => {
                     self.print_type(lhs_ty);
                     self.s.space();

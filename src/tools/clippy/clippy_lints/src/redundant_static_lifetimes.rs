@@ -1,8 +1,11 @@
-use crate::utils::{snippet, span_lint_and_then};
+use crate::utils::{meets_msrv, snippet, span_lint_and_then};
 use rustc_ast::ast::{Item, ItemKind, Ty, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
+
+const REDUNDANT_STATIC_LIFETIMES_MSRV: RustcVersion = RustcVersion::new(1, 17, 0);
 
 declare_clippy_lint! {
     /// **What it does:** Checks for constants and statics with an explicit `'static` lifetime.
@@ -29,7 +32,18 @@ declare_clippy_lint! {
     "Using explicit `'static` lifetime for constants or statics when elision rules would allow omitting them."
 }
 
-declare_lint_pass!(RedundantStaticLifetimes => [REDUNDANT_STATIC_LIFETIMES]);
+pub struct RedundantStaticLifetimes {
+    msrv: Option<RustcVersion>,
+}
+
+impl RedundantStaticLifetimes {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
+
+impl_lint_pass!(RedundantStaticLifetimes => [REDUNDANT_STATIC_LIFETIMES]);
 
 impl RedundantStaticLifetimes {
     // Recursively visit types
@@ -84,6 +98,10 @@ impl RedundantStaticLifetimes {
 
 impl EarlyLintPass for RedundantStaticLifetimes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
+        if !meets_msrv(self.msrv.as_ref(), &REDUNDANT_STATIC_LIFETIMES_MSRV) {
+            return;
+        }
+
         if !item.span.from_expansion() {
             if let ItemKind::Const(_, ref var_type, _) = item.kind {
                 self.visit_type(var_type, cx, "constants have by default a `'static` lifetime");
@@ -96,4 +114,6 @@ impl EarlyLintPass for RedundantStaticLifetimes {
             }
         }
     }
+
+    extract_msrv_attr!(EarlyContext);
 }

@@ -2,9 +2,9 @@
 #![feature(core_intrinsics)]
 #![feature(const_size_of_val, const_align_of_val)]
 
-use std::intrinsics::{size_of_val, min_align_of_val};
+use std::intrinsics::{min_align_of_val, size_of_val};
 
-extern {
+extern "C" {
     type Opaque;
 }
 

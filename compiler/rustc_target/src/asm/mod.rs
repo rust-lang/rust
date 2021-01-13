@@ -20,16 +20,16 @@ macro_rules! def_reg_class {
         }
 
         impl $arch_regclass {
-            pub fn name(self) -> &'static str {
+            pub fn name(self) -> rustc_span::Symbol {
                 match self {
-                    $(Self::$class => stringify!($class),)*
+                    $(Self::$class => rustc_span::symbol::sym::$class,)*
                 }
             }
 
-            pub fn parse(_arch: super::InlineAsmArch, name: &str) -> Result<Self, &'static str> {
+            pub fn parse(_arch: super::InlineAsmArch, name: rustc_span::Symbol) -> Result<Self, &'static str> {
                 match name {
                     $(
-                        stringify!($class) => Ok(Self::$class),
+                        rustc_span::sym::$class => Ok(Self::$class),
                     )*
                     _ => Err("unknown register class"),
                 }
@@ -156,6 +156,7 @@ mod mips;
 mod nvptx;
 mod riscv;
 mod spirv;
+mod wasm;
 mod x86;
 
 pub use aarch64::{AArch64InlineAsmReg, AArch64InlineAsmRegClass};
@@ -165,6 +166,7 @@ pub use mips::{MipsInlineAsmReg, MipsInlineAsmRegClass};
 pub use nvptx::{NvptxInlineAsmReg, NvptxInlineAsmRegClass};
 pub use riscv::{RiscVInlineAsmReg, RiscVInlineAsmRegClass};
 pub use spirv::{SpirVInlineAsmReg, SpirVInlineAsmRegClass};
+pub use wasm::{WasmInlineAsmReg, WasmInlineAsmRegClass};
 pub use x86::{X86InlineAsmReg, X86InlineAsmRegClass};
 
 #[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, Hash)]
@@ -180,6 +182,7 @@ pub enum InlineAsmArch {
     Mips,
     Mips64,
     SpirV,
+    Wasm32,
 }
 
 impl FromStr for InlineAsmArch {
@@ -198,6 +201,7 @@ impl FromStr for InlineAsmArch {
             "mips" => Ok(Self::Mips),
             "mips64" => Ok(Self::Mips64),
             "spirv" => Ok(Self::SpirV),
+            "wasm32" => Ok(Self::Wasm32),
             _ => Err(()),
         }
     }
@@ -213,6 +217,7 @@ pub enum InlineAsmReg {
     Hexagon(HexagonInlineAsmReg),
     Mips(MipsInlineAsmReg),
     SpirV(SpirVInlineAsmReg),
+    Wasm(WasmInlineAsmReg),
 }
 
 impl InlineAsmReg {
@@ -272,6 +277,9 @@ impl InlineAsmReg {
             InlineAsmArch::SpirV => {
                 Self::SpirV(SpirVInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
+            InlineAsmArch::Wasm32 => {
+                Self::Wasm(WasmInlineAsmReg::parse(arch, has_feature, target, &name)?)
+            }
         })
     }
 
@@ -315,10 +323,11 @@ pub enum InlineAsmRegClass {
     Hexagon(HexagonInlineAsmRegClass),
     Mips(MipsInlineAsmRegClass),
     SpirV(SpirVInlineAsmRegClass),
+    Wasm(WasmInlineAsmRegClass),
 }
 
 impl InlineAsmRegClass {
-    pub fn name(self) -> &'static str {
+    pub fn name(self) -> Symbol {
         match self {
             Self::X86(r) => r.name(),
             Self::Arm(r) => r.name(),
@@ -328,6 +337,7 @@ impl InlineAsmRegClass {
             Self::Hexagon(r) => r.name(),
             Self::Mips(r) => r.name(),
             Self::SpirV(r) => r.name(),
+            Self::Wasm(r) => r.name(),
         }
     }
 
@@ -344,6 +354,7 @@ impl InlineAsmRegClass {
             Self::Hexagon(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Hexagon),
             Self::Mips(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Mips),
             Self::SpirV(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::SpirV),
+            Self::Wasm(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Wasm),
         }
     }
 
@@ -367,6 +378,7 @@ impl InlineAsmRegClass {
             Self::Hexagon(r) => r.suggest_modifier(arch, ty),
             Self::Mips(r) => r.suggest_modifier(arch, ty),
             Self::SpirV(r) => r.suggest_modifier(arch, ty),
+            Self::Wasm(r) => r.suggest_modifier(arch, ty),
         }
     }
 
@@ -386,6 +398,7 @@ impl InlineAsmRegClass {
             Self::Hexagon(r) => r.default_modifier(arch),
             Self::Mips(r) => r.default_modifier(arch),
             Self::SpirV(r) => r.default_modifier(arch),
+            Self::Wasm(r) => r.default_modifier(arch),
         }
     }
 
@@ -404,32 +417,27 @@ impl InlineAsmRegClass {
             Self::Hexagon(r) => r.supported_types(arch),
             Self::Mips(r) => r.supported_types(arch),
             Self::SpirV(r) => r.supported_types(arch),
+            Self::Wasm(r) => r.supported_types(arch),
         }
     }
 
     pub fn parse(arch: InlineAsmArch, name: Symbol) -> Result<Self, &'static str> {
-        // FIXME: use direct symbol comparison for register class names
-        name.with(|name| {
-            Ok(match arch {
-                InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
-                    Self::X86(X86InlineAsmRegClass::parse(arch, name)?)
-                }
-                InlineAsmArch::Arm => Self::Arm(ArmInlineAsmRegClass::parse(arch, name)?),
-                InlineAsmArch::AArch64 => {
-                    Self::AArch64(AArch64InlineAsmRegClass::parse(arch, name)?)
-                }
-                InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
-                    Self::RiscV(RiscVInlineAsmRegClass::parse(arch, name)?)
-                }
-                InlineAsmArch::Nvptx64 => Self::Nvptx(NvptxInlineAsmRegClass::parse(arch, name)?),
-                InlineAsmArch::Hexagon => {
-                    Self::Hexagon(HexagonInlineAsmRegClass::parse(arch, name)?)
-                }
-                InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
-                    Self::Mips(MipsInlineAsmRegClass::parse(arch, name)?)
-                }
-                InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmRegClass::parse(arch, name)?),
-            })
+        Ok(match arch {
+            InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
+                Self::X86(X86InlineAsmRegClass::parse(arch, name)?)
+            }
+            InlineAsmArch::Arm => Self::Arm(ArmInlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::AArch64 => Self::AArch64(AArch64InlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
+                Self::RiscV(RiscVInlineAsmRegClass::parse(arch, name)?)
+            }
+            InlineAsmArch::Nvptx64 => Self::Nvptx(NvptxInlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
+                Self::Mips(MipsInlineAsmRegClass::parse(arch, name)?)
+            }
+            InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::Wasm32 => Self::Wasm(WasmInlineAsmRegClass::parse(arch, name)?),
         })
     }
 
@@ -445,6 +453,7 @@ impl InlineAsmRegClass {
             Self::Hexagon(r) => r.valid_modifiers(arch),
             Self::Mips(r) => r.valid_modifiers(arch),
             Self::SpirV(r) => r.valid_modifiers(arch),
+            Self::Wasm(r) => r.valid_modifiers(arch),
         }
     }
 }
@@ -468,7 +477,7 @@ impl fmt::Display for InlineAsmRegOrRegClass {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Reg(r) => write!(f, "\"{}\"", r.name()),
-            Self::RegClass(r) => f.write_str(r.name()),
+            Self::RegClass(r) => write!(f, "{}", r.name()),
         }
     }
 }
@@ -590,6 +599,11 @@ pub fn allocatable_registers(
         InlineAsmArch::SpirV => {
             let mut map = spirv::regclass_map();
             spirv::fill_reg_map(arch, has_feature, target, &mut map);
+            map
+        }
+        InlineAsmArch::Wasm32 => {
+            let mut map = wasm::regclass_map();
+            wasm::fill_reg_map(arch, has_feature, target, &mut map);
             map
         }
     }

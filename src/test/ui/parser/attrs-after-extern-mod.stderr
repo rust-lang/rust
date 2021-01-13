@@ -1,8 +1,8 @@
 error: expected item after attributes
   --> $DIR/attrs-after-extern-mod.rs:6:5
    |
-LL | extern {
-   |        - while parsing this item list starting here
+LL | extern "C" {
+   |            - while parsing this item list starting here
 LL |     #[cfg(stage37)]
    |     ^^^^^^^^^^^^^^^
 LL | }

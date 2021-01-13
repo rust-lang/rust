@@ -3,8 +3,6 @@ error[E0477]: the type `&'a i32` does not fulfill the required lifetime
    |
 LL |     foo::<&'a i32>();
    |     ^^^^^^^^^^^^^^
-   |
-   = note: type must outlive any other region
 
 error: aborting due to previous error
 

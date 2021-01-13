@@ -1,12 +1,12 @@
 error: large size difference between variants
-  --> $DIR/large_enum_variant.rs:7:5
+  --> $DIR/large_enum_variant.rs:12:5
    |
 LL |     B([i32; 8000]),
    |     ^^^^^^^^^^^^^^ this variant is 32000 bytes
    |
    = note: `-D clippy::large-enum-variant` implied by `-D warnings`
 note: and the second-largest variant is 4 bytes:
-  --> $DIR/large_enum_variant.rs:6:5
+  --> $DIR/large_enum_variant.rs:11:5
    |
 LL |     A(i32),
    |     ^^^^^^
@@ -16,13 +16,13 @@ LL |     B(Box<[i32; 8000]>),
    |       ^^^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> $DIR/large_enum_variant.rs:31:5
+  --> $DIR/large_enum_variant.rs:36:5
    |
 LL |     ContainingLargeEnum(LargeEnum),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this variant is 32004 bytes
    |
 note: and the second-largest variant is 8 bytes:
-  --> $DIR/large_enum_variant.rs:30:5
+  --> $DIR/large_enum_variant.rs:35:5
    |
 LL |     VariantOk(i32, u32),
    |     ^^^^^^^^^^^^^^^^^^^
@@ -32,30 +32,30 @@ LL |     ContainingLargeEnum(Box<LargeEnum>),
    |                         ^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> $DIR/large_enum_variant.rs:41:5
+  --> $DIR/large_enum_variant.rs:46:5
    |
 LL |     StructLikeLarge { x: [i32; 8000], y: i32 },
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this variant is 32004 bytes
    |
 note: and the second-largest variant is 8 bytes:
-  --> $DIR/large_enum_variant.rs:40:5
+  --> $DIR/large_enum_variant.rs:45:5
    |
 LL |     VariantOk(i32, u32),
    |     ^^^^^^^^^^^^^^^^^^^
 help: consider boxing the large fields to reduce the total size of the enum
-  --> $DIR/large_enum_variant.rs:41:5
+  --> $DIR/large_enum_variant.rs:46:5
    |
 LL |     StructLikeLarge { x: [i32; 8000], y: i32 },
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> $DIR/large_enum_variant.rs:46:5
+  --> $DIR/large_enum_variant.rs:51:5
    |
 LL |     StructLikeLarge2 { x: [i32; 8000] },
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this variant is 32000 bytes
    |
 note: and the second-largest variant is 8 bytes:
-  --> $DIR/large_enum_variant.rs:45:5
+  --> $DIR/large_enum_variant.rs:50:5
    |
 LL |     VariantOk(i32, u32),
    |     ^^^^^^^^^^^^^^^^^^^

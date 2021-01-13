@@ -274,16 +274,19 @@ impl ModuleConfig {
     }
 }
 
-// HACK(eddyb) work around `#[derive]` producing wrong bounds for `Clone`.
-pub struct TargetMachineFactory<B: WriteBackendMethods>(
-    pub Arc<dyn Fn() -> Result<B::TargetMachine, String> + Send + Sync>,
-);
-
-impl<B: WriteBackendMethods> Clone for TargetMachineFactory<B> {
-    fn clone(&self) -> Self {
-        TargetMachineFactory(self.0.clone())
-    }
+/// Configuration passed to the function returned by the `target_machine_factory`.
+pub struct TargetMachineFactoryConfig {
+    /// Split DWARF is enabled in LLVM by checking that `TM.MCOptions.SplitDwarfFile` isn't empty,
+    /// so the path to the dwarf object has to be provided when we create the target machine.
+    /// This can be ignored by backends which do not need it for their Split DWARF support.
+    pub split_dwarf_file: Option<PathBuf>,
 }
+
+pub type TargetMachineFactoryFn<B> = Arc<
+    dyn Fn(TargetMachineFactoryConfig) -> Result<<B as WriteBackendMethods>::TargetMachine, String>
+        + Send
+        + Sync,
+>;
 
 pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportLevel)>>>;
 
@@ -305,12 +308,13 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub regular_module_config: Arc<ModuleConfig>,
     pub metadata_module_config: Arc<ModuleConfig>,
     pub allocator_module_config: Arc<ModuleConfig>,
-    pub tm_factory: TargetMachineFactory<B>,
+    pub tm_factory: TargetMachineFactoryFn<B>,
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
     pub target_pointer_width: u32,
     pub target_arch: String,
     pub debuginfo: config::DebugInfo,
+    pub split_dwarf_kind: config::SplitDwarfKind,
 
     // Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
@@ -627,6 +631,12 @@ fn produce_final_output_artifacts(
                 }
             }
 
+            if let Some(ref path) = module.dwarf_object {
+                if !keep_numbered_objects {
+                    remove(sess, path);
+                }
+            }
+
             if let Some(ref path) = module.bytecode {
                 if !keep_numbered_bitcode {
                     remove(sess, path);
@@ -849,6 +859,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         name: module.name,
         kind: ModuleKind::Regular,
         object,
+        dwarf_object: None,
         bytecode: None,
     }))
 }
@@ -1020,13 +1031,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
         regular_module_config: regular_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
-        tm_factory: TargetMachineFactory(backend.target_machine_factory(tcx.sess, ol)),
+        tm_factory: backend.target_machine_factory(tcx.sess, ol),
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
         target_pointer_width: tcx.sess.target.pointer_width,
         target_arch: tcx.sess.target.arch.clone(),
         debuginfo: tcx.sess.opts.debuginfo,
+        split_dwarf_kind: tcx.sess.opts.debugging_opts.split_dwarf,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.

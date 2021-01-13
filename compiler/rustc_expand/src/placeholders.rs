@@ -258,12 +258,9 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
 
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         match item.kind {
-            ast::ItemKind::MacCall(_) => return self.remove(item.id).make_items(),
-            ast::ItemKind::MacroDef(_) => return smallvec![item],
-            _ => {}
+            ast::ItemKind::MacCall(_) => self.remove(item.id).make_items(),
+            _ => noop_flat_map_item(item, self),
         }
-
-        noop_flat_map_item(item, self)
     }
 
     fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {

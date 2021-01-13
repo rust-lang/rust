@@ -30,7 +30,8 @@ pub enum DiagnosticId {
     Lint { name: String, has_future_breakage: bool },
 }
 
-/// For example a note attached to an error.
+/// A "sub"-diagnostic attached to a parent diagnostic.
+/// For example, a note attached to an error.
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub struct SubDiagnostic {
     pub level: Level,
@@ -124,6 +125,7 @@ impl Diagnostic {
         self.level = Level::Cancelled;
     }
 
+    /// Check if this diagnostic [was cancelled][Self::cancel()].
     pub fn cancelled(&self) -> bool {
         self.level == Level::Cancelled
     }
@@ -136,8 +138,6 @@ impl Diagnostic {
     ///
     /// This span is *not* considered a ["primary span"][`MultiSpan`]; only
     /// the `Span` supplied when creating the diagnostic is primary.
-    ///
-    /// [`MultiSpan`]: ../rustc_span/struct.MultiSpan.html
     pub fn span_label<T: Into<String>>(&mut self, span: Span, label: T) -> &mut Self {
         self.span.push_span_label(span, label.into());
         self
@@ -164,7 +164,7 @@ impl Diagnostic {
         self.note_expected_found_extra(expected_label, expected, found_label, found, &"", &"")
     }
 
-    pub fn note_unsuccessfull_coercion(
+    pub fn note_unsuccessful_coercion(
         &mut self,
         expected: DiagnosticStyledString,
         found: DiagnosticStyledString,
@@ -241,6 +241,7 @@ impl Diagnostic {
         self
     }
 
+    /// Add a note attached to this diagnostic.
     pub fn note(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, MultiSpan::new(), None);
         self
@@ -252,33 +253,40 @@ impl Diagnostic {
     }
 
     /// Prints the span with a note above it.
+    /// This is like [`Diagnostic::note()`], but it gets its own span.
     pub fn span_note<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, sp.into(), None);
         self
     }
 
+    /// Add a warning attached to this diagnostic.
     pub fn warn(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, MultiSpan::new(), None);
         self
     }
 
-    /// Prints the span with a warn above it.
+    /// Prints the span with a warning above it.
+    /// This is like [`Diagnostic::warn()`], but it gets its own span.
     pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, sp.into(), None);
         self
     }
 
+    /// Add a help message attached to this diagnostic.
     pub fn help(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, MultiSpan::new(), None);
         self
     }
 
     /// Prints the span with some help above it.
+    /// This is like [`Diagnostic::help()`], but it gets its own span.
     pub fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, sp.into(), None);
         self
     }
 
+    /// Show a suggestion that has multiple parts to it.
+    /// In other words, multiple changes need to be applied as part of this suggestion.
     pub fn multipart_suggestion(
         &mut self,
         msg: &str,
@@ -299,6 +307,8 @@ impl Diagnostic {
         self
     }
 
+    /// Show multiple suggestions that have multiple parts.
+    /// See also [`Diagnostic::multipart_suggestion()`].
     pub fn multipart_suggestions(
         &mut self,
         msg: &str,
@@ -382,6 +392,7 @@ impl Diagnostic {
         self
     }
 
+    /// [`Diagnostic::span_suggestion()`] but you can set the [`SuggestionStyle`].
     pub fn span_suggestion_with_style(
         &mut self,
         sp: Span,
@@ -401,6 +412,7 @@ impl Diagnostic {
         self
     }
 
+    /// Always show the suggested change.
     pub fn span_suggestion_verbose(
         &mut self,
         sp: Span,
@@ -419,6 +431,7 @@ impl Diagnostic {
     }
 
     /// Prints out a message with multiple suggested edits of the code.
+    /// See also [`Diagnostic::span_suggestion()`].
     pub fn span_suggestions(
         &mut self,
         sp: Span,
@@ -458,7 +471,7 @@ impl Diagnostic {
         self
     }
 
-    /// Prints out a message with for a suggestion without showing the suggested code.
+    /// Prints out a message for a suggestion without showing the suggested code.
     ///
     /// This is intended to be used for suggestions that are obvious in what the changes need to
     /// be from the message, showing the span label inline would be visually unpleasant
@@ -481,7 +494,7 @@ impl Diagnostic {
         self
     }
 
-    /// Adds a suggestion to the json output, but otherwise remains silent/undisplayed in the cli.
+    /// Adds a suggestion to the JSON output that will not be shown in the CLI.
     ///
     /// This is intended to be used for suggestions that are *very* obvious in what the changes
     /// need to be from the message, but we still want other tools to be able to apply them.

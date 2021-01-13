@@ -1,11 +1,11 @@
 error: `&'static ()` is forbidden as the type of a const generic parameter
-  --> $DIR/transmute-const-param-static-reference.rs:3:23
+  --> $DIR/transmute-const-param-static-reference.rs:1:23
    |
 LL | struct Const<const P: &'static ()>;
    |                       ^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: aborting due to previous error
 

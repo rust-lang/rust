@@ -1,9 +1,11 @@
-//! The `SourceMap` tracks all the source code used within a single crate, mapping
+//! Types for tracking pieces of source code within a crate.
+//!
+//! The [`SourceMap`] tracks all the source code used within a single crate, mapping
 //! from integer byte positions to the original source code location. Each bit
 //! of source parsed during crate parsing (typically files, in-memory strings,
 //! or various bits of macro expansion) cover a continuous range of bytes in the
-//! `SourceMap` and are represented by `SourceFile`s. Byte positions are stored in
-//! `Span` and used pervasively in the compiler. They are absolute positions
+//! `SourceMap` and are represented by [`SourceFile`]s. Byte positions are stored in
+//! [`Span`] and used pervasively in the compiler. They are absolute positions
 //! within the `SourceMap`, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
@@ -623,7 +625,7 @@ impl SourceMap {
         self.span_to_source(sp, |src, start_index, end_index| {
             src.get(start_index..end_index)
                 .map(|s| s.to_string())
-                .ok_or_else(|| SpanSnippetError::IllFormedSpan(sp))
+                .ok_or(SpanSnippetError::IllFormedSpan(sp))
         })
     }
 
@@ -640,9 +642,7 @@ impl SourceMap {
     /// Returns the source snippet as `String` before the given `Span`.
     pub fn span_to_prev_source(&self, sp: Span) -> Result<String, SpanSnippetError> {
         self.span_to_source(sp, |src, start_index, _| {
-            src.get(..start_index)
-                .map(|s| s.to_string())
-                .ok_or_else(|| SpanSnippetError::IllFormedSpan(sp))
+            src.get(..start_index).map(|s| s.to_string()).ok_or(SpanSnippetError::IllFormedSpan(sp))
         })
     }
 
@@ -671,7 +671,9 @@ impl SourceMap {
             let pat = pat.to_owned() + ws;
             if let Ok(prev_source) = self.span_to_prev_source(sp) {
                 let prev_source = prev_source.rsplit(&pat).next().unwrap_or("").trim_start();
-                if !prev_source.is_empty() && (!prev_source.contains('\n') || accept_newlines) {
+                if prev_source.is_empty() && sp.lo().0 != 0 {
+                    return sp.with_lo(BytePos(sp.lo().0 - 1));
+                } else if !prev_source.contains('\n') || accept_newlines {
                     return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
                 }
             }
@@ -870,8 +872,10 @@ impl SourceMap {
     }
 
     pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {
+        // Remap filename before lookup
+        let filename = self.path_mapping().map_filename_prefix(filename).0;
         for sf in self.files.borrow().source_files.iter() {
-            if *filename == sf.name {
+            if filename == sf.name {
                 return Some(sf.clone());
             }
         }
@@ -1038,5 +1042,16 @@ impl FilePathMapping {
         }
 
         (path, false)
+    }
+
+    fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
+        match file {
+            FileName::Real(realfile) => {
+                let path = realfile.local_path();
+                let (path, mapped) = self.map_prefix(path.to_path_buf());
+                (FileName::Real(RealFileName::Named(path)), mapped)
+            }
+            other => (other.clone(), false),
+        }
     }
 }

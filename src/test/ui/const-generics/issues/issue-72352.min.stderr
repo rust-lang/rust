@@ -1,5 +1,5 @@
 error: using function pointers as const generic parameters is forbidden
-  --> $DIR/issue-72352.rs:8:42
+  --> $DIR/issue-72352.rs:7:42
    |
 LL | unsafe fn unsafely_do_the_thing<const F: fn(&CStr) -> usize>(ptr: *const i8) -> usize {
    |                                          ^^^^^^^^^^^^^^^^^^

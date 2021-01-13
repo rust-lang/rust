@@ -22,5 +22,9 @@ fn main() -> Result<(), Errors> {
 
     println!("{:?}", x.map_err(|_| Errors::Ignored));
 
+    // Should not warn you because you explicitly ignore the parameter
+    // using a named wildcard value
+    println!("{:?}", x.map_err(|_foo| Errors::Ignored));
+
     Ok(())
 }

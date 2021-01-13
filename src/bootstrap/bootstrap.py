@@ -192,8 +192,10 @@ def default_build_triple(verbose):
     # If the user already has a host build triple with an existing `rustc`
     # install, use their preference. This fixes most issues with Windows builds
     # being detected as GNU instead of MSVC.
+    default_encoding = sys.getdefaultencoding()
     try:
         version = subprocess.check_output(["rustc", "--version", "--verbose"])
+        version = version.decode(default_encoding)
         host = next(x for x in version.split('\n') if x.startswith("host: "))
         triple = host.split("host: ")[1]
         if verbose:
@@ -204,7 +206,6 @@ def default_build_triple(verbose):
             print("rustup not detected: {}".format(e))
             print("falling back to auto-detect")
 
-    default_encoding = sys.getdefaultencoding()
     required = sys.platform != 'win32'
     ostype = require(["uname", "-s"], exit=required)
     cputype = require(['uname', '-m'], exit=required)
@@ -350,11 +351,13 @@ def output(filepath):
     with open(tmp, 'w') as f:
         yield f
     try:
-        os.remove(filepath)  # PermissionError/OSError on Win32 if in use
-        os.rename(tmp, filepath)
+        if os.path.exists(filepath):
+            os.remove(filepath)  # PermissionError/OSError on Win32 if in use
     except OSError:
         shutil.copy2(tmp, filepath)
         os.remove(tmp)
+        return
+    os.rename(tmp, filepath)
 
 
 class RustBuild(object):
@@ -390,7 +393,7 @@ class RustBuild(object):
 
         if self.rustc().startswith(self.bin_root()) and \
                 (not os.path.exists(self.rustc()) or
-                 self.program_out_of_date(self.rustc_stamp())):
+                 self.program_out_of_date(self.rustc_stamp(), self.date)):
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
@@ -410,7 +413,7 @@ class RustBuild(object):
             lib_dir = "{}/lib".format(self.bin_root())
             for lib in os.listdir(lib_dir):
                 if lib.endswith(".so"):
-                    self.fix_bin_or_dylib("{}/{}".format(lib_dir, lib))
+                    self.fix_bin_or_dylib(os.path.join(lib_dir, lib), rpath_libz=True)
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(self.date)
 
@@ -426,7 +429,7 @@ class RustBuild(object):
                 self.fix_bin_or_dylib("{}/bin/rustfmt".format(self.bin_root()))
                 self.fix_bin_or_dylib("{}/bin/cargo-fmt".format(self.bin_root()))
                 with output(self.rustfmt_stamp()) as rustfmt_stamp:
-                    rustfmt_stamp.write(self.date + self.rustfmt_channel)
+                    rustfmt_stamp.write(self.rustfmt_channel)
 
         if self.downloading_llvm():
             # We want the most recent LLVM submodule update to avoid downloading
@@ -448,12 +451,17 @@ class RustBuild(object):
                 "{}/src/bootstrap/download-ci-llvm-stamp".format(top_level),
             ]).decode(sys.getdefaultencoding()).strip()
             llvm_assertions = self.get_toml('assertions', 'llvm') == 'true'
+            llvm_root = self.llvm_root()
+            llvm_lib = os.path.join(llvm_root, "lib")
             if self.program_out_of_date(self.llvm_stamp(), llvm_sha + str(llvm_assertions)):
                 self._download_ci_llvm(llvm_sha, llvm_assertions)
                 for binary in ["llvm-config", "FileCheck"]:
-                    self.fix_bin_or_dylib("{}/bin/{}".format(self.llvm_root(), binary))
+                    self.fix_bin_or_dylib(os.path.join(llvm_root, "bin", binary), rpath_libz=True)
+                for lib in os.listdir(llvm_lib):
+                    if lib.endswith(".so"):
+                        self.fix_bin_or_dylib(os.path.join(llvm_lib, lib), rpath_libz=True)
                 with output(self.llvm_stamp()) as llvm_stamp:
-                    llvm_stamp.write(self.date + llvm_sha + str(llvm_assertions))
+                    llvm_stamp.write(llvm_sha + str(llvm_assertions))
 
     def downloading_llvm(self):
         opt = self.get_toml('download-ci-llvm', 'llvm')
@@ -484,7 +492,12 @@ class RustBuild(object):
         url = "https://ci-artifacts.rust-lang.org/rustc-builds/{}".format(llvm_sha)
         if llvm_assertions:
             url = url.replace('rustc-builds', 'rustc-builds-alt')
-        tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
+        # ci-artifacts are only stored as .xz, not .gz
+        if not support_xz():
+            print("error: XZ support is required to download LLVM")
+            print("help: consider disabling `download-ci-llvm` or using python3")
+            exit(1)
+        tarball_suffix = '.tar.xz'
         filename = "rust-dev-nightly-" + self.build + tarball_suffix
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
@@ -493,7 +506,7 @@ class RustBuild(object):
                 match="rust-dev",
                 verbose=self.verbose)
 
-    def fix_bin_or_dylib(self, fname):
+    def fix_bin_or_dylib(self, fname, rpath_libz=False):
         """Modifies the interpreter section of 'fname' to fix the dynamic linker,
         or the RPATH section, to fix the dynamic library search path
 
@@ -563,20 +576,22 @@ class RustBuild(object):
             self.nix_deps_dir = nix_deps_dir
 
         patchelf = "{}/patchelf/bin/patchelf".format(nix_deps_dir)
+        patchelf_args = []
 
-        if fname.endswith(".so"):
-            # Dynamic library, patch RPATH to point to system dependencies.
+        if rpath_libz:
+            # Patch RPATH to add `zlib` dependency that stems from LLVM
             dylib_deps = ["zlib"]
             rpath_entries = [
                 # Relative default, all binary and dynamic libraries we ship
                 # appear to have this (even when `../lib` is redundant).
                 "$ORIGIN/../lib",
             ] + ["{}/{}/lib".format(nix_deps_dir, dep) for dep in dylib_deps]
-            patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
-        else:
+            patchelf_args += ["--set-rpath", ":".join(rpath_entries)]
+        if not fname.endswith(".so"):
+            # Finally, set the corret .interp for binaries
             bintools_dir = "{}/stdenv.cc.bintools".format(nix_deps_dir)
             with open("{}/nix-support/dynamic-linker".format(bintools_dir)) as dynamic_linker:
-                patchelf_args = ["--set-interpreter", dynamic_linker.read().rstrip()]
+                patchelf_args += ["--set-interpreter", dynamic_linker.read().rstrip()]
 
         try:
             subprocess.check_output([patchelf] + patchelf_args + [fname])
@@ -615,12 +630,12 @@ class RustBuild(object):
         return os.path.join(self.llvm_root(), '.llvm-stamp')
 
 
-    def program_out_of_date(self, stamp_path, extra=""):
+    def program_out_of_date(self, stamp_path, key):
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
             return True
         with open(stamp_path, 'r') as stamp:
-            return (self.date + extra) != stamp.read()
+            return key != stamp.read()
 
     def bin_root(self):
         """Return the binary root directory
@@ -794,7 +809,7 @@ class RustBuild(object):
         env.setdefault("RUSTFLAGS", "")
         env["RUSTFLAGS"] += " -Cdebuginfo=2"
 
-        build_section = "target.{}".format(self.build_triple())
+        build_section = "target.{}".format(self.build)
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
             target_features += ["+crt-static"]
@@ -825,7 +840,11 @@ class RustBuild(object):
         run(args, env=env, verbose=self.verbose)
 
     def build_triple(self):
-        """Build triple as in LLVM"""
+        """Build triple as in LLVM
+
+        Note that `default_build_triple` is moderately expensive,
+        so use `self.build` where possible.
+        """
         config = self.get_toml('build')
         if config:
             return config
@@ -892,13 +911,17 @@ class RustBuild(object):
         filtered_submodules = []
         submodules_names = []
         llvm_checked_out = os.path.exists(os.path.join(self.rust_root, "src/llvm-project/.git"))
+        external_llvm_provided = self.get_toml('llvm-config') or self.downloading_llvm()
+        llvm_needed = not self.get_toml('codegen-backends', 'rust') \
+            or "llvm" in self.get_toml('codegen-backends', 'rust')
         for module in submodules:
             if module.endswith("llvm-project"):
-                # Don't sync the llvm-project submodule either if an external LLVM
-                # was provided, or if we are downloading LLVM. Also, if the
-                # submodule has been initialized already, sync it anyways so that
-                # it doesn't mess up contributor pull requests.
-                if self.get_toml('llvm-config') or self.downloading_llvm():
+                # Don't sync the llvm-project submodule if an external LLVM was
+                # provided, if we are downloading LLVM or if the LLVM backend is
+                # not being built. Also, if the submodule has been initialized
+                # already, sync it anyways so that it doesn't mess up contributor
+                # pull requests.
+                if external_llvm_provided or not llvm_needed:
                     if self.get_toml('lld') != 'true' and not llvm_checked_out:
                         continue
             check = self.check_submodule(module, slow_submodules)

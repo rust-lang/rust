@@ -13,7 +13,9 @@ error[E0282]: type annotations needed for `impl Future`
 LL |     let fut = async {
    |         --- consider giving `fut` the explicit type `impl Future`, with the type parameters specified
 LL |         make_unit()?;
-   |                    ^ cannot infer type
+   |                    ^ cannot infer type of error for `?` operator
+   |
+   = note: `?` implicitly converts the error value into a type implementing `From<std::io::Error>`
 
 error: aborting due to previous error; 1 warning emitted
 

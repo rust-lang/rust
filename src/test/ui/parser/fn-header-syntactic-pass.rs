@@ -37,11 +37,11 @@ fn syntax() {
         const async unsafe extern "C" fn f();
     }
 
-    extern {
-        async fn f();
-        unsafe fn f();
-        const fn f();
-        extern "C" fn f();
-        const async unsafe extern "C" fn f();
+    extern "C" {
+        fn f();
+        fn f();
+        fn f();
+        fn f();
+        fn f();
     }
 }

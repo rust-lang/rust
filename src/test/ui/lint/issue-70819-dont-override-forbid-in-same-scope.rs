@@ -17,11 +17,11 @@
 fn forbid_first(num: i32) -> i32 {
     #![forbid(unused)]
     #![deny(unused)]
-    //~^ ERROR: deny(unused) incompatible with previous forbid in same scope [E0453]
+    //~^ ERROR: deny(unused) incompatible with previous forbid
     #![warn(unused)]
-    //~^ ERROR: warn(unused) incompatible with previous forbid in same scope [E0453]
+    //~^ ERROR: warn(unused) incompatible with previous forbid
     #![allow(unused)]
-    //~^ ERROR: allow(unused) incompatible with previous forbid in same scope [E0453]
+    //~^ ERROR: allow(unused) incompatible with previous forbid
 
     num * num
 }

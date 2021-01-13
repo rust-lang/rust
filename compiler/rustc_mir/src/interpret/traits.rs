@@ -56,11 +56,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // If you touch this code, be sure to also make the corresponding changes to
         // `get_vtable` in `rust_codegen_llvm/meth.rs`.
         // /////////////////////////////////////////////////////////////////////////////////////////
-        let vtable = self.memory.allocate(
-            ptr_size * u64::try_from(methods.len()).unwrap().checked_add(3).unwrap(),
-            ptr_align,
-            MemoryKind::Vtable,
-        );
+        let vtable_size = ptr_size * u64::try_from(methods.len()).unwrap().checked_add(3).unwrap();
+        let vtable = self.memory.allocate(vtable_size, ptr_align, MemoryKind::Vtable);
 
         let drop = Instance::resolve_drop_in_place(tcx, ty);
         let drop = self.memory.create_fn_alloc(FnVal::Instance(drop));
@@ -92,6 +89,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
             }
         }
+
+        M::after_static_mem_initialized(self, vtable, vtable_size)?;
 
         self.memory.mark_immutable(vtable.alloc_id)?;
         assert!(self.vtables.insert((ty, poly_trait_ref), vtable).is_none());

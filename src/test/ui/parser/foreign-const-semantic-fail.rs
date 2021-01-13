@@ -1,6 +1,6 @@
 fn main() {}
 
-extern {
+extern "C" {
     const A: isize;
     //~^ ERROR extern items cannot be `const`
     const B: isize = 42;

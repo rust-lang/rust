@@ -302,6 +302,7 @@ define_tables! {
     // As an optimization, a missing entry indicates an empty `&[]`.
     explicit_item_bounds: Table<DefIndex, Lazy!([(ty::Predicate<'tcx>, Span)])>,
     mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
+    mir_for_ctfe: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
     mir_abstract_consts: Table<DefIndex, Lazy!(&'tcx [mir::abstract_const::Node<'tcx>])>,
     unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u32>>>,

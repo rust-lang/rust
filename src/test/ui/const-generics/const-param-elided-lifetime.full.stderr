@@ -1,29 +1,29 @@
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:11:19
+  --> $DIR/const-param-elided-lifetime.rs:10:19
    |
 LL | struct A<const N: &u8>;
    |                   ^ explicit lifetime name needed here
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:16:15
+  --> $DIR/const-param-elided-lifetime.rs:15:15
    |
 LL | impl<const N: &u8> A<N> {
    |               ^ explicit lifetime name needed here
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:19:21
+  --> $DIR/const-param-elided-lifetime.rs:18:21
    |
 LL |     fn foo<const M: &u8>(&self) {}
    |                     ^ explicit lifetime name needed here
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:24:15
+  --> $DIR/const-param-elided-lifetime.rs:23:15
    |
 LL | impl<const N: &u8> B for A<N> {}
    |               ^ explicit lifetime name needed here
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:28:17
+  --> $DIR/const-param-elided-lifetime.rs:27:17
    |
 LL | fn bar<const N: &u8>() {}
    |                 ^ explicit lifetime name needed here

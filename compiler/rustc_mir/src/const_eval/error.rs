@@ -20,6 +20,7 @@ pub enum ConstEvalErrKind {
     ModifiedGlobal,
     AssertFailure(AssertKind<ConstInt>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
+    Abort(String),
 }
 
 // The errors become `MachineStop` with plain strings when being raised.
@@ -46,6 +47,7 @@ impl fmt::Display for ConstEvalErrKind {
             Panic { msg, line, col, file } => {
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)
             }
+            Abort(ref msg) => write!(f, "{}", msg),
         }
     }
 }

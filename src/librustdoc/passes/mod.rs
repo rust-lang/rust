@@ -14,9 +14,6 @@ crate use stripper::*;
 mod non_autolinks;
 crate use self::non_autolinks::CHECK_NON_AUTOLINKS;
 
-mod collapse_docs;
-crate use self::collapse_docs::COLLAPSE_DOCS;
-
 mod strip_hidden;
 crate use self::strip_hidden::STRIP_HIDDEN;
 
@@ -84,7 +81,6 @@ crate const PASSES: &[Pass] = &[
     CHECK_PRIVATE_ITEMS_DOC_TESTS,
     STRIP_HIDDEN,
     UNINDENT_COMMENTS,
-    COLLAPSE_DOCS,
     STRIP_PRIVATE,
     STRIP_PRIV_IMPORTS,
     PROPAGATE_DOC_CFG,
@@ -99,7 +95,6 @@ crate const PASSES: &[Pass] = &[
 /// The list of passes run by default.
 crate const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
-    ConditionalPass::always(COLLAPSE_DOCS),
     ConditionalPass::always(UNINDENT_COMMENTS),
     ConditionalPass::always(CHECK_PRIVATE_ITEMS_DOC_TESTS),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),

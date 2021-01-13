@@ -65,7 +65,7 @@ pub use iter::{EscapeDebug, EscapeDefault, EscapeUnicode};
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use iter::SplitAsciiWhitespace;
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 use iter::SplitInclusive;
 
 #[unstable(feature = "str_internals", issue = "none")]
@@ -138,6 +138,7 @@ impl str {
     /// assert_eq!("ƒoo".len(), 4); // fancy f!
     /// assert_eq!("ƒoo".chars().count(), 3);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_len", since = "1.32.0")]
     #[inline]
@@ -1131,6 +1132,13 @@ impl str {
     /// assert_eq!(v, ["lion", "tiger", "leopard"]);
     /// ```
     ///
+    /// If the pattern is a slice of chars, split on each occurrence of any of the characters:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "2020-11-03 23:59".split(&['-', ' ', ':', '@'][..]).collect();
+    /// assert_eq!(v, ["2020", "11", "03", "23", "59"]);
+    /// ```
+    ///
     /// A more complex pattern, using a closure:
     ///
     /// ```
@@ -1219,7 +1227,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_inclusive)]
     /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
     ///     .split_inclusive('\n').collect();
     /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb."]);
@@ -1230,12 +1237,11 @@ impl str {
     /// That substring will be the last item returned by the iterator.
     ///
     /// ```
-    /// #![feature(split_inclusive)]
     /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb.\n"
     ///     .split_inclusive('\n').collect();
     /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb.\n"]);
     /// ```
-    #[unstable(feature = "split_inclusive", issue = "72360")]
+    #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
     pub fn split_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
         SplitInclusive(SplitInternal {
@@ -2167,7 +2173,7 @@ impl str {
     /// helps the inference algorithm understand specifically which type
     /// you're trying to parse into.
     ///
-    /// `parse` can parse any type that implements the [`FromStr`] trait.
+    /// `parse` can parse into any type that implements the [`FromStr`] trait.
 
     ///
     /// # Errors
@@ -2252,9 +2258,9 @@ impl str {
     /// but non-ASCII letters are unchanged.
     ///
     /// To return a new uppercased value without modifying the existing one, use
-    /// [`to_ascii_uppercase`].
+    /// [`to_ascii_uppercase()`].
     ///
-    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    /// [`to_ascii_uppercase()`]: #method.to_ascii_uppercase
     ///
     /// # Examples
     ///
@@ -2279,9 +2285,9 @@ impl str {
     /// but non-ASCII letters are unchanged.
     ///
     /// To return a new lowercased value without modifying the existing one, use
-    /// [`to_ascii_lowercase`].
+    /// [`to_ascii_lowercase()`].
     ///
-    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    /// [`to_ascii_lowercase()`]: #method.to_ascii_lowercase
     ///
     /// # Examples
     ///

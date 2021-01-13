@@ -512,7 +512,6 @@ impl<T> Option<T> {
     /// result of a function call, it is recommended to use [`ok_or_else`], which is
     /// lazily evaluated.
     ///
-    /// [`Result<T, E>`]: Result
     /// [`Ok(v)`]: Ok
     /// [`Err(err)`]: Err
     /// [`Some(v)`]: Some
@@ -539,7 +538,6 @@ impl<T> Option<T> {
     /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping [`Some(v)`] to
     /// [`Ok(v)`] and [`None`] to [`Err(err())`].
     ///
-    /// [`Result<T, E>`]: Result
     /// [`Ok(v)`]: Ok
     /// [`Err(err())`]: Err
     /// [`Some(v)`]: Some
@@ -1695,7 +1693,9 @@ impl<T> Option<Option<T>> {
     /// Converts from `Option<Option<T>>` to `Option<T>`
     ///
     /// # Examples
+    ///
     /// Basic usage:
+    ///
     /// ```
     /// let x: Option<Option<u32>> = Some(Some(6));
     /// assert_eq!(Some(6), x.flatten());
@@ -1706,7 +1706,9 @@ impl<T> Option<Option<T>> {
     /// let x: Option<Option<u32>> = None;
     /// assert_eq!(None, x.flatten());
     /// ```
-    /// Flattening once only removes one level of nesting:
+    ///
+    /// Flattening only removes one level of nesting at a time:
+    ///
     /// ```
     /// let x: Option<Option<Option<u32>>> = Some(Some(Some(6)));
     /// assert_eq!(Some(Some(6)), x.flatten());

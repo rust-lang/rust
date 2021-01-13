@@ -37,8 +37,8 @@ LL |     let y = Foo { a: 10, b: 10isize };
 error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:39:5
    |
-LL | extern fn bar() {
-   |                 - possibly return type missing here?
+LL | extern "C" fn bar() {
+   |                     - possibly return type missing here?
 LL |     0
    |     ^ expected `()`, found integer
 

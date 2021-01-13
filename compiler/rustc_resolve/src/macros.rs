@@ -14,7 +14,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
-use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand, SyntaxExtension};
+use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand};
+use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind};
 use rustc_feature::is_builtin_attr_name;
@@ -160,7 +161,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
             match self.resolve_crate_root(ident).kind {
-                ModuleKind::Def(.., name) if name != kw::Invalid => name,
+                ModuleKind::Def(.., name) if name != kw::Empty => name,
                 _ => kw::Crate,
             }
         });
@@ -176,10 +177,11 @@ impl<'a> ResolverExpand for Resolver<'a> {
         parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
     }
 
-    fn register_builtin_macro(&mut self, ident: Ident, ext: SyntaxExtension) {
-        if self.builtin_macros.insert(ident.name, BuiltinMacroState::NotYetSeen(ext)).is_some() {
+    fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind) {
+        if self.builtin_macros.insert(name, BuiltinMacroState::NotYetSeen(ext)).is_some() {
             self.session
-                .span_err(ident.span, &format!("built-in macro `{}` was already defined", ident));
+                .diagnostic()
+                .bug(&format!("built-in macro `{}` was already registered", name));
         }
     }
 
@@ -285,7 +287,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                                 helper_attrs.extend(
                                     ext.helper_attrs.iter().map(|name| Ident::new(*name, span)),
                                 );
-                                if ext.is_derive_copy {
+                                if ext.builtin_name == Some(sym::Copy) {
                                     self.containers_deriving_copy.insert(invoc_id);
                                 }
                                 ext
@@ -328,7 +330,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
             if after_derive {
                 self.session.span_err(span, "macro attributes must be placed before `#[derive]`");
             }
-            let normal_module_def_id = self.macro_def_scope(invoc_id).normal_ancestor_id;
+            let normal_module_def_id = self.macro_def_scope(invoc_id).nearest_parent_mod;
             self.definitions.add_parent_module_of_macro_def(invoc_id, normal_module_def_id);
         }
 
@@ -618,8 +620,9 @@ impl<'a> Resolver<'a> {
         let break_result = self.visit_scopes(
             scope_set,
             parent_scope,
-            orig_ident,
-            |this, scope, use_prelude, ident| {
+            orig_ident.span.ctxt(),
+            |this, scope, use_prelude, ctxt| {
+                let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
                 let ok = |res, span, arenas| {
                     Ok((
                         (res, ty::Visibility::Public, span, ExpnId::root()).to_name_binding(arenas),
@@ -1089,14 +1092,14 @@ impl<'a> Resolver<'a> {
             edition,
         );
 
-        if result.is_builtin {
+        if let Some(builtin_name) = result.builtin_name {
             // The macro was marked with `#[rustc_builtin_macro]`.
-            if let Some(builtin_macro) = self.builtin_macros.get_mut(&item.ident.name) {
+            if let Some(builtin_macro) = self.builtin_macros.get_mut(&builtin_name) {
                 // The macro is a built-in, replace its expander function
                 // while still taking everything else from the source code.
                 // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
                 match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(item.span)) {
-                    BuiltinMacroState::NotYetSeen(ext) => result.kind = ext.kind,
+                    BuiltinMacroState::NotYetSeen(ext) => result.kind = ext,
                     BuiltinMacroState::AlreadySeen(span) => {
                         struct_span_err!(
                             self.session,

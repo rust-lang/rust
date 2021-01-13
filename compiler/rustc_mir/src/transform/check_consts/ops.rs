@@ -209,16 +209,61 @@ impl NonConstOp for LiveDrop {
 }
 
 #[derive(Debug)]
+/// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow never escapes to
+/// the final value of the constant.
+pub struct TransientCellBorrow;
+impl NonConstOp for TransientCellBorrow {
+    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+        Status::Unstable(sym::const_refs_to_cell)
+    }
+    fn importance(&self) -> DiagnosticImportance {
+        // The cases that cannot possibly work will already emit a `CellBorrow`, so we should
+        // not additionally emit a feature gate error if activating the feature gate won't work.
+        DiagnosticImportance::Secondary
+    }
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        feature_err(
+            &ccx.tcx.sess.parse_sess,
+            sym::const_refs_to_cell,
+            span,
+            "cannot borrow here, since the borrowed element may contain interior mutability",
+        )
+    }
+}
+
+#[derive(Debug)]
+/// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow might escape to
+/// the final value of the constant, and thus we cannot allow this (for now). We may allow
+/// it in the future for static items.
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        struct_span_err!(
+        let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
             E0492,
-            "cannot borrow a constant which may contain \
-            interior mutability, create a static instead"
-        )
+            "{}s cannot refer to interior mutable data",
+            ccx.const_kind(),
+        );
+        err.span_label(
+            span,
+            format!("this borrow of an interior mutable value may end up in the final value"),
+        );
+        if let hir::ConstContext::Static(_) = ccx.const_kind() {
+            err.help(
+                "to fix this, the value can be extracted to a separate \
+                `static` item and then referenced",
+            );
+        }
+        if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
+            err.note(
+                "A constant containing interior mutable data behind a reference can allow you
+                 to modify that data. This would make multiple uses of a constant to be able to
+                 see different values and allow circumventing the `Send` and `Sync` requirements
+                 for shared mutable data, which is unsound.",
+            );
+        }
+        err
     }
 }
 

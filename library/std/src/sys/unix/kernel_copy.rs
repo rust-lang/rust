@@ -56,9 +56,10 @@ use crate::mem::ManuallyDrop;
 use crate::net::TcpStream;
 use crate::os::unix::fs::FileTypeExt;
 use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
+use crate::os::unix::net::UnixStream;
 use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use crate::sys::cvt;
 
 #[cfg(test)]
@@ -166,10 +167,11 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
 
             if input_meta.copy_file_range_candidate() && output_meta.copy_file_range_candidate() {
                 let result = copy_regular_files(readfd, writefd, max_write);
+                result.update_take(reader);
 
                 match result {
-                    CopyResult::Ended(Ok(bytes_copied)) => return Ok(bytes_copied + written),
-                    CopyResult::Ended(err) => return err,
+                    CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
+                    CopyResult::Error(e, _) => return Err(e),
                     CopyResult::Fallback(bytes) => written += bytes,
                 }
             }
@@ -181,20 +183,22 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
             // fall back to the generic copy loop.
             if input_meta.potential_sendfile_source() {
                 let result = sendfile_splice(SpliceMode::Sendfile, readfd, writefd, max_write);
+                result.update_take(reader);
 
                 match result {
-                    CopyResult::Ended(Ok(bytes_copied)) => return Ok(bytes_copied + written),
-                    CopyResult::Ended(err) => return err,
+                    CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
+                    CopyResult::Error(e, _) => return Err(e),
                     CopyResult::Fallback(bytes) => written += bytes,
                 }
             }
 
             if input_meta.maybe_fifo() || output_meta.maybe_fifo() {
                 let result = sendfile_splice(SpliceMode::Splice, readfd, writefd, max_write);
+                result.update_take(reader);
 
                 match result {
-                    CopyResult::Ended(Ok(bytes_copied)) => return Ok(bytes_copied + written),
-                    CopyResult::Ended(err) => return err,
+                    CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
+                    CopyResult::Error(e, _) => return Err(e),
                     CopyResult::Fallback(0) => { /* use the fallback below */ }
                     CopyResult::Fallback(_) => {
                         unreachable!("splice should not return > 0 bytes on the fallback path")
@@ -224,6 +228,9 @@ trait CopyRead: Read {
         Ok(0)
     }
 
+    /// Updates `Take` wrappers to remove the number of bytes copied.
+    fn taken(&mut self, _bytes: u64) {}
+
     /// The minimum of the limit of all `Take<_>` wrappers, `u64::MAX` otherwise.
     /// This method does not account for data `BufReader` buffers and would underreport
     /// the limit of a `Take<BufReader<Take<_>>>` type. Thus its result is only valid
@@ -248,6 +255,10 @@ where
 {
     fn drain_to<W: Write>(&mut self, writer: &mut W, limit: u64) -> Result<u64> {
         (**self).drain_to(writer, limit)
+    }
+
+    fn taken(&mut self, bytes: u64) {
+        (**self).taken(bytes);
     }
 
     fn min_limit(&self) -> u64 {
@@ -320,6 +331,34 @@ impl CopyWrite for &TcpStream {
     }
 }
 
+impl CopyRead for UnixStream {
+    fn properties(&self) -> CopyParams {
+        // avoid the stat syscall since we can be fairly sure it's a socket
+        CopyParams(FdMeta::Socket, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyRead for &UnixStream {
+    fn properties(&self) -> CopyParams {
+        // avoid the stat syscall since we can be fairly sure it's a socket
+        CopyParams(FdMeta::Socket, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyWrite for UnixStream {
+    fn properties(&self) -> CopyParams {
+        // avoid the stat syscall since we can be fairly sure it's a socket
+        CopyParams(FdMeta::Socket, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyWrite for &UnixStream {
+    fn properties(&self) -> CopyParams {
+        // avoid the stat syscall since we can be fairly sure it's a socket
+        CopyParams(FdMeta::Socket, Some(self.as_raw_fd()))
+    }
+}
+
 impl CopyWrite for ChildStdin {
     fn properties(&self) -> CopyParams {
         CopyParams(FdMeta::Pipe, Some(self.as_raw_fd()))
@@ -378,6 +417,11 @@ impl<T: CopyRead> CopyRead for Take<T> {
         Ok(bytes_drained)
     }
 
+    fn taken(&mut self, bytes: u64) {
+        self.set_limit(self.limit() - bytes);
+        self.get_mut().taken(bytes);
+    }
+
     fn min_limit(&self) -> u64 {
         min(Take::limit(self), self.get_ref().min_limit())
     }
@@ -401,6 +445,10 @@ impl<T: CopyRead> CopyRead for BufReader<T> {
         let inner_bytes = self.get_mut().drain_to(writer, remaining)?;
 
         Ok(bytes as u64 + inner_bytes)
+    }
+
+    fn taken(&mut self, bytes: u64) {
+        self.get_mut().taken(bytes);
     }
 
     fn min_limit(&self) -> u64 {
@@ -428,12 +476,30 @@ fn fd_to_meta<T: AsRawFd>(fd: &T) -> FdMeta {
 }
 
 pub(super) enum CopyResult {
-    Ended(Result<u64>),
+    Ended(u64),
+    Error(Error, u64),
     Fallback(u64),
 }
 
-/// linux-specific implementation that will attempt to use copy_file_range for copy offloading
-/// as the name says, it only works on regular files
+impl CopyResult {
+    fn update_take(&self, reader: &mut impl CopyRead) {
+        match *self {
+            CopyResult::Fallback(bytes)
+            | CopyResult::Ended(bytes)
+            | CopyResult::Error(_, bytes) => reader.taken(bytes),
+        }
+    }
+}
+
+/// Invalid file descriptor.
+///
+/// Valid file descriptors are guaranteed to be positive numbers (see `open()` manpage)
+/// while negative values are used to indicate errors.
+/// Thus -1 will never be overlap with a valid open file.
+const INVALID_FD: RawFd = -1;
+
+/// Linux-specific implementation that will attempt to use copy_file_range for copy offloading.
+/// As the name says, it only works on regular files.
 ///
 /// Callers must handle fallback to a generic copy loop.
 /// `Fallback` may indicate non-zero number of bytes already written
@@ -441,9 +507,13 @@ pub(super) enum CopyResult {
 pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
     use crate::cmp;
 
+    const NOT_PROBED: u8 = 0;
+    const UNAVAILABLE: u8 = 1;
+    const AVAILABLE: u8 = 2;
+
     // Kernel prior to 4.5 don't have copy_file_range
     // We store the availability in a global to avoid unnecessary syscalls
-    static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
+    static HAS_COPY_FILE_RANGE: AtomicU8 = AtomicU8::new(NOT_PROBED);
 
     syscall! {
         fn copy_file_range(
@@ -456,39 +526,39 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
         ) -> libc::ssize_t
     }
 
-    let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
+    match HAS_COPY_FILE_RANGE.load(Ordering::Relaxed) {
+        NOT_PROBED => {
+            // EPERM can indicate seccomp filters or an immutable file.
+            // To distinguish these cases we probe with invalid file descriptors which should result in EBADF if the syscall is supported
+            // and some other error (ENOSYS or EPERM) if it's not available
+            let result = unsafe {
+                cvt(copy_file_range(INVALID_FD, ptr::null_mut(), INVALID_FD, ptr::null_mut(), 1, 0))
+            };
+
+            if matches!(result.map_err(|e| e.raw_os_error()), Err(Some(libc::EBADF))) {
+                HAS_COPY_FILE_RANGE.store(AVAILABLE, Ordering::Relaxed);
+            } else {
+                HAS_COPY_FILE_RANGE.store(UNAVAILABLE, Ordering::Relaxed);
+                return CopyResult::Fallback(0);
+            }
+        }
+        UNAVAILABLE => return CopyResult::Fallback(0),
+        _ => {}
+    };
+
     let mut written = 0u64;
     while written < max_len {
-        let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64);
-            // cap to 1GB chunks in case u64::MAX is passed as max_len and the file has a non-zero seek position
-            // this allows us to copy large chunks without hitting EOVERFLOW,
-            // unless someone sets a file offset close to u64::MAX - 1GB, in which case a fallback would be required
-            let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x4000_0000usize);
-            let copy_result = unsafe {
-                // We actually don't have to adjust the offsets,
-                // because copy_file_range adjusts the file offset automatically
-                cvt(copy_file_range(
-                    reader,
-                    ptr::null_mut(),
-                    writer,
-                    ptr::null_mut(),
-                    bytes_to_copy,
-                    0,
-                ))
-            };
-            if let Err(ref copy_err) = copy_result {
-                match copy_err.raw_os_error() {
-                    Some(libc::ENOSYS | libc::EPERM | libc::EOPNOTSUPP) => {
-                        HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
-                    }
-                    _ => {}
-                }
-            }
-            copy_result
-        } else {
-            Err(Error::from_raw_os_error(libc::ENOSYS))
+        let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64);
+        // cap to 1GB chunks in case u64::MAX is passed as max_len and the file has a non-zero seek position
+        // this allows us to copy large chunks without hitting EOVERFLOW,
+        // unless someone sets a file offset close to u64::MAX - 1GB, in which case a fallback would be required
+        let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x4000_0000usize);
+        let copy_result = unsafe {
+            // We actually don't have to adjust the offsets,
+            // because copy_file_range adjusts the file offset automatically
+            cvt(copy_file_range(reader, ptr::null_mut(), writer, ptr::null_mut(), bytes_to_copy, 0))
         };
+
         match copy_result {
             Ok(0) if written == 0 => {
                 // fallback to work around several kernel bugs where copy_file_range will fail to
@@ -498,7 +568,7 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                 // - copying from an overlay filesystem in docker. reported to occur on fedora 32.
                 return CopyResult::Fallback(0);
             }
-            Ok(0) => return CopyResult::Ended(Ok(written)), // reached EOF
+            Ok(0) => return CopyResult::Ended(written), // reached EOF
             Ok(ret) => written += ret as u64,
             Err(err) => {
                 return match err.raw_os_error() {
@@ -508,20 +578,23 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                         libc::ENOSYS | libc::EXDEV | libc::EINVAL | libc::EPERM | libc::EOPNOTSUPP,
                     ) => {
                         // Try fallback io::copy if either:
-                        // - Kernel version is < 4.5 (ENOSYS)
+                        // - Kernel version is < 4.5 (ENOSYS¹)
                         // - Files are mounted on different fs (EXDEV)
                         // - copy_file_range is broken in various ways on RHEL/CentOS 7 (EOPNOTSUPP)
-                        // - copy_file_range is disallowed, for example by seccomp (EPERM)
+                        // - copy_file_range file is immutable or syscall is blocked by seccomp¹ (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
+                        //
+                        // ¹ these cases should be detected by the initial probe but we handle them here
+                        //   anyway in case syscall interception changes during runtime
                         assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
-                    _ => CopyResult::Ended(Err(err)),
+                    _ => CopyResult::Error(err, written),
                 };
             }
         }
     }
-    CopyResult::Ended(Ok(written))
+    CopyResult::Ended(written)
 }
 
 #[derive(PartialEq)]
@@ -594,10 +667,10 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
                     Some(os_err) if mode == SpliceMode::Sendfile && os_err == libc::EOVERFLOW => {
                         CopyResult::Fallback(written)
                     }
-                    _ => CopyResult::Ended(Err(err)),
+                    _ => CopyResult::Error(err, written),
                 };
             }
         }
     }
-    CopyResult::Ended(Ok(written))
+    CopyResult::Ended(written)
 }

@@ -2,8 +2,9 @@ error[E0282]: type annotations needed for the closure `fn((), ()) -> std::result
   --> $DIR/cannot-infer-closure.rs:3:15
    |
 LL |         Err(a)?;
-   |               ^ cannot infer type
+   |               ^ cannot infer type of error for `?` operator
    |
+   = note: `?` implicitly converts the error value into a type implementing `From<()>`
 help: give this closure an explicit return type without `_` placeholders
    |
 LL |     let x = |a: (), b: ()| -> std::result::Result<(), _> {

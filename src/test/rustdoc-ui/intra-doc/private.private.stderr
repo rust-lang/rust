@@ -1,0 +1,11 @@
+warning: public documentation for `DocMe` links to private item `DontDocMe`
+  --> $DIR/private.rs:5:11
+   |
+LL | /// docs [DontDocMe]
+   |           ^^^^^^^^^ this item is private
+   |
+   = note: `#[warn(private_intra_doc_links)]` on by default
+   = note: this link resolves only because you passed `--document-private-items`, but will break without
+
+warning: 1 warning emitted
+

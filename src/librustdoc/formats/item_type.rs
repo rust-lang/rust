@@ -60,7 +60,7 @@ impl Serialize for ItemType {
 
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
-        let kind = match item.kind {
+        let kind = match *item.kind {
             clean::StrippedItem(box ref item) => item,
             ref kind => kind,
         };

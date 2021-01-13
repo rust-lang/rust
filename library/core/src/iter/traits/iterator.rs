@@ -8,7 +8,7 @@ use crate::ops::{Add, ControlFlow, Try};
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
-use super::super::{FromIterator, Product, Sum, Zip};
+use super::super::{FromIterator, Intersperse, Product, Sum, Zip};
 use super::super::{
     Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
 };
@@ -569,6 +569,28 @@ pub trait Iterator {
         Zip::new(self, other.into_iter())
     }
 
+    /// Places a copy of `separator` between all elements.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_intersperse)]
+    ///
+    /// let hello = ["Hello", "World"].iter().copied().intersperse(" ").collect::<String>();
+    /// assert_eq!(hello, "Hello World");
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+    fn intersperse(self, separator: Self::Item) -> Intersperse<Self>
+    where
+        Self: Sized,
+        Self::Item: Clone,
+    {
+        Intersperse::new(self, separator)
+    }
+
     /// Takes a closure and creates an iterator which calls that closure on each
     /// element.
     ///
@@ -783,8 +805,6 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(5));
     /// assert_eq!(iter.next(), None);
     /// ```
-    ///
-    /// [`Option<T>`]: Option
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
@@ -1332,7 +1352,7 @@ pub trait Iterator {
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     ///
-    /// Flattening once only removes one level of nesting:
+    /// Flattening only removes one level of nesting at a time:
     ///
     /// ```
     /// let d3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
@@ -1346,7 +1366,7 @@ pub trait Iterator {
     ///
     /// Here we see that `flatten()` does not perform a "deep" flatten.
     /// Instead, only one level of nesting is removed. That is, if you
-    /// `flatten()` a three-dimensional array the result will be
+    /// `flatten()` a three-dimensional array, the result will be
     /// two-dimensional and not one-dimensional. To get a one-dimensional
     /// structure, you have to `flatten()` again.
     ///

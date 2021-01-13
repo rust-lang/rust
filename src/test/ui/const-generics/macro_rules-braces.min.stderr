@@ -1,5 +1,5 @@
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/macro_rules-braces.rs:49:17
+  --> $DIR/macro_rules-braces.rs:48:17
    |
 LL |     let _: baz!(m::P);
    |                 ^^^^
@@ -10,7 +10,7 @@ LL |     let _: baz!({ m::P });
    |                 ^      ^
 
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/macro_rules-braces.rs:69:17
+  --> $DIR/macro_rules-braces.rs:68:17
    |
 LL |     let _: baz!(10 + 7);
    |                 ^^^^^^
@@ -21,7 +21,7 @@ LL |     let _: baz!({ 10 + 7 });
    |                 ^        ^
 
 error: generic parameters may not be used in const operations
-  --> $DIR/macro_rules-braces.rs:37:20
+  --> $DIR/macro_rules-braces.rs:36:20
    |
 LL |     let _: foo!({{ N }});
    |                    ^ cannot perform const operation using `N`
@@ -30,7 +30,7 @@ LL |     let _: foo!({{ N }});
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/macro_rules-braces.rs:41:19
+  --> $DIR/macro_rules-braces.rs:40:19
    |
 LL |     let _: bar!({ N });
    |                   ^ cannot perform const operation using `N`
@@ -39,7 +39,7 @@ LL |     let _: bar!({ N });
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/macro_rules-braces.rs:46:20
+  --> $DIR/macro_rules-braces.rs:45:20
    |
 LL |     let _: baz!({{ N }});
    |                    ^ cannot perform const operation using `N`
@@ -48,7 +48,7 @@ LL |     let _: baz!({{ N }});
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/macro_rules-braces.rs:51:19
+  --> $DIR/macro_rules-braces.rs:50:19
    |
 LL |     let _: biz!({ N });
    |                   ^ cannot perform const operation using `N`

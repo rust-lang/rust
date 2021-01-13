@@ -18,7 +18,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use smallvec::SmallVec;
 use std::{cmp, fmt};
@@ -221,7 +221,13 @@ impl<'tcx> TyCtxt<'tcx> {
         mut ty: Ty<'tcx>,
         normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>,
     ) -> Ty<'tcx> {
-        loop {
+        for iteration in 0.. {
+            if !self.sess.recursion_limit().value_within_limit(iteration) {
+                return self.ty_error_with_message(
+                    DUMMY_SP,
+                    &format!("reached the recursion limit finding the struct tail for {}", ty),
+                );
+            }
             match *ty.kind() {
                 ty::Adt(def, substs) => {
                     if !def.is_struct() {
@@ -497,7 +503,8 @@ impl<'tcx> TyCtxt<'tcx> {
         closure_substs: SubstsRef<'tcx>,
     ) -> Option<ty::Binder<Ty<'tcx>>> {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);
-        let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+        let br = ty::BoundRegion { kind: ty::BrEnv };
+        let env_region = ty::ReLateBound(ty::INNERMOST, br);
         let closure_kind_ty = closure_substs.as_closure().kind_ty();
         let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
         let env_ty = match closure_kind {

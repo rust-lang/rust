@@ -398,14 +398,30 @@ impl<'a> Resolver<'a> {
                 err.help("use the `|| { ... }` closure form instead");
                 err
             }
-            ResolutionError::AttemptToUseNonConstantValueInConstant => {
+            ResolutionError::AttemptToUseNonConstantValueInConstant(ident, sugg, current) => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
                     E0435,
                     "attempt to use a non-constant value in a constant"
                 );
-                err.span_label(span, "non-constant value");
+                // let foo =...
+                //     ^^^ given this Span
+                // ------- get this Span to have an applicable suggestion
+                let sp =
+                    self.session.source_map().span_extend_to_prev_str(ident.span, current, true);
+                if sp.lo().0 == 0 {
+                    err.span_label(ident.span, &format!("this would need to be a `{}`", sugg));
+                } else {
+                    let sp = sp.with_lo(BytePos(sp.lo().0 - current.len() as u32));
+                    err.span_suggestion(
+                        sp,
+                        &format!("consider using `{}` instead of `{}`", sugg, current),
+                        format!("{} {}", sugg, ident),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.span_label(span, "non-constant value");
+                }
                 err
             }
             ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
@@ -595,7 +611,8 @@ impl<'a> Resolver<'a> {
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
         let mut suggestions = Vec::new();
-        self.visit_scopes(scope_set, parent_scope, ident, |this, scope, use_prelude, _| {
+        let ctxt = ident.span.ctxt();
+        self.visit_scopes(scope_set, parent_scope, ctxt, |this, scope, use_prelude, _| {
             match scope {
                 Scope::DeriveHelpers(expn_id) => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);

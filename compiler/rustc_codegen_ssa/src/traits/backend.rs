@@ -1,5 +1,6 @@
 use super::write::WriteBackendMethods;
 use super::CodegenObject;
+use crate::back::write::TargetMachineFactoryFn;
 use crate::{CodegenResults, ModuleCodegen};
 
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -21,7 +22,6 @@ use rustc_target::spec::Target;
 pub use rustc_data_structures::sync::MetadataRef;
 
 use std::any::Any;
-use std::sync::Arc;
 
 pub trait BackendTypes {
     type Value: CodegenObject;
@@ -123,7 +123,7 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         &self,
         sess: &Session,
         opt_level: config::OptLevel,
-    ) -> Arc<dyn Fn() -> Result<Self::TargetMachine, String> + Send + Sync>;
+    ) -> TargetMachineFactoryFn<Self>;
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str;
     fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str>;
 }

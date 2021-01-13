@@ -574,7 +574,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
     /// format!("Expected a point greater than ({x}, {y})", x = self.x, y = self.y)
     /// ```
     /// This function builds the entire call to format!.
-    fn build_format(&self, input: &String, span: proc_macro2::Span) -> proc_macro2::TokenStream {
+    fn build_format(&self, input: &str, span: proc_macro2::Span) -> proc_macro2::TokenStream {
         // This set is used later to generate the final format string. To keep builds reproducible,
         // the iteration order needs to be deterministic, hence why we use a BTreeSet here instead
         // of a HashSet.

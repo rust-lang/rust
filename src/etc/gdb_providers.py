@@ -1,7 +1,6 @@
 from sys import version_info
 
 import gdb
-from gdb import lookup_type
 
 if version_info[0] >= 3:
     xrange = range
@@ -213,7 +212,7 @@ def children_of_btree_map(map):
     def children_of_node(node_ptr, height):
         def cast_to_internal(node):
             internal_type_name = node.type.target().name.replace("LeafNode", "InternalNode", 1)
-            internal_type = lookup_type(internal_type_name)
+            internal_type = gdb.lookup_type(internal_type_name)
             return node.cast(internal_type.pointer())
 
         if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
@@ -233,8 +232,10 @@ def children_of_btree_map(map):
                     yield child
             if i < length:
                 # Avoid "Cannot perform pointer math on incomplete type" on zero-sized arrays.
-                key = keys[i]["value"]["value"] if keys.type.sizeof > 0 else "()"
-                val = vals[i]["value"]["value"] if vals.type.sizeof > 0 else "()"
+                key_type_size = keys.type.sizeof
+                val_type_size = vals.type.sizeof
+                key = keys[i]["value"]["value"] if key_type_size > 0 else gdb.parse_and_eval("()")
+                val = vals[i]["value"]["value"] if val_type_size > 0 else gdb.parse_and_eval("()")
                 yield key, val
 
     if map["length"] > 0:

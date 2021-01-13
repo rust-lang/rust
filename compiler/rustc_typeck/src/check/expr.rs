@@ -38,6 +38,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{AdtKind, Visibility};
+use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
@@ -883,7 +884,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(method)
             }
             Err(error) => {
-                if segment.ident.name != kw::Invalid {
+                if segment.ident.name != kw::Empty {
                     self.report_extended_method_error(segment, span, args, rcvr_t, error);
                 }
                 Err(())
@@ -1124,7 +1125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fields,
             base_expr.is_none(),
         );
-        if let &Some(ref base_expr) = base_expr {
+        if let Some(base_expr) = base_expr {
             // If check_expr_struct_fields hit an error, do not attempt to populate
             // the fields with the base_expr. This could cause us to hit errors later
             // when certain fields are assumed to exist that in fact do not.
@@ -1181,8 +1182,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // re-link the regions that EIfEO can erase.
         self.demand_eqtype(span, adt_ty_hint, adt_ty);
 
-        let (substs, adt_kind, kind_name) = match &adt_ty.kind() {
-            &ty::Adt(adt, substs) => (substs, adt.adt_kind(), adt.variant_descr()),
+        let (substs, adt_kind, kind_name) = match adt_ty.kind() {
+            ty::Adt(adt, substs) => (substs, adt.adt_kind(), adt.variant_descr()),
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields"),
         };
 
@@ -1248,7 +1249,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if no_accessible_remaining_fields {
                 self.report_no_accessible_fields(adt_ty, span);
             } else {
-                self.report_missing_field(adt_ty, span, remaining_fields);
+                self.report_missing_fields(adt_ty, span, remaining_fields);
             }
         }
 
@@ -1279,7 +1280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// error: aborting due to previous error
     /// ```
-    fn report_missing_field(
+    fn report_missing_fields(
         &self,
         adt_ty: Ty<'tcx>,
         span: Span,
@@ -1380,19 +1381,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty,
         );
         match variant.ctor_kind {
-            CtorKind::Fn => {
-                err.span_label(variant.ident.span, format!("`{adt}` defined here", adt = ty));
-                err.span_label(field.ident.span, "field does not exist");
-                err.span_label(
-                    ty_span,
-                    format!(
-                        "`{adt}` is a tuple {kind_name}, \
-                         use the appropriate syntax: `{adt}(/* fields */)`",
-                        adt = ty,
-                        kind_name = kind_name
-                    ),
-                );
-            }
+            CtorKind::Fn => match ty.kind() {
+                ty::Adt(adt, ..) if adt.is_enum() => {
+                    err.span_label(
+                        variant.ident.span,
+                        format!(
+                            "`{adt}::{variant}` defined here",
+                            adt = ty,
+                            variant = variant.ident,
+                        ),
+                    );
+                    err.span_label(field.ident.span, "field does not exist");
+                    err.span_label(
+                        ty_span,
+                        format!(
+                            "`{adt}::{variant}` is a tuple {kind_name}, \
+                             use the appropriate syntax: `{adt}::{variant}(/* fields */)`",
+                            adt = ty,
+                            variant = variant.ident,
+                            kind_name = kind_name
+                        ),
+                    );
+                }
+                _ => {
+                    err.span_label(variant.ident.span, format!("`{adt}` defined here", adt = ty));
+                    err.span_label(field.ident.span, "field does not exist");
+                    err.span_label(
+                        ty_span,
+                        format!(
+                            "`{adt}` is a tuple {kind_name}, \
+                                 use the appropriate syntax: `{adt}(/* fields */)`",
+                            adt = ty,
+                            kind_name = kind_name
+                        ),
+                    );
+                }
+            },
             _ => {
                 // prevent all specified fields from being suggested
                 let skip_fields = skip_fields.iter().map(|ref x| x.ident.name);
@@ -1547,7 +1571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return field_ty;
         }
 
-        if field.name == kw::Invalid {
+        if field.name == kw::Empty {
         } else if self.method_exists(field, expr_t, expr.hir_id, true) {
             self.ban_take_value_of_method(expr, expr_t, field);
         } else if !expr_t.is_primitive_ty() {
@@ -1637,8 +1661,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if field.name == kw::Await {
             // We know by construction that `<expr>.await` is either on Rust 2015
             // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
-            err.note("to `.await` a `Future`, switch to Rust 2018");
-            err.help("set `edition = \"2018\"` in `Cargo.toml`");
+            err.note("to `.await` a `Future`, switch to Rust 2018 or later");
+            err.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
             err.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
         }
 
@@ -1929,7 +1953,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>) -> Ty<'tcx> {
-        for op in asm.operands {
+        for (op, _op_sp) in asm.operands {
             match op {
                 hir::InlineAsmOperand::In { expr, .. } | hir::InlineAsmOperand::Const { expr } => {
                     self.check_expr_asm_operand(expr, true);

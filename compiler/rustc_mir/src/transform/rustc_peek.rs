@@ -92,7 +92,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 /// "rustc_peek: bit not set".
 ///
 /// The intention is that one can write unit tests for dataflow by
-/// putting code into a compile-fail test and using `rustc_peek` to
+/// putting code into an UI test and using `rustc_peek` to
 /// make observations about the results of dataflow static analyses.
 ///
 /// (If there are any calls to `rustc_peek` that do not match the

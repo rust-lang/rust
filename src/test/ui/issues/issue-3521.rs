@@ -1,5 +1,7 @@
+// run-rustfix
 fn main() {
-    let foo = 100;
+    #[allow(non_upper_case_globals)]
+    let foo: isize = 100;
 
     #[derive(Debug)]
     enum Stuff {

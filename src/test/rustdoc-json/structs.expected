@@ -1,0 +1,456 @@
+{
+  "root": "0:0",
+  "version": null,
+  "includes_private": false,
+  "index": {
+    "0:9": {
+      "crate_id": 0,
+      "name": "Unit",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          7,
+          0
+        ],
+        "end": [
+          7,
+          16
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct",
+      "inner": {
+        "struct_type": "unit",
+        "generics": {
+          "params": [],
+          "where_predicates": []
+        },
+        "fields_stripped": false,
+        "fields": []
+      }
+    },
+    "0:8": {
+      "crate_id": 0,
+      "name": "1",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          5,
+          22
+        ],
+        "end": [
+          5,
+          28
+        ]
+      },
+      "visibility": "default",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct_field",
+      "inner": {
+        "kind": "resolved_path",
+        "inner": {
+          "name": "String",
+          "id": "5:5035",
+          "args": {
+            "angle_bracketed": {
+              "args": [],
+              "bindings": []
+            }
+          },
+          "param_names": []
+        }
+      }
+    },
+    "0:18": {
+      "crate_id": 0,
+      "name": "stuff",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          15,
+          4
+        ],
+        "end": [
+          15,
+          17
+        ]
+      },
+      "visibility": "default",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct_field",
+      "inner": {
+        "kind": "resolved_path",
+        "inner": {
+          "name": "Vec",
+          "id": "5:4322",
+          "args": {
+            "angle_bracketed": {
+              "args": [
+                {
+                  "type": {
+                    "kind": "generic",
+                    "inner": "T"
+                  }
+                }
+              ],
+              "bindings": []
+            }
+          },
+          "param_names": []
+        }
+      }
+    },
+    "0:11": {
+      "crate_id": 0,
+      "name": "WithPrimitives",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          9,
+          0
+        ],
+        "end": [
+          12,
+          1
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct",
+      "inner": {
+        "struct_type": "plain",
+        "generics": {
+          "params": [
+            {
+              "name": "'a",
+              "kind": "lifetime"
+            }
+          ],
+          "where_predicates": []
+        },
+        "fields_stripped": true
+      }
+    },
+    "0:14": {
+      "crate_id": 0,
+      "name": "s",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          11,
+          4
+        ],
+        "end": [
+          11,
+          14
+        ]
+      },
+      "visibility": "default",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct_field",
+      "inner": {
+        "kind": "borrowed_ref",
+        "inner": {
+          "lifetime": "'a",
+          "mutable": false,
+          "type": {
+            "kind": "primitive",
+            "inner": "str"
+          }
+        }
+      }
+    },
+    "0:19": {
+      "crate_id": 0,
+      "name": "things",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          16,
+          4
+        ],
+        "end": [
+          16,
+          25
+        ]
+      },
+      "visibility": "default",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct_field",
+      "inner": {
+        "kind": "resolved_path",
+        "inner": {
+          "name": "HashMap",
+          "id": "1:6600",
+          "args": {
+            "angle_bracketed": {
+              "args": [
+                {
+                  "type": {
+                    "kind": "generic",
+                    "inner": "U"
+                  }
+                },
+                {
+                  "type": {
+                    "kind": "generic",
+                    "inner": "U"
+                  }
+                }
+              ],
+              "bindings": []
+            }
+          },
+          "param_names": []
+        }
+      }
+    },
+    "0:15": {
+      "crate_id": 0,
+      "name": "WithGenerics",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          14,
+          0
+        ],
+        "end": [
+          17,
+          1
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct",
+      "inner": {
+        "struct_type": "plain",
+        "generics": {
+          "params": [
+            {
+              "name": "T",
+              "kind": {
+                "type": {
+                  "bounds": [],
+                  "default": null
+                }
+              }
+            },
+            {
+              "name": "U",
+              "kind": {
+                "type": {
+                  "bounds": [],
+                  "default": null
+                }
+              }
+            }
+          ],
+          "where_predicates": []
+        },
+        "fields_stripped": true
+      }
+    },
+    "0:0": {
+      "crate_id": 0,
+      "name": "structs",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          1,
+          0
+        ],
+        "end": [
+          17,
+          1
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "module",
+      "inner": {
+        "is_crate": true,
+        "items": [
+          "0:4",
+          "0:5",
+          "0:9",
+          "0:11",
+          "0:15"
+        ]
+      }
+    },
+    "0:13": {
+      "crate_id": 0,
+      "name": "num",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          10,
+          4
+        ],
+        "end": [
+          10,
+          12
+        ]
+      },
+      "visibility": "default",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct_field",
+      "inner": {
+        "kind": "primitive",
+        "inner": "u32"
+      }
+    },
+    "0:5": {
+      "crate_id": 0,
+      "name": "Tuple",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          5,
+          0
+        ],
+        "end": [
+          5,
+          30
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct",
+      "inner": {
+        "struct_type": "tuple",
+        "generics": {
+          "params": [],
+          "where_predicates": []
+        },
+        "fields_stripped": true
+      }
+    },
+    "0:4": {
+      "crate_id": 0,
+      "name": "PlainEmpty",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          3,
+          0
+        ],
+        "end": [
+          3,
+          24
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct",
+      "inner": {
+        "struct_type": "plain",
+        "generics": {
+          "params": [],
+          "where_predicates": []
+        },
+        "fields_stripped": false,
+        "fields": []
+      }
+    },
+    "0:7": {
+      "crate_id": 0,
+      "name": "0",
+      "source": {
+        "filename": "$TEST_BASE_DIR/structs.rs",
+        "begin": [
+          5,
+          17
+        ],
+        "end": [
+          5,
+          20
+        ]
+      },
+      "visibility": "default",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "struct_field",
+      "inner": {
+        "kind": "primitive",
+        "inner": "u32"
+      }
+    }
+  },
+  "paths": {
+    "5:4322": {
+      "crate_id": 5,
+      "path": [
+        "alloc",
+        "vec",
+        "Vec"
+      ],
+      "kind": "struct"
+    },
+    "5:5035": {
+      "crate_id": 5,
+      "path": [
+        "alloc",
+        "string",
+        "String"
+      ],
+      "kind": "struct"
+    },
+    "1:6600": {
+      "crate_id": 1,
+      "path": [
+        "std",
+        "collections",
+        "hash",
+        "map",
+        "HashMap"
+      ],
+      "kind": "struct"
+    }
+  },
+  "external_crates": {
+    "1": {
+      "name": "std"
+    },
+    "5": {
+      "name": "alloc"
+    }
+  },
+  "format_version": 1
+}

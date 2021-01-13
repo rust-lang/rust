@@ -1,8 +1,8 @@
 error: `cfg()` must have an argument
-  --> $DIR/issue-43926.rs:1:20
+  --> $DIR/issue-43926.rs:1:22
    |
-LL | #[link(name="foo", cfg())]
-   |                    ^^^^^
+LL | #[link(name = "foo", cfg())]
+   |                      ^^^^^
 
 error: aborting due to previous error
 

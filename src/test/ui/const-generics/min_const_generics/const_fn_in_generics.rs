@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(min_const_generics)]
-
 const fn identity<const T: u32>() -> u32 { T }
 
 #[derive(Eq, PartialEq, Debug)]

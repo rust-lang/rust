@@ -1,4 +1,4 @@
-error: this expression borrows a reference that is immediately dereferenced by the compiler
+error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:14:15
    |
 LL |     let c = x(&&a);
@@ -12,7 +12,7 @@ error: this pattern creates a reference to a reference
 LL |     if let Some(ref cake) = Some(&5) {}
    |                 ^^^^^^^^ help: change this to: `cake`
 
-error: this expression borrows a reference that is immediately dereferenced by the compiler
+error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:28:15
    |
 LL |         46 => &&a,

@@ -764,12 +764,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .pending_obligations()
             .into_iter()
             .filter_map(move |obligation| {
-                match obligation.predicate.skip_binders() {
+                let bound_predicate = obligation.predicate.bound_atom();
+                match bound_predicate.skip_binder() {
                     ty::PredicateAtom::Projection(data) => {
-                        Some((ty::Binder::bind(data).to_poly_trait_ref(self.tcx), obligation))
+                        Some((bound_predicate.rebind(data).to_poly_trait_ref(self.tcx), obligation))
                     }
                     ty::PredicateAtom::Trait(data, _) => {
-                        Some((ty::Binder::bind(data).to_poly_trait_ref(), obligation))
+                        Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
                     }
                     ty::PredicateAtom::Subtype(..) => None,
                     ty::PredicateAtom::RegionOutlives(..) => None,
@@ -913,7 +914,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
                 _ => Err(ErrorReported),
             };
-            if item_name.name != kw::Invalid {
+            if item_name.name != kw::Empty {
                 if let Some(mut e) = self.report_method_error(
                     span,
                     ty,
@@ -1375,7 +1376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     GenericParamDefKind::Const => {
-                        // FIXME(const_generics:defaults)
+                        // FIXME(const_generics_defaults)
                         // No const parameters were provided, we have to infer them.
                         self.fcx.var_for_def(self.span, param)
                     }

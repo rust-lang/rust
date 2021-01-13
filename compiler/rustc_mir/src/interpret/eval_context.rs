@@ -4,7 +4,7 @@ use std::mem;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::{self as hir, def::DefKind, def_id::DefId, definitions::DefPathData};
+use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
@@ -477,16 +477,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some(promoted) = promoted {
             return Ok(&self.tcx.promoted_mir_opt_const_arg(def)[promoted]);
         }
-        match instance {
-            ty::InstanceDef::Item(def) => {
-                if self.tcx.is_mir_available(def.did) {
-                    Ok(self.tcx.optimized_mir_opt_const_arg(def))
-                } else {
-                    throw_unsup!(NoMirFor(def.did))
-                }
-            }
-            _ => Ok(self.tcx.instance_mir(instance)),
-        }
+        M::load_mir(self, instance)
     }
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
@@ -700,21 +691,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
 
         // Now mark those locals as dead that we do not want to initialize
-        match self.tcx.def_kind(instance.def_id()) {
-            // statics and constants don't have `Storage*` statements, no need to look for them
-            //
-            // FIXME: The above is likely untrue. See
-            // <https://github.com/rust-lang/rust/pull/70004#issuecomment-602022110>. Is it
-            // okay to ignore `StorageDead`/`StorageLive` annotations during CTFE?
-            DefKind::Static | DefKind::Const | DefKind::AssocConst => {}
-            _ => {
-                // Mark locals that use `Storage*` annotations as dead on function entry.
-                let always_live = AlwaysLiveLocals::new(self.body());
-                for local in locals.indices() {
-                    if !always_live.contains(local) {
-                        locals[local].value = LocalValue::Dead;
-                    }
-                }
+        // Mark locals that use `Storage*` annotations as dead on function entry.
+        let always_live = AlwaysLiveLocals::new(self.body());
+        for local in locals.indices() {
+            if !always_live.contains(local) {
+                locals[local].value = LocalValue::Dead;
             }
         }
         // done
@@ -850,36 +831,31 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// Mark a storage as live, killing the previous content and returning it.
-    /// Remember to deallocate that!
-    pub fn storage_live(
-        &mut self,
-        local: mir::Local,
-    ) -> InterpResult<'tcx, LocalValue<M::PointerTag>> {
+    /// Mark a storage as live, killing the previous content.
+    pub fn storage_live(&mut self, local: mir::Local) -> InterpResult<'tcx> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
         let local_val = LocalValue::Uninitialized;
-        // StorageLive *always* kills the value that's currently stored.
-        // However, we do not error if the variable already is live;
-        // see <https://github.com/rust-lang/rust/issues/42371>.
-        Ok(mem::replace(&mut self.frame_mut().locals[local].value, local_val))
+        // StorageLive expects the local to be dead, and marks it live.
+        let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
+        if !matches!(old, LocalValue::Dead) {
+            throw_ub_format!("StorageLive on a local that was already live");
+        }
+        Ok(())
     }
 
-    /// Returns the old value of the local.
-    /// Remember to deallocate that!
-    pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue<M::PointerTag> {
+    pub fn storage_dead(&mut self, local: mir::Local) -> InterpResult<'tcx> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
 
-        mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead)
+        // It is entirely okay for this local to be already dead (at least that's how we currently generate MIR)
+        let old = mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead);
+        self.deallocate_local(old)?;
+        Ok(())
     }
 
-    pub(super) fn deallocate_local(
-        &mut self,
-        local: LocalValue<M::PointerTag>,
-    ) -> InterpResult<'tcx> {
-        // FIXME: should we tell the user that there was a local which was never written to?
+    fn deallocate_local(&mut self, local: LocalValue<M::PointerTag>) -> InterpResult<'tcx> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             // All locals have a backing allocation, even if the allocation is empty
             // due to the local having ZST type.

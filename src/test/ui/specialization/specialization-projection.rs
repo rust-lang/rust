@@ -4,7 +4,7 @@
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 // Make sure we *can* project non-defaulted associated types
-// cf compile-fail/specialization-default-projection.rs
+// cf ui/specialization/specialization-default-projection.rs
 
 // First, do so without any use of specialization
 

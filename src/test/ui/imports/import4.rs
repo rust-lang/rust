@@ -1,9 +1,7 @@
-// run-pass
+// error-pattern: import
 
-use zed::bar;
 
-mod zed {
-    pub fn bar() { println!("bar"); }
-}
+mod a { pub use b::foo; }
+mod b { pub use a::foo; }
 
-pub fn main() { let _zed = 42; bar(); }
+fn main() { println!("loop"); }

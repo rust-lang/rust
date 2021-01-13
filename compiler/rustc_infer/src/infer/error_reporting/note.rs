@@ -1,6 +1,7 @@
 use crate::infer::error_reporting::{note_and_explain_region, ObligationCauseExt};
 use crate::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Region};
 
@@ -107,14 +108,37 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 let mut err = self.report_and_explain_type_error(trace, &terr);
-                note_and_explain_region(self.tcx, &mut err, "", sup, "...");
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "...does not necessarily outlive ",
-                    sub,
-                    "",
-                );
+                match (sub, sup) {
+                    (ty::RePlaceholder(_), ty::RePlaceholder(_)) => {}
+                    (ty::RePlaceholder(_), _) => {
+                        note_and_explain_region(
+                            self.tcx,
+                            &mut err,
+                            "",
+                            sup,
+                            " doesn't meet the lifetime requirements",
+                        );
+                    }
+                    (_, ty::RePlaceholder(_)) => {
+                        note_and_explain_region(
+                            self.tcx,
+                            &mut err,
+                            "the required lifetime does not necessarily outlive ",
+                            sub,
+                            "",
+                        );
+                    }
+                    _ => {
+                        note_and_explain_region(self.tcx, &mut err, "", sup, "...");
+                        note_and_explain_region(
+                            self.tcx,
+                            &mut err,
+                            "...does not necessarily outlive ",
+                            sub,
+                            "",
+                        );
+                    }
+                }
                 err
             }
             infer::Reborrow(span) => {
@@ -286,13 +310,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         sup: Region<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
         // I can't think how to do better than this right now. -nikomatsakis
+        debug!(?placeholder_origin, ?sub, ?sup, "report_placeholder_failure");
         match placeholder_origin {
+            infer::Subtype(box ref trace)
+                if matches!(
+                    &trace.cause.code.peel_derives(),
+                    ObligationCauseCode::BindingObligation(..)
+                ) =>
+            {
+                // Hack to get around the borrow checker because trace.cause has an `Rc`.
+                if let ObligationCauseCode::BindingObligation(_, span) =
+                    &trace.cause.code.peel_derives()
+                {
+                    let span = *span;
+                    let mut err = self.report_concrete_failure(placeholder_origin, sub, sup);
+                    err.span_note(span, "the lifetime requirement is introduced here");
+                    err
+                } else {
+                    unreachable!()
+                }
+            }
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsPlaceholderMismatch;
-                self.report_and_explain_type_error(trace, &terr)
+                return self.report_and_explain_type_error(trace, &terr);
             }
-
-            _ => self.report_concrete_failure(placeholder_origin, sub, sup),
+            _ => return self.report_concrete_failure(placeholder_origin, sub, sup),
         }
     }
 }

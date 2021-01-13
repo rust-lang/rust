@@ -182,6 +182,7 @@ fn toolchain_path(home: Option<String>, toolchain: Option<String>) -> Option<Pat
     })
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
     SyncLazy::force(&ICE_HOOK);
@@ -277,27 +278,40 @@ pub fn main() {
             args.extend(vec!["--sysroot".into(), sys_root]);
         };
 
-        // this check ensures that dependencies are built but not linted and the final
-        // crate is linted but not built
-        let clippy_enabled = env::var("CLIPPY_TESTS").map_or(false, |val| val == "true")
-            || arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_none();
+        let mut no_deps = false;
+        let clippy_args = env::var("CLIPPY_ARGS")
+            .unwrap_or_default()
+            .split("__CLIPPY_HACKERY__")
+            .filter_map(|s| match s {
+                "" => None,
+                "--no-deps" => {
+                    no_deps = true;
+                    None
+                },
+                _ => Some(s.to_string()),
+            })
+            .chain(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()])
+            .collect::<Vec<String>>();
 
+        // We enable Clippy if one of the following conditions is met
+        // - IF Clippy is run on its test suite OR
+        // - IF Clippy is run on the main crate, not on deps (`!cap_lints_allow`) THEN
+        //    - IF `--no-deps` is not set (`!no_deps`) OR
+        //    - IF `--no-deps` is set and Clippy is run on the specified primary package
+        let clippy_tests_set = env::var("CLIPPY_TESTS").map_or(false, |val| val == "true");
+        let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some();
+        let in_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
+
+        let clippy_enabled = clippy_tests_set || (!cap_lints_allow && (!no_deps || in_primary_package));
         if clippy_enabled {
-            args.extend(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()]);
-            if let Ok(extra_args) = env::var("CLIPPY_ARGS") {
-                args.extend(extra_args.split("__CLIPPY_HACKERY__").filter_map(|s| {
-                    if s.is_empty() {
-                        None
-                    } else {
-                        Some(s.to_string())
-                    }
-                }));
-            }
+            args.extend(clippy_args);
         }
+
         let mut clippy = ClippyCallbacks;
         let mut default = DefaultCallbacks;
         let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
             if clippy_enabled { &mut clippy } else { &mut default };
+
         rustc_driver::RunCompiler::new(&args, callbacks).run()
     }))
 }

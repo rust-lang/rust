@@ -30,3 +30,4 @@ chalk-ir = "0.36.0"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 measureme = "9.0.0"
 rustc_session = { path = "../rustc_session" }
+rustc_type_ir = { path = "../rustc_type_ir" }

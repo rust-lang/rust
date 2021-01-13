@@ -23,18 +23,18 @@ use rustc_span::symbol::{sym, Symbol};
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
 fn should_explore(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
-    match tcx.hir().find(hir_id) {
+    matches!(
+        tcx.hir().find(hir_id),
         Some(
             Node::Item(..)
-            | Node::ImplItem(..)
-            | Node::ForeignItem(..)
-            | Node::TraitItem(..)
-            | Node::Variant(..)
-            | Node::AnonConst(..)
-            | Node::Pat(..),
-        ) => true,
-        _ => false,
-    }
+                | Node::ImplItem(..)
+                | Node::ForeignItem(..)
+                | Node::TraitItem(..)
+                | Node::Variant(..)
+                | Node::AnonConst(..)
+                | Node::Pat(..),
+        )
+    )
 }
 
 struct MarkSymbolVisitor<'tcx> {
@@ -396,25 +396,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Trait(.., trait_item_refs) => {
-                for trait_item_ref in trait_item_refs {
-                    let trait_item = self.krate.trait_item(trait_item_ref.id);
-                    match trait_item.kind {
-                        hir::TraitItemKind::Const(_, Some(_))
-                        | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => {
-                            if has_allow_dead_code_or_lang_attr(
-                                self.tcx,
-                                trait_item.hir_id,
-                                &trait_item.attrs,
-                            ) {
-                                self.worklist.push(trait_item.hir_id);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            hir::ItemKind::Impl { ref of_trait, items, .. } => {
+            hir::ItemKind::Impl(hir::Impl { ref of_trait, items, .. }) => {
                 if of_trait.is_some() {
                     self.worklist.push(item.hir_id);
                 }
@@ -440,15 +422,27 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _item: &hir::TraitItem<'_>) {
-        // ignore: we are handling this in `visit_item` above
+    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
+        use hir::TraitItemKind::{Const, Fn};
+        if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
+            && has_allow_dead_code_or_lang_attr(self.tcx, trait_item.hir_id, &trait_item.attrs)
+        {
+            self.worklist.push(trait_item.hir_id);
+        }
     }
 
     fn visit_impl_item(&mut self, _item: &hir::ImplItem<'_>) {
         // ignore: we are handling this in `visit_item` above
     }
 
-    fn visit_foreign_item(&mut self, _item: &'v hir::ForeignItem<'v>) {}
+    fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
+        use hir::ForeignItemKind::{Fn, Static};
+        if matches!(foreign_item.kind, Static(..) | Fn(..))
+            && has_allow_dead_code_or_lang_attr(self.tcx, foreign_item.hir_id, &foreign_item.attrs)
+        {
+            self.worklist.push(foreign_item.hir_id);
+        }
+    }
 }
 
 fn create_and_seed_worklist<'tcx>(
@@ -506,16 +500,16 @@ struct DeadVisitor<'tcx> {
 
 impl DeadVisitor<'tcx> {
     fn should_warn_about_item(&mut self, item: &hir::Item<'_>) -> bool {
-        let should_warn = match item.kind {
+        let should_warn = matches!(
+            item.kind,
             hir::ItemKind::Static(..)
-            | hir::ItemKind::Const(..)
-            | hir::ItemKind::Fn(..)
-            | hir::ItemKind::TyAlias(..)
-            | hir::ItemKind::Enum(..)
-            | hir::ItemKind::Struct(..)
-            | hir::ItemKind::Union(..) => true,
-            _ => false,
-        };
+                | hir::ItemKind::Const(..)
+                | hir::ItemKind::Fn(..)
+                | hir::ItemKind::TyAlias(..)
+                | hir::ItemKind::Enum(..)
+                | hir::ItemKind::Struct(..)
+                | hir::ItemKind::Union(..)
+        );
         should_warn && !self.symbol_is_live(item.hir_id)
     }
 

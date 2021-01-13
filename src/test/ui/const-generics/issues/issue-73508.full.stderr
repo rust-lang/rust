@@ -1,5 +1,5 @@
 error: using raw pointers as const generic parameters is forbidden
-  --> $DIR/issue-73508.rs:6:33
+  --> $DIR/issue-73508.rs:5:33
    |
 LL | pub const fn func_name<const X: *const u32>() {}
    |                                 ^^^^^^^^^^

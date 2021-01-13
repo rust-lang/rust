@@ -20,4 +20,7 @@ fn main() {
     foo!(a, i32);
     foo!(b, f32);
     foo!(c, f64);
+
+    // do not lint cast to cfg-dependant type
+    1 as std::os::raw::c_char;
 }

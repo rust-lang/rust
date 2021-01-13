@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/intrinsics-type_name-as-const-argument.rs:15:44
+  --> $DIR/intrinsics-type_name-as-const-argument.rs:14:44
    |
 LL |     T: Trait<{std::intrinsics::type_name::<T>()}>
    |                                            ^ cannot perform const operation using `T`
@@ -8,13 +8,13 @@ LL |     T: Trait<{std::intrinsics::type_name::<T>()}>
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: `&'static str` is forbidden as the type of a const generic parameter
-  --> $DIR/intrinsics-type_name-as-const-argument.rs:10:22
+  --> $DIR/intrinsics-type_name-as-const-argument.rs:9:22
    |
 LL | trait Trait<const S: &'static str> {}
    |                      ^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: aborting due to 2 previous errors
 

@@ -1,0 +1,26 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/simple-struct-min-capture.rs:4:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error[E0502]: cannot borrow `p` as immutable because it is also borrowed as mutable
+  --> $DIR/simple-struct-min-capture.rs:23:22
+   |
+LL |     let mut c = || {
+   |                 -- mutable borrow occurs here
+LL |         p.x += 10;
+   |         - first borrow occurs due to use of `p` in closure
+...
+LL |     println!("{:?}", p);
+   |                      ^ immutable borrow occurs here
+LL |
+LL |     c();
+   |     - mutable borrow later used here
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0502`.

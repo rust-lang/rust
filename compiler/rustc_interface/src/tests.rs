@@ -7,7 +7,7 @@ use rustc_session::config::{build_configuration, build_session_options, to_crate
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::config::{
-    Externs, OutputType, OutputTypes, SanitizerSet, SymbolManglingVersion,
+    Externs, OutputType, OutputTypes, SanitizerSet, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -587,7 +587,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(share_generics, Some(true));
     tracked!(show_span, Some(String::from("abc")));
     tracked!(src_hash_algorithm, Some(SourceFileHashAlgorithm::Sha1));
-    tracked!(symbol_mangling_version, SymbolManglingVersion::V0);
+    tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
     tracked!(tune_cpu, Some(String::from("abc")));
@@ -597,6 +597,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(unleash_the_miri_inside_of_you, true);
     tracked!(use_ctors_section, Some(true));
     tracked!(verify_llvm_ir, true);
+    tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));
 }
 
 #[test]

@@ -5,7 +5,7 @@
 //! generic parameters are unused (and eventually, in what ways generic parameters are used - only
 //! for their size, offset of a field, etc.).
 
-use rustc_hir::{def::DefKind, def_id::DefId};
+use rustc_hir::{def::DefKind, def_id::DefId, ConstContext};
 use rustc_index::bit_set::FiniteBitSet;
 use rustc_middle::mir::{
     visit::{TyContext, Visitor},
@@ -54,9 +54,17 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
     }
 
     // Exit early when there is no MIR available.
-    if !tcx.is_mir_available(def_id) {
-        debug!("unused_generic_params: (no mir available) def_id={:?}", def_id);
-        return FiniteBitSet::new_empty();
+    let context = tcx.hir().body_const_context(def_id.expect_local());
+    match context {
+        Some(ConstContext::ConstFn) | None if !tcx.is_mir_available(def_id) => {
+            debug!("unused_generic_params: (no mir available) def_id={:?}", def_id);
+            return FiniteBitSet::new_empty();
+        }
+        Some(_) if !tcx.is_ctfe_mir_available(def_id) => {
+            debug!("unused_generic_params: (no ctfe mir available) def_id={:?}", def_id);
+            return FiniteBitSet::new_empty();
+        }
+        _ => {}
     }
 
     // Create a bitset with N rightmost ones for each parameter.
@@ -69,7 +77,12 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
     debug!("unused_generic_params: (after default) unused_parameters={:?}", unused_parameters);
 
     // Visit MIR and accumululate used generic parameters.
-    let body = tcx.optimized_mir(def_id);
+    let body = match context {
+        // Const functions are actually called and should thus be considered for polymorphization
+        // via their runtime MIR
+        Some(ConstContext::ConstFn) | None => tcx.optimized_mir(def_id),
+        Some(_) => tcx.mir_for_ctfe(def_id),
+    };
     let mut vis = MarkUsedGenericParams { tcx, def_id, unused_parameters: &mut unused_parameters };
     vis.visit_body(body);
     debug!("unused_generic_params: (after visitor) unused_parameters={:?}", unused_parameters);

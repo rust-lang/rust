@@ -9,6 +9,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 libc = "0.2"
+atty = "0.2"
 tracing = { version = "0.1.18" }
 tracing-subscriber = { version = "0.2.13", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
 tracing-tree = "0.1.6"

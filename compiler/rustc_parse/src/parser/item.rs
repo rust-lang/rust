@@ -1,5 +1,5 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
-use super::ty::{AllowPlus, RecoverQPath};
+use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
@@ -16,7 +16,7 @@ use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, Visibility
 use rustc_ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
-use rustc_span::edition::Edition;
+use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
@@ -220,7 +220,22 @@ impl<'a> Parser<'a> {
         let info = if self.eat_keyword(kw::Use) {
             // USE ITEM
             let tree = self.parse_use_tree()?;
-            self.expect_semi()?;
+
+            // If wildcard or glob-like brace syntax doesn't have `;`,
+            // the user may not know `*` or `{}` should be the last.
+            if let Err(mut e) = self.expect_semi() {
+                match tree.kind {
+                    UseTreeKind::Glob => {
+                        e.note("the wildcard token must be last on the path").emit();
+                    }
+                    UseTreeKind::Nested(..) => {
+                        e.note("glob-like brace syntax must be last on the path").emit();
+                    }
+                    _ => (),
+                }
+                return Err(e);
+            }
+
             (Ident::invalid(), ItemKind::Use(P(tree)))
         } else if self.check_fn_front_matter() {
             // FUNCTION ITEM
@@ -247,9 +262,14 @@ impl<'a> Parser<'a> {
             (ident, ItemKind::Static(ty, m, expr))
         } else if let Const::Yes(const_span) = self.parse_constness() {
             // CONST ITEM
-            self.recover_const_mut(const_span);
-            let (ident, ty, expr) = self.parse_item_global(None)?;
-            (ident, ItemKind::Const(def(), ty, expr))
+            if self.token.is_keyword(kw::Impl) {
+                // recover from `const impl`, suggest `impl const`
+                self.recover_const_impl(const_span, attrs, def())?
+            } else {
+                self.recover_const_mut(const_span);
+                let (ident, ty, expr) = self.parse_item_global(None)?;
+                (ident, ItemKind::Const(def(), ty, expr))
+            }
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
             self.parse_item_trait(attrs, lo)?
@@ -489,7 +509,7 @@ impl<'a> Parser<'a> {
         let polarity = self.parse_polarity();
 
         // Parse both types and traits as a type, then reinterpret if necessary.
-        let err_path = |span| ast::Path::from_ident(Ident::new(kw::Invalid, span));
+        let err_path = |span| ast::Path::from_ident(Ident::new(kw::Empty, span));
         let ty_first = if self.token.is_keyword(kw::For) && self.look_ahead(1, |t| t != &token::Lt)
         {
             let span = self.prev_token.span.between(self.token.span);
@@ -986,6 +1006,36 @@ impl<'a> Parser<'a> {
                 )
                 .emit();
         }
+    }
+
+    /// Recover on `const impl` with `const` already eaten.
+    fn recover_const_impl(
+        &mut self,
+        const_span: Span,
+        attrs: &mut Vec<Attribute>,
+        defaultness: Defaultness,
+    ) -> PResult<'a, ItemInfo> {
+        let impl_span = self.token.span;
+        let mut err = self.expected_ident_found();
+        let mut impl_info = self.parse_item_impl(attrs, defaultness)?;
+        match impl_info.1 {
+            // only try to recover if this is implementing a trait for a type
+            ItemKind::Impl { of_trait: Some(ref trai), ref mut constness, .. } => {
+                *constness = Const::Yes(const_span);
+
+                let before_trait = trai.path.span.shrink_to_lo();
+                let const_up_to_impl = const_span.with_hi(impl_span.lo());
+                err.multipart_suggestion(
+                    "you might have meant to write a const trait impl",
+                    vec![(const_up_to_impl, "".to_owned()), (before_trait, "const ".to_owned())],
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
+            }
+            ItemKind::Impl { .. } => return Err(err),
+            _ => unreachable!(),
+        }
+        Ok(impl_info)
     }
 
     /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty (= $expr)?` with
@@ -1514,7 +1564,7 @@ impl<'a> Parser<'a> {
         let header = self.parse_fn_front_matter()?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
         let mut generics = self.parse_generics()?; // `<'a, T, ...>`
-        let decl = self.parse_fn_decl(req_name, AllowPlus::Yes)?; // `(p: u8, ...)`
+        let decl = self.parse_fn_decl(req_name, AllowPlus::Yes, RecoverReturnSign::Yes)?; // `(p: u8, ...)`
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
 
         let mut sig_hi = self.prev_token.span;
@@ -1632,9 +1682,9 @@ impl<'a> Parser<'a> {
     fn ban_async_in_2015(&self, span: Span) {
         if span.rust_2015() {
             let diag = self.diagnostic();
-            struct_span_err!(diag, span, E0670, "`async fn` is not permitted in the 2015 edition")
-                .span_label(span, "to use `async fn`, switch to Rust 2018")
-                .help("set `edition = \"2018\"` in `Cargo.toml`")
+            struct_span_err!(diag, span, E0670, "`async fn` is not permitted in Rust 2015")
+                .span_label(span, "to use `async fn`, switch to Rust 2018 or later")
+                .help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION))
                 .note("for more on editions, read https://doc.rust-lang.org/edition-guide")
                 .emit();
         }
@@ -1645,10 +1695,11 @@ impl<'a> Parser<'a> {
         &mut self,
         req_name: ReqName,
         ret_allow_plus: AllowPlus,
+        recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, P<FnDecl>> {
         Ok(P(FnDecl {
             inputs: self.parse_fn_params(req_name)?,
-            output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes)?,
+            output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes, recover_return_sign)?,
         }))
     }
 
@@ -1663,7 +1714,7 @@ impl<'a> Parser<'a> {
                 // Skip every token until next possible arg or end.
                 p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
                 // Create a placeholder argument for proper arg count (issue #34264).
-                Ok(dummy_arg(Ident::new(kw::Invalid, lo.to(p.prev_token.span))))
+                Ok(dummy_arg(Ident::new(kw::Empty, lo.to(p.prev_token.span))))
             });
             // ...now that we've parsed the first argument, `self` is no longer allowed.
             first_param = false;
@@ -1723,7 +1774,7 @@ impl<'a> Parser<'a> {
             }
             match ty {
                 Ok(ty) => {
-                    let ident = Ident::new(kw::Invalid, self.prev_token.span);
+                    let ident = Ident::new(kw::Empty, self.prev_token.span);
                     let bm = BindingMode::ByValue(Mutability::Not);
                     let pat = self.mk_pat_ident(ty.span, bm, ident);
                     (pat, ty)

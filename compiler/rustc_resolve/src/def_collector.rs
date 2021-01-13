@@ -74,7 +74,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
         // information we encapsulate into, the better
         let def_data = match &i.kind {
             ItemKind::Impl { .. } => DefPathData::Impl,
-            ItemKind::Mod(..) if i.ident.name == kw::Invalid => {
+            ItemKind::Mod(..) if i.ident.name == kw::Empty => {
                 // Fake crate root item from expand.
                 return visit::walk_item(self, i);
             }
@@ -91,7 +91,10 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 DefPathData::ValueNs(i.ident.name)
             }
             ItemKind::MacroDef(..) => DefPathData::MacroNs(i.ident.name),
-            ItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
+            ItemKind::MacCall(..) => {
+                visit::walk_item(self, i);
+                return self.visit_macro_invoc(i.id);
+            }
             ItemKind::GlobalAsm(..) => DefPathData::Misc,
             ItemKind::Use(..) => {
                 return visit::walk_item(self, i);

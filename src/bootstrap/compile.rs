@@ -7,6 +7,7 @@
 //! goes along from the output of the previous stage.
 
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::io::prelude::*;
@@ -187,14 +188,16 @@ fn copy_self_contained_objects(
         }
     } else if target.ends_with("-wasi") {
         let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
-        copy_and_stamp(
-            builder,
-            &libdir_self_contained,
-            &srcdir,
-            "crt1.o",
-            &mut target_deps,
-            DependencyType::TargetSelfContained,
-        );
+        for &obj in &["crt1.o", "crt1-reactor.o"] {
+            copy_and_stamp(
+                builder,
+                &libdir_self_contained,
+                &srcdir,
+                obj,
+                &mut target_deps,
+                DependencyType::TargetSelfContained,
+            );
+        }
     } else if target.contains("windows-gnu") {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
             let src = compiler_file(builder, builder.cc(target), target, obj);
@@ -355,21 +358,39 @@ fn copy_sanitizers(
         let dst = libdir.join(&runtime.name);
         builder.copy(&runtime.path, &dst);
 
-        if target == "x86_64-apple-darwin" {
-            // Update the library install name reflect the fact it has been renamed.
-            let status = Command::new("install_name_tool")
-                .arg("-id")
-                .arg(format!("@rpath/{}", runtime.name))
-                .arg(&dst)
-                .status()
-                .expect("failed to execute `install_name_tool`");
-            assert!(status.success());
+        if target == "x86_64-apple-darwin" || target == "aarch64-apple-darwin" {
+            // Update the library’s install name to reflect that it has has been renamed.
+            apple_darwin_update_library_name(&dst, &format!("@rpath/{}", &runtime.name));
+            // Upon renaming the install name, the code signature of the file will invalidate,
+            // so we will sign it again.
+            apple_darwin_sign_file(&dst);
         }
 
         target_deps.push(dst);
     }
 
     target_deps
+}
+
+fn apple_darwin_update_library_name(library_path: &Path, new_name: &str) {
+    let status = Command::new("install_name_tool")
+        .arg("-id")
+        .arg(new_name)
+        .arg(library_path)
+        .status()
+        .expect("failed to execute `install_name_tool`");
+    assert!(status.success());
+}
+
+fn apple_darwin_sign_file(file_path: &Path) {
+    let status = Command::new("codesign")
+        .arg("-f") // Force to rewrite the existing signature
+        .arg("-s")
+        .arg("-")
+        .arg(file_path)
+        .status()
+        .expect("failed to execute `codesign`");
+    assert!(status.success());
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -500,6 +521,41 @@ impl Step for Rustc {
 
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "build");
         rustc_cargo(builder, &mut cargo, target);
+
+        if builder.config.rust_profile_use.is_some()
+            && builder.config.rust_profile_generate.is_some()
+        {
+            panic!("Cannot use and generate PGO profiles at the same time");
+        }
+
+        let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
+            if compiler.stage == 1 {
+                cargo.rustflag(&format!("-Cprofile-generate={}", path));
+                // Apparently necessary to avoid overflowing the counters during
+                // a Cargo build profile
+                cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
+                true
+            } else {
+                false
+            }
+        } else if let Some(path) = &builder.config.rust_profile_use {
+            if compiler.stage == 1 {
+                cargo.rustflag(&format!("-Cprofile-use={}", path));
+                cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+        if is_collecting {
+            // Ensure paths to Rust sources are relative, not absolute.
+            cargo.rustflag(&format!(
+                "-Cllvm-args=-static-func-strip-dirname-prefix={}",
+                builder.config.src.components().count()
+            ));
+        }
 
         builder.info(&format!(
             "Building stage{} compiler artifacts ({} -> {})",
@@ -752,7 +808,7 @@ fn copy_codegen_backends_to_sysroot(
     // Here we're looking for the output dylib of the `CodegenBackend` step and
     // we're copying that into the `codegen-backends` folder.
     let dst = builder.sysroot_codegen_backends(target_compiler);
-    t!(fs::create_dir_all(&dst));
+    t!(fs::create_dir_all(&dst), dst);
 
     if builder.config.dry_run {
         return;
@@ -956,28 +1012,51 @@ impl Step for Assemble {
         builder.info(&format!("Assembling stage{} compiler ({})", stage, host));
 
         // Link in all dylibs to the libdir
+        let stamp = librustc_stamp(builder, build_compiler, target_compiler.host);
+        let proc_macros = builder
+            .read_stamp_file(&stamp)
+            .into_iter()
+            .filter_map(|(path, dependency_type)| {
+                if dependency_type == DependencyType::Host {
+                    Some(path.file_name().unwrap().to_owned().into_string().unwrap())
+                } else {
+                    None
+                }
+            })
+            .collect::<HashSet<_>>();
+
         let sysroot = builder.sysroot(target_compiler);
         let rustc_libdir = builder.rustc_libdir(target_compiler);
         t!(fs::create_dir_all(&rustc_libdir));
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
-            if is_dylib(&filename) {
+            if is_dylib(&filename) && !proc_macros.contains(&filename) {
                 builder.copy(&f.path(), &rustc_libdir.join(&filename));
             }
         }
 
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
+        // We prepend this bin directory to the user PATH when linking Rust binaries. To
+        // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
         let libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
+        let libdir_bin = libdir.parent().unwrap().join("bin");
+        t!(fs::create_dir_all(&libdir_bin));
+
         if let Some(lld_install) = lld_install {
             let src_exe = exe("lld", target_compiler.host);
             let dst_exe = exe("rust-lld", target_compiler.host);
-            // we prepend this bin directory to the user PATH when linking Rust binaries. To
-            // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
-            let dst = libdir.parent().unwrap().join("bin");
-            t!(fs::create_dir_all(&dst));
-            builder.copy(&lld_install.join("bin").join(&src_exe), &dst.join(&dst_exe));
+            builder.copy(&lld_install.join("bin").join(&src_exe), &libdir_bin.join(&dst_exe));
+        }
+
+        // Similarly, copy `llvm-dwp` into libdir for Split DWARF.
+        {
+            let src_exe = exe("llvm-dwp", target_compiler.host);
+            let dst_exe = exe("rust-llvm-dwp", target_compiler.host);
+            let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
+            let llvm_bin_dir = llvm_config_bin.parent().unwrap();
+            builder.copy(&llvm_bin_dir.join(&src_exe), &libdir_bin.join(&dst_exe));
         }
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,

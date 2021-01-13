@@ -1,10 +1,10 @@
 use crate::stable_hasher;
 use rustc_serialize::{
-    opaque::{self, EncodeResult},
+    opaque::{self, EncodeResult, FileEncodeResult},
     Decodable, Encodable,
 };
 use std::hash::{Hash, Hasher};
-use std::mem;
+use std::mem::{self, MaybeUninit};
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy)]
 pub struct Fingerprint(u64, u64);
@@ -53,15 +53,8 @@ impl Fingerprint {
         format!("{:x}{:x}", self.0, self.1)
     }
 
-    pub fn encode_opaque(&self, encoder: &mut opaque::Encoder) -> EncodeResult {
-        let bytes: [u8; 16] = unsafe { mem::transmute([self.0.to_le(), self.1.to_le()]) };
-
-        encoder.emit_raw_bytes(&bytes);
-        Ok(())
-    }
-
     pub fn decode_opaque(decoder: &mut opaque::Decoder<'_>) -> Result<Fingerprint, String> {
-        let mut bytes = [0; 16];
+        let mut bytes: [MaybeUninit<u8>; 16] = MaybeUninit::uninit_array();
 
         decoder.read_raw_bytes(&mut bytes)?;
 
@@ -142,7 +135,16 @@ impl<E: rustc_serialize::Encoder> FingerprintEncoder for E {
 
 impl FingerprintEncoder for opaque::Encoder {
     fn encode_fingerprint(&mut self, f: &Fingerprint) -> EncodeResult {
-        f.encode_opaque(self)
+        let bytes: [u8; 16] = unsafe { mem::transmute([f.0.to_le(), f.1.to_le()]) };
+        self.emit_raw_bytes(&bytes);
+        Ok(())
+    }
+}
+
+impl FingerprintEncoder for opaque::FileEncoder {
+    fn encode_fingerprint(&mut self, f: &Fingerprint) -> FileEncodeResult {
+        let bytes: [u8; 16] = unsafe { mem::transmute([f.0.to_le(), f.1.to_le()]) };
+        self.emit_raw_bytes(&bytes)
     }
 }
 
@@ -198,7 +200,7 @@ impl<E: rustc_serialize::Encoder> Encodable<E> for PackedFingerprint {
 impl<D: rustc_serialize::Decoder> Decodable<D> for PackedFingerprint {
     #[inline]
     fn decode(d: &mut D) -> Result<Self, D::Error> {
-        Fingerprint::decode(d).map(|f| PackedFingerprint(f))
+        Fingerprint::decode(d).map(PackedFingerprint)
     }
 }
 

@@ -1859,7 +1859,7 @@ impl<T: Iterator<Item = char>> Parser<T> {
                             }
 
                             let n2 = self.decode_hex_escape()?;
-                            if n2 < 0xDC00 || n2 > 0xDFFF {
+                            if !(0xDC00..=0xDFFF).contains(&n2) {
                                 return self.error(LoneLeadingSurrogateInHexEscape);
                             }
                             let c =

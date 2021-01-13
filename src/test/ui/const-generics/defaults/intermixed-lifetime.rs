@@ -2,7 +2,6 @@
 // Checks that lifetimes cannot be interspersed between consts and types.
 #![cfg_attr(full, feature(const_generics))]
 #![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(min, feature(min_const_generics))]
 
 struct Foo<const N: usize, 'a, T = u32>(&'a (), T);
 //~^ Error lifetime parameters must be declared prior to const parameters

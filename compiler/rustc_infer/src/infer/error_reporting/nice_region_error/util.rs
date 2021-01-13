@@ -14,8 +14,8 @@ pub(super) struct AnonymousParamInfo<'tcx> {
     pub param: &'tcx hir::Param<'tcx>,
     /// The type corresponding to the anonymous region parameter.
     pub param_ty: Ty<'tcx>,
-    /// The ty::BoundRegion corresponding to the anonymous region.
-    pub bound_region: ty::BoundRegion,
+    /// The ty::BoundRegionKind corresponding to the anonymous region.
+    pub bound_region: ty::BoundRegionKind,
     /// The `Span` of the parameter type.
     pub param_ty_span: Span,
     /// Signals that the argument is the first parameter in the declaration.
@@ -43,7 +43,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
             ty::ReEarlyBound(ebr) => (
                 self.tcx().parent(ebr.def_id).unwrap(),
-                ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
+                ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name),
             ),
             _ => return None, // not a free region
         };
@@ -145,7 +145,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     pub(super) fn is_return_type_anon(
         &self,
         scope_def_id: LocalDefId,
-        br: ty::BoundRegion,
+        br: ty::BoundRegionKind,
         decl: &hir::FnDecl<'_>,
     ) -> Option<Span> {
         let ret_ty = self.tcx().type_of(scope_def_id);

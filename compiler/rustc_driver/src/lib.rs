@@ -223,7 +223,6 @@ fn run_compiler(
             file_loader: None,
             diagnostic_output,
             stderr: None,
-            crate_name: None,
             lint_caps: Default::default(),
             register_lints: None,
             override_queries: None,
@@ -307,7 +306,6 @@ fn run_compiler(
         file_loader,
         diagnostic_output,
         stderr: None,
-        crate_name: None,
         lint_caps: Default::default(),
         register_lints: None,
         override_queries: None,
@@ -548,24 +546,12 @@ impl Compilation {
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
-// FIXME remove these and use winapi 0.3 instead
-// Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs
-#[cfg(unix)]
 fn stdout_isatty() -> bool {
-    unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+    atty::is(atty::Stream::Stdout)
 }
 
-#[cfg(windows)]
-fn stdout_isatty() -> bool {
-    use winapi::um::consoleapi::GetConsoleMode;
-    use winapi::um::processenv::GetStdHandle;
-    use winapi::um::winbase::STD_OUTPUT_HANDLE;
-
-    unsafe {
-        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
-        let mut out = 0;
-        GetConsoleMode(handle, &mut out) != 0
-    }
+fn stderr_isatty() -> bool {
+    atty::is(atty::Stream::Stderr)
 }
 
 fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
@@ -605,7 +591,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     }
 }
 
-fn show_content_with_pager(content: &String) {
+fn show_content_with_pager(content: &str) {
     let pager_name = env::var_os("PAGER").unwrap_or_else(|| {
         if cfg!(windows) { OsString::from("more.com") } else { OsString::from("less") }
     });
@@ -1292,7 +1278,7 @@ pub fn init_env_logger(env: &str) {
         Ok(value) => match value.as_ref() {
             "always" => true,
             "never" => false,
-            "auto" => stdout_isatty(),
+            "auto" => stderr_isatty(),
             _ => early_error(
                 ErrorOutputType::default(),
                 &format!(
@@ -1301,7 +1287,7 @@ pub fn init_env_logger(env: &str) {
                 ),
             ),
         },
-        Err(std::env::VarError::NotPresent) => stdout_isatty(),
+        Err(std::env::VarError::NotPresent) => stderr_isatty(),
         Err(std::env::VarError::NotUnicode(_value)) => early_error(
             ErrorOutputType::default(),
             "non-Unicode log color value: expected one of always, never, or auto",

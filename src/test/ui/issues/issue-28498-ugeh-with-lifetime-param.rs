@@ -3,7 +3,7 @@
 // Demonstrate the use of the unguarded escape hatch with a lifetime param
 // to assert that destructor will not access any dead data.
 //
-// Compare with compile-fail/issue28498-reject-lifetime-param.rs
+// Compare with ui/span/issue28498-reject-lifetime-param.rs
 
 #![feature(dropck_eyepatch)]
 

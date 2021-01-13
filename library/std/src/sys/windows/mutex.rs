@@ -123,9 +123,9 @@ impl Mutex {
         let inner = box Inner { remutex: ReentrantMutex::uninitialized(), held: Cell::new(false) };
         inner.remutex.init();
         let inner = Box::into_raw(inner);
-        match self.lock.compare_and_swap(0, inner as usize, Ordering::SeqCst) {
-            0 => inner,
-            n => {
+        match self.lock.compare_exchange(0, inner as usize, Ordering::SeqCst, Ordering::SeqCst) {
+            Ok(_) => inner,
+            Err(n) => {
                 Box::from_raw(inner).remutex.destroy();
                 n as *const _
             }

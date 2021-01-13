@@ -2,14 +2,14 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use serde::Serialize;
 
 use crate::clean::types::GetDefId;
 use crate::clean::{self, AttributesExt};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::html::render::{plain_text_summary, shorten};
+use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{Generic, IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
 
 /// Indicates where an external crate can be found.
@@ -31,7 +31,7 @@ crate fn extern_location(
 ) -> ExternalLocation {
     use ExternalLocation::*;
     // See if there's documentation generated into the local directory
-    let local_location = dst.join(&e.name);
+    let local_location = dst.join(&*e.name.as_str());
     if local_location.is_dir() {
         return Local;
     }
@@ -76,9 +76,9 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         if let Some(&(ref fqp, _)) = paths.get(&did) {
             search_index.push(IndexItem {
                 ty: item.type_(),
-                name: item.name.clone().unwrap(),
+                name: item.name.unwrap().to_string(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: shorten(plain_text_summary(item.doc_value())),
+                desc: item.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)),
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
@@ -127,7 +127,7 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let crate_doc = krate
         .module
         .as_ref()
-        .map(|module| shorten(plain_text_summary(module.doc_value())))
+        .map(|module| module.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)))
         .unwrap_or_default();
 
     #[derive(Serialize)]
@@ -165,7 +165,7 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
 }
 
 crate fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
-    let (all_types, ret_types) = match item.kind {
+    let (all_types, ret_types) = match *item.kind {
         clean::FunctionItem(ref f) => (&f.all_types, &f.ret_types),
         clean::MethodItem(ref m, _) => (&m.all_types, &m.ret_types),
         clean::TyMethodItem(ref m) => (&m.all_types, &m.ret_types),
@@ -191,12 +191,12 @@ fn get_index_type(clean_type: &clean::Type) -> RenderType {
     RenderType {
         ty: clean_type.def_id(),
         idx: None,
-        name: get_index_type_name(clean_type, true).map(|s| s.to_ascii_lowercase()),
+        name: get_index_type_name(clean_type, true).map(|s| s.as_str().to_ascii_lowercase()),
         generics: get_generics(clean_type),
     }
 }
 
-fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<String> {
+fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<Symbol> {
     match *clean_type {
         clean::ResolvedPath { ref path, .. } => {
             let segments = &path.segments;
@@ -206,10 +206,10 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
                 clean_type, accept_generic
             )
             });
-            Some(path_segment.name.clone())
+            Some(path_segment.name)
         }
-        clean::Generic(ref s) if accept_generic => Some(s.clone()),
-        clean::Primitive(ref p) => Some(format!("{:?}", p)),
+        clean::Generic(s) if accept_generic => Some(s),
+        clean::Primitive(ref p) => Some(p.as_sym()),
         clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_, accept_generic),
         // FIXME: add all from clean::Type.
         _ => None,
@@ -222,7 +222,7 @@ fn get_generics(clean_type: &clean::Type) -> Option<Vec<Generic>> {
             .iter()
             .filter_map(|t| {
                 get_index_type_name(t, false).map(|name| Generic {
-                    name: name.to_ascii_lowercase(),
+                    name: name.as_str().to_ascii_lowercase(),
                     defid: t.def_id(),
                     idx: None,
                 })

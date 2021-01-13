@@ -1,0 +1,11 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/capture-disjoint-field-struct.rs:6:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+warning: 1 warning emitted
+

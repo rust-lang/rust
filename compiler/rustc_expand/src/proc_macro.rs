@@ -3,7 +3,7 @@ use crate::proc_macro_server;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability, ErrorReported};
@@ -94,7 +94,7 @@ impl MultiItemModifier for ProcMacroDerive {
         let input = if item.pretty_printing_compatibility_hack() {
             TokenTree::token(token::Interpolated(Lrc::new(item)), DUMMY_SP).into()
         } else {
-            nt_to_tokenstream(&item, &ecx.sess.parse_sess, DUMMY_SP)
+            nt_to_tokenstream(&item, &ecx.sess.parse_sess, CanSynthesizeMissingTokens::Yes)
         };
 
         let server = proc_macro_server::Rustc::new(ecx);

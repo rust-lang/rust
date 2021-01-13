@@ -3,7 +3,7 @@
 // Test that a type which is covariant with respect to its region
 // parameter is successful when used in a covariant way.
 //
-// Note: see compile-fail/variance-regions-*.rs for the tests that
+// Note: see ui/variance/variance-regions-*.rs for the tests that
 // check that the variance inference works in the first place.
 
 // This is covariant with respect to 'a, meaning that

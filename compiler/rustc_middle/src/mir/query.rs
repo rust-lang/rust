@@ -46,7 +46,7 @@ pub enum UnsafetyViolationDetails {
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
-    AssignToNonCopyUnionField,
+    AssignToDroppingUnionField,
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
@@ -94,8 +94,8 @@ impl UnsafetyViolationDetails {
                 "raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules \
                  and cause data races: all of these are undefined behavior",
             ),
-            AssignToNonCopyUnionField => (
-                "assignment to non-`Copy` union field",
+            AssignToDroppingUnionField => (
+                "assignment to union field that might need dropping",
                 "the previous content of the field will be dropped, which causes undefined \
                  behavior if the field was not properly initialized",
             ),
@@ -439,14 +439,23 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn optimized_mir_opt_const_arg(
+    pub fn optimized_mir_or_const_arg_mir(
         self,
         def: ty::WithOptConstParam<DefId>,
     ) -> &'tcx Body<'tcx> {
         if let Some((did, param_did)) = def.as_const_arg() {
-            self.optimized_mir_of_const_arg((did, param_did))
+            self.mir_for_ctfe_of_const_arg((did, param_did))
         } else {
             self.optimized_mir(def.did)
+        }
+    }
+
+    #[inline]
+    pub fn mir_for_ctfe_opt_const_arg(self, def: ty::WithOptConstParam<DefId>) -> &'tcx Body<'tcx> {
+        if let Some((did, param_did)) = def.as_const_arg() {
+            self.mir_for_ctfe_of_const_arg((did, param_did))
+        } else {
+            self.mir_for_ctfe(def.did)
         }
     }
 

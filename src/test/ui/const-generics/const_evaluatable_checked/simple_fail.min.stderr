@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/simple_fail.rs:7:33
+  --> $DIR/simple_fail.rs:6:33
    |
 LL | type Arr<const N: usize> = [u8; N - 1];
    |                                 ^ cannot perform const operation using `N`

@@ -409,11 +409,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             | hir::ItemKind::Union(_, ref generics)
             | hir::ItemKind::Trait(_, _, ref generics, ..)
             | hir::ItemKind::TraitAlias(ref generics, ..)
-            | hir::ItemKind::Impl { ref generics, .. } => {
+            | hir::ItemKind::Impl(hir::Impl { ref generics, .. }) => {
                 self.missing_named_lifetime_spots.push(generics.into());
 
                 // Impls permit `'_` to be used and it is equivalent to "some fresh lifetime name".
-                // This is not true for other kinds of items.x
+                // This is not true for other kinds of items.
                 let track_lifetime_uses = matches!(item.kind, hir::ItemKind::Impl { .. });
                 // These kinds of items have only early-bound lifetime parameters.
                 let mut index = if sub_items_have_self_param(&item.kind) {
@@ -1098,7 +1098,7 @@ fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: Symbol, orig: Original, shado
         )
     };
     err.span_label(orig.span, "first declared here");
-    err.span_label(shadower.span, format!("lifetime {} already in scope", name));
+    err.span_label(shadower.span, format!("{} `{}` already in scope", orig.kind.desc(), name));
     err.emit();
 }
 
@@ -1677,7 +1677,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
             match parent.kind {
                 hir::ItemKind::Trait(_, _, ref generics, ..)
-                | hir::ItemKind::Impl { ref generics, .. } => {
+                | hir::ItemKind::Impl(hir::Impl { ref generics, .. }) => {
                     index += generics.params.len() as u32;
                 }
                 _ => {}
@@ -1769,8 +1769,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let result = loop {
             match *scope {
                 Scope::Body { id, s } => {
-                    // Non-static lifetimes are prohibited in anonymous constants under
-                    // `min_const_generics`.
+                    // Non-static lifetimes are prohibited in anonymous constants without
+                    // `const_generics`.
                     self.maybe_emit_forbidden_non_static_lifetime_error(id, lifetime_ref);
 
                     outermost_body = Some(id);
@@ -2102,7 +2102,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body), .. }) => {
-                if let hir::ItemKind::Impl { ref self_ty, ref items, .. } =
+                if let hir::ItemKind::Impl(hir::Impl { ref self_ty, ref items, .. }) =
                     self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
                 {
                     impl_self = Some(self_ty);

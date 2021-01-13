@@ -1,6 +1,4 @@
 // edition:2018
-#![feature(min_const_generics)]
-
 pub fn extern_fn<const N: usize>() -> impl Iterator<Item = [u8; N]> {
     [[0; N]; N].iter().copied()
 }

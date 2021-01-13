@@ -347,7 +347,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `_ => else_block` where `else_block` is `{}` if there's `None`:
         let else_pat = self.pat_wild(span);
         let (else_expr, contains_else_clause) = match else_opt {
-            None => (self.expr_block_empty(span), false),
+            None => (self.expr_block_empty(span.shrink_to_hi()), false),
             Some(els) => (self.lower_expr(els), true),
         };
         let else_arm = self.arm(else_pat, else_expr);
@@ -505,14 +505,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
+        let pat = self.lower_pat(&arm.pat);
+        let guard = arm.guard.as_ref().map(|cond| {
+            if let ExprKind::Let(ref pat, ref scrutinee) = cond.kind {
+                hir::Guard::IfLet(self.lower_pat(pat), self.lower_expr(scrutinee))
+            } else {
+                hir::Guard::If(self.lower_expr(cond))
+            }
+        });
         hir::Arm {
             hir_id: self.next_id(),
             attrs: self.lower_attrs(&arm.attrs),
-            pat: self.lower_pat(&arm.pat),
-            guard: match arm.guard {
-                Some(ref x) => Some(hir::Guard::If(self.lower_expr(x))),
-                _ => None,
-            },
+            pat,
+            guard,
             body: self.lower_expr(&arm.body),
             span: arm.span,
         }
@@ -1307,7 +1312,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::InlineAsmOperand::Sym { expr: self.lower_expr_mut(expr) }
                     }
                 };
-                Some(op)
+                Some((op, *op_sp))
             })
             .collect();
 
@@ -1326,7 +1331,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             } = *p
             {
                 let op_sp = asm.operands[operand_idx].1;
-                match &operands[operand_idx] {
+                match &operands[operand_idx].0 {
                     hir::InlineAsmOperand::In { reg, .. }
                     | hir::InlineAsmOperand::Out { reg, .. }
                     | hir::InlineAsmOperand::InOut { reg, .. }
@@ -1385,8 +1390,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut used_input_regs = FxHashMap::default();
         let mut used_output_regs = FxHashMap::default();
         let mut required_features: Vec<&str> = vec![];
-        for (idx, op) in operands.iter().enumerate() {
-            let op_sp = asm.operands[idx].1;
+        for (idx, &(ref op, op_sp)) in operands.iter().enumerate() {
             if let Some(reg) = op.reg() {
                 // Make sure we don't accidentally carry features from the
                 // previous iteration.
@@ -1458,8 +1462,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                     skip = true;
 
                                     let idx2 = *o.get();
-                                    let op2 = &operands[idx2];
-                                    let op_sp2 = asm.operands[idx2].1;
+                                    let &(ref op2, op_sp2) = &operands[idx2];
                                     let reg2 = match op2.reg() {
                                         Some(asm::InlineAsmRegOrRegClass::Reg(r)) => r,
                                         _ => unreachable!(),

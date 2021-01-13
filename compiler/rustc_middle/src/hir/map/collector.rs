@@ -529,13 +529,22 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir MacroDef<'hir>) {
-        self.with_dep_node_owner(macro_def.hir_id.owner, macro_def, |this, hash| {
-            this.insert_with_hash(
-                macro_def.span,
-                macro_def.hir_id,
-                Node::MacroDef(macro_def),
-                hash,
-            );
+        // Exported macros are visited directly from the crate root,
+        // so they do not have `parent_node` set.
+        // Find the correct enclosing module from their DefKey.
+        let def_key = self.definitions.def_key(macro_def.hir_id.owner);
+        let parent = def_key.parent.map_or(hir::CRATE_HIR_ID, |local_def_index| {
+            self.definitions.local_def_id_to_hir_id(LocalDefId { local_def_index })
+        });
+        self.with_parent(parent, |this| {
+            this.with_dep_node_owner(macro_def.hir_id.owner, macro_def, |this, hash| {
+                this.insert_with_hash(
+                    macro_def.span,
+                    macro_def.hir_id,
+                    Node::MacroDef(macro_def),
+                    hash,
+                );
+            })
         });
     }
 

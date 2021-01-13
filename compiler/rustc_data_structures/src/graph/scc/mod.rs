@@ -523,7 +523,7 @@ where
                             successors_len: 0,
                             min_depth: depth,
                             min_cycle_root: successor_node,
-                            successor_node: successor_node,
+                            successor_node,
                         });
                         continue 'recurse;
                     }

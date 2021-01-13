@@ -218,8 +218,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Dynamic(binder, _) => {
                     let mut has_emitted = false;
-                    for predicate in binder.skip_binder().iter() {
-                        if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
+                    for predicate in binder.iter() {
+                        if let ty::ExistentialPredicate::Trait(ref trait_ref) =
+                            predicate.skip_binder()
+                        {
                             let def_id = trait_ref.def_id;
                             let descr_post =
                                 &format!(" trait object{}{}", plural_suffix, descr_post,);
@@ -860,11 +862,11 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
-        if let &ast::TyKind::Paren(ref r) = &ty.kind {
+        if let ast::TyKind::Paren(r) = &ty.kind {
             match &r.kind {
-                &ast::TyKind::TraitObject(..) => {}
-                &ast::TyKind::ImplTrait(_, ref bounds) if bounds.len() > 1 => {}
-                &ast::TyKind::Array(_, ref len) => {
+                ast::TyKind::TraitObject(..) => {}
+                ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
+                ast::TyKind::Array(_, len) => {
                     self.check_unused_delims_expr(
                         cx,
                         &len.value,

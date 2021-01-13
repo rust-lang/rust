@@ -178,16 +178,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         // Get the alignment of the field
         let (_, unsized_align) = glue::size_and_align_of_dst(bx, field.ty, meta);
 
-        // Bump the unaligned offset up to the appropriate alignment using the
-        // following expression:
-        //
-        //     (unaligned offset + (align - 1)) & -align
-
-        // Calculate offset.
-        let align_sub_1 = bx.sub(unsized_align, bx.cx().const_usize(1u64));
-        let and_lhs = bx.add(unaligned_offset, align_sub_1);
-        let and_rhs = bx.neg(unsized_align);
-        let offset = bx.and(and_lhs, and_rhs);
+        // Bump the unaligned offset up to the appropriate alignment
+        let offset = round_up_const_value_to_alignment(bx, unaligned_offset, unsized_align);
 
         debug!("struct_field_ptr: DST field offset: {:?}", offset);
 
@@ -514,7 +506,49 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     pub fn monomorphized_place_ty(&self, place_ref: mir::PlaceRef<'tcx>) -> Ty<'tcx> {
         let tcx = self.cx.tcx();
-        let place_ty = mir::Place::ty_from(place_ref.local, place_ref.projection, self.mir, tcx);
+        let place_ty = mir::PlaceRef::ty(&place_ref, self.mir, tcx);
         self.monomorphize(place_ty.ty)
     }
+}
+
+fn round_up_const_value_to_alignment<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    value: Bx::Value,
+    align: Bx::Value,
+) -> Bx::Value {
+    // In pseudo code:
+    //
+    //     if value & (align - 1) == 0 {
+    //         value
+    //     } else {
+    //         (value & !(align - 1)) + align
+    //     }
+    //
+    // Usually this is written without branches as
+    //
+    //     (value + align - 1) & !(align - 1)
+    //
+    // But this formula cannot take advantage of constant `value`. E.g. if `value` is known
+    // at compile time to be `1`, this expression should be optimized to `align`. However,
+    // optimization only holds if `align` is a power of two. Since the optimizer doesn't know
+    // that `align` is a power of two, it cannot perform this optimization.
+    //
+    // Instead we use
+    //
+    //     value + (-value & (align - 1))
+    //
+    // Since `align` is used only once, the expression can be optimized. For `value = 0`
+    // its optimized to `0` even in debug mode.
+    //
+    // NB: The previous version of this code used
+    //
+    //     (value + align - 1) & -align
+    //
+    // Even though `-align == !(align - 1)`, LLVM failed to optimize this even for
+    // `value = 0`. Bug report: https://bugs.llvm.org/show_bug.cgi?id=48559
+    let one = bx.const_usize(1);
+    let align_minus_1 = bx.sub(align, one);
+    let neg_value = bx.neg(value);
+    let offset = bx.and(neg_value, align_minus_1);
+    bx.add(value, offset)
 }

@@ -16,4 +16,4 @@ pub fn main() {
 // The above extern is NOT `extern "rust-intrinsic"` and thus
 // means it'll try to find a corresponding symbol to link to.
 #[no_mangle]
-pub extern fn transmute() {}
+pub extern "C" fn transmute() {}

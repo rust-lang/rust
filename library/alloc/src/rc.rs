@@ -238,6 +238,7 @@
 //! [downgrade]: Rc::downgrade
 //! [upgrade]: Weak::upgrade
 //! [mutability]: core::cell#introducing-mutability-inside-of-something-immutable
+//! [fully qualified syntax]: https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#fully-qualified-syntax-for-disambiguation-calling-methods-with-the-same-name
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -262,7 +263,9 @@ use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
-use crate::alloc::{box_free, handle_alloc_error, AllocError, AllocRef, Global, Layout};
+use crate::alloc::{
+    box_free, handle_alloc_error, AllocError, Allocator, Global, Layout, WriteCloneIntoRaw,
+};
 use crate::borrow::{Cow, ToOwned};
 use crate::string::String;
 use crate::vec::Vec;
@@ -416,7 +419,7 @@ impl<T> Rc<T> {
         unsafe {
             Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::new::<T>(),
-                |layout| Global.alloc(layout),
+                |layout| Global.allocate(layout),
                 |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
             ))
         }
@@ -447,12 +450,101 @@ impl<T> Rc<T> {
         unsafe {
             Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::new::<T>(),
-                |layout| Global.alloc_zeroed(layout),
+                |layout| Global.allocate_zeroed(layout),
                 |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
             ))
         }
     }
 
+    /// Constructs a new `Rc<T>`, returning an error if the allocation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::try_new(5);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {
+        // There is an implicit weak pointer owned by all the strong
+        // pointers, which ensures that the weak destructor never frees
+        // the allocation while the strong destructor is running, even
+        // if the weak pointer is stored inside the strong one.
+        Ok(Self::from_inner(
+            Box::leak(Box::try_new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value })?)
+                .into(),
+        ))
+    }
+
+    /// Constructs a new `Rc` with uninitialized contents, returning an error if the allocation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut five = Rc::<u32>::try_new_uninit()?;
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
+        unsafe {
+            Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate(layout),
+                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
+            )?))
+        }
+    }
+
+    /// Constructs a new `Rc` with uninitialized contents, with the memory
+    /// being filled with `0` bytes, returning an error if the allocation fails
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, new_uninit)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let zero = Rc::<u32>::try_new_zeroed()?;
+    /// let zero = unsafe { zero.assume_init() };
+    ///
+    /// assert_eq!(*zero, 0);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    //#[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
+        unsafe {
+            Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate_zeroed(layout),
+                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
+            )?))
+        }
+    }
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -555,7 +647,7 @@ impl<T> Rc<[T]> {
         unsafe {
             Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
-                |layout| Global.alloc_zeroed(layout),
+                |layout| Global.allocate_zeroed(layout),
                 |mem| {
                     ptr::slice_from_raw_parts_mut(mem as *mut T, len)
                         as *mut RcBox<[mem::MaybeUninit<T>]>
@@ -947,18 +1039,26 @@ impl<T: Clone> Rc<T> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
         if Rc::strong_count(this) != 1 {
-            // Gotta clone the data, there are other Rcs
-            *this = Rc::new((**this).clone())
+            // Gotta clone the data, there are other Rcs.
+            // Pre-allocate memory to allow writing the cloned value directly.
+            let mut rc = Self::new_uninit();
+            unsafe {
+                let data = Rc::get_mut_unchecked(&mut rc);
+                (**this).write_clone_into_raw(data.as_mut_ptr());
+                *this = rc.assume_init();
+            }
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
+            let mut rc = Self::new_uninit();
             unsafe {
-                let mut swap = Rc::new(ptr::read(&this.ptr.as_ref().value));
-                mem::swap(this, &mut swap);
-                swap.inner().dec_strong();
+                let data = Rc::get_mut_unchecked(&mut rc);
+                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
+
+                this.inner().dec_strong();
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
-                swap.inner().dec_weak();
-                forget(swap);
+                this.inner().dec_weak();
+                ptr::write(this, rc.assume_init());
             }
         }
         // This unsafety is ok because we're guaranteed that the pointer
@@ -1018,9 +1118,32 @@ impl<T: ?Sized> Rc<T> {
         // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        unsafe {
+            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
+                .unwrap_or_else(|_| handle_alloc_error(layout))
+        }
+    }
+
+    /// Allocates an `RcBox<T>` with sufficient space for
+    /// a possibly-unsized inner value where the value has the layout provided,
+    /// returning an error if allocation fails.
+    ///
+    /// The function `mem_to_rcbox` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
+    #[inline]
+    unsafe fn try_allocate_for_layout(
+        value_layout: Layout,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
+        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
+    ) -> Result<*mut RcBox<T>, AllocError> {
+        // Calculate layout using the given value layout.
+        // Previously, layout was calculated on the expression
+        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
+        // reference (see #54908).
+        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
         // Allocate for the layout.
-        let ptr = allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+        let ptr = allocate(layout)?;
 
         // Initialize the RcBox
         let inner = mem_to_rcbox(ptr.as_non_null_ptr().as_ptr());
@@ -1031,7 +1154,7 @@ impl<T: ?Sized> Rc<T> {
             ptr::write(&mut (*inner).weak, Cell::new(1));
         }
 
-        inner
+        Ok(inner)
     }
 
     /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
@@ -1040,7 +1163,7 @@ impl<T: ?Sized> Rc<T> {
         unsafe {
             Self::allocate_for_layout(
                 Layout::for_value(&*ptr),
-                |layout| Global.alloc(layout),
+                |layout| Global.allocate(layout),
                 |mem| set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>,
             )
         }
@@ -1075,7 +1198,7 @@ impl<T> Rc<[T]> {
         unsafe {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
-                |layout| Global.alloc(layout),
+                |layout| Global.allocate(layout),
                 |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>,
             )
         }
@@ -1125,7 +1248,7 @@ impl<T> Rc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.dealloc(self.mem, self.layout);
+                    Global.deallocate(self.mem, self.layout);
                 }
             }
         }
@@ -1225,7 +1348,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
                 self.inner().dec_weak();
 
                 if self.inner().weak() == 0 {
-                    Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+                    Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
                 }
             }
         }
@@ -1749,7 +1872,7 @@ struct WeakInner<'a> {
     strong: &'a Cell<usize>,
 }
 
-impl<T: ?Sized> Weak<T> {
+impl<T> Weak<T> {
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -1882,7 +2005,9 @@ impl<T: ?Sized> Weak<T> {
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
         Weak { ptr: unsafe { NonNull::new_unchecked(ptr) } }
     }
+}
 
+impl<T: ?Sized> Weak<T> {
     /// Attempts to upgrade the `Weak` pointer to an [`Rc`], delaying
     /// dropping of the inner value if successful.
     ///
@@ -2040,7 +2165,7 @@ impl<T: ?Sized> Drop for Weak<T> {
         // the strong pointers have disappeared.
         if inner.weak() == 0 {
             unsafe {
-                Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+                Global.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
             }
         }
     }

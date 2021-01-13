@@ -688,38 +688,6 @@ impl Step for RustdocJSNotStd {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct RustdocUi {
-    pub target: TargetSelection,
-    pub compiler: Compiler,
-}
-
-impl Step for RustdocUi {
-    type Output = ();
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/test/rustdoc-ui")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(RustdocUi { target: run.target, compiler });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        builder.ensure(Compiletest {
-            compiler: self.compiler,
-            target: self.target,
-            mode: "ui",
-            suite: "rustdoc-ui",
-            path: "src/test/rustdoc-ui",
-            compare_mode: None,
-        })
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy;
 
@@ -901,12 +869,6 @@ default_test_with_compare_mode!(Ui {
     compare_mode: "nll"
 });
 
-default_test!(CompileFail {
-    path: "src/test/compile-fail",
-    mode: "compile-fail",
-    suite: "compile-fail"
-});
-
 default_test!(RunPassValgrind {
     path: "src/test/run-pass-valgrind",
     mode: "run-pass-valgrind",
@@ -929,11 +891,23 @@ default_test!(Incremental {
     suite: "incremental"
 });
 
-default_test!(Debuginfo { path: "src/test/debuginfo", mode: "debuginfo", suite: "debuginfo" });
+default_test_with_compare_mode!(Debuginfo {
+    path: "src/test/debuginfo",
+    mode: "debuginfo",
+    suite: "debuginfo",
+    compare_mode: "split-dwarf"
+});
 
 host_test!(UiFullDeps { path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" });
 
 host_test!(Rustdoc { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" });
+host_test!(RustdocUi { path: "src/test/rustdoc-ui", mode: "ui", suite: "rustdoc-ui" });
+
+host_test!(RustdocJson {
+    path: "src/test/rustdoc-json",
+    mode: "rustdoc-json",
+    suite: "rustdoc-json"
+});
 
 host_test!(Pretty { path: "src/test/pretty", mode: "pretty", suite: "pretty" });
 
@@ -1032,6 +1006,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             || (mode == "run-make" && suite.ends_with("fulldeps"))
             || (mode == "ui" && is_rustdoc)
             || mode == "js-doc-test"
+            || mode == "rustdoc-json"
         {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         }
@@ -1151,7 +1126,19 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 Ok(path) => path,
                 Err(_) => p,
             })
-            .filter(|p| p.starts_with(suite_path) && (p.is_dir() || p.is_file()))
+            .filter(|p| p.starts_with(suite_path))
+            .filter(|p| {
+                let exists = p.is_dir() || p.is_file();
+                if !exists {
+                    if let Some(p) = p.to_str() {
+                        builder.info(&format!(
+                            "Warning: Skipping \"{}\": not a regular file or directory",
+                            p
+                        ));
+                    }
+                }
+                exists
+            })
             .filter_map(|p| {
                 // Since test suite paths are themselves directories, if we don't
                 // specify a directory or file, we'll get an empty string here
@@ -1160,7 +1147,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 // flag is respected, so providing an empty --test-args conflicts with
                 // any following it.
                 match p.strip_prefix(suite_path).ok().and_then(|p| p.to_str()) {
-                    Some(s) if s != "" => Some(s),
+                    Some(s) if !s.is_empty() => Some(s),
                     _ => None,
                 }
             })
@@ -1987,8 +1974,8 @@ impl Step for Distcheck {
         builder.ensure(dist::Src);
 
         let mut cmd = Command::new("tar");
-        cmd.arg("-xzf")
-            .arg(builder.ensure(dist::PlainSourceTarball))
+        cmd.arg("-xf")
+            .arg(builder.ensure(dist::PlainSourceTarball).tarball())
             .arg("--strip-components=1")
             .current_dir(&dir);
         builder.run(&mut cmd);
@@ -2011,8 +1998,8 @@ impl Step for Distcheck {
         t!(fs::create_dir_all(&dir));
 
         let mut cmd = Command::new("tar");
-        cmd.arg("-xzf")
-            .arg(builder.ensure(dist::Src))
+        cmd.arg("-xf")
+            .arg(builder.ensure(dist::Src).tarball())
             .arg("--strip-components=1")
             .current_dir(&dir);
         builder.run(&mut cmd);
@@ -2113,5 +2100,38 @@ impl Step for TierCheck {
 
         builder.info("platform support check");
         try_run(builder, &mut cargo.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct LintDocs {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for LintDocs {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/lint-docs")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(LintDocs {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    /// Tests that the lint examples in the rustc book generate the correct
+    /// lints and have the expected format.
+    fn run(self, builder: &Builder<'_>) {
+        builder.ensure(crate::doc::RustcBook {
+            compiler: self.compiler,
+            target: self.target,
+            validate: true,
+        });
     }
 }

@@ -65,7 +65,7 @@ impl fmt::Debug for ty::adjustment::Adjustment<'tcx> {
     }
 }
 
-impl fmt::Debug for ty::BoundRegion {
+impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::BrAnon(n) => write!(f, "BrAnon({:?})", n),
@@ -308,13 +308,13 @@ TrivialTypeFoldableAndLiftImpls! {
     crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
-    // Including `BoundRegion` is a *bit* dubious, but direct
+    // Including `BoundRegionKind` is a *bit* dubious, but direct
     // references to bound region appear in `ty::Error`, and aren't
     // really meant to be folded. In general, we can only fold a fully
     // general `Region`.
-    crate::ty::BoundRegion,
+    crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
-    crate::ty::Placeholder<crate::ty::BoundRegion>,
+    crate::ty::Placeholder<crate::ty::BoundRegionKind>,
     crate::ty::ClosureKind,
     crate::ty::FreeRegion,
     crate::ty::InferTy,
@@ -843,9 +843,9 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_existential_predicates(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_poly_existential_predicates(v))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {

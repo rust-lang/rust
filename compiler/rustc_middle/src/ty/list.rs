@@ -24,7 +24,7 @@ extern "C" {
 /// This means we can use pointer for both
 /// equality comparisons and hashing.
 ///
-/// Unlike slices, The types contained in `List` are expected to be `Copy`
+/// Unlike slices, the types contained in `List` are expected to be `Copy`
 /// and iterating over a `List` returns `T` instead of a reference.
 ///
 /// Note: `Slice` was already taken by the `Ty`.

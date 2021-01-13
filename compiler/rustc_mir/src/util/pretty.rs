@@ -17,7 +17,7 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt, TyS, TypeFoldable, TypeVisitor};
 use rustc_target::abi::Size;
 use std::ops::ControlFlow;
 
@@ -273,8 +273,6 @@ pub fn write_mir_pretty<'tcx>(
 
     let mut first = true;
     for def_id in dump_mir_def_ids(tcx, single) {
-        let body = &tcx.optimized_mir(def_id);
-
         if first {
             first = false;
         } else {
@@ -282,11 +280,28 @@ pub fn write_mir_pretty<'tcx>(
             writeln!(w)?;
         }
 
-        write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
-
-        for body in tcx.promoted_mir(def_id) {
-            writeln!(w)?;
+        let render_body = |w: &mut dyn Write, body| -> io::Result<()> {
             write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
+
+            for body in tcx.promoted_mir(def_id) {
+                writeln!(w)?;
+                write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
+            }
+            Ok(())
+        };
+        match tcx.hir().body_const_context(def_id.expect_local()) {
+            None => render_body(w, tcx.optimized_mir(def_id))?,
+            // For `const fn` we want to render the optimized MIR. If you want the mir used in
+            // ctfe, you can dump the MIR after the `Deaggregator` optimization pass.
+            Some(rustc_hir::ConstContext::ConstFn) => {
+                render_body(w, tcx.optimized_mir(def_id))?;
+                writeln!(w)?;
+                writeln!(w, "// MIR FOR CTFE")?;
+                // Do not use `render_body`, as that would render the promoteds again, but these
+                // are shared between mir_for_ctfe and optimized_mir
+                write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &mut |_, _| Ok(()), w)?;
+            }
+            Some(_) => render_body(w, tcx.mir_for_ctfe(def_id))?,
         }
     }
     Ok(())
@@ -408,6 +423,18 @@ impl ExtraComments<'tcx> {
     }
 }
 
+fn use_verbose(ty: &&TyS<'tcx>) -> bool {
+    match ty.kind() {
+        ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
+        // Unit type
+        ty::Tuple(g_args) if g_args.is_empty() => false,
+        ty::Tuple(g_args) => g_args.iter().any(|g_arg| use_verbose(&g_arg.expect_ty())),
+        ty::Array(ty, _) => use_verbose(ty),
+        ty::FnDef(..) => false,
+        _ => true,
+    }
+}
+
 impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
@@ -430,16 +457,10 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
         let ty::Const { ty, val, .. } = constant;
-        match ty.kind() {
-            ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => {}
-            // Unit type
-            ty::Tuple(tys) if tys.is_empty() => {}
-            ty::FnDef(..) => {}
-            _ => {
-                self.push("ty::Const");
-                self.push(&format!("+ ty: {:?}", ty));
-                self.push(&format!("+ val: {:?}", val));
-            }
+        if use_verbose(ty) {
+            self.push("ty::Const");
+            self.push(&format!("+ ty: {:?}", ty));
+            self.push(&format!("+ val: {:?}", val));
         }
     }
 
@@ -495,7 +516,7 @@ fn write_scope_tree(
 
         let indented_debug_info = format!(
             "{0:1$}debug {2} => {3:?};",
-            INDENT, indent, var_debug_info.name, var_debug_info.place,
+            INDENT, indent, var_debug_info.name, var_debug_info.value,
         );
 
         writeln!(

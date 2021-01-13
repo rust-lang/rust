@@ -22,4 +22,24 @@ fn main() {
     let sample = vec![a.clone(), "b".to_string(), "c".to_string()];
     let non_copy_contains = sample.into_iter().collect::<Vec<_>>();
     non_copy_contains.contains(&a);
+
+    // Fix #5991
+    let vec_a = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let vec_b = vec_a.iter().collect::<Vec<_>>();
+    if vec_b.len() > 3 {}
+    let other_vec = vec![1, 3, 12, 4, 16, 2];
+    let we_got_the_same_numbers = other_vec.iter().filter(|item| vec_b.contains(item)).collect::<Vec<_>>();
+
+    // Fix #6297
+    let sample = [1; 5];
+    let multiple_indirect = sample.iter().collect::<Vec<_>>();
+    let sample2 = vec![2, 3];
+    if multiple_indirect.is_empty() {
+        // do something
+    } else {
+        let found = sample2
+            .iter()
+            .filter(|i| multiple_indirect.iter().any(|s| **s % **i == 0))
+            .collect::<Vec<_>>();
+    }
 }

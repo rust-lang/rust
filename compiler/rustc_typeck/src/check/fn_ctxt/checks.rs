@@ -325,10 +325,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.warn_if_unreachable(arg.hir_id, arg.span, "expression");
                 }
 
-                let is_closure = match arg.kind {
-                    ExprKind::Closure(..) => true,
-                    _ => false,
-                };
+                let is_closure = matches!(arg.kind, ExprKind::Closure(..));
 
                 if is_closure != check_closures {
                     continue;

@@ -47,46 +47,19 @@ error: unexpected `,` in pattern
   --> $DIR/issue-48492-tuple-destructure-missing-parens.rs:67:10
    |
 LL |     for x, _barr_body in women.iter().map(|woman| woman.allosomes.clone()) {
-   |          ^
-   |
-help: try adding parentheses to match on a tuple...
-   |
-LL |     for (x, _barr_body) in women.iter().map(|woman| woman.allosomes.clone()) {
-   |         ^^^^^^^^^^^^^^^
-help: ...or a vertical bar to match on multiple alternatives
-   |
-LL |     for x | _barr_body in women.iter().map(|woman| woman.allosomes.clone()) {
-   |         ^^^^^^^^^^^^^^
+   |         -^----------- help: try adding parentheses to match on a tuple: `(x, _barr_body)`
 
 error: unexpected `,` in pattern
   --> $DIR/issue-48492-tuple-destructure-missing-parens.rs:75:10
    |
 LL |     for x, y @ Allosome::Y(_) in men.iter().map(|man| man.allosomes.clone()) {
-   |          ^
-   |
-help: try adding parentheses to match on a tuple...
-   |
-LL |     for (x, y @ Allosome::Y(_)) in men.iter().map(|man| man.allosomes.clone()) {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
-help: ...or a vertical bar to match on multiple alternatives
-   |
-LL |     for x | y @ Allosome::Y(_) in men.iter().map(|man| man.allosomes.clone()) {
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |         -^------------------- help: try adding parentheses to match on a tuple: `(x, y @ Allosome::Y(_))`
 
 error: unexpected `,` in pattern
   --> $DIR/issue-48492-tuple-destructure-missing-parens.rs:84:14
    |
 LL |     let women, men: (Vec<Genome>, Vec<Genome>) = genomes.iter().cloned()
-   |              ^
-   |
-help: try adding parentheses to match on a tuple...
-   |
-LL |     let (women, men): (Vec<Genome>, Vec<Genome>) = genomes.iter().cloned()
-   |         ^^^^^^^^^^^^
-help: ...or a vertical bar to match on multiple alternatives
-   |
-LL |     let women | men: (Vec<Genome>, Vec<Genome>) = genomes.iter().cloned()
-   |         ^^^^^^^^^^^
+   |         -----^---- help: try adding parentheses to match on a tuple: `(women, men)`
 
 error: aborting due to 6 previous errors
 

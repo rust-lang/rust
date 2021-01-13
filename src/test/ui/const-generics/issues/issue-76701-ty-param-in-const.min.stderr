@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-76701-ty-param-in-const.rs:6:46
+  --> $DIR/issue-76701-ty-param-in-const.rs:5:46
    |
 LL | fn ty_param<T>() -> [u8; std::mem::size_of::<T>()] {
    |                                              ^ cannot perform const operation using `T`
@@ -8,7 +8,7 @@ LL | fn ty_param<T>() -> [u8; std::mem::size_of::<T>()] {
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-76701-ty-param-in-const.rs:12:42
+  --> $DIR/issue-76701-ty-param-in-const.rs:11:42
    |
 LL | fn const_param<const N: usize>() -> [u8; N + 1] {
    |                                          ^ cannot perform const operation using `N`

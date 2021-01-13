@@ -12,7 +12,6 @@ LL |     type V = str;
    |
    = help: the following implementations were found:
              <&T as Clone>
-             <&mut T as Clone>
 
 error: aborting due to previous error
 

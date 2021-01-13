@@ -1,0 +1,8 @@
+error: untyped pointers are not allowed in constant
+  --> $DIR/alloc_intrinsic_untyped.rs:7:1
+   |
+LL | const BAR: *mut i32 = unsafe { intrinsics::const_allocate(4, 4) as *mut i32};
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

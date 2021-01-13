@@ -2,7 +2,7 @@ use super::FnCtxt;
 use crate::astconv::AstConv;
 
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_span::{self, Span};
+use rustc_span::{self, MultiSpan, Span};
 
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -284,6 +284,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                  https://doc.rust-lang.org/rust-by-example/std/box.html, and \
                  https://doc.rust-lang.org/std/boxed/index.html",
             );
+        }
+    }
+
+    /// When encountering a closure that captures variables, where a FnPtr is expected,
+    /// suggest a non-capturing closure
+    pub(in super::super) fn suggest_no_capture_closure(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        if let (ty::FnPtr(_), ty::Closure(def_id, _)) = (expected.kind(), found.kind()) {
+            if let Some(upvars) = self.tcx.upvars_mentioned(*def_id) {
+                // Report upto four upvars being captured to reduce the amount error messages
+                // reported back to the user.
+                let spans_and_labels = upvars
+                    .iter()
+                    .take(4)
+                    .map(|(var_hir_id, upvar)| {
+                        let var_name = self.tcx.hir().name(*var_hir_id).to_string();
+                        let msg = format!("`{}` captured here", var_name);
+                        (upvar.span, msg)
+                    })
+                    .collect::<Vec<_>>();
+
+                let mut multi_span: MultiSpan =
+                    spans_and_labels.iter().map(|(sp, _)| *sp).collect::<Vec<_>>().into();
+                for (sp, label) in spans_and_labels {
+                    multi_span.push_span_label(sp, label);
+                }
+                err.span_note(multi_span, "closures can only be coerced to `fn` types if they do not capture any variables");
+            }
         }
     }
 

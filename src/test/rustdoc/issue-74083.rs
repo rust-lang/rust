@@ -7,7 +7,7 @@ impl Foo {
 }
 
 // @has issue_74083/struct.Bar.html
-// !@has - '//div[@class="sidebar-links"]/a[@href="#method.foo"]' 'foo'
+// @!has - '//div[@class="sidebar-links"]/a[@href="#method.foo"]' 'foo'
 pub struct Bar {
     foo: Foo,
 }

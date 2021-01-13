@@ -3,6 +3,6 @@
 extern crate foo;
 
 #[no_mangle]
-pub extern fn bar() {
+pub extern "C" fn bar() {
     foo::foo();
 }

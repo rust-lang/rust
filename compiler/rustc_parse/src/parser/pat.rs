@@ -18,7 +18,7 @@ pub(super) const PARAM_EXPECTED: Expected = Some("parameter name");
 const WHILE_PARSING_OR_MSG: &str = "while parsing this or-pattern starting here";
 
 /// Whether or not an or-pattern should be gated when occurring in the current context.
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub(super) enum GateOr {
     Yes,
     No,
@@ -26,7 +26,7 @@ pub(super) enum GateOr {
 
 /// Whether or not to recover a `,` when parsing or-patterns.
 #[derive(PartialEq, Copy, Clone)]
-enum RecoverComma {
+pub(super) enum RecoverComma {
     Yes,
     No,
 }
@@ -43,13 +43,17 @@ impl<'a> Parser<'a> {
 
     /// Entry point to the main pattern parser.
     /// Corresponds to `top_pat` in RFC 2535 and allows or-pattern at the top level.
-    pub(super) fn parse_top_pat(&mut self, gate_or: GateOr) -> PResult<'a, P<Pat>> {
+    pub(super) fn parse_top_pat(
+        &mut self,
+        gate_or: GateOr,
+        rc: RecoverComma,
+    ) -> PResult<'a, P<Pat>> {
         // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
         let gated_leading_vert = self.eat_or_separator(None) && gate_or == GateOr::Yes;
         let leading_vert_span = self.prev_token.span;
 
         // Parse the possibly-or-pattern.
-        let pat = self.parse_pat_with_or(None, gate_or, RecoverComma::Yes)?;
+        let pat = self.parse_pat_with_or(None, gate_or, rc)?;
 
         // If we parsed a leading `|` which should be gated,
         // and no other gated or-pattern has been parsed thus far,
@@ -94,7 +98,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Pat>> {
         // Parse the first pattern (`p_0`).
         let first_pat = self.parse_pat(expected)?;
-        self.maybe_recover_unexpected_comma(first_pat.span, rc)?;
+        self.maybe_recover_unexpected_comma(first_pat.span, rc, gate_or)?;
 
         // If the next token is not a `|`,
         // this is not an or-pattern and we should exit here.
@@ -110,7 +114,7 @@ impl<'a> Parser<'a> {
                 err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
-            self.maybe_recover_unexpected_comma(pat.span, rc)?;
+            self.maybe_recover_unexpected_comma(pat.span, rc, gate_or)?;
             pats.push(pat);
         }
         let or_pattern_span = lo.to(self.prev_token.span);
@@ -190,7 +194,12 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    fn maybe_recover_unexpected_comma(&mut self, lo: Span, rc: RecoverComma) -> PResult<'a, ()> {
+    fn maybe_recover_unexpected_comma(
+        &mut self,
+        lo: Span,
+        rc: RecoverComma,
+        gate_or: GateOr,
+    ) -> PResult<'a, ()> {
         if rc == RecoverComma::No || self.token != token::Comma {
             return Ok(());
         }
@@ -209,18 +218,24 @@ impl<'a> Parser<'a> {
         let seq_span = lo.to(self.prev_token.span);
         let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
         if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
+            const MSG: &str = "try adding parentheses to match on a tuple...";
+
+            let or_suggestion =
+                gate_or == GateOr::No || !self.sess.gated_spans.is_ungated(sym::or_patterns);
             err.span_suggestion(
                 seq_span,
-                "try adding parentheses to match on a tuple...",
+                if or_suggestion { MSG } else { MSG.trim_end_matches('.') },
                 format!("({})", seq_snippet),
                 Applicability::MachineApplicable,
-            )
-            .span_suggestion(
-                seq_span,
-                "...or a vertical bar to match on multiple alternatives",
-                seq_snippet.replace(",", " |"),
-                Applicability::MachineApplicable,
             );
+            if or_suggestion {
+                err.span_suggestion(
+                    seq_span,
+                    "...or a vertical bar to match on multiple alternatives",
+                    seq_snippet.replace(",", " |"),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
         Err(err)
     }

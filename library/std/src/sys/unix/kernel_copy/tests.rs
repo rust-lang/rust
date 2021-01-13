@@ -1,18 +1,18 @@
-use crate::env::temp_dir;
 use crate::fs::OpenOptions;
 use crate::io;
 use crate::io::Result;
 use crate::io::SeekFrom;
 use crate::io::{BufRead, Read, Seek, Write};
 use crate::os::unix::io::AsRawFd;
+use crate::sys_common::io::test::tmpdir;
 
 #[test]
 fn copy_specialization() -> Result<()> {
     use crate::io::{BufReader, BufWriter};
 
-    let path = crate::env::temp_dir();
-    let source_path = path.join("copy-spec.source");
-    let sink_path = path.join("copy-spec.sink");
+    let tmp_path = tmpdir();
+    let source_path = tmp_path.join("copy-spec.source");
+    let sink_path = tmp_path.join("copy-spec.sink");
 
     let result: Result<()> = try {
         let mut source = crate::fs::OpenOptions::new()
@@ -42,8 +42,15 @@ fn copy_specialization() -> Result<()> {
         assert_eq!(sink.buffer(), b"wxyz");
 
         let copied = crate::io::copy(&mut source, &mut sink)?;
-        assert_eq!(copied, 10);
-        assert_eq!(sink.buffer().len(), 0);
+        assert_eq!(copied, 10, "copy obeyed limit imposed by Take");
+        assert_eq!(sink.buffer().len(), 0, "sink buffer was flushed");
+        assert_eq!(source.limit(), 0, "outer Take was exhausted");
+        assert_eq!(source.get_ref().buffer().len(), 0, "source buffer should be drained");
+        assert_eq!(
+            source.get_ref().get_ref().limit(),
+            1,
+            "inner Take allowed reading beyond end of file, some bytes should be left"
+        );
 
         let mut sink = sink.into_inner()?;
         sink.seek(SeekFrom::Start(0))?;
@@ -61,7 +68,8 @@ fn copy_specialization() -> Result<()> {
 #[bench]
 fn bench_file_to_file_copy(b: &mut test::Bencher) {
     const BYTES: usize = 128 * 1024;
-    let src_path = temp_dir().join("file-copy-bench-src");
+    let temp_path = tmpdir();
+    let src_path = temp_path.join("file-copy-bench-src");
     let mut src = crate::fs::OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -71,7 +79,7 @@ fn bench_file_to_file_copy(b: &mut test::Bencher) {
         .unwrap();
     src.write(&vec![0u8; BYTES]).unwrap();
 
-    let sink_path = temp_dir().join("file-copy-bench-sink");
+    let sink_path = temp_path.join("file-copy-bench-sink");
     let mut sink = crate::fs::OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -90,7 +98,8 @@ fn bench_file_to_file_copy(b: &mut test::Bencher) {
 #[bench]
 fn bench_file_to_socket_copy(b: &mut test::Bencher) {
     const BYTES: usize = 128 * 1024;
-    let src_path = temp_dir().join("pipe-copy-bench-src");
+    let temp_path = tmpdir();
+    let src_path = temp_path.join("pipe-copy-bench-src");
     let mut src = OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -103,6 +112,36 @@ fn bench_file_to_socket_copy(b: &mut test::Bencher) {
     let sink_drainer = crate::net::TcpListener::bind("localhost:0").unwrap();
     let mut sink = crate::net::TcpStream::connect(sink_drainer.local_addr().unwrap()).unwrap();
     let mut sink_drainer = sink_drainer.accept().unwrap().0;
+
+    crate::thread::spawn(move || {
+        let mut sink_buf = vec![0u8; 1024 * 1024];
+        loop {
+            sink_drainer.read(&mut sink_buf[..]).unwrap();
+        }
+    });
+
+    b.bytes = BYTES as u64;
+    b.iter(|| {
+        src.seek(SeekFrom::Start(0)).unwrap();
+        assert_eq!(BYTES as u64, io::copy(&mut src, &mut sink).unwrap());
+    });
+}
+
+#[bench]
+fn bench_file_to_uds_copy(b: &mut test::Bencher) {
+    const BYTES: usize = 128 * 1024;
+    let temp_path = tmpdir();
+    let src_path = temp_path.join("uds-copy-bench-src");
+    let mut src = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .read(true)
+        .write(true)
+        .open(src_path)
+        .unwrap();
+    src.write(&vec![0u8; BYTES]).unwrap();
+
+    let (mut sink, mut sink_drainer) = crate::os::unix::net::UnixStream::pair().unwrap();
 
     crate::thread::spawn(move || {
         let mut sink_buf = vec![0u8; 1024 * 1024];
@@ -181,7 +220,7 @@ fn bench_socket_pipe_socket_copy(b: &mut test::Bencher) {
     );
 
     match probe {
-        CopyResult::Ended(Ok(1)) => {
+        CopyResult::Ended(1) => {
             // splice works
         }
         _ => {

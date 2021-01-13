@@ -35,10 +35,7 @@ pub enum AutoTraitResult<A> {
 #[allow(dead_code)]
 impl<A> AutoTraitResult<A> {
     fn is_auto(&self) -> bool {
-        match *self {
-            AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl => true,
-            _ => false,
-        }
+        matches!(self, AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl)
     }
 }
 
@@ -308,8 +305,8 @@ impl AutoTraitFinder<'tcx> {
                 infcx.resolve_vars_if_possible(Obligation::new(dummy_cause.clone(), new_env, pred));
             let result = select.select(&obligation);
 
-            match &result {
-                &Ok(Some(ref impl_source)) => {
+            match result {
+                Ok(Some(ref impl_source)) => {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
 
@@ -342,8 +339,8 @@ impl AutoTraitFinder<'tcx> {
                         return None;
                     }
                 }
-                &Ok(None) => {}
-                &Err(SelectionError::Unimplemented) => {
+                Ok(None) => {}
+                Err(SelectionError::Unimplemented) => {
                     if self.is_param_no_infer(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
                         self.add_user_pred(
@@ -601,10 +598,7 @@ impl AutoTraitFinder<'tcx> {
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        match *p.ty().skip_binder().kind() {
-            ty::Projection(proj) if proj == p.skip_binder().projection_ty => true,
-            _ => false,
-        }
+        matches!(*p.ty().skip_binder().kind(), ty::Projection(proj) if proj == p.skip_binder().projection_ty)
     }
 
     fn evaluate_nested_obligations(
@@ -869,7 +863,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         (match r {
-            &ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
+            ty::ReVar(vid) => self.vid_to_region.get(vid).cloned(),
             _ => None,
         })
         .unwrap_or_else(|| r.super_fold_with(self))

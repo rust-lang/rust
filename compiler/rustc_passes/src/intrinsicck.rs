@@ -78,7 +78,7 @@ impl ExprVisitor<'tcx> {
                 return;
             }
 
-            // Special-case transmutting from `typeof(function)` and
+            // Special-case transmuting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(self.tcx, from);
             if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) {
@@ -347,7 +347,7 @@ impl ExprVisitor<'tcx> {
     }
 
     fn check_asm(&self, asm: &hir::InlineAsm<'tcx>) {
-        for (idx, op) in asm.operands.iter().enumerate() {
+        for (idx, (op, _op_sp)) in asm.operands.iter().enumerate() {
             match *op {
                 hir::InlineAsmOperand::In { reg, ref expr } => {
                     self.check_asm_operand_type(idx, reg, expr, asm.template, None);

@@ -232,23 +232,27 @@ impl<T: ?Sized> *const T {
     ///
     /// # Safety
     ///
-    /// The resulting pointer does not need to be in bounds, but it is
-    /// potentially hazardous to dereference (which requires `unsafe`).
+    /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// In particular, the resulting pointer remains attached to the same allocated
-    /// object that `self` points to. It may *not* be used to access a
-    /// different allocated object. Note that in Rust,
-    /// every (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer remains attached to the same allocated object that `self` points to.
+    /// It may *not* be used to access a different allocated object. Note that in Rust, every
+    /// (stack-allocated) variable is considered a separate allocated object.
     ///
-    /// In other words, `x.wrapping_offset((y as usize).wrapping_sub(x as usize) / size_of::<T>())`
-    /// is *not* the same as `y`, and dereferencing it is undefined behavior
-    /// unless `x` and `y` point into the same allocated object.
+    /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
+    /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
+    /// attached to the object `x` is attached to, and dereferencing it is Undefined Behavior unless
+    /// `x` and `y` point into the same allocated object.
     ///
-    /// Compared to [`offset`], this method basically delays the requirement of staying
-    /// within the same allocated object: [`offset`] is immediate Undefined Behavior when
-    /// crossing object boundaries; `wrapping_offset` produces a pointer but still leads
-    /// to Undefined Behavior if that pointer is dereferenced. [`offset`] can be optimized
-    /// better and is thus preferable in performance-sensitive code.
+    /// Compared to [`offset`], this method basically delays the requirement of staying within the
+    /// same allocated object: [`offset`] is immediate Undefined Behavior when crossing object
+    /// boundaries; `wrapping_offset` produces a pointer but still leads to Undefined Behavior if a
+    /// pointer is dereferenced when it is out-of-bounds of the object it is attached to. [`offset`]
+    /// can be optimized better and is thus preferable in performance-sensitive code.
+    ///
+    /// The delayed check only considers the value of the pointer that was dereferenced, not the
+    /// intermediate values used during the computation of the final result. For example,
+    /// `x.wrapping_offset(o).wrapping_offset(o.wrapping_neg())` is always the same as `x`. In other
+    /// words, leaving the allocated object and then re-entering it later is permitted.
     ///
     /// If you need to cross object boundaries, cast the pointer to an integer and
     /// do the arithmetic there.
@@ -571,19 +575,27 @@ impl<T: ?Sized> *const T {
     ///
     /// # Safety
     ///
-    /// The resulting pointer does not need to be in bounds, but it is
-    /// potentially hazardous to dereference (which requires `unsafe`).
+    /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// In particular, the resulting pointer remains attached to the same allocated
-    /// object that `self` points to. It may *not* be used to access a
-    /// different allocated object. Note that in Rust,
-    /// every (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer remains attached to the same allocated object that `self` points to.
+    /// It may *not* be used to access a different allocated object. Note that in Rust, every
+    /// (stack-allocated) variable is considered a separate allocated object.
     ///
-    /// Compared to [`add`], this method basically delays the requirement of staying
-    /// within the same allocated object: [`add`] is immediate Undefined Behavior when
-    /// crossing object boundaries; `wrapping_add` produces a pointer but still leads
-    /// to Undefined Behavior if that pointer is dereferenced. [`add`] can be optimized
-    /// better and is thus preferable in performance-sensitive code.
+    /// In other words, `let z = x.wrapping_add((y as usize) - (x as usize))` does *not* make `z`
+    /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
+    /// attached to the object `x` is attached to, and dereferencing it is Undefined Behavior unless
+    /// `x` and `y` point into the same allocated object.
+    ///
+    /// Compared to [`add`], this method basically delays the requirement of staying within the
+    /// same allocated object: [`add`] is immediate Undefined Behavior when crossing object
+    /// boundaries; `wrapping_add` produces a pointer but still leads to Undefined Behavior if a
+    /// pointer is dereferenced when it is out-of-bounds of the object it is attached to. [`add`]
+    /// can be optimized better and is thus preferable in performance-sensitive code.
+    ///
+    /// The delayed check only considers the value of the pointer that was dereferenced, not the
+    /// intermediate values used during the computation of the final result. For example,
+    /// `x.wrapping_add(o).wrapping_sub(o)` is always the same as `x`. In other words, leaving the
+    /// allocated object and then re-entering it later is permitted.
     ///
     /// If you need to cross object boundaries, cast the pointer to an integer and
     /// do the arithmetic there.
@@ -628,19 +640,27 @@ impl<T: ?Sized> *const T {
     ///
     /// # Safety
     ///
-    /// The resulting pointer does not need to be in bounds, but it is
-    /// potentially hazardous to dereference (which requires `unsafe`).
+    /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// In particular, the resulting pointer remains attached to the same allocated
-    /// object that `self` points to. It may *not* be used to access a
-    /// different allocated object. Note that in Rust,
-    /// every (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer remains attached to the same allocated object that `self` points to.
+    /// It may *not* be used to access a different allocated object. Note that in Rust, every
+    /// (stack-allocated) variable is considered a separate allocated object.
     ///
-    /// Compared to [`sub`], this method basically delays the requirement of staying
-    /// within the same allocated object: [`sub`] is immediate Undefined Behavior when
-    /// crossing object boundaries; `wrapping_sub` produces a pointer but still leads
-    /// to Undefined Behavior if that pointer is dereferenced. [`sub`] can be optimized
-    /// better and is thus preferable in performance-sensitive code.
+    /// In other words, `let z = x.wrapping_sub((x as usize) - (y as usize))` does *not* make `z`
+    /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
+    /// attached to the object `x` is attached to, and dereferencing it is Undefined Behavior unless
+    /// `x` and `y` point into the same allocated object.
+    ///
+    /// Compared to [`sub`], this method basically delays the requirement of staying within the
+    /// same allocated object: [`sub`] is immediate Undefined Behavior when crossing object
+    /// boundaries; `wrapping_sub` produces a pointer but still leads to Undefined Behavior if a
+    /// pointer is dereferenced when it is out-of-bounds of the object it is attached to. [`sub`]
+    /// can be optimized better and is thus preferable in performance-sensitive code.
+    ///
+    /// The delayed check only considers the value of the pointer that was dereferenced, not the
+    /// intermediate values used during the computation of the final result. For example,
+    /// `x.wrapping_add(o).wrapping_sub(o)` is always the same as `x`. In other words, leaving the
+    /// allocated object and then re-entering it later is permitted.
     ///
     /// If you need to cross object boundaries, cast the pointer to an integer and
     /// do the arithmetic there.
@@ -723,10 +743,11 @@ impl<T: ?Sized> *const T {
     ///
     /// See [`ptr::read`] for safety concerns and examples.
     ///
-    /// [`ptr::read`]: ./ptr/fn.read.html
+    /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
     #[inline]
-    pub unsafe fn read(self) -> T
+    pub const unsafe fn read(self) -> T
     where
         T: Sized,
     {
@@ -743,7 +764,7 @@ impl<T: ?Sized> *const T {
     ///
     /// See [`ptr::read_volatile`] for safety concerns and examples.
     ///
-    /// [`ptr::read_volatile`]: ./ptr/fn.read_volatile.html
+    /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_volatile(self) -> T
@@ -761,10 +782,11 @@ impl<T: ?Sized> *const T {
     ///
     /// See [`ptr::read_unaligned`] for safety concerns and examples.
     ///
-    /// [`ptr::read_unaligned`]: ./ptr/fn.read_unaligned.html
+    /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
     #[inline]
-    pub unsafe fn read_unaligned(self) -> T
+    pub const unsafe fn read_unaligned(self) -> T
     where
         T: Sized,
     {
@@ -779,7 +801,7 @@ impl<T: ?Sized> *const T {
     ///
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
-    /// [`ptr::copy`]: ./ptr/fn.copy.html
+    /// [`ptr::copy`]: crate::ptr::copy()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to(self, dest: *mut T, count: usize)
@@ -797,7 +819,7 @@ impl<T: ?Sized> *const T {
     ///
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
-    /// [`ptr::copy_nonoverlapping`]: ./ptr/fn.copy_nonoverlapping.html
+    /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)

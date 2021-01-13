@@ -12,6 +12,7 @@ use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::marker::Unsize;
+use crate::mem::MaybeUninit;
 use crate::ops::{Index, IndexMut};
 use crate::slice::{Iter, IterMut};
 
@@ -429,7 +430,6 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(T) -> U,
     {
-        use crate::mem::MaybeUninit;
         struct Guard<T, const N: usize> {
             dst: *mut T,
             initialized: usize,
@@ -463,6 +463,35 @@ impl<T, const N: usize> [T; N] {
         unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
     }
 
+    /// 'Zips up' two arrays into a single array of pairs.
+    ///
+    /// `zip()` returns a new array where every element is a tuple where the
+    /// first element comes from the first array, and the second element comes
+    /// from the second array. In other words, it zips two arrays together,
+    /// into a single one.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_zip)]
+    /// let x = [1, 2, 3];
+    /// let y = [4, 5, 6];
+    /// let z = x.zip(y);
+    /// assert_eq!(z, [(1, 4), (2, 5), (3, 6)]);
+    /// ```
+    #[unstable(feature = "array_zip", issue = "80094")]
+    pub fn zip<U>(self, rhs: [U; N]) -> [(T, U); N] {
+        let mut dst = MaybeUninit::uninit_array::<N>();
+        for (i, (lhs, rhs)) in IntoIter::new(self).zip(IntoIter::new(rhs)).enumerate() {
+            dst[i].write((lhs, rhs));
+        }
+        // FIXME: Convert to crate::mem::transmute once it works with generics.
+        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
+        // SAFETY: At this point we've properly initialized the whole array
+        // and we just need to cast it to the correct type.
+        unsafe { crate::mem::transmute_copy::<_, [(T, U); N]>(&dst) }
+    }
+
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
     #[unstable(feature = "array_methods", issue = "76118")]
     pub fn as_slice(&self) -> &[T] {
@@ -474,5 +503,76 @@ impl<T, const N: usize> [T; N] {
     #[unstable(feature = "array_methods", issue = "76118")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self
+    }
+
+    /// Borrows each element and returns an array of references with the same
+    /// size as `self`.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(array_methods)]
+    ///
+    /// let floats = [3.1, 2.7, -1.0];
+    /// let float_refs: [&f64; 3] = floats.each_ref();
+    /// assert_eq!(float_refs, [&3.1, &2.7, &-1.0]);
+    /// ```
+    ///
+    /// This method is particularly useful if combined with other methods, like
+    /// [`map`](#method.map). This way, you can can avoid moving the original
+    /// array if its elements are not `Copy`.
+    ///
+    /// ```
+    /// #![feature(array_methods, array_map)]
+    ///
+    /// let strings = ["Ferris".to_string(), "♥".to_string(), "Rust".to_string()];
+    /// let is_ascii = strings.each_ref().map(|s| s.is_ascii());
+    /// assert_eq!(is_ascii, [true, false, true]);
+    ///
+    /// // We can still access the original array: it has not been moved.
+    /// assert_eq!(strings.len(), 3);
+    /// ```
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn each_ref(&self) -> [&T; N] {
+        // Unlike in `map`, we don't need a guard here, as dropping a reference
+        // is a noop.
+        let mut out = MaybeUninit::uninit_array::<N>();
+        for (src, dst) in self.iter().zip(&mut out) {
+            dst.write(src);
+        }
+
+        // SAFETY: All elements of `dst` are properly initialized and
+        // `MaybeUninit<T>` has the same layout as `T`, so this cast is valid.
+        unsafe { (&mut out as *mut _ as *mut [&T; N]).read() }
+    }
+
+    /// Borrows each element mutably and returns an array of mutable references
+    /// with the same size as `self`.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(array_methods)]
+    ///
+    /// let mut floats = [3.1, 2.7, -1.0];
+    /// let float_refs: [&mut f64; 3] = floats.each_mut();
+    /// *float_refs[0] = 0.0;
+    /// assert_eq!(float_refs, [&mut 0.0, &mut 2.7, &mut -1.0]);
+    /// assert_eq!(floats, [0.0, 2.7, -1.0]);
+    /// ```
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn each_mut(&mut self) -> [&mut T; N] {
+        // Unlike in `map`, we don't need a guard here, as dropping a reference
+        // is a noop.
+        let mut out = MaybeUninit::uninit_array::<N>();
+        for (src, dst) in self.iter_mut().zip(&mut out) {
+            dst.write(src);
+        }
+
+        // SAFETY: All elements of `dst` are properly initialized and
+        // `MaybeUninit<T>` has the same layout as `T`, so this cast is valid.
+        unsafe { (&mut out as *mut _ as *mut [&mut T; N]).read() }
     }
 }

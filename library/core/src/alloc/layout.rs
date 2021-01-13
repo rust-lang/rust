@@ -4,6 +4,12 @@ use crate::mem;
 use crate::num::NonZeroUsize;
 use crate::ptr::NonNull;
 
+// While this function is used in one place and its implementation
+// could be inlined, the previous attempts to do so made rustc
+// slower:
+//
+// * https://github.com/rust-lang/rust/pull/72189
+// * https://github.com/rust-lang/rust/pull/79827
 const fn size_align<T>() -> (usize, usize) {
     (mem::size_of::<T>(), mem::align_of::<T>())
 }
@@ -19,7 +25,7 @@ const fn size_align<T>() -> (usize, usize) {
 /// even though `GlobalAlloc` requires that all memory requests
 /// be non-zero in size. A caller must either ensure that conditions
 /// like this are met, use specific allocators with looser
-/// requirements, or use the more lenient `AllocRef` interface.)
+/// requirements, or use the more lenient `Allocator` interface.)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[lang = "alloc_layout"]

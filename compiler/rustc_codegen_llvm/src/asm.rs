@@ -261,6 +261,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 InlineAsmArch::Hexagon => {}
                 InlineAsmArch::Mips | InlineAsmArch::Mips64 => {}
                 InlineAsmArch::SpirV => {}
+                InlineAsmArch::Wasm32 => {}
             }
         }
         if !options.contains(InlineAsmOptions::NOMEM) {
@@ -519,6 +520,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
             | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg) => "x",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => "v",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => "^Yk",
+            InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => "r",
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
                 bug!("LLVM backend does not support SPIR-V")
             }
@@ -584,6 +586,7 @@ fn modifier_to_llvm(
             _ => unreachable!(),
         },
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => None,
+        InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => None,
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
@@ -626,6 +629,7 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => cx.type_f32(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => cx.type_i16(),
+        InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => cx.type_i32(),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }

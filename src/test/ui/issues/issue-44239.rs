@@ -1,5 +1,7 @@
+// run-rustfix
+#![allow(dead_code, non_upper_case_globals)]
 fn main() {
-    let n = 0;
+    let n: usize = 0;
 
     struct Foo;
     impl Foo {

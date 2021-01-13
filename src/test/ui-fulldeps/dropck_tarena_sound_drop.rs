@@ -5,7 +5,7 @@
 // methods might access borrowed data, as long as the borrowed data
 // has lifetime that strictly outlives the arena itself.
 //
-// Compare against compile-fail/dropck_tarena_unsound_drop.rs, which
+// Compare against ui-fulldeps/dropck-tarena-unsound-drop.rs, which
 // shows a similar setup, but restricts `f` so that the struct `C<'a>`
 // is force-fed a lifetime equal to that of the borrowed arena.
 

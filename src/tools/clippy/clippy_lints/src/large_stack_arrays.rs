@@ -43,8 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
         if_chain! {
             if let ExprKind::Repeat(_, _) = expr.kind;
             if let ty::Array(element_type, cst) = cx.typeck_results().expr_ty(expr).kind();
-            if let ConstKind::Value(val) = cst.val;
-            if let ConstValue::Scalar(element_count) = val;
+            if let ConstKind::Value(ConstValue::Scalar(element_count)) = cst.val;
             if let Ok(element_count) = element_count.to_machine_usize(&cx.tcx);
             if let Ok(element_size) = cx.layout_of(element_type).map(|l| l.size.bytes());
             if self.maximum_allowed_size < element_count * element_size;

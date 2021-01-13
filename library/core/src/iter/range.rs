@@ -111,7 +111,7 @@ pub unsafe trait Step: Clone + PartialOrd + Sized {
         Step::forward(start, count)
     }
 
-    /// Returns the value that would be obtained by taking the *successor*
+    /// Returns the value that would be obtained by taking the *predecessor*
     /// of `self` `count` times.
     ///
     /// If this would overflow the range of values supported by `Self`, returns `None`.

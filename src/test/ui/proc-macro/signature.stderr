@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/signature.rs:10:1
    |
-LL | / pub unsafe extern fn foo(a: i32, b: u32) -> u32 {
+LL | / pub unsafe extern "C" fn foo(a: i32, b: u32) -> u32 {
 LL | |
 LL | |     loop {}
 LL | | }

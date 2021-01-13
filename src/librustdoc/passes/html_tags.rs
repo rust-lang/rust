@@ -59,7 +59,7 @@ fn drop_tag(
                 continue;
             }
             let last_tag_name_low = last_tag_name.to_lowercase();
-            if ALLOWED_UNCLOSED.iter().any(|&at| at == &last_tag_name_low) {
+            if ALLOWED_UNCLOSED.iter().any(|&at| at == last_tag_name_low) {
                 continue;
             }
             // `tags` is used as a queue, meaning that everything after `pos` is included inside it.

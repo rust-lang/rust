@@ -1,11 +1,11 @@
 warning: this operation will panic at runtime
-  --> $DIR/ice-assert-fail-div-by-zero.rs:11:5
+  --> $DIR/ice-assert-fail-div-by-zero.rs:13:5
    |
 LL |     f.0 / 0;
    |     ^^^^^^^ attempt to divide `_` by zero
    |
 note: the lint level is defined here
-  --> $DIR/ice-assert-fail-div-by-zero.rs:5:9
+  --> $DIR/ice-assert-fail-div-by-zero.rs:7:9
    |
 LL | #![warn(unconditional_panic)]
    |         ^^^^^^^^^^^^^^^^^^^

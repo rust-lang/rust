@@ -68,7 +68,7 @@ fn column() {
     let _ = column!();
 }
 
-// compile_error! is in a companion to this test in compile-fail
+// compile_error! is in a check-fail companion to this test
 
 #[test]
 fn concat() {

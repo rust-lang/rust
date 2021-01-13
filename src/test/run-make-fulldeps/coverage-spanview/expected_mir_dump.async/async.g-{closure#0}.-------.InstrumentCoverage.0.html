@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.async/async.g-%7Bclosure%230%7D.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+<html>
+<head>
+<title>async.g-{closure#0} - Coverage Spans</title>
+<style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+</style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 20"><span class="line">                      <span><span class="code even" style="--layer: 1" title="22:11-22:12: @0[3]: FakeRead(ForMatchedPlace, _3)"><span class="annotation">@0,3,4⦊</span>{</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="22:11-22:12: @0[3]: FakeRead(ForMatchedPlace, _3)">    match x<span class="annotation">⦉@0,3,4</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="23:9-23:10: @17[3]: _4 = _3"><span class="annotation">@17⦊</span>y<span class="annotation">⦉@17</span></span></span><span class="code" style="--layer: 0"> if </span><span><span class="code even" style="--layer: 1" title="23:14-23:17: @3.Call: _8 = e() -&gt; [return: bb4, unwind: bb58]
+23:14-23:17: @4[0]: FakeRead(ForMatchedPlace, _8)"><span class="annotation">@0,3,4⦊</span>e()<span class="annotation">⦉@0,3,4</span></span></span><span class="code" style="--layer: 0">.await == </span><span><span class="code odd" style="--layer: 1" title="23:27-23:28: @15[2]: _24 = (*_5)"><span class="annotation">@10,13,15,16⦊</span>y<span class="annotation">⦉@10,13,15,16</span></span></span><span class="code" style="--layer: 0"> =&gt; </span><span><span class="code even" style="--layer: 1" title="23:32-23:34: @17[4]: _0 = ()"><span class="annotation">@17⦊</span>()<span class="annotation">⦉@17</span></span></span><span class="code" style="--layer: 0">,</span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="24:9-24:10: @33[3]: _25 = _3"><span class="annotation">@33⦊</span>y<span class="annotation">⦉@33</span></span></span><span class="code" style="--layer: 0"> if </span><span><span class="code even" style="--layer: 1" title="24:14-24:17: @19.Call: _29 = f() -&gt; [return: bb20, unwind: bb51]
+24:14-24:17: @20[0]: FakeRead(ForMatchedPlace, _29)"><span class="annotation">@1,19,20⦊</span>f()<span class="annotation">⦉@1,19,20</span></span></span><span class="code" style="--layer: 0">.await == </span><span><span class="code odd" style="--layer: 1" title="24:27-24:28: @31[2]: _44 = (*_26)"><span class="annotation">@26,29,31,32⦊</span>y<span class="annotation">⦉@26,29,31,32</span></span></span><span class="code" style="--layer: 0"> =&gt; </span><span><span class="code even" style="--layer: 1" title="24:32-24:34: @33[4]: _0 = ()"><span class="annotation">@33⦊</span>()<span class="annotation">⦉@33</span></span></span><span class="code" style="--layer: 0">,</span></span>
+<span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code odd" style="--layer: 1" title="25:14-25:16: @2[0]: _0 = ()"><span class="annotation">@2⦊</span>()<span class="annotation">⦉@2</span></span></span><span class="code" style="--layer: 0">,</span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code even" style="--layer: 1" title="27:2-27:2: @36.Return: return"><span class="annotation">@35,36⦊</span>‸<span class="annotation">⦉@35,36</span></span></span></span></div>
+</body>
+</html>

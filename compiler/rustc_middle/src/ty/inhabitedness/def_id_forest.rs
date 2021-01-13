@@ -44,8 +44,7 @@ impl<'tcx> DefIdForest {
     /// crate.
     #[inline]
     pub fn full(tcx: TyCtxt<'tcx>) -> DefIdForest {
-        let crate_id = tcx.hir().local_def_id(CRATE_HIR_ID);
-        DefIdForest::from_id(crate_id.to_def_id())
+        DefIdForest::from_id(tcx.hir().local_def_id(CRATE_HIR_ID).to_def_id())
     }
 
     /// Creates a forest containing a `DefId` and all its descendants.
@@ -103,8 +102,8 @@ impl<'tcx> DefIdForest {
         let mut next_ret: SmallVec<[_; 1]> = SmallVec::new();
         for next_forest in iter {
             // No need to continue if the intersection is already empty.
-            if ret.is_empty() {
-                break;
+            if ret.is_empty() || next_forest.is_empty() {
+                return DefIdForest::empty();
             }
 
             // We keep the elements in `ret` that are also in `next_forest`.
@@ -113,7 +112,7 @@ impl<'tcx> DefIdForest {
             next_ret.extend(next_forest.iter().filter(|&id| slice_contains(tcx, &ret, id)));
 
             mem::swap(&mut next_ret, &mut ret);
-            next_ret.drain(..);
+            next_ret.clear();
         }
         DefIdForest::from_slice(&ret)
     }
@@ -126,6 +125,11 @@ impl<'tcx> DefIdForest {
         let mut ret: SmallVec<[_; 1]> = SmallVec::new();
         let mut next_ret: SmallVec<[_; 1]> = SmallVec::new();
         for next_forest in iter {
+            // Union with the empty set is a no-op.
+            if next_forest.is_empty() {
+                continue;
+            }
+
             // We add everything in `ret` that is not in `next_forest`.
             next_ret.extend(ret.iter().copied().filter(|&id| !next_forest.contains(tcx, id)));
             // We add everything in `next_forest` that we haven't added yet.
@@ -136,7 +140,7 @@ impl<'tcx> DefIdForest {
             }
 
             mem::swap(&mut next_ret, &mut ret);
-            next_ret.drain(..);
+            next_ret.clear();
         }
         DefIdForest::from_slice(&ret)
     }

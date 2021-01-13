@@ -8,7 +8,7 @@ static _X: usize = 0;
 fn _foo() {}
 
 struct _Y {
-    _z: usize
+    _z: usize,
 }
 
 enum _Z {}
@@ -23,7 +23,7 @@ mod _bar {
     fn _qux() {}
 }
 
-extern {
+extern "C" {
     #[link_name = "abort"]
     fn _abort() -> !;
 }

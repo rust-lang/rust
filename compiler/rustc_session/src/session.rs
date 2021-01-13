@@ -796,6 +796,14 @@ impl Session {
         self.opts.debugging_opts.tls_model.unwrap_or(self.target.tls_model)
     }
 
+    pub fn is_wasi_reactor(&self) -> bool {
+        self.target.options.os == "wasi"
+            && matches!(
+                self.opts.debugging_opts.wasi_exec_model,
+                Some(config::WasiExecModel::Reactor)
+            )
+    }
+
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
         // "mcount" function relies on stack pointer.
         // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
@@ -1076,6 +1084,11 @@ impl Session {
         self.opts.edition >= Edition::Edition2018
     }
 
+    /// Are we allowed to use features from the Rust 2021 edition?
+    pub fn rust_2021(&self) -> bool {
+        self.opts.edition >= Edition::Edition2021
+    }
+
     pub fn edition(&self) -> Edition {
         self.opts.edition
     }
@@ -1109,36 +1122,7 @@ impl Session {
     }
 
     pub fn link_dead_code(&self) -> bool {
-        match self.opts.cg.link_dead_code {
-            Some(explicitly_set) => explicitly_set,
-            None => {
-                self.opts.debugging_opts.instrument_coverage && !self.target.is_like_msvc
-                // Issue #76038: (rustc `-Clink-dead-code` causes MSVC linker to produce invalid
-                // binaries when LLVM InstrProf counters are enabled). As described by this issue,
-                // the "link dead code" option produces incorrect binaries when compiled and linked
-                // under MSVC. The resulting Rust programs typically crash with a segmentation
-                // fault, or produce an empty "*.profraw" file (profiling counter results normally
-                // generated during program exit).
-                //
-                // If not targeting MSVC, `-Z instrument-coverage` implies `-C link-dead-code`, so
-                // unexecuted code is still counted as zero, rather than be optimized out. Note that
-                // instrumenting dead code can be explicitly disabled with:
-                //
-                //     `-Z instrument-coverage -C link-dead-code=no`.
-                //
-                // FIXME(richkadel): Investigate if `instrument-coverage` implementation can inject
-                // [zero counters](https://llvm.org/docs/CoverageMappingFormat.html#counter) in the
-                // coverage map when "dead code" is removed, rather than forcing `link-dead-code`.
-                // This may not be possible, however, if (as it seems to appear) the "dead code"
-                // that would otherwise not be linked is only identified as "dead" by the native
-                // linker. If that's the case, I believe it is too late for the Rust compiler to
-                // leverage any information it might be able to get from the linker regarding what
-                // code is dead, to be able to add those counters.
-                //
-                // On the other hand, if any Rust compiler passes are optimizing out dead code blocks
-                // we should inject "zero" counters for those code regions.
-            }
-        }
+        self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
     pub fn mark_attr_known(&self, attr: &Attribute) {
@@ -1338,7 +1322,7 @@ pub fn build_session(
 
         let profiler = SelfProfiler::new(
             directory,
-            sopts.crate_name.as_ref().map(|s| &s[..]),
+            sopts.crate_name.as_deref(),
             &sopts.debugging_opts.self_profile_events,
         );
         match profiler {
@@ -1546,6 +1530,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     const ASAN_SUPPORTED_TARGETS: &[&str] = &[
+        "aarch64-apple-darwin",
         "aarch64-fuchsia",
         "aarch64-unknown-linux-gnu",
         "x86_64-apple-darwin",
@@ -1553,11 +1538,16 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         "x86_64-unknown-freebsd",
         "x86_64-unknown-linux-gnu",
     ];
-    const LSAN_SUPPORTED_TARGETS: &[&str] =
-        &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
+    const LSAN_SUPPORTED_TARGETS: &[&str] = &[
+        "aarch64-apple-darwin",
+        "aarch64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+    ];
     const MSAN_SUPPORTED_TARGETS: &[&str] =
         &["aarch64-unknown-linux-gnu", "x86_64-unknown-freebsd", "x86_64-unknown-linux-gnu"];
     const TSAN_SUPPORTED_TARGETS: &[&str] = &[
+        "aarch64-apple-darwin",
         "aarch64-unknown-linux-gnu",
         "x86_64-apple-darwin",
         "x86_64-unknown-freebsd",

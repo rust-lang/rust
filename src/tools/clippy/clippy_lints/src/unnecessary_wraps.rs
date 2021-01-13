@@ -1,14 +1,15 @@
 use crate::utils::{
-    in_macro, is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then,
+    contains_return, in_macro, is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then,
     visitors::find_all_ret_expressions,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, ExprKind, FnDecl, HirId, ItemKind, Node};
+use rustc_hir::{Body, ExprKind, FnDecl, HirId, ItemKind, Impl, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -74,14 +75,17 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         }
 
         if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-            if matches!(item.kind, ItemKind::Impl{ of_trait: Some(_), ..} | ItemKind::Trait(..)) {
+            if matches!(
+                item.kind,
+                ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
+            ) {
                 return;
             }
         }
 
-        let (return_type, path) = if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(option_type)) {
+        let (return_type, path) = if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::option_type) {
             ("Option", &paths::OPTION_SOME)
-        } else if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type)) {
+        } else if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::result_type) {
             ("Result", &paths::RESULT_OK)
         } else {
             return;
@@ -95,6 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 if let ExprKind::Path(ref qpath) = func.kind;
                 if match_qpath(qpath, path);
                 if args.len() == 1;
+                if !contains_return(&args[0]);
                 then {
                     suggs.push((ret_expr.span, snippet(cx, args[0].span.source_callsite(), "..").to_string()));
                     true
@@ -134,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                     diag.multipart_suggestion(
                         "...and change the returning expressions",
                         suggs,
-                        Applicability::MachineApplicable,
+                        Applicability::MaybeIncorrect,
                     );
                 },
             );

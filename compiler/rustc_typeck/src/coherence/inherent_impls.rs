@@ -44,8 +44,10 @@ struct InherentCollect<'tcx> {
 
 impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        let ty = match item.kind {
-            hir::ItemKind::Impl { of_trait: None, ref self_ty, .. } => self_ty,
+        let (ty, assoc_items) = match item.kind {
+            hir::ItemKind::Impl(hir::Impl { of_trait: None, ref self_ty, items, .. }) => {
+                (self_ty, items)
+            }
             _ => return,
         };
 
@@ -70,6 +72,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "bool",
                     "bool",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Char => {
@@ -80,6 +83,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "char",
                     "char",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Str => {
@@ -90,6 +94,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "str",
                     "str",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Slice(slice_item) if slice_item == self.tcx.types.u8 => {
@@ -100,6 +105,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "slice_u8",
                     "[u8]",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Slice(_) => {
@@ -110,6 +116,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "slice",
                     "[T]",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Array(_, _) => {
@@ -120,6 +127,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "array",
                     "[T; N]",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Not })
@@ -132,6 +140,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "const_slice_ptr",
                     "*const [T]",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Mut })
@@ -144,6 +153,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "mut_slice_ptr",
                     "*mut [T]",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Not }) => {
@@ -154,6 +164,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "const_ptr",
                     "*const T",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Mut }) => {
@@ -164,6 +175,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "mut_ptr",
                     "*mut T",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Int(ast::IntTy::I8) => {
@@ -174,6 +186,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "i8",
                     "i8",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Int(ast::IntTy::I16) => {
@@ -184,6 +197,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "i16",
                     "i16",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Int(ast::IntTy::I32) => {
@@ -194,6 +208,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "i32",
                     "i32",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Int(ast::IntTy::I64) => {
@@ -204,6 +219,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "i64",
                     "i64",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Int(ast::IntTy::I128) => {
@@ -214,6 +230,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "i128",
                     "i128",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Int(ast::IntTy::Isize) => {
@@ -224,6 +241,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "isize",
                     "isize",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Uint(ast::UintTy::U8) => {
@@ -234,6 +252,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "u8",
                     "u8",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Uint(ast::UintTy::U16) => {
@@ -244,6 +263,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "u16",
                     "u16",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Uint(ast::UintTy::U32) => {
@@ -254,6 +274,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "u32",
                     "u32",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Uint(ast::UintTy::U64) => {
@@ -264,6 +285,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "u64",
                     "u64",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Uint(ast::UintTy::U128) => {
@@ -274,6 +296,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "u128",
                     "u128",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Uint(ast::UintTy::Usize) => {
@@ -284,6 +307,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "usize",
                     "usize",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Float(ast::FloatTy::F32) => {
@@ -294,6 +318,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "f32",
                     "f32",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Float(ast::FloatTy::F64) => {
@@ -304,6 +329,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     "f64",
                     "f64",
                     item.span,
+                    assoc_items,
                 );
             }
             ty::Error(_) => {}
@@ -369,6 +395,7 @@ impl InherentCollect<'tcx> {
         lang: &str,
         ty: &str,
         span: Span,
+        assoc_items: &[hir::ImplItemRef<'_>],
     ) {
         match (lang_def_id, lang_def_id2) {
             (Some(lang_def_id), _) if lang_def_id == impl_def_id.to_def_id() => {
@@ -378,6 +405,32 @@ impl InherentCollect<'tcx> {
                 // OK
             }
             _ => {
+                let to_implement = if assoc_items.len() == 0 {
+                    String::new()
+                } else {
+                    let plural = assoc_items.len() > 1;
+                    let assoc_items_kind = {
+                        let item_types = assoc_items.iter().map(|x| x.kind);
+                        if item_types.clone().all(|x| x == hir::AssocItemKind::Const) {
+                            "constant"
+                        } else if item_types
+                            .clone()
+                            .all(|x| matches! {x, hir::AssocItemKind::Fn{ .. } })
+                        {
+                            "method"
+                        } else {
+                            "associated item"
+                        }
+                    };
+
+                    format!(
+                        " to implement {} {}{}",
+                        if plural { "these" } else { "this" },
+                        assoc_items_kind,
+                        if plural { "s" } else { "" }
+                    )
+                };
+
                 struct_span_err!(
                     self.tcx.sess,
                     span,
@@ -387,7 +440,7 @@ impl InherentCollect<'tcx> {
                     lang,
                     ty
                 )
-                .span_help(span, "consider using a trait to implement these methods")
+                .help(&format!("consider using a trait{}", to_implement))
                 .emit();
             }
         }

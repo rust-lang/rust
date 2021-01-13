@@ -10,7 +10,7 @@ use rustc_hir::{GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, 
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
@@ -261,6 +261,50 @@ impl EarlyLintPass for LintPassImpl {
                                     .emit();
                             },
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+declare_tool_lint! {
+    pub rustc::EXISTING_DOC_KEYWORD,
+    Allow,
+    "Check that documented keywords in std and core actually exist",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(ExistingDocKeyword => [EXISTING_DOC_KEYWORD]);
+
+fn is_doc_keyword(s: Symbol) -> bool {
+    s <= kw::Union
+}
+
+impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
+        for attr in item.attrs {
+            if !attr.has_name(sym::doc) {
+                continue;
+            }
+            if let Some(list) = attr.meta_item_list() {
+                for nested in list {
+                    if nested.has_name(sym::keyword) {
+                        let v = nested
+                            .value_str()
+                            .expect("#[doc(keyword = \"...\")] expected a value!");
+                        if is_doc_keyword(v) {
+                            return;
+                        }
+                        cx.struct_span_lint(EXISTING_DOC_KEYWORD, attr.span, |lint| {
+                            lint.build(&format!(
+                                "Found non-existing keyword `{}` used in \
+                                     `#[doc(keyword = \"...\")]`",
+                                v,
+                            ))
+                            .help("only existing keywords are allowed in core/std")
+                            .emit();
+                        });
                     }
                 }
             }

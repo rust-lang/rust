@@ -1,11 +1,11 @@
 error: `NoMatch` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-62579-no-match.rs:10:17
+  --> $DIR/issue-62579-no-match.rs:9:17
    |
 LL | fn foo<const T: NoMatch>() -> bool {
    |                 ^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: aborting due to previous error
 

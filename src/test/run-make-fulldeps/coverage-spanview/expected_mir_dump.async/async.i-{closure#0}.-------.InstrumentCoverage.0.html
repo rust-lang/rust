@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.async/async.i-%7Bclosure%230%7D.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+<html>
+<head>
+<title>async.i-{closure#0} - Coverage Spans</title>
+<style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+</style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 37"><span class="line">                  <span><span class="code even" style="--layer: 1" title="42:11-42:12: @0[3]: FakeRead(ForMatchedPlace, _3)"><span class="annotation">@0,3,4⦊</span>{ // line coverage is 1, but there are 2 regions:</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="42:11-42:12: @0[3]: FakeRead(ForMatchedPlace, _3)">                    // (a) the function signature, counted when the function is called; and</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="42:11-42:12: @0[3]: FakeRead(ForMatchedPlace, _3)">                    // (b) the open brace for the function body, counted once when the body is</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="42:11-42:12: @0[3]: FakeRead(ForMatchedPlace, _3)">                    // executed asynchronously.</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="42:11-42:12: @0[3]: FakeRead(ForMatchedPlace, _3)">    match x<span class="annotation">⦉@0,3,4</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="43:9-43:10: @18[3]: _4 = _3"><span class="annotation">@18,20⦊</span>y<span class="annotation">⦉@18,20</span></span></span><span class="code" style="--layer: 0"> if </span><span><span class="code even" style="--layer: 1" title="43:16-43:17: @3[6]: _9 = _3
+43:14-43:18: @3.Call: _8 = c(move _9) -&gt; [return: bb4, unwind: bb88]
+43:14-43:18: @4[1]: FakeRead(ForMatchedPlace, _8)"><span class="annotation">@0,3,4⦊</span>c(x)<span class="annotation">⦉@0,3,4</span></span></span><span class="code" style="--layer: 0">.await == </span><span><span class="code odd" style="--layer: 1" title="43:28-43:29: @15[3]: _26 = (*_5)
+43:28-43:33: @15[4]: _27 = CheckedAdd(_26, const 1_u8)
+43:28-43:33: @16[0]: _25 = move (_27.0: u8)"><span class="annotation">@10,13,15,16,17⦊</span>y + 1<span class="annotation">⦉@10,13,15,16,17</span></span></span><span class="code" style="--layer: 0"> =&gt; { </span><span><span class="code even" style="--layer: 1" title="43:39-43:42: @18.Call: _29 = d() -&gt; [return: bb20, unwind: bb79]
+43:39-43:42: @20[0]: FakeRead(ForMatchedPlace, _29)"><span class="annotation">@18,20⦊</span>d()<span class="annotation">⦉@18,20</span></span></span><span class="code" style="--layer: 0">.await; }</span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="44:9-44:10: @48[3]: _44 = _3"><span class="annotation">@48⦊</span>y<span class="annotation">⦉@48</span></span></span><span class="code" style="--layer: 0"> if </span><span><span class="code even" style="--layer: 1" title="44:14-44:17: @33.Call: _48 = f() -&gt; [return: bb34, unwind: bb72]
+44:14-44:17: @34[0]: FakeRead(ForMatchedPlace, _48)"><span class="annotation">@1,33,34⦊</span>f()<span class="annotation">⦉@1,33,34</span></span></span><span class="code" style="--layer: 0">.await == </span><span><span class="code odd" style="--layer: 1" title="44:27-44:28: @45[3]: _64 = (*_45)
+44:27-44:32: @45[4]: _65 = CheckedAdd(_64, const 1_u8)
+44:27-44:32: @46[0]: _63 = move (_65.0: u8)"><span class="annotation">@40,43,45,46,47⦊</span>y + 1<span class="annotation">⦉@40,43,45,46,47</span></span></span><span class="code" style="--layer: 0"> =&gt; </span><span><span class="code even" style="--layer: 1" title="44:36-44:38: @48[4]: _0 = ()"><span class="annotation">@48⦊</span>()<span class="annotation">⦉@48</span></span></span><span class="code" style="--layer: 0">,</span></span>
+<span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code odd" style="--layer: 1" title="45:14-45:16: @2[0]: _0 = ()"><span class="annotation">@2⦊</span>()<span class="annotation">⦉@2</span></span></span><span class="code" style="--layer: 0">,</span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code even" style="--layer: 1" title="47:2-47:2: @51.Return: return"><span class="annotation">@50,51⦊</span>‸<span class="annotation">⦉@50,51</span></span></span></span></div>
+</body>
+</html>

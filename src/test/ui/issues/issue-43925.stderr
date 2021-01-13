@@ -1,8 +1,8 @@
 error: invalid argument for `cfg(..)`
-  --> $DIR/issue-43925.rs:1:24
+  --> $DIR/issue-43925.rs:1:26
    |
-LL | #[link(name="foo", cfg("rlib"))]
-   |                        ^^^^^^
+LL | #[link(name = "foo", cfg("rlib"))]
+   |                          ^^^^^^
 
 error: aborting due to previous error
 

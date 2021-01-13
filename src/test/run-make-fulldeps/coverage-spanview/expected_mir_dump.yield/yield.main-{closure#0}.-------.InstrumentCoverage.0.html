@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.yield/yield.main-%7Bclosure%230%7D.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+<html>
+<head>
+<title>yield.main-{closure#0} - Coverage Spans</title>
+<style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+</style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 7"><span class="line">                        <span class="code" style="--layer: 0">|| </span><span><span class="code even" style="--layer: 1" title="9:9-9:16: @0.Yield: _3 = yield(const 1_i32) -&gt; [resume: bb1, drop: bb2]"><span class="annotation">@0⦊</span>{</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="9:9-9:16: @0.Yield: _3 = yield(const 1_i32) -&gt; [resume: bb1, drop: bb2]">        yield 1<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">        return </span><span><span class="code odd" style="--layer: 1" title="10:16-10:21: @1[1]: _0 = const &quot;foo&quot;
+11:6-11:6: @1.Return: return"><span class="annotation">@1⦊</span>"foo"</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="10:16-10:21: @1[1]: _0 = const &quot;foo&quot;
+11:6-11:6: @1.Return: return">    }<span class="annotation">⦉@1</span></span></span></span></div>
+</body>
+</html>

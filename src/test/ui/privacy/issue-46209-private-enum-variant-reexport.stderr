@@ -1,0 +1,44 @@
+error: variant `JuniorGrade` is private and cannot be re-exported
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:6:32
+   |
+LL |     pub use self::Lieutenant::{JuniorGrade, Full};
+   |                                ^^^^^^^^^^^
+...
+LL |     enum Lieutenant {
+   |     --------------- help: consider making the enum public: `pub enum Lieutenant`
+
+error: variant `Full` is private and cannot be re-exported
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:6:45
+   |
+LL |     pub use self::Lieutenant::{JuniorGrade, Full};
+   |                                             ^^^^
+
+error: enum is private and its variants cannot be re-exported
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:4:13
+   |
+LL |     pub use self::Professor::*;
+   |             ^^^^^^^^^^^^^^^^^^
+...
+LL |     enum Professor {
+   |     -------------- help: consider making the enum public: `pub enum Professor`
+
+error: enum is private and its variants cannot be re-exported
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:9:13
+   |
+LL |     pub use self::PettyOfficer::*;
+   |             ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     pub(in rank) enum PettyOfficer {
+   |     ------------------------------ help: consider making the enum public: `pub enum PettyOfficer`
+
+error: enum is private and its variants cannot be re-exported
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:11:13
+   |
+LL |     pub use self::Crewman::*;
+   |             ^^^^^^^^^^^^^^^^
+...
+LL |     crate enum Crewman {
+   |     ------------------ help: consider making the enum public: `pub enum Crewman`
+
+error: aborting due to 5 previous errors
+

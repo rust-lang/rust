@@ -1,11 +1,11 @@
 error: `[u8; _]` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-75047.rs:15:21
+  --> $DIR/issue-75047.rs:14:21
    |
 LL | struct Foo<const N: [u8; Bar::<u32>::value()]>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: aborting due to previous error
 

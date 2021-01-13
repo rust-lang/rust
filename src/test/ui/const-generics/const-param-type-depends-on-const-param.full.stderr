@@ -1,11 +1,11 @@
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/const-param-type-depends-on-const-param.rs:12:52
+  --> $DIR/const-param-type-depends-on-const-param.rs:11:52
    |
 LL | pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
    |                                                    ^ the type must not depend on the parameter `N`
 
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/const-param-type-depends-on-const-param.rs:16:40
+  --> $DIR/const-param-type-depends-on-const-param.rs:15:40
    |
 LL | pub struct SelfDependent<const N: [u8; N]>;
    |                                        ^ the type must not depend on the parameter `N`

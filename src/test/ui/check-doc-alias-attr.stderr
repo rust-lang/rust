@@ -1,58 +1,58 @@
-error: doc alias attribute expects a string: #[doc(alias = "0")]
-  --> $DIR/check-doc-alias-attr.rs:7:7
+error: doc alias attribute expects a string: #[doc(alias = "a")]
+  --> $DIR/check-doc-alias-attr.rs:6:7
    |
 LL | #[doc(alias)]
    |       ^^^^^
 
-error: doc alias attribute expects a string: #[doc(alias = "0")]
-  --> $DIR/check-doc-alias-attr.rs:8:7
+error: doc alias attribute expects a string: #[doc(alias = "a")]
+  --> $DIR/check-doc-alias-attr.rs:7:7
    |
 LL | #[doc(alias = 0)]
    |       ^^^^^^^^^
 
-error: doc alias attribute expects a string: #[doc(alias = "0")]
-  --> $DIR/check-doc-alias-attr.rs:9:7
+error: doc alias attribute expects a string: #[doc(alias = "a")]
+  --> $DIR/check-doc-alias-attr.rs:8:7
    |
 LL | #[doc(alias("bar"))]
    |       ^^^^^^^^^^^^
 
 error: '\"' character isn't allowed in `#[doc(alias = "...")]`
-  --> $DIR/check-doc-alias-attr.rs:10:7
+  --> $DIR/check-doc-alias-attr.rs:9:15
    |
 LL | #[doc(alias = "\"")]
-   |       ^^^^^^^^^^^^
+   |               ^^^^
 
 error: '\n' character isn't allowed in `#[doc(alias = "...")]`
-  --> $DIR/check-doc-alias-attr.rs:11:7
+  --> $DIR/check-doc-alias-attr.rs:10:15
    |
 LL | #[doc(alias = "\n")]
-   |       ^^^^^^^^^^^^
+   |               ^^^^
 
 error: '\n' character isn't allowed in `#[doc(alias = "...")]`
-  --> $DIR/check-doc-alias-attr.rs:12:7
+  --> $DIR/check-doc-alias-attr.rs:11:15
    |
 LL |   #[doc(alias = "
-   |  _______^
+   |  _______________^
 LL | | ")]
    | |_^
 
 error: '\t' character isn't allowed in `#[doc(alias = "...")]`
-  --> $DIR/check-doc-alias-attr.rs:14:7
+  --> $DIR/check-doc-alias-attr.rs:13:15
    |
 LL | #[doc(alias = "\t")]
-   |       ^^^^^^^^^^^^
+   |               ^^^^
 
 error: `#[doc(alias = "...")]` cannot start or end with ' '
-  --> $DIR/check-doc-alias-attr.rs:15:7
+  --> $DIR/check-doc-alias-attr.rs:14:15
    |
 LL | #[doc(alias = " hello")]
-   |       ^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^
 
 error: `#[doc(alias = "...")]` cannot start or end with ' '
-  --> $DIR/check-doc-alias-attr.rs:16:7
+  --> $DIR/check-doc-alias-attr.rs:15:15
    |
 LL | #[doc(alias = "hello ")]
-   |       ^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^
 
 error: aborting due to 9 previous errors
 

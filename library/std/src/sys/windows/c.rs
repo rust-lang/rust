@@ -31,6 +31,8 @@ pub type WORD = u16;
 pub type CHAR = c_char;
 pub type ULONG_PTR = usize;
 pub type ULONG = c_ulong;
+pub type NTSTATUS = LONG;
+pub type ACCESS_MASK = DWORD;
 
 pub type LPBOOL = *mut BOOL;
 pub type LPBYTE = *mut BYTE;
@@ -284,6 +286,8 @@ pub const FD_SETSIZE: usize = 64;
 pub const STACK_SIZE_PARAM_IS_A_RESERVATION: DWORD = 0x00010000;
 
 pub const HEAP_ZERO_MEMORY: DWORD = 0x00000008;
+
+pub const STATUS_SUCCESS: NTSTATUS = 0x00000000;
 
 #[repr(C)]
 #[cfg(not(target_pointer_width = "64"))]
@@ -1083,5 +1087,48 @@ compat_fn! {
     }
     pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN {
         panic!("rwlocks not available")
+    }
+}
+compat_fn! {
+    "api-ms-win-core-synch-l1-2-0":
+    pub fn WaitOnAddress(
+        Address: LPVOID,
+        CompareAddress: LPVOID,
+        AddressSize: SIZE_T,
+        dwMilliseconds: DWORD
+    ) -> BOOL {
+        panic!("WaitOnAddress not available")
+    }
+    pub fn WakeByAddressSingle(Address: LPVOID) -> () {
+        // If this api is unavailable, there cannot be anything waiting, because
+        // WaitOnAddress would've panicked. So it's fine to do nothing here.
+    }
+}
+
+compat_fn! {
+    "ntdll":
+    pub fn NtCreateKeyedEvent(
+        KeyedEventHandle: LPHANDLE,
+        DesiredAccess: ACCESS_MASK,
+        ObjectAttributes: LPVOID,
+        Flags: ULONG
+    ) -> NTSTATUS {
+        panic!("keyed events not available")
+    }
+    pub fn NtReleaseKeyedEvent(
+        EventHandle: HANDLE,
+        Key: LPVOID,
+        Alertable: BOOLEAN,
+        Timeout: PLARGE_INTEGER
+    ) -> NTSTATUS {
+        panic!("keyed events not available")
+    }
+    pub fn NtWaitForKeyedEvent(
+        EventHandle: HANDLE,
+        Key: LPVOID,
+        Alertable: BOOLEAN,
+        Timeout: PLARGE_INTEGER
+    ) -> NTSTATUS {
+        panic!("keyed events not available")
     }
 }

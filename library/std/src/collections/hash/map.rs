@@ -195,7 +195,6 @@ use crate::sys;
 /// // use the values stored in map
 /// ```
 
-#[derive(Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashMap<K, V, S = RandomState> {
@@ -449,6 +448,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// a.insert(1, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         self.base.len()
@@ -1026,6 +1026,24 @@ where
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S> {
         RawEntryBuilder { map: self }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<K, V, S> Clone for HashMap<K, V, S>
+where
+    K: Clone,
+    V: Clone,
+    S: Clone,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { base: self.base.clone() }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, other: &Self) {
+        self.base.clone_from(&other.base);
     }
 }
 
@@ -2219,14 +2237,16 @@ impl<'a, K, V> Entry<'a, K, V> {
         }
     }
 
-    /// Ensures a value is in the entry by inserting, if empty, the result of the default function,
-    /// which takes the key as its argument, and returns a mutable reference to the value in the
-    /// entry.
+    /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
+    /// This method allows for generating key-derived values for insertion by providing the default
+    /// function a reference to the key that was moved during the `.entry(key)` method call.
+    ///
+    /// The reference to the moved key is provided so that cloning or copying the key is
+    /// unnecessary, unlike with `.or_insert_with(|| ... )`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(or_insert_with_key)]
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, usize> = HashMap::new();
@@ -2236,7 +2256,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 9);
     /// ```
     #[inline]
-    #[unstable(feature = "or_insert_with_key", issue = "71024")]
+    #[stable(feature = "or_insert_with_key", since = "1.50.0")]
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),

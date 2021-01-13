@@ -1,0 +1,135 @@
+    1|       |#![allow(unused_assignments, dead_code)]
+    2|       |
+    3|       |// require-rust-edition-2018
+    4|       |
+    5|      1|async fn c(x: u8) -> u8 {
+    6|      1|    if x == 8 {
+    7|      1|        1
+    8|       |    } else {
+    9|      0|        0
+   10|       |    }
+   11|      1|}
+   12|       |
+   13|      0|async fn d() -> u8 { 1 }
+   14|       |
+   15|      0|async fn e() -> u8 { 1 } // unused function; executor does not block on `g()`
+   16|       |
+   17|      1|async fn f() -> u8 { 1 }
+   18|       |
+   19|      0|async fn foo() -> [bool; 10] { [false; 10] } // unused function; executor does not block on `h()`
+   20|       |
+   21|      1|pub async fn g(x: u8) {
+   22|      0|    match x {
+   23|      0|        y if e().await == y => (),
+   24|      0|        y if f().await == y => (),
+   25|      0|        _ => (),
+   26|       |    }
+   27|      0|}
+   28|       |
+   29|      1|async fn h(x: usize) { // The function signature is counted when called, but the body is not
+   30|      0|                       // executed (not awaited) so the open brace has a `0` count (at least when
+   31|      0|                       // displayed with `llvm-cov show` in color-mode).
+   32|      0|    match x {
+   33|      0|        y if foo().await[y] => (),
+   34|      0|        _ => (),
+   35|       |    }
+   36|      0|}
+   37|       |
+   38|      1|async fn i(x: u8) { // line coverage is 1, but there are 2 regions:
+   39|      1|                    // (a) the function signature, counted when the function is called; and
+   40|      1|                    // (b) the open brace for the function body, counted once when the body is
+   41|      1|                    // executed asynchronously.
+   42|      1|    match x {
+   43|      1|        y if c(x).await == y + 1 => { d().await; }
+                      ^0                            ^0
+   44|      1|        y if f().await == y + 1 => (),
+                      ^0                         ^0
+   45|      1|        _ => (),
+   46|       |    }
+   47|      1|}
+   48|       |
+   49|      1|fn j(x: u8) {
+   50|      1|    // non-async versions of `c()`, `d()`, and `f()` to make it similar to async `i()`.
+   51|      1|    fn c(x: u8) -> u8 {
+   52|      1|        if x == 8 {
+   53|      1|            1 // This line appears covered, but the 1-character expression span covering the `1`
+                          ^0
+   54|      1|              // is not executed. (`llvm-cov show` displays a `^0` below the `1` ). This is because
+   55|      1|              // `fn j()` executes the open brace for the funciton body, followed by the function's
+   56|      1|              // first executable statement, `match x`. Inner function declarations are not
+   57|      1|              // "visible" to the MIR for `j()`, so the code region counts all lines between the
+   58|      1|              // open brace and the first statement as executed, which is, in a sense, true.
+   59|      1|              // `llvm-cov show` overcomes this kind of situation by showing the actual counts
+   60|      1|              // of the enclosed coverages, (that is, the `1` expression was not executed, and
+   61|      1|              // accurately displays a `0`).
+   62|      1|        } else {
+   63|      1|            0
+   64|      1|        }
+   65|      1|    }
+   66|      1|    fn d() -> u8 { 1 }
+   67|      1|    fn f() -> u8 { 1 }
+   68|      1|    match x {
+   69|      1|        y if c(x) == y + 1 => { d(); }
+                      ^0                    ^0
+   70|      1|        y if f() == y + 1 => (),
+                      ^0                   ^0
+   71|      1|        _ => (),
+   72|       |    }
+   73|      1|}
+   74|       |
+   75|      0|fn k(x: u8) { // unused function
+   76|      0|    match x {
+   77|      0|        1 => (),
+   78|      0|        2 => (),
+   79|      0|        _ => (),
+   80|       |    }
+   81|      0|}
+   82|       |
+   83|      1|fn l(x: u8) {
+   84|      1|    match x {
+   85|      0|        1 => (),
+   86|      0|        2 => (),
+   87|      1|        _ => (),
+   88|       |    }
+   89|      1|}
+   90|       |
+   91|      1|async fn m(x: u8) -> u8 { x - 1 }
+                                      ^0
+   92|       |
+   93|      1|fn main() {
+   94|      1|    let _ = g(10);
+   95|      1|    let _ = h(9);
+   96|      1|    let mut future = Box::pin(i(8));
+   97|      1|    j(7);
+   98|      1|    l(6);
+   99|      1|    let _ = m(5);
+  100|      1|    executor::block_on(future.as_mut());
+  101|      1|}
+  102|       |
+  103|       |mod executor {
+  104|       |    use core::{
+  105|       |        future::Future,
+  106|       |        pin::Pin,
+  107|       |        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
+  108|       |    };
+  109|       |
+  110|      1|    pub fn block_on<F: Future>(mut future: F) -> F::Output {
+  111|      1|        let mut future = unsafe { Pin::new_unchecked(&mut future) };
+  112|      1|
+  113|      1|        static VTABLE: RawWakerVTable = RawWakerVTable::new(
+  114|      1|            |_| unimplemented!("clone"),
+  115|      1|            |_| unimplemented!("wake"),
+  116|      1|            |_| unimplemented!("wake_by_ref"),
+  117|      1|            |_| (),
+  118|      1|        );
+  119|      1|        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
+  120|      1|        let mut context = Context::from_waker(&waker);
+  121|       |
+  122|       |        loop {
+  123|      1|            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
+  124|      1|                break val;
+  125|      0|            }
+  126|       |        }
+  127|      1|    }
+  128|       |}
+

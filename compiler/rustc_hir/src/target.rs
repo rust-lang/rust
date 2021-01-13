@@ -10,6 +10,13 @@ use crate::{Item, ItemKind, TraitItem, TraitItemKind};
 use std::fmt::{self, Display};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
+pub enum GenericParamKind {
+    Type,
+    Lifetime,
+    Const,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MethodKind {
     Trait { body: bool },
     Inherent,
@@ -43,6 +50,7 @@ pub enum Target {
     ForeignFn,
     ForeignStatic,
     ForeignTy,
+    GenericParam(GenericParamKind),
 }
 
 impl Display for Target {
@@ -77,6 +85,11 @@ impl Display for Target {
                 Target::ForeignFn => "foreign function",
                 Target::ForeignStatic => "foreign static item",
                 Target::ForeignTy => "foreign type",
+                Target::GenericParam(kind) => match kind {
+                    GenericParamKind::Type => "type parameter",
+                    GenericParamKind::Lifetime => "lifetime parameter",
+                    GenericParamKind::Const => "const parameter",
+                },
             }
         )
     }
@@ -122,6 +135,16 @@ impl Target {
             hir::ForeignItemKind::Fn(..) => Target::ForeignFn,
             hir::ForeignItemKind::Static(..) => Target::ForeignStatic,
             hir::ForeignItemKind::Type => Target::ForeignTy,
+        }
+    }
+
+    pub fn from_generic_param(generic_param: &hir::GenericParam<'_>) -> Target {
+        match generic_param.kind {
+            hir::GenericParamKind::Type { .. } => Target::GenericParam(GenericParamKind::Type),
+            hir::GenericParamKind::Lifetime { .. } => {
+                Target::GenericParam(GenericParamKind::Lifetime)
+            }
+            hir::GenericParamKind::Const { .. } => Target::GenericParam(GenericParamKind::Const),
         }
     }
 }

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.yield/yield.main.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+<html>
+<head>
+<title>yield.main - Coverage Spans</title>
+<style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+</style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 6"><span class="line"><span><span class="code even" style="--layer: 1"><span class="annotation">@0,1,2⦊</span>fn main() <span class="annotation">⦉@0,1,2</span></span></span><span class="code" style="--layer: 0">{</span></span>
+<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="8:9-8:22: @0[2]: FakeRead(ForLet, _1)"><span class="annotation">@0,1,2⦊</span>mut generator<span class="annotation">⦉@0,1,2</span></span></span><span class="code" style="--layer: 0"> = || {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        yield 1;</span></span>
+<span class="line"><span class="code" style="--layer: 0">        return "foo"</span></span>
+<span class="line"><span class="code" style="--layer: 0">    };</span></span>
+<span class="line"><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code even" style="--layer: 1" title="13:20-13:34: @0[7]: _5 = &amp;mut _1
+13:11-13:35: @0.Call: _4 = Pin::&lt;&amp;mut [generator@../coverage/yield.rs:8:25: 11:6 {i32, ()}]&gt;::new(move _5) -&gt; [return: bb1, unwind: bb26]
+13:43-13:45: @1[2]: _6 = ()
+13:11-13:46: @1.Call: _3 = &lt;[generator@../coverage/yield.rs:8:25: 11:6 {i32, ()}] as Generator&gt;::resume(move _4, move _6) -&gt; [return: bb2, unwind: bb26]
+13:11-13:46: @2[2]: FakeRead(ForMatchedPlace, _3)
+14:9-14:35: @2[3]: _7 = discriminant(_3)"><span class="annotation">@0,1,2⦊</span>Pin::new(&amp;mut generator).resume(()) {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="13:20-13:34: @0[7]: _5 = &amp;mut _1
+13:11-13:35: @0.Call: _4 = Pin::&lt;&amp;mut [generator@../coverage/yield.rs:8:25: 11:6 {i32, ()}]&gt;::new(move _5) -&gt; [return: bb1, unwind: bb26]
+13:43-13:45: @1[2]: _6 = ()
+13:11-13:46: @1.Call: _3 = &lt;[generator@../coverage/yield.rs:8:25: 11:6 {i32, ()}] as Generator&gt;::resume(move _4, move _6) -&gt; [return: bb2, unwind: bb26]
+13:11-13:46: @2[2]: FakeRead(ForMatchedPlace, _3)
+14:9-14:35: @2[3]: _7 = discriminant(_3)">        GeneratorState::Yielded(1)<span class="annotation">⦉@0,1,2</span></span></span><span class="code" style="--layer: 0"> =&gt; </span><span><span class="code odd" style="--layer: 1" title="14:39-14:41: @6[0]: _2 = const ()"><span class="annotation">@4,6,7,8⦊</span>{}<span class="annotation">⦉@4,6,7,8</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code even" style="--layer: 1" title="15:14-15:52: @5.Call: begin_panic::&lt;&amp;str&gt;(const &quot;unexpected value from resume&quot;) -&gt; bb26"><span class="annotation">@5⦊</span>panic!("unexpected value from resume")<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0">,</span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code odd" style="--layer: 1" title="17:20-17:34: @6[7]: _12 = &amp;mut _1
+17:11-17:35: @6.Call: _11 = Pin::&lt;&amp;mut [generator@../coverage/yield.rs:8:25: 11:6 {i32, ()}]&gt;::new(move _12) -&gt; [return: bb7, unwind: bb26]
+17:43-17:45: @7[2]: _13 = ()
+17:11-17:46: @7.Call: _10 = &lt;[generator@../coverage/yield.rs:8:25: 11:6 {i32, ()}] as Generator&gt;::resume(move _11, move _13) -&gt; [return: bb8, unwind: bb26]
+17:11-17:46: @8[2]: FakeRead(ForMatchedPlace, _10)"><span class="annotation">@4,6,7,8⦊</span>Pin::new(&amp;mut generator).resume(())<span class="annotation">⦉@4,6,7,8</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        GeneratorState::Complete(</span><span><span class="code even" style="--layer: 1" title="18:34-18:39: @10.Call: _14 = &lt;str as PartialEq&gt;::eq(((_10 as Complete).0: &amp;str), const &quot;foo&quot;) -&gt; [return: bb11, unwind: bb26]"><span class="annotation">@10,11⦊</span>"foo"<span class="annotation">⦉@10,11</span></span></span><span class="code" style="--layer: 0">) =&gt; </span><span><span class="code odd" style="--layer: 1" title="18:44-18:46: @13[0]: _9 = const ()"><span class="annotation">@12,13,14,15⦊</span>{}<span class="annotation">⦉@12,13,14,15</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code even" style="--layer: 1" title="19:14-19:52: @9.Call: begin_panic::&lt;&amp;str&gt;(const &quot;unexpected value from resume&quot;) -&gt; bb26"><span class="annotation">@9⦊</span>panic!("unexpected value from resume")<span class="annotation">⦉@9</span></span></span><span class="code" style="--layer: 0">,</span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code odd" style="--layer: 1" title="22:9-22:22: @13[5]: FakeRead(ForLet, _17)"><span class="annotation">@12,13,14,15⦊</span>mut generator<span class="annotation">⦉@12,13,14,15</span></span></span><span class="code" style="--layer: 0"> = || {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        yield 1;</span></span>
+<span class="line"><span class="code" style="--layer: 0">        yield 2;</span></span>
+<span class="line"><span class="code" style="--layer: 0">        yield 3;</span></span>
+<span class="line"><span class="code" style="--layer: 0">        return "foo"</span></span>
+<span class="line"><span class="code" style="--layer: 0">    };</span></span>
+<span class="line"><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code odd" style="--layer: 1" title="29:20-29:34: @13[10]: _21 = &amp;mut _17
+29:11-29:35: @13.Call: _20 = Pin::&lt;&amp;mut [generator@../coverage/yield.rs:22:25: 27:6 {i32, ()}]&gt;::new(move _21) -&gt; [return: bb14, unwind: bb26]
+29:43-29:45: @14[2]: _22 = ()
+29:11-29:46: @14.Call: _19 = &lt;[generator@../coverage/yield.rs:22:25: 27:6 {i32, ()}] as Generator&gt;::resume(move _20, move _22) -&gt; [return: bb15, unwind: bb26]
+29:11-29:46: @15[2]: FakeRead(ForMatchedPlace, _19)
+30:9-30:35: @15[3]: _23 = discriminant(_19)"><span class="annotation">@12,13,14,15⦊</span>Pin::new(&amp;mut generator).resume(()) {</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="29:20-29:34: @13[10]: _21 = &amp;mut _17
+29:11-29:35: @13.Call: _20 = Pin::&lt;&amp;mut [generator@../coverage/yield.rs:22:25: 27:6 {i32, ()}]&gt;::new(move _21) -&gt; [return: bb14, unwind: bb26]
+29:43-29:45: @14[2]: _22 = ()
+29:11-29:46: @14.Call: _19 = &lt;[generator@../coverage/yield.rs:22:25: 27:6 {i32, ()}] as Generator&gt;::resume(move _20, move _22) -&gt; [return: bb15, unwind: bb26]
+29:11-29:46: @15[2]: FakeRead(ForMatchedPlace, _19)
+30:9-30:35: @15[3]: _23 = discriminant(_19)">        GeneratorState::Yielded(1)<span class="annotation">⦉@12,13,14,15</span></span></span><span class="code" style="--layer: 0"> =&gt; </span><span><span class="code even" style="--layer: 1" title="30:39-30:41: @19[0]: _18 = const ()"><span class="annotation">@17,19,20,21⦊</span>{}<span class="annotation">⦉@17,19,20,21</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code odd" style="--layer: 1" title="31:14-31:52: @18.Call: begin_panic::&lt;&amp;str&gt;(const &quot;unexpected value from resume&quot;) -&gt; bb26"><span class="annotation">@18⦊</span>panic!("unexpected value from resume")<span class="annotation">⦉@18</span></span></span><span class="code" style="--layer: 0">,</span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code even" style="--layer: 1" title="33:20-33:34: @19[6]: _27 = &amp;mut _17
+33:11-33:35: @19.Call: _26 = Pin::&lt;&amp;mut [generator@../coverage/yield.rs:22:25: 27:6 {i32, ()}]&gt;::new(move _27) -&gt; [return: bb20, unwind: bb26]
+33:43-33:45: @20[2]: _28 = ()
+33:11-33:46: @20.Call: _25 = &lt;[generator@../coverage/yield.rs:22:25: 27:6 {i32, ()}] as Generator&gt;::resume(move _26, move _28) -&gt; [return: bb21, unwind: bb26]
+33:11-33:46: @21[2]: FakeRead(ForMatchedPlace, _25)
+34:9-34:35: @21[3]: _29 = discriminant(_25)"><span class="annotation">@17,19,20,21⦊</span>Pin::new(&amp;mut generator).resume(()) {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="33:20-33:34: @19[6]: _27 = &amp;mut _17
+33:11-33:35: @19.Call: _26 = Pin::&lt;&amp;mut [generator@../coverage/yield.rs:22:25: 27:6 {i32, ()}]&gt;::new(move _27) -&gt; [return: bb20, unwind: bb26]
+33:43-33:45: @20[2]: _28 = ()
+33:11-33:46: @20.Call: _25 = &lt;[generator@../coverage/yield.rs:22:25: 27:6 {i32, ()}] as Generator&gt;::resume(move _26, move _28) -&gt; [return: bb21, unwind: bb26]
+33:11-33:46: @21[2]: FakeRead(ForMatchedPlace, _25)
+34:9-34:35: @21[3]: _29 = discriminant(_25)">        GeneratorState::Yielded(2)<span class="annotation">⦉@17,19,20,21</span></span></span><span class="code" style="--layer: 0"> =&gt; </span><span><span class="code odd" style="--layer: 1" title="34:39-34:41: @25[0]: _0 = const ()"><span class="annotation">@23,25⦊</span>{}<span class="annotation">⦉@23,25</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code even" style="--layer: 1" title="35:14-35:52: @24.Call: begin_panic::&lt;&amp;str&gt;(const &quot;unexpected value from resume&quot;) -&gt; bb26"><span class="annotation">@24⦊</span>panic!("unexpected value from resume")<span class="annotation">⦉@24</span></span></span><span class="code" style="--layer: 0">,</span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="37:2-37:2: @25.Return: return"><span class="annotation">@23,25⦊</span>‸<span class="annotation">⦉@23,25</span></span></span></span></div>
+</body>
+</html>

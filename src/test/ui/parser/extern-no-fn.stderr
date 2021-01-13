@@ -1,8 +1,8 @@
 error: expected one of `!` or `::`, found `(`
   --> $DIR/extern-no-fn.rs:2:6
    |
-LL | extern {
-   |        - while parsing this item list starting here
+LL | extern "C" {
+   |            - while parsing this item list starting here
 LL |     f();
    |      ^ expected one of `!` or `::`
 LL | }

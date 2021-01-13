@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `NonExistent` in this scope
-  --> $DIR/ambiguous-builtin-attrs.rs:30:5
+  --> $DIR/ambiguous-builtin-attrs.rs:32:5
    |
 LL |     NonExistent;
    |     ^^^^^^^^^^^ not found in this scope
@@ -47,7 +47,7 @@ LL | use builtin_attrs::*;
    = help: use `crate::repr` to refer to this attribute macro unambiguously
 
 error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
-  --> $DIR/ambiguous-builtin-attrs.rs:22:11
+  --> $DIR/ambiguous-builtin-attrs.rs:24:11
    |
 LL |         #[repr(C)]
    |           ^^^^ ambiguous name
@@ -74,7 +74,13 @@ LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
    = help: use `crate::feature` to refer to this attribute macro unambiguously
 
-error: aborting due to 6 previous errors
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/ambiguous-builtin-attrs.rs:20:39
+   |
+LL | fn non_macro_expanded_location<#[repr(C)] T>() {
+   |                                       ^   - not a struct, enum, or union
 
-Some errors have detailed explanations: E0425, E0659.
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0425, E0517, E0659.
 For more information about an error, try `rustc --explain E0425`.

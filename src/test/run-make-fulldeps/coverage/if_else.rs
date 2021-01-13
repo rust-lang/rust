@@ -1,4 +1,4 @@
-#![allow(unused_assignments)]
+#![allow(unused_assignments, unused_variables)]
 
 fn main() {
     // Initialize test constants in a way that cannot be determined at compile time, to ensure

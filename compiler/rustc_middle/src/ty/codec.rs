@@ -50,26 +50,9 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::Predicate
     }
 }
 
-pub trait OpaqueEncoder: Encoder {
-    fn opaque(&mut self) -> &mut rustc_serialize::opaque::Encoder;
-    fn encoder_position(&self) -> usize;
-}
-
-impl OpaqueEncoder for rustc_serialize::opaque::Encoder {
-    #[inline]
-    fn opaque(&mut self) -> &mut rustc_serialize::opaque::Encoder {
-        self
-    }
-    #[inline]
-    fn encoder_position(&self) -> usize {
-        self.position()
-    }
-}
-
 pub trait TyEncoder<'tcx>: Encoder {
     const CLEAR_CROSS_CRATE: bool;
 
-    fn tcx(&self) -> TyCtxt<'tcx>;
     fn position(&self) -> usize;
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize>;
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::Predicate<'tcx>, usize>;
@@ -162,7 +145,8 @@ encodable_via_deref! {
     ty::Region<'tcx>,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
-    &'tcx mir::BorrowCheckResult<'tcx>
+    &'tcx mir::BorrowCheckResult<'tcx>,
+    &'tcx mir::coverage::CodeRegion
 }
 
 pub trait TyDecoder<'tcx>: Decoder {
@@ -320,10 +304,14 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::ExistentialPredicate<'tcx>> {
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
+    for ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>
+{
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
-        Ok(decoder.tcx().mk_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
+        Ok(decoder
+            .tcx()
+            .mk_poly_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
     }
 }
 
@@ -372,11 +360,12 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [mir::abstract_const::N
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
-    &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+    &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
     &'tcx Allocation,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
-    &'tcx mir::BorrowCheckResult<'tcx>
+    &'tcx mir::BorrowCheckResult<'tcx>,
+    &'tcx mir::coverage::CodeRegion
 }
 
 #[macro_export]

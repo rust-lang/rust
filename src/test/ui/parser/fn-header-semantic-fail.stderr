@@ -105,8 +105,8 @@ LL |         const async unsafe extern "C" fn fi5() {}
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:51:18
    |
-LL |     extern {
-   |     ------ in this `extern` block
+LL |     extern "C" {
+   |     ---------- in this `extern` block
 LL |         async fn fe1();
    |                  ^^^
    |
@@ -118,8 +118,8 @@ LL |         fn fe1();
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:52:19
    |
-LL |     extern {
-   |     ------ in this `extern` block
+LL |     extern "C" {
+   |     ---------- in this `extern` block
 LL |         async fn fe1();
 LL |         unsafe fn fe2();
    |                   ^^^
@@ -132,8 +132,8 @@ LL |         fn fe2();
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:53:18
    |
-LL |     extern {
-   |     ------ in this `extern` block
+LL |     extern "C" {
+   |     ---------- in this `extern` block
 ...
 LL |         const fn fe3();
    |                  ^^^
@@ -146,8 +146,8 @@ LL |         fn fe3();
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:54:23
    |
-LL |     extern {
-   |     ------ in this `extern` block
+LL |     extern "C" {
+   |     ---------- in this `extern` block
 ...
 LL |         extern "C" fn fe4();
    |                       ^^^
@@ -160,8 +160,8 @@ LL |         fn fe4();
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:55:42
    |
-LL |     extern {
-   |     ------ in this `extern` block
+LL |     extern "C" {
+   |     ---------- in this `extern` block
 ...
 LL |         const async unsafe extern "C" fn fe5();
    |                                          ^^^

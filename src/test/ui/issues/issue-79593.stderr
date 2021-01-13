@@ -1,0 +1,33 @@
+error[E0063]: missing field `private` in initializer of `Pub`
+  --> $DIR/issue-79593.rs:10:9
+   |
+LL |         Pub {};
+   |         ^^^ missing `private`
+
+error[E0063]: missing field `y` in initializer of `Enum`
+  --> $DIR/issue-79593.rs:12:9
+   |
+LL |         Enum::Variant { x: () };
+   |         ^^^^^^^^^^^^^ missing `y`
+
+error: cannot construct `Pub` with struct literal syntax due to inaccessible fields
+  --> $DIR/issue-79593.rs:18:5
+   |
+LL |     foo::Pub {};
+   |     ^^^^^^^^
+
+error[E0063]: missing field `y` in initializer of `Enum`
+  --> $DIR/issue-79593.rs:23:5
+   |
+LL |     foo::Enum::Variant { x: () };
+   |     ^^^^^^^^^^^^^^^^^^ missing `y`
+
+error[E0063]: missing fields `x`, `y` in initializer of `Enum`
+  --> $DIR/issue-79593.rs:25:5
+   |
+LL |     foo::Enum::Variant { };
+   |     ^^^^^^^^^^^^^^^^^^ missing `x`, `y`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0063`.

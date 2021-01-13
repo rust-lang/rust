@@ -40,6 +40,29 @@ if (!DOMTokenList.prototype.remove) {
     };
 }
 
+
+// Gets the human-readable string for the virtual-key code of the
+// given KeyboardEvent, ev.
+//
+// This function is meant as a polyfill for KeyboardEvent#key,
+// since it is not supported in IE 11 or Chrome for Android. We also test for
+// KeyboardEvent#keyCode because the handleShortcut handler is
+// also registered for the keydown event, because Blink doesn't fire
+// keypress on hitting the Escape key.
+//
+// So I guess you could say things are getting pretty interoperable.
+function getVirtualKey(ev) {
+    if ("key" in ev && typeof ev.key != "undefined") {
+        return ev.key;
+    }
+
+    var c = ev.charCode || ev.keyCode;
+    if (c == 27) {
+        return "Escape";
+    }
+    return String.fromCharCode(c);
+}
+
 function getSearchInput() {
     return document.getElementsByClassName("search-input")[0];
 }
@@ -326,28 +349,6 @@ function defocusSearchBar() {
         }
     }
 
-    // Gets the human-readable string for the virtual-key code of the
-    // given KeyboardEvent, ev.
-    //
-    // This function is meant as a polyfill for KeyboardEvent#key,
-    // since it is not supported in Trident.  We also test for
-    // KeyboardEvent#keyCode because the handleShortcut handler is
-    // also registered for the keydown event, because Blink doesn't fire
-    // keypress on hitting the Escape key.
-    //
-    // So I guess you could say things are getting pretty interoperable.
-    function getVirtualKey(ev) {
-        if ("key" in ev && typeof ev.key != "undefined") {
-            return ev.key;
-        }
-
-        var c = ev.charCode || ev.keyCode;
-        if (c == 27) {
-            return "Escape";
-        }
-        return String.fromCharCode(c);
-    }
-
     function getHelpElement() {
         buildHelperPopup();
         return document.getElementById("help");
@@ -492,11 +493,7 @@ function defocusSearchBar() {
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
 
-    function resetMouseMoved(ev) {
-        mouseMovedAfterSearch = true;
-    }
-
-    document.addEventListener("mousemove", resetMouseMoved);
+    document.addEventListener("mousemove", function() { mouseMovedAfterSearch = true; });
 
     var handleSourceHighlight = (function() {
         var prev_line_id = 0;
@@ -666,13 +663,7 @@ function defocusSearchBar() {
                 results = {}, results_in_args = {}, results_returned = {},
                 split = valLower.split("::");
 
-            var length = split.length;
-            for (var z = 0; z < length; ++z) {
-                if (split[z] === "") {
-                    split.splice(z, 1);
-                    z -= 1;
-                }
-            }
+            split = split.filter(function(segment) { return segment !== ""; });
 
             function transformResults(results, isType) {
                 var out = [];
@@ -1468,16 +1459,21 @@ function defocusSearchBar() {
                 });
 
                 if (e.which === 38) { // up
-                    if (!actives[currentTab].length ||
-                        !actives[currentTab][0].previousElementSibling) {
-                        return;
+                    if (e.ctrlKey) { // Going through result tabs.
+                        printTab(currentTab > 0 ? currentTab - 1 : 2);
+                    } else {
+                        if (!actives[currentTab].length ||
+                            !actives[currentTab][0].previousElementSibling) {
+                            return;
+                        }
+                        addClass(actives[currentTab][0].previousElementSibling, "highlighted");
+                        removeClass(actives[currentTab][0], "highlighted");
                     }
-
-                    addClass(actives[currentTab][0].previousElementSibling, "highlighted");
-                    removeClass(actives[currentTab][0], "highlighted");
                     e.preventDefault();
                 } else if (e.which === 40) { // down
-                    if (!actives[currentTab].length) {
+                    if (e.ctrlKey) { // Going through result tabs.
+                        printTab(currentTab > 1 ? 0 : currentTab + 1);
+                    } else if (!actives[currentTab].length) {
                         var results = document.getElementById("results").childNodes;
                         if (results.length > 0) {
                             var res = results[currentTab].getElementsByClassName("result");
@@ -1495,13 +1491,6 @@ function defocusSearchBar() {
                         document.location.href =
                             actives[currentTab][0].getElementsByTagName("a")[0].href;
                     }
-                } else if (e.which === 9) { // tab
-                    if (e.shiftKey) {
-                        printTab(currentTab > 0 ? currentTab - 1 : 2);
-                    } else {
-                        printTab(currentTab > 1 ? 0 : currentTab + 1);
-                    }
-                    e.preventDefault();
                 } else if (e.which === 16) { // shift
                     // Does nothing, it's just to avoid losing "focus" on the highlighted element.
                 } else if (actives[currentTab].length > 0) {
@@ -1610,7 +1599,7 @@ function defocusSearchBar() {
                               item.displayPath + "<span class=\"" + type + "\">" +
                               name + "</span></a></td><td>" +
                               "<a href=\"" + item.href + "\">" +
-                              "<span class=\"desc\">" + escape(item.desc) +
+                              "<span class=\"desc\">" + item.desc +
                               "&nbsp;</span></a></td></tr>";
                 });
                 output += "</table>";
@@ -1634,10 +1623,10 @@ function defocusSearchBar() {
 
         function makeTabHeader(tabNb, text, nbElems) {
             if (currentTab === tabNb) {
-                return "<div class=\"selected\">" + text +
-                       " <div class=\"count\">(" + nbElems + ")</div></div>";
+                return "<button class=\"selected\">" + text +
+                       " <div class=\"count\">(" + nbElems + ")</div></button>";
             }
-            return "<div>" + text + " <div class=\"count\">(" + nbElems + ")</div></div>";
+            return "<button>" + text + " <div class=\"count\">(" + nbElems + ")</div></button>";
         }
 
         function showResults(results) {
@@ -2012,7 +2001,9 @@ function defocusSearchBar() {
                     }
                     var link = document.createElement("a");
                     link.href = rootPath + crates[i] + "/index.html";
-                    link.title = rawSearchIndex[crates[i]].doc;
+                    // The summary in the search index has HTML, so we need to
+                    // dynamically render it as plaintext.
+                    link.title = convertHTMLToPlaintext(rawSearchIndex[crates[i]].doc);
                     link.className = klass;
                     link.textContent = crates[i];
 
@@ -2024,6 +2015,23 @@ function defocusSearchBar() {
             }
         }
     };
+
+    /**
+     * Convert HTML to plaintext:
+     *
+     *   * Replace "<code>foo</code>" with "`foo`"
+     *   * Strip all other HTML tags
+     *
+     * Used by the dynamic sidebar crate list renderer.
+     *
+     * @param  {[string]} html [The HTML to convert]
+     * @return {[string]}      [The resulting plaintext]
+     */
+    function convertHTMLToPlaintext(html) {
+        var x = document.createElement("div");
+        x.innerHTML = html.replace('<code>', '`').replace('</code>', '`');
+        return x.innerText;
+    }
 
 
     // delayed sidebar rendering.
@@ -2139,14 +2147,14 @@ function defocusSearchBar() {
                 var code = document.createElement("code");
                 code.innerHTML = struct.text;
 
-                var x = code.getElementsByTagName("a");
-                var xlength = x.length;
-                for (var it = 0; it < xlength; it++) {
-                    var href = x[it].getAttribute("href");
+                onEachLazy(code.getElementsByTagName("a"), function(elem) {
+                    var href = elem.getAttribute("href");
+
                     if (href && href.indexOf("http") !== 0) {
-                        x[it].setAttribute("href", rootPath + href);
+                        elem.setAttribute("href", rootPath + href);
                     }
-                }
+                });
+
                 var display = document.createElement("h3");
                 addClass(display, "impl");
                 display.innerHTML = "<span class=\"in-band\"><table class=\"table-display\">" +
@@ -2256,9 +2264,12 @@ function defocusSearchBar() {
 
         function implHider(addOrRemove, fullHide) {
             return function(n) {
-                var is_method = hasClass(n, "method") || fullHide;
-                if (is_method || hasClass(n, "type")) {
-                    if (is_method === true) {
+                var shouldHide =
+                    fullHide === true ||
+                    hasClass(n, "method") === true ||
+                    hasClass(n, "associatedconstant") === true;
+                if (shouldHide === true || hasClass(n, "type") === true) {
+                    if (shouldHide === true) {
                         if (addOrRemove) {
                             addClass(n, "hidden-by-impl-hider");
                         } else {
@@ -2532,14 +2543,12 @@ function defocusSearchBar() {
             var hiddenElems = e.getElementsByClassName("hidden");
             var needToggle = false;
 
-            var hlength = hiddenElems.length;
-            for (var i = 0; i < hlength; ++i) {
-                if (hasClass(hiddenElems[i], "content") === false &&
-                    hasClass(hiddenElems[i], "docblock") === false) {
-                    needToggle = true;
-                    break;
+            var needToggle = onEachLazy(e.getElementsByClassName("hidden"), function(hiddenElem) {
+                if (hasClass(hiddenElem, "content") === false &&
+                    hasClass(hiddenElem, "docblock") === false) {
+                    return true;
                 }
-            }
+            });
             if (needToggle === true) {
                 var inner_toggle = newToggle.cloneNode(true);
                 inner_toggle.onclick = toggleClicked;
@@ -2878,11 +2887,14 @@ function defocusSearchBar() {
             ["T", "Focus the theme picker menu"],
             ["↑", "Move up in search results"],
             ["↓", "Move down in search results"],
-            ["↹", "Switch tab"],
+            ["ctrl + ↑ / ↓", "Switch result tab"],
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
-        ].map(x => "<dt><kbd>" + x[0] + "</kbd></dt><dd>" + x[1] + "</dd>").join("");
+        ].map(x => "<dt>" +
+            x[0].split(" ")
+                .map((y, index) => (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : y)
+                .join("") + "</dt><dd>" + x[1] + "</dd>").join("");
         var div_shortcuts = document.createElement("div");
         addClass(div_shortcuts, "shortcuts");
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";

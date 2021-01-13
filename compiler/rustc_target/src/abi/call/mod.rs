@@ -605,10 +605,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "nvptx64" => nvptx64::compute_abi_info(self),
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
-            "wasm32" if cx.target_spec().os != "emscripten" => {
-                wasm32_bindgen_compat::compute_abi_info(self)
-            }
-            "wasm32" | "asmjs" => wasm32::compute_abi_info(cx, self),
+            "wasm32" => match cx.target_spec().os.as_str() {
+                "emscripten" | "wasi" => wasm32::compute_abi_info(cx, self),
+                _ => wasm32_bindgen_compat::compute_abi_info(self),
+            },
+            "asmjs" => wasm32::compute_abi_info(cx, self),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
         }
 

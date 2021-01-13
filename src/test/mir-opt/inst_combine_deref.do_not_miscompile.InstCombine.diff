@@ -57,7 +57,7 @@
       }
   
       bb1: {
-          _7 = const ();                   // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
+          _7 = const ();                   // scope 4 at $DIR/inst_combine_deref.rs:60:23: 60:23
           StorageDead(_8);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
           StorageDead(_7);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
           _0 = const ();                   // scope 0 at $DIR/inst_combine_deref.rs:54:24: 61:2

@@ -11,9 +11,8 @@ use rustc_hir::{
     intravisit::{self, NestedVisitorMap, Visitor},
     Path,
 };
-use rustc_interface::interface;
+use rustc_interface::{interface, Queries};
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
@@ -121,14 +120,20 @@ impl<'tcx> DocContext<'tcx> {
         r
     }
 
-    // This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
-    // refactoring either librustdoc or librustc_middle. In particular, allowing new DefIds to be
-    // registered after the AST is constructed would require storing the defid mapping in a
-    // RefCell, decreasing the performance for normal compilation for very little gain.
-    //
-    // Instead, we construct 'fake' def ids, which start immediately after the last DefId.
-    // In the Debug impl for clean::Item, we explicitly check for fake
-    // def ids, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
+    /// Create a new "fake" [`DefId`].
+    ///
+    /// This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
+    /// refactoring either rustdoc or [`rustc_middle`]. In particular, allowing new [`DefId`]s
+    /// to be registered after the AST is constructed would require storing the [`DefId`] mapping
+    /// in a [`RefCell`], decreasing the performance for normal compilation for very little gain.
+    ///
+    /// Instead, we construct "fake" [`DefId`]s, which start immediately after the last `DefId`.
+    /// In the [`Debug`] impl for [`clean::Item`], we explicitly check for fake `DefId`s,
+    /// as we'll end up with a panic if we use the `DefId` `Debug` impl for fake `DefId`s.
+    ///
+    /// [`RefCell`]: std::cell::RefCell
+    /// [`Debug`]: std::fmt::Debug
+    /// [`clean::Item`]: crate::clean::types::Item
     crate fn next_def_id(&self, crate_num: CrateNum) -> DefId {
         let start_def_id = {
             let num_def_ids = if crate_num == LOCAL_CRATE {
@@ -274,12 +279,9 @@ where
     (lint_opts, lint_caps)
 }
 
-crate fn run_core(
-    options: RustdocOptions,
-) -> (clean::Crate, RenderInfo, RenderOptions, Lrc<Session>) {
-    // Parse, resolve, and typecheck the given crate.
-
-    let RustdocOptions {
+/// Parse, resolve, and typecheck the given crate.
+crate fn create_config(
+    RustdocOptions {
         input,
         crate_name,
         proc_macro_crate,
@@ -295,21 +297,10 @@ crate fn run_core(
         lint_opts,
         describe_lints,
         lint_cap,
-        default_passes,
-        manual_passes,
         display_warnings,
-        render_options,
-        output_format,
         ..
-    } = options;
-
-    let extern_names: Vec<String> = externs
-        .iter()
-        .filter(|(_, entry)| entry.add_prelude)
-        .map(|(name, _)| name)
-        .cloned()
-        .collect();
-
+    }: RustdocOptions,
+) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
 
@@ -371,10 +362,11 @@ crate fn run_core(
         error_format,
         edition,
         describe_lints,
+        crate_name,
         ..Options::default()
     };
 
-    let config = interface::Config {
+    interface::Config {
         opts: sessopts,
         crate_cfg: interface::parse_cfgspecs(cfgs),
         input,
@@ -384,7 +376,6 @@ crate fn run_core(
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
-        crate_name,
         lint_caps,
         register_lints: None,
         override_queries: Some(|_sess, providers, _external_providers| {
@@ -412,76 +403,55 @@ crate fn run_core(
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
-                tcx.sess.time("emit_ignored_resolution_errors", || {
-                    EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
-                });
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
-    };
-
-    interface::create_compiler_and_run(config, |compiler| {
-        compiler.enter(|queries| {
-            let sess = compiler.session();
-
-            // We need to hold on to the complete resolver, so we cause everything to be
-            // cloned for the analysis passes to use. Suboptimal, but necessary in the
-            // current architecture.
-            let resolver = {
-                let parts = abort_on_err(queries.expansion(), sess).peek();
-                let resolver = parts.1.borrow();
-
-                // Before we actually clone it, let's force all the extern'd crates to
-                // actually be loaded, just in case they're only referred to inside
-                // intra-doc-links
-                resolver.borrow_mut().access(|resolver| {
-                    sess.time("load_extern_crates", || {
-                        for extern_name in &extern_names {
-                            debug!("loading extern crate {}", extern_name);
-                            resolver
-                                .resolve_str_path_error(
-                                    DUMMY_SP,
-                                    extern_name,
-                                    TypeNS,
-                                    LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
-                                )
-                                .unwrap_or_else(|()| {
-                                    panic!("Unable to resolve external crate {}", extern_name)
-                                });
-                        }
-                    });
-                });
-
-                // Now we're good to clone the resolver because everything should be loaded
-                resolver.clone()
-            };
-
-            if sess.has_errors() {
-                sess.fatal("Compilation failed, aborting rustdoc");
-            }
-
-            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
-
-            let (krate, render_info, opts) = sess.time("run_global_ctxt", || {
-                global_ctxt.enter(|tcx| {
-                    run_global_ctxt(
-                        tcx,
-                        resolver,
-                        default_passes,
-                        manual_passes,
-                        render_options,
-                        output_format,
-                    )
-                })
-            });
-            (krate, render_info, opts, Lrc::clone(sess))
-        })
-    })
+    }
 }
 
-fn run_global_ctxt(
+crate fn create_resolver<'a>(
+    externs: config::Externs,
+    queries: &Queries<'a>,
+    sess: &Session,
+) -> Rc<RefCell<interface::BoxedResolver>> {
+    let extern_names: Vec<String> = externs
+        .iter()
+        .filter(|(_, entry)| entry.add_prelude)
+        .map(|(name, _)| name)
+        .cloned()
+        .collect();
+
+    let parts = abort_on_err(queries.expansion(), sess).peek();
+    let resolver = parts.1.borrow();
+
+    // Before we actually clone it, let's force all the extern'd crates to
+    // actually be loaded, just in case they're only referred to inside
+    // intra-doc-links
+    resolver.borrow_mut().access(|resolver| {
+        sess.time("load_extern_crates", || {
+            for extern_name in &extern_names {
+                debug!("loading extern crate {}", extern_name);
+                if let Err(()) = resolver
+                    .resolve_str_path_error(
+                        DUMMY_SP,
+                        extern_name,
+                        TypeNS,
+                        LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
+                  ) {
+                    warn!("unable to resolve external crate {} (do you have an unused `--extern` crate?)", extern_name)
+                  }
+            }
+        });
+    });
+
+    // Now we're good to clone the resolver because everything should be loaded
+    resolver.clone()
+}
+
+crate fn run_global_ctxt(
     tcx: TyCtxt<'_>,
     resolver: Rc<RefCell<interface::BoxedResolver>>,
     mut default_passes: passes::DefaultPassOption,
@@ -560,7 +530,7 @@ fn run_global_ctxt(
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
     if let Some(ref m) = krate.module {
-        if let None | Some("") = m.doc_value() {
+        if m.doc_value().map(|d| d.is_empty()).unwrap_or(true) {
             let help = "The following guide may be of use:\n\
                 https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html";
             tcx.struct_lint_node(
@@ -657,6 +627,9 @@ fn run_global_ctxt(
     }
 
     ctxt.sess().abort_if_errors();
+
+    // The main crate doc comments are always collapsed.
+    krate.collapsed = true;
 
     (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
 }

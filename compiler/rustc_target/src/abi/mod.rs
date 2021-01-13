@@ -4,11 +4,14 @@ pub use Primitive::*;
 use crate::spec::Target;
 
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 use std::num::NonZeroUsize;
 use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
+use std::str::FromStr;
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable_Generic;
+use rustc_serialize::json::{Json, ToJson};
 use rustc_span::Span;
 
 pub mod call;
@@ -152,22 +155,19 @@ impl TargetDataLayout {
         }
 
         // Perform consistency checks against the Target information.
-        let endian_str = match dl.endian {
-            Endian::Little => "little",
-            Endian::Big => "big",
-        };
-        if endian_str != target.endian {
+        if dl.endian != target.endian {
             return Err(format!(
                 "inconsistent target specification: \"data-layout\" claims \
-                                architecture is {}-endian, while \"target-endian\" is `{}`",
-                endian_str, target.endian
+                 architecture is {}-endian, while \"target-endian\" is `{}`",
+                dl.endian.as_str(),
+                target.endian.as_str(),
             ));
         }
 
         if dl.pointer_size.bits() != target.pointer_width.into() {
             return Err(format!(
                 "inconsistent target specification: \"data-layout\" claims \
-                                pointers are {}-bit, while \"target-pointer-width\" is `{}`",
+                 pointers are {}-bit, while \"target-pointer-width\" is `{}`",
                 dl.pointer_size.bits(),
                 target.pointer_width
             ));
@@ -234,26 +234,75 @@ pub enum Endian {
     Big,
 }
 
+impl Endian {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Little => "little",
+            Self::Big => "big",
+        }
+    }
+}
+
+impl fmt::Debug for Endian {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl FromStr for Endian {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "little" => Ok(Self::Little),
+            "big" => Ok(Self::Big),
+            _ => Err(format!(r#"unknown endian: "{}""#, s)),
+        }
+    }
+}
+
+impl ToJson for Endian {
+    fn to_json(&self) -> Json {
+        self.as_str().to_json()
+    }
+}
+
 /// Size of a type in bytes.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct Size {
+    // The top 3 bits are ALWAYS zero.
     raw: u64,
 }
 
 impl Size {
     pub const ZERO: Size = Size { raw: 0 };
 
-    #[inline]
+    /// Rounds `bits` up to the next-higher byte boundary, if `bits` is
+    /// is not aligned.
     pub fn from_bits(bits: impl TryInto<u64>) -> Size {
         let bits = bits.try_into().ok().unwrap();
+
+        #[cold]
+        fn overflow(bits: u64) -> ! {
+            panic!("Size::from_bits({}) has overflowed", bits);
+        }
+
+        // This is the largest value of `bits` that does not cause overflow
+        // during rounding, and guarantees that the resulting number of bytes
+        // cannot cause overflow when multiplied by 8.
+        if bits > 0xffff_ffff_ffff_fff8 {
+            overflow(bits);
+        }
+
         // Avoid potential overflow from `bits + 7`.
-        Size::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
+        Size { raw: bits / 8 + ((bits % 8) + 7) / 8 }
     }
 
     #[inline]
     pub fn from_bytes(bytes: impl TryInto<u64>) -> Size {
-        Size { raw: bytes.try_into().ok().unwrap() }
+        let bytes: u64 = bytes.try_into().ok().unwrap();
+        Size { raw: bytes }
     }
 
     #[inline]
@@ -268,9 +317,7 @@ impl Size {
 
     #[inline]
     pub fn bits(self) -> u64 {
-        self.bytes().checked_mul(8).unwrap_or_else(|| {
-            panic!("Size::bits: {} bytes in bits doesn't fit in u64", self.bytes())
-        })
+        self.raw << 3
     }
 
     #[inline]

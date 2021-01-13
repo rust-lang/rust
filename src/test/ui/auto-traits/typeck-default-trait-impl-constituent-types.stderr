@@ -6,9 +6,6 @@ LL | fn is_mytrait<T: MyTrait>() {}
 ...
 LL |     is_mytrait::<MyS2>();
    |                  ^^^^ the trait `MyTrait` is not implemented for `MyS2`
-   |
-   = help: the following implementations were found:
-             <MyS2 as MyTrait>
 
 error: aborting due to previous error
 

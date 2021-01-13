@@ -1174,7 +1174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut unmentioned_err = None;
-        // Report an error if incorrect number of the fields were specified.
+        // Report an error if an incorrect number of fields was specified.
         if adt.is_union() {
             if fields.len() != 1 {
                 tcx.sess
@@ -1185,12 +1185,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.sess.struct_span_err(pat.span, "`..` cannot be used in union patterns").emit();
             }
         } else if !etc && !unmentioned_fields.is_empty() {
-            let no_accessible_unmentioned_fields = unmentioned_fields
-                .iter()
-                .find(|(field, _)| {
-                    field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
-                })
-                .is_none();
+            let no_accessible_unmentioned_fields = !unmentioned_fields.iter().any(|(field, _)| {
+                field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
+            });
 
             if no_accessible_unmentioned_fields {
                 unmentioned_err = Some(self.error_no_accessible_fields(pat, &fields));

@@ -13,7 +13,7 @@ const _: i32 = {
 
 const _: std::cell::Cell<i32> = {
     let mut a = std::cell::Cell::new(5);
-    let p = &a; //~ ERROR cannot borrow a constant which may contain interior mutability
+    let p = &a; //~ ERROR borrowed element may contain interior mutability
 
     let reborrow = {p};
     let pp = &reborrow;

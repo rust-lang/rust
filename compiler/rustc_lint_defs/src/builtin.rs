@@ -221,14 +221,10 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// This lint detects code that is very likely incorrect. When possible,
-    /// the compiler will attempt to detect situations where code can be
-    /// evaluated at compile-time to generate more efficient code. While
-    /// evaluating such code, if it detects that the code will unconditionally
-    /// panic, this usually indicates that it is doing something incorrectly.
-    /// If this lint is allowed, then the code will not be evaluated at
-    /// compile-time, and instead continue to generate code to evaluate at
-    /// runtime, which may panic during runtime.
+    /// This lint detects code that is very likely incorrect because it will
+    /// always panic, such as division by zero and out-of-bounds array
+    /// accesses. Consider adjusting your code if this is a bug, or using the
+    /// `panic!` or `unreachable!` macro instead in case the panic is intended.
     pub UNCONDITIONAL_PANIC,
     Deny,
     "operation will cause a panic at runtime"
@@ -588,8 +584,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `overlapping_patterns` lint detects `match` arms that have
-    /// [range patterns] that overlap.
+    /// The `overlapping_range_endpoints` lint detects `match` arms that have [range patterns] that
+    /// overlap on their endpoints.
     ///
     /// [range patterns]: https://doc.rust-lang.org/nightly/reference/patterns.html#range-patterns
     ///
@@ -607,13 +603,12 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// It is likely a mistake to have range patterns in a match expression
-    /// that overlap. Check that the beginning and end values are what you
-    /// expect, and keep in mind that with `..=` the left and right bounds are
-    /// inclusive.
-    pub OVERLAPPING_PATTERNS,
+    /// It is likely a mistake to have range patterns in a match expression that overlap in this
+    /// way. Check that the beginning and end values are what you expect, and keep in mind that
+    /// with `..=` the left and right bounds are inclusive.
+    pub OVERLAPPING_RANGE_ENDPOINTS,
     Warn,
-    "detects overlapping patterns"
+    "detects range patterns with overlapping endpoints"
 }
 
 declare_lint! {
@@ -1224,6 +1219,50 @@ declare_lint! {
     "patterns in functions without body were erroneously allowed",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
+        edition: None,
+    };
+}
+
+declare_lint! {
+    /// The `missing_fragment_specifier` lint is issued when an unused pattern in a
+    /// `macro_rules!` macro definition has a meta-variable (e.g. `$e`) that is not
+    /// followed by a fragment specifier (e.g. `:expr`).
+    ///
+    /// This warning can always be fixed by removing the unused pattern in the
+    /// `macro_rules!` macro definition.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// macro_rules! foo {
+    ///    () => {};
+    ///    ($name) => { };
+    /// }
+    ///
+    /// fn main() {
+    ///    foo!();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// To fix this, remove the unused pattern from the `macro_rules!` macro definition:
+    ///
+    /// ```rust
+    /// macro_rules! foo {
+    ///     () => {};
+    /// }
+    /// fn main() {
+    ///     foo!();
+    /// }
+    /// ```
+    pub MISSING_FRAGMENT_SPECIFIER,
+    Deny,
+    "detects missing fragment specifiers in unused `macro_rules!` patterns",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
         edition: None,
     };
 }
@@ -2742,6 +2781,50 @@ declare_lint! {
     "detects deprecation attributes with no effect",
 }
 
+declare_lint! {
+    /// The `unsupported_naked_functions` lint detects naked function
+    /// definitions that are unsupported but were previously accepted.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(naked_functions)]
+    ///
+    /// #[naked]
+    /// pub fn f() -> u32 {
+    ///     42
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The naked functions must be defined using a single inline assembly
+    /// block.
+    ///
+    /// The execution must never fall through past the end of the assembly
+    /// code so the block must use `noreturn` option. The asm block can also
+    /// use `att_syntax` option, but other options are not allowed.
+    ///
+    /// The asm block must not contain any operands other than `const` and
+    /// `sym`. Additionally, naked function should specify a non-Rust ABI.
+    ///
+    /// While other definitions of naked functions were previously accepted,
+    /// they are unsupported and might not work reliably. This is a
+    /// [future-incompatible] lint that will transition into hard error in
+    /// the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub UNSUPPORTED_NAKED_FUNCTIONS,
+    Warn,
+    "unsupported naked function definitions",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #32408 <https://github.com/rust-lang/rust/issues/32408>",
+        edition: None,
+    };
+}
+
 declare_tool_lint! {
     pub rustc::INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
     Deny,
@@ -2765,7 +2848,7 @@ declare_lint_pass! {
         DEAD_CODE,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
-        OVERLAPPING_PATTERNS,
+        OVERLAPPING_RANGE_ENDPOINTS,
         BINDINGS_WITH_VARIANT_NAME,
         UNUSED_MACROS,
         WARNINGS,
@@ -2784,6 +2867,7 @@ declare_lint_pass! {
         CONST_ITEM_MUTATION,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
+        MISSING_FRAGMENT_SPECIFIER,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         COHERENCE_LEAK_CHECK,
@@ -2832,6 +2916,8 @@ declare_lint_pass! {
         UNINHABITED_STATIC,
         FUNCTION_ITEM_REFERENCES,
         USELESS_DEPRECATED,
+        UNSUPPORTED_NAKED_FUNCTIONS,
+        MISSING_ABI,
     ]
 }
 
@@ -2859,3 +2945,28 @@ declare_lint! {
 }
 
 declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
+
+declare_lint! {
+    /// The `missing_abi` lint detects cases where the ABI is omitted from
+    /// extern declarations.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(missing_abi)]
+    ///
+    /// extern fn foo() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Historically, Rust implicitly selected C as the ABI for extern
+    /// declarations. We expect to add new ABIs, like `C-unwind`, in the future,
+    /// though this has not yet happened, and especially with their addition
+    /// seeing the ABI easily will make code review easier.
+    pub MISSING_ABI,
+    Allow,
+    "No declared ABI for extern declaration"
+}

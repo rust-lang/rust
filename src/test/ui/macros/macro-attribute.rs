@@ -1,2 +1,2 @@
-#[doc = $not_there] //~ ERROR unexpected token: `$`
+#[doc = $not_there] //~ ERROR expected expression, found `$`
 fn main() { }

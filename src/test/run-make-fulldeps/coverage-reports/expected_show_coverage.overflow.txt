@@ -1,0 +1,64 @@
+    1|       |#![allow(unused_assignments)]
+    2|       |// expect-exit-status-101
+    3|       |
+    4|      4|fn might_overflow(to_add: u32) -> u32 {
+    5|      4|    if to_add > 5 {
+    6|      1|        println!("this will probably overflow");
+    7|      3|    }
+    8|      4|    let add_to = u32::MAX - 5;
+    9|      4|    println!("does {} + {} overflow?", add_to, to_add);
+   10|      4|    let result = to_add + add_to;
+   11|      4|    println!("continuing after overflow check");
+   12|      4|    result
+   13|      4|}
+   14|       |
+   15|      1|fn main() -> Result<(),u8> {
+   16|      1|    let mut countdown = 10;
+   17|     11|    while countdown > 0 {
+   18|     11|        if countdown == 1 {
+   19|      1|            let result = might_overflow(10);
+   20|      1|            println!("Result: {}", result);
+   21|     10|        } else if countdown < 5 {
+   22|      3|            let result = might_overflow(1);
+   23|      3|            println!("Result: {}", result);
+   24|      6|        }
+   25|     10|        countdown -= 1;
+   26|       |    }
+   27|      0|    Ok(())
+   28|      0|}
+   29|       |
+   30|       |// Notes:
+   31|       |//   1. Compare this program and its coverage results to those of the very similar test `assert.rs`,
+   32|       |//      and similar tests `panic_unwind.rs`, abort.rs` and `try_error_result.rs`.
+   33|       |//   2. This test confirms the coverage generated when a program passes or fails a
+   34|       |//      compiler-generated `TerminatorKind::Assert` (based on an overflow check, in this case).
+   35|       |//   3. Similar to how the coverage instrumentation handles `TerminatorKind::Call`,
+   36|       |//      compiler-generated assertion failures are assumed to be a symptom of a program bug, not
+   37|       |//      expected behavior. To simplify the coverage graphs and keep instrumented programs as
+   38|       |//      small and fast as possible, `Assert` terminators are assumed to always succeed, and
+   39|       |//      therefore are considered "non-branching" terminators. So, an `Assert` terminator does not
+   40|       |//      get its own coverage counter.
+   41|       |//   4. After an unhandled panic or failed Assert, coverage results may not always be intuitive.
+   42|       |//      In this test, the final count for the statements after the `if` block in `might_overflow()`
+   43|       |//      is 4, even though the lines after `to_add + add_to` were executed only 3 times. Depending
+   44|       |//      on the MIR graph and the structure of the code, this count could have been 3 (which might
+   45|       |//      have been valid for the overflowed add `+`, but should have been 4 for the lines before
+   46|       |//      the overflow. The reason for this potential uncertainty is, a `CounterKind` is incremented
+   47|       |//      via StatementKind::Counter at the end of the block, but (as in the case in this test),
+   48|       |//      a CounterKind::Expression is always evaluated. In this case, the expression was based on
+   49|       |//      a `Counter` incremented as part of the evaluation of the `if` expression, which was
+   50|       |//      executed, and counted, 4 times, before reaching the overflow add.
+   51|       |
+   52|       |// If the program did not overflow, the coverage for `might_overflow()` would look like this:
+   53|       |//
+   54|       |//     4|       |fn might_overflow(to_add: u32) -> u32 {
+   55|       |//     5|      4|    if to_add > 5 {
+   56|       |//     6|      0|        println!("this will probably overflow");
+   57|       |//     7|      4|    }
+   58|       |//     8|      4|    let add_to = u32::MAX - 5;
+   59|       |//     9|      4|    println!("does {} + {} overflow?", add_to, to_add);
+   60|       |//    10|      4|    let result = to_add + add_to;
+   61|       |//    11|      4|    println!("continuing after overflow check");
+   62|       |//    12|      4|    result
+   63|       |//    13|      4|}
+

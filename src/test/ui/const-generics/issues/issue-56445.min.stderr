@@ -1,5 +1,5 @@
 error[E0771]: use of non-static lifetime `'a` in const generic
-  --> $DIR/issue-56445.rs:9:26
+  --> $DIR/issue-56445.rs:8:26
    |
 LL | struct Bug<'a, const S: &'a str>(PhantomData<&'a ()>);
    |                          ^^

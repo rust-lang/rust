@@ -43,6 +43,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
+use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, layout::LayoutError, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -541,7 +542,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                     return;
                 }
             }
-            hir::ItemKind::Impl { of_trait: Some(ref trait_ref), items, .. } => {
+            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), items, .. }) => {
                 // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
@@ -868,7 +869,7 @@ impl EarlyLintPass for AnonymousParameters {
         if let ast::AssocItemKind::Fn(_, ref sig, _, _) = it.kind {
             for arg in sig.decl.inputs.iter() {
                 if let ast::PatKind::Ident(_, ident, None) = arg.pat.kind {
-                    if ident.name == kw::Invalid {
+                    if ident.name == kw::Empty {
                         cx.struct_span_lint(ANONYMOUS_PARAMETERS, arg.pat.span, |lint| {
                             let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
 
@@ -938,8 +939,8 @@ impl EarlyLintPass for DeprecatedAttr {
             if attr.ident().map(|ident| ident.name) == Some(n) {
                 if let &AttributeGate::Gated(
                     Stability::Deprecated(link, suggestion),
-                    ref name,
-                    ref reason,
+                    name,
+                    reason,
                     _,
                 ) = g
                 {
@@ -2299,7 +2300,7 @@ impl EarlyLintPass for IncompleteFeatures {
     }
 }
 
-const HAS_MIN_FEATURES: &[Symbol] = &[sym::const_generics, sym::specialization];
+const HAS_MIN_FEATURES: &[Symbol] = &[sym::specialization];
 
 declare_lint! {
     /// The `invalid_value` lint detects creating a value that is not valid,
@@ -2595,7 +2596,12 @@ declare_lint! {
 }
 
 pub struct ClashingExternDeclarations {
-    seen_decls: FxHashMap<Symbol, HirId>,
+    /// Map of function symbol name to the first-seen hir id for that symbol name.. If seen_decls
+    /// contains an entry for key K, it means a symbol with name K has been seen by this lint and
+    /// the symbol should be reported as a clashing declaration.
+    // FIXME: Technically, we could just store a &'tcx str here without issue; however, the
+    // `impl_lint_pass` macro doesn't currently support lints parametric over a lifetime.
+    seen_decls: FxHashMap<String, HirId>,
 }
 
 /// Differentiate between whether the name for an extern decl came from the link_name attribute or
@@ -2626,16 +2632,17 @@ impl ClashingExternDeclarations {
     fn insert(&mut self, tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> Option<HirId> {
         let hid = fi.hir_id;
 
-        let name =
-            &tcx.codegen_fn_attrs(tcx.hir().local_def_id(hid)).link_name.unwrap_or(fi.ident.name);
-
-        if self.seen_decls.contains_key(name) {
+        let local_did = tcx.hir().local_def_id(fi.hir_id);
+        let did = local_did.to_def_id();
+        let instance = Instance::new(did, ty::List::identity_for_item(tcx, did));
+        let name = tcx.symbol_name(instance).name;
+        if let Some(&hir_id) = self.seen_decls.get(name) {
             // Avoid updating the map with the new entry when we do find a collision. We want to
             // make sure we're always pointing to the first definition as the previous declaration.
             // This lets us avoid emitting "knock-on" diagnostics.
-            Some(*self.seen_decls.get(name).unwrap())
+            Some(hir_id)
         } else {
-            self.seen_decls.insert(*name, hid)
+            self.seen_decls.insert(name.to_owned(), hid)
         }
     }
 

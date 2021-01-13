@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/types-mismatch-const-args.rs:15:41
+  --> $DIR/types-mismatch-const-args.rs:14:41
    |
 LL |     let _: A<'a, u32, {2u32}, {3u32}> = A::<'a, u32, {4u32}, {3u32}> { data: PhantomData };
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `2_u32`, found `4_u32`
@@ -8,7 +8,7 @@ LL |     let _: A<'a, u32, {2u32}, {3u32}> = A::<'a, u32, {4u32}, {3u32}> { data
               found type `4_u32`
 
 error[E0308]: mismatched types
-  --> $DIR/types-mismatch-const-args.rs:17:41
+  --> $DIR/types-mismatch-const-args.rs:16:41
    |
 LL |     let _: A<'a, u16, {2u32}, {3u32}> = A::<'b, u32, {2u32}, {3u32}> { data: PhantomData };
    |            --------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u16`, found `u32`

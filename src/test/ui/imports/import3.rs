@@ -1,13 +1,4 @@
-// run-pass
-#![allow(unused_imports)]
+// error-pattern: unresolved
+use main::bar;
 
-use baz::zed;
-use baz::zed::bar;
-
-mod baz {
-    pub mod zed {
-        pub fn bar() { println!("bar2"); }
-    }
-}
-
-pub fn main() { bar(); }
+fn main() { println!("foo"); }

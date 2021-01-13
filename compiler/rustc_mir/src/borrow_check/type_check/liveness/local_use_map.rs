@@ -58,11 +58,7 @@ impl vll::LinkElem for Appearance {
 }
 
 impl LocalUseMap {
-    crate fn build(
-        live_locals: &Vec<Local>,
-        elements: &RegionValueElements,
-        body: &Body<'_>,
-    ) -> Self {
+    crate fn build(live_locals: &[Local], elements: &RegionValueElements, body: &Body<'_>) -> Self {
         let nones = IndexVec::from_elem_n(None, body.local_decls.len());
         let mut local_use_map = LocalUseMap {
             first_def_at: nones.clone(),

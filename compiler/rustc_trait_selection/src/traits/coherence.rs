@@ -193,10 +193,8 @@ fn overlap_within_probe(
     let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
 
-    let involves_placeholder = match selcx.infcx().region_constraints_added_in_snapshot(snapshot) {
-        Some(true) => true,
-        _ => false,
-    };
+    let involves_placeholder =
+        matches!(selcx.infcx().region_constraints_added_in_snapshot(snapshot), Some(true));
 
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }

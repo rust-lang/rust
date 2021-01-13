@@ -1,10 +1,29 @@
+use super::*;
 use crate::io::prelude::*;
-use crate::io::{self, ErrorKind};
+use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+use crate::iter::FromIterator;
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+use crate::os::unix::io::AsRawFd;
 use crate::sys_common::io::test::tmpdir;
 use crate::thread;
 use crate::time::Duration;
-
-use super::*;
 
 macro_rules! or_panic {
     ($e:expr) => {
@@ -451,4 +470,171 @@ fn test_unix_datagram_peek_from() {
     let size = or_panic!(sock1.recv(&mut buf));
     assert_eq!(size, 11);
     assert_eq!(msg, &buf[..]);
+}
+
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+#[test]
+fn test_send_vectored_fds_unix_stream() {
+    let (s1, s2) = or_panic!(UnixStream::pair());
+
+    let mut buf1 = [1; 8];
+    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+
+    let mut ancillary1_buffer = [0; 128];
+    let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
+    assert!(ancillary1.add_fds(&[s1.as_raw_fd()][..]));
+
+    let usize = or_panic!(s1.send_vectored_with_ancillary(&mut bufs_send, &mut ancillary1));
+    assert_eq!(usize, 8);
+
+    let mut buf2 = [0; 8];
+    let mut bufs_recv = &mut [IoSliceMut::new(&mut buf2[..])][..];
+
+    let mut ancillary2_buffer = [0; 128];
+    let mut ancillary2 = SocketAncillary::new(&mut ancillary2_buffer[..]);
+
+    let usize = or_panic!(s2.recv_vectored_with_ancillary(&mut bufs_recv, &mut ancillary2));
+    assert_eq!(usize, 8);
+    assert_eq!(buf1, buf2);
+
+    let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
+    assert_eq!(ancillary_data_vec.len(), 1);
+    if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap().unwrap() {
+        let fd_vec = Vec::from_iter(scm_rights);
+        assert_eq!(fd_vec.len(), 1);
+        unsafe {
+            libc::close(fd_vec[0]);
+        }
+    } else {
+        unreachable!("must be ScmRights");
+    }
+}
+
+#[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux",))]
+#[test]
+fn test_send_vectored_with_ancillary_to_unix_datagram() {
+    fn getpid() -> libc::pid_t {
+        unsafe { libc::getpid() }
+    }
+
+    fn getuid() -> libc::uid_t {
+        unsafe { libc::getuid() }
+    }
+
+    fn getgid() -> libc::gid_t {
+        unsafe { libc::getgid() }
+    }
+
+    let dir = tmpdir();
+    let path1 = dir.path().join("sock1");
+    let path2 = dir.path().join("sock2");
+
+    let bsock1 = or_panic!(UnixDatagram::bind(&path1));
+    let bsock2 = or_panic!(UnixDatagram::bind(&path2));
+
+    or_panic!(bsock2.set_passcred(true));
+
+    let mut buf1 = [1; 8];
+    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+
+    let mut ancillary1_buffer = [0; 128];
+    let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
+    let mut cred1 = SocketCred::new();
+    cred1.set_pid(getpid());
+    cred1.set_uid(getuid());
+    cred1.set_gid(getgid());
+    assert!(ancillary1.add_creds(&[cred1.clone()][..]));
+
+    let usize =
+        or_panic!(bsock1.send_vectored_with_ancillary_to(&mut bufs_send, &mut ancillary1, &path2));
+    assert_eq!(usize, 8);
+
+    let mut buf2 = [0; 8];
+    let mut bufs_recv = &mut [IoSliceMut::new(&mut buf2[..])][..];
+
+    let mut ancillary2_buffer = [0; 128];
+    let mut ancillary2 = SocketAncillary::new(&mut ancillary2_buffer[..]);
+
+    let (usize, truncated, _addr) =
+        or_panic!(bsock2.recv_vectored_with_ancillary_from(&mut bufs_recv, &mut ancillary2));
+    assert_eq!(ancillary2.truncated(), false);
+    assert_eq!(usize, 8);
+    assert_eq!(truncated, false);
+    assert_eq!(buf1, buf2);
+
+    let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
+    assert_eq!(ancillary_data_vec.len(), 1);
+    if let AncillaryData::ScmCredentials(scm_credentials) =
+        ancillary_data_vec.pop().unwrap().unwrap()
+    {
+        let cred_vec = Vec::from_iter(scm_credentials);
+        assert_eq!(cred_vec.len(), 1);
+        assert_eq!(cred1.get_pid(), cred_vec[0].get_pid());
+        assert_eq!(cred1.get_uid(), cred_vec[0].get_uid());
+        assert_eq!(cred1.get_gid(), cred_vec[0].get_gid());
+    } else {
+        unreachable!("must be ScmCredentials");
+    }
+}
+
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+#[test]
+fn test_send_vectored_with_ancillary_unix_datagram() {
+    let dir = tmpdir();
+    let path1 = dir.path().join("sock1");
+    let path2 = dir.path().join("sock2");
+
+    let bsock1 = or_panic!(UnixDatagram::bind(&path1));
+    let bsock2 = or_panic!(UnixDatagram::bind(&path2));
+
+    let mut buf1 = [1; 8];
+    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+
+    let mut ancillary1_buffer = [0; 128];
+    let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
+    assert!(ancillary1.add_fds(&[bsock1.as_raw_fd()][..]));
+
+    or_panic!(bsock1.connect(&path2));
+    let usize = or_panic!(bsock1.send_vectored_with_ancillary(&mut bufs_send, &mut ancillary1));
+    assert_eq!(usize, 8);
+
+    let mut buf2 = [0; 8];
+    let mut bufs_recv = &mut [IoSliceMut::new(&mut buf2[..])][..];
+
+    let mut ancillary2_buffer = [0; 128];
+    let mut ancillary2 = SocketAncillary::new(&mut ancillary2_buffer[..]);
+
+    let (usize, truncated) =
+        or_panic!(bsock2.recv_vectored_with_ancillary(&mut bufs_recv, &mut ancillary2));
+    assert_eq!(usize, 8);
+    assert_eq!(truncated, false);
+    assert_eq!(buf1, buf2);
+
+    let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
+    assert_eq!(ancillary_data_vec.len(), 1);
+    if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap().unwrap() {
+        let fd_vec = Vec::from_iter(scm_rights);
+        assert_eq!(fd_vec.len(), 1);
+        unsafe {
+            libc::close(fd_vec[0]);
+        }
+    } else {
+        unreachable!("must be ScmRights");
+    }
 }

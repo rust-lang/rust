@@ -29,6 +29,7 @@ use smallvec::SmallVec;
 pub struct StripUnconfigured<'a> {
     pub sess: &'a Session,
     pub features: Option<&'a Features>,
+    pub modified: bool,
 }
 
 fn get_features(
@@ -199,7 +200,7 @@ fn get_features(
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
 pub fn features(sess: &Session, mut krate: ast::Crate) -> (ast::Crate, Features) {
-    let mut strip_unconfigured = StripUnconfigured { sess, features: None };
+    let mut strip_unconfigured = StripUnconfigured { sess, features: None, modified: false };
 
     let unconfigured_attrs = krate.attrs.clone();
     let diag = &sess.parse_sess.span_diagnostic;
@@ -243,7 +244,12 @@ const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
 impl<'a> StripUnconfigured<'a> {
     pub fn configure<T: HasAttrs>(&mut self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
-        self.in_cfg(node.attrs()).then_some(node)
+        if self.in_cfg(node.attrs()) {
+            Some(node)
+        } else {
+            self.modified = true;
+            None
+        }
     }
 
     /// Parse and expand all `cfg_attr` attributes into a list of attributes
@@ -269,6 +275,9 @@ impl<'a> StripUnconfigured<'a> {
         if !attr.has_name(sym::cfg_attr) {
             return vec![attr];
         }
+
+        // A `#[cfg_attr]` either gets removed, or replaced with a new attribute
+        self.modified = true;
 
         let (cfg_predicate, expanded_attrs) = match self.parse_cfg_attr(&attr) {
             None => return vec![],

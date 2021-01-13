@@ -854,8 +854,8 @@ fn generic_simd_intrinsic(
         ));
     }
 
-    if name_str.starts_with("simd_shuffle") {
-        let n: u64 = name_str["simd_shuffle".len()..].parse().unwrap_or_else(|_| {
+    if let Some(stripped) = name_str.strip_prefix("simd_shuffle") {
+        let n: u64 = stripped.parse().unwrap_or_else(|_| {
             span_bug!(span, "bad `simd_shuffle` instruction only caught in codegen?")
         });
 

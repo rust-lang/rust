@@ -1,18 +1,3 @@
-//! Codegen the completed AST to the LLVM IR.
-//!
-//! Some functions here, such as `codegen_block` and `codegen_expr`, return a value --
-//! the result of the codegen to LLVM -- while others, such as `codegen_fn`
-//! and `mono_item`, are called only for the side effect of adding a
-//! particular definition to the LLVM IR output we're producing.
-//!
-//! Hopefully useful general knowledge about codegen:
-//!
-//! * There's no way to find out the `Ty` type of a `Value`. Doing so
-//!   would be "trying to get the eggs out of an omelette" (credit:
-//!   pcwalton). You can, instead, find out its `llvm::Type` by calling `val_ty`,
-//!   but one `llvm::Type` corresponds to many `Ty`s; for instance, `tup(int, int,
-//!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
-
 use crate::back::write::{
     compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
     submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
@@ -46,7 +31,6 @@ use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, EntryFnType};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
-use rustc_symbol_mangling::test as symbol_names_test;
 use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
 use std::cmp;
@@ -486,8 +470,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
         ongoing_codegen.codegen_finished(tcx);
 
-        finalize_tcx(tcx);
-
         ongoing_codegen.check_for_errors(tcx.sess);
 
         return ongoing_codegen;
@@ -688,13 +670,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         total_codegen_time.into_inner(),
     );
 
-    rustc_incremental::assert_module_sources::assert_module_sources(tcx);
-
-    symbol_names_test::report_symbol_names(tcx);
-
     ongoing_codegen.check_for_errors(tcx.sess);
-
-    finalize_tcx(tcx);
 
     ongoing_codegen.into_inner()
 }
@@ -746,18 +722,6 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
     }
 }
 
-fn finalize_tcx(tcx: TyCtxt<'_>) {
-    tcx.sess.time("assert_dep_graph", || rustc_incremental::assert_dep_graph(tcx));
-    tcx.sess.time("serialize_dep_graph", || rustc_incremental::save_dep_graph(tcx));
-
-    // We assume that no queries are run past here. If there are new queries
-    // after this point, they'll show up as "<unknown>" in self-profiling data.
-    {
-        let _prof_timer = tcx.prof.generic_activity("self_profile_alloc_query_strings");
-        tcx.alloc_self_profile_query_strings();
-    }
-}
-
 impl CrateInfo {
     pub fn new(tcx: TyCtxt<'_>) -> CrateInfo {
         let mut info = CrateInfo {
@@ -766,7 +730,7 @@ impl CrateInfo {
             profiler_runtime: None,
             is_no_builtins: Default::default(),
             native_libraries: Default::default(),
-            used_libraries: tcx.native_libraries(LOCAL_CRATE),
+            used_libraries: tcx.native_libraries(LOCAL_CRATE).iter().map(Into::into).collect(),
             link_args: tcx.link_args(LOCAL_CRATE),
             crate_name: Default::default(),
             used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
@@ -787,7 +751,8 @@ impl CrateInfo {
         info.missing_lang_items.reserve(n_crates);
 
         for &cnum in crates.iter() {
-            info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
+            info.native_libraries
+                .insert(cnum, tcx.native_libraries(cnum).iter().map(Into::into).collect());
             info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
             info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
             if tcx.is_panic_runtime(cnum) {

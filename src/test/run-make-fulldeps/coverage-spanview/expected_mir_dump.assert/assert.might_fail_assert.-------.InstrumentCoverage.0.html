@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.assert/assert.might_fail_assert.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+<html>
+<head>
+<title>assert.might_fail_assert - Coverage Spans</title>
+<style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+</style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 3"><span class="line"><span><span class="code even" style="--layer: 1"><span class="annotation">@0,1,2,3,4⦊</span>fn might_fail_assert(one_plus_one: u32) <span class="annotation">⦉@0,1,2,3,4</span></span></span><span class="code" style="--layer: 0">{</span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="5:14-5:32: @0[6]: _73 = const might_fail_assert::promoted[4]
+5:14-5:32: @0[7]: _7 = &amp;(*_73)
+5:14-5:32: @0[8]: _6 = &amp;(*_7)
+5:14-5:32: @0[9]: _5 = move _6 as &amp;[&amp;str] (Pointer(Unsize))
+5:34-5:46: @0[17]: _14 = &amp;_1
+5:5-5:48: @0[18]: _13 = (move _14,)
+5:5-5:48: @0[20]: FakeRead(ForMatchedPlace, _13)
+5:5-5:48: @0[22]: _15 = (_13.0: &amp;u32)
+5:5-5:48: @0[25]: _17 = &amp;(*_15)
+5:5-5:48: @0[27]: _18 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+5:5-5:48: @0.Call: _16 = ArgumentV1::new::&lt;u32&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb13]
+5:5-5:48: @1[2]: _12 = [move _16]
+5:5-5:48: @1[5]: _11 = &amp;_12
+5:5-5:48: @1[6]: _10 = &amp;(*_11)
+5:5-5:48: @1[7]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+5:5-5:48: @1.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb13]
+5:5-5:48: @2.Call: _3 = _print(move _4) -&gt; [return: bb3, unwind: bb13]
+5:5-5:48: @3[6]: _2 = const ()"><span class="annotation">@0,1,2,3,4⦊</span>println!("does 1 + 1 = {}?", one_plus_one);<span class="annotation">⦉@0,1,2,3,4</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    assert_eq!(</span><span><span class="code even" style="--layer: 1" title="6:16-6:21: @3[11]: _23 = CheckedAdd(const 1_u32, const 1_u32)"><span class="annotation">@0,1,2,3,4⦊</span>1 + 1<span class="annotation">⦉@0,1,2,3,4</span></span></span><span class="code" style="--layer: 0">, one_plus_one, </span><span><span class="code odd" style="--layer: 1" title="6:37-6:61: @7[28]: _70 = const might_fail_assert::promoted[1]
+6:37-6:61: @7[29]: _50 = &amp;(*_70)
+6:37-6:61: @7[30]: _49 = &amp;(*_50)
+6:37-6:61: @7[31]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))"><span class="annotation">@5,7,8,9,10,11,12⦊</span>"the argument was wrong"<span class="annotation">⦉@5,7,8,9,10,11,12</span></span></span><span class="code" style="--layer: 0">);</span></span>
+<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code even" style="--layer: 1" title="7:2-7:2: @6.Return: return"><span class="annotation">@6⦊</span>‸<span class="annotation">⦉@6</span></span></span></span></div>
+</body>
+</html>

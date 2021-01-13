@@ -653,6 +653,7 @@ impl OsStr {
     /// let os_str = OsStr::new("foo");
     /// assert_eq!(os_str.len(), 3);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn len(&self) -> usize {
         self.inner.inner.len()
@@ -667,10 +668,10 @@ impl OsStr {
 
     /// Gets the underlying byte representation.
     ///
-    /// Note: it is *crucial* that this API is private, to avoid
+    /// Note: it is *crucial* that this API is not externally public, to avoid
     /// revealing the internal, platform-specific encodings.
     #[inline]
-    fn bytes(&self) -> &[u8] {
+    pub(crate) fn bytes(&self) -> &[u8] {
         unsafe { &*(&self.inner as *const _ as *const [u8]) }
     }
 

@@ -11,6 +11,8 @@ fn main() {
     let _ = -100 as f32;
     let _ = -100 as f64;
     let _ = -100_i32 as f64;
+    100. as f32;
+    100. as f64;
     // Should not trigger
     #[rustfmt::skip]
     let v = vec!(1);

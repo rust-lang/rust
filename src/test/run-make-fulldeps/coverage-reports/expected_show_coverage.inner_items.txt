@@ -1,0 +1,60 @@
+    1|       |#![allow(unused_assignments, unused_variables, dead_code)]
+    2|       |
+    3|      1|fn main() {
+    4|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+    5|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+    6|       |    // dependent conditions.
+    7|      1|    let is_true = std::env::args().len() == 1;
+    8|      1|
+    9|      1|    let mut countdown = 0;
+   10|      1|    if is_true {
+   11|      1|        countdown = 10;
+   12|      1|    }
+                   ^0
+   13|       |
+   14|       |    mod in_mod {
+   15|       |        const IN_MOD_CONST: u32 = 1000;
+   16|       |    }
+   17|       |
+   18|      3|    fn in_func(a: u32) {
+   19|      3|        let b = 1;
+   20|      3|        let c = a + b;
+   21|      3|        println!("c = {}", c)
+   22|      3|    }
+   23|       |
+   24|       |    struct InStruct {
+   25|       |        in_struct_field: u32,
+   26|       |    }
+   27|       |
+   28|       |    const IN_CONST: u32 = 1234;
+   29|       |
+   30|       |    trait InTrait {
+   31|       |        fn trait_func(&mut self, incr: u32);
+   32|       |
+   33|      1|        fn default_trait_func(&mut self) {
+   34|      1|            in_func(IN_CONST);
+   35|      1|            self.trait_func(IN_CONST);
+   36|      1|        }
+   37|       |    }
+   38|       |
+   39|       |    impl InTrait for InStruct {
+   40|      1|        fn trait_func(&mut self, incr: u32) {
+   41|      1|            self.in_struct_field += incr;
+   42|      1|            in_func(self.in_struct_field);
+   43|      1|        }
+   44|       |    }
+   45|       |
+   46|       |    type InType = String;
+   47|       |
+   48|      1|    if is_true {
+   49|      1|        in_func(countdown);
+   50|      1|    }
+                   ^0
+   51|       |
+   52|      1|    let mut val = InStruct {
+   53|      1|        in_struct_field: 101,
+   54|      1|    };
+   55|      1|
+   56|      1|    val.default_trait_func();
+   57|      1|}
+

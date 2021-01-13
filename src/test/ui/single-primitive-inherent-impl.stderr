@@ -6,13 +6,7 @@ LL | |
 LL | | }
    | |_^
    |
-help: consider using a trait to implement these methods
-  --> $DIR/single-primitive-inherent-impl.rs:11:1
-   |
-LL | / impl str {
-LL | |
-LL | | }
-   | |_^
+   = help: consider using a trait
 
 error: aborting due to previous error
 

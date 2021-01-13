@@ -1,0 +1,21 @@
+error: any use of this value will cause an error
+  --> $SRC_DIR/core/src/mem/maybe_uninit.rs:LL:COL
+   |
+LL |               intrinsics::assert_inhabited::<T>();
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               |
+   |               aborted execution: attempted to instantiate uninhabited type `!`
+   |               inside `MaybeUninit::<!>::assume_init` at $SRC_DIR/core/src/mem/maybe_uninit.rs:LL:COL
+   |               inside `_BAD` at $DIR/assume-type-intrinsics.rs:11:9
+   | 
+  ::: $DIR/assume-type-intrinsics.rs:10:5
+   |
+LL | /     const _BAD: () = unsafe {
+LL | |         MaybeUninit::<!>::uninit().assume_init();
+LL | |     };
+   | |______-
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to previous error
+

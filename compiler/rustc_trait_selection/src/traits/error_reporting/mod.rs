@@ -280,18 +280,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         let OnUnimplementedNote { message, label, note, enclosing_scope } =
                             self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
-                        let is_try = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(span)
-                            .map(|s| &s == "?")
-                            .unwrap_or(false);
-                        let is_from = self.tcx.get_diagnostic_item(sym::from_trait)
-                            == Some(trait_ref.def_id());
+                        let is_try_conversion = self.is_try_conversion(span, trait_ref.def_id());
                         let is_unsize =
                             { Some(trait_ref.def_id()) == self.tcx.lang_items().unsize_trait() };
-                        let (message, note) = if is_try && is_from {
+                        let (message, note) = if is_try_conversion {
                             (
                                 Some(format!(
                                     "`?` couldn't convert the error to `{}`",
@@ -319,7 +311,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             ))
                         );
 
-                        if is_try && is_from {
+                        if is_try_conversion {
                             let none_error = self
                                 .tcx
                                 .get_diagnostic_item(sym::none_error)
@@ -861,10 +853,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let args_str = |arguments: &[ArgKind], other: &[ArgKind]| {
             let arg_length = arguments.len();
-            let distinct = match &other[..] {
-                &[ArgKind::Tuple(..)] => true,
-                _ => false,
-            };
+            let distinct = matches!(other, &[ArgKind::Tuple(..)]);
             match (arg_length, arguments.get(0)) {
                 (1, Some(&ArgKind::Tuple(_, ref fields))) => {
                     format!("a single {}-tuple as argument", fields.len())
@@ -1201,12 +1190,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     normalized_ty, data.ty
                 );
 
-                let is_normalized_ty_expected = match &obligation.cause.code {
-                    ObligationCauseCode::ItemObligation(_)
+                let is_normalized_ty_expected = !matches!(obligation.cause.code, ObligationCauseCode::ItemObligation(_)
                     | ObligationCauseCode::BindingObligation(_, _)
-                    | ObligationCauseCode::ObjectCastObligation(_) => false,
-                    _ => true,
-                };
+                    | ObligationCauseCode::ObjectCastObligation(_));
 
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
                     is_normalized_ty_expected,
@@ -1310,10 +1296,20 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                             return None;
                         }
                     }
+                    if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
+                        return None;
+                    }
                     Some(imp)
                 })
                 .collect(),
-            None => all_impls.map(|def_id| self.tcx.impl_trait_ref(def_id).unwrap()).collect(),
+            None => all_impls
+                .filter_map(|def_id| {
+                    if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
+                        return None;
+                    }
+                    self.tcx.impl_trait_ref(def_id)
+                })
+                .collect(),
         }
     }
 
@@ -1364,7 +1360,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         code: &ObligationCauseCode<'tcx>,
     ) -> Option<(String, Option<Span>)> {
         match code {
-            &ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
+            ObligationCauseCode::BuiltinDerivedObligation(data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
                 match self.get_parent_trait_ref(&data.parent_code) {
                     Some(t) => Some(t),

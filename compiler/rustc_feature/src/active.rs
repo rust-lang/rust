@@ -578,13 +578,10 @@ declare_features! (
     /// Allows calling `transmute` in const fn
     (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
-    /// The smallest useful subset of `const_generics`.
-    (active, min_const_generics, "1.47.0", Some(74878), None),
-
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
 
-    /// Allows non-trivial generic constants which have to be manually propageted upwards.
+    /// Allows non-trivial generic constants which have to be manually propagated upwards.
     (active, const_evaluatable_checked, "1.48.0", Some(76560), None),
 
     /// Allows basic arithmetic on floating point types in a `const fn`.
@@ -620,6 +617,18 @@ declare_features! (
     /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
     (active, capture_disjoint_fields, "1.49.0", Some(53488), None),
 
+    /// Allows arbitrary expressions in key-value attributes at parse time.
+    (active, extended_key_value_attributes, "1.50.0", Some(78835), None),
+
+    /// `:pat2018` and `:pat2021` macro matchers.
+    (active, edition_macro_pats, "1.51.0", Some(54883), None),
+
+    /// Allows const generics to have default values (e.g. `struct Foo<const N: usize = 3>(...);`).
+    (active, const_generics_defaults, "1.51.0", Some(44580), None),
+
+    /// Allows references to types with interior mutability within constants
+    (active, const_refs_to_cell, "1.51.0", Some(80384), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -644,9 +653,12 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::repr128,
     sym::unsized_locals,
     sym::capture_disjoint_fields,
+    sym::const_generics_defaults,
 ];
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.
-pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] =
-    &[(sym::const_generics, sym::min_const_generics)];
+///
+/// Currently empty, but we will probably need this again in the future,
+/// so let's keep it in for now.
+pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[];

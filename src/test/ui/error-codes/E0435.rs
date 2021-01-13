@@ -1,4 +1,6 @@
+// run-rustfix
 fn main () {
-    let foo = 42u32;
+    #[allow(non_upper_case_globals)]
+    let foo: usize = 42;
     let _: [u8; foo]; //~ ERROR E0435
 }

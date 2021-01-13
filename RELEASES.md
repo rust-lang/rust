@@ -1,3 +1,129 @@
+Version 1.49.0 (2020-12-31)
+============================
+
+Language
+-----------------------
+
+- [Unions can now implement `Drop`, and you can now have a field in a union
+  with `ManuallyDrop<T>`.][77547]
+- [You can now cast uninhabited enums to integers.][76199]
+- [You can now bind by reference and by move in patterns.][76119] This
+  allows you to selectively borrow individual components of a type. E.g.
+  ```rust
+  #[derive(Debug)]
+  struct Person {
+      name: String,
+      age: u8,
+  }
+
+  let person = Person {
+      name: String::from("Alice"),
+      age: 20,
+  };
+
+  // `name` is moved out of person, but `age` is referenced.
+  let Person { name, ref age } = person;
+  println!("{} {}", name, age);
+  ```
+
+Compiler
+-----------------------
+
+- [Added tier 1\* support for `aarch64-unknown-linux-gnu`.][78228]
+- [Added tier 2 support for `aarch64-apple-darwin`.][75991]
+- [Added tier 2 support for `aarch64-pc-windows-msvc`.][75914]
+- [Added tier 3 support for `mipsel-unknown-none`.][78676]
+- [Raised the minimum supported LLVM version to LLVM 9.][78848]
+- [Output from threads spawned in tests is now captured.][78227]
+- [Change os and vendor values to "none" and "unknown" for some targets][78951]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+Libraries
+-----------------------
+
+- [`RangeInclusive` now checks for exhaustion when calling `contains` and indexing.][78109]
+- [`ToString::to_string` now no longer shrinks the internal buffer in the default implementation.][77997]
+
+Stabilized APIs
+---------------
+
+- [`slice::select_nth_unstable`]
+- [`slice::select_nth_unstable_by`]
+- [`slice::select_nth_unstable_by_key`]
+
+The following previously stable methods are now `const`.
+
+- [`Poll::is_ready`]
+- [`Poll::is_pending`]
+
+Cargo
+-----------------------
+- [Building a crate with `cargo-package` should now be independently reproducible.][cargo/8864]
+- [`cargo-tree` now marks proc-macro crates.][cargo/8765]
+- [Added `CARGO_PRIMARY_PACKAGE` build-time environment variable.][cargo/8758] This
+  variable will be set if the crate being built is one the user selected to build, either
+  with `-p` or through defaults.
+- [You can now use glob patterns when specifying packages & targets.][cargo/8752]
+
+
+Compatibility Notes
+-------------------
+
+- [Demoted `i686-unknown-freebsd` from host tier 2 to target tier 2 support.][78746]
+- [Macros that end with a semi-colon are now treated as statements even if they expand to nothing.][78376]
+- [Rustc will now check for the validity of some built-in attributes on enum variants.][77015]
+  Previously such invalid or unused attributes could be ignored.
+- Leading whitespace is stripped more uniformly in documentation comments, which may change behavior. You
+  read [this post about the changes][rustdoc-ws-post] for more details.
+- [Trait bounds are no longer inferred for associated types.][79904]
+
+Internal Only
+-------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc and
+related tools.
+
+- [rustc's internal crates are now compiled using the `initial-exec` Thread
+  Local Storage model.][78201]
+- [Calculate visibilities once in resolve.][78077]
+- [Added `system` to the `llvm-libunwind` bootstrap config option.][77703]
+- [Added `--color` for configuring terminal color support to bootstrap.][79004]
+
+
+[75991]: https://github.com/rust-lang/rust/pull/75991
+[78951]: https://github.com/rust-lang/rust/pull/78951
+[78848]: https://github.com/rust-lang/rust/pull/78848
+[78746]: https://github.com/rust-lang/rust/pull/78746
+[78376]: https://github.com/rust-lang/rust/pull/78376
+[78228]: https://github.com/rust-lang/rust/pull/78228
+[78227]: https://github.com/rust-lang/rust/pull/78227
+[78201]: https://github.com/rust-lang/rust/pull/78201
+[78109]: https://github.com/rust-lang/rust/pull/78109
+[78077]: https://github.com/rust-lang/rust/pull/78077
+[77997]: https://github.com/rust-lang/rust/pull/77997
+[77703]: https://github.com/rust-lang/rust/pull/77703
+[77547]: https://github.com/rust-lang/rust/pull/77547
+[77015]: https://github.com/rust-lang/rust/pull/77015
+[76199]: https://github.com/rust-lang/rust/pull/76199
+[76119]: https://github.com/rust-lang/rust/pull/76119
+[75914]: https://github.com/rust-lang/rust/pull/75914
+[79004]: https://github.com/rust-lang/rust/pull/79004
+[78676]: https://github.com/rust-lang/rust/pull/78676
+[79904]: https://github.com/rust-lang/rust/issues/79904
+[cargo/8864]: https://github.com/rust-lang/cargo/pull/8864
+[cargo/8765]: https://github.com/rust-lang/cargo/pull/8765
+[cargo/8758]: https://github.com/rust-lang/cargo/pull/8758
+[cargo/8752]: https://github.com/rust-lang/cargo/pull/8752
+[`slice::select_nth_unstable`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable
+[`slice::select_nth_unstable_by`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable_by
+[`slice::select_nth_unstable_by_key`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable_by_key
+[`hint::spin_loop`]: https://doc.rust-lang.org/stable/std/hint/fn.spin_loop.html
+[`Poll::is_ready`]: https://doc.rust-lang.org/stable/std/task/enum.Poll.html#method.is_ready
+[`Poll::is_pending`]: https://doc.rust-lang.org/stable/std/task/enum.Poll.html#method.is_pending
+[rustdoc-ws-post]: https://blog.guillaume-gomez.fr/articles/2020-11-11+New+doc+comment+handling+in+rustdoc
+
 Version 1.48.0 (2020-11-19)
 ==========================
 
@@ -10,7 +136,7 @@ Language
 Compiler
 --------
 - [Stabilised the `-C link-self-contained=<yes|no>` compiler flag.][76158] This tells
-  `rustc` whether to link its own C runtime and libraries or to rely on a external 
+  `rustc` whether to link its own C runtime and libraries or to rely on a external
   linker to find them. (Supported only on `windows-gnu`, `linux-musl`, and `wasi` platforms.)
 - [You can now use `-C target-feature=+crt-static` on `linux-gnu` targets.][77386]
   Note: If you're using cargo you must explicitly pass the `--target` flag.
@@ -82,7 +208,7 @@ Compatibility Notes
 - [Foreign exceptions are now caught by `catch_unwind` and will cause an abort.][70212]
   Note: This behaviour is not guaranteed and is still considered undefined behaviour,
   see the [`catch_unwind`] documentation for further information.
-  
+
 
 
 Internal Only
@@ -102,7 +228,7 @@ related tools.
 [76030]: https://github.com/rust-lang/rust/pull/76030/
 [70212]: https://github.com/rust-lang/rust/pull/70212/
 [27675]: https://github.com/rust-lang/rust/issues/27675/
-[54121]: https://github.com/rust-lang/rust/issues/54121/  
+[54121]: https://github.com/rust-lang/rust/issues/54121/
 [71274]: https://github.com/rust-lang/rust/pull/71274/
 [77386]: https://github.com/rust-lang/rust/pull/77386/
 [77153]: https://github.com/rust-lang/rust/pull/77153/

@@ -1,15 +1,15 @@
 //! # Token Streams
 //!
 //! `TokenStream`s represent syntactic objects before they are converted into ASTs.
-//! A `TokenStream` is, roughly speaking, a sequence (eg stream) of `TokenTree`s,
-//! which are themselves a single `Token` or a `Delimited` subsequence of tokens.
+//! A `TokenStream` is, roughly speaking, a sequence of [`TokenTree`]s,
+//! which are themselves a single [`Token`] or a `Delimited` subsequence of tokens.
 //!
 //! ## Ownership
 //!
 //! `TokenStream`s are persistent data structures constructed as ropes with reference
 //! counted-children. In general, this means that calling an operation on a `TokenStream`
 //! (such as `slice`) produces an entirely new `TokenStream` from the borrowed reference to
-//! the original. This essentially coerces `TokenStream`s into 'views' of their subparts,
+//! the original. This essentially coerces `TokenStream`s into "views" of their subparts,
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
@@ -24,9 +24,9 @@ use smallvec::{smallvec, SmallVec};
 
 use std::{fmt, iter, mem};
 
-/// When the main rust parser encounters a syntax-extension invocation, it
-/// parses the arguments to the invocation as a token-tree. This is a very
-/// loose structure, such that all sorts of different AST-fragments can
+/// When the main Rust parser encounters a syntax-extension invocation, it
+/// parses the arguments to the invocation as a token tree. This is a very
+/// loose structure, such that all sorts of different AST fragments can
 /// be passed to syntax extensions using a uniform type.
 ///
 /// If the syntax extension is an MBE macro, it will attempt to match its
@@ -38,10 +38,16 @@ use std::{fmt, iter, mem};
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum TokenTree {
-    /// A single token
+    /// A single token.
     Token(Token),
-    /// A delimited sequence of token trees
+    /// A delimited sequence of token trees.
     Delimited(DelimSpan, DelimToken, TokenStream),
+}
+
+#[derive(Copy, Clone)]
+pub enum CanSynthesizeMissingTokens {
+    Yes,
+    No,
 }
 
 // Ensure all fields of `TokenTree` is `Send` and `Sync`.
@@ -56,7 +62,7 @@ where
 }
 
 impl TokenTree {
-    /// Checks if this TokenTree is equal to the other, regardless of span information.
+    /// Checks if this `TokenTree` is equal to the other, regardless of span information.
     pub fn eq_unspanned(&self, other: &TokenTree) -> bool {
         match (self, other) {
             (TokenTree::Token(token), TokenTree::Token(token2)) => token.kind == token2.kind,
@@ -67,7 +73,7 @@ impl TokenTree {
         }
     }
 
-    /// Retrieves the TokenTree's span.
+    /// Retrieves the `TokenTree`'s span.
     pub fn span(&self) -> Span {
         match self {
             TokenTree::Token(token) => token.span,
@@ -134,7 +140,7 @@ impl CreateTokenStream for TokenStream {
     }
 }
 
-/// A lazy version of `TokenStream`, which defers creation
+/// A lazy version of [`TokenStream`], which defers creation
 /// of an actual `TokenStream` until it is needed.
 /// `Box` is here only to reduce the structure size.
 #[derive(Clone)]
@@ -182,11 +188,12 @@ impl<CTX> HashStable<CTX> for LazyTokenStream {
     }
 }
 
-/// A `TokenStream` is an abstract sequence of tokens, organized into `TokenTree`s.
+/// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
 ///
 /// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
 /// instead of a representation of the abstract syntax tree.
-/// Today's `TokenTree`s can still contain AST via `token::Interpolated` for back-compat.
+/// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
+/// backwards compatability.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Lrc<Vec<TreeAndSpacing>>);
 
@@ -423,7 +430,7 @@ impl TokenStreamBuilder {
     }
 }
 
-/// By-reference iterator over a `TokenStream`.
+/// By-reference iterator over a [`TokenStream`].
 #[derive(Clone)]
 pub struct CursorRef<'t> {
     stream: &'t TokenStream,
@@ -451,8 +458,8 @@ impl<'t> Iterator for CursorRef<'t> {
     }
 }
 
-/// Owning by-value iterator over a `TokenStream`.
-/// FIXME: Many uses of this can be replaced with by-reference iterator to avoid clones.
+/// Owning by-value iterator over a [`TokenStream`].
+// FIXME: Many uses of this can be replaced with by-reference iterator to avoid clones.
 #[derive(Clone)]
 pub struct Cursor {
     pub stream: TokenStream,

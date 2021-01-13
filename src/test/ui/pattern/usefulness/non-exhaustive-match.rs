@@ -15,7 +15,7 @@ fn main() {
                       //  and `(_, _, 5_i32..=i32::MAX)` not covered
       (_, _, 4) => {}
     }
-    match (T::A, T::A) { //~ ERROR non-exhaustive patterns: `(A, A)` not covered
+    match (T::A, T::A) { //~ ERROR non-exhaustive patterns: `(A, A)` and `(B, B)` not covered
       (T::A, T::B) => {}
       (T::B, T::A) => {}
     }

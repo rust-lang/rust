@@ -31,7 +31,7 @@ pub struct Entry<'hir> {
 impl<'hir> Entry<'hir> {
     fn parent_node(self) -> Option<HirId> {
         match self.node {
-            Node::Crate(_) | Node::MacroDef(_) => None,
+            Node::Crate(_) => None,
             _ => Some(self.parent),
         }
     }
@@ -47,7 +47,7 @@ fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
     }
 }
 
-fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
+pub fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
     match &node {
         Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
         | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
@@ -379,7 +379,7 @@ impl<'hir> Map<'hir> {
     pub fn body_param_names(&self, id: BodyId) -> impl Iterator<Item = Ident> + 'hir {
         self.body(id).params.iter().map(|arg| match arg.pat.kind {
             PatKind::Binding(_, _, ident, _) => ident,
-            _ => Ident::new(kw::Invalid, rustc_span::DUMMY_SP),
+            _ => Ident::new(kw::Empty, rustc_span::DUMMY_SP),
         })
     }
 
@@ -505,7 +505,7 @@ impl<'hir> Map<'hir> {
                     | ItemKind::Union(_, generics)
                     | ItemKind::Trait(_, _, generics, ..)
                     | ItemKind::TraitAlias(generics, _)
-                    | ItemKind::Impl { generics, .. },
+                    | ItemKind::Impl(Impl { generics, .. }),
                 ..
             }) => Some(generics),
             _ => None,
@@ -710,15 +710,10 @@ impl<'hir> Map<'hir> {
         let mut scope = id;
         loop {
             scope = self.get_enclosing_scope(scope).unwrap_or(CRATE_HIR_ID);
-            if scope == CRATE_HIR_ID {
-                return CRATE_HIR_ID;
-            }
-            match self.get(scope) {
-                Node::Block(_) => {}
-                _ => break,
+            if scope == CRATE_HIR_ID || !matches!(self.get(scope), Node::Block(_)) {
+                return scope;
             }
         }
-        scope
     }
 
     pub fn get_parent_did(&self, id: HirId) -> LocalDefId {

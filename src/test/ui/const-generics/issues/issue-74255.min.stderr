@@ -1,11 +1,11 @@
 error: `IceEnum` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-74255.rs:15:31
+  --> $DIR/issue-74255.rs:14:31
    |
 LL |     fn ice_struct_fn<const I: IceEnum>() {}
    |                               ^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: aborting due to previous error
 

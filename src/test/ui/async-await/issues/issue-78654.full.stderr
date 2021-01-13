@@ -1,11 +1,11 @@
 error[E0573]: expected type, found built-in attribute `feature`
-  --> $DIR/issue-78654.rs:10:15
+  --> $DIR/issue-78654.rs:9:15
    |
 LL | impl<const H: feature> Foo {
    |               ^^^^^^^ not a type
 
 error[E0207]: the const parameter `H` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-78654.rs:10:12
+  --> $DIR/issue-78654.rs:9:12
    |
 LL | impl<const H: feature> Foo {
    |            ^ unconstrained const parameter

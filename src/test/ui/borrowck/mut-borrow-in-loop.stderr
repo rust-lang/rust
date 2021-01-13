@@ -15,7 +15,7 @@ LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
 LL |             (self.func)(arg)
    |             ------------^^^-
    |             |           |
-   |             |           mutable borrow starts here in previous iteration of loop
+   |             |           `*arg` was mutably borrowed here in the previous iteration of the loop
    |             argument requires that `*arg` is borrowed for `'a`
 
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
@@ -27,7 +27,7 @@ LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
 LL |             (self.func)(arg)
    |             ------------^^^-
    |             |           |
-   |             |           mutable borrow starts here in previous iteration of loop
+   |             |           `*arg` was mutably borrowed here in the previous iteration of the loop
    |             argument requires that `*arg` is borrowed for `'a`
 
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
@@ -39,7 +39,7 @@ LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
 LL |             (self.func)(arg)
    |             ------------^^^-
    |             |           |
-   |             |           mutable borrow starts here in previous iteration of loop
+   |             |           `*arg` was mutably borrowed here in the previous iteration of the loop
    |             argument requires that `*arg` is borrowed for `'a`
 
 error: aborting due to 3 previous errors; 1 warning emitted

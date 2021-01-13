@@ -16,7 +16,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
-use rustc_session::lint::LintBuffer;
+use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -184,7 +184,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_lifetime(&self, ident: Ident) {
-        let valid_names = [kw::UnderscoreLifetime, kw::StaticLifetime, kw::Invalid];
+        let valid_names = [kw::UnderscoreLifetime, kw::StaticLifetime, kw::Empty];
         if !valid_names.contains(&ident.name) && ident.without_first_quote().is_reserved() {
             self.err_handler().span_err(ident.span, "lifetimes cannot use keyword names");
         }
@@ -213,14 +213,14 @@ impl<'a> AstValidator<'a> {
         err.emit();
     }
 
-    fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, bool)) {
+    fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
         for Param { pat, .. } in &decl.inputs {
             match pat.kind {
                 PatKind::Ident(BindingMode::ByValue(Mutability::Not), _, None) | PatKind::Wild => {}
-                PatKind::Ident(BindingMode::ByValue(Mutability::Mut), _, None) => {
-                    report_err(pat.span, true)
+                PatKind::Ident(BindingMode::ByValue(Mutability::Mut), ident, None) => {
+                    report_err(pat.span, Some(ident), true)
                 }
-                _ => report_err(pat.span, false),
+                _ => report_err(pat.span, None, false),
             }
         }
     }
@@ -400,7 +400,7 @@ impl<'a> AstValidator<'a> {
         if let Defaultness::Default(def_span) = defaultness {
             let span = self.session.source_map().guess_head_span(span);
             self.err_handler()
-                .struct_span_err(span, "`default` is only allowed on items in `impl` definitions")
+                .struct_span_err(span, "`default` is only allowed on items in trait impls")
                 .span_label(def_span, "`default` because of this")
                 .emit();
         }
@@ -717,35 +717,46 @@ impl<'a> AstValidator<'a> {
 
 /// Checks that generic parameters are in the correct order,
 /// which is lifetimes, then types and then consts. (`<'a, T, const N: usize>`)
-fn validate_generic_param_order<'a>(
+fn validate_generic_param_order(
     sess: &Session,
     handler: &rustc_errors::Handler,
-    generics: impl Iterator<Item = (ParamKindOrd, Option<&'a [GenericBound]>, Span, Option<String>)>,
+    generics: &[GenericParam],
     span: Span,
 ) {
     let mut max_param: Option<ParamKindOrd> = None;
     let mut out_of_order = FxHashMap::default();
     let mut param_idents = vec![];
 
-    for (kind, bounds, span, ident) in generics {
+    for param in generics {
+        let ident = Some(param.ident.to_string());
+        let (kind, bounds, span) = (&param.kind, Some(&*param.bounds), param.ident.span);
+        let (ord_kind, ident) = match &param.kind {
+            GenericParamKind::Lifetime => (ParamKindOrd::Lifetime, ident),
+            GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident),
+            GenericParamKind::Const { ref ty, kw_span: _, default: _ } => {
+                let ty = pprust::ty_to_string(ty);
+                let unordered = sess.features_untracked().const_generics;
+                (ParamKindOrd::Const { unordered }, Some(format!("const {}: {}", param.ident, ty)))
+            }
+        };
         if let Some(ident) = ident {
-            param_idents.push((kind, bounds, param_idents.len(), ident));
+            param_idents.push((kind, ord_kind, bounds, param_idents.len(), ident));
         }
         let max_param = &mut max_param;
         match max_param {
-            Some(max_param) if *max_param > kind => {
-                let entry = out_of_order.entry(kind).or_insert((*max_param, vec![]));
+            Some(max_param) if *max_param > ord_kind => {
+                let entry = out_of_order.entry(ord_kind).or_insert((*max_param, vec![]));
                 entry.1.push(span);
             }
-            Some(_) | None => *max_param = Some(kind),
+            Some(_) | None => *max_param = Some(ord_kind),
         };
     }
 
     let mut ordered_params = "<".to_string();
     if !out_of_order.is_empty() {
-        param_idents.sort_by_key(|&(po, _, i, _)| (po, i));
+        param_idents.sort_by_key(|&(_, po, _, i, _)| (po, i));
         let mut first = true;
-        for (_, bounds, _, ident) in param_idents {
+        for (kind, _, bounds, _, ident) in param_idents {
             if !first {
                 ordered_params += ", ";
             }
@@ -755,6 +766,16 @@ fn validate_generic_param_order<'a>(
                     ordered_params += ": ";
                     ordered_params += &pprust::bounds_to_string(&bounds);
                 }
+            }
+            match kind {
+                GenericParamKind::Type { default: Some(default) } => {
+                    ordered_params += " = ";
+                    ordered_params += &pprust::ty_to_string(default);
+                }
+                GenericParamKind::Type { default: None } => (),
+                GenericParamKind::Lifetime => (),
+                // FIXME(const_generics_defaults)
+                GenericParamKind::Const { ty: _, kw_span: _, default: _ } => (),
             }
             first = false;
         }
@@ -773,14 +794,12 @@ fn validate_generic_param_order<'a>(
         err.span_suggestion(
             span,
             &format!(
-                "reorder the parameters: lifetimes{}",
+                "reorder the parameters: lifetimes, {}",
                 if sess.features_untracked().const_generics {
-                    ", then consts and types"
-                } else if sess.features_untracked().min_const_generics {
-                    ", then types, then consts"
+                    "then consts and types"
                 } else {
-                    ", then types"
-                },
+                    "then types, then consts"
+                }
             ),
             ordered_params.clone(),
             Applicability::MachineApplicable,
@@ -815,7 +834,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match ty.kind {
             TyKind::BareFn(ref bfty) => {
                 self.check_fn_decl(&bfty.decl, SelfSemantic::No);
-                Self::check_decl_no_pat(&bfty.decl, |span, _| {
+                Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
                     struct_span_err!(
                         self.session,
                         span,
@@ -1152,22 +1171,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         validate_generic_param_order(
             self.session,
             self.err_handler(),
-            generics.params.iter().map(|param| {
-                let ident = Some(param.ident.to_string());
-                let (kind, ident) = match &param.kind {
-                    GenericParamKind::Lifetime => (ParamKindOrd::Lifetime, ident),
-                    GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident),
-                    GenericParamKind::Const { ref ty, kw_span: _ } => {
-                        let ty = pprust::ty_to_string(ty);
-                        let unordered = self.session.features_untracked().const_generics;
-                        (
-                            ParamKindOrd::Const { unordered },
-                            Some(format!("const {}: {}", param.ident, ty)),
-                        )
-                    }
-                };
-                (kind, Some(&*param.bounds), param.ident.span, ident)
-            }),
+            &generics.params,
             generics.span,
         );
 
@@ -1208,11 +1212,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
-        match pat.kind {
-            PatKind::Lit(ref expr) => {
+        match &pat.kind {
+            PatKind::Lit(expr) => {
                 self.check_expr_within_pat(expr, false);
             }
-            PatKind::Range(ref start, ref end, _) => {
+            PatKind::Range(start, end, _) => {
                 if let Some(expr) = start {
                     self.check_expr_within_pat(expr, true);
                 }
@@ -1285,7 +1289,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         // Functions without bodies cannot have patterns.
         if let FnKind::Fn(ctxt, _, sig, _, None) = fk {
-            Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {
+            Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
                 let (code, msg, label) = match ctxt {
                     FnCtxt::Foreign => (
                         error_code!(E0130),
@@ -1299,7 +1303,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     ),
                 };
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
-                    self.lint_buffer.buffer_lint(PATTERNS_IN_FNS_WITHOUT_BODY, id, span, msg);
+                    if let Some(ident) = ident {
+                        let diag = BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident);
+                        self.lint_buffer.buffer_lint_with_diagnostic(
+                            PATTERNS_IN_FNS_WITHOUT_BODY,
+                            id,
+                            span,
+                            msg,
+                            diag,
+                        )
+                    }
                 } else {
                     self.err_handler()
                         .struct_span_err(span, msg)

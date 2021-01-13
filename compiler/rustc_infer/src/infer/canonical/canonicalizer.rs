@@ -505,7 +505,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             let canon_value = Canonical {
                 max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
-                value: value.clone(),
+                value,
             };
             return canon_value;
         }
@@ -625,7 +625,8 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
-        let region = ty::ReLateBound(self.binder_index, ty::BoundRegion::BrAnon(var.as_u32()));
+        let br = ty::BoundRegion { kind: ty::BrAnon(var.as_u32()) };
+        let region = ty::ReLateBound(self.binder_index, br);
         self.tcx().mk_region(region)
     }
 

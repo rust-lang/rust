@@ -10,13 +10,12 @@ use test::ColorConfig;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
-    CompileFail,
-    RunFail,
     RunPassValgrind,
     Pretty,
     DebugInfo,
     Codegen,
     Rustdoc,
+    RustdocJson,
     CodegenUnits,
     Incremental,
     RunMake,
@@ -41,13 +40,12 @@ impl FromStr for Mode {
     type Err = ();
     fn from_str(s: &str) -> Result<Mode, ()> {
         match s {
-            "compile-fail" => Ok(CompileFail),
-            "run-fail" => Ok(RunFail),
             "run-pass-valgrind" => Ok(RunPassValgrind),
             "pretty" => Ok(Pretty),
             "debuginfo" => Ok(DebugInfo),
             "codegen" => Ok(Codegen),
             "rustdoc" => Ok(Rustdoc),
+            "rustdoc-json" => Ok(RustdocJson),
             "codegen-units" => Ok(CodegenUnits),
             "incremental" => Ok(Incremental),
             "run-make" => Ok(RunMake),
@@ -63,13 +61,12 @@ impl FromStr for Mode {
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match *self {
-            CompileFail => "compile-fail",
-            RunFail => "run-fail",
             RunPassValgrind => "run-pass-valgrind",
             Pretty => "pretty",
             DebugInfo => "debuginfo",
             Codegen => "codegen",
             Rustdoc => "rustdoc",
+            RustdocJson => "rustdoc-json",
             CodegenUnits => "codegen-units",
             Incremental => "incremental",
             RunMake => "run-make",
@@ -124,6 +121,8 @@ pub enum CompareMode {
     Nll,
     Polonius,
     Chalk,
+    SplitDwarf,
+    SplitDwarfSingle,
 }
 
 impl CompareMode {
@@ -132,6 +131,8 @@ impl CompareMode {
             CompareMode::Nll => "nll",
             CompareMode::Polonius => "polonius",
             CompareMode::Chalk => "chalk",
+            CompareMode::SplitDwarf => "split-dwarf",
+            CompareMode::SplitDwarfSingle => "split-dwarf-single",
         }
     }
 
@@ -140,6 +141,8 @@ impl CompareMode {
             "nll" => CompareMode::Nll,
             "polonius" => CompareMode::Polonius,
             "chalk" => CompareMode::Chalk,
+            "split-dwarf" => CompareMode::SplitDwarf,
+            "split-dwarf-single" => CompareMode::SplitDwarfSingle,
             x => panic!("unknown --compare-mode option: {}", x),
         }
     }
@@ -221,7 +224,7 @@ pub struct Config {
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
-    /// The test mode, compile-fail, run-fail, ui
+    /// The test mode, e.g. ui or debuginfo.
     pub mode: Mode,
 
     /// The test suite (essentially which directory is running, but without the
@@ -323,6 +326,9 @@ pub struct Config {
     /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
     /// created in `/<build_base>/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
+
+    /// whether to run `tidy` when a rustdoc test fails
+    pub has_tidy: bool,
 
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.

@@ -1,0 +1,38 @@
+error: `msrv` is defined multiple times
+  --> $DIR/min_rust_version_multiple_inner_attr.rs:3:1
+   |
+LL | #![clippy::msrv = "=1.35.0"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first definition found here
+  --> $DIR/min_rust_version_multiple_inner_attr.rs:2:1
+   |
+LL | #![clippy::msrv = "1.40"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `msrv` is defined multiple times
+  --> $DIR/min_rust_version_multiple_inner_attr.rs:4:1
+   |
+LL | #![clippy::msrv = "1.10.1"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first definition found here
+  --> $DIR/min_rust_version_multiple_inner_attr.rs:2:1
+   |
+LL | #![clippy::msrv = "1.40"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `msrv` is defined multiple times
+  --> $DIR/min_rust_version_multiple_inner_attr.rs:8:5
+   |
+LL |     #![clippy::msrv = "1.0.0"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first definition found here
+  --> $DIR/min_rust_version_multiple_inner_attr.rs:7:5
+   |
+LL |     #![clippy::msrv = "1"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

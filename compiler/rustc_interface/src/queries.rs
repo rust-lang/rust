@@ -23,7 +23,11 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 
 /// Represent the result of a query.
-/// This result can be stolen with the `take` method and generated with the `compute` method.
+///
+/// This result can be stolen with the [`take`] method and generated with the [`compute`] method.
+///
+/// [`take`]: Self::take
+/// [`compute`]: Self::compute
 pub struct Query<T> {
     result: RefCell<Option<Result<T>>>,
 }
@@ -156,13 +160,11 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn crate_name(&self) -> Result<&Query<String>> {
         self.crate_name.compute(|| {
-            Ok(match self.compiler.crate_name {
-                Some(ref crate_name) => crate_name.clone(),
-                None => {
-                    let parse_result = self.parse()?;
-                    let krate = parse_result.peek();
-                    find_crate_name(self.session(), &krate.attrs, &self.compiler.input)
-                }
+            Ok({
+                let parse_result = self.parse()?;
+                let krate = parse_result.peek();
+                // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
+                find_crate_name(self.session(), &krate.attrs, &self.compiler.input)
             })
         })
     }
@@ -278,7 +280,7 @@ impl<'tcx> Queries<'tcx> {
                 // Don't do code generation if there were any errors
                 self.session().compile_status()?;
 
-                // Hook for compile-fail tests.
+                // Hook for UI tests.
                 Self::check_for_rustc_errors_attr(tcx);
 
                 Ok(passes::start_codegen(&***self.codegen_backend(), tcx, &*outputs.peek()))
@@ -287,7 +289,7 @@ impl<'tcx> Queries<'tcx> {
     }
 
     /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
-    /// to write compile-fail tests that actually test that compilation succeeds without reporting
+    /// to write UI tests that actually test that compilation succeeds without reporting
     /// an error.
     fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
         let def_id = match tcx.entry_fn(LOCAL_CRATE) {
@@ -401,6 +403,7 @@ impl Linker {
             return Ok(());
         }
 
+        let _timer = sess.prof.verbose_generic_activity("link_crate");
         self.codegen_backend.link(&self.sess, codegen_results, &self.prepare_outputs)
     }
 }

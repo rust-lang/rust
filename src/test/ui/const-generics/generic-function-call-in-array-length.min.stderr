@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/generic-function-call-in-array-length.rs:9:39
+  --> $DIR/generic-function-call-in-array-length.rs:8:39
    |
 LL | fn bar<const N: usize>() -> [u32; foo(N)] {
    |                                       ^ cannot perform const operation using `N`
@@ -8,7 +8,7 @@ LL | fn bar<const N: usize>() -> [u32; foo(N)] {
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/generic-function-call-in-array-length.rs:12:13
+  --> $DIR/generic-function-call-in-array-length.rs:11:13
    |
 LL |     [0; foo(N)]
    |             ^ cannot perform const operation using `N`
