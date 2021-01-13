@@ -446,15 +446,13 @@ impl<T, P> FusedIterator for Split<'_, T, P> where P: FnMut(&T) -> bool {}
 /// # Example
 ///
 /// ```
-/// #![feature(split_inclusive)]
-///
 /// let slice = [10, 40, 33, 20];
 /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
 /// ```
 ///
 /// [`split_inclusive`]: ../../std/primitive.slice.html#method.split_inclusive
 /// [slices]: ../../std/primitive.slice.html
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 pub struct SplitInclusive<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -471,7 +469,7 @@ impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitInclusive<'a, T, P> {
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitInclusive<'_, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -485,7 +483,7 @@ where
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T, P> Clone for SplitInclusive<'_, T, P>
 where
     P: Clone + FnMut(&T) -> bool,
@@ -495,7 +493,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, T, P> Iterator for SplitInclusive<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -524,7 +522,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, T, P> DoubleEndedIterator for SplitInclusive<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -549,7 +547,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over the mutable subslices of the vector which are separated
@@ -689,15 +687,13 @@ impl<T, P> FusedIterator for SplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
 /// # Example
 ///
 /// ```
-/// #![feature(split_inclusive)]
-///
 /// let mut v = [10, 40, 30, 20, 60, 50];
 /// let iter = v.split_inclusive_mut(|num| *num % 3 == 0);
 /// ```
 ///
 /// [`split_inclusive_mut`]: ../../std/primitive.slice.html#method.split_inclusive_mut
 /// [slices]: ../../std/primitive.slice.html
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 pub struct SplitInclusiveMut<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -714,7 +710,7 @@ impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitInclusiveMut<'a, T, P> {
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitInclusiveMut<'_, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -727,7 +723,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, T, P> Iterator for SplitInclusiveMut<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -767,7 +763,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, T, P> DoubleEndedIterator for SplitInclusiveMut<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -801,7 +797,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over subslices separated by elements that match a predicate

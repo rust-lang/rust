@@ -60,7 +60,7 @@ pub use iter::ArrayWindows;
 #[unstable(feature = "slice_group_by", issue = "80552")]
 pub use iter::{GroupBy, GroupByMut};
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1546,7 +1546,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_inclusive)]
     /// let slice = [10, 40, 33, 20];
     /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
     ///
@@ -1560,7 +1559,6 @@ impl<T> [T] {
     /// That slice will be the last item returned by the iterator.
     ///
     /// ```
-    /// #![feature(split_inclusive)]
     /// let slice = [3, 10, 40, 33];
     /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
     ///
@@ -1568,7 +1566,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next().unwrap(), &[10, 40, 33]);
     /// assert!(iter.next().is_none());
     /// ```
-    #[unstable(feature = "split_inclusive", issue = "72360")]
+    #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
     pub fn split_inclusive<F>(&self, pred: F) -> SplitInclusive<'_, T, F>
     where
@@ -1584,7 +1582,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_inclusive)]
     /// let mut v = [10, 40, 30, 20, 60, 50];
     ///
     /// for group in v.split_inclusive_mut(|num| *num % 3 == 0) {
@@ -1593,7 +1590,7 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, [10, 40, 1, 20, 1, 1]);
     /// ```
-    #[unstable(feature = "split_inclusive", issue = "72360")]
+    #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
     pub fn split_inclusive_mut<F>(&mut self, pred: F) -> SplitInclusiveMut<'_, T, F>
     where
