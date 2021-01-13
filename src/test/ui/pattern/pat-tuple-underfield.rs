@@ -14,6 +14,7 @@ fn main() {
         S(_) => {}
         //~^ ERROR this pattern has 1 field, but the corresponding tuple struct has 2 fields
         //~| HELP use `_` to explicitly ignore each field
+        //~| HELP use `..` to ignore all fields
     }
     match S(0, 1.0) {
         S() => {}
@@ -31,6 +32,7 @@ fn main() {
         E::S(_) => {}
         //~^ ERROR this pattern has 1 field, but the corresponding tuple variant has 2 fields
         //~| HELP use `_` to explicitly ignore each field
+        //~| HELP use `..` to ignore all fields
     }
     match E::S(0, 1.0) {
         E::S() => {}

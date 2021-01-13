@@ -1068,8 +1068,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
 
-            // Only suggest `..` if more than one field is missing.
-            if fields.len() - subpats.len() > 1 {
+            // Only suggest `..` if more than one field is missing
+            // or the pattern consists of all wildcards.
+            if fields.len() - subpats.len() > 1 || all_wildcards {
                 if subpats.is_empty() || all_wildcards {
                     err.span_suggestion_verbose(
                         all_fields_span,
