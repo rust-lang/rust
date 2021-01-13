@@ -1,6 +1,9 @@
 use super::Peekable;
 
 /// An iterator adapter that places a separator between all elements.
+///
+/// This `struct` is created by [`Iterator::intersperse`]. See it's documentation
+/// for more information.
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 #[derive(Debug, Clone)]
 pub struct Intersperse<I: Iterator>
@@ -55,6 +58,9 @@ where
 }
 
 /// An iterator adapter that places a separator between all elements.
+///
+/// This `struct` is created by [`Iterator::intersperse_with`]. See it's
+/// documentation for more information.
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 pub struct IntersperseWith<I, G>
 where
