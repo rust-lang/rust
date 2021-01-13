@@ -2,8 +2,9 @@
 // Tests that we can compare various kinds of extern fn signatures.
 #![allow(non_camel_case_types)]
 
-extern fn voidret1() {}
-extern fn voidret2() {}
+// `dbg!()` differentiates these functions to ensure they won't be merged.
+extern fn voidret1() { dbg!() }
+extern fn voidret2() { dbg!() }
 
 extern fn uintret() -> usize { 22 }
 

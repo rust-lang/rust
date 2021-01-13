@@ -363,8 +363,15 @@ impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
 
 fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     let src_name = input.source_name();
-    let src =
-        String::clone(&sess.source_map().get_source_file(&src_name).unwrap().src.as_ref().unwrap());
+    let src = String::clone(
+        &sess
+            .source_map()
+            .get_source_file(&src_name)
+            .expect("get_source_file")
+            .src
+            .as_ref()
+            .expect("src"),
+    );
     (src, src_name)
 }
 

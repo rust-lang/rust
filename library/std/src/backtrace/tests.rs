@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn test_debug() {
     let backtrace = Backtrace {
-        inner: Inner::Captured(Mutex::new(Capture {
+        inner: Inner::Captured(LazilyResolvedCapture::new(Capture {
             actual_start: 1,
             resolved: true,
             frames: vec![
@@ -53,5 +53,8 @@ fn test_debug() {
     \n    { fn: \"std::rt::lang_start\", file: \"rust/rt.rs\", line: 400 },\
     \n]";
 
+    assert_eq!(format!("{:#?}", backtrace), expected);
+
+    // Format the backtrace a second time, just to make sure lazily resolved state is stable
     assert_eq!(format!("{:#?}", backtrace), expected);
 }
