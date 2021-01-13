@@ -1957,6 +1957,7 @@ impl<'test> TestCx<'test> {
             }
             MirOpt => {
                 rustc.args(&[
+                    "-Copt-level=1",
                     "-Zdump-mir=all",
                     "-Zmir-opt-level=3",
                     "-Zvalidate-mir",
