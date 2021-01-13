@@ -22,7 +22,9 @@ use core::slice::from_raw_parts_mut;
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
-use crate::alloc::{box_free, handle_alloc_error, AllocError, Allocator, Global, Layout};
+use crate::alloc::{
+    box_free, handle_alloc_error, AllocError, Allocator, Global, Layout, WriteCloneIntoRaw,
+};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::rc::is_dangling;
@@ -1369,8 +1371,14 @@ impl<T: Clone> Arc<T> {
         // weak count, there's no chance the ArcInner itself could be
         // deallocated.
         if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
-            // Another strong pointer exists; clone
-            *this = Arc::new((**this).clone());
+            // Another strong pointer exists, so we must clone.
+            // Pre-allocate memory to allow writing the cloned value directly.
+            let mut arc = Self::new_uninit();
+            unsafe {
+                let data = Arc::get_mut_unchecked(&mut arc);
+                (**this).write_clone_into_raw(data.as_mut_ptr());
+                *this = arc.assume_init();
+            }
         } else if this.inner().weak.load(Relaxed) != 1 {
             // Relaxed suffices in the above because this is fundamentally an
             // optimization: we are always racing with weak pointers being
@@ -1386,17 +1394,14 @@ impl<T: Clone> Arc<T> {
 
             // Materialize our own implicit weak pointer, so that it can clean
             // up the ArcInner as needed.
-            let weak = Weak { ptr: this.ptr };
+            let _weak = Weak { ptr: this.ptr };
 
-            // mark the data itself as already deallocated
+            // Can just steal the data, all that's left is Weaks
+            let mut arc = Self::new_uninit();
             unsafe {
-                // there is no data race in the implicit write caused by `read`
-                // here (due to zeroing) because data is no longer accessed by
-                // other threads (due to there being no more strong refs at this
-                // point).
-                let mut swap = Arc::new(ptr::read(&weak.ptr.as_ref().data));
-                mem::swap(this, &mut swap);
-                mem::forget(swap);
+                let data = Arc::get_mut_unchecked(&mut arc);
+                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
+                ptr::write(this, arc.assume_init());
             }
         } else {
             // We were the sole reference of either kind; bump back up the

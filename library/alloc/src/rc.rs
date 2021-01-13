@@ -263,7 +263,9 @@ use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
-use crate::alloc::{box_free, handle_alloc_error, AllocError, Allocator, Global, Layout};
+use crate::alloc::{
+    box_free, handle_alloc_error, AllocError, Allocator, Global, Layout, WriteCloneIntoRaw,
+};
 use crate::borrow::{Cow, ToOwned};
 use crate::string::String;
 use crate::vec::Vec;
@@ -1037,18 +1039,26 @@ impl<T: Clone> Rc<T> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
         if Rc::strong_count(this) != 1 {
-            // Gotta clone the data, there are other Rcs
-            *this = Rc::new((**this).clone())
+            // Gotta clone the data, there are other Rcs.
+            // Pre-allocate memory to allow writing the cloned value directly.
+            let mut rc = Self::new_uninit();
+            unsafe {
+                let data = Rc::get_mut_unchecked(&mut rc);
+                (**this).write_clone_into_raw(data.as_mut_ptr());
+                *this = rc.assume_init();
+            }
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
+            let mut rc = Self::new_uninit();
             unsafe {
-                let mut swap = Rc::new(ptr::read(&this.ptr.as_ref().value));
-                mem::swap(this, &mut swap);
-                swap.inner().dec_strong();
+                let data = Rc::get_mut_unchecked(&mut rc);
+                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
+
+                this.inner().dec_strong();
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
-                swap.inner().dec_weak();
-                forget(swap);
+                this.inner().dec_weak();
+                ptr::write(this, rc.assume_init());
             }
         }
         // This unsafety is ok because we're guaranteed that the pointer
