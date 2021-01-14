@@ -1,4 +1,6 @@
-//! Yet another index-based arena.
+//! Yet another ID-based arena.
+
+#![warn(missing_docs)]
 
 use std::{
     fmt,
@@ -10,6 +12,7 @@ use std::{
 
 pub mod map;
 
+/// The raw ID of a value in an arena.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RawId(u32);
 
@@ -37,6 +40,7 @@ impl fmt::Display for RawId {
     }
 }
 
+/// The ID of a value allocated in an arena that holds `T`s.
 pub struct Idx<T> {
     raw: RawId,
     _ty: PhantomData<fn() -> T>,
@@ -73,14 +77,18 @@ impl<T> fmt::Debug for Idx<T> {
 }
 
 impl<T> Idx<T> {
+    /// Creates a new ID from a [`RawId`].
     pub fn from_raw(raw: RawId) -> Self {
         Idx { raw, _ty: PhantomData }
     }
+
+    /// Converts this ID into the underlying [`RawId`].
     pub fn into_raw(self) -> RawId {
         self.raw
     }
 }
 
+/// Yet another ID-based arena.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Arena<T> {
     data: Vec<T>,
@@ -93,29 +101,99 @@ impl<T: fmt::Debug> fmt::Debug for Arena<T> {
 }
 
 impl<T> Arena<T> {
+    /// Creates a new empty arena.
+    ///
+    /// ```
+    /// let arena: la_arena::Arena<i32> = la_arena::Arena::new();
+    /// assert!(arena.is_empty());
+    /// ```
     pub const fn new() -> Arena<T> {
         Arena { data: Vec::new() }
     }
+
+    /// Empties the arena, removing all contained values.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    ///
+    /// arena.alloc(1);
+    /// arena.alloc(2);
+    /// arena.alloc(3);
+    /// assert_eq!(arena.len(), 3);
+    ///
+    /// arena.clear();
+    /// assert!(arena.is_empty());
+    /// ```
     pub fn clear(&mut self) {
         self.data.clear();
     }
 
+    /// Returns the length of the arena.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// assert_eq!(arena.len(), 0);
+    ///
+    /// arena.alloc("foo");
+    /// assert_eq!(arena.len(), 1);
+    ///
+    /// arena.alloc("bar");
+    /// assert_eq!(arena.len(), 2);
+    ///
+    /// arena.alloc("baz");
+    /// assert_eq!(arena.len(), 3);
+    /// ```
     pub fn len(&self) -> usize {
         self.data.len()
     }
+
+    /// Returns whether the arena contains no elements.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// assert!(arena.is_empty());
+    ///
+    /// arena.alloc(0.5);
+    /// assert!(!arena.is_empty());
+    /// ```
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
+
+    /// Allocates a new value on the arena, returning the value’s ID.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// let id = arena.alloc(50);
+    ///
+    /// assert_eq!(arena[id], 50);
+    /// ```
     pub fn alloc(&mut self, value: T) -> Idx<T> {
         let id = RawId(self.data.len() as u32);
         self.data.push(value);
         Idx::from_raw(id)
     }
+
+    /// Returns an iterator over the arena’s elements.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// let id1 = arena.alloc(20);
+    /// let id2 = arena.alloc(40);
+    /// let id3 = arena.alloc(60);
+    ///
+    /// let mut iterator = arena.iter();
+    /// assert_eq!(iterator.next(), Some((id1, &20)));
+    /// assert_eq!(iterator.next(), Some((id2, &40)));
+    /// assert_eq!(iterator.next(), Some((id3, &60)));
+    /// ```
     pub fn iter(
         &self,
     ) -> impl Iterator<Item = (Idx<T>, &T)> + ExactSizeIterator + DoubleEndedIterator {
         self.data.iter().enumerate().map(|(idx, value)| (Idx::from_raw(RawId(idx as u32)), value))
     }
+
+    /// Reallocates the arena to make it take up as little space as possible.
     pub fn shrink_to_fit(&mut self) {
         self.data.shrink_to_fit();
     }
