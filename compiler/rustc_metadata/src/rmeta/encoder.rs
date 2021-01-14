@@ -1507,7 +1507,10 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.fn_sig[def_id] <- substs.as_closure().sig());
         }
         self.encode_generics(def_id.to_def_id());
-        let opt_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir || self.emit_codegen_mir;
+        let opt_mir = // FIXME: Optimized MIR is necessary to determine the layout of generators.
+            matches!(ty.kind(), ty::Generator(..))
+            || self.tcx.sess.opts.debugging_opts.always_encode_mir
+            || self.emit_codegen_mir;
         if opt_mir {
             self.encode_optimized_mir(def_id);
             self.encode_promoted_mir(def_id);
