@@ -20,11 +20,11 @@ scoped-tls = "1"
 chalk-solve = { version = "0.47", default-features = false }
 chalk-ir = "0.47"
 chalk-recursive = "0.47"
+la-arena = "0.1.0"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 hir_def = { path = "../hir_def", version = "0.0.0" }
 hir_expand = { path = "../hir_expand", version = "0.0.0" }
-arena = { path = "../arena", version = "0.0.0" }
 base_db = { path = "../base_db", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }

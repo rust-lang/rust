@@ -1469,8 +1469,8 @@ impl ModCollector<'_, '_> {
 #[cfg(test)]
 mod tests {
     use crate::{db::DefDatabase, test_db::TestDB};
-    use arena::Arena;
     use base_db::{fixture::WithFixture, SourceDatabase};
+    use la_arena::Arena;
 
     use super::*;
 

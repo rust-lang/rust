@@ -13,8 +13,8 @@ doctest = false
 log = "0.4.8"
 either = "1.5.3"
 rustc-hash = "1.0.0"
+la-arena = "0.1.0"
 
-arena = { path = "../arena", version = "0.0.0" }
 base_db = { path = "../base_db", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
 parser = { path = "../parser", version = "0.0.0" }

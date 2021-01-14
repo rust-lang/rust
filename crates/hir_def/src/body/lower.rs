@@ -3,13 +3,13 @@
 
 use std::{any::type_name, sync::Arc};
 
-use arena::Arena;
 use either::Either;
 use hir_expand::{
     hygiene::Hygiene,
     name::{name, AsName, Name},
     ExpandError, HirFileId, MacroDefId, MacroDefKind,
 };
+use la_arena::Arena;
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{

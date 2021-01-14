@@ -7,7 +7,6 @@
 //! This usually involves resolving names, collecting generic arguments etc.
 use std::{iter, sync::Arc};
 
-use arena::map::ArenaMap;
 use base_db::CrateId;
 use hir_def::{
     adt::StructKind,
@@ -21,6 +20,7 @@ use hir_def::{
     TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::name::Name;
+use la_arena::map::ArenaMap;
 use smallvec::SmallVec;
 use stdx::impl_from;
 use test_utils::mark;

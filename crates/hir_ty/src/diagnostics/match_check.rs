@@ -218,13 +218,13 @@
 //!   ```
 use std::{iter, sync::Arc};
 
-use arena::Idx;
 use hir_def::{
     adt::VariantData,
     body::Body,
     expr::{Expr, Literal, Pat, PatId},
     AdtId, EnumVariantId, StructId, VariantId,
 };
+use la_arena::Idx;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{db::HirDatabase, ApplicationTy, InferenceResult, Ty, TypeCtor};

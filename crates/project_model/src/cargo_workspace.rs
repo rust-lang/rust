@@ -10,10 +10,10 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use arena::{Arena, Idx};
 use base_db::Edition;
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
 use itertools::Itertools;
+use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use stdx::JodChild;

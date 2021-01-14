@@ -12,7 +12,7 @@ use std::{
     marker::PhantomData,
 };
 
-use arena::{Arena, Idx};
+use la_arena::{Arena, Idx};
 use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.

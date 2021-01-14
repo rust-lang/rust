@@ -1,8 +1,8 @@
 //! Name resolution for expressions.
 use std::sync::Arc;
 
-use arena::{Arena, Idx};
 use hir_expand::name::Name;
+use la_arena::{Arena, Idx};
 use rustc_hash::FxHashMap;
 
 use crate::{
