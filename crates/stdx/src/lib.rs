@@ -25,6 +25,27 @@ pub fn timeit(label: &'static str) -> impl Drop {
     Guard { label, start: Instant::now() }
 }
 
+/// Prints backtrace to stderr, useful for debugging.
+#[cfg(feature = "backtrace")]
+pub fn print_backtrace() {
+    let bt = backtrace::Backtrace::new();
+    eprintln!("{:?}", bt);
+}
+#[cfg(not(feature = "backtrace"))]
+pub fn print_backtrace() {
+    eprintln!(
+        r#"Enable the backtrace feature.
+Uncomment `default = [ "backtrace" ]` in `crates/stdx/Cargo.toml`.
+"#
+    );
+}
+
+pub fn to_lower_snake_case(s: &str) -> String {
+    to_snake_case(s, char::to_ascii_lowercase)
+}
+pub fn to_upper_snake_case(s: &str) -> String {
+    to_snake_case(s, char::to_ascii_uppercase)
+}
 fn to_snake_case<F: Fn(&char) -> char>(s: &str, change_case: F) -> String {
     let mut buf = String::with_capacity(s.len());
     let mut prev = false;
@@ -41,14 +62,6 @@ fn to_snake_case<F: Fn(&char) -> char>(s: &str, change_case: F) -> String {
         buf.push(change_case(&c));
     }
     buf
-}
-
-pub fn to_lower_snake_case(s: &str) -> String {
-    to_snake_case(s, char::to_ascii_lowercase)
-}
-
-pub fn to_upper_snake_case(s: &str) -> String {
-    to_snake_case(s, char::to_ascii_uppercase)
 }
 
 pub fn replace(buf: &mut String, from: char, to: &str) {

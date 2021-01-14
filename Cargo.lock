@@ -1197,7 +1197,6 @@ name = "profile"
 version = "0.0.0"
 dependencies = [
  "arena",
- "backtrace",
  "cfg-if 1.0.0",
  "libc",
  "once_cell",
@@ -1566,6 +1565,9 @@ dependencies = [
 [[package]]
 name = "stdx"
 version = "0.0.0"
+dependencies = [
+ "backtrace",
+]
 
 [[package]]
 name = "syn"
