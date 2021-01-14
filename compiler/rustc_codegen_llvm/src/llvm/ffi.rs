@@ -2102,7 +2102,6 @@ extern "C" {
     );
 
     pub fn LLVMRustDIBuilderCreateDebugLocation(
-        Context: &'a Context,
         Line: c_uint,
         Column: c_uint,
         Scope: &'a DIScope,
