@@ -33,21 +33,21 @@ fn main() -> () {
     }
 
     bb1: {
-        switchInt(_2) -> [false: bb2, otherwise: bb3]; // scope 1 at $DIR/issue-41888.rs:8:5: 14:6
+        switchInt(move _2) -> [false: bb3, otherwise: bb2]; // scope 1 at $DIR/issue-41888.rs:8:5: 14:6
     }
 
     bb2: {
-        _0 = const ();                   // scope 1 at $DIR/issue-41888.rs:14:6: 14:6
-        goto -> bb7;                     // scope 1 at $DIR/issue-41888.rs:8:5: 14:6
-    }
-
-    bb3: {
         StorageLive(_3);                 // scope 1 at $DIR/issue-41888.rs:9:13: 9:20
         StorageLive(_4);                 // scope 1 at $DIR/issue-41888.rs:9:18: 9:19
         _4 = K;                          // scope 1 at $DIR/issue-41888.rs:9:18: 9:19
         _3 = E::F(move _4);              // scope 1 at $DIR/issue-41888.rs:9:13: 9:20
         StorageDead(_4);                 // scope 1 at $DIR/issue-41888.rs:9:19: 9:20
         goto -> bb12;                    // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+    }
+
+    bb3: {
+        _0 = const ();                   // scope 1 at $DIR/issue-41888.rs:14:6: 14:6
+        goto -> bb7;                     // scope 1 at $DIR/issue-41888.rs:8:5: 14:6
     }
 
     bb4: {
@@ -71,6 +71,7 @@ fn main() -> () {
     }
 
     bb7: {
+        StorageDead(_2);                 // scope 1 at $DIR/issue-41888.rs:14:5: 14:6
         goto -> bb18;                    // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
@@ -79,7 +80,6 @@ fn main() -> () {
         _8 = const false;                // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         _9 = const false;                // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         StorageDead(_1);                 // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
-        StorageDead(_2);                 // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         return;                          // scope 0 at $DIR/issue-41888.rs:15:2: 15:2
     }
 

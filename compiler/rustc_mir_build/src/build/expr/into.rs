@@ -69,6 +69,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Match { scrutinee, arms } => {
                 this.match_expr(destination, scope, expr_span, block, scrutinee, arms)
             }
+            ExprKind::If { cond, then, else_opt } => {
+                let place = unpack!(block = this.as_temp(block, Some(this.local_scope()), cond, Mutability::Mut));
+                let operand = Operand::Move(Place::from(place));
+
+                let mut then_block = this.cfg.start_new_block();
+                let mut else_block = this.cfg.start_new_block();
+                let term = TerminatorKind::if_(this.hir.tcx(), operand, then_block, else_block);
+                this.cfg.terminate(block, source_info, term);
+
+                unpack!(then_block = this.into(destination, scope, then_block, then));
+                else_block = if let Some(else_opt) = else_opt {
+                    unpack!(this.into(destination, None, else_block, else_opt))
+                } else {
+                    // Body of the `if` expression without an `else` clause must return `()`, thus
+                    // we implicitly generate a `else {}` if it is not specified.
+                    let correct_si = this.source_info(expr_span.shrink_to_hi());
+                    this.cfg.push_assign_unit(else_block, correct_si, destination, this.hir.tcx());
+                    else_block
+                };
+
+                let join_block = this.cfg.start_new_block();
+                this.cfg.terminate(
+                    then_block,
+                    source_info,
+                    TerminatorKind::Goto { target: join_block },
+                );
+                this.cfg.terminate(
+                    else_block,
+                    source_info,
+                    TerminatorKind::Goto { target: join_block },
+                );
+
+                join_block.unit()
+            },
             ExprKind::NeverToAny { source } => {
                 let source = this.hir.mirror(source);
                 let is_call = matches!(source.kind, ExprKind::Call { .. } | ExprKind::InlineAsm { .. });

@@ -1080,6 +1080,50 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Block(blk))
     }
 
+    fn print_else(&mut self, els: Option<&hir::Expr<'_>>) {
+        match els {
+            Some(_else) => {
+                match _else.kind {
+                    // "another else-if"
+                    hir::ExprKind::If(ref i, ref then, ref e) => {
+                        self.cbox(INDENT_UNIT - 1);
+                        self.ibox(0);
+                        self.s.word(" else if ");
+                        self.print_expr_as_cond(&i);
+                        self.s.space();
+                        self.print_expr(&then);
+                        self.print_else(e.as_ref().map(|e| &**e))
+                    }
+                    // "final else"
+                    hir::ExprKind::Block(ref b, _) => {
+                        self.cbox(INDENT_UNIT - 1);
+                        self.ibox(0);
+                        self.s.word(" else ");
+                        self.print_block(&b)
+                    }
+                    // BLEAH, constraints would be great here
+                    _ => {
+                        panic!("print_if saw if with weird alternative");
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub fn print_if(
+        &mut self,
+        test: &hir::Expr<'_>,
+        blk: &hir::Expr<'_>,
+        elseopt: Option<&hir::Expr<'_>>,
+    ) {
+        self.head("if");
+        self.print_expr_as_cond(test);
+        self.s.space();
+        self.print_expr(blk);
+        self.print_else(elseopt)
+    }
+
     pub fn print_anon_const(&mut self, constant: &hir::AnonConst) {
         self.ann.nested(self, Nested::Body(constant.body))
     }
@@ -1348,6 +1392,9 @@ impl<'a> State<'a> {
 
                 // Print `}`:
                 self.bclose_maybe_open(expr.span, true);
+            }
+            hir::ExprKind::If(ref test, ref blk, ref elseopt) => {
+                self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e));
             }
             hir::ExprKind::Loop(ref blk, opt_label, _) => {
                 if let Some(label) = opt_label {
@@ -2429,7 +2476,13 @@ impl<'a> State<'a> {
 //
 // Duplicated from `parse::classify`, but adapted for the HIR.
 fn expr_requires_semi_to_be_stmt(e: &hir::Expr<'_>) -> bool {
-    !matches!(e.kind, hir::ExprKind::Match(..) | hir::ExprKind::Block(..) | hir::ExprKind::Loop(..))
+    !matches!(
+        e.kind,
+        hir::ExprKind::If(..)
+            | hir::ExprKind::Match(..)
+            | hir::ExprKind::Block(..)
+            | hir::ExprKind::Loop(..)
+    )
 }
 
 /// This statement requires a semicolon after it.

@@ -537,6 +537,11 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             },
             Err(err) => bug!("invalid loop id for continue: {}", err),
         },
+        hir::ExprKind::If(cond, then, else_opt) => ExprKind::If {
+            cond: cond.to_ref(),
+            then: then.to_ref(),
+            else_opt: else_opt.map(|el| el.to_ref()),
+        },
         hir::ExprKind::Match(ref discr, ref arms, _) => ExprKind::Match {
             scrutinee: discr.to_ref(),
             arms: arms.iter().map(|a| convert_arm(cx, a)).collect(),

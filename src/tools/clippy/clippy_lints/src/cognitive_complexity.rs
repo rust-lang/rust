@@ -147,6 +147,9 @@ impl<'tcx> Visitor<'tcx> for CCHelper {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         walk_expr(self, e);
         match e.kind {
+            ExprKind::If(_, _, _) => {
+                self.cc += 1;
+            },
             ExprKind::Match(_, ref arms, _) => {
                 if arms.len() > 1 {
                     self.cc += 1;

@@ -69,204 +69,191 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 2"><span class="line"><span><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+<div class="code" style="counter-reset: line 2"><span class="line"><span><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
 9:10-9:15: @3[4]: _5 = (_8.0: i32)
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
-10:8-10:15: @3[12]: _10 = _1
-10:8-10:15: @3[13]: FakeRead(ForMatchedPlace, _10)"><span class="annotation">@0,1,2,3⦊</span>fn main() {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+10:8-10:15: @3[12]: _10 = _1"><span class="annotation">@0,1,2,3⦊</span>fn main() {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
 9:10-9:15: @3[4]: _5 = (_8.0: i32)
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
-10:8-10:15: @3[12]: _10 = _1
-10:8-10:15: @3[13]: FakeRead(ForMatchedPlace, _10)">    // Initialize test constants in a way that cannot be determined at compile time, to ensure</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+10:8-10:15: @3[12]: _10 = _1">    // Initialize test constants in a way that cannot be determined at compile time, to ensure</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
 9:10-9:15: @3[4]: _5 = (_8.0: i32)
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
-10:8-10:15: @3[12]: _10 = _1
-10:8-10:15: @3[13]: FakeRead(ForMatchedPlace, _10)">    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+10:8-10:15: @3[12]: _10 = _1">    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
 9:10-9:15: @3[4]: _5 = (_8.0: i32)
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
-10:8-10:15: @3[12]: _10 = _1
-10:8-10:15: @3[13]: FakeRead(ForMatchedPlace, _10)">    // dependent conditions.</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+10:8-10:15: @3[12]: _10 = _1">    // dependent conditions.</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
 9:10-9:15: @3[4]: _5 = (_8.0: i32)
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
-10:8-10:15: @3[12]: _10 = _1
-10:8-10:15: @3[13]: FakeRead(ForMatchedPlace, _10)">    let is_true = std::env::args().len() == 1;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+10:8-10:15: @3[12]: _10 = _1">    let is_true = std::env::args().len() == 1;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
 9:10-9:15: @3[4]: _5 = (_8.0: i32)
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
-10:8-10:15: @3[12]: _10 = _1
-10:8-10:15: @3[13]: FakeRead(ForMatchedPlace, _10)"></span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+10:8-10:15: @3[12]: _10 = _1"></span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
 9:10-9:15: @3[4]: _5 = (_8.0: i32)
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
-10:8-10:15: @3[12]: _10 = _1
-10:8-10:15: @3[13]: FakeRead(ForMatchedPlace, _10)">    let (mut a, mut b, mut c) = (0, 0, 0);</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+10:8-10:15: @3[12]: _10 = _1">    let (mut a, mut b, mut c) = (0, 0, 0);</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
 9:10-9:15: @3[4]: _5 = (_8.0: i32)
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
-10:8-10:15: @3[12]: _10 = _1
-10:8-10:15: @3[13]: FakeRead(ForMatchedPlace, _10)">    if is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="11:9-11:14: @6[0]: _5 = const 1_i32
-12:9-12:15: @6[1]: _6 = const 10_i32
-13:9-13:16: @6[2]: _7 = const 100_i32
-10:16-14:6: @6[3]: _9 = const ()"><span class="annotation">@4,6⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:14: @6[0]: _5 = const 1_i32
-12:9-12:15: @6[1]: _6 = const 10_i32
-13:9-13:16: @6[2]: _7 = const 100_i32
-10:16-14:6: @6[3]: _9 = const ()">        a = 1;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:14: @6[0]: _5 = const 1_i32
-12:9-12:15: @6[1]: _6 = const 10_i32
-13:9-13:16: @6[2]: _7 = const 100_i32
-10:16-14:6: @6[3]: _9 = const ()">        b = 10;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:14: @6[0]: _5 = const 1_i32
-12:9-12:15: @6[1]: _6 = const 10_i32
-13:9-13:16: @6[2]: _7 = const 100_i32
-10:16-14:6: @6[3]: _9 = const ()">        c = 100;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:14: @6[0]: _5 = const 1_i32
-12:9-12:15: @6[1]: _6 = const 10_i32
-13:9-13:16: @6[2]: _7 = const 100_i32
-10:16-14:6: @6[3]: _9 = const ()">    }<span class="annotation">⦉@4,6</span></span></span><span><span class="code even" style="--layer: 1" title="14:6-14:6: @5[0]: _9 = const ()"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
+10:8-10:15: @3[12]: _10 = _1">    if is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="11:9-11:14: @4[0]: _5 = const 1_i32
+12:9-12:15: @4[1]: _6 = const 10_i32
+13:9-13:16: @4[2]: _7 = const 100_i32
+10:16-14:6: @4[3]: _9 = const ()"><span class="annotation">@4⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:14: @4[0]: _5 = const 1_i32
+12:9-12:15: @4[1]: _6 = const 10_i32
+13:9-13:16: @4[2]: _7 = const 100_i32
+10:16-14:6: @4[3]: _9 = const ()">        a = 1;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:14: @4[0]: _5 = const 1_i32
+12:9-12:15: @4[1]: _6 = const 10_i32
+13:9-13:16: @4[2]: _7 = const 100_i32
+10:16-14:6: @4[3]: _9 = const ()">        b = 10;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:14: @4[0]: _5 = const 1_i32
+12:9-12:15: @4[1]: _6 = const 10_i32
+13:9-13:16: @4[2]: _7 = const 100_i32
+10:16-14:6: @4[3]: _9 = const ()">        c = 100;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:14: @4[0]: _5 = const 1_i32
+12:9-12:15: @4[1]: _6 = const 10_i32
+13:9-13:16: @4[2]: _7 = const 100_i32
+10:16-14:6: @4[3]: _9 = const ()">    }<span class="annotation">⦉@4</span></span></span><span><span class="code even" style="--layer: 1" title="14:6-14:6: @5[0]: _9 = const ()"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    let</span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="16:9-16:17: @11[2]: FakeRead(ForLet, _11)"><span class="annotation">@11⦊</span>somebool<span class="annotation">⦉@11</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="16:9-16:17: @10[2]: FakeRead(ForLet, _11)"><span class="annotation">@10⦊</span>somebool<span class="annotation">⦉@10</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        =</span></span>
-<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="18:13-18:14: @7[5]: _13 = _5
-18:17-18:18: @7[7]: _14 = _6
-18:13-18:18: @7[8]: _12 = Lt(move _13, move _14)"><span class="annotation">@7⦊</span>a &lt; b<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="18:13-18:14: @6[5]: _13 = _5
+18:17-18:18: @6[7]: _14 = _6
+18:13-18:18: @6[8]: _12 = Lt(move _13, move _14)"><span class="annotation">@6⦊</span>a &lt; b<span class="annotation">⦉@6</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        ||</span></span>
-<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="20:13-20:14: @10[2]: _16 = _6
-20:17-20:18: @10[4]: _17 = _7
-20:13-20:18: @10[5]: _15 = Lt(move _16, move _17)"><span class="annotation">@10⦊</span>b &lt; c<span class="annotation">⦉@10</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="20:13-20:14: @9[2]: _16 = _6
+20:17-20:18: @9[4]: _17 = _7
+20:13-20:18: @9[5]: _15 = Lt(move _16, move _17)"><span class="annotation">@9⦊</span>b &lt; c<span class="annotation">⦉@9</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    ;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    let</span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="23:9-23:17: @15[2]: FakeRead(ForLet, _18)"><span class="annotation">@15⦊</span>somebool<span class="annotation">⦉@15</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="23:9-23:17: @14[2]: FakeRead(ForLet, _18)"><span class="annotation">@14⦊</span>somebool<span class="annotation">⦉@14</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        =</span></span>
-<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="25:13-25:14: @11[6]: _20 = _6
-25:17-25:18: @11[8]: _21 = _5
-25:13-25:18: @11[9]: _19 = Lt(move _20, move _21)"><span class="annotation">@11⦊</span>b &lt; a<span class="annotation">⦉@11</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="25:13-25:14: @10[6]: _20 = _6
+25:17-25:18: @10[8]: _21 = _5
+25:13-25:18: @10[9]: _19 = Lt(move _20, move _21)"><span class="annotation">@10⦊</span>b &lt; a<span class="annotation">⦉@10</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        ||</span></span>
-<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="27:13-27:14: @14[2]: _23 = _6
-27:17-27:18: @14[4]: _24 = _7
-27:13-27:18: @14[5]: _22 = Lt(move _23, move _24)"><span class="annotation">@14⦊</span>b &lt; c<span class="annotation">⦉@14</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="27:13-27:14: @13[2]: _23 = _6
+27:17-27:18: @13[4]: _24 = _7
+27:13-27:18: @13[5]: _22 = Lt(move _23, move _24)"><span class="annotation">@13⦊</span>b &lt; c<span class="annotation">⦉@13</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    ;</span></span>
-<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code odd" style="--layer: 1" title="29:9-29:17: @19[2]: FakeRead(ForLet, _25)"><span class="annotation">@19⦊</span>somebool<span class="annotation">⦉@19</span></span></span><span class="code" style="--layer: 0"> = </span><span><span class="code even" style="--layer: 1" title="29:20-29:21: @15[6]: _27 = _5
-29:24-29:25: @15[8]: _28 = _6
-29:20-29:25: @15[9]: _26 = Lt(move _27, move _28)"><span class="annotation">@15⦊</span>a &lt; b<span class="annotation">⦉@15</span></span></span><span class="code" style="--layer: 0"> &amp;&amp; </span><span><span class="code odd" style="--layer: 1" title="29:29-29:30: @18[2]: _30 = _6
-29:33-29:34: @18[4]: _31 = _7
-29:29-29:34: @18[5]: _29 = Lt(move _30, move _31)"><span class="annotation">@18⦊</span>b &lt; c<span class="annotation">⦉@18</span></span></span><span class="code" style="--layer: 0">;</span></span>
-<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="30:9-30:17: @23[2]: FakeRead(ForLet, _32)"><span class="annotation">@23⦊</span>somebool<span class="annotation">⦉@23</span></span></span><span class="code" style="--layer: 0"> = </span><span><span class="code odd" style="--layer: 1" title="30:20-30:21: @19[6]: _34 = _6
-30:24-30:25: @19[8]: _35 = _5
-30:20-30:25: @19[9]: _33 = Lt(move _34, move _35)"><span class="annotation">@19⦊</span>b &lt; a<span class="annotation">⦉@19</span></span></span><span class="code" style="--layer: 0"> &amp;&amp; </span><span><span class="code even" style="--layer: 1" title="30:29-30:30: @22[2]: _37 = _6
-30:33-30:34: @22[4]: _38 = _7
-30:29-30:34: @22[5]: _36 = Lt(move _37, move _38)"><span class="annotation">@22⦊</span>b &lt; c<span class="annotation">⦉@22</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code odd" style="--layer: 1" title="29:9-29:17: @18[2]: FakeRead(ForLet, _25)"><span class="annotation">@18⦊</span>somebool<span class="annotation">⦉@18</span></span></span><span class="code" style="--layer: 0"> = </span><span><span class="code even" style="--layer: 1" title="29:20-29:21: @14[6]: _27 = _5
+29:24-29:25: @14[8]: _28 = _6
+29:20-29:25: @14[9]: _26 = Lt(move _27, move _28)"><span class="annotation">@14⦊</span>a &lt; b<span class="annotation">⦉@14</span></span></span><span class="code" style="--layer: 0"> &amp;&amp; </span><span><span class="code odd" style="--layer: 1" title="29:29-29:30: @17[2]: _30 = _6
+29:33-29:34: @17[4]: _31 = _7
+29:29-29:34: @17[5]: _29 = Lt(move _30, move _31)"><span class="annotation">@17⦊</span>b &lt; c<span class="annotation">⦉@17</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="30:9-30:17: @22[2]: FakeRead(ForLet, _32)"><span class="annotation">@22⦊</span>somebool<span class="annotation">⦉@22</span></span></span><span class="code" style="--layer: 0"> = </span><span><span class="code odd" style="--layer: 1" title="30:20-30:21: @18[6]: _34 = _6
+30:24-30:25: @18[8]: _35 = _5
+30:20-30:25: @18[9]: _33 = Lt(move _34, move _35)"><span class="annotation">@18⦊</span>b &lt; a<span class="annotation">⦉@18</span></span></span><span class="code" style="--layer: 0"> &amp;&amp; </span><span><span class="code even" style="--layer: 1" title="30:29-30:30: @21[2]: _37 = _6
+30:33-30:34: @21[4]: _38 = _7
+30:29-30:34: @21[5]: _36 = Lt(move _37, move _38)"><span class="annotation">@21⦊</span>b &lt; c<span class="annotation">⦉@21</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    if</span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="34:9-34:16: @23[6]: _41 = _1
-33:9-34:16: @23[7]: _40 = Not(move _41)
-33:9-34:16: @23[9]: FakeRead(ForMatchedPlace, _40)"><span class="annotation">@23⦊</span>!</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="34:9-34:16: @23[6]: _41 = _1
-33:9-34:16: @23[7]: _40 = Not(move _41)
-33:9-34:16: @23[9]: FakeRead(ForMatchedPlace, _40)">        is_true<span class="annotation">⦉@23</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="36:9-36:14: @26[0]: _5 = const 2_i32
-35:5-38:6: @26[1]: _39 = const ()"><span class="annotation">@24,26⦊</span>{</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="36:9-36:14: @26[0]: _5 = const 2_i32
-35:5-38:6: @26[1]: _39 = const ()">        a = 2</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="36:9-36:14: @26[0]: _5 = const 2_i32
-35:5-38:6: @26[1]: _39 = const ()">        ;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="36:9-36:14: @26[0]: _5 = const 2_i32
-35:5-38:6: @26[1]: _39 = const ()">    }<span class="annotation">⦉@24,26</span></span></span><span><span class="code odd" style="--layer: 1" title="38:6-38:6: @25[0]: _39 = const ()"><span class="annotation">@25⦊</span>‸<span class="annotation">⦉@25</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="34:9-34:16: @22[6]: _41 = _1
+33:9-34:16: @22[7]: _40 = Not(move _41)"><span class="annotation">@22⦊</span>!</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="34:9-34:16: @22[6]: _41 = _1
+33:9-34:16: @22[7]: _40 = Not(move _41)">        is_true<span class="annotation">⦉@22</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="36:9-36:14: @23[0]: _5 = const 2_i32
+35:5-38:6: @23[1]: _39 = const ()"><span class="annotation">@23⦊</span>{</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="36:9-36:14: @23[0]: _5 = const 2_i32
+35:5-38:6: @23[1]: _39 = const ()">        a = 2</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="36:9-36:14: @23[0]: _5 = const 2_i32
+35:5-38:6: @23[1]: _39 = const ()">        ;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="36:9-36:14: @23[0]: _5 = const 2_i32
+35:5-38:6: @23[1]: _39 = const ()">    }<span class="annotation">⦉@23</span></span></span><span><span class="code odd" style="--layer: 1" title="38:6-38:6: @24[0]: _39 = const ()"><span class="annotation">@24⦊</span>‸<span class="annotation">⦉@24</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    if</span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="41:9-41:16: @27[4]: _43 = _1
-41:9-41:16: @27[5]: FakeRead(ForMatchedPlace, _43)"><span class="annotation">@27⦊</span>is_true<span class="annotation">⦉@27</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code odd" style="--layer: 1" title="43:9-43:15: @30[0]: _6 = const 30_i32
-42:5-45:6: @30[1]: _42 = const ()"><span class="annotation">@28,30⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="43:9-43:15: @30[0]: _6 = const 30_i32
-42:5-45:6: @30[1]: _42 = const ()">        b = 30</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="43:9-43:15: @30[0]: _6 = const 30_i32
-42:5-45:6: @30[1]: _42 = const ()">        ;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="43:9-43:15: @30[0]: _6 = const 30_i32
-42:5-45:6: @30[1]: _42 = const ()">    }<span class="annotation">⦉@28,30</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="41:9-41:16: @25[4]: _43 = _1"><span class="annotation">@25⦊</span>is_true<span class="annotation">⦉@25</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code odd" style="--layer: 1" title="43:9-43:15: @26[0]: _6 = const 30_i32
+42:5-45:6: @26[1]: _42 = const ()"><span class="annotation">@26⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="43:9-43:15: @26[0]: _6 = const 30_i32
+42:5-45:6: @26[1]: _42 = const ()">        b = 30</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="43:9-43:15: @26[0]: _6 = const 30_i32
+42:5-45:6: @26[1]: _42 = const ()">        ;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="43:9-43:15: @26[0]: _6 = const 30_i32
+42:5-45:6: @26[1]: _42 = const ()">    }<span class="annotation">⦉@26</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    else</span></span>
-<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="48:9-48:16: @29[0]: _7 = const 400_i32
-47:5-50:6: @29[1]: _42 = const ()"><span class="annotation">@29⦊</span>{</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="48:9-48:16: @29[0]: _7 = const 400_i32
-47:5-50:6: @29[1]: _42 = const ()">        c = 400</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="48:9-48:16: @29[0]: _7 = const 400_i32
-47:5-50:6: @29[1]: _42 = const ()">        ;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="48:9-48:16: @29[0]: _7 = const 400_i32
-47:5-50:6: @29[1]: _42 = const ()">    }<span class="annotation">⦉@29</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="48:9-48:16: @27[0]: _7 = const 400_i32
+47:5-50:6: @27[1]: _42 = const ()"><span class="annotation">@27⦊</span>{</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="48:9-48:16: @27[0]: _7 = const 400_i32
+47:5-50:6: @27[1]: _42 = const ()">        c = 400</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="48:9-48:16: @27[0]: _7 = const 400_i32
+47:5-50:6: @27[1]: _42 = const ()">        ;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="48:9-48:16: @27[0]: _7 = const 400_i32
+47:5-50:6: @27[1]: _42 = const ()">    }<span class="annotation">⦉@27</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code odd" style="--layer: 1" title="52:9-52:16: @31[5]: _46 = _1
-52:8-52:16: @31[6]: _45 = Not(move _46)
-52:8-52:16: @31[8]: FakeRead(ForMatchedPlace, _45)"><span class="annotation">@31⦊</span>!is_true<span class="annotation">⦉@31</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code even" style="--layer: 1" title="53:9-53:14: @34[0]: _5 = const 2_i32
-52:17-54:6: @34[1]: _44 = const ()"><span class="annotation">@32,34⦊</span>{</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="53:9-53:14: @34[0]: _5 = const 2_i32
-52:17-54:6: @34[1]: _44 = const ()">        a = 2;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="53:9-53:14: @34[0]: _5 = const 2_i32
-52:17-54:6: @34[1]: _44 = const ()">    }<span class="annotation">⦉@32,34</span></span></span><span><span class="code odd" style="--layer: 1" title="54:6-54:6: @33[0]: _44 = const ()"><span class="annotation">@33⦊</span>‸<span class="annotation">⦉@33</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code odd" style="--layer: 1" title="52:9-52:16: @28[5]: _46 = _1
+52:8-52:16: @28[6]: _45 = Not(move _46)"><span class="annotation">@28⦊</span>!is_true<span class="annotation">⦉@28</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code even" style="--layer: 1" title="53:9-53:14: @29[0]: _5 = const 2_i32
+52:17-54:6: @29[1]: _44 = const ()"><span class="annotation">@29⦊</span>{</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="53:9-53:14: @29[0]: _5 = const 2_i32
+52:17-54:6: @29[1]: _44 = const ()">        a = 2;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="53:9-53:14: @29[0]: _5 = const 2_i32
+52:17-54:6: @29[1]: _44 = const ()">    }<span class="annotation">⦉@29</span></span></span><span><span class="code odd" style="--layer: 1" title="54:6-54:6: @30[0]: _44 = const ()"><span class="annotation">@30⦊</span>‸<span class="annotation">⦉@30</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="56:8-56:15: @35[3]: _47 = _1
-56:8-56:15: @35[4]: FakeRead(ForMatchedPlace, _47)"><span class="annotation">@35⦊</span>is_true<span class="annotation">⦉@35</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="57:9-57:15: @38[0]: _6 = const 30_i32
-56:16-58:6: @38[1]: _0 = const ()"><span class="annotation">@36,38⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="57:9-57:15: @38[0]: _6 = const 30_i32
-56:16-58:6: @38[1]: _0 = const ()">        b = 30;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="57:9-57:15: @38[0]: _6 = const 30_i32
-56:16-58:6: @38[1]: _0 = const ()">    }<span class="annotation">⦉@36,38</span></span></span><span class="code" style="--layer: 0"> else </span><span><span class="code even" style="--layer: 1" title="59:9-59:16: @37[0]: _7 = const 400_i32
-58:12-60:6: @37[1]: _0 = const ()"><span class="annotation">@37⦊</span>{</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="59:9-59:16: @37[0]: _7 = const 400_i32
-58:12-60:6: @37[1]: _0 = const ()">        c = 400;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="59:9-59:16: @37[0]: _7 = const 400_i32
-58:12-60:6: @37[1]: _0 = const ()">    }<span class="annotation">⦉@37</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="61:2-61:2: @39.Return: return"><span class="annotation">@39⦊</span>‸<span class="annotation">⦉@39</span></span></span></span></div>
+<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="56:8-56:15: @31[3]: _47 = _1"><span class="annotation">@31⦊</span>is_true<span class="annotation">⦉@31</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="57:9-57:15: @32[0]: _6 = const 30_i32
+56:16-58:6: @32[1]: _0 = const ()"><span class="annotation">@32⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="57:9-57:15: @32[0]: _6 = const 30_i32
+56:16-58:6: @32[1]: _0 = const ()">        b = 30;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="57:9-57:15: @32[0]: _6 = const 30_i32
+56:16-58:6: @32[1]: _0 = const ()">    }<span class="annotation">⦉@32</span></span></span><span class="code" style="--layer: 0"> else </span><span><span class="code even" style="--layer: 1" title="59:9-59:16: @33[0]: _7 = const 400_i32
+58:12-60:6: @33[1]: _0 = const ()"><span class="annotation">@33⦊</span>{</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="59:9-59:16: @33[0]: _7 = const 400_i32
+58:12-60:6: @33[1]: _0 = const ()">        c = 400;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="59:9-59:16: @33[0]: _7 = const 400_i32
+58:12-60:6: @33[1]: _0 = const ()">    }<span class="annotation">⦉@33</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="61:2-61:2: @34.Return: return"><span class="annotation">@34⦊</span>‸<span class="annotation">⦉@34</span></span></span></span></div>
 </body>
 </html>

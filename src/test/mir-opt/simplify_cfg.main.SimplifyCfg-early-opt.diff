@@ -21,31 +21,26 @@
       }
   
 -     bb2: {
--         nop;                             // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
--         switchInt(_2) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+-         switchInt(move _2) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
 +     bb1: {
-+         switchInt(_2) -> [false: bb2, otherwise: bb3]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
++         switchInt(move _2) -> [false: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
       }
   
 -     bb3: {
--         goto -> bb5;                     // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
--     }
-- 
--     bb4: {
 +     bb2: {
-          _1 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:9:10: 9:10
-          StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
-          goto -> bb0;                     // scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
+          _0 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
+          StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:9:9: 9:10
+          return;                          // scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
       }
   
--     bb5: {
+-     bb4: {
 +     bb3: {
-          _0 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
-          StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
-          return;                          // scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
+          _1 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:9:10: 9:10
+          StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:9:9: 9:10
+          goto -> bb0;                     // scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
 -     }
 - 
--     bb6 (cleanup): {
+-     bb5 (cleanup): {
 -         resume;                          // scope 0 at $DIR/simplify_cfg.rs:5:1: 11:2
       }
   }

@@ -390,6 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ExprKind::Call(..)
                 | ExprKind::MethodCall(..)
                 | ExprKind::Loop(..)
+                | ExprKind::If(..)
                 | ExprKind::Match(..)
                 | ExprKind::Block(..) => {
                     err.span_suggestion(

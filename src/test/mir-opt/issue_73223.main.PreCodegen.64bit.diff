@@ -99,19 +99,10 @@
           StorageDead(_11);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _9 = Not(move _10);              // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_10);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          switchInt(_9) -> [false: bb1, otherwise: bb2]; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          switchInt(move _9) -> [false: bb2, otherwise: bb1]; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       }
   
       bb1: {
-          StorageDead(_9);                 // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          StorageDead(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          StorageDead(_7);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:1:11: 9:2
-          StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
-          return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
-      }
-  
-      bb2: {
           _13 = const main::promoted[0];   // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // ty::Const
                                            // + ty: &[&str; 3]
@@ -141,6 +132,15 @@
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) -> for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> {std::intrinsics::transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb2: {
+          StorageDead(_9);                 // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_7);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:1:11: 9:2
+          StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
+          return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
       }
   
       bb3: {

@@ -30,7 +30,7 @@
       }
   
       bb3: {
-          switchInt(_2) -> [false: bb4, otherwise: bb5]; // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
+          switchInt(move _2) -> [false: bb4, otherwise: bb5]; // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
       }
   
       bb4: {
@@ -39,7 +39,7 @@
       }
   
       bb5: {
-          StorageDead(_2);                 // scope 0 at $DIR/matches_reduce_branches.rs:10:1: 10:2
+          StorageDead(_2);                 // scope 0 at $DIR/matches_reduce_branches.rs:9:5: 9:6
           return;                          // scope 0 at $DIR/matches_reduce_branches.rs:10:2: 10:2
       }
   }

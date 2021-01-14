@@ -73,47 +73,43 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">    // Initialize test constants in a way that cannot be determined at compile time, to ensure</span></span>
 <span class="line"><span class="code" style="--layer: 0">    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from</span></span>
 <span class="line"><span class="code" style="--layer: 0">    // dependent conditions.</span></span>
-<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb15]
+<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb13]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb14]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb12]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:25-9:26: @3[2]: _5 = const 0_u32
 9:9-9:22: @3[3]: FakeRead(ForLet, _5)
-10:8-10:15: @3[6]: _7 = _1
-10:8-10:15: @3[7]: FakeRead(ForMatchedPlace, _7)"><span class="annotation">@0,1,2,3⦊</span>is_true = std::env::args().len() == 1;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb15]
+10:8-10:15: @3[6]: _7 = _1"><span class="annotation">@0,1,2,3⦊</span>is_true = std::env::args().len() == 1;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb13]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb14]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb12]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:25-9:26: @3[2]: _5 = const 0_u32
 9:9-9:22: @3[3]: FakeRead(ForLet, _5)
-10:8-10:15: @3[6]: _7 = _1
-10:8-10:15: @3[7]: FakeRead(ForMatchedPlace, _7)"></span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb15]
+10:8-10:15: @3[6]: _7 = _1"></span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb13]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb14]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb12]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:25-9:26: @3[2]: _5 = const 0_u32
 9:9-9:22: @3[3]: FakeRead(ForLet, _5)
-10:8-10:15: @3[6]: _7 = _1
-10:8-10:15: @3[7]: FakeRead(ForMatchedPlace, _7)">    let mut countdown = 0;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb15]
+10:8-10:15: @3[6]: _7 = _1">    let mut countdown = 0;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb13]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb14]
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb12]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:25-9:26: @3[2]: _5 = const 0_u32
 9:9-9:22: @3[3]: FakeRead(ForLet, _5)
-10:8-10:15: @3[6]: _7 = _1
-10:8-10:15: @3[7]: FakeRead(ForMatchedPlace, _7)">    if is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="11:9-11:23: @6[0]: _5 = const 10_u32
-10:16-12:6: @6[1]: _6 = const ()"><span class="annotation">@4,6⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:23: @6[0]: _5 = const 10_u32
-10:16-12:6: @6[1]: _6 = const ()">        countdown = 10;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:23: @6[0]: _5 = const 10_u32
-10:16-12:6: @6[1]: _6 = const ()">    }<span class="annotation">⦉@4,6</span></span></span><span><span class="code even" style="--layer: 1" title="12:6-12:6: @5[0]: _6 = const ()"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
+10:8-10:15: @3[6]: _7 = _1">    if is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="11:9-11:23: @4[0]: _5 = const 10_u32
+10:16-12:6: @4[1]: _6 = const ()"><span class="annotation">@4⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:23: @4[0]: _5 = const 10_u32
+10:16-12:6: @4[1]: _6 = const ()">        countdown = 10;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:23: @4[0]: _5 = const 10_u32
+10:16-12:6: @4[1]: _6 = const ()">    }<span class="annotation">⦉@4</span></span></span><span><span class="code even" style="--layer: 1" title="12:6-12:6: @5[0]: _6 = const ()"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    mod in_mod {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        const IN_MOD_CONST: u32 = 1000;</span></span>
@@ -149,46 +145,45 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    type InType = String;</span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code odd" style="--layer: 1" title="48:8-48:15: @7[4]: _9 = _1
-48:8-48:15: @7[5]: FakeRead(ForMatchedPlace, _9)"><span class="annotation">@7⦊</span>is_true<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code even" style="--layer: 1" title="49:17-49:26: @10[2]: _11 = _5
-49:9-49:27: @10.Call: _10 = in_func(move _11) -&gt; [return: bb11, unwind: bb15]
-48:16-50:6: @11[2]: _8 = const ()"><span class="annotation">@8,10,11⦊</span>{</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="49:17-49:26: @10[2]: _11 = _5
-49:9-49:27: @10.Call: _10 = in_func(move _11) -&gt; [return: bb11, unwind: bb15]
-48:16-50:6: @11[2]: _8 = const ()">        in_func(countdown);</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="49:17-49:26: @10[2]: _11 = _5
-49:9-49:27: @10.Call: _10 = in_func(move _11) -&gt; [return: bb11, unwind: bb15]
-48:16-50:6: @11[2]: _8 = const ()">    }<span class="annotation">⦉@8,10,11</span></span></span><span><span class="code odd" style="--layer: 1" title="50:6-50:6: @9[0]: _8 = const ()"><span class="annotation">@9⦊</span>‸<span class="annotation">⦉@9</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code odd" style="--layer: 1" title="48:8-48:15: @6[4]: _9 = _1"><span class="annotation">@6⦊</span>is_true<span class="annotation">⦉@6</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code even" style="--layer: 1" title="49:17-49:26: @7[2]: _11 = _5
+49:9-49:27: @7.Call: _10 = in_func(move _11) -&gt; [return: bb9, unwind: bb13]
+48:16-50:6: @9[2]: _8 = const ()"><span class="annotation">@7,9⦊</span>{</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="49:17-49:26: @7[2]: _11 = _5
+49:9-49:27: @7.Call: _10 = in_func(move _11) -&gt; [return: bb9, unwind: bb13]
+48:16-50:6: @9[2]: _8 = const ()">        in_func(countdown);</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="49:17-49:26: @7[2]: _11 = _5
+49:9-49:27: @7.Call: _10 = in_func(move _11) -&gt; [return: bb9, unwind: bb13]
+48:16-50:6: @9[2]: _8 = const ()">    }<span class="annotation">⦉@7,9</span></span></span><span><span class="code odd" style="--layer: 1" title="50:6-50:6: @8[0]: _8 = const ()"><span class="annotation">@8⦊</span>‸<span class="annotation">⦉@8</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="52:19-54:6: @12[3]: _12 = InStruct { in_struct_field: const 101_u32 }
-52:9-52:16: @12[4]: FakeRead(ForLet, _12)
-56:5-56:8: @12[7]: _14 = &amp;mut _12
-56:5-56:29: @12.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb13, unwind: bb15]
-57:2-57:2: @13.Return: return"><span class="annotation">@12,13⦊</span>mut val = InStruct {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="52:19-54:6: @12[3]: _12 = InStruct { in_struct_field: const 101_u32 }
-52:9-52:16: @12[4]: FakeRead(ForLet, _12)
-56:5-56:8: @12[7]: _14 = &amp;mut _12
-56:5-56:29: @12.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb13, unwind: bb15]
-57:2-57:2: @13.Return: return">        in_struct_field: 101,</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="52:19-54:6: @12[3]: _12 = InStruct { in_struct_field: const 101_u32 }
-52:9-52:16: @12[4]: FakeRead(ForLet, _12)
-56:5-56:8: @12[7]: _14 = &amp;mut _12
-56:5-56:29: @12.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb13, unwind: bb15]
-57:2-57:2: @13.Return: return">    };</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="52:19-54:6: @12[3]: _12 = InStruct { in_struct_field: const 101_u32 }
-52:9-52:16: @12[4]: FakeRead(ForLet, _12)
-56:5-56:8: @12[7]: _14 = &amp;mut _12
-56:5-56:29: @12.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb13, unwind: bb15]
-57:2-57:2: @13.Return: return"></span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="52:19-54:6: @12[3]: _12 = InStruct { in_struct_field: const 101_u32 }
-52:9-52:16: @12[4]: FakeRead(ForLet, _12)
-56:5-56:8: @12[7]: _14 = &amp;mut _12
-56:5-56:29: @12.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb13, unwind: bb15]
-57:2-57:2: @13.Return: return">    val.default_trait_func();</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="52:19-54:6: @12[3]: _12 = InStruct { in_struct_field: const 101_u32 }
-52:9-52:16: @12[4]: FakeRead(ForLet, _12)
-56:5-56:8: @12[7]: _14 = &amp;mut _12
-56:5-56:29: @12.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb13, unwind: bb15]
-57:2-57:2: @13.Return: return">}<span class="annotation">⦉@12,13</span></span></span></span></div>
+<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="52:19-54:6: @10[3]: _12 = InStruct { in_struct_field: const 101_u32 }
+52:9-52:16: @10[4]: FakeRead(ForLet, _12)
+56:5-56:8: @10[7]: _14 = &amp;mut _12
+56:5-56:29: @10.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb11, unwind: bb13]
+57:2-57:2: @11.Return: return"><span class="annotation">@10,11⦊</span>mut val = InStruct {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="52:19-54:6: @10[3]: _12 = InStruct { in_struct_field: const 101_u32 }
+52:9-52:16: @10[4]: FakeRead(ForLet, _12)
+56:5-56:8: @10[7]: _14 = &amp;mut _12
+56:5-56:29: @10.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb11, unwind: bb13]
+57:2-57:2: @11.Return: return">        in_struct_field: 101,</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="52:19-54:6: @10[3]: _12 = InStruct { in_struct_field: const 101_u32 }
+52:9-52:16: @10[4]: FakeRead(ForLet, _12)
+56:5-56:8: @10[7]: _14 = &amp;mut _12
+56:5-56:29: @10.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb11, unwind: bb13]
+57:2-57:2: @11.Return: return">    };</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="52:19-54:6: @10[3]: _12 = InStruct { in_struct_field: const 101_u32 }
+52:9-52:16: @10[4]: FakeRead(ForLet, _12)
+56:5-56:8: @10[7]: _14 = &amp;mut _12
+56:5-56:29: @10.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb11, unwind: bb13]
+57:2-57:2: @11.Return: return"></span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="52:19-54:6: @10[3]: _12 = InStruct { in_struct_field: const 101_u32 }
+52:9-52:16: @10[4]: FakeRead(ForLet, _12)
+56:5-56:8: @10[7]: _14 = &amp;mut _12
+56:5-56:29: @10.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb11, unwind: bb13]
+57:2-57:2: @11.Return: return">    val.default_trait_func();</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="52:19-54:6: @10[3]: _12 = InStruct { in_struct_field: const 101_u32 }
+52:9-52:16: @10[4]: FakeRead(ForLet, _12)
+56:5-56:8: @10[7]: _14 = &amp;mut _12
+56:5-56:29: @10.Call: _13 = &lt;InStruct as InTrait&gt;::default_trait_func(move _14) -&gt; [return: bb11, unwind: bb13]
+57:2-57:2: @11.Return: return">}<span class="annotation">⦉@10,11</span></span></span></span></div>
 </body>
 </html>

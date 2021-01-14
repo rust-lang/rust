@@ -1,8 +1,7 @@
 use crate::consts::{constant, Constant};
 use crate::utils::{is_direct_expn_of, is_expn_of, match_panic_call, snippet_opt, span_lint_and_help};
 use if_chain::if_chain;
-use rustc_ast::ast::LitKind;
-use rustc_hir::{Expr, ExprKind, PatKind, UnOp};
+use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -102,31 +101,22 @@ enum AssertKind {
 /// Check if the expression matches
 ///
 /// ```rust,ignore
-/// match { let _t = !c; _t } {
-///     true => {
-///         {
-///             ::std::rt::begin_panic(message, _)
-///         }
-///     }
-///     _ => { }
-/// };
+/// if !c {
+///   {
+///     ::std::rt::begin_panic(message, _)
+///   }
+/// }
 /// ```
 ///
 /// where `message` is any expression and `c` is a constant bool.
 fn match_assert_with_message<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<AssertKind> {
     if_chain! {
-        if let ExprKind::Match(ref expr, ref arms, _) = expr.kind;
-        // matches { let _t = expr; _t }
-        if let ExprKind::DropTemps(ref expr) = expr.kind;
-        if let ExprKind::Unary(UnOp::UnNot, ref expr) = expr.kind;
+        if let ExprKind::If(ref cond, ref then, _) = expr.kind;
+        if let ExprKind::Unary(UnOp::UnNot, ref expr) = cond.kind;
         // bind the first argument of the `assert!` macro
         if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.typeck_results(), expr);
-        // arm 1 pattern
-        if let PatKind::Lit(ref lit_expr) = arms[0].pat.kind;
-        if let ExprKind::Lit(ref lit) = lit_expr.kind;
-        if let LitKind::Bool(true) = lit.node;
-        // arm 1 block
-        if let ExprKind::Block(ref block, _) = arms[0].body.kind;
+        // block
+        if let ExprKind::Block(ref block, _) = then.kind;
         if block.stmts.is_empty();
         if let Some(block_expr) = &block.expr;
         // inner block is optional. unwrap it if it exists, or use the expression as is otherwise.

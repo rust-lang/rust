@@ -73,86 +73,80 @@ For revisions in Pull Requests (PR):
 15:9-15:21: @0[2]: FakeRead(ForLet, _1)
 17:16-17:42: @0[4]: _2 = Firework { strength: const 100_i32 }
 17:9-17:13: @0[5]: FakeRead(ForLet, _2)
-19:8-19:12: @0[8]: _4 = const true
-19:8-19:12: @0[9]: FakeRead(ForMatchedPlace, _4)"><span class="annotation">@0⦊</span>fn main() -&gt; Result&lt;(),u8&gt; {</span></span>
+19:8-19:12: @0[8]: _4 = const true"><span class="annotation">@0⦊</span>fn main() -&gt; Result&lt;(),u8&gt; {</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="15:24-15:48: @0[1]: _1 = Firework { strength: const 1_i32 }
 15:9-15:21: @0[2]: FakeRead(ForLet, _1)
 17:16-17:42: @0[4]: _2 = Firework { strength: const 100_i32 }
 17:9-17:13: @0[5]: FakeRead(ForLet, _2)
-19:8-19:12: @0[8]: _4 = const true
-19:8-19:12: @0[9]: FakeRead(ForMatchedPlace, _4)">    let _firecracker = Firework { strength: 1 };</span></span>
+19:8-19:12: @0[8]: _4 = const true">    let _firecracker = Firework { strength: 1 };</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="15:24-15:48: @0[1]: _1 = Firework { strength: const 1_i32 }
 15:9-15:21: @0[2]: FakeRead(ForLet, _1)
 17:16-17:42: @0[4]: _2 = Firework { strength: const 100_i32 }
 17:9-17:13: @0[5]: FakeRead(ForLet, _2)
-19:8-19:12: @0[8]: _4 = const true
-19:8-19:12: @0[9]: FakeRead(ForMatchedPlace, _4)"></span></span>
+19:8-19:12: @0[8]: _4 = const true"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="15:24-15:48: @0[1]: _1 = Firework { strength: const 1_i32 }
 15:9-15:21: @0[2]: FakeRead(ForLet, _1)
 17:16-17:42: @0[4]: _2 = Firework { strength: const 100_i32 }
 17:9-17:13: @0[5]: FakeRead(ForLet, _2)
-19:8-19:12: @0[8]: _4 = const true
-19:8-19:12: @0[9]: FakeRead(ForMatchedPlace, _4)">    let _tnt = Firework { strength: 100 };</span></span>
+19:8-19:12: @0[8]: _4 = const true">    let _tnt = Firework { strength: 100 };</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="15:24-15:48: @0[1]: _1 = Firework { strength: const 1_i32 }
 15:9-15:21: @0[2]: FakeRead(ForLet, _1)
 17:16-17:42: @0[4]: _2 = Firework { strength: const 100_i32 }
 17:9-17:13: @0[5]: FakeRead(ForLet, _2)
-19:8-19:12: @0[8]: _4 = const true
-19:8-19:12: @0[9]: FakeRead(ForMatchedPlace, _4)"></span></span>
+19:8-19:12: @0[8]: _4 = const true"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="15:24-15:48: @0[1]: _1 = Firework { strength: const 1_i32 }
 15:9-15:21: @0[2]: FakeRead(ForLet, _1)
 17:16-17:42: @0[4]: _2 = Firework { strength: const 100_i32 }
 17:9-17:13: @0[5]: FakeRead(ForLet, _2)
-19:8-19:12: @0[8]: _4 = const true
-19:8-19:12: @0[9]: FakeRead(ForMatchedPlace, _4)">    if true<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> {</span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="20:18-20:41: @3[6]: _21 = const main::promoted[1]
-20:18-20:41: @3[7]: _11 = &amp;(*_21)
-20:18-20:41: @3[8]: _10 = &amp;(*_11)
-20:18-20:41: @3[9]: _9 = move _10 as &amp;[&amp;str] (Pointer(Unsize))
-20:9-20:43: @3[15]: _17 = ()
-20:9-20:43: @3[16]: FakeRead(ForMatchedPlace, _17)
-20:9-20:43: @3[17]: _20 = const main::promoted[0]
-20:9-20:43: @3[18]: _15 = &amp;(*_20)
-20:9-20:43: @3[19]: _14 = &amp;(*_15)
-20:9-20:43: @3[20]: _13 = move _14 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-20:9-20:43: @3.Call: _8 = Arguments::new_v1(move _9, move _13) -&gt; [return: bb4, unwind: bb12]
-20:9-20:43: @4.Call: _7 = _print(move _8) -&gt; [return: bb5, unwind: bb12]
-20:9-20:43: @5[5]: _6 = const ()
-21:16-21:22: @5[7]: _0 = std::result::Result::&lt;(), u8&gt;::Err(const 1_u8)"><span class="annotation">@1,3,4,5,9,10⦊</span>println!("Exiting with error...");</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="20:18-20:41: @3[6]: _21 = const main::promoted[1]
-20:18-20:41: @3[7]: _11 = &amp;(*_21)
-20:18-20:41: @3[8]: _10 = &amp;(*_11)
-20:18-20:41: @3[9]: _9 = move _10 as &amp;[&amp;str] (Pointer(Unsize))
-20:9-20:43: @3[15]: _17 = ()
-20:9-20:43: @3[16]: FakeRead(ForMatchedPlace, _17)
-20:9-20:43: @3[17]: _20 = const main::promoted[0]
-20:9-20:43: @3[18]: _15 = &amp;(*_20)
-20:9-20:43: @3[19]: _14 = &amp;(*_15)
-20:9-20:43: @3[20]: _13 = move _14 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-20:9-20:43: @3.Call: _8 = Arguments::new_v1(move _9, move _13) -&gt; [return: bb4, unwind: bb12]
-20:9-20:43: @4.Call: _7 = _print(move _8) -&gt; [return: bb5, unwind: bb12]
-20:9-20:43: @5[5]: _6 = const ()
-21:16-21:22: @5[7]: _0 = std::result::Result::&lt;(), u8&gt;::Err(const 1_u8)">        return Err(1)<span class="annotation">⦉@1,3,4,5,9,10</span></span></span><span class="code" style="--layer: 0">;</span></span>
+19:8-19:12: @0[8]: _4 = const true">    if true<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="20:18-20:41: @1[6]: _21 = const main::promoted[1]
+20:18-20:41: @1[7]: _11 = &amp;(*_21)
+20:18-20:41: @1[8]: _10 = &amp;(*_11)
+20:18-20:41: @1[9]: _9 = move _10 as &amp;[&amp;str] (Pointer(Unsize))
+20:9-20:43: @1[15]: _17 = ()
+20:9-20:43: @1[16]: FakeRead(ForMatchedPlace, _17)
+20:9-20:43: @1[17]: _20 = const main::promoted[0]
+20:9-20:43: @1[18]: _15 = &amp;(*_20)
+20:9-20:43: @1[19]: _14 = &amp;(*_15)
+20:9-20:43: @1[20]: _13 = move _14 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+20:9-20:43: @1.Call: _8 = Arguments::new_v1(move _9, move _13) -&gt; [return: bb3, unwind: bb11]
+20:9-20:43: @3.Call: _7 = _print(move _8) -&gt; [return: bb4, unwind: bb11]
+20:9-20:43: @4[5]: _6 = const ()
+21:16-21:22: @4[7]: _0 = std::result::Result::&lt;(), u8&gt;::Err(const 1_u8)"><span class="annotation">@1,3,4,8,9⦊</span>println!("Exiting with error...");</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="20:18-20:41: @1[6]: _21 = const main::promoted[1]
+20:18-20:41: @1[7]: _11 = &amp;(*_21)
+20:18-20:41: @1[8]: _10 = &amp;(*_11)
+20:18-20:41: @1[9]: _9 = move _10 as &amp;[&amp;str] (Pointer(Unsize))
+20:9-20:43: @1[15]: _17 = ()
+20:9-20:43: @1[16]: FakeRead(ForMatchedPlace, _17)
+20:9-20:43: @1[17]: _20 = const main::promoted[0]
+20:9-20:43: @1[18]: _15 = &amp;(*_20)
+20:9-20:43: @1[19]: _14 = &amp;(*_15)
+20:9-20:43: @1[20]: _13 = move _14 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+20:9-20:43: @1.Call: _8 = Arguments::new_v1(move _9, move _13) -&gt; [return: bb3, unwind: bb11]
+20:9-20:43: @3.Call: _7 = _print(move _8) -&gt; [return: bb4, unwind: bb11]
+20:9-20:43: @4[5]: _6 = const ()
+21:16-21:22: @4[7]: _0 = std::result::Result::&lt;(), u8&gt;::Err(const 1_u8)">        return Err(1)<span class="annotation">⦉@1,3,4,8,9</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()
 24:13-24:40: @2[4]: _18 = Firework { strength: const 1000_i32 }
-26:8-26:10: @6[2]: _19 = ()
-26:5-26:11: @6[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)"><span class="annotation">@2,6,7,8⦊</span></span></span>
+26:8-26:10: @5[2]: _19 = ()
+26:5-26:11: @5[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)"><span class="annotation">@2,5,6,7⦊</span></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()
 24:13-24:40: @2[4]: _18 = Firework { strength: const 1000_i32 }
-26:8-26:10: @6[2]: _19 = ()
-26:5-26:11: @6[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)"></span></span>
+26:8-26:10: @5[2]: _19 = ()
+26:5-26:11: @5[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()
 24:13-24:40: @2[4]: _18 = Firework { strength: const 1000_i32 }
-26:8-26:10: @6[2]: _19 = ()
-26:5-26:11: @6[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)">    let _ = Firework { strength: 1000 };</span></span>
+26:8-26:10: @5[2]: _19 = ()
+26:5-26:11: @5[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)">    let _ = Firework { strength: 1000 };</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()
 24:13-24:40: @2[4]: _18 = Firework { strength: const 1000_i32 }
-26:8-26:10: @6[2]: _19 = ()
-26:5-26:11: @6[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)"></span></span>
+26:8-26:10: @5[2]: _19 = ()
+26:5-26:11: @5[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()
 24:13-24:40: @2[4]: _18 = Firework { strength: const 1000_i32 }
-26:8-26:10: @6[2]: _19 = ()
-26:5-26:11: @6[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)">    Ok(())<span class="annotation">⦉@2,6,7,8</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="27:2-27:2: @11.Return: return"><span class="annotation">@11⦊</span>‸<span class="annotation">⦉@11</span></span></span></span></div>
+26:8-26:10: @5[2]: _19 = ()
+26:5-26:11: @5[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)">    Ok(())<span class="annotation">⦉@2,5,6,7</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="27:2-27:2: @10.Return: return"><span class="annotation">@10⦊</span>‸<span class="annotation">⦉@10</span></span></span></span></div>
 </body>
 </html>

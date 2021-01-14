@@ -403,7 +403,7 @@ fn report_arm_reachability<'p, 'tcx>(
         match is_useful {
             NotUseful => {
                 match source {
-                    hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => bug!(),
+                    hir::MatchSource::WhileDesugar => bug!(),
 
                     hir::MatchSource::IfLetDesugar { .. } | hir::MatchSource::WhileLetDesugar => {
                         // Check which arm we're on.

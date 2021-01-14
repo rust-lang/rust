@@ -151,23 +151,10 @@
           StorageDead(_17);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _15 = Not(move _16);             // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_16);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          switchInt(_15) -> [false: bb3, otherwise: bb4]; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          switchInt(move _15) -> [false: bb4, otherwise: bb3]; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       }
   
       bb3: {
-          _8 = const ();                   // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          StorageDead(_15);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          StorageDead(_14);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          StorageDead(_13);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          StorageDead(_9);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          StorageDead(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:1:11: 9:2
-          StorageDead(_6);                 // scope 1 at $DIR/issue-73223.rs:9:1: 9:2
-          StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
-          return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
-      }
-  
-      bb4: {
           StorageLive(_19);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_20);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_21);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -220,6 +207,19 @@
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) -> for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> {std::intrinsics::transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb4: {
+          _8 = const ();                   // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_15);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_14);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_13);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_9);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:1:11: 9:2
+          StorageDead(_6);                 // scope 1 at $DIR/issue-73223.rs:9:1: 9:2
+          StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
+          return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
       }
   
       bb5: {

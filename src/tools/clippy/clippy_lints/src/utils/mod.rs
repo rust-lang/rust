@@ -1405,7 +1405,7 @@ pub fn if_sequence<'tcx>(
     let mut conds = SmallVec::new();
     let mut blocks: SmallVec<[&Block<'_>; 1]> = SmallVec::new();
 
-    while let Some((ref cond, ref then_expr, ref else_expr)) = higher::if_block(&expr) {
+    while let ExprKind::If(ref cond, ref then_expr, ref else_expr) = expr.kind {
         conds.push(&**cond);
         if let ExprKind::Block(ref block, _) = then_expr.kind {
             blocks.push(block);
@@ -1434,11 +1434,11 @@ pub fn parent_node_is_if_expr(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
     let map = cx.tcx.hir();
     let parent_id = map.get_parent_node(expr.hir_id);
     let parent_node = map.get(parent_id);
-
-    match parent_node {
-        Node::Expr(e) => higher::if_block(&e).is_some(),
-        Node::Arm(e) => higher::if_block(&e.body).is_some(),
-        _ => false,
+    if let Node::Expr(Expr { kind: ExprKind::If(_, _, _), .. }) = parent_node {
+        true
+    }
+    else {
+        false
     }
 }
 

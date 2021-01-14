@@ -80,18 +80,18 @@ For revisions in Pull Requests (PR):
 5:5-5:48: @0[22]: _15 = (_13.0: &amp;u32)
 5:5-5:48: @0[25]: _17 = &amp;(*_15)
 5:5-5:48: @0[27]: _18 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-5:5-5:48: @0.Call: _16 = ArgumentV1::new::&lt;u32&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb13]
+5:5-5:48: @0.Call: _16 = ArgumentV1::new::&lt;u32&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb12]
 5:5-5:48: @1[2]: _12 = [move _16]
 5:5-5:48: @1[5]: _11 = &amp;_12
 5:5-5:48: @1[6]: _10 = &amp;(*_11)
 5:5-5:48: @1[7]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-5:5-5:48: @1.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb13]
-5:5-5:48: @2.Call: _3 = _print(move _4) -&gt; [return: bb3, unwind: bb13]
+5:5-5:48: @1.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb12]
+5:5-5:48: @2.Call: _3 = _print(move _4) -&gt; [return: bb3, unwind: bb12]
 5:5-5:48: @3[6]: _2 = const ()"><span class="annotation">@0,1,2,3,4⦊</span>println!("does 1 + 1 = {}?", one_plus_one);<span class="annotation">⦉@0,1,2,3,4</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    assert_eq!(</span><span><span class="code even" style="--layer: 1" title="6:16-6:21: @3[11]: _23 = CheckedAdd(const 1_u32, const 1_u32)"><span class="annotation">@0,1,2,3,4⦊</span>1 + 1<span class="annotation">⦉@0,1,2,3,4</span></span></span><span class="code" style="--layer: 0">, one_plus_one, </span><span><span class="code odd" style="--layer: 1" title="6:37-6:61: @7[28]: _70 = const might_fail_assert::promoted[1]
-6:37-6:61: @7[29]: _50 = &amp;(*_70)
-6:37-6:61: @7[30]: _49 = &amp;(*_50)
-6:37-6:61: @7[31]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))"><span class="annotation">@5,7,8,9,10,11,12⦊</span>"the argument was wrong"<span class="annotation">⦉@5,7,8,9,10,11,12</span></span></span><span class="code" style="--layer: 0">);</span></span>
+<span class="line"><span class="code" style="--layer: 0">    assert_eq!(</span><span><span class="code even" style="--layer: 1" title="6:16-6:21: @3[11]: _23 = CheckedAdd(const 1_u32, const 1_u32)"><span class="annotation">@0,1,2,3,4⦊</span>1 + 1<span class="annotation">⦉@0,1,2,3,4</span></span></span><span class="code" style="--layer: 0">, one_plus_one, </span><span><span class="code odd" style="--layer: 1" title="6:37-6:61: @5[28]: _70 = const might_fail_assert::promoted[1]
+6:37-6:61: @5[29]: _50 = &amp;(*_70)
+6:37-6:61: @5[30]: _49 = &amp;(*_50)
+6:37-6:61: @5[31]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))"><span class="annotation">@5,7,8,9,10,11⦊</span>"the argument was wrong"<span class="annotation">⦉@5,7,8,9,10,11</span></span></span><span class="code" style="--layer: 0">);</span></span>
 <span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code even" style="--layer: 1" title="7:2-7:2: @6.Return: return"><span class="annotation">@6⦊</span>‸<span class="annotation">⦉@6</span></span></span></span></div>
 </body>
 </html>

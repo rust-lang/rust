@@ -70,327 +70,325 @@ For revisions in Pull Requests (PR):
 </head>
 <body>
 <div class="code" style="counter-reset: line 3"><span class="line"><span><span class="code even" style="--layer: 1" title="5:8-5:14: @0[3]: _4 = _1
-5:8-5:18: @0[4]: _3 = Gt(move _4, const 5_u32)
-5:8-5:18: @0[6]: FakeRead(ForMatchedPlace, _3)"><span class="annotation">@0⦊</span>fn might_overflow(to_add: u32) -&gt; u32 {</span></span>
+5:8-5:18: @0[4]: _3 = Gt(move _4, const 5_u32)"><span class="annotation">@0⦊</span>fn might_overflow(to_add: u32) -&gt; u32 {</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="5:8-5:14: @0[3]: _4 = _1
-5:8-5:18: @0[4]: _3 = Gt(move _4, const 5_u32)
-5:8-5:18: @0[6]: FakeRead(ForMatchedPlace, _3)">    if to_add &gt; 5<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="6:18-6:47: @3[6]: _61 = const might_overflow::promoted[4]
-6:18-6:47: @3[7]: _10 = &amp;(*_61)
-6:18-6:47: @3[8]: _9 = &amp;(*_10)
-6:18-6:47: @3[9]: _8 = move _9 as &amp;[&amp;str] (Pointer(Unsize))
-6:9-6:49: @3[15]: _16 = ()
-6:9-6:49: @3[16]: FakeRead(ForMatchedPlace, _16)
-6:9-6:49: @3[17]: _60 = const might_overflow::promoted[3]
-6:9-6:49: @3[18]: _14 = &amp;(*_60)
-6:9-6:49: @3[19]: _13 = &amp;(*_14)
-6:9-6:49: @3[20]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-6:9-6:49: @3.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb4, unwind: bb15]
-6:9-6:49: @4.Call: _6 = _print(move _7) -&gt; [return: bb5, unwind: bb15]
-6:9-6:49: @5[5]: _5 = const ()
-5:19-7:6: @5[7]: _2 = const ()"><span class="annotation">@1,3,4,5⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="6:18-6:47: @3[6]: _61 = const might_overflow::promoted[4]
-6:18-6:47: @3[7]: _10 = &amp;(*_61)
-6:18-6:47: @3[8]: _9 = &amp;(*_10)
-6:18-6:47: @3[9]: _8 = move _9 as &amp;[&amp;str] (Pointer(Unsize))
-6:9-6:49: @3[15]: _16 = ()
-6:9-6:49: @3[16]: FakeRead(ForMatchedPlace, _16)
-6:9-6:49: @3[17]: _60 = const might_overflow::promoted[3]
-6:9-6:49: @3[18]: _14 = &amp;(*_60)
-6:9-6:49: @3[19]: _13 = &amp;(*_14)
-6:9-6:49: @3[20]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-6:9-6:49: @3.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb4, unwind: bb15]
-6:9-6:49: @4.Call: _6 = _print(move _7) -&gt; [return: bb5, unwind: bb15]
-6:9-6:49: @5[5]: _5 = const ()
-5:19-7:6: @5[7]: _2 = const ()">        println!("this will probably overflow");</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="6:18-6:47: @3[6]: _61 = const might_overflow::promoted[4]
-6:18-6:47: @3[7]: _10 = &amp;(*_61)
-6:18-6:47: @3[8]: _9 = &amp;(*_10)
-6:18-6:47: @3[9]: _8 = move _9 as &amp;[&amp;str] (Pointer(Unsize))
-6:9-6:49: @3[15]: _16 = ()
-6:9-6:49: @3[16]: FakeRead(ForMatchedPlace, _16)
-6:9-6:49: @3[17]: _60 = const might_overflow::promoted[3]
-6:9-6:49: @3[18]: _14 = &amp;(*_60)
-6:9-6:49: @3[19]: _13 = &amp;(*_14)
-6:9-6:49: @3[20]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-6:9-6:49: @3.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb4, unwind: bb15]
-6:9-6:49: @4.Call: _6 = _print(move _7) -&gt; [return: bb5, unwind: bb15]
-6:9-6:49: @5[5]: _5 = const ()
-5:19-7:6: @5[7]: _2 = const ()">    }<span class="annotation">⦉@1,3,4,5</span></span></span><span><span class="code even" style="--layer: 1" title="7:6-7:6: @2[0]: _2 = const ()"><span class="annotation">@2⦊</span>‸<span class="annotation">⦉@2</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code odd" style="--layer: 1" title="8:18-8:30: @6[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
-8:18-8:30: @7[0]: _17 = move (_18.0: u32)
-8:9-8:15: @7[1]: FakeRead(ForLet, _17)
-9:14-9:38: @7[8]: _59 = const might_overflow::promoted[2]
-9:14-9:38: @7[9]: _24 = &amp;(*_59)
-9:14-9:38: @7[10]: _23 = &amp;(*_24)
-9:14-9:38: @7[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
-9:40-9:46: @7[19]: _31 = &amp;_17
-9:48-9:54: @7[21]: _32 = &amp;_1
-9:5-9:56: @7[22]: _30 = (move _31, move _32)
-9:5-9:56: @7[25]: FakeRead(ForMatchedPlace, _30)
-9:5-9:56: @7[27]: _33 = (_30.0: &amp;u32)
-9:5-9:56: @7[29]: _34 = (_30.1: &amp;u32)
-9:5-9:56: @7[32]: _36 = &amp;(*_33)
-9:5-9:56: @7[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @7.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb8, unwind: bb15]
-9:5-9:56: @8[4]: _39 = &amp;(*_34)
-9:5-9:56: @8[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @8.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb9, unwind: bb15]
-9:5-9:56: @9[2]: _29 = [move _35, move _38]
-9:5-9:56: @9[7]: _28 = &amp;_29
-9:5-9:56: @9[8]: _27 = &amp;(*_28)
-9:5-9:56: @9[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-9:5-9:56: @9.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb10, unwind: bb15]
-9:5-9:56: @10.Call: _20 = _print(move _21) -&gt; [return: bb11, unwind: bb15]
-9:5-9:56: @11[6]: _19 = const ()
-10:18-10:24: @11[10]: _42 = _1
-10:27-10:33: @11[12]: _43 = _17
-10:18-10:33: @11[13]: _44 = CheckedAdd(_42, _43)
-10:18-10:33: @12[0]: _41 = move (_44.0: u32)
-10:9-10:15: @12[3]: FakeRead(ForLet, _41)
-11:14-11:47: @12[10]: _58 = const might_overflow::promoted[1]
-11:14-11:47: @12[11]: _50 = &amp;(*_58)
-11:14-11:47: @12[12]: _49 = &amp;(*_50)
-11:14-11:47: @12[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
-11:5-11:49: @12[19]: _56 = ()
-11:5-11:49: @12[20]: FakeRead(ForMatchedPlace, _56)
-11:5-11:49: @12[21]: _57 = const might_overflow::promoted[0]
-11:5-11:49: @12[22]: _54 = &amp;(*_57)
-11:5-11:49: @12[23]: _53 = &amp;(*_54)
-11:5-11:49: @12[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-11:5-11:49: @12.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb13, unwind: bb15]
-11:5-11:49: @13.Call: _46 = _print(move _47) -&gt; [return: bb14, unwind: bb15]
-11:5-11:49: @14[5]: _45 = const ()
-12:5-12:11: @14[7]: _0 = _41
-13:2-13:2: @14.Return: return"><span class="annotation">@6,7,8,9,10,11,12,13,14⦊</span>add_to = u32::MAX - 5;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="8:18-8:30: @6[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
-8:18-8:30: @7[0]: _17 = move (_18.0: u32)
-8:9-8:15: @7[1]: FakeRead(ForLet, _17)
-9:14-9:38: @7[8]: _59 = const might_overflow::promoted[2]
-9:14-9:38: @7[9]: _24 = &amp;(*_59)
-9:14-9:38: @7[10]: _23 = &amp;(*_24)
-9:14-9:38: @7[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
-9:40-9:46: @7[19]: _31 = &amp;_17
-9:48-9:54: @7[21]: _32 = &amp;_1
-9:5-9:56: @7[22]: _30 = (move _31, move _32)
-9:5-9:56: @7[25]: FakeRead(ForMatchedPlace, _30)
-9:5-9:56: @7[27]: _33 = (_30.0: &amp;u32)
-9:5-9:56: @7[29]: _34 = (_30.1: &amp;u32)
-9:5-9:56: @7[32]: _36 = &amp;(*_33)
-9:5-9:56: @7[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @7.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb8, unwind: bb15]
-9:5-9:56: @8[4]: _39 = &amp;(*_34)
-9:5-9:56: @8[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @8.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb9, unwind: bb15]
-9:5-9:56: @9[2]: _29 = [move _35, move _38]
-9:5-9:56: @9[7]: _28 = &amp;_29
-9:5-9:56: @9[8]: _27 = &amp;(*_28)
-9:5-9:56: @9[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-9:5-9:56: @9.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb10, unwind: bb15]
-9:5-9:56: @10.Call: _20 = _print(move _21) -&gt; [return: bb11, unwind: bb15]
-9:5-9:56: @11[6]: _19 = const ()
-10:18-10:24: @11[10]: _42 = _1
-10:27-10:33: @11[12]: _43 = _17
-10:18-10:33: @11[13]: _44 = CheckedAdd(_42, _43)
-10:18-10:33: @12[0]: _41 = move (_44.0: u32)
-10:9-10:15: @12[3]: FakeRead(ForLet, _41)
-11:14-11:47: @12[10]: _58 = const might_overflow::promoted[1]
-11:14-11:47: @12[11]: _50 = &amp;(*_58)
-11:14-11:47: @12[12]: _49 = &amp;(*_50)
-11:14-11:47: @12[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
-11:5-11:49: @12[19]: _56 = ()
-11:5-11:49: @12[20]: FakeRead(ForMatchedPlace, _56)
-11:5-11:49: @12[21]: _57 = const might_overflow::promoted[0]
-11:5-11:49: @12[22]: _54 = &amp;(*_57)
-11:5-11:49: @12[23]: _53 = &amp;(*_54)
-11:5-11:49: @12[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-11:5-11:49: @12.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb13, unwind: bb15]
-11:5-11:49: @13.Call: _46 = _print(move _47) -&gt; [return: bb14, unwind: bb15]
-11:5-11:49: @14[5]: _45 = const ()
-12:5-12:11: @14[7]: _0 = _41
-13:2-13:2: @14.Return: return">    println!("does {} + {} overflow?", add_to, to_add);</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="8:18-8:30: @6[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
-8:18-8:30: @7[0]: _17 = move (_18.0: u32)
-8:9-8:15: @7[1]: FakeRead(ForLet, _17)
-9:14-9:38: @7[8]: _59 = const might_overflow::promoted[2]
-9:14-9:38: @7[9]: _24 = &amp;(*_59)
-9:14-9:38: @7[10]: _23 = &amp;(*_24)
-9:14-9:38: @7[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
-9:40-9:46: @7[19]: _31 = &amp;_17
-9:48-9:54: @7[21]: _32 = &amp;_1
-9:5-9:56: @7[22]: _30 = (move _31, move _32)
-9:5-9:56: @7[25]: FakeRead(ForMatchedPlace, _30)
-9:5-9:56: @7[27]: _33 = (_30.0: &amp;u32)
-9:5-9:56: @7[29]: _34 = (_30.1: &amp;u32)
-9:5-9:56: @7[32]: _36 = &amp;(*_33)
-9:5-9:56: @7[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @7.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb8, unwind: bb15]
-9:5-9:56: @8[4]: _39 = &amp;(*_34)
-9:5-9:56: @8[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @8.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb9, unwind: bb15]
-9:5-9:56: @9[2]: _29 = [move _35, move _38]
-9:5-9:56: @9[7]: _28 = &amp;_29
-9:5-9:56: @9[8]: _27 = &amp;(*_28)
-9:5-9:56: @9[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-9:5-9:56: @9.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb10, unwind: bb15]
-9:5-9:56: @10.Call: _20 = _print(move _21) -&gt; [return: bb11, unwind: bb15]
-9:5-9:56: @11[6]: _19 = const ()
-10:18-10:24: @11[10]: _42 = _1
-10:27-10:33: @11[12]: _43 = _17
-10:18-10:33: @11[13]: _44 = CheckedAdd(_42, _43)
-10:18-10:33: @12[0]: _41 = move (_44.0: u32)
-10:9-10:15: @12[3]: FakeRead(ForLet, _41)
-11:14-11:47: @12[10]: _58 = const might_overflow::promoted[1]
-11:14-11:47: @12[11]: _50 = &amp;(*_58)
-11:14-11:47: @12[12]: _49 = &amp;(*_50)
-11:14-11:47: @12[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
-11:5-11:49: @12[19]: _56 = ()
-11:5-11:49: @12[20]: FakeRead(ForMatchedPlace, _56)
-11:5-11:49: @12[21]: _57 = const might_overflow::promoted[0]
-11:5-11:49: @12[22]: _54 = &amp;(*_57)
-11:5-11:49: @12[23]: _53 = &amp;(*_54)
-11:5-11:49: @12[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-11:5-11:49: @12.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb13, unwind: bb15]
-11:5-11:49: @13.Call: _46 = _print(move _47) -&gt; [return: bb14, unwind: bb15]
-11:5-11:49: @14[5]: _45 = const ()
-12:5-12:11: @14[7]: _0 = _41
-13:2-13:2: @14.Return: return">    let result = to_add + add_to;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="8:18-8:30: @6[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
-8:18-8:30: @7[0]: _17 = move (_18.0: u32)
-8:9-8:15: @7[1]: FakeRead(ForLet, _17)
-9:14-9:38: @7[8]: _59 = const might_overflow::promoted[2]
-9:14-9:38: @7[9]: _24 = &amp;(*_59)
-9:14-9:38: @7[10]: _23 = &amp;(*_24)
-9:14-9:38: @7[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
-9:40-9:46: @7[19]: _31 = &amp;_17
-9:48-9:54: @7[21]: _32 = &amp;_1
-9:5-9:56: @7[22]: _30 = (move _31, move _32)
-9:5-9:56: @7[25]: FakeRead(ForMatchedPlace, _30)
-9:5-9:56: @7[27]: _33 = (_30.0: &amp;u32)
-9:5-9:56: @7[29]: _34 = (_30.1: &amp;u32)
-9:5-9:56: @7[32]: _36 = &amp;(*_33)
-9:5-9:56: @7[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @7.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb8, unwind: bb15]
-9:5-9:56: @8[4]: _39 = &amp;(*_34)
-9:5-9:56: @8[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @8.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb9, unwind: bb15]
-9:5-9:56: @9[2]: _29 = [move _35, move _38]
-9:5-9:56: @9[7]: _28 = &amp;_29
-9:5-9:56: @9[8]: _27 = &amp;(*_28)
-9:5-9:56: @9[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-9:5-9:56: @9.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb10, unwind: bb15]
-9:5-9:56: @10.Call: _20 = _print(move _21) -&gt; [return: bb11, unwind: bb15]
-9:5-9:56: @11[6]: _19 = const ()
-10:18-10:24: @11[10]: _42 = _1
-10:27-10:33: @11[12]: _43 = _17
-10:18-10:33: @11[13]: _44 = CheckedAdd(_42, _43)
-10:18-10:33: @12[0]: _41 = move (_44.0: u32)
-10:9-10:15: @12[3]: FakeRead(ForLet, _41)
-11:14-11:47: @12[10]: _58 = const might_overflow::promoted[1]
-11:14-11:47: @12[11]: _50 = &amp;(*_58)
-11:14-11:47: @12[12]: _49 = &amp;(*_50)
-11:14-11:47: @12[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
-11:5-11:49: @12[19]: _56 = ()
-11:5-11:49: @12[20]: FakeRead(ForMatchedPlace, _56)
-11:5-11:49: @12[21]: _57 = const might_overflow::promoted[0]
-11:5-11:49: @12[22]: _54 = &amp;(*_57)
-11:5-11:49: @12[23]: _53 = &amp;(*_54)
-11:5-11:49: @12[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-11:5-11:49: @12.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb13, unwind: bb15]
-11:5-11:49: @13.Call: _46 = _print(move _47) -&gt; [return: bb14, unwind: bb15]
-11:5-11:49: @14[5]: _45 = const ()
-12:5-12:11: @14[7]: _0 = _41
-13:2-13:2: @14.Return: return">    println!("continuing after overflow check");</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="8:18-8:30: @6[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
-8:18-8:30: @7[0]: _17 = move (_18.0: u32)
-8:9-8:15: @7[1]: FakeRead(ForLet, _17)
-9:14-9:38: @7[8]: _59 = const might_overflow::promoted[2]
-9:14-9:38: @7[9]: _24 = &amp;(*_59)
-9:14-9:38: @7[10]: _23 = &amp;(*_24)
-9:14-9:38: @7[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
-9:40-9:46: @7[19]: _31 = &amp;_17
-9:48-9:54: @7[21]: _32 = &amp;_1
-9:5-9:56: @7[22]: _30 = (move _31, move _32)
-9:5-9:56: @7[25]: FakeRead(ForMatchedPlace, _30)
-9:5-9:56: @7[27]: _33 = (_30.0: &amp;u32)
-9:5-9:56: @7[29]: _34 = (_30.1: &amp;u32)
-9:5-9:56: @7[32]: _36 = &amp;(*_33)
-9:5-9:56: @7[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @7.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb8, unwind: bb15]
-9:5-9:56: @8[4]: _39 = &amp;(*_34)
-9:5-9:56: @8[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @8.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb9, unwind: bb15]
-9:5-9:56: @9[2]: _29 = [move _35, move _38]
-9:5-9:56: @9[7]: _28 = &amp;_29
-9:5-9:56: @9[8]: _27 = &amp;(*_28)
-9:5-9:56: @9[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-9:5-9:56: @9.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb10, unwind: bb15]
-9:5-9:56: @10.Call: _20 = _print(move _21) -&gt; [return: bb11, unwind: bb15]
-9:5-9:56: @11[6]: _19 = const ()
-10:18-10:24: @11[10]: _42 = _1
-10:27-10:33: @11[12]: _43 = _17
-10:18-10:33: @11[13]: _44 = CheckedAdd(_42, _43)
-10:18-10:33: @12[0]: _41 = move (_44.0: u32)
-10:9-10:15: @12[3]: FakeRead(ForLet, _41)
-11:14-11:47: @12[10]: _58 = const might_overflow::promoted[1]
-11:14-11:47: @12[11]: _50 = &amp;(*_58)
-11:14-11:47: @12[12]: _49 = &amp;(*_50)
-11:14-11:47: @12[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
-11:5-11:49: @12[19]: _56 = ()
-11:5-11:49: @12[20]: FakeRead(ForMatchedPlace, _56)
-11:5-11:49: @12[21]: _57 = const might_overflow::promoted[0]
-11:5-11:49: @12[22]: _54 = &amp;(*_57)
-11:5-11:49: @12[23]: _53 = &amp;(*_54)
-11:5-11:49: @12[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-11:5-11:49: @12.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb13, unwind: bb15]
-11:5-11:49: @13.Call: _46 = _print(move _47) -&gt; [return: bb14, unwind: bb15]
-11:5-11:49: @14[5]: _45 = const ()
-12:5-12:11: @14[7]: _0 = _41
-13:2-13:2: @14.Return: return">    result</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="8:18-8:30: @6[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
-8:18-8:30: @7[0]: _17 = move (_18.0: u32)
-8:9-8:15: @7[1]: FakeRead(ForLet, _17)
-9:14-9:38: @7[8]: _59 = const might_overflow::promoted[2]
-9:14-9:38: @7[9]: _24 = &amp;(*_59)
-9:14-9:38: @7[10]: _23 = &amp;(*_24)
-9:14-9:38: @7[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
-9:40-9:46: @7[19]: _31 = &amp;_17
-9:48-9:54: @7[21]: _32 = &amp;_1
-9:5-9:56: @7[22]: _30 = (move _31, move _32)
-9:5-9:56: @7[25]: FakeRead(ForMatchedPlace, _30)
-9:5-9:56: @7[27]: _33 = (_30.0: &amp;u32)
-9:5-9:56: @7[29]: _34 = (_30.1: &amp;u32)
-9:5-9:56: @7[32]: _36 = &amp;(*_33)
-9:5-9:56: @7[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @7.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb8, unwind: bb15]
-9:5-9:56: @8[4]: _39 = &amp;(*_34)
-9:5-9:56: @8[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-9:5-9:56: @8.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb9, unwind: bb15]
-9:5-9:56: @9[2]: _29 = [move _35, move _38]
-9:5-9:56: @9[7]: _28 = &amp;_29
-9:5-9:56: @9[8]: _27 = &amp;(*_28)
-9:5-9:56: @9[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-9:5-9:56: @9.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb10, unwind: bb15]
-9:5-9:56: @10.Call: _20 = _print(move _21) -&gt; [return: bb11, unwind: bb15]
-9:5-9:56: @11[6]: _19 = const ()
-10:18-10:24: @11[10]: _42 = _1
-10:27-10:33: @11[12]: _43 = _17
-10:18-10:33: @11[13]: _44 = CheckedAdd(_42, _43)
-10:18-10:33: @12[0]: _41 = move (_44.0: u32)
-10:9-10:15: @12[3]: FakeRead(ForLet, _41)
-11:14-11:47: @12[10]: _58 = const might_overflow::promoted[1]
-11:14-11:47: @12[11]: _50 = &amp;(*_58)
-11:14-11:47: @12[12]: _49 = &amp;(*_50)
-11:14-11:47: @12[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
-11:5-11:49: @12[19]: _56 = ()
-11:5-11:49: @12[20]: FakeRead(ForMatchedPlace, _56)
-11:5-11:49: @12[21]: _57 = const might_overflow::promoted[0]
-11:5-11:49: @12[22]: _54 = &amp;(*_57)
-11:5-11:49: @12[23]: _53 = &amp;(*_54)
-11:5-11:49: @12[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-11:5-11:49: @12.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb13, unwind: bb15]
-11:5-11:49: @13.Call: _46 = _print(move _47) -&gt; [return: bb14, unwind: bb15]
-11:5-11:49: @14[5]: _45 = const ()
-12:5-12:11: @14[7]: _0 = _41
-13:2-13:2: @14.Return: return">}<span class="annotation">⦉@6,7,8,9,10,11,12,13,14</span></span></span></span></div>
+5:8-5:18: @0[4]: _3 = Gt(move _4, const 5_u32)">    if to_add &gt; 5<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="6:18-6:47: @1[6]: _61 = const might_overflow::promoted[4]
+6:18-6:47: @1[7]: _10 = &amp;(*_61)
+6:18-6:47: @1[8]: _9 = &amp;(*_10)
+6:18-6:47: @1[9]: _8 = move _9 as &amp;[&amp;str] (Pointer(Unsize))
+6:9-6:49: @1[15]: _16 = ()
+6:9-6:49: @1[16]: FakeRead(ForMatchedPlace, _16)
+6:9-6:49: @1[17]: _60 = const might_overflow::promoted[3]
+6:9-6:49: @1[18]: _14 = &amp;(*_60)
+6:9-6:49: @1[19]: _13 = &amp;(*_14)
+6:9-6:49: @1[20]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+6:9-6:49: @1.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb3, unwind: bb14]
+6:9-6:49: @3.Call: _6 = _print(move _7) -&gt; [return: bb4, unwind: bb14]
+6:9-6:49: @4[5]: _5 = const ()
+5:19-7:6: @4[7]: _2 = const ()"><span class="annotation">@1,3,4⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="6:18-6:47: @1[6]: _61 = const might_overflow::promoted[4]
+6:18-6:47: @1[7]: _10 = &amp;(*_61)
+6:18-6:47: @1[8]: _9 = &amp;(*_10)
+6:18-6:47: @1[9]: _8 = move _9 as &amp;[&amp;str] (Pointer(Unsize))
+6:9-6:49: @1[15]: _16 = ()
+6:9-6:49: @1[16]: FakeRead(ForMatchedPlace, _16)
+6:9-6:49: @1[17]: _60 = const might_overflow::promoted[3]
+6:9-6:49: @1[18]: _14 = &amp;(*_60)
+6:9-6:49: @1[19]: _13 = &amp;(*_14)
+6:9-6:49: @1[20]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+6:9-6:49: @1.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb3, unwind: bb14]
+6:9-6:49: @3.Call: _6 = _print(move _7) -&gt; [return: bb4, unwind: bb14]
+6:9-6:49: @4[5]: _5 = const ()
+5:19-7:6: @4[7]: _2 = const ()">        println!("this will probably overflow");</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="6:18-6:47: @1[6]: _61 = const might_overflow::promoted[4]
+6:18-6:47: @1[7]: _10 = &amp;(*_61)
+6:18-6:47: @1[8]: _9 = &amp;(*_10)
+6:18-6:47: @1[9]: _8 = move _9 as &amp;[&amp;str] (Pointer(Unsize))
+6:9-6:49: @1[15]: _16 = ()
+6:9-6:49: @1[16]: FakeRead(ForMatchedPlace, _16)
+6:9-6:49: @1[17]: _60 = const might_overflow::promoted[3]
+6:9-6:49: @1[18]: _14 = &amp;(*_60)
+6:9-6:49: @1[19]: _13 = &amp;(*_14)
+6:9-6:49: @1[20]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+6:9-6:49: @1.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb3, unwind: bb14]
+6:9-6:49: @3.Call: _6 = _print(move _7) -&gt; [return: bb4, unwind: bb14]
+6:9-6:49: @4[5]: _5 = const ()
+5:19-7:6: @4[7]: _2 = const ()">    }<span class="annotation">⦉@1,3,4</span></span></span><span><span class="code even" style="--layer: 1" title="7:6-7:6: @2[0]: _2 = const ()"><span class="annotation">@2⦊</span>‸<span class="annotation">⦉@2</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code odd" style="--layer: 1" title="8:18-8:30: @5[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
+8:18-8:30: @6[0]: _17 = move (_18.0: u32)
+8:9-8:15: @6[1]: FakeRead(ForLet, _17)
+9:14-9:38: @6[8]: _59 = const might_overflow::promoted[2]
+9:14-9:38: @6[9]: _24 = &amp;(*_59)
+9:14-9:38: @6[10]: _23 = &amp;(*_24)
+9:14-9:38: @6[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
+9:40-9:46: @6[19]: _31 = &amp;_17
+9:48-9:54: @6[21]: _32 = &amp;_1
+9:5-9:56: @6[22]: _30 = (move _31, move _32)
+9:5-9:56: @6[25]: FakeRead(ForMatchedPlace, _30)
+9:5-9:56: @6[27]: _33 = (_30.0: &amp;u32)
+9:5-9:56: @6[29]: _34 = (_30.1: &amp;u32)
+9:5-9:56: @6[32]: _36 = &amp;(*_33)
+9:5-9:56: @6[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @6.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb7, unwind: bb14]
+9:5-9:56: @7[4]: _39 = &amp;(*_34)
+9:5-9:56: @7[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @7.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb8, unwind: bb14]
+9:5-9:56: @8[2]: _29 = [move _35, move _38]
+9:5-9:56: @8[7]: _28 = &amp;_29
+9:5-9:56: @8[8]: _27 = &amp;(*_28)
+9:5-9:56: @8[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+9:5-9:56: @8.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb9, unwind: bb14]
+9:5-9:56: @9.Call: _20 = _print(move _21) -&gt; [return: bb10, unwind: bb14]
+9:5-9:56: @10[6]: _19 = const ()
+10:18-10:24: @10[10]: _42 = _1
+10:27-10:33: @10[12]: _43 = _17
+10:18-10:33: @10[13]: _44 = CheckedAdd(_42, _43)
+10:18-10:33: @11[0]: _41 = move (_44.0: u32)
+10:9-10:15: @11[3]: FakeRead(ForLet, _41)
+11:14-11:47: @11[10]: _58 = const might_overflow::promoted[1]
+11:14-11:47: @11[11]: _50 = &amp;(*_58)
+11:14-11:47: @11[12]: _49 = &amp;(*_50)
+11:14-11:47: @11[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
+11:5-11:49: @11[19]: _56 = ()
+11:5-11:49: @11[20]: FakeRead(ForMatchedPlace, _56)
+11:5-11:49: @11[21]: _57 = const might_overflow::promoted[0]
+11:5-11:49: @11[22]: _54 = &amp;(*_57)
+11:5-11:49: @11[23]: _53 = &amp;(*_54)
+11:5-11:49: @11[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+11:5-11:49: @11.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb12, unwind: bb14]
+11:5-11:49: @12.Call: _46 = _print(move _47) -&gt; [return: bb13, unwind: bb14]
+11:5-11:49: @13[5]: _45 = const ()
+12:5-12:11: @13[7]: _0 = _41
+13:2-13:2: @13.Return: return"><span class="annotation">@5,6,7,8,9,10,11,12,13⦊</span>add_to = u32::MAX - 5;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="8:18-8:30: @5[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
+8:18-8:30: @6[0]: _17 = move (_18.0: u32)
+8:9-8:15: @6[1]: FakeRead(ForLet, _17)
+9:14-9:38: @6[8]: _59 = const might_overflow::promoted[2]
+9:14-9:38: @6[9]: _24 = &amp;(*_59)
+9:14-9:38: @6[10]: _23 = &amp;(*_24)
+9:14-9:38: @6[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
+9:40-9:46: @6[19]: _31 = &amp;_17
+9:48-9:54: @6[21]: _32 = &amp;_1
+9:5-9:56: @6[22]: _30 = (move _31, move _32)
+9:5-9:56: @6[25]: FakeRead(ForMatchedPlace, _30)
+9:5-9:56: @6[27]: _33 = (_30.0: &amp;u32)
+9:5-9:56: @6[29]: _34 = (_30.1: &amp;u32)
+9:5-9:56: @6[32]: _36 = &amp;(*_33)
+9:5-9:56: @6[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @6.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb7, unwind: bb14]
+9:5-9:56: @7[4]: _39 = &amp;(*_34)
+9:5-9:56: @7[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @7.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb8, unwind: bb14]
+9:5-9:56: @8[2]: _29 = [move _35, move _38]
+9:5-9:56: @8[7]: _28 = &amp;_29
+9:5-9:56: @8[8]: _27 = &amp;(*_28)
+9:5-9:56: @8[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+9:5-9:56: @8.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb9, unwind: bb14]
+9:5-9:56: @9.Call: _20 = _print(move _21) -&gt; [return: bb10, unwind: bb14]
+9:5-9:56: @10[6]: _19 = const ()
+10:18-10:24: @10[10]: _42 = _1
+10:27-10:33: @10[12]: _43 = _17
+10:18-10:33: @10[13]: _44 = CheckedAdd(_42, _43)
+10:18-10:33: @11[0]: _41 = move (_44.0: u32)
+10:9-10:15: @11[3]: FakeRead(ForLet, _41)
+11:14-11:47: @11[10]: _58 = const might_overflow::promoted[1]
+11:14-11:47: @11[11]: _50 = &amp;(*_58)
+11:14-11:47: @11[12]: _49 = &amp;(*_50)
+11:14-11:47: @11[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
+11:5-11:49: @11[19]: _56 = ()
+11:5-11:49: @11[20]: FakeRead(ForMatchedPlace, _56)
+11:5-11:49: @11[21]: _57 = const might_overflow::promoted[0]
+11:5-11:49: @11[22]: _54 = &amp;(*_57)
+11:5-11:49: @11[23]: _53 = &amp;(*_54)
+11:5-11:49: @11[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+11:5-11:49: @11.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb12, unwind: bb14]
+11:5-11:49: @12.Call: _46 = _print(move _47) -&gt; [return: bb13, unwind: bb14]
+11:5-11:49: @13[5]: _45 = const ()
+12:5-12:11: @13[7]: _0 = _41
+13:2-13:2: @13.Return: return">    println!("does {} + {} overflow?", add_to, to_add);</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="8:18-8:30: @5[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
+8:18-8:30: @6[0]: _17 = move (_18.0: u32)
+8:9-8:15: @6[1]: FakeRead(ForLet, _17)
+9:14-9:38: @6[8]: _59 = const might_overflow::promoted[2]
+9:14-9:38: @6[9]: _24 = &amp;(*_59)
+9:14-9:38: @6[10]: _23 = &amp;(*_24)
+9:14-9:38: @6[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
+9:40-9:46: @6[19]: _31 = &amp;_17
+9:48-9:54: @6[21]: _32 = &amp;_1
+9:5-9:56: @6[22]: _30 = (move _31, move _32)
+9:5-9:56: @6[25]: FakeRead(ForMatchedPlace, _30)
+9:5-9:56: @6[27]: _33 = (_30.0: &amp;u32)
+9:5-9:56: @6[29]: _34 = (_30.1: &amp;u32)
+9:5-9:56: @6[32]: _36 = &amp;(*_33)
+9:5-9:56: @6[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @6.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb7, unwind: bb14]
+9:5-9:56: @7[4]: _39 = &amp;(*_34)
+9:5-9:56: @7[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @7.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb8, unwind: bb14]
+9:5-9:56: @8[2]: _29 = [move _35, move _38]
+9:5-9:56: @8[7]: _28 = &amp;_29
+9:5-9:56: @8[8]: _27 = &amp;(*_28)
+9:5-9:56: @8[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+9:5-9:56: @8.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb9, unwind: bb14]
+9:5-9:56: @9.Call: _20 = _print(move _21) -&gt; [return: bb10, unwind: bb14]
+9:5-9:56: @10[6]: _19 = const ()
+10:18-10:24: @10[10]: _42 = _1
+10:27-10:33: @10[12]: _43 = _17
+10:18-10:33: @10[13]: _44 = CheckedAdd(_42, _43)
+10:18-10:33: @11[0]: _41 = move (_44.0: u32)
+10:9-10:15: @11[3]: FakeRead(ForLet, _41)
+11:14-11:47: @11[10]: _58 = const might_overflow::promoted[1]
+11:14-11:47: @11[11]: _50 = &amp;(*_58)
+11:14-11:47: @11[12]: _49 = &amp;(*_50)
+11:14-11:47: @11[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
+11:5-11:49: @11[19]: _56 = ()
+11:5-11:49: @11[20]: FakeRead(ForMatchedPlace, _56)
+11:5-11:49: @11[21]: _57 = const might_overflow::promoted[0]
+11:5-11:49: @11[22]: _54 = &amp;(*_57)
+11:5-11:49: @11[23]: _53 = &amp;(*_54)
+11:5-11:49: @11[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+11:5-11:49: @11.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb12, unwind: bb14]
+11:5-11:49: @12.Call: _46 = _print(move _47) -&gt; [return: bb13, unwind: bb14]
+11:5-11:49: @13[5]: _45 = const ()
+12:5-12:11: @13[7]: _0 = _41
+13:2-13:2: @13.Return: return">    let result = to_add + add_to;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="8:18-8:30: @5[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
+8:18-8:30: @6[0]: _17 = move (_18.0: u32)
+8:9-8:15: @6[1]: FakeRead(ForLet, _17)
+9:14-9:38: @6[8]: _59 = const might_overflow::promoted[2]
+9:14-9:38: @6[9]: _24 = &amp;(*_59)
+9:14-9:38: @6[10]: _23 = &amp;(*_24)
+9:14-9:38: @6[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
+9:40-9:46: @6[19]: _31 = &amp;_17
+9:48-9:54: @6[21]: _32 = &amp;_1
+9:5-9:56: @6[22]: _30 = (move _31, move _32)
+9:5-9:56: @6[25]: FakeRead(ForMatchedPlace, _30)
+9:5-9:56: @6[27]: _33 = (_30.0: &amp;u32)
+9:5-9:56: @6[29]: _34 = (_30.1: &amp;u32)
+9:5-9:56: @6[32]: _36 = &amp;(*_33)
+9:5-9:56: @6[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @6.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb7, unwind: bb14]
+9:5-9:56: @7[4]: _39 = &amp;(*_34)
+9:5-9:56: @7[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @7.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb8, unwind: bb14]
+9:5-9:56: @8[2]: _29 = [move _35, move _38]
+9:5-9:56: @8[7]: _28 = &amp;_29
+9:5-9:56: @8[8]: _27 = &amp;(*_28)
+9:5-9:56: @8[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+9:5-9:56: @8.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb9, unwind: bb14]
+9:5-9:56: @9.Call: _20 = _print(move _21) -&gt; [return: bb10, unwind: bb14]
+9:5-9:56: @10[6]: _19 = const ()
+10:18-10:24: @10[10]: _42 = _1
+10:27-10:33: @10[12]: _43 = _17
+10:18-10:33: @10[13]: _44 = CheckedAdd(_42, _43)
+10:18-10:33: @11[0]: _41 = move (_44.0: u32)
+10:9-10:15: @11[3]: FakeRead(ForLet, _41)
+11:14-11:47: @11[10]: _58 = const might_overflow::promoted[1]
+11:14-11:47: @11[11]: _50 = &amp;(*_58)
+11:14-11:47: @11[12]: _49 = &amp;(*_50)
+11:14-11:47: @11[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
+11:5-11:49: @11[19]: _56 = ()
+11:5-11:49: @11[20]: FakeRead(ForMatchedPlace, _56)
+11:5-11:49: @11[21]: _57 = const might_overflow::promoted[0]
+11:5-11:49: @11[22]: _54 = &amp;(*_57)
+11:5-11:49: @11[23]: _53 = &amp;(*_54)
+11:5-11:49: @11[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+11:5-11:49: @11.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb12, unwind: bb14]
+11:5-11:49: @12.Call: _46 = _print(move _47) -&gt; [return: bb13, unwind: bb14]
+11:5-11:49: @13[5]: _45 = const ()
+12:5-12:11: @13[7]: _0 = _41
+13:2-13:2: @13.Return: return">    println!("continuing after overflow check");</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="8:18-8:30: @5[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
+8:18-8:30: @6[0]: _17 = move (_18.0: u32)
+8:9-8:15: @6[1]: FakeRead(ForLet, _17)
+9:14-9:38: @6[8]: _59 = const might_overflow::promoted[2]
+9:14-9:38: @6[9]: _24 = &amp;(*_59)
+9:14-9:38: @6[10]: _23 = &amp;(*_24)
+9:14-9:38: @6[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
+9:40-9:46: @6[19]: _31 = &amp;_17
+9:48-9:54: @6[21]: _32 = &amp;_1
+9:5-9:56: @6[22]: _30 = (move _31, move _32)
+9:5-9:56: @6[25]: FakeRead(ForMatchedPlace, _30)
+9:5-9:56: @6[27]: _33 = (_30.0: &amp;u32)
+9:5-9:56: @6[29]: _34 = (_30.1: &amp;u32)
+9:5-9:56: @6[32]: _36 = &amp;(*_33)
+9:5-9:56: @6[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @6.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb7, unwind: bb14]
+9:5-9:56: @7[4]: _39 = &amp;(*_34)
+9:5-9:56: @7[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @7.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb8, unwind: bb14]
+9:5-9:56: @8[2]: _29 = [move _35, move _38]
+9:5-9:56: @8[7]: _28 = &amp;_29
+9:5-9:56: @8[8]: _27 = &amp;(*_28)
+9:5-9:56: @8[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+9:5-9:56: @8.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb9, unwind: bb14]
+9:5-9:56: @9.Call: _20 = _print(move _21) -&gt; [return: bb10, unwind: bb14]
+9:5-9:56: @10[6]: _19 = const ()
+10:18-10:24: @10[10]: _42 = _1
+10:27-10:33: @10[12]: _43 = _17
+10:18-10:33: @10[13]: _44 = CheckedAdd(_42, _43)
+10:18-10:33: @11[0]: _41 = move (_44.0: u32)
+10:9-10:15: @11[3]: FakeRead(ForLet, _41)
+11:14-11:47: @11[10]: _58 = const might_overflow::promoted[1]
+11:14-11:47: @11[11]: _50 = &amp;(*_58)
+11:14-11:47: @11[12]: _49 = &amp;(*_50)
+11:14-11:47: @11[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
+11:5-11:49: @11[19]: _56 = ()
+11:5-11:49: @11[20]: FakeRead(ForMatchedPlace, _56)
+11:5-11:49: @11[21]: _57 = const might_overflow::promoted[0]
+11:5-11:49: @11[22]: _54 = &amp;(*_57)
+11:5-11:49: @11[23]: _53 = &amp;(*_54)
+11:5-11:49: @11[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+11:5-11:49: @11.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb12, unwind: bb14]
+11:5-11:49: @12.Call: _46 = _print(move _47) -&gt; [return: bb13, unwind: bb14]
+11:5-11:49: @13[5]: _45 = const ()
+12:5-12:11: @13[7]: _0 = _41
+13:2-13:2: @13.Return: return">    result</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="8:18-8:30: @5[3]: _18 = CheckedSub(const core::num::&lt;impl u32&gt;::MAX, const 5_u32)
+8:18-8:30: @6[0]: _17 = move (_18.0: u32)
+8:9-8:15: @6[1]: FakeRead(ForLet, _17)
+9:14-9:38: @6[8]: _59 = const might_overflow::promoted[2]
+9:14-9:38: @6[9]: _24 = &amp;(*_59)
+9:14-9:38: @6[10]: _23 = &amp;(*_24)
+9:14-9:38: @6[11]: _22 = move _23 as &amp;[&amp;str] (Pointer(Unsize))
+9:40-9:46: @6[19]: _31 = &amp;_17
+9:48-9:54: @6[21]: _32 = &amp;_1
+9:5-9:56: @6[22]: _30 = (move _31, move _32)
+9:5-9:56: @6[25]: FakeRead(ForMatchedPlace, _30)
+9:5-9:56: @6[27]: _33 = (_30.0: &amp;u32)
+9:5-9:56: @6[29]: _34 = (_30.1: &amp;u32)
+9:5-9:56: @6[32]: _36 = &amp;(*_33)
+9:5-9:56: @6[34]: _37 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @6.Call: _35 = ArgumentV1::new::&lt;u32&gt;(move _36, move _37) -&gt; [return: bb7, unwind: bb14]
+9:5-9:56: @7[4]: _39 = &amp;(*_34)
+9:5-9:56: @7[6]: _40 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+9:5-9:56: @7.Call: _38 = ArgumentV1::new::&lt;u32&gt;(move _39, move _40) -&gt; [return: bb8, unwind: bb14]
+9:5-9:56: @8[2]: _29 = [move _35, move _38]
+9:5-9:56: @8[7]: _28 = &amp;_29
+9:5-9:56: @8[8]: _27 = &amp;(*_28)
+9:5-9:56: @8[9]: _26 = move _27 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+9:5-9:56: @8.Call: _21 = Arguments::new_v1(move _22, move _26) -&gt; [return: bb9, unwind: bb14]
+9:5-9:56: @9.Call: _20 = _print(move _21) -&gt; [return: bb10, unwind: bb14]
+9:5-9:56: @10[6]: _19 = const ()
+10:18-10:24: @10[10]: _42 = _1
+10:27-10:33: @10[12]: _43 = _17
+10:18-10:33: @10[13]: _44 = CheckedAdd(_42, _43)
+10:18-10:33: @11[0]: _41 = move (_44.0: u32)
+10:9-10:15: @11[3]: FakeRead(ForLet, _41)
+11:14-11:47: @11[10]: _58 = const might_overflow::promoted[1]
+11:14-11:47: @11[11]: _50 = &amp;(*_58)
+11:14-11:47: @11[12]: _49 = &amp;(*_50)
+11:14-11:47: @11[13]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))
+11:5-11:49: @11[19]: _56 = ()
+11:5-11:49: @11[20]: FakeRead(ForMatchedPlace, _56)
+11:5-11:49: @11[21]: _57 = const might_overflow::promoted[0]
+11:5-11:49: @11[22]: _54 = &amp;(*_57)
+11:5-11:49: @11[23]: _53 = &amp;(*_54)
+11:5-11:49: @11[24]: _52 = move _53 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+11:5-11:49: @11.Call: _47 = Arguments::new_v1(move _48, move _52) -&gt; [return: bb12, unwind: bb14]
+11:5-11:49: @12.Call: _46 = _print(move _47) -&gt; [return: bb13, unwind: bb14]
+11:5-11:49: @13[5]: _45 = const ()
+12:5-12:11: @13[7]: _0 = _41
+13:2-13:2: @13.Return: return">}<span class="annotation">⦉@5,6,7,8,9,10,11,12,13</span></span></span></span></div>
 </body>
 </html>

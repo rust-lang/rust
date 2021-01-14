@@ -70,36 +70,35 @@ For revisions in Pull Requests (PR):
 </head>
 <body>
 <div class="code" style="counter-reset: line 3"><span class="line"><span><span class="code even" style="--layer: 1"><span class="annotation">@0⦊</span>fn might_panic(should_panic: bool) <span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0">{</span></span>
-<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="5:8-5:20: @0[1]: _2 = _1
-5:8-5:20: @0[2]: FakeRead(ForMatchedPlace, _2)"><span class="annotation">@0⦊</span>should_panic<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> {</span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="6:18-6:32: @3[6]: _33 = const might_panic::promoted[3]
-6:18-6:32: @3[7]: _9 = &amp;(*_33)
-6:18-6:32: @3[8]: _8 = &amp;(*_9)
-6:18-6:32: @3[9]: _7 = move _8 as &amp;[&amp;str] (Pointer(Unsize))
-6:9-6:34: @3[15]: _15 = ()
-6:9-6:34: @3[16]: FakeRead(ForMatchedPlace, _15)
-6:9-6:34: @3[17]: _32 = const might_panic::promoted[2]
-6:9-6:34: @3[18]: _13 = &amp;(*_32)
-6:9-6:34: @3[19]: _12 = &amp;(*_13)
-6:9-6:34: @3[20]: _11 = move _12 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-6:9-6:34: @3.Call: _6 = Arguments::new_v1(move _7, move _11) -&gt; [return: bb4, unwind: bb8]
-6:9-6:34: @4.Call: _5 = _print(move _6) -&gt; [return: bb5, unwind: bb8]
-6:9-6:34: @5[5]: _4 = const ()
-7:9-7:26: @5.Call: begin_panic::&lt;&amp;str&gt;(const &quot;panics&quot;) -&gt; bb8"><span class="annotation">@1,3,4,5⦊</span>println!("panicking...");</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="6:18-6:32: @3[6]: _33 = const might_panic::promoted[3]
-6:18-6:32: @3[7]: _9 = &amp;(*_33)
-6:18-6:32: @3[8]: _8 = &amp;(*_9)
-6:18-6:32: @3[9]: _7 = move _8 as &amp;[&amp;str] (Pointer(Unsize))
-6:9-6:34: @3[15]: _15 = ()
-6:9-6:34: @3[16]: FakeRead(ForMatchedPlace, _15)
-6:9-6:34: @3[17]: _32 = const might_panic::promoted[2]
-6:9-6:34: @3[18]: _13 = &amp;(*_32)
-6:9-6:34: @3[19]: _12 = &amp;(*_13)
-6:9-6:34: @3[20]: _11 = move _12 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-6:9-6:34: @3.Call: _6 = Arguments::new_v1(move _7, move _11) -&gt; [return: bb4, unwind: bb8]
-6:9-6:34: @4.Call: _5 = _print(move _6) -&gt; [return: bb5, unwind: bb8]
-6:9-6:34: @5[5]: _4 = const ()
-7:9-7:26: @5.Call: begin_panic::&lt;&amp;str&gt;(const &quot;panics&quot;) -&gt; bb8">        panic!("panics");<span class="annotation">⦉@1,3,4,5</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="5:8-5:20: @0[1]: _2 = _1"><span class="annotation">@0⦊</span>should_panic<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="6:18-6:32: @1[6]: _33 = const might_panic::promoted[3]
+6:18-6:32: @1[7]: _9 = &amp;(*_33)
+6:18-6:32: @1[8]: _8 = &amp;(*_9)
+6:18-6:32: @1[9]: _7 = move _8 as &amp;[&amp;str] (Pointer(Unsize))
+6:9-6:34: @1[15]: _15 = ()
+6:9-6:34: @1[16]: FakeRead(ForMatchedPlace, _15)
+6:9-6:34: @1[17]: _32 = const might_panic::promoted[2]
+6:9-6:34: @1[18]: _13 = &amp;(*_32)
+6:9-6:34: @1[19]: _12 = &amp;(*_13)
+6:9-6:34: @1[20]: _11 = move _12 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+6:9-6:34: @1.Call: _6 = Arguments::new_v1(move _7, move _11) -&gt; [return: bb3, unwind: bb7]
+6:9-6:34: @3.Call: _5 = _print(move _6) -&gt; [return: bb4, unwind: bb7]
+6:9-6:34: @4[5]: _4 = const ()
+7:9-7:26: @4.Call: begin_panic::&lt;&amp;str&gt;(const &quot;panics&quot;) -&gt; bb7"><span class="annotation">@1,3,4⦊</span>println!("panicking...");</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="6:18-6:32: @1[6]: _33 = const might_panic::promoted[3]
+6:18-6:32: @1[7]: _9 = &amp;(*_33)
+6:18-6:32: @1[8]: _8 = &amp;(*_9)
+6:18-6:32: @1[9]: _7 = move _8 as &amp;[&amp;str] (Pointer(Unsize))
+6:9-6:34: @1[15]: _15 = ()
+6:9-6:34: @1[16]: FakeRead(ForMatchedPlace, _15)
+6:9-6:34: @1[17]: _32 = const might_panic::promoted[2]
+6:9-6:34: @1[18]: _13 = &amp;(*_32)
+6:9-6:34: @1[19]: _12 = &amp;(*_13)
+6:9-6:34: @1[20]: _11 = move _12 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+6:9-6:34: @1.Call: _6 = Arguments::new_v1(move _7, move _11) -&gt; [return: bb3, unwind: bb7]
+6:9-6:34: @3.Call: _5 = _print(move _6) -&gt; [return: bb4, unwind: bb7]
+6:9-6:34: @4[5]: _4 = const ()
+7:9-7:26: @4.Call: begin_panic::&lt;&amp;str&gt;(const &quot;panics&quot;) -&gt; bb7">        panic!("panics");<span class="annotation">⦉@1,3,4</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    } else </span><span><span class="code even" style="--layer: 1" title="9:18-9:31: @2[6]: _31 = const might_panic::promoted[1]
 9:18-9:31: @2[7]: _23 = &amp;(*_31)
 9:18-9:31: @2[8]: _22 = &amp;(*_23)
@@ -110,11 +109,11 @@ For revisions in Pull Requests (PR):
 9:9-9:33: @2[18]: _27 = &amp;(*_30)
 9:9-9:33: @2[19]: _26 = &amp;(*_27)
 9:9-9:33: @2[20]: _25 = move _26 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-9:9-9:33: @2.Call: _20 = Arguments::new_v1(move _21, move _25) -&gt; [return: bb6, unwind: bb8]
-9:9-9:33: @6.Call: _19 = _print(move _20) -&gt; [return: bb7, unwind: bb8]
-9:9-9:33: @7[5]: _18 = const ()
-8:12-10:6: @7[7]: _0 = const ()
-11:2-11:2: @7.Return: return"><span class="annotation">@2,6,7⦊</span>{</span></span>
+9:9-9:33: @2.Call: _20 = Arguments::new_v1(move _21, move _25) -&gt; [return: bb5, unwind: bb7]
+9:9-9:33: @5.Call: _19 = _print(move _20) -&gt; [return: bb6, unwind: bb7]
+9:9-9:33: @6[5]: _18 = const ()
+8:12-10:6: @6[7]: _0 = const ()
+11:2-11:2: @6.Return: return"><span class="annotation">@2,5,6⦊</span>{</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="9:18-9:31: @2[6]: _31 = const might_panic::promoted[1]
 9:18-9:31: @2[7]: _23 = &amp;(*_31)
 9:18-9:31: @2[8]: _22 = &amp;(*_23)
@@ -125,11 +124,11 @@ For revisions in Pull Requests (PR):
 9:9-9:33: @2[18]: _27 = &amp;(*_30)
 9:9-9:33: @2[19]: _26 = &amp;(*_27)
 9:9-9:33: @2[20]: _25 = move _26 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-9:9-9:33: @2.Call: _20 = Arguments::new_v1(move _21, move _25) -&gt; [return: bb6, unwind: bb8]
-9:9-9:33: @6.Call: _19 = _print(move _20) -&gt; [return: bb7, unwind: bb8]
-9:9-9:33: @7[5]: _18 = const ()
-8:12-10:6: @7[7]: _0 = const ()
-11:2-11:2: @7.Return: return">        println!("Don't Panic");</span></span>
+9:9-9:33: @2.Call: _20 = Arguments::new_v1(move _21, move _25) -&gt; [return: bb5, unwind: bb7]
+9:9-9:33: @5.Call: _19 = _print(move _20) -&gt; [return: bb6, unwind: bb7]
+9:9-9:33: @6[5]: _18 = const ()
+8:12-10:6: @6[7]: _0 = const ()
+11:2-11:2: @6.Return: return">        println!("Don't Panic");</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="9:18-9:31: @2[6]: _31 = const might_panic::promoted[1]
 9:18-9:31: @2[7]: _23 = &amp;(*_31)
 9:18-9:31: @2[8]: _22 = &amp;(*_23)
@@ -140,11 +139,11 @@ For revisions in Pull Requests (PR):
 9:9-9:33: @2[18]: _27 = &amp;(*_30)
 9:9-9:33: @2[19]: _26 = &amp;(*_27)
 9:9-9:33: @2[20]: _25 = move _26 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-9:9-9:33: @2.Call: _20 = Arguments::new_v1(move _21, move _25) -&gt; [return: bb6, unwind: bb8]
-9:9-9:33: @6.Call: _19 = _print(move _20) -&gt; [return: bb7, unwind: bb8]
-9:9-9:33: @7[5]: _18 = const ()
-8:12-10:6: @7[7]: _0 = const ()
-11:2-11:2: @7.Return: return">    }</span></span>
+9:9-9:33: @2.Call: _20 = Arguments::new_v1(move _21, move _25) -&gt; [return: bb5, unwind: bb7]
+9:9-9:33: @5.Call: _19 = _print(move _20) -&gt; [return: bb6, unwind: bb7]
+9:9-9:33: @6[5]: _18 = const ()
+8:12-10:6: @6[7]: _0 = const ()
+11:2-11:2: @6.Return: return">    }</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="9:18-9:31: @2[6]: _31 = const might_panic::promoted[1]
 9:18-9:31: @2[7]: _23 = &amp;(*_31)
 9:18-9:31: @2[8]: _22 = &amp;(*_23)
@@ -155,10 +154,10 @@ For revisions in Pull Requests (PR):
 9:9-9:33: @2[18]: _27 = &amp;(*_30)
 9:9-9:33: @2[19]: _26 = &amp;(*_27)
 9:9-9:33: @2[20]: _25 = move _26 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-9:9-9:33: @2.Call: _20 = Arguments::new_v1(move _21, move _25) -&gt; [return: bb6, unwind: bb8]
-9:9-9:33: @6.Call: _19 = _print(move _20) -&gt; [return: bb7, unwind: bb8]
-9:9-9:33: @7[5]: _18 = const ()
-8:12-10:6: @7[7]: _0 = const ()
-11:2-11:2: @7.Return: return">}<span class="annotation">⦉@2,6,7</span></span></span></span></div>
+9:9-9:33: @2.Call: _20 = Arguments::new_v1(move _21, move _25) -&gt; [return: bb5, unwind: bb7]
+9:9-9:33: @5.Call: _19 = _print(move _20) -&gt; [return: bb6, unwind: bb7]
+9:9-9:33: @6[5]: _18 = const ()
+8:12-10:6: @6[7]: _0 = const ()
+11:2-11:2: @6.Return: return">}<span class="annotation">⦉@2,5,6</span></span></span></span></div>
 </body>
 </html>

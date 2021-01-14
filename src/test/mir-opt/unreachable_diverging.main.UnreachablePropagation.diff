@@ -45,16 +45,11 @@
           StorageLive(_5);                 // scope 2 at $DIR/unreachable_diverging.rs:15:9: 17:10
           StorageLive(_6);                 // scope 2 at $DIR/unreachable_diverging.rs:15:12: 15:13
           _6 = _1;                         // scope 2 at $DIR/unreachable_diverging.rs:15:12: 15:13
--         switchInt(_6) -> [false: bb4, otherwise: bb5]; // scope 2 at $DIR/unreachable_diverging.rs:15:9: 17:10
+-         switchInt(move _6) -> [false: bb5, otherwise: bb4]; // scope 2 at $DIR/unreachable_diverging.rs:15:9: 17:10
 +         goto -> bb4;                     // scope 2 at $DIR/unreachable_diverging.rs:15:9: 17:10
       }
   
       bb4: {
--         _5 = const ();                   // scope 2 at $DIR/unreachable_diverging.rs:17:10: 17:10
--         goto -> bb6;                     // scope 2 at $DIR/unreachable_diverging.rs:15:9: 17:10
--     }
-- 
--     bb5: {
 -         _5 = loop_forever() -> bb6;      // scope 2 at $DIR/unreachable_diverging.rs:16:13: 16:27
 +         _5 = loop_forever() -> bb5;      // scope 2 at $DIR/unreachable_diverging.rs:16:13: 16:27
                                            // mir::Constant
@@ -62,8 +57,12 @@
                                            // + literal: Const { ty: fn() {loop_forever}, val: Value(Scalar(<ZST>)) }
       }
   
+      bb5: {
+-         _5 = const ();                   // scope 2 at $DIR/unreachable_diverging.rs:17:10: 17:10
+-         goto -> bb6;                     // scope 2 at $DIR/unreachable_diverging.rs:15:9: 17:10
+-     }
+- 
 -     bb6: {
-+     bb5: {
           StorageDead(_6);                 // scope 2 at $DIR/unreachable_diverging.rs:17:9: 17:10
           StorageDead(_5);                 // scope 2 at $DIR/unreachable_diverging.rs:17:9: 17:10
           StorageLive(_7);                 // scope 2 at $DIR/unreachable_diverging.rs:18:9: 18:22

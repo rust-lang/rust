@@ -2278,6 +2278,12 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
                     self.visit_expr(expr);
                 }
             }
+            hir::ExprKind::If(_, then, else_opt) if self.in_block_tail => {
+                self.visit_expr(then);
+                if let Some(el) = else_opt {
+                    self.visit_expr(el);
+                }
+            }
             hir::ExprKind::Match(_, arms, _) if self.in_block_tail => {
                 for arm in arms {
                     self.visit_expr(arm.body);

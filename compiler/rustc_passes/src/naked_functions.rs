@@ -201,6 +201,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             | ExprKind::Type(..)
             | ExprKind::Loop(..)
             | ExprKind::Match(..)
+            | ExprKind::If(..)
             | ExprKind::Closure(..)
             | ExprKind::Assign(..)
             | ExprKind::AssignOp(..)
