@@ -590,8 +590,7 @@ fn main() { let _ = crate::$0 }
         "#,
             expect![[r##"
                 fn main()  fn main()
-                ma foo!(…) #[macro_export]
-                macro_rules! foo
+                ma foo!(…) #[macro_export] macro_rules! foo
             "##]],
         );
     }

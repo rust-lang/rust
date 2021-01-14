@@ -7,6 +7,7 @@ use ide_db::helpers::{
     insert_use::{self, ImportScope, MergeBehavior},
     mod_path_to_ast, SnippetCap,
 };
+use stdx::assert_never;
 use syntax::{algo, TextRange};
 use text_edit::TextEdit;
 
@@ -396,6 +397,9 @@ impl Builder {
     }
     pub(crate) fn set_detail(mut self, detail: Option<impl Into<String>>) -> Builder {
         self.detail = detail.map(Into::into);
+        if let Some(detail) = &self.detail {
+            assert_never!(detail.contains('\n'), "multiline detail: {}", detail);
+        }
         self
     }
     #[allow(unused)]

@@ -80,7 +80,7 @@ pub fn macro_label(node: &ast::Macro) -> String {
     let name = node.name().map(|name| name.syntax().text().to_string()).unwrap_or_default();
     match node {
         ast::Macro::MacroRules(node) => {
-            let vis = if node.has_atom_attr("macro_export") { "#[macro_export]\n" } else { "" };
+            let vis = if node.has_atom_attr("macro_export") { "#[macro_export] " } else { "" };
             format!("{}macro_rules! {}", vis, name)
         }
         ast::Macro::MacroDef(node) => {

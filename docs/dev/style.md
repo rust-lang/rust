@@ -215,6 +215,11 @@ if idx >= len {
 
 **Rationale:** its useful to see the invariant relied upon by the rest of the function clearly spelled out.
 
+## Assertions
+
+Assert liberally.
+Prefer `stdx::assert_never!` to standard `assert!`.
+
 ## Getters & Setters
 
 If a field can have any value without breaking invariants, make the field public.
