@@ -627,10 +627,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let issue_count = issues.len();
             if issue_count > 0 {
+                // This represents the kind of wording we want to use on the suggestion
+                enum SuggestionType {
+                    NoSuggestion,
+                    Remove,  // Suggest removing an argument
+                    Provide, // Suggest providing an argument of a given type
+                    Swap,    // Suggest swapping a few arguments
+                    Reorder, // Suggest an arbitrary permutation (more complicated than swaps)
+                    Changes  // Suggest a mixed bag of generic changes, which may include multiple of the above
+                }
+                use SuggestionType::*;
+
                 // We found issues, so let's construct a diagnostic that summarizes the issues we found
                 // FIXME: This might need some refining in code review
                 let mut labels = vec![];
                 let mut suggestions = vec![];
+                let mut suggestion_type = NoSuggestion;
                 let source_map = self.sess().source_map();
                 for issue in issues {
                     match issue {
@@ -639,6 +651,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let expected_type = expected_input_tys[arg];
                             let found_type = final_arg_types.iter().find(|(i, _, _)| *i == arg).unwrap().1;
                             labels.push((span, format!("expected {}, found {}", expected_type, found_type)));
+                            suggestion_type = match suggestion_type {
+                                NoSuggestion | Provide => Provide,
+                                _ => Changes,
+                            };
+                            suggestions.push((span, format!(" {{{}}},", expected_type)));
                         }
                         Issue::Extra(arg) => {
                             // FIXME: This could probably be a lot cleaner, but I dunno how
@@ -655,14 +672,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             };
                             let found_type = self.check_expr(&provided_args[arg]);
                             let fn_name = fn_def_id
-                                .map(|def_id| (tcx.def_kind(def_id), def_id))
-                                .map(|(def_kind, def_id)| def_kind.descr(def_id))
-                                .unwrap_or("this function");
+                                .and_then(|def_id| tcx.hir().get_if_local(def_id))
+                                .and_then(|node| node.ident())
+                                .map(|ident| format!("{}", ident))
+                                .unwrap_or("this function".to_string());
 
                             labels.push((span, format!("no parameter of type {} is needed in {}", found_type, fn_name)));
-                            if issue_count > 1 {
-                                suggestions.push((hungry_span, format!("")));
-                            }
+                            suggestion_type = match suggestion_type {
+                                NoSuggestion | Remove => Remove,
+                                _ => Changes,
+                            };
+                            suggestions.push((hungry_span, format!("")));
                         }
                         Issue::Missing(arg) => {
                             // FIXME: The spans here are all kinds of wrong for multiple missing arguments etc.
@@ -687,9 +707,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             };
                             let expected_type = expected_input_tys[arg];
                             labels.push((missing_span, format!("missing argument of type {}", expected_type)));
-                            if issue_count > 1 {
-                                suggestions.push((missing_span, format!(" {{{}}},", expected_type)));
-                            }
+                            suggestion_type = match suggestion_type {
+                                NoSuggestion | Provide => Provide,
+                                _ => Changes,
+                            };
+                            suggestions.push((missing_span, format!(" {{{}}},", expected_type)));
                         }
                         Issue::Swap(arg, other) => {
                             let first_span = provided_args[arg].span;
@@ -705,6 +727,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             suggestions.push((first_span, second_snippet));
                             labels.push((second_span, format!("expected {}, found {}", expected_types.1, found_types.1)));
                             suggestions.push((second_span, first_snippet));
+                            suggestion_type = match suggestion_type {
+                                NoSuggestion | Swap => Swap,
+                                _ => Changes,
+                            };
                         }
                         Issue::Permutation(args) => {
                             for (src, &arg) in args.iter().enumerate() {
@@ -716,6 +742,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     let found_type = final_arg_types.iter().find(|(i, _, _)| *i == dst).unwrap().1;
                                     labels.push((dst_span, format!("expected {}, found {}", expected_type, found_type)));
                                     suggestions.push((dst_span, snippet));
+                                    suggestion_type = match suggestion_type {
+                                        NoSuggestion | Reorder => Reorder,
+                                        _ => Changes,
+                                    };
                                 }
                             }
                         }
@@ -747,7 +777,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 spans.push_span_label(param.span, String::new());
                             }
                         }
-
                         let def_kind = tcx.def_kind(def_id);
                         err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
                     }
@@ -761,11 +790,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // And add a series of suggestions
                 // FIXME: for simpler cases, this might be overkill
                 if suggestions.len() > 0 {
-                    err.multipart_suggestion(
-                        "the following changes might help",
-                        suggestions,
-                        Applicability::MaybeIncorrect,
-                    );
+                    let suggestion_text = match (suggestion_type, issue_count) {
+                        (Remove, 1) => Some("removing this argument may help"),
+                        (Remove, _) => Some("removing these argument may help"),
+                        (Provide, 1) => None,
+                        (Provide, _) => Some("providing these parameters may help"),
+                        (Swap, 1) => Some("swapping these two arguments might help"),
+                        (Swap, _) => Some("swapping these sets of arguments might help"),
+                        (Reorder, _) => Some("reordering these parameters might help"),
+                        _ => Some("the following changes might help"),
+                    };
+                    if let Some(suggestion_text) = suggestion_text {
+                        err.multipart_suggestion(
+                            suggestion_text,
+                            suggestions,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
 
                 err.emit();

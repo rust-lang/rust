@@ -5,7 +5,7 @@ LL |     invalid(1.0);
    |             ^^^ expected u32, found {float}
    |
 note: function defined here
-  --> $DIR/basic.rs:12:4
+  --> $DIR/basic.rs:13:4
    |
 LL | fn invalid(_i: u32) {}
    |    ^^^^^^^ -------
@@ -13,11 +13,14 @@ LL | fn invalid(_i: u32) {}
 error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:21:11
    |
-LL |     extra(&"");
-   |           ^^^ no parameter of type &&'static str is needed in function
+LL |     extra("");
+   |           ^^
+   |           |
+   |           no parameter of type &'static str is needed in extra
+   |           help: removing this argument may help
    |
 note: function defined here
-  --> $DIR/basic.rs:13:4
+  --> $DIR/basic.rs:14:4
    |
 LL | fn extra() {}
    |    ^^^^^
@@ -29,7 +32,7 @@ LL |     missing();
    |             ^ missing argument of type u32
    |
 note: function defined here
-  --> $DIR/basic.rs:14:4
+  --> $DIR/basic.rs:15:4
    |
 LL | fn missing(_i: u32) {}
    |    ^^^^^^^ -------
@@ -37,20 +40,20 @@ LL | fn missing(_i: u32) {}
 error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:23:13
    |
-LL |     swapped(&"", 1);
-   |             ^^^  ^ expected &str, found {integer}
+LL |     swapped("", 1);
+   |             ^^  ^ expected &str, found {integer}
    |             |
-   |             expected u32, found &&'static str
+   |             expected u32, found &'static str
    |
 note: function defined here
-  --> $DIR/basic.rs:15:4
+  --> $DIR/basic.rs:16:4
    |
 LL | fn swapped(_i: u32, _s: &str) {}
    |    ^^^^^^^ -------  --------
-help: the following changes might help
+help: swapping these two arguments might help
    |
-LL |     swapped(1, &"");
-   |             ^  ^^^
+LL |     swapped(1, "");
+   |             ^  ^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:24:14
@@ -62,39 +65,15 @@ LL |     permuted(Y {}, Z {}, X {});
    |              expected X, found Y
    |
 note: function defined here
-  --> $DIR/basic.rs:16:4
+  --> $DIR/basic.rs:17:4
    |
 LL | fn permuted(_x: X, _y: Y, _z: Z) {}
    |    ^^^^^^^^ -----  -----  -----
-help: the following changes might help
+help: reordering these parameters might help
    |
 LL |     permuted(X {}, Y {}, Z {});
    |              ^^^^  ^^^^  ^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
-  --> $DIR/basic.rs:25:13
-   |
-LL |     complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
-   |             ^^^  ^^^^      ^^^^  ^^^^^  ^^^^  ^^^^  ^^^^ expected Z, found Y
-   |             |    |         ||    |      |     |
-   |             |    |         ||    |      |     expected Y, found X
-   |             |    |         ||    |      expected X, found Z
-   |             |    |         ||    expected G, found F
-   |             |    |         |expected F, found G
-   |             |    |         missing argument of type E
-   |             |    no parameter of type H is needed in function
-   |             expected u32, found {float}
-   |
-note: function defined here
-  --> $DIR/basic.rs:17:4
-   |
-LL | fn complex(_i: u32, _s: &str, _e: E, _f: F, _g: G, _x: X, _y: Y, _z: Z ) {}
-   |    ^^^^^^^ -------  --------  -----  -----  -----  -----  -----  ------
-help: the following changes might help
-   |
-LL |     complex(1.0, &"", {E}, F::X2, G{}, X {}, Y {}, Z {});
-   |                 --    ^^^^ ^^^^^  ^^^  ^^^^  ^^^^  ^^^^
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0059`.

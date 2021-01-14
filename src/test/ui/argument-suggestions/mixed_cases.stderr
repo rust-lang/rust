@@ -1,0 +1,114 @@
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/mixed_cases.rs:10:15
+   |
+LL |   two_args(1, "", X {});
+   |               ^^  ^^^^ no parameter of type X is needed in two_args
+   |               |
+   |               expected f32, found &'static str
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:5:4
+   |
+LL | fn two_args(_a: i32, _b: f32) {}
+   |    ^^^^^^^^ -------  -------
+help: the following changes might help
+   |
+LL |   two_args(1,  {f32},, );
+   |                ^^^^^^ --
+
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/mixed_cases.rs:11:20
+   |
+LL |   three_args(1, "", X {}, "");
+   |                    ^^^^^  ^^ no parameter of type &'static str is needed in three_args
+   |                    ||
+   |                    |no parameter of type X is needed in three_args
+   |                    missing argument of type f32
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:6:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^ -------  -------  --------
+help: the following changes might help
+   |
+LL |   three_args(1, "", {f32}, );
+   |                     ^^^^^^--    --
+
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/mixed_cases.rs:14:17
+   |
+LL |   three_args(1, X {});
+   |                 ^^^^^ missing argument of type &str
+   |                 |
+   |                 expected f32, found X
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:6:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^ -------  -------  --------
+help: providing these parameters may help
+   |
+LL |   three_args(1,  {f32}, {&str},);
+   |                  ^^^^^^^^^^^
+
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/mixed_cases.rs:17:20
+   |
+LL |   three_args(1, "", X {});
+   |                    ^^^^^ no parameter of type X is needed in three_args
+   |                    |
+   |                    missing argument of type f32
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:6:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^ -------  -------  --------
+help: the following changes might help
+   |
+LL |   three_args(1, "", {f32}, );
+   |                     ^^^^^^--
+
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/mixed_cases.rs:20:14
+   |
+LL |   three_args("", X {}, 1);
+   |              ^^  ^^^^  ^ expected &str, found {integer}
+   |              |   |
+   |              |   expected f32, found X
+   |              expected i32, found &'static str
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:6:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^ -------  -------  --------
+help: the following changes might help
+   |
+LL |   three_args(1,  {f32},, "");
+   |              ^   ^^^^^^  ^^
+
+error[E0059]: multiple arguments to this function are incorrect
+  --> $DIR/mixed_cases.rs:23:14
+   |
+LL |   three_args("", 1);
+   |              ^^  ^ ^ missing argument of type f32
+   |              |   |
+   |              |   expected f32, found {integer}
+   |              expected i32, found &'static str
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:6:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^ -------  -------  --------
+help: the following changes might help
+   |
+LL |   three_args(1, "") {f32},;
+   |              ^  ^^  ^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0059`.
