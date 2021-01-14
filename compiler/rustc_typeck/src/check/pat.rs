@@ -15,6 +15,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Ident;
+use rustc_span::{BytePos, DUMMY_SP};
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 
 use std::cmp;
@@ -1001,7 +1002,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // More generally, the expected type wants a tuple variant with one field of an
         // N-arity-tuple, e.g., `V_i((p_0, .., p_N))`. Meanwhile, the user supplied a pattern
         // with the subpatterns directly in the tuple variant pattern, e.g., `V_i(p_0, .., p_N)`.
-        let missing_parenthesis = match (&expected.kind(), fields, had_err) {
+        let missing_parentheses = match (&expected.kind(), fields, had_err) {
             // #67037: only do this if we could successfully type-check the expected type against
             // the tuple struct pattern. Otherwise the substs could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct P<T>(T);`.
@@ -1014,13 +1015,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => false,
         };
-        if missing_parenthesis {
+        if missing_parentheses {
             let (left, right) = match subpats {
                 // This is the zero case; we aim to get the "hi" part of the `QPath`'s
                 // span as the "lo" and then the "hi" part of the pattern's span as the "hi".
                 // This looks like:
                 //
-                // help: missing parenthesis
+                // help: missing parentheses
                 //   |
                 // L |     let A(()) = A(());
                 //   |          ^  ^
@@ -1029,17 +1030,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // last sub-pattern. In the case of `A(x)` the first and last may coincide.
                 // This looks like:
                 //
-                // help: missing parenthesis
+                // help: missing parentheses
                 //   |
                 // L |     let A((x, y)) = A((1, 2));
                 //   |           ^    ^
                 [first, ..] => (first.span.shrink_to_lo(), subpats.last().unwrap().span),
             };
             err.multipart_suggestion(
-                "missing parenthesis",
+                "missing parentheses",
                 vec![(left, "(".to_string()), (right.shrink_to_hi(), ")".to_string())],
                 Applicability::MachineApplicable,
             );
+        } else if fields.len() > subpats.len() {
+            let after_fields_span = if pat_span == DUMMY_SP {
+                pat_span
+            } else {
+                pat_span.with_hi(pat_span.hi() - BytePos(1)).shrink_to_hi()
+            };
+            let all_fields_span = match subpats {
+                [] => after_fields_span,
+                [field] => field.span,
+                [first, .., last] => first.span.to(last.span),
+            };
+
+            // Check if all the fields in the pattern are wildcards.
+            let all_wildcards = subpats.iter().all(|pat| matches!(pat.kind, PatKind::Wild));
+
+            let mut wildcard_sugg = vec!["_"; fields.len() - subpats.len()].join(", ");
+            if !subpats.is_empty() {
+                wildcard_sugg = String::from(", ") + &wildcard_sugg;
+            }
+
+            err.span_suggestion_verbose(
+                after_fields_span,
+                "use `_` to explicitly ignore each field",
+                wildcard_sugg,
+                Applicability::MaybeIncorrect,
+            );
+
+            // Only suggest `..` if more than one field is missing
+            // or the pattern consists of all wildcards.
+            if fields.len() - subpats.len() > 1 || all_wildcards {
+                if subpats.is_empty() || all_wildcards {
+                    err.span_suggestion_verbose(
+                        all_fields_span,
+                        "use `..` to ignore all fields",
+                        String::from(".."),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.span_suggestion_verbose(
+                        after_fields_span,
+                        "use `..` to ignore the rest of the fields",
+                        String::from(", .."),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
         }
 
         err.emit();

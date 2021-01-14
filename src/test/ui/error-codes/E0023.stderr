@@ -6,6 +6,11 @@ LL |     Apple(String, String),
 ...
 LL |         Fruit::Apple(a) => {},
    |         ^^^^^^^^^^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         Fruit::Apple(a, _) => {},
+   |                       ^^^
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/E0023.rs:12:9
@@ -34,7 +39,7 @@ LL |     Orange((String, String)),
 LL |         Fruit::Orange(a, b) => {},
    |         ^^^^^^^^^^^^^^^^^^^ expected 1 field, found 2
    |
-help: missing parenthesis
+help: missing parentheses
    |
 LL |         Fruit::Orange((a, b)) => {},
    |                       ^    ^
@@ -48,7 +53,7 @@ LL |     Banana(()),
 LL |         Fruit::Banana() => {},
    |         ^^^^^^^^^^^^^^^ expected 1 field, found 0
    |
-help: missing parenthesis
+help: missing parentheses
    |
 LL |         Fruit::Banana(()) => {},
    |                      ^  ^

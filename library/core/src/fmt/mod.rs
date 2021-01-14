@@ -456,7 +456,9 @@ impl Display for Arguments<'_> {
 ///
 /// When used with the alternate format specifier `#?`, the output is pretty-printed.
 ///
-/// For more information on formatters, see [the module-level documentation][self].
+/// For more information on formatters, see [the module-level documentation][module].
+///
+/// [module]: ../../std/fmt/index.html
 ///
 /// This trait can be used with `#[derive]` if all fields implement `Debug`. When
 /// `derive`d for structs, it will use the name of the `struct`, then `{`, then a
@@ -602,7 +604,9 @@ pub use macros::Debug;
 /// `Display` is similar to [`Debug`], but `Display` is for user-facing
 /// output, and so cannot be derived.
 ///
-/// For more information on formatters, see [the module-level documentation][self].
+/// For more information on formatters, see [the module-level documentation][module].
+///
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -674,7 +678,9 @@ pub trait Display {
 ///
 /// The alternate flag, `#`, adds a `0o` in front of the output.
 ///
-/// For more information on formatters, see [the module-level documentation][self].
+/// For more information on formatters, see [the module-level documentation][module].
+///
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -726,7 +732,9 @@ pub trait Octal {
 ///
 /// The alternate flag, `#`, adds a `0b` in front of the output.
 ///
-/// For more information on formatters, see [the module-level documentation][self].
+/// For more information on formatters, see [the module-level documentation][module].
+///
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -782,7 +790,9 @@ pub trait Binary {
 ///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
 ///
-/// For more information on formatters, see [the module-level documentation][self].
+/// For more information on formatters, see [the module-level documentation][module].
+///
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -835,7 +845,9 @@ pub trait LowerHex {
 ///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
 ///
-/// For more information on formatters, see [the module-level documentation][self].
+/// For more information on formatters, see [the module-level documentation][module].
+///
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -883,7 +895,9 @@ pub trait UpperHex {
 /// The `Pointer` trait should format its output as a memory location. This is commonly presented
 /// as hexadecimal.
 ///
-/// For more information on formatters, see [the module-level documentation][self].
+/// For more information on formatters, see [the module-level documentation][module].
+///
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -932,7 +946,9 @@ pub trait Pointer {
 ///
 /// The `LowerExp` trait should format its output in scientific notation with a lower-case `e`.
 ///
-/// For more information on formatters, see [the module-level documentation][self].
+/// For more information on formatters, see [the module-level documentation][module].
+///
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -981,7 +997,9 @@ pub trait LowerExp {
 ///
 /// The `UpperExp` trait should format its output in scientific notation with an upper-case `E`.
 ///
-/// For more information on formatters, see [the module-level documentation][self].
+/// For more information on formatters, see [the module-level documentation][module].
+///
+/// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -1555,7 +1573,7 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// // We set alignment to the left with ">".
+    /// // We set alignment to the right with ">".
     /// assert_eq!(&format!("{:G>3}", Foo), "GGG");
     /// assert_eq!(&format!("{:t>6}", Foo), "tttttt");
     /// ```
