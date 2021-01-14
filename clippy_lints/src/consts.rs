@@ -1,6 +1,6 @@
 #![allow(clippy::float_cmp)]
 
-use crate::utils::{clip, higher, sext, unsext};
+use crate::utils::{clip, sext, unsext};
 use if_chain::if_chain;
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
@@ -228,9 +228,6 @@ pub struct ConstEvalLateContext<'a, 'tcx> {
 impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// Simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr<'_>) -> Option<Constant> {
-        if let Some((ref cond, ref then, otherwise)) = higher::if_block(&e) {
-            return self.ifthenelse(cond, then, otherwise);
-        }
         match e.kind {
             ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id, self.typeck_results.expr_ty(e)),
             ExprKind::Block(ref block, _) => self.block(block),
@@ -249,6 +246,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 UnOp::UnNeg => self.constant_negate(&o, self.typeck_results.expr_ty(e)),
                 UnOp::UnDeref => Some(if let Constant::Ref(r) = o { *r } else { o }),
             }),
+            ExprKind::If(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, *otherwise),
             ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),
             ExprKind::Call(ref callee, ref args) => {
                 // We only handle a few const functions for now.

@@ -1,4 +1,4 @@
-use crate::utils::{differing_macro_contexts, higher, snippet_block_with_applicability, span_lint, span_lint_and_sugg};
+use crate::utils::{differing_macro_contexts, snippet_block_with_applicability, span_lint, span_lint_and_sugg};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind};
@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
-        if let Some((cond, _, _)) = higher::if_block(&expr) {
+        if let ExprKind::If(cond, _, _) = &expr.kind {
             if let ExprKind::Block(block, _) = &cond.kind {
                 if block.rules == BlockCheckMode::DefaultBlock {
                     if block.stmts.is_empty() {
