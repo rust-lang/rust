@@ -260,15 +260,15 @@ pub(crate) fn handle_on_type_formatting(
     }
 
     let edit = snap.analysis.on_char_typed(position, char_typed)?;
-    let mut edit = match edit {
+    let edit = match edit {
         Some(it) => it,
         None => return Ok(None),
     };
 
     // This should be a single-file edit
-    let edit = edit.source_file_edits.pop().unwrap();
+    let (_, edit) = edit.source_file_edits.edits.into_iter().next().unwrap();
 
-    let change = to_proto::text_edit_vec(&line_index, line_endings, edit.edit);
+    let change = to_proto::text_edit_vec(&line_index, line_endings, edit);
     Ok(Some(change))
 }
 
@@ -463,8 +463,12 @@ pub(crate) fn handle_will_rename_files(
         .collect();
 
     // Drop file system edits since we're just renaming things on the same level
-    let edits = source_changes.into_iter().map(|it| it.source_file_edits).flatten().collect();
-    let source_change = SourceChange::from_edits(edits, Vec::new());
+    let mut source_changes = source_changes.into_iter();
+    let mut source_file_edits =
+        source_changes.next().map_or_else(Default::default, |it| it.source_file_edits);
+    // no collect here because we want to merge text edits on same file ids
+    source_file_edits.extend(source_changes.map(|it| it.source_file_edits.edits).flatten());
+    let source_change = SourceChange::from_edits(source_file_edits, Vec::new());
 
     let workspace_edit = to_proto::workspace_edit(&snap, source_change)?;
     Ok(Some(workspace_edit))

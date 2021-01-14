@@ -8,9 +8,9 @@ use hir::{
     },
     HasSource, HirDisplay, InFile, Semantics, VariantDef,
 };
-use ide_db::base_db::{AnchoredPathBuf, FileId};
 use ide_db::{
-    source_change::{FileSystemEdit, SourceFileEdit},
+    base_db::{AnchoredPathBuf, FileId},
+    source_change::{FileSystemEdit, SourceFileEdits},
     RootDatabase,
 };
 use syntax::{
@@ -88,7 +88,7 @@ impl DiagnosticWithFix for MissingFields {
         };
         Some(Fix::new(
             "Fill struct fields",
-            SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into(),
+            SourceFileEdits::from_text_edit(self.file.original_file(sema.db), edit).into(),
             sema.original_range(&field_list_parent.syntax()).range,
         ))
     }
@@ -102,7 +102,7 @@ impl DiagnosticWithFix for MissingOkOrSomeInTailExpr {
         let replacement = format!("{}({})", self.required, tail_expr.syntax());
         let edit = TextEdit::replace(tail_expr_range, replacement);
         let source_change =
-            SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
+            SourceFileEdits::from_text_edit(self.file.original_file(sema.db), edit).into();
         let name = if self.required == "Ok" { "Wrap with Ok" } else { "Wrap with Some" };
         Some(Fix::new(name, source_change, tail_expr_range))
     }
@@ -123,7 +123,7 @@ impl DiagnosticWithFix for RemoveThisSemicolon {
 
         let edit = TextEdit::delete(semicolon);
         let source_change =
-            SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
+            SourceFileEdits::from_text_edit(self.file.original_file(sema.db), edit).into();
 
         Some(Fix::new("Remove this semicolon", source_change, semicolon))
     }
@@ -204,10 +204,10 @@ fn missing_record_expr_field_fix(
         new_field = format!(",{}", new_field);
     }
 
-    let source_change = SourceFileEdit {
-        file_id: def_file_id,
-        edit: TextEdit::insert(last_field_syntax.text_range().end(), new_field),
-    };
+    let source_change = SourceFileEdits::from_text_edit(
+        def_file_id,
+        TextEdit::insert(last_field_syntax.text_range().end(), new_field),
+    );
     return Some(Fix::new(
         "Create field",
         source_change.into(),

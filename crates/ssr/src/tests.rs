@@ -103,11 +103,10 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     if edits.is_empty() {
         panic!("No edits were made");
     }
-    assert_eq!(edits[0].file_id, position.file_id);
     // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
     // stuff.
     let mut actual = db.file_text(position.file_id).to_string();
-    edits[0].edit.apply(&mut actual);
+    edits.edits[&position.file_id].apply(&mut actual);
     expected.assert_eq(&actual);
 }
 

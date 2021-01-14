@@ -810,9 +810,9 @@ mod tests {
 
         let edits = match_finder.edits();
         assert_eq!(edits.len(), 1);
-        let edit = &edits[0];
+        let edit = &edits.edits[&position.file_id];
         let mut after = input.to_string();
-        edit.edit.apply(&mut after);
+        edit.apply(&mut after);
         assert_eq!(after, "fn foo() {} fn bar() {} fn main() { bar(1+2); }");
     }
 }

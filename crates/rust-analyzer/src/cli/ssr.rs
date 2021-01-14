@@ -12,10 +12,10 @@ pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
         match_finder.add_rule(rule)?;
     }
     let edits = match_finder.edits();
-    for edit in edits {
-        if let Some(path) = vfs.file_path(edit.file_id).as_path() {
-            let mut contents = db.file_text(edit.file_id).to_string();
-            edit.edit.apply(&mut contents);
+    for (file_id, edit) in edits.edits {
+        if let Some(path) = vfs.file_path(file_id).as_path() {
+            let mut contents = db.file_text(file_id).to_string();
+            edit.apply(&mut contents);
             std::fs::write(path, contents)?;
         }
     }

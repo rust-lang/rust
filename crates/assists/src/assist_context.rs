@@ -10,7 +10,7 @@ use ide_db::{
 };
 use ide_db::{
     label::Label,
-    source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
+    source_change::{FileSystemEdit, SourceChange, SourceFileEdits},
     RootDatabase,
 };
 use syntax::{
@@ -181,7 +181,7 @@ pub(crate) struct AssistBuilder {
     edit: TextEditBuilder,
     file_id: FileId,
     is_snippet: bool,
-    source_file_edits: Vec<SourceFileEdit>,
+    source_file_edits: SourceFileEdits,
     file_system_edits: Vec<FileSystemEdit>,
 }
 
@@ -191,7 +191,7 @@ impl AssistBuilder {
             edit: TextEdit::builder(),
             file_id,
             is_snippet: false,
-            source_file_edits: Vec::default(),
+            source_file_edits: SourceFileEdits::default(),
             file_system_edits: Vec::default(),
         }
     }
@@ -204,15 +204,7 @@ impl AssistBuilder {
     fn commit(&mut self) {
         let edit = mem::take(&mut self.edit).finish();
         if !edit.is_empty() {
-            match self.source_file_edits.binary_search_by_key(&self.file_id, |edit| edit.file_id) {
-                Ok(idx) => self.source_file_edits[idx]
-                    .edit
-                    .union(edit)
-                    .expect("overlapping edits for same file"),
-                Err(idx) => self
-                    .source_file_edits
-                    .insert(idx, SourceFileEdit { file_id: self.file_id, edit }),
-            }
+            self.source_file_edits.insert(self.file_id, edit);
         }
     }
 

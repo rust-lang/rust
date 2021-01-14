@@ -21,7 +21,7 @@ use text_edit::TextEdit;
 
 use crate::{
     FilePosition, FileSystemEdit, RangeInfo, ReferenceKind, ReferenceSearchResult, SourceChange,
-    SourceFileEdit, TextRange, TextSize,
+    SourceFileEdits, TextRange, TextSize,
 };
 
 type RenameResult<T> = Result<T, RenameError>;
@@ -58,7 +58,7 @@ pub(crate) fn prepare_rename(
         rename_self_to_param(&sema, position, self_token, "dummy")
     } else {
         let RangeInfo { range, .. } = find_all_refs(&sema, position)?;
-        Ok(RangeInfo::new(range, SourceChange::from(vec![])))
+        Ok(RangeInfo::new(range, SourceChange::default()))
     }
     .map(|info| RangeInfo::new(info.range, ()))
 }
@@ -176,7 +176,7 @@ fn source_edit_from_references(
     file_id: FileId,
     references: &[FileReference],
     new_name: &str,
-) -> SourceFileEdit {
+) -> (FileId, TextEdit) {
     let mut edit = TextEdit::builder();
     for reference in references {
         let mut replacement_text = String::new();
@@ -209,8 +209,7 @@ fn source_edit_from_references(
         };
         edit.replace(range, replacement_text);
     }
-
-    SourceFileEdit { file_id, edit: edit.finish() }
+    (file_id, edit.finish())
 }
 
 fn edit_text_range_for_record_field_expr_or_pat(
@@ -250,7 +249,7 @@ fn rename_mod(
     if IdentifierKind::Ident != check_identifier(new_name)? {
         bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
     }
-    let mut source_file_edits = Vec::new();
+    let mut source_file_edits = SourceFileEdits::default();
     let mut file_system_edits = Vec::new();
 
     let src = module.definition_source(sema.db);
@@ -273,11 +272,8 @@ fn rename_mod(
     if let Some(src) = module.declaration_source(sema.db) {
         let file_id = src.file_id.original_file(sema.db);
         let name = src.value.name().unwrap();
-        let edit = SourceFileEdit {
-            file_id,
-            edit: TextEdit::replace(name.syntax().text_range(), new_name.into()),
-        };
-        source_file_edits.push(edit);
+        source_file_edits
+            .insert(file_id, TextEdit::replace(name.syntax().text_range(), new_name.into()));
     }
 
     let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
@@ -335,20 +331,13 @@ fn rename_to_self(
 
     let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
 
-    let mut edits = refs
-        .references()
-        .iter()
-        .map(|(&file_id, references)| {
-            source_edit_from_references(sema, file_id, references, "self")
-        })
-        .collect::<Vec<_>>();
+    let mut edits = SourceFileEdits::default();
+    edits.extend(refs.references().iter().map(|(&file_id, references)| {
+        source_edit_from_references(sema, file_id, references, "self")
+    }));
+    edits.insert(position.file_id, TextEdit::replace(param_range, String::from(self_param)));
 
-    edits.push(SourceFileEdit {
-        file_id: position.file_id,
-        edit: TextEdit::replace(param_range, String::from(self_param)),
-    });
-
-    Ok(RangeInfo::new(range, SourceChange::from(edits)))
+    Ok(RangeInfo::new(range, edits.into()))
 }
 
 fn text_edit_from_self_param(
@@ -402,7 +391,7 @@ fn rename_self_to_param(
         .ok_or_else(|| format_err!("No surrounding method declaration found"))?;
     let search_range = fn_def.syntax().text_range();
 
-    let mut edits: Vec<SourceFileEdit> = vec![];
+    let mut edits = SourceFileEdits::default();
 
     for (idx, _) in text.match_indices("self") {
         let offset: TextSize = idx.try_into().unwrap();
@@ -416,7 +405,7 @@ fn rename_self_to_param(
             } else {
                 TextEdit::replace(usage.text_range(), String::from(new_name))
             };
-            edits.push(SourceFileEdit { file_id: position.file_id, edit });
+            edits.insert(position.file_id, edit);
         }
     }
 
@@ -427,7 +416,7 @@ fn rename_self_to_param(
     let range = ast::SelfParam::cast(self_token.parent())
         .map_or(self_token.text_range(), |p| p.syntax().text_range());
 
-    Ok(RangeInfo::new(range, SourceChange::from(edits)))
+    Ok(RangeInfo::new(range, edits.into()))
 }
 
 fn rename_reference(
@@ -464,14 +453,12 @@ fn rename_reference(
         (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => mark::hit!(rename_ident),
     }
 
-    let edit = refs
-        .into_iter()
-        .map(|(file_id, references)| {
-            source_edit_from_references(sema, file_id, &references, new_name)
-        })
-        .collect::<Vec<_>>();
+    let mut edits = SourceFileEdits::default();
+    edits.extend(refs.into_iter().map(|(file_id, references)| {
+        source_edit_from_references(sema, file_id, &references, new_name)
+    }));
 
-    Ok(RangeInfo::new(range, SourceChange::from(edit)))
+    Ok(RangeInfo::new(range, edits.into()))
 }
 
 #[cfg(test)]
@@ -493,9 +480,9 @@ mod tests {
             Ok(source_change) => {
                 let mut text_edit_builder = TextEdit::builder();
                 let mut file_id: Option<FileId> = None;
-                for edit in source_change.info.source_file_edits {
-                    file_id = Some(edit.file_id);
-                    for indel in edit.edit.into_iter() {
+                for edit in source_change.info.source_file_edits.edits {
+                    file_id = Some(edit.0);
+                    for indel in edit.1.into_iter() {
                         text_edit_builder.replace(indel.delete, indel.insert);
                     }
                 }
@@ -895,12 +882,11 @@ mod foo$0;
                 RangeInfo {
                     range: 4..7,
                     info: SourceChange {
-                        source_file_edits: [
-                            SourceFileEdit {
-                                file_id: FileId(
+                        source_file_edits: SourceFileEdits {
+                            edits: {
+                                FileId(
                                     1,
-                                ),
-                                edit: TextEdit {
+                                ): TextEdit {
                                     indels: [
                                         Indel {
                                             insert: "foo2",
@@ -909,7 +895,7 @@ mod foo$0;
                                     ],
                                 },
                             },
-                        ],
+                        },
                         file_system_edits: [
                             MoveFile {
                                 src: FileId(
@@ -950,12 +936,11 @@ use crate::foo$0::FooContent;
                 RangeInfo {
                     range: 11..14,
                     info: SourceChange {
-                        source_file_edits: [
-                            SourceFileEdit {
-                                file_id: FileId(
+                        source_file_edits: SourceFileEdits {
+                            edits: {
+                                FileId(
                                     0,
-                                ),
-                                edit: TextEdit {
+                                ): TextEdit {
                                     indels: [
                                         Indel {
                                             insert: "quux",
@@ -963,12 +948,9 @@ use crate::foo$0::FooContent;
                                         },
                                     ],
                                 },
-                            },
-                            SourceFileEdit {
-                                file_id: FileId(
+                                FileId(
                                     2,
-                                ),
-                                edit: TextEdit {
+                                ): TextEdit {
                                     indels: [
                                         Indel {
                                             insert: "quux",
@@ -977,7 +959,7 @@ use crate::foo$0::FooContent;
                                     ],
                                 },
                             },
-                        ],
+                        },
                         file_system_edits: [
                             MoveFile {
                                 src: FileId(
@@ -1012,12 +994,11 @@ mod fo$0o;
                 RangeInfo {
                     range: 4..7,
                     info: SourceChange {
-                        source_file_edits: [
-                            SourceFileEdit {
-                                file_id: FileId(
+                        source_file_edits: SourceFileEdits {
+                            edits: {
+                                FileId(
                                     0,
-                                ),
-                                edit: TextEdit {
+                                ): TextEdit {
                                     indels: [
                                         Indel {
                                             insert: "foo2",
@@ -1026,7 +1007,7 @@ mod fo$0o;
                                     ],
                                 },
                             },
-                        ],
+                        },
                         file_system_edits: [
                             MoveFile {
                                 src: FileId(
@@ -1062,12 +1043,11 @@ mod outer { mod fo$0o; }
                 RangeInfo {
                     range: 16..19,
                     info: SourceChange {
-                        source_file_edits: [
-                            SourceFileEdit {
-                                file_id: FileId(
+                        source_file_edits: SourceFileEdits {
+                            edits: {
+                                FileId(
                                     0,
-                                ),
-                                edit: TextEdit {
+                                ): TextEdit {
                                     indels: [
                                         Indel {
                                             insert: "bar",
@@ -1076,7 +1056,7 @@ mod outer { mod fo$0o; }
                                     ],
                                 },
                             },
-                        ],
+                        },
                         file_system_edits: [
                             MoveFile {
                                 src: FileId(
@@ -1135,12 +1115,21 @@ pub mod foo$0;
                 RangeInfo {
                     range: 8..11,
                     info: SourceChange {
-                        source_file_edits: [
-                            SourceFileEdit {
-                                file_id: FileId(
+                        source_file_edits: SourceFileEdits {
+                            edits: {
+                                FileId(
+                                    0,
+                                ): TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "foo2",
+                                            delete: 27..30,
+                                        },
+                                    ],
+                                },
+                                FileId(
                                     1,
-                                ),
-                                edit: TextEdit {
+                                ): TextEdit {
                                     indels: [
                                         Indel {
                                             insert: "foo2",
@@ -1149,20 +1138,7 @@ pub mod foo$0;
                                     ],
                                 },
                             },
-                            SourceFileEdit {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                edit: TextEdit {
-                                    indels: [
-                                        Indel {
-                                            insert: "foo2",
-                                            delete: 27..30,
-                                        },
-                                    ],
-                                },
-                            },
-                        ],
+                        },
                         file_system_edits: [
                             MoveFile {
                                 src: FileId(
