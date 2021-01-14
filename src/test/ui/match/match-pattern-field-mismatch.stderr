@@ -6,6 +6,15 @@ LL |         Rgb(usize, usize, usize),
 ...
 LL |           Color::Rgb(_, _) => { }
    |           ^^^^^^^^^^^^^^^^ expected 3 fields, found 2
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |           Color::Rgb(_, _, _) => { }
+   |                          ^^^
+help: use `..` to ignore all fields
+   |
+LL |           Color::Rgb(..) => { }
+   |                      ^^
 
 error: aborting due to previous error
 
