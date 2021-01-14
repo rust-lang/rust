@@ -70,6 +70,11 @@ fn setup_logging(log_file: Option<PathBuf>) -> Result<()> {
     tracing_setup::setup_tracing()?;
 
     profile::init();
+
+    if !cfg!(debug_assertions) {
+        stdx::set_assert_hook(|loc, args| log::error!("assertion failed at {}: {}", loc, args));
+    }
+
     Ok(())
 }
 

@@ -540,8 +540,7 @@ mod macros {
 "#,
             expect![[r##"
                 fn f()        fn f()
-                ma concat!(…) #[macro_export]
-                macro_rules! concat
+                ma concat!(…) #[macro_export] macro_rules! concat
                 md std
             "##]],
         );
@@ -597,8 +596,7 @@ fn main() { let v = $0 }
 "#,
             expect![[r##"
                 md m1
-                ma baz!(…) #[macro_export]
-                macro_rules! baz
+                ma baz!(…) #[macro_export] macro_rules! baz
                 fn main()  fn main()
                 md m2
                 ma bar!(…) macro_rules! bar
