@@ -517,6 +517,37 @@ mod prelude { struct Option; }
     }
 
     #[test]
+    fn completes_prelude_macros() {
+        check(
+            r#"
+//- /main.rs crate:main deps:std
+fn f() {$0}
+
+//- /std/lib.rs crate:std
+#[prelude_import]
+pub use prelude::*;
+
+#[macro_use]
+mod prelude {
+    pub use crate::concat;
+}
+
+mod macros {
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! concat { }
+}
+"#,
+            expect![[r##"
+                fn f()        fn f()
+                ma concat!(…) #[macro_export]
+                macro_rules! concat
+                md std
+            "##]],
+        );
+    }
+
+    #[test]
     fn completes_std_prelude_if_core_is_defined() {
         check(
             r#"
