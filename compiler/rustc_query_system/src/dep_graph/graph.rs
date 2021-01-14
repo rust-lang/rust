@@ -953,7 +953,7 @@ impl<K: DepKind> DepGraph<K> {
     // Returns true if the given node has been marked as green during the
     // current compilation session. Used in various assertions
     pub fn is_green(&self, dep_node: &DepNode<K>) -> bool {
-        self.node_color(dep_node).map(|c| c.is_green()).unwrap_or(false)
+        self.node_color(dep_node).map_or(false, |c| c.is_green())
     }
 
     // This method loads all on-disk cacheable query results into memory, so

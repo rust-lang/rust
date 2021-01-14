@@ -273,7 +273,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if !generic_args.parenthesized && !has_lifetimes {
             generic_args.args = self
                 .elided_path_lifetimes(
-                    first_generic_span.map(|s| s.shrink_to_lo()).unwrap_or(segment.ident.span),
+                    first_generic_span.map_or(segment.ident.span, |s| s.shrink_to_lo()),
                     expected_lifetimes,
                 )
                 .map(GenericArg::Lifetime)

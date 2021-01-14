@@ -1002,8 +1002,7 @@ pub unsafe fn with_llvm_pmb(
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
     let builder = llvm::LLVMPassManagerBuilderCreate();
-    let opt_size =
-        config.opt_size.map(|x| to_llvm_opt_settings(x).1).unwrap_or(llvm::CodeGenOptSizeNone);
+    let opt_size = config.opt_size.map_or(llvm::CodeGenOptSizeNone, |x| to_llvm_opt_settings(x).1);
     let inline_threshold = config.inline_threshold;
     let pgo_gen_path = get_pgo_gen_path(config);
     let pgo_use_path = get_pgo_use_path(config);
