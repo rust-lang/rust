@@ -97,14 +97,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// method calls and overloaded operators.
     pub(in super::super) fn check_argument_types(
         &self,
-        call_span: Span,                        // Span enclosing the call site
-        call_expr: &'tcx hir::Expr<'tcx>,       // Expression of the call site
-        formal_input_tys: &[Ty<'tcx>], // Types (as defined in the *signature* of the target function)
-        expected_input_tys: &[Ty<'tcx>], // More specific expected types, after unifying with caller output types
-        provided_args: &'tcx [hir::Expr<'tcx>], // The expressions for each provided argument
-        c_variadic: bool, // Whether the function is variadic, for example when imported from C
-        tuple_arguments: TupleArgumentsFlag, // Whether the arguments have been bundled in a tuple (ex: closures)
-        fn_def_id: Option<DefId>, // The DefId for the function being called, for better error messages
+        // Span enclosing the call site
+        call_span: Span,
+        // Expression of the call site
+        call_expr: &'tcx hir::Expr<'tcx>,
+        // Types (as defined in the *signature* of the target function)
+        formal_input_tys: &[Ty<'tcx>],
+        // More specific expected types, after unifying with caller output types
+        expected_input_tys: &[Ty<'tcx>],
+        // The expressions for each provided argument
+        provided_args: &'tcx [hir::Expr<'tcx>],
+        // Whether the function is variadic, for example when imported from C
+        c_variadic: bool,
+        // Whether the arguments have been bundled in a tuple (ex: closures)
+        tuple_arguments: TupleArgumentsFlag,
+        // The DefId for the function being called, for better error messages
+        fn_def_id: Option<DefId>,
     ) {
         let tcx = self.tcx;
 
@@ -429,7 +437,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     match (is_arg, is_input, useless, unsatisfiable) {
-                        // If an input is unsatisfied, and the argument in it's position is useless
+                        // If an input is unsatisfied, and the argument in its position is useless
                         // then the most likely explanation is that we just got the types wrong
                         (true, true, true, true) => return Some(Issue::Invalid(i)),
                         // Otherwise, if an input is useless, then indicate that this is an extra argument
@@ -480,9 +488,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         stack.push(j);
                         // Look for params this one could slot into
                         let compat: Vec<_> =
-                            mat[j].iter().enumerate().filter(|(_, &c)| c).map(|(i, _)| i).collect();
+                            mat[j].iter().enumerate().filter_map(|(i, &c)| if c { Some(i) } else { None }).collect();
                         if compat.len() != 1 {
-                            // this could go into multipl slots, don't bother exploring both
+                            // this could go into multiple slots, don't bother exploring both
                             is_cycle = false;
                             break;
                         }
@@ -520,7 +528,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if permutation_found {
                     // Map unwrap to remove the first layer of Some
                     let final_permutation: Vec<Option<usize>> =
-                        permutation.iter().map(|x| x.unwrap()).collect();
+                        permutation.into_iter().map(|x| x.unwrap()).collect();
                     return Some(Issue::Permutation(final_permutation));
                 }
                 return None;
@@ -575,7 +583,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // we'd want to call this function with the correct arg/input pairs, but for now, we just throw them in a bucket.
                         // This works because they force a cycle, so each row is guaranteed to also be a column
                         let mut idxs: Vec<usize> =
-                            args.iter().filter(|a| a.is_some()).map(|a| a.unwrap()).collect();
+                            args.iter()
+                                .filter_map(|&a| a)
+                                .collect();
                         // FIXME: Is there a cleaner way to do this?
                         let mut real_idxs = vec![None; provided_args.len()];
                         for (src, dst) in args.iter().enumerate() {
@@ -617,7 +627,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let issue_count = issues.len();
             if issue_count > 0 {
-                // We found issues, so lets construct a diagnostic that summarizes the issues we found
+                // We found issues, so let's construct a diagnostic that summarizes the issues we found
                 // FIXME: This might need some refining in code review
                 let mut labels = vec![];
                 let mut suggestions = vec![];
@@ -627,7 +637,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Issue::Invalid(arg) => {
                             let span = provided_args[arg].span;
                             let expected_type = expected_input_tys[arg];
-                            let found_type = final_arg_types.iter().filter(|(i, _, _)| *i == arg).next().unwrap().1;
+                            let found_type = final_arg_types.iter().find(|(i, _, _)| *i == arg).unwrap().1;
                             labels.push((span, format!("expected {}, found {}", expected_type, found_type)));
                         }
                         Issue::Extra(arg) => {
@@ -645,10 +655,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             };
                             let found_type = self.check_expr(&provided_args[arg]);
                             let fn_name = fn_def_id
-                                .and_then(|def_id| tcx.hir().get_if_local(def_id))
-                                .and_then(|node| node.ident())
-                                .map(|ident| format!("fn {}(..)", ident))
-                                .unwrap_or("this function".to_string());
+                                .map(|def_id| (tcx.def_kind(def_id), def_id))
+                                .map(|(def_kind, def_id)| def_kind.descr(def_id))
+                                .unwrap_or("this function");
 
                             labels.push((span, format!("no parameter of type {} is needed in {}", found_type, fn_name)));
                             if issue_count > 1 {
@@ -689,8 +698,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let second_snippet = source_map.span_to_snippet(second_span).unwrap();
                             let expected_types = (expected_input_tys[arg], expected_input_tys[other]);
                             let found_types = (
-                                final_arg_types.iter().filter(|(i, _, _)| *i == arg).next().unwrap().1,
-                                final_arg_types.iter().filter(|(i, _, _)| *i == other).next().unwrap().1,
+                                final_arg_types.iter().find(|(i, _, _)| *i == arg).unwrap().1,
+                                final_arg_types.iter().find(|(i, _, _)| *i == other).unwrap().1,
                             );
                             labels.push((first_span, format!("expected {}, found {}", expected_types.0, found_types.0)));
                             suggestions.push((first_span, second_snippet));
@@ -704,7 +713,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     let dst_span = provided_args[dst].span;
                                     let snippet = source_map.span_to_snippet(src_span).unwrap();
                                     let expected_type = expected_input_tys[dst];
-                                    let found_type = final_arg_types.iter().filter(|(i, _, _)| *i == dst).next().unwrap().1;
+                                    let found_type = final_arg_types.iter().find(|(i, _, _)| *i == dst).unwrap().1;
                                     labels.push((dst_span, format!("expected {}, found {}", expected_type, found_type)));
                                     suggestions.push((dst_span, snippet));
                                 }
@@ -719,7 +728,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.sess,
                     highlight_sp,
                     E0059, // FIXME: Choose a different code?
-                    "multiple arguments to this function are incorrect"
+                    "{}arguments to this function are incorrect",
+                    if issue_count > 1 { "multiple " } else { "" }
                 );
 
                 // Call out where the function is defined
@@ -775,7 +785,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for arg in provided_args.iter().skip(minimum_input_count) {
                 let arg_ty = self.check_expr(&arg);
 
-                // There are a few types which can get autopromoted when passed via varargs
+                // There are a few types which get autopromoted when passed via varargs
                 // in C but we just error out instead and require explicit casts.
                 let arg_ty = self.structurally_resolved_type(arg.span, arg_ty);
                 match arg_ty.kind() {

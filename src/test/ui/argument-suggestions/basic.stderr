@@ -1,4 +1,4 @@
-error[E0059]: multiple arguments to this function are incorrect
+error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:20:13
    |
 LL |     invalid(1.0);
@@ -10,11 +10,11 @@ note: function defined here
 LL | fn invalid(_i: u32) {}
    |    ^^^^^^^ -------
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:21:11
    |
 LL |     extra(&"");
-   |           ^^^ no parameter of type &&'static str is needed in fn extra(..)
+   |           ^^^ no parameter of type &&'static str is needed in function
    |
 note: function defined here
   --> $DIR/basic.rs:13:4
@@ -22,7 +22,7 @@ note: function defined here
 LL | fn extra() {}
    |    ^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:22:13
    |
 LL |     missing();
@@ -34,7 +34,7 @@ note: function defined here
 LL | fn missing(_i: u32) {}
    |    ^^^^^^^ -------
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:23:13
    |
 LL |     swapped(&"", 1);
@@ -52,7 +52,7 @@ help: the following changes might help
 LL |     swapped(1, &"");
    |             ^  ^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:24:14
    |
 LL |     permuted(Y {}, Z {}, X {});
@@ -82,7 +82,7 @@ LL |     complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
    |             |    |         ||    expected G, found F
    |             |    |         |expected F, found G
    |             |    |         missing argument of type E
-   |             |    no parameter of type H is needed in fn complex(..)
+   |             |    no parameter of type H is needed in function
    |             expected u32, found {float}
    |
 note: function defined here
