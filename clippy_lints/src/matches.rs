@@ -4,8 +4,8 @@ use crate::utils::usage::is_unused;
 use crate::utils::{
     expr_block, get_arg_name, get_parent_expr, implements_trait, in_macro, indent_of, is_allowed, is_expn_of,
     is_refutable, is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg,
-    remove_blocks, snippet, snippet_block, snippet_opt, snippet_with_applicability, span_lint_and_help,
-    span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
+    peel_hir_pat_refs, peel_mid_ty_refs, peeln_hir_expr_refs, remove_blocks, snippet, snippet_block, snippet_opt,
+    snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use if_chain::if_chain;
@@ -717,28 +717,6 @@ fn check_single_match_single_pattern(
     }
 }
 
-fn peel_pat_refs(pat: &'a Pat<'a>) -> (&'a Pat<'a>, usize) {
-    fn peel(pat: &'a Pat<'a>, count: usize) -> (&'a Pat<'a>, usize) {
-        if let PatKind::Ref(pat, _) = pat.kind {
-            peel(pat, count + 1)
-        } else {
-            (pat, count)
-        }
-    }
-    peel(pat, 0)
-}
-
-fn peel_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
-    fn peel(ty: Ty<'_>, count: usize) -> (Ty<'_>, usize) {
-        if let ty::Ref(_, ty, _) = ty.kind() {
-            peel(ty, count + 1)
-        } else {
-            (ty, count)
-        }
-    }
-    peel(ty, 0)
-}
-
 fn report_single_match_single_pattern(
     cx: &LateContext<'_>,
     ex: &Expr<'_>,
@@ -752,9 +730,9 @@ fn report_single_match_single_pattern(
     });
 
     let (msg, sugg) = if_chain! {
-        let (pat, pat_ref_count) = peel_pat_refs(arms[0].pat);
+        let (pat, pat_ref_count) = peel_hir_pat_refs(arms[0].pat);
         if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind;
-        let (ty, ty_ref_count) = peel_ty_refs(cx.typeck_results().expr_ty(ex));
+        let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex));
         if let Some(trait_id) = cx.tcx.lang_items().structural_peq_trait();
         if ty.is_integral() || ty.is_char() || ty.is_str() || implements_trait(cx, ty, trait_id, &[]);
         then {
@@ -764,19 +742,28 @@ fn report_single_match_single_pattern(
                 PatKind::Lit(Expr { kind: ExprKind::Lit(lit), .. }) if lit.node.is_str() => pat_ref_count + 1,
                 _ => pat_ref_count,
             };
-            let msg = "you seem to be trying to use match for an equality check. Consider using `if`";
+            // References are only implicitly added to the pattern, so no overflow here.
+            // e.g. will work: match &Some(_) { Some(_) => () }
+            // will not: match Some(_) { &Some(_) => () }
+            let ref_count_diff = ty_ref_count - pat_ref_count;
+
+            // Try to remove address of expressions first.
+            let (ex, removed) = peeln_hir_expr_refs(ex, ref_count_diff);
+            let ref_count_diff = ref_count_diff - removed;
+
+            let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
             let sugg = format!(
                 "if {} == {}{} {}{}",
                 snippet(cx, ex.span, ".."),
                 // PartialEq for different reference counts may not exist.
-                "&".repeat(ty_ref_count - pat_ref_count),
+                "&".repeat(ref_count_diff),
                 snippet(cx, arms[0].pat.span, ".."),
                 expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
                 els_str,
             );
             (msg, sugg)
         } else {
-            let msg = "you seem to be trying to use match for destructuring a single pattern. Consider using `if let`";
+            let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
             let sugg = format!(
                 "if let {} = {} {}{}",
                 snippet(cx, arms[0].pat.span, ".."),

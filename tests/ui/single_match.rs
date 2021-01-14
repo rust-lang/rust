@@ -81,7 +81,8 @@ fn single_match_know_enum() {
     }
 }
 
-fn issue_173() {
+// issue #173
+fn if_suggestion() {
     let x = "test";
     match x {
         "test" => println!(),
@@ -106,6 +107,18 @@ fn issue_173() {
         FOO_C => println!(),
         _ => (),
     }
+
+    match &&x {
+        Foo::A => println!(),
+        _ => (),
+    }
+
+    let x = &x;
+    match &x {
+        Foo::A => println!(),
+        _ => (),
+    }
+
     enum Bar {
         A,
         B,
