@@ -85,7 +85,7 @@ impl RawVisibility {
 }
 
 /// Visibility of an item, with the path resolved.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Visibility {
     /// Visibility is restricted to a certain module.
     Module(ModuleId),

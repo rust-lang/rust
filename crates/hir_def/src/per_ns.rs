@@ -7,7 +7,7 @@ use hir_expand::MacroDefId;
 
 use crate::{item_scope::ItemInNs, visibility::Visibility, ModuleDefId};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PerNs {
     pub types: Option<(ModuleDefId, Visibility)>,
     pub values: Option<(ModuleDefId, Visibility)>,
