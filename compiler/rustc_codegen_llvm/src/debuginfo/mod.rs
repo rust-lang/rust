@@ -552,7 +552,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         unsafe {
             llvm::LLVMRustDIBuilderCreateDebugLocation(
-                utils::debug_context(self).llcontext,
                 line.unwrap_or(UNKNOWN_LINE_NUMBER),
                 col.unwrap_or(UNKNOWN_COLUMN_NUMBER),
                 scope,
