@@ -1,32 +1,28 @@
 error: lifetime parameter `'a` never used
-  --> $DIR/unused-lifetime.rs:26:40
+  --> $DIR/unused-lifetime.rs:31:23
    |
-LL | pub async fn func_with_unused_lifetime<'a>(s: &'a str) {
-   |                                        ^^
+LL | fn wrong_without_args<'a>() {}
+   |                      -^^- help: elide the unused lifetime
    |
 note: the lint level is defined here
-  --> $DIR/unused-lifetime.rs:7:9
+  --> $DIR/unused-lifetime.rs:5:9
    |
 LL | #![deny(unused_lifetimes)]
    |         ^^^^^^^^^^^^^^^^
 
 error: lifetime parameter `'a` never used
-  --> $DIR/unused-lifetime.rs:31:44
+  --> $DIR/unused-lifetime.rs:33:21
    |
-LL | pub async fn func_with_two_unused_lifetime<'a, 'b>(s: &'a str, t: &'b str) {
-   |                                            ^^
+LL | fn wrong_1_lifetime<'a>(_: &i32) {}
+   |                    -^^- help: elide the unused lifetime
 
 error: lifetime parameter `'b` never used
-  --> $DIR/unused-lifetime.rs:31:48
+  --> $DIR/unused-lifetime.rs:35:26
    |
-LL | pub async fn func_with_two_unused_lifetime<'a, 'b>(s: &'a str, t: &'b str) {
-   |                                                ^^
+LL | fn wrong_2_lifetimes<'a, 'b>(_: &'a i32, _: &i32) {}
+   |                        --^^
+   |                        |
+   |                        help: elide the unused lifetime
 
-error: lifetime parameter `'c` never used
-  --> $DIR/unused-lifetime.rs:37:54
-   |
-LL | pub async fn func_with_unused_lifetime_in_two_params<'c>(s: &'c str, t: &'c str) {
-   |                                                      ^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

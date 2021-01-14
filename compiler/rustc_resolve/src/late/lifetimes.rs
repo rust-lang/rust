@@ -644,17 +644,17 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             } else {
                                 bug!();
                             };
-                            if let hir::ParamName::Plain(param_name) = name {
-                                if param_name.name == kw::UnderscoreLifetime {
-                                    // Pick the elided lifetime "definition" if one exists
-                                    // and use it to make an elision scope.
-                                    self.lifetime_uses.insert(def_id, LifetimeUseSet::Many);
-                                    elision = Some(reg);
-                                } else {
-                                    lifetimes.insert(name, reg);
-                                }
+                            // We cannot predict what lifetimes are unused in opaque type.
+                            self.lifetime_uses.insert(def_id, LifetimeUseSet::Many);
+                            if let hir::ParamName::Plain(Ident {
+                                name: kw::UnderscoreLifetime,
+                                ..
+                            }) = name
+                            {
+                                // Pick the elided lifetime "definition" if one exists
+                                // and use it to make an elision scope.
+                                elision = Some(reg);
                             } else {
-                                self.lifetime_uses.insert(def_id, LifetimeUseSet::Many);
                                 lifetimes.insert(name, reg);
                             }
                         }
