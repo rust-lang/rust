@@ -2221,6 +2221,7 @@ fn clean_use_statement(
 
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a
     // crate in Rust 2018+
+    let def_id = cx.tcx.hir().local_def_id(import.hir_id).to_def_id();
     let path = path.clean(cx);
     let inner = if kind == hir::UseKind::Glob {
         if !denied {
@@ -2252,7 +2253,7 @@ fn clean_use_statement(
                 &mut visited,
             ) {
                 items.push(Item::from_def_id_and_parts(
-                    cx.tcx.hir().local_def_id(import.hir_id).to_def_id(),
+                    def_id,
                     None,
                     ImportItem(Import::new_simple(name, resolve_use_source(cx, path), false)),
                     cx,
@@ -2263,12 +2264,7 @@ fn clean_use_statement(
         Import::new_simple(name, resolve_use_source(cx, path), true)
     };
 
-    vec![Item::from_def_id_and_parts(
-        cx.tcx.hir().local_def_id(import.hir_id).to_def_id(),
-        None,
-        ImportItem(inner),
-        cx,
-    )]
+    vec![Item::from_def_id_and_parts(def_id, None, ImportItem(inner), cx)]
 }
 
 impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
