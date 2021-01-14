@@ -83,7 +83,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 
 use crate::build::matches::{ArmHasGuard, Candidate};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-// use crate::build::expr::as_place::PlaceBuilder;
+use crate::build::expr::as_place::PlaceBuilder;
 use crate::thir::{Arm, Expr, ExprRef, LintLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
@@ -1149,14 +1149,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         destination: Place<'tcx>,
         destination_scope: Option<region::Scope>,
-        scrutinee_place: Place<'tcx>,
+        scrutinee_place: PlaceBuilder<'tcx>,
         scrutinee_span: Span,
         arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
     ) -> BlockAnd<()> {
         // Generate place to be used in declare_bindings
-        //let scrutinee_place = scrutinee_place_builder.clone().into_place(self.hir.tcx(), self.hir.typeck_results());
         if arm_candidates.is_empty() {
             // If there are no arms to schedule drops, then we have to do it
             // manually.
@@ -1191,7 +1190,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         arm.span,
                         &arm.pattern,
                         ArmHasGuard(arm.guard.is_some()),
-                        Some((Some(&scrutinee_place), scrutinee_span)),
+                        Some((Some(&scrutinee_place.clone().into_place(this.hir.tcx(), this.hir.typeck_results())), scrutinee_span)),
                     );
 
                     let arm_block = this.bind_pattern(

@@ -14,11 +14,10 @@
 
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
-// use crate::build::expr::as_place::PlaceBuilder;
+use crate::build::expr::as_place::PlaceBuilder;
 use crate::thir::{self, *};
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::RangeEnd;
-use rustc_middle::mir::Place;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_target::abi::{Integer, Size};
@@ -70,7 +69,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let match_pairs = mem::take(&mut candidate.match_pairs);
 
             if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, place }] =
-                *match_pairs
+                &*match_pairs.clone()
             {
                 existing_bindings.extend_from_slice(&new_bindings);
                 mem::swap(&mut candidate.bindings, &mut existing_bindings);
@@ -127,7 +126,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &Candidate<'pat, 'tcx>,
-        place: Place<'tcx>,
+        place: PlaceBuilder<'tcx>,
         pats: &'pat [Pat<'tcx>],
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
@@ -152,7 +151,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.hir.tcx();
         // Generate place to be used in Ascription
         // Generate place to be used in Binding
-        // let place = match_pair.place.clone().into_place(self.hir.tcx(), self.hir.typeck_results());
+        let place = match_pair.place.clone().into_place(self.hir.tcx(), self.hir.typeck_results());
         match *match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
@@ -163,7 +162,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate.ascriptions.push(Ascription {
                     span: user_ty_span,
                     user_ty,
-                    source: match_pair.place,
+                    source: place,
                     variance,
                 });
 
@@ -182,7 +181,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     name,
                     mutability,
                     span: match_pair.pattern.span,
-                    source: match_pair.place,
+                    source: place,
                     var_id: var,
                     var_ty: ty,
                     binding_mode: mode,
@@ -269,9 +268,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }) && (adt_def.did.is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
-                    // let place = match_pair.place.downcast(adt_def, variant_index);
-                    let place = tcx.mk_place_downcast(match_pair.place, adt_def, variant_index);
-                    candidate.match_pairs.extend(self.field_match_pairs(place, subpatterns));
+                    let place_builder = match_pair.place.downcast(adt_def, variant_index);
+                    candidate.match_pairs.extend(self.field_match_pairs(place_builder, subpatterns));
                     Ok(())
                 } else {
                     Err(match_pair)
@@ -296,9 +294,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Deref { ref subpattern } => {
-                // let place = match_pair.place.deref();
-                let place = tcx.mk_place_deref(match_pair.place);
-                candidate.match_pairs.push(MatchPair::new(place, subpattern));
+                let place_builder = match_pair.place.deref();
+                candidate.match_pairs.push(MatchPair::new(place_builder, subpattern));
                 Ok(())
             }
 

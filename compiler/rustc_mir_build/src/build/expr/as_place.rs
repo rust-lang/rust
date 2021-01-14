@@ -4,8 +4,7 @@ use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::thir::*;
-// use rustc_middle::ty::AdtDef;
-// use rustc_middle::mir::tcx::PlaceTy;
+use rustc_middle::ty::AdtDef;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_middle::middle::region;
@@ -314,9 +313,9 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self.project(PlaceElem::Deref)
     }
 
-    // crate fn downcast(self, adt_def: &'tcx AdtDef, variant_index: VariantIdx) -> Self {
-    //     self.project(PlaceElem::Downcast(Some(adt_def.variants[variant_index].ident.name), variant_index))
-    // }
+    crate fn downcast(self, adt_def: &'tcx AdtDef, variant_index: VariantIdx) -> Self {
+        self.project(PlaceElem::Downcast(Some(adt_def.variants[variant_index].ident.name), variant_index))
+    }
 
     fn index(self, index: Local) -> Self {
         self.project(PlaceElem::Index(index))
@@ -326,17 +325,6 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self.projection.push(elem);
         self
     }
-
-    // crate fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
-    // where
-    //     D: HasLocalDecls<'tcx>,
-    // {
-    //     if let PlaceBase::Local(local) = self.base {
-    //         Place::ty_from(local, &self.projection, local_decls, tcx)
-    //     } else {
-    //         bug!("Don't know about local");
-    //     }
-    // }
 }
 
 impl<'tcx> From<Local> for PlaceBuilder<'tcx> {
@@ -637,7 +625,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         block = self.bounds_check(
             block,
-            base_place.clone().into_place(self.hir.tcx(), self.hir.typeck_results()),
+            base_place.clone(),
             idx,
             expr_span,
             source_info,
@@ -662,7 +650,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bounds_check(
         &mut self,
         block: BasicBlock,
-        slice: Place<'tcx>,
+        slice: PlaceBuilder<'tcx>,
         index: Local,
         expr_span: Span,
         source_info: SourceInfo,
@@ -674,7 +662,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let lt = self.temp(bool_ty, expr_span);
 
         // len = len(slice)
-        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice));
+        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice.clone().into_place(
+            self.hir.tcx(),
+            self.hir.typeck_results())));
         // lt = idx < len
         self.cfg.push_assign(
             block,

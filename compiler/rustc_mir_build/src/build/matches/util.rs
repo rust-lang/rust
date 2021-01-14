@@ -1,6 +1,6 @@
 use crate::build::matches::MatchPair;
 use crate::build::Builder;
-// use crate::build::expr::as_place::PlaceBuilder;
+use crate::build::expr::as_place::PlaceBuilder;
 use crate::thir::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty;
@@ -10,15 +10,13 @@ use std::convert::TryInto;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn field_match_pairs<'pat>(
         &mut self,
-        place: Place<'tcx>,
+        place: PlaceBuilder<'tcx>,
         subpatterns: &'pat [FieldPat<'tcx>],
     ) -> Vec<MatchPair<'pat, 'tcx>> {
         subpatterns
             .iter()
             .map(|fieldpat| {
-                // let place = place.clone().field(fieldpat.field, fieldpat.pattern.ty);
-                let place =
-                    self.hir.tcx().mk_place_field(place, fieldpat.field, fieldpat.pattern.ty);
+                let place = place.clone().field(fieldpat.field, fieldpat.pattern.ty);
                 MatchPair::new(place, &fieldpat.pattern)
             })
             .collect()
@@ -27,13 +25,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn prefix_slice_suffix<'pat>(
         &mut self,
         match_pairs: &mut SmallVec<[MatchPair<'pat, 'tcx>; 1]>,
-        place: &Place<'tcx>,
+        place: &PlaceBuilder<'tcx>,
         prefix: &'pat [Pat<'tcx>],
         opt_slice: Option<&'pat Pat<'tcx>>,
         suffix: &'pat [Pat<'tcx>],
     ) {
         let tcx = self.hir.tcx();
-        let (min_length, exact_size) = match place.ty(&self.local_decls, tcx).ty.kind() {
+        let (min_length, exact_size) = match place.clone().into_place(self.hir.tcx(), self.hir.typeck_results()).ty(&self.local_decls, tcx).ty.kind() {
             ty::Array(_, length) => {
                 (length.eval_usize(tcx, self.hir.param_env), true)
             }
@@ -43,21 +41,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
             let elem =
                 ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
-            let place = tcx.mk_place_elem(*place, elem);
-            // let place = place.clone().project(elem);
+            let place = place.clone().project(elem);
             MatchPair::new(place, subpattern)
         }));
 
         if let Some(subslice_pat) = opt_slice {
             let suffix_len = suffix.len() as u64;
-            // let subslice = place.clone().project(
-            let subslice = tcx.mk_place_elem(
-                *place,
+            let subslice = place.clone().project(
                 ProjectionElem::Subslice {
                     from: prefix.len() as u64,
                     to: if exact_size { min_length - suffix_len } else { suffix_len },
                     from_end: !exact_size,
-                },
+                }
             );
             match_pairs.push(MatchPair::new(subslice, subslice_pat));
         }
@@ -69,8 +64,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 min_length,
                 from_end: !exact_size,
             };
-            // let place = place.clone().project(elem);
-            let place = tcx.mk_place_elem(*place, elem);
+            let place = place.clone().project(elem);
             MatchPair::new(place, subpattern)
         }));
     }
@@ -99,7 +93,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
-    crate fn new(place: Place<'tcx>, pattern: &'pat Pat<'tcx>) -> MatchPair<'pat, 'tcx> {
+    crate fn new(place: PlaceBuilder<'tcx>, pattern: &'pat Pat<'tcx>) -> MatchPair<'pat, 'tcx> {
         MatchPair { place, pattern }
     }
 }

@@ -1,0 +1,57 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/struct_update_syntax.rs:15:13
+   |
+LL |     let c = #[rustc_capture_analysis] || {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/struct_update_syntax.rs:1:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error: First Pass analysis includes:
+  --> $DIR/struct_update_syntax.rs:15:39
+   |
+LL |       let c = #[rustc_capture_analysis] || {
+   |  _______________________________________^
+LL | |         let s2 = S {
+LL | |             a: format!("New a"),
+LL | |             ..s
+LL | |         };
+LL | |     };
+   | |_____^
+   |
+note: Capturing s[(1, 0)] -> ByValue
+  --> $DIR/struct_update_syntax.rs:18:15
+   |
+LL |             ..s
+   |               ^
+
+error: Min Capture analysis includes:
+  --> $DIR/struct_update_syntax.rs:15:39
+   |
+LL |       let c = #[rustc_capture_analysis] || {
+   |  _______________________________________^
+LL | |         let s2 = S {
+LL | |             a: format!("New a"),
+LL | |             ..s
+LL | |         };
+LL | |     };
+   | |_____^
+   |
+note: Min Capture s[(1, 0)] -> ByValue
+  --> $DIR/struct_update_syntax.rs:18:15
+   |
+LL |             ..s
+   |               ^
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.
