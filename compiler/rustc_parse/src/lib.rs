@@ -292,7 +292,7 @@ pub fn nt_to_tokenstream(
     } else if matches!(synthesize_tokens, CanSynthesizeMissingTokens::Yes) {
         return fake_token_stream(sess, nt);
     } else {
-        panic!("Missing tokens for nt {:?}", pprust::nonterminal_to_string(nt));
+        panic!("Missing tokens for nt at {:?}: {:?}", nt.span(), pprust::nonterminal_to_string(nt));
     }
 }
 
