@@ -26,6 +26,11 @@ LL | struct Binder(i32, i32, i32);
 ...
 LL |         Binder(_a, _x @ ..) => {}
    |         ^^^^^^^^^^^^^^^^^^^ expected 3 fields, found 2
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         Binder(_a, _x @ .., _) => {}
+   |                           ^^^
 
 error: aborting due to 3 previous errors
 

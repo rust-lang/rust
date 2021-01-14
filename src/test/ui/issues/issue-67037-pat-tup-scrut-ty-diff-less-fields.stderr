@@ -17,6 +17,15 @@ LL | struct P<T>(T); // 1 type parameter wanted
 ...
 LL |     let P() = U {};
    |         ^^^ expected 1 field, found 0
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |     let P(_) = U {};
+   |           ^
+help: use `..` to ignore all fields
+   |
+LL |     let P(..) = U {};
+   |           ^^
 
 error: aborting due to 2 previous errors
 
