@@ -2,13 +2,13 @@
 
 use std::sync::Arc;
 
-use arena::{map::ArenaMap, Arena};
 use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     name::{AsName, Name},
     InFile,
 };
+use la_arena::{map::ArenaMap, Arena};
 use syntax::ast::{self, NameOwner, VisibilityOwner};
 use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 

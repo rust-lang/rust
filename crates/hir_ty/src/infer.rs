@@ -18,7 +18,6 @@ use std::mem;
 use std::ops::Index;
 use std::sync::Arc;
 
-use arena::map::ArenaMap;
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
@@ -31,6 +30,7 @@ use hir_def::{
     TypeAliasId, VariantId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
+use la_arena::map::ArenaMap;
 use rustc_hash::FxHashMap;
 use stdx::impl_from;
 use syntax::SmolStr;

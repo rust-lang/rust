@@ -1,9 +1,9 @@
 //! Defines database & queries for name resolution.
 use std::sync::Arc;
 
-use arena::map::ArenaMap;
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use hir_expand::{db::AstDatabase, HirFileId};
+use la_arena::map::ArenaMap;
 use syntax::SmolStr;
 
 use crate::{

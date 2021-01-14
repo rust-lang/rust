@@ -7,7 +7,7 @@
 use std::{convert::TryFrom, env, ops, path::PathBuf, process::Command};
 
 use anyhow::{format_err, Result};
-use arena::{Arena, Idx};
+use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 
 use crate::utf8_stdout;

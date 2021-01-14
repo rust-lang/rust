@@ -11,7 +11,6 @@ use std::{
     sync::Arc,
 };
 
-use arena::{Arena, Idx, RawId};
 use ast::{AstNode, NameOwner, StructKind};
 use base_db::CrateId;
 use either::Either;
@@ -21,6 +20,7 @@ use hir_expand::{
     name::{name, AsName, Name},
     HirFileId, InFile,
 };
+use la_arena::{Arena, Idx, RawId};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use syntax::{ast, match_ast};

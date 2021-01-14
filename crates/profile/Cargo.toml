@@ -13,8 +13,7 @@ doctest = false
 once_cell = "1.3.1"
 cfg-if = "1"
 libc = "0.2.73"
-
-arena = { path = "../arena", version = "0.0.0" }
+la-arena = "0.1.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 perf-event = "0.4"
