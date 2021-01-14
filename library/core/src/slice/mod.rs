@@ -1877,7 +1877,7 @@ impl<T> [T] {
     ///            Some(b"llo".as_ref()));
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[stable(feature = "slice_strip", since = "1.50.0")]
+    #[stable(feature = "slice_strip", since = "1.51.0")]
     pub fn strip_prefix<P: SlicePattern<Item = T> + ?Sized>(&self, prefix: &P) -> Option<&[T]>
     where
         T: PartialEq,
@@ -1911,7 +1911,7 @@ impl<T> [T] {
     /// assert_eq!(v.strip_suffix(&[50, 30]), None);
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[stable(feature = "slice_strip", since = "1.50.0")]
+    #[stable(feature = "slice_strip", since = "1.51.0")]
     pub fn strip_suffix<P: SlicePattern<Item = T> + ?Sized>(&self, suffix: &P) -> Option<&[T]>
     where
         T: PartialEq,
@@ -3323,7 +3323,7 @@ pub trait SlicePattern {
     fn as_slice(&self) -> &[Self::Item];
 }
 
-#[stable(feature = "slice_strip", since = "1.50.0")]
+#[stable(feature = "slice_strip", since = "1.51.0")]
 impl<T> SlicePattern for [T] {
     type Item = T;
 
@@ -3333,7 +3333,7 @@ impl<T> SlicePattern for [T] {
     }
 }
 
-#[stable(feature = "slice_strip", since = "1.50.0")]
+#[stable(feature = "slice_strip", since = "1.51.0")]
 impl<T, const N: usize> SlicePattern for [T; N] {
     type Item = T;
 
