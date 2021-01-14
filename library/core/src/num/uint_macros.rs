@@ -523,7 +523,6 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.51.0")]
-        #[rustc_allow_const_fn_unstable(const_int_unchecked_arith)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -575,7 +574,6 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.51.0")]
-        #[rustc_allow_const_fn_unstable(const_int_unchecked_arith)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
