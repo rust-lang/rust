@@ -20,8 +20,7 @@ use rustc_session::lint::{
     Lint,
 };
 use rustc_span::hygiene::{MacroKind, SyntaxContext};
-use rustc_span::symbol::Ident;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
 
@@ -1195,7 +1194,7 @@ impl LinkCollector<'_, '_> {
         };
 
         match res {
-            Res::Primitive(_) => {
+            Res::Primitive(prim) => {
                 if let Some((kind, id)) = self.kind_side_channel.take() {
                     // We're actually resolving an associated item of a primitive, so we need to
                     // verify the disambiguator (if any) matches the type of the associated item.
@@ -1206,6 +1205,29 @@ impl LinkCollector<'_, '_> {
                     // valid omission. See https://github.com/rust-lang/rust/pull/80660#discussion_r551585677
                     // for discussion on the matter.
                     verify(kind, id)?;
+
+                    if prim == PrimitiveType::RawPointer
+                        && !self.cx.tcx.features().intra_doc_pointers
+                    {
+                        let span = super::source_span_for_markdown_range(
+                            cx,
+                            dox,
+                            &ori_link.range,
+                            &item.attrs,
+                        )
+                        .unwrap_or_else(|| {
+                            span_of_attrs(&item.attrs).unwrap_or(item.source.span())
+                        });
+
+                        rustc_session::parse::feature_err(
+                            &self.cx.tcx.sess.parse_sess,
+                            sym::intra_doc_pointers,
+                            span,
+                            "linking to associated items of raw pointers is experimental",
+                        )
+                        .note("rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does")
+                        .emit();
+                    }
                 } else {
                     match disambiguator {
                         Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {}
@@ -1215,6 +1237,7 @@ impl LinkCollector<'_, '_> {
                         }
                     }
                 }
+
                 Some(ItemLink { link: ori_link.link, link_text, did: None, fragment })
             }
             Res::Def(kind, id) => {
