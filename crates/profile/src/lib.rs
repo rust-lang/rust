@@ -15,21 +15,6 @@ pub use crate::{
     stop_watch::{StopWatch, StopWatchSpan},
 };
 
-/// Prints backtrace to stderr, useful for debugging.
-#[cfg(feature = "backtrace")]
-pub fn print_backtrace() {
-    let bt = backtrace::Backtrace::new();
-    eprintln!("{:?}", bt);
-}
-#[cfg(not(feature = "backtrace"))]
-pub fn print_backtrace() {
-    eprintln!(
-        r#"enable the backtrace feature:
-    profile = {{ path = "../profile", features = [ "backtrace"] }}
-"#
-    );
-}
-
 thread_local!(static IN_SCOPE: RefCell<bool> = RefCell::new(false));
 
 /// Allows to check if the current code is withing some dynamic scope, can be

@@ -10,4 +10,9 @@ edition = "2018"
 doctest = false
 
 [dependencies]
+backtrace = { version = "0.3.44", optional = true }
 # Think twice before adding anything here
+
+[features]
+# Uncomment to enable for the whole crate graph
+# default = [ "backtrace" ]
