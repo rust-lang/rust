@@ -121,7 +121,7 @@ crate fn try_inline(
     };
 
     let target_attrs = load_attrs(cx, did);
-    let attrs = merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
+    let attrs = box merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
 
     cx.renderinfo.borrow_mut().inlined.insert(did);
     let what_rustc_thinks = clean::Item::from_def_id_and_parts(did, Some(name), kind, cx);
@@ -446,7 +446,7 @@ crate fn build_impl(
         }),
         cx,
     );
-    item.attrs = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
+    item.attrs = box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
     debug!("merged_attrs={:?}", item.attrs);
     ret.push(item);
 }
@@ -468,7 +468,7 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                 // Primitive types can't be inlined so generate an import instead.
                 items.push(clean::Item {
                     name: None,
-                    attrs: clean::Attributes::default(),
+                    attrs: box clean::Attributes::default(),
                     source: clean::Span::dummy(),
                     def_id: DefId::local(CRATE_DEF_INDEX),
                     visibility: clean::Public,
