@@ -266,7 +266,7 @@ pub(crate) fn handle_on_type_formatting(
     };
 
     // This should be a single-file edit
-    let (_, edit) = edit.source_file_edits.edits.into_iter().next().unwrap();
+    let (_, edit) = edit.source_file_edits.into_iter().next().unwrap();
 
     let change = to_proto::text_edit_vec(&line_index, line_endings, edit);
     Ok(Some(change))
@@ -464,12 +464,10 @@ pub(crate) fn handle_will_rename_files(
 
     // Drop file system edits since we're just renaming things on the same level
     let mut source_changes = source_changes.into_iter();
-    let mut source_file_edits =
-        source_changes.next().map_or_else(Default::default, |it| it.source_file_edits);
+    let mut source_change = source_changes.next().unwrap_or_default();
+    source_change.file_system_edits.clear();
     // no collect here because we want to merge text edits on same file ids
-    source_file_edits.extend(source_changes.map(|it| it.source_file_edits.edits).flatten());
-    let source_change = SourceChange::from_edits(source_file_edits, Vec::new());
-
+    source_change.extend(source_changes.map(|it| it.source_file_edits).flatten());
     let workspace_edit = to_proto::workspace_edit(&snap, source_change)?;
     Ok(Some(workspace_edit))
 }

@@ -80,7 +80,7 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let actual = {
         let source_change = assist.source_change.unwrap();
         let mut actual = before;
-        if let Some(source_file_edit) = source_change.source_file_edits.edits.get(&file_id) {
+        if let Some(source_file_edit) = source_change.get_source_edit(file_id) {
             source_file_edit.apply(&mut actual);
         }
         actual
@@ -120,7 +120,7 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
                 && source_change.file_system_edits.len() == 0;
 
             let mut buf = String::new();
-            for (file_id, edit) in source_change.source_file_edits.edits {
+            for (file_id, edit) in source_change.source_file_edits {
                 let mut text = db.file_text(file_id).as_ref().to_owned();
                 edit.apply(&mut text);
                 if !skip_header {
@@ -132,18 +132,15 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
                 buf.push_str(&text);
             }
 
-            for file_system_edit in source_change.file_system_edits.clone() {
-                match file_system_edit {
-                    FileSystemEdit::CreateFile { dst, initial_contents } => {
-                        let sr = db.file_source_root(dst.anchor);
-                        let sr = db.source_root(sr);
-                        let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
-                        base.pop();
-                        let created_file_path = format!("{}{}", base.to_string(), &dst.path[1..]);
-                        format_to!(buf, "//- {}\n", created_file_path);
-                        buf.push_str(&initial_contents);
-                    }
-                    _ => (),
+            for file_system_edit in source_change.file_system_edits {
+                if let FileSystemEdit::CreateFile { dst, initial_contents } = file_system_edit {
+                    let sr = db.file_source_root(dst.anchor);
+                    let sr = db.source_root(sr);
+                    let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
+                    base.pop();
+                    let created_file_path = format!("{}{}", base.to_string(), &dst.path[1..]);
+                    format_to!(buf, "//- {}\n", created_file_path);
+                    buf.push_str(&initial_contents);
                 }
             }
 

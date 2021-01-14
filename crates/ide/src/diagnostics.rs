@@ -13,7 +13,7 @@ use hir::{
     diagnostics::{Diagnostic as _, DiagnosticCode, DiagnosticSinkBuilder},
     Semantics,
 };
-use ide_db::{base_db::SourceDatabase, source_change::SourceFileEdits, RootDatabase};
+use ide_db::{base_db::SourceDatabase, RootDatabase};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
@@ -219,7 +219,7 @@ fn check_unnecessary_braces_in_use_statement(
             Diagnostic::hint(use_range, "Unnecessary braces in use statement".to_string())
                 .with_fix(Some(Fix::new(
                     "Remove unnecessary braces",
-                    SourceFileEdits::from_text_edit(file_id, edit).into(),
+                    SourceChange::from_text_edit(file_id, edit),
                     use_range,
                 ))),
         );
@@ -264,10 +264,10 @@ mod tests {
             .unwrap();
         let fix = diagnostic.fix.unwrap();
         let actual = {
-            let file_id = *fix.source_change.source_file_edits.edits.keys().next().unwrap();
+            let file_id = *fix.source_change.source_file_edits.keys().next().unwrap();
             let mut actual = analysis.file_text(file_id).unwrap().to_string();
 
-            for edit in fix.source_change.source_file_edits.edits.values() {
+            for edit in fix.source_change.source_file_edits.values() {
                 edit.apply(&mut actual);
             }
             actual
@@ -613,9 +613,7 @@ fn test_fn() {
                             Fix {
                                 label: "Create module",
                                 source_change: SourceChange {
-                                    source_file_edits: SourceFileEdits {
-                                        edits: {},
-                                    },
+                                    source_file_edits: {},
                                     file_system_edits: [
                                         CreateFile {
                                             dst: AnchoredPathBuf {

@@ -98,7 +98,7 @@ pub use ide_db::{
     label::Label,
     line_index::{LineCol, LineIndex},
     search::SearchScope,
-    source_change::{FileSystemEdit, SourceChange, SourceFileEdits},
+    source_change::{FileSystemEdit, SourceChange},
     symbol_index::Query,
     RootDatabase,
 };

@@ -74,13 +74,11 @@ pub use crate::errors::SsrError;
 pub use crate::matching::Match;
 use crate::matching::MatchFailureReason;
 use hir::Semantics;
-use ide_db::{
-    base_db::{FileId, FilePosition, FileRange},
-    source_change::SourceFileEdits,
-};
+use ide_db::base_db::{FileId, FilePosition, FileRange};
 use resolving::ResolvedRule;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, SyntaxNode, TextRange};
+use text_edit::TextEdit;
 
 // A structured search replace rule. Create by calling `parse` on a str.
 #[derive(Debug)]
@@ -161,7 +159,7 @@ impl<'db> MatchFinder<'db> {
     }
 
     /// Finds matches for all added rules and returns edits for all found matches.
-    pub fn edits(&self) -> SourceFileEdits {
+    pub fn edits(&self) -> FxHashMap<FileId, TextEdit> {
         use ide_db::base_db::SourceDatabaseExt;
         let mut matches_by_file = FxHashMap::default();
         for m in self.matches().matches {
@@ -171,21 +169,19 @@ impl<'db> MatchFinder<'db> {
                 .matches
                 .push(m);
         }
-        SourceFileEdits {
-            edits: matches_by_file
-                .into_iter()
-                .map(|(file_id, matches)| {
-                    (
-                        file_id,
-                        replacing::matches_to_edit(
-                            &matches,
-                            &self.sema.db.file_text(file_id),
-                            &self.rules,
-                        ),
-                    )
-                })
-                .collect(),
-        }
+        matches_by_file
+            .into_iter()
+            .map(|(file_id, matches)| {
+                (
+                    file_id,
+                    replacing::matches_to_edit(
+                        &matches,
+                        &self.sema.db.file_text(file_id),
+                        &self.rules,
+                    ),
+                )
+            })
+            .collect()
     }
 
     /// Adds a search pattern. For use if you intend to only call `find_matches_in_file`. If you

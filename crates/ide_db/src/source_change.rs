@@ -10,11 +10,12 @@ use std::{
 
 use base_db::{AnchoredPathBuf, FileId};
 use rustc_hash::FxHashMap;
+use stdx::assert_never;
 use text_edit::TextEdit;
 
 #[derive(Default, Debug, Clone)]
 pub struct SourceChange {
-    pub source_file_edits: SourceFileEdits,
+    pub source_file_edits: FxHashMap<FileId, TextEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
     pub is_snippet: bool,
 }
@@ -23,51 +24,50 @@ impl SourceChange {
     /// Creates a new SourceChange with the given label
     /// from the edits.
     pub fn from_edits(
-        source_file_edits: SourceFileEdits,
+        source_file_edits: FxHashMap<FileId, TextEdit>,
         file_system_edits: Vec<FileSystemEdit>,
     ) -> Self {
         SourceChange { source_file_edits, file_system_edits, is_snippet: false }
     }
-}
 
-#[derive(Default, Debug, Clone)]
-pub struct SourceFileEdits {
-    pub edits: FxHashMap<FileId, TextEdit>,
-}
-
-impl SourceFileEdits {
     pub fn from_text_edit(file_id: FileId, edit: TextEdit) -> Self {
-        SourceFileEdits { edits: FxHashMap::from_iter(iter::once((file_id, edit))) }
+        SourceChange {
+            source_file_edits: FxHashMap::from_iter(iter::once((file_id, edit))),
+            ..Default::default()
+        }
     }
 
-    pub fn len(&self) -> usize {
-        self.edits.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.edits.is_empty()
-    }
-
-    pub fn insert(&mut self, file_id: FileId, edit: TextEdit) {
-        match self.edits.entry(file_id) {
+    pub fn insert_source_edit(&mut self, file_id: FileId, edit: TextEdit) {
+        match self.source_file_edits.entry(file_id) {
             Entry::Occupied(mut entry) => {
-                entry.get_mut().union(edit).expect("overlapping edits for same file");
+                assert_never!(
+                    entry.get_mut().union(edit).is_err(),
+                    "overlapping edits for same file"
+                );
             }
             Entry::Vacant(entry) => {
                 entry.insert(edit);
             }
         }
     }
-}
 
-impl Extend<(FileId, TextEdit)> for SourceFileEdits {
-    fn extend<T: IntoIterator<Item = (FileId, TextEdit)>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|(file_id, edit)| self.insert(file_id, edit));
+    pub fn push_file_system_edit(&mut self, edit: FileSystemEdit) {
+        self.file_system_edits.push(edit);
+    }
+
+    pub fn get_source_edit(&self, file_id: FileId) -> Option<&TextEdit> {
+        self.source_file_edits.get(&file_id)
     }
 }
 
-impl From<SourceFileEdits> for SourceChange {
-    fn from(source_file_edits: SourceFileEdits) -> SourceChange {
+impl Extend<(FileId, TextEdit)> for SourceChange {
+    fn extend<T: IntoIterator<Item = (FileId, TextEdit)>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|(file_id, edit)| self.insert_source_edit(file_id, edit));
+    }
+}
+
+impl From<FxHashMap<FileId, TextEdit>> for SourceChange {
+    fn from(source_file_edits: FxHashMap<FileId, TextEdit>) -> SourceChange {
         SourceChange { source_file_edits, file_system_edits: Vec::new(), is_snippet: false }
     }
 }

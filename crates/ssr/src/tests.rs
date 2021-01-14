@@ -106,7 +106,7 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
     // stuff.
     let mut actual = db.file_text(position.file_id).to_string();
-    edits.edits[&position.file_id].apply(&mut actual);
+    edits[&position.file_id].apply(&mut actual);
     expected.assert_eq(&actual);
 }
 

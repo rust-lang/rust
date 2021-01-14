@@ -21,7 +21,7 @@ use text_edit::TextEdit;
 
 use crate::{
     FilePosition, FileSystemEdit, RangeInfo, ReferenceKind, ReferenceSearchResult, SourceChange,
-    SourceFileEdits, TextRange, TextSize,
+    TextRange, TextSize,
 };
 
 type RenameResult<T> = Result<T, RenameError>;
@@ -249,8 +249,8 @@ fn rename_mod(
     if IdentifierKind::Ident != check_identifier(new_name)? {
         bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
     }
-    let mut source_file_edits = SourceFileEdits::default();
-    let mut file_system_edits = Vec::new();
+
+    let mut source_change = SourceChange::default();
 
     let src = module.definition_source(sema.db);
     let file_id = src.file_id.original_file(sema.db);
@@ -264,7 +264,7 @@ fn rename_mod(
             };
             let dst = AnchoredPathBuf { anchor: file_id, path };
             let move_file = FileSystemEdit::MoveFile { src: file_id, dst };
-            file_system_edits.push(move_file);
+            source_change.push_file_system_edit(move_file);
         }
         ModuleSource::Module(..) => {}
     }
@@ -272,17 +272,19 @@ fn rename_mod(
     if let Some(src) = module.declaration_source(sema.db) {
         let file_id = src.file_id.original_file(sema.db);
         let name = src.value.name().unwrap();
-        source_file_edits
-            .insert(file_id, TextEdit::replace(name.syntax().text_range(), new_name.into()));
+        source_change.insert_source_edit(
+            file_id,
+            TextEdit::replace(name.syntax().text_range(), new_name.into()),
+        );
     }
 
     let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
     let ref_edits = refs.references().iter().map(|(&file_id, references)| {
         source_edit_from_references(sema, file_id, references, new_name)
     });
-    source_file_edits.extend(ref_edits);
+    source_change.extend(ref_edits);
 
-    Ok(RangeInfo::new(range, SourceChange::from_edits(source_file_edits, file_system_edits)))
+    Ok(RangeInfo::new(range, source_change))
 }
 
 fn rename_to_self(
@@ -331,13 +333,16 @@ fn rename_to_self(
 
     let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
 
-    let mut edits = SourceFileEdits::default();
-    edits.extend(refs.references().iter().map(|(&file_id, references)| {
+    let mut source_change = SourceChange::default();
+    source_change.extend(refs.references().iter().map(|(&file_id, references)| {
         source_edit_from_references(sema, file_id, references, "self")
     }));
-    edits.insert(position.file_id, TextEdit::replace(param_range, String::from(self_param)));
+    source_change.insert_source_edit(
+        position.file_id,
+        TextEdit::replace(param_range, String::from(self_param)),
+    );
 
-    Ok(RangeInfo::new(range, edits.into()))
+    Ok(RangeInfo::new(range, source_change))
 }
 
 fn text_edit_from_self_param(
@@ -391,7 +396,7 @@ fn rename_self_to_param(
         .ok_or_else(|| format_err!("No surrounding method declaration found"))?;
     let search_range = fn_def.syntax().text_range();
 
-    let mut edits = SourceFileEdits::default();
+    let mut source_change = SourceChange::default();
 
     for (idx, _) in text.match_indices("self") {
         let offset: TextSize = idx.try_into().unwrap();
@@ -405,18 +410,18 @@ fn rename_self_to_param(
             } else {
                 TextEdit::replace(usage.text_range(), String::from(new_name))
             };
-            edits.insert(position.file_id, edit);
+            source_change.insert_source_edit(position.file_id, edit);
         }
     }
 
-    if edits.len() > 1 && ident_kind == IdentifierKind::Underscore {
+    if source_change.source_file_edits.len() > 1 && ident_kind == IdentifierKind::Underscore {
         bail!("Cannot rename reference to `_` as it is being referenced multiple times");
     }
 
     let range = ast::SelfParam::cast(self_token.parent())
         .map_or(self_token.text_range(), |p| p.syntax().text_range());
 
-    Ok(RangeInfo::new(range, edits.into()))
+    Ok(RangeInfo::new(range, source_change))
 }
 
 fn rename_reference(
@@ -453,12 +458,12 @@ fn rename_reference(
         (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => mark::hit!(rename_ident),
     }
 
-    let mut edits = SourceFileEdits::default();
-    edits.extend(refs.into_iter().map(|(file_id, references)| {
+    let mut source_change = SourceChange::default();
+    source_change.extend(refs.into_iter().map(|(file_id, references)| {
         source_edit_from_references(sema, file_id, &references, new_name)
     }));
 
-    Ok(RangeInfo::new(range, edits.into()))
+    Ok(RangeInfo::new(range, source_change))
 }
 
 #[cfg(test)]
@@ -480,7 +485,7 @@ mod tests {
             Ok(source_change) => {
                 let mut text_edit_builder = TextEdit::builder();
                 let mut file_id: Option<FileId> = None;
-                for edit in source_change.info.source_file_edits.edits {
+                for edit in source_change.info.source_file_edits {
                     file_id = Some(edit.0);
                     for indel in edit.1.into_iter() {
                         text_edit_builder.replace(indel.delete, indel.insert);
@@ -882,18 +887,16 @@ mod foo$0;
                 RangeInfo {
                     range: 4..7,
                     info: SourceChange {
-                        source_file_edits: SourceFileEdits {
-                            edits: {
-                                FileId(
-                                    1,
-                                ): TextEdit {
-                                    indels: [
-                                        Indel {
-                                            insert: "foo2",
-                                            delete: 4..7,
-                                        },
-                                    ],
-                                },
+                        source_file_edits: {
+                            FileId(
+                                1,
+                            ): TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 4..7,
+                                    },
+                                ],
                             },
                         },
                         file_system_edits: [
@@ -936,28 +939,26 @@ use crate::foo$0::FooContent;
                 RangeInfo {
                     range: 11..14,
                     info: SourceChange {
-                        source_file_edits: SourceFileEdits {
-                            edits: {
-                                FileId(
-                                    0,
-                                ): TextEdit {
-                                    indels: [
-                                        Indel {
-                                            insert: "quux",
-                                            delete: 8..11,
-                                        },
-                                    ],
-                                },
-                                FileId(
-                                    2,
-                                ): TextEdit {
-                                    indels: [
-                                        Indel {
-                                            insert: "quux",
-                                            delete: 11..14,
-                                        },
-                                    ],
-                                },
+                        source_file_edits: {
+                            FileId(
+                                0,
+                            ): TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "quux",
+                                        delete: 8..11,
+                                    },
+                                ],
+                            },
+                            FileId(
+                                2,
+                            ): TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "quux",
+                                        delete: 11..14,
+                                    },
+                                ],
                             },
                         },
                         file_system_edits: [
@@ -994,18 +995,16 @@ mod fo$0o;
                 RangeInfo {
                     range: 4..7,
                     info: SourceChange {
-                        source_file_edits: SourceFileEdits {
-                            edits: {
-                                FileId(
-                                    0,
-                                ): TextEdit {
-                                    indels: [
-                                        Indel {
-                                            insert: "foo2",
-                                            delete: 4..7,
-                                        },
-                                    ],
-                                },
+                        source_file_edits: {
+                            FileId(
+                                0,
+                            ): TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 4..7,
+                                    },
+                                ],
                             },
                         },
                         file_system_edits: [
@@ -1043,18 +1042,16 @@ mod outer { mod fo$0o; }
                 RangeInfo {
                     range: 16..19,
                     info: SourceChange {
-                        source_file_edits: SourceFileEdits {
-                            edits: {
-                                FileId(
-                                    0,
-                                ): TextEdit {
-                                    indels: [
-                                        Indel {
-                                            insert: "bar",
-                                            delete: 16..19,
-                                        },
-                                    ],
-                                },
+                        source_file_edits: {
+                            FileId(
+                                0,
+                            ): TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "bar",
+                                        delete: 16..19,
+                                    },
+                                ],
                             },
                         },
                         file_system_edits: [
@@ -1115,28 +1112,26 @@ pub mod foo$0;
                 RangeInfo {
                     range: 8..11,
                     info: SourceChange {
-                        source_file_edits: SourceFileEdits {
-                            edits: {
-                                FileId(
-                                    0,
-                                ): TextEdit {
-                                    indels: [
-                                        Indel {
-                                            insert: "foo2",
-                                            delete: 27..30,
-                                        },
-                                    ],
-                                },
-                                FileId(
-                                    1,
-                                ): TextEdit {
-                                    indels: [
-                                        Indel {
-                                            insert: "foo2",
-                                            delete: 8..11,
-                                        },
-                                    ],
-                                },
+                        source_file_edits: {
+                            FileId(
+                                0,
+                            ): TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 27..30,
+                                    },
+                                ],
+                            },
+                            FileId(
+                                1,
+                            ): TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 8..11,
+                                    },
+                                ],
                             },
                         },
                         file_system_edits: [

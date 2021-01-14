@@ -10,7 +10,7 @@ use ide_db::{
 };
 use ide_db::{
     label::Label,
-    source_change::{FileSystemEdit, SourceChange, SourceFileEdits},
+    source_change::{FileSystemEdit, SourceChange},
     RootDatabase,
 };
 use syntax::{
@@ -180,20 +180,12 @@ impl Assists {
 pub(crate) struct AssistBuilder {
     edit: TextEditBuilder,
     file_id: FileId,
-    is_snippet: bool,
-    source_file_edits: SourceFileEdits,
-    file_system_edits: Vec<FileSystemEdit>,
+    source_change: SourceChange,
 }
 
 impl AssistBuilder {
     pub(crate) fn new(file_id: FileId) -> AssistBuilder {
-        AssistBuilder {
-            edit: TextEdit::builder(),
-            file_id,
-            is_snippet: false,
-            source_file_edits: SourceFileEdits::default(),
-            file_system_edits: Vec::default(),
-        }
+        AssistBuilder { edit: TextEdit::builder(), file_id, source_change: SourceChange::default() }
     }
 
     pub(crate) fn edit_file(&mut self, file_id: FileId) {
@@ -204,7 +196,7 @@ impl AssistBuilder {
     fn commit(&mut self) {
         let edit = mem::take(&mut self.edit).finish();
         if !edit.is_empty() {
-            self.source_file_edits.insert(self.file_id, edit);
+            self.source_change.insert_source_edit(self.file_id, edit);
         }
     }
 
@@ -223,7 +215,7 @@ impl AssistBuilder {
         offset: TextSize,
         snippet: impl Into<String>,
     ) {
-        self.is_snippet = true;
+        self.source_change.is_snippet = true;
         self.insert(offset, snippet);
     }
     /// Replaces specified `range` of text with a given string.
@@ -237,7 +229,7 @@ impl AssistBuilder {
         range: TextRange,
         snippet: impl Into<String>,
     ) {
-        self.is_snippet = true;
+        self.source_change.is_snippet = true;
         self.replace(range, snippet);
     }
     pub(crate) fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
@@ -252,15 +244,11 @@ impl AssistBuilder {
     pub(crate) fn create_file(&mut self, dst: AnchoredPathBuf, content: impl Into<String>) {
         let file_system_edit =
             FileSystemEdit::CreateFile { dst: dst.clone(), initial_contents: content.into() };
-        self.file_system_edits.push(file_system_edit);
+        self.source_change.push_file_system_edit(file_system_edit);
     }
 
     fn finish(mut self) -> SourceChange {
         self.commit();
-        SourceChange {
-            source_file_edits: mem::take(&mut self.source_file_edits),
-            file_system_edits: mem::take(&mut self.file_system_edits),
-            is_snippet: self.is_snippet,
-        }
+        mem::take(&mut self.source_change)
     }
 }

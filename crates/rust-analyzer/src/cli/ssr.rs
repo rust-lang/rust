@@ -12,7 +12,7 @@ pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
         match_finder.add_rule(rule)?;
     }
     let edits = match_finder.edits();
-    for (file_id, edit) in edits.edits {
+    for (file_id, edit) in edits {
         if let Some(path) = vfs.file_path(file_id).as_path() {
             let mut contents = db.file_text(file_id).to_string();
             edit.apply(&mut contents);
