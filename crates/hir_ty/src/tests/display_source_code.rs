@@ -39,3 +39,18 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn render_raw_ptr_impl_ty() {
+    check_types_source_code(
+        r#"
+trait Sized {}
+trait Unpin {}
+fn foo() -> *const (impl Unpin + Sized) { loop {} }
+fn main() {
+    let foo = foo();
+    foo;
+}   //^ *const (impl Unpin + Sized)
+"#,
+    );
+}

@@ -324,7 +324,7 @@ impl TidyDocs {
         }
 
         fn is_exclude_file(d: &Path) -> bool {
-            let file_names = ["tests.rs"];
+            let file_names = ["tests.rs", "famous_defs_fixture.rs"];
 
             d.file_name()
                 .unwrap_or_default()
