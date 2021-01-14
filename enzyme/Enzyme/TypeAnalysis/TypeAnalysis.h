@@ -186,6 +186,8 @@ public:
   /// This will only be set when direction != Both, erring otherwise
   bool Invalid;
 
+  bool PHIRecur;
+
   // propagate from instruction to operand
   static constexpr uint8_t UP = 1;
   // propagate from operand to instruction
@@ -205,7 +207,7 @@ public:
   TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
                std::shared_ptr<llvm::DominatorTree> DT,
-               uint8_t direction = BOTH);
+               uint8_t direction = BOTH, bool PHIRecur = false);
 
   /// Get the current results for a given value
   TypeTree getAnalysis(llvm::Value *Val);

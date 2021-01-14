@@ -121,6 +121,7 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                            uint8_t direction)
     : notForAnalysis(getGuaranteedUnreachable(fn.Function)), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
+      PHIRecur(false),
       DT(std::make_shared<DominatorTree>(*fn.Function)) {
 
   assert(fntypeinfo.KnownValues.size() ==
@@ -145,12 +146,12 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
   }
 }
 
-TypeAnalyzer::TypeAnalyzer(
-    const FnTypeInfo &fn, TypeAnalysis &TA,
-    const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
-    std::shared_ptr<llvm::DominatorTree> DT, uint8_t direction)
+TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
+                           const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis, std::shared_ptr<llvm::DominatorTree> DT,
+                           uint8_t direction, bool PHIRecur)
     : notForAnalysis(notForAnalysis.begin(), notForAnalysis.end()), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
+      PHIRecur(PHIRecur),
       DT(DT) {
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
@@ -673,6 +674,7 @@ void TypeAnalyzer::considerTBAA() {
 }
 
 void TypeAnalyzer::runPHIHypotheses() {
+  if (PHIRecur) return;
   bool Changed;
   do {
     Changed = false;
@@ -685,7 +687,7 @@ void TypeAnalyzer::runPHIHypotheses() {
             // the incoming operands are integral
 
             TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural,
-                                     notForAnalysis, DT, DOWN);
+                                     notForAnalysis, DT, DOWN, /*PHIRecur*/true);
             tmpAnalysis.intseen = intseen;
             tmpAnalysis.analysis = analysis;
             tmpAnalysis.analysis[phi] = TypeTree(BaseType::Integer).Only(-1);
@@ -716,7 +718,7 @@ void TypeAnalyzer::runPHIHypotheses() {
             // Assume that this is an integer, does that mean we can prove that
             // the incoming operands are integral
             TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural,
-                                     notForAnalysis, DT, DOWN);
+                                     notForAnalysis, DT, DOWN, /*PHIRecur*/true);
             tmpAnalysis.intseen = intseen;
             tmpAnalysis.analysis = analysis;
             tmpAnalysis.analysis[phi] =
