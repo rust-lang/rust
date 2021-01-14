@@ -548,28 +548,6 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.find(_).map(_)`.
-    ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.find_map(_)`.
-    ///
-    /// **Known problems:** Often requires a condition + Option/Iterator creation
-    /// inside the closure.
-    ///
-    /// **Example:**
-    /// ```rust
-    ///  (0..3).find(|x| *x == 2).map(|x| x * 2);
-    /// ```
-    /// Can be written as
-    /// ```rust
-    ///  (0..3).find_map(|x| if x == 2 { Some(x * 2) } else { None });
-    /// ```
-    pub FIND_MAP,
-    pedantic,
-    "using a combination of `find` and `map` can usually be written as a single method call"
-}
-
-declare_clippy_lint! {
     /// **What it does:** Checks for an iterator or string search (such as `find()`,
     /// `position()`, or `rposition()`) followed by a call to `is_some()`.
     ///
@@ -1530,7 +1508,6 @@ impl_lint_pass!(Methods => [
     MANUAL_FIND_MAP,
     FILTER_MAP_NEXT,
     FLAT_MAP_IDENTITY,
-    FIND_MAP,
     MAP_FLATTEN,
     ITERATOR_STEP_BY_ZERO,
     ITER_NEXT_SLICE,
