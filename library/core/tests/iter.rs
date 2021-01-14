@@ -3508,6 +3508,12 @@ pub fn extend_for_unit() {
 
 #[test]
 fn test_intersperse() {
+    let v = std::iter::empty().intersperse(0u32).collect::<Vec<_>>();
+    assert_eq!(v, vec![]);
+
+    let v = std::iter::once(1).intersperse(0).collect::<Vec<_>>();
+    assert_eq!(v, vec![1]);
+
     let xs = ["a", "", "b", "c"];
     let v: Vec<&str> = xs.iter().map(|x| x.clone()).intersperse(", ").collect();
     let text: String = v.concat();
@@ -3520,6 +3526,9 @@ fn test_intersperse() {
 
 #[test]
 fn test_intersperse_size_hint() {
+    let iter = std::iter::empty::<i32>().intersperse(0);
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+
     let xs = ["a", "", "b", "c"];
     let mut iter = xs.iter().map(|x| x.clone()).intersperse(", ");
     assert_eq!(iter.size_hint(), (7, Some(7)));
@@ -3586,4 +3595,25 @@ fn test_try_fold_specialization_intersperse_err() {
     let mut iter = orig_iter.clone();
     iter.try_for_each(|item| if item == "b" { None } else { Some(()) });
     assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_intersperse_with() {
+    #[derive(PartialEq, Debug)]
+    struct NotClone {
+        u: u32,
+    }
+    let r = vec![NotClone { u: 0 }, NotClone { u: 1 }]
+        .into_iter()
+        .intersperse_with(|| NotClone { u: 2 })
+        .collect::<Vec<_>>();
+    assert_eq!(r, vec![NotClone { u: 0 }, NotClone { u: 2 }, NotClone { u: 1 }]);
+
+    let mut ctr = 100;
+    let separator = || {
+        ctr *= 2;
+        ctr
+    };
+    let r = (0..3).intersperse_with(separator).collect::<Vec<_>>();
+    assert_eq!(r, vec![0, 200, 1, 400, 2]);
 }
