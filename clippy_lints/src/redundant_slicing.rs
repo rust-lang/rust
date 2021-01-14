@@ -52,8 +52,15 @@ impl LateLintPass<'_> for RedundantSlicing {
                 let mut app = Applicability::MachineApplicable;
                 let hint = snippet_with_applicability(cx, indexed.span, "..", &mut app).into_owned();
 
-                span_lint_and_sugg(cx, REDUNDANT_SLICING, expr.span, "redundant slicing of the whole range",
-                    "use the original slice instead", hint, app);
+                span_lint_and_sugg(
+                    cx,
+                    REDUNDANT_SLICING,
+                    expr.span,
+                    "redundant slicing of the whole range",
+                    "use the original slice instead",
+                    hint,
+                    app,
+                );
             }
         }
     }
