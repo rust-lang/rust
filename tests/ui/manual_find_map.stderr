@@ -1,0 +1,22 @@
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:8:19
+   |
+LL |     let _ = (0..).find(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap());
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_opt(a))`
+   |
+   = note: `-D clippy::manual-find-map` implied by `-D warnings`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:11:19
+   |
+LL |     let _ = (0..).find(|&n| to_opt(n).is_some()).map(|a| to_opt(a).expect("hi"));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_opt(a))`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:14:19
+   |
+LL |     let _ = (0..).find(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_res(a).ok())`
+
+error: aborting due to 3 previous errors
+
