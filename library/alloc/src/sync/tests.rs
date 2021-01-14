@@ -370,7 +370,7 @@ fn test_weak_count_locked() {
         let n = Arc::weak_count(&a2);
         assert!(n < 2, "bad weak count: {}", n);
         #[cfg(miri)] // Miri's scheduler does not guarantee liveness, and thus needs this hint.
-        atomic::spin_loop_hint();
+        std::hint::spin_loop();
     }
     t.join().unwrap();
 }

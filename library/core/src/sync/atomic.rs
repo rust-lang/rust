@@ -120,21 +120,6 @@ use crate::intrinsics;
 
 use crate::hint::spin_loop;
 
-/// Signals the processor that it is inside a busy-wait spin-loop ("spin lock").
-///
-/// This function is expected to be deprecated in favor of
-/// [`hint::spin_loop`].
-///
-/// **Note**: On platforms that do not support receiving spin-loop hints this function does not
-/// do anything at all.
-///
-/// [`hint::spin_loop`]: crate::hint::spin_loop
-#[inline]
-#[stable(feature = "spin_loop_hint", since = "1.24.0")]
-pub fn spin_loop_hint() {
-    spin_loop()
-}
-
 /// A boolean type which can be safely shared between threads.
 ///
 /// This type has the same in-memory representation as a [`bool`].
@@ -2790,4 +2775,16 @@ impl<T> fmt::Pointer for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&self.load(Ordering::SeqCst), f)
     }
+}
+
+/// Signals the processor that it is inside a busy-wait spin-loop ("spin lock").
+///
+/// This function is deprecated in favor of [`hint::spin_loop`].
+///
+/// [`hint::spin_loop`]: crate::hint::spin_loop
+#[inline]
+#[stable(feature = "spin_loop_hint", since = "1.24.0")]
+#[rustc_deprecated(since = "1.51.0", reason = "use hint::spin_loop instead")]
+pub fn spin_loop_hint() {
+    spin_loop()
 }
