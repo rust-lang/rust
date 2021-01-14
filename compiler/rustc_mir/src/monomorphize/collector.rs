@@ -823,7 +823,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
     }
 
     if !tcx.is_mir_available(def_id) {
-        bug!("cannot create local mono-item for {:?}", def_id)
+        bug!("no MIR available for {:?}", def_id);
     }
 
     true
