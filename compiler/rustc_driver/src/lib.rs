@@ -798,7 +798,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(util::commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(util::release_str()));
-        if cfg!(llvm) {
+        if cfg!(feature = "llvm") {
             get_builtin_codegen_backend("llvm")().print_version();
         }
     }
@@ -1087,7 +1087,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
-        if cfg!(llvm) {
+        if cfg!(feature = "llvm") {
             get_builtin_codegen_backend("llvm")().print_passes();
         }
         return None;
