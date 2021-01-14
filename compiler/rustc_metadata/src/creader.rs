@@ -326,7 +326,7 @@ impl<'a> CrateLoader<'a> {
         self.verify_no_symbol_conflicts(&crate_root)?;
 
         let private_dep =
-            self.sess.opts.externs.get(&name.as_str()).map(|e| e.is_private_dep).unwrap_or(false);
+            self.sess.opts.externs.get(&name.as_str()).map_or(false, |e| e.is_private_dep);
 
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();

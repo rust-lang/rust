@@ -1338,7 +1338,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn serialize_query_result_cache(self, encoder: &mut FileEncoder) -> FileEncodeResult {
-        self.queries.on_disk_cache.as_ref().map(|c| c.serialize(self, encoder)).unwrap_or(Ok(()))
+        self.queries.on_disk_cache.as_ref().map_or(Ok(()), |c| c.serialize(self, encoder))
     }
 
     /// If `true`, we should use the MIR-based borrowck, but also
@@ -2601,7 +2601,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner).map(|set| set.contains(&id.local_id)).unwrap_or(false)
+        self.is_late_bound_map(id.owner).map_or(false, |set| set.contains(&id.local_id))
     }
 
     pub fn object_lifetime_defaults(self, id: HirId) -> Option<&'tcx [ObjectLifetimeDefault]> {

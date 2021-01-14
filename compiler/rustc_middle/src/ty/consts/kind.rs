@@ -82,7 +82,7 @@ impl<'tcx> ConstKind<'tcx> {
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
-        self.try_eval(tcx, param_env).and_then(Result::ok).map(ConstKind::Value).unwrap_or(self)
+        self.try_eval(tcx, param_env).and_then(Result::ok).map_or(self, ConstKind::Value)
     }
 
     #[inline]

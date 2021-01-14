@@ -166,7 +166,7 @@ impl SelfProfilerRef {
         // If there is no SelfProfiler then the filter mask is set to NONE,
         // ensuring that nothing ever tries to actually access it.
         let event_filter_mask =
-            profiler.as_ref().map(|p| p.event_filter_mask).unwrap_or(EventFilter::empty());
+            profiler.as_ref().map_or(EventFilter::empty(), |p| p.event_filter_mask);
 
         SelfProfilerRef {
             profiler,
