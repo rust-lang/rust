@@ -53,9 +53,15 @@ pub use crate::{
 };
 pub use paths::{AbsPath, AbsPathBuf};
 
+/// Handle to a file in [`Vfs`]
+///
+/// Most functions in rust-analyzer use this when they need to refer to a file.
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct FileId(pub u32);
 
+/// Storage for all files read by rust-analyzer.
+///
+/// For more informations see the [crate-level](crate) documentation.
 #[derive(Default)]
 pub struct Vfs {
     interner: PathInterner,
@@ -63,40 +69,73 @@ pub struct Vfs {
     changes: Vec<ChangedFile>,
 }
 
+/// Changed file in the [`Vfs`].
 pub struct ChangedFile {
+    /// Id of the changed file
     pub file_id: FileId,
+    /// Kind of change
     pub change_kind: ChangeKind,
 }
 
 impl ChangedFile {
+    /// Returns `true` if the change is not [`Delete`](ChangeKind::Delete).
     pub fn exists(&self) -> bool {
         self.change_kind != ChangeKind::Delete
     }
+
+    /// Returns `true` if the change is [`Create`](ChangeKind::Create) or
+    /// [`Delete`](ChangeKind::Delete).
     pub fn is_created_or_deleted(&self) -> bool {
         matches!(self.change_kind, ChangeKind::Create | ChangeKind::Delete)
     }
 }
 
+/// Kind of [file change](ChangedFile).
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum ChangeKind {
+    /// The file was (re-)created
     Create,
+    /// The file was modified
     Modify,
+    /// The file was deleted
     Delete,
 }
 
 impl Vfs {
+    /// Amount of files currently stored.
+    ///
+    /// Note that this includes deleted files.
     pub fn len(&self) -> usize {
         self.data.len()
     }
+
+    /// Id of the given path if it exists in the `Vfs` and is not deleted.
     pub fn file_id(&self, path: &VfsPath) -> Option<FileId> {
         self.interner.get(path).filter(|&it| self.get(it).is_some())
     }
+
+    /// File path corresponding to the given `file_id`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the id is not present in the `Vfs`.
     pub fn file_path(&self, file_id: FileId) -> VfsPath {
         self.interner.lookup(file_id).clone()
     }
+
+    /// File content corresponding to the given `file_id`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the id is not present in the `Vfs`, or if the corresponding file is
+    /// deleted.
     pub fn file_contents(&self, file_id: FileId) -> &[u8] {
         self.get(file_id).as_deref().unwrap()
     }
+
+    /// Returns an iterator over the stored ids and their corresponding paths.
+    ///
+    /// This will skip deleted files.
     pub fn iter(&self) -> impl Iterator<Item = (FileId, &VfsPath)> + '_ {
         (0..self.data.len())
             .map(|it| FileId(it as u32))
@@ -106,6 +145,13 @@ impl Vfs {
                 (file_id, path)
             })
     }
+
+    /// Update the `path` with the given `contents`. `None` means the file was deleted.
+    ///
+    /// Returns `true` if the file was modified, and saves the [change](ChangedFile).
+    ///
+    /// If the path does not currently exists in the `Vfs`, allocates a new
+    /// [`FileId`] for it.
     pub fn set_file_contents(&mut self, path: VfsPath, contents: Option<Vec<u8>>) -> bool {
         let file_id = self.alloc_file_id(path);
         let change_kind = match (&self.get(file_id), &contents) {
@@ -120,12 +166,24 @@ impl Vfs {
         self.changes.push(ChangedFile { file_id, change_kind });
         true
     }
+
+    /// Returns `true` if the `Vfs` contains [changes](ChangedFile).
     pub fn has_changes(&self) -> bool {
         !self.changes.is_empty()
     }
+
+    /// Drain and returns all the changes in the `Vfs`.
     pub fn take_changes(&mut self) -> Vec<ChangedFile> {
         mem::take(&mut self.changes)
     }
+
+    /// Returns the id associated with `path`
+    ///
+    /// - If `path` does not exists in the `Vfs`, allocate a new id for it, associated with a
+    /// deleted file;
+    /// - Else, returns `path`'s id.
+    ///
+    /// Does not record a change.
     fn alloc_file_id(&mut self, path: VfsPath) -> FileId {
         let file_id = self.interner.intern(path);
         let idx = file_id.0 as usize;
@@ -133,9 +191,21 @@ impl Vfs {
         self.data.resize_with(len, || None);
         file_id
     }
+
+    /// Returns the content associated with the given `file_id`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no file is associated to that id.
     fn get(&self, file_id: FileId) -> &Option<Vec<u8>> {
         &self.data[file_id.0 as usize]
     }
+
+    /// Mutably returns the content associated with the given `file_id`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no file is associated to that id.
     fn get_mut(&mut self, file_id: FileId) -> &mut Option<Vec<u8>> {
         &mut self.data[file_id.0 as usize]
     }
