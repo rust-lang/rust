@@ -16,7 +16,7 @@ for the docs you're looking for instead of reading them top to bottom.
 
 ### Contributing to the guide
 
-The guide is useful today, but it has a lot of work still go.
+The guide is useful today, but it has a lot of work still to go.
 
 If you'd like to help improve the guide, we'd love to have you! You can find
 plenty of issues on the [issue
