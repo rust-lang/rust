@@ -113,7 +113,7 @@ fn get_arm_identity_info<'a, 'tcx>(
         test: impl Fn(&'a Statement<'tcx>) -> bool,
         mut action: impl FnMut(usize, &'a Statement<'tcx>),
     ) {
-        while stmt_iter.peek().map(|(_, stmt)| test(stmt)).unwrap_or(false) {
+        while stmt_iter.peek().map_or(false, |(_, stmt)| test(stmt)) {
             let (idx, stmt) = stmt_iter.next().unwrap();
 
             action(idx, stmt);
@@ -635,7 +635,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                     })
                     .peekable();
 
-                let bb_first = iter_bbs_reachable.peek().map(|(idx, _)| *idx).unwrap_or(&targets_and_values[0]);
+                let bb_first = iter_bbs_reachable.peek().map_or(&targets_and_values[0], |(idx, _)| *idx);
                 let mut all_successors_equivalent = StatementEquality::TrivialEqual;
 
                 // All successor basic blocks must be equal or contain statements that are pairwise considered equal.

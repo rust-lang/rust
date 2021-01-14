@@ -166,7 +166,7 @@ fn get_linker(
         _ => match flavor {
             LinkerFlavor::Lld(f) => Command::lld(linker, f),
             LinkerFlavor::Msvc if sess.opts.cg.linker.is_none() && sess.target.linker.is_none() => {
-                Command::new(msvc_tool.as_ref().map(|t| t.path()).unwrap_or(linker))
+                Command::new(msvc_tool.as_ref().map_or(linker, |t| t.path()))
             }
             _ => Command::new(linker),
         },

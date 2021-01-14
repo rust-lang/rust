@@ -370,7 +370,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn cur_span(&self) -> Span {
-        self.stack().last().map(|f| f.current_span()).unwrap_or(self.tcx.span)
+        self.stack().last().map_or(self.tcx.span, |f| f.current_span())
     }
 
     #[inline(always)]

@@ -830,7 +830,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .collect::<Vec<ArgKind>>(),
             ),
             Node::Ctor(ref variant_data) => {
-                let span = variant_data.ctor_hir_id().map(|id| hir.span(id)).unwrap_or(DUMMY_SP);
+                let span = variant_data.ctor_hir_id().map_or(DUMMY_SP, |id| hir.span(id));
                 let span = sm.guess_head_span(span);
                 (span, vec![ArgKind::empty(); variant_data.fields().len()])
             }
