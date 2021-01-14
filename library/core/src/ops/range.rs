@@ -678,6 +678,29 @@ pub enum Bound<T> {
     Unbounded,
 }
 
+#[unstable(feature = "bound_as_ref", issue = "80996")]
+impl<T> Bound<T> {
+    /// Converts from `&Bound<T>` to `Bound<&T>`.
+    #[inline]
+    pub fn as_ref(&self) -> Bound<&T> {
+        match *self {
+            Included(ref x) => Included(x),
+            Excluded(ref x) => Excluded(x),
+            Unbounded => Unbounded,
+        }
+    }
+
+    /// Converts from `&mut Bound<T>` to `Bound<&T>`.
+    #[inline]
+    pub fn as_mut(&mut self) -> Bound<&mut T> {
+        match *self {
+            Included(ref mut x) => Included(x),
+            Excluded(ref mut x) => Excluded(x),
+            Unbounded => Unbounded,
+        }
+    }
+}
+
 impl<T: Clone> Bound<&T> {
     /// Map a `Bound<&T>` to a `Bound<T>` by cloning the contents of the bound.
     ///
