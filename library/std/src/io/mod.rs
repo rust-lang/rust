@@ -366,7 +366,6 @@ where
 {
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf };
-    let ret;
     loop {
         if g.len == g.buf.len() {
             unsafe {
@@ -385,21 +384,20 @@ where
             }
         }
 
-        match r.read(&mut g.buf[g.len..]) {
-            Ok(0) => {
-                ret = Ok(g.len - start_len);
-                break;
+        let buf = &mut g.buf[g.len..];
+        match r.read(buf) {
+            Ok(0) => return Ok(g.len - start_len),
+            Ok(n) => {
+                // We can't allow bogus values from read. If it is too large, the returned vec could have its length
+                // set past its capacity, or if it overflows the vec could be shortened which could create an invalid
+                // string if this is called via read_to_string.
+                assert!(n <= buf.len());
+                g.len += n;
             }
-            Ok(n) => g.len += n,
             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-            Err(e) => {
-                ret = Err(e);
-                break;
-            }
+            Err(e) => return Err(e),
         }
     }
-
-    ret
 }
 
 pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
