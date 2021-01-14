@@ -251,7 +251,7 @@ impl ExitStatus {
     // available on Fuchsia.
     //
     // It does not appear that Fuchsia is Unix-like enough to implement ExitStatus (or indeed many
-    // other things from std::os::unix) properly.  This veneer is always going to be a bdoge.  So
+    // other things from std::os::unix) properly.  This veneer is always going to be a bodge.  So
     // while I don't know if these implementations are actually correct, I think they will do for
     // now at least.
     pub fn core_dumped(&self) -> bool {
@@ -285,7 +285,7 @@ impl ExitStatus {
         // own ExitStatusExt, rather that trying to provide a not very convincing imitation of
         // Unix.  Ie, std::os::unix::process:ExitStatusExt ought not to exist on Fuchsia.  But
         // fixing this up that is beyond the scope of my efforts now.
-        let exit_status_as_if_unix: u8 = self.0.try_into().expect("Fuchsia process return code bigger than 8 bits, but std::os::unix::ExitStatusExt::into_raw() was called to try to covert the value into a traditional Unix-style wait status, which cannot represent values greater than 255.");
+        let exit_status_as_if_unix: u8 = self.0.try_into().expect("Fuchsia process return code bigger than 8 bits, but std::os::unix::ExitStatusExt::into_raw() was called to try to convert the value into a traditional Unix-style wait status, which cannot represent values greater than 255.");
         let wait_status_as_if_unix = (exit_status_as_if_unix as c_int) << 8;
         wait_status_as_if_unix
     }
