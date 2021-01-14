@@ -944,6 +944,54 @@ pub trait Read {
     }
 }
 
+/// Read all bytes from a [reader][Read] into a new [`String`].
+///
+/// This is a convenience function for [`Read::read_to_string`]. Using this
+/// function avoids having to create a variable first and provides more type
+/// safety since you can only get the buffer out if there were no errors. (If you
+/// use [`Read::read_to_string`] you have to remember to check whether the read
+/// succeeded because otherwise your buffer will be empty or only partially full.)
+///
+/// # Performance
+///
+/// The downside of this function's increased ease of use and type safety is
+/// that it gives you less control over performance. For example, you can't
+/// pre-allocate memory like you can using [`String::with_capacity`] and
+/// [`Read::read_to_string`]. Also, you can't re-use the buffer if an error
+/// occurs while reading.
+///
+/// In many cases, this function's performance will be adequate and the ease of use
+/// and type safety tradeoffs will be worth it. However, there are cases where you
+/// need more control over performance, and in those cases you should definitely use
+/// [`Read::read_to_string`] directly.
+///
+/// # Errors
+///
+/// This function forces you to handle errors because the output (the `String`)
+/// is wrapped in a [`Result`]. See [`Read::read_to_string`] for the errors
+/// that can occur. If any error occurs, you will get an [`Err`], so you
+/// don't have to worry about your buffer being empty or partially full.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(io_read_to_string)]
+///
+/// # use std::io;
+/// fn main() -> io::Result<()> {
+///     let stdin = io::read_to_string(&mut io::stdin())?;
+///     println!("Stdin was:");
+///     println!("{}", stdin);
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "io_read_to_string", issue = "80218")]
+pub fn read_to_string<R: Read>(reader: &mut R) -> Result<String> {
+    let mut buf = String::new();
+    reader.read_to_string(&mut buf)?;
+    Ok(buf)
+}
+
 /// A buffer type used with `Read::read_vectored`.
 ///
 /// It is semantically a wrapper around an `&mut [u8]`, but is guaranteed to be
