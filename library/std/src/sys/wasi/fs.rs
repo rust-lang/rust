@@ -627,33 +627,50 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 /// to any pre-opened file descriptor.
 fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
     let p = CString::new(p.as_os_str().as_bytes())?;
-    unsafe {
-        let mut ret = ptr::null();
-        let fd = __wasilibc_find_relpath(p.as_ptr(), &mut ret);
-        if fd == -1 {
-            let msg = format!(
-                "failed to find a pre-opened file descriptor \
-                 through which {:?} could be opened",
-                p
+    let mut buf = Vec::<u8>::with_capacity(512);
+    loop {
+        unsafe {
+            let mut relative_path = buf.as_ptr().cast();
+            let mut abs_prefix = ptr::null();
+            let fd = __wasilibc_find_relpath(
+                p.as_ptr(),
+                &mut abs_prefix,
+                &mut relative_path,
+                buf.capacity(),
             );
-            return Err(io::Error::new(io::ErrorKind::Other, msg));
+            if fd == -1 {
+                if io::Error::last_os_error().raw_os_error() == Some(libc::ENOMEM) {
+                    // Trigger the internal buffer resizing logic of `Vec` by requiring
+                    // more space than the current capacity.
+                    let cap = buf.capacity();
+                    buf.set_len(cap);
+                    buf.reserve(1);
+                    continue;
+                }
+                let msg = format!(
+                    "failed to find a pre-opened file descriptor \
+                     through which {:?} could be opened",
+                    p
+                );
+                return Err(io::Error::new(io::ErrorKind::Other, msg));
+            }
+            let len = CStr::from_ptr(buf.as_ptr().cast()).to_bytes().len();
+            buf.set_len(len);
+            buf.shrink_to_fit();
+
+            return Ok((
+                ManuallyDrop::new(WasiFd::from_raw(fd as u32)),
+                PathBuf::from(OsString::from_vec(buf)),
+            ));
         }
-        let path = Path::new(OsStr::from_bytes(CStr::from_ptr(ret).to_bytes()));
-
-        // FIXME: right now `path` is a pointer into `p`, the `CString` above.
-        // When we return `p` is deallocated and we can't use it, so we need to
-        // currently separately allocate `path`. If this becomes an issue though
-        // we should probably turn this into a closure-taking interface or take
-        // `&CString` and then pass off `&Path` tied to the same lifetime.
-        let path = path.to_path_buf();
-
-        return Ok((ManuallyDrop::new(WasiFd::from_raw(fd as u32)), path));
     }
 
     extern "C" {
         pub fn __wasilibc_find_relpath(
             path: *const libc::c_char,
+            abs_prefix: *mut *const libc::c_char,
             relative_path: *mut *const libc::c_char,
+            relative_path_len: libc::size_t,
         ) -> libc::c_int;
     }
 }
