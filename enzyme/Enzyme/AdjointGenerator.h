@@ -566,7 +566,7 @@ public:
                     orig_op0->getType()) +
                 7) /
                8;
-      Type* FT = TR.addingType(size, orig_op0);
+      Type *FT = TR.addingType(size, orig_op0);
       if (!FT) {
         llvm::errs() << " " << *gutils->oldFunc << "\n";
         TR.dump();
@@ -3018,7 +3018,8 @@ public:
 
       if (called &&
           (called->getName() == "atan" || called->getName() == "atanf" ||
-           called->getName() == "atanl"|| called->getName() == "__fd_atan_1")) {
+           called->getName() == "atanl" ||
+           called->getName() == "__fd_atan_1")) {
         eraseIfUnused(*orig);
         if (Mode == DerivativeMode::Forward ||
             gutils->isConstantInstruction(orig))
@@ -3087,7 +3088,7 @@ public:
           IRBuilder<> Builder2(call.getParent());
           getReverseBuilder(Builder2);
 
-          Value* vdiff = diffe(orig, Builder2);
+          Value *vdiff = diffe(orig, Builder2);
           Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
                             Builder2);
 
@@ -3095,13 +3096,18 @@ public:
 
           Type *tys[] = {orig->getOperand(0)->getType()};
           CallInst *dsin = cast<CallInst>(Builder2.CreateCall(
-              Intrinsic::getDeclaration(gutils->oldFunc->getParent(), Intrinsic::cos, tys), args));
+              Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
+                                        Intrinsic::cos, tys),
+              args));
           CallInst *dcos = cast<CallInst>(Builder2.CreateCall(
-              Intrinsic::getDeclaration(gutils->oldFunc->getParent(), Intrinsic::sin, tys), args));
+              Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
+                                        Intrinsic::sin, tys),
+              args));
           Value *dif0 = Builder2.CreateFSub(
-            Builder2.CreateFMul(Builder2.CreateExtractValue(vdiff, {0}), dsin),
-            Builder2.CreateFMul(Builder2.CreateExtractValue(vdiff, {1}), dcos)
-          );
+              Builder2.CreateFMul(Builder2.CreateExtractValue(vdiff, {0}),
+                                  dsin),
+              Builder2.CreateFMul(Builder2.CreateExtractValue(vdiff, {1}),
+                                  dcos));
 
           setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
           addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());

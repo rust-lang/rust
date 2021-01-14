@@ -100,7 +100,7 @@ public:
   ValueMap<BasicBlock *, BasicBlock *> reverseBlocks;
   SmallVector<PHINode *, 4> fictiousPHIs;
   ValueToValueMapTy originalToNewFn;
-  std::vector<CallInst*> originalCalls;
+  std::vector<CallInst *> originalCalls;
 
   const std::map<Instruction *, bool> *can_modref_map;
 

@@ -1193,27 +1193,30 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
 #else
             Loc = MemoryLocation(oval, MemoryLocation::UnknownSize);
 #endif
-        for (CallInst* CI : originalCalls) {
-          if (isa<IntrinsicInst>(CI)) continue;
+        for (CallInst *CI : originalCalls) {
+          if (isa<IntrinsicInst>(CI))
+            continue;
           if (!isConstantInstruction(CI)) {
-            Function* F = CI->getCalledFunction();
-            #if LLVM_VERSION_MAJOR >= 11
-              if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
-            #else
-              if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
-            #endif
-              {
-                if (castinst->isCast())
-                  if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                      F = fn;
-                  }
-              }
-            if (F && (isMemFreeLibMFunction(F->getName()) || F->getName() == "__fd_sincos_1")) {
+            Function *F = CI->getCalledFunction();
+#if LLVM_VERSION_MAJOR >= 11
+            if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
+#else
+            if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
+#endif
+            {
+              if (castinst->isCast())
+                if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                  F = fn;
+                }
+            }
+            if (F && (isMemFreeLibMFunction(F->getName()) ||
+                      F->getName() == "__fd_sincos_1")) {
               continue;
             }
             if (llvm::isModOrRefSet(AA.getModRefInfo(CI, Loc))) {
               seen = true;
-              llvm::errs() << " cannot handle global " << *oval << " due to " << *CI << "\n";
+              llvm::errs() << " cannot handle global " << *oval << " due to "
+                           << *CI << "\n";
               goto endCheck;
             }
           }
@@ -1234,15 +1237,40 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
 #endif
           }
 
-          auto st = bb.CreateStore(Constant::getNullValue(arg->getValueType()),
-                                   antialloca);
-          if (st->getAlignment()) {
-#if LLVM_VERSION_MAJOR >= 10
-            st->setAlignment(Align(arg->getAlignment()));
+          auto dst_arg = bb.CreateBitCast(
+              antialloca, Type::getInt8PtrTy(arg->getContext()));
+          auto val_arg =
+              ConstantInt::get(Type::getInt8Ty(arg->getContext()), 0);
+          auto len_arg = ConstantInt::get(
+              Type::getInt64Ty(arg->getContext()),
+              M->getDataLayout().getTypeAllocSizeInBits(arg->getValueType()) /
+                  8);
+          auto volatile_arg = ConstantInt::getFalse(oval->getContext());
+
+#if LLVM_VERSION_MAJOR == 6
+          auto align_arg = ConstantInt::get(
+              Type::getInt32Ty(oval->getContext()), antialloca->getAlignment());
+          Value *args[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
 #else
-            st->setAlignment(arg->getAlignment());
+          Value *args[] = {dst_arg, val_arg, len_arg, volatile_arg};
 #endif
+          Type *tys[] = {dst_arg->getType(), len_arg->getType()};
+          auto memset = cast<CallInst>(bb.CreateCall(
+              Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
+#if LLVM_VERSION_MAJOR >= 10
+          if (arg->getAlignment()) {
+            memset->addParamAttr(
+                0, Attribute::getWithAlignment(arg->getContext(),
+                                               Align(arg->getAlignment())));
           }
+#else
+          if (arg->getAlignment() != 0) {
+            memset->addParamAttr(
+                0, Attribute::getWithAlignment(arg->getContext(),
+                                               arg->getAlignment()));
+          }
+#endif
+          memset->addParamAttr(0, Attribute::NonNull);
           assert(invertedPointers[arg]->getType() == arg->getType());
           return lookupM(invertedPointers[arg], BuilderM);
         }
