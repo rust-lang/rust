@@ -1555,7 +1555,7 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// // We set alignment to the left with ">".
+    /// // We set alignment to the right with ">".
     /// assert_eq!(&format!("{:G>3}", Foo), "GGG");
     /// assert_eq!(&format!("{:t>6}", Foo), "tttttt");
     /// ```
