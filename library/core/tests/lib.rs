@@ -67,7 +67,6 @@
 #![feature(option_result_unwrap_unchecked)]
 #![feature(option_unwrap_none)]
 #![feature(peekable_peek_mut)]
-#![feature(partition_point)]
 #![feature(once_cell)]
 #![feature(unsafe_block_in_unsafe_fn)]
 #![feature(int_bits_const)]
