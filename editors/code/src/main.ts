@@ -167,7 +167,7 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
         }
         return;
     };
-    if (serverPath(config) !== null) return;
+    if (serverPath(config)) return;
 
     const now = Date.now();
     if (config.package.releaseTag === NIGHTLY_TAG) {
