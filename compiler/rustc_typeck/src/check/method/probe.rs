@@ -48,7 +48,7 @@ pub use self::PickKind::*;
 
 /// Boolean flag used to indicate if this search is for a suggestion
 /// or not. If true, we can allow ambiguity and so forth.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct IsSuggestion(pub bool);
 
 struct ProbeContext<'a, 'tcx> {
@@ -219,6 +219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// would result in an error (basically, the same criteria we
     /// would use to decide if a method is a plausible fit for
     /// ambiguity purposes).
+    #[instrument(level = "debug", skip(self, scope_expr_id))]
     pub fn probe_for_return_type(
         &self,
         span: Span,
@@ -264,6 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect()
     }
 
+    #[instrument(level = "debug", skip(self, scope_expr_id))]
     pub fn probe_for_name(
         &self,
         span: Span,
@@ -770,7 +772,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // will be reported by `object_safety.rs` if the method refers to the
         // `Self` type anywhere other than the receiver. Here, we use a
         // substitution that replaces `Self` with the object type itself. Hence,
-        // a `&self` method will wind up with an argument type like `&Trait`.
+        // a `&self` method will wind up with an argument type like `&dyn Trait`.
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
             let new_trait_ref = this.erase_late_bound_regions(new_trait_ref);
