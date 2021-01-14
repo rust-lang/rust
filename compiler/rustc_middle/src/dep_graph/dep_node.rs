@@ -29,9 +29,10 @@
 //!   contained no `DefId` for thing that had been removed.
 //!
 //! `DepNode` definition happens in the `define_dep_nodes!()` macro. This macro
-//! defines the `DepKind` enum and a corresponding `dep_constructor` module. The
-//! `dep_constructor` module links a `DepKind` to the parameters that are needed at
-//! runtime in order to construct a valid `DepNode` fingerprint.
+//! defines the `DepKind` enum. Each `DepKind` has its own parameters that are
+//! needed at runtime in order to construct a valid `DepNode` fingerprint.
+//! However, only `CompileCodegenUnit` is constructed explicitly (with
+//! `make_compile_codegen_unit`).
 //!
 //! Because the macro sees what parameters a given `DepKind` requires, it can
 //! "infer" some properties for each kind of `DepNode`:
@@ -44,22 +45,14 @@
 //!   `DefId` it was computed from. In other cases, too much information gets
 //!   lost during fingerprint computation.
 //!
-//! The `dep_constructor` module, together with `DepNode::new()`, ensures that only
+//! `make_compile_codegen_unit`, together with `DepNode::new()`, ensures that only
 //! valid `DepNode` instances can be constructed. For example, the API does not
 //! allow for constructing parameterless `DepNode`s with anything other
 //! than a zeroed out fingerprint. More generally speaking, it relieves the
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use crate::mir::interpret::{GlobalId, LitToConstInput};
-use crate::traits;
-use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
-};
-use crate::ty::subst::{GenericArg, SubstsRef};
-use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::TyCtxt;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
@@ -338,25 +331,6 @@ macro_rules! define_dep_nodes {
             $($variant),*
         }
 
-        #[allow(non_camel_case_types)]
-        pub mod dep_constructor {
-            use super::*;
-
-            $(
-                #[inline(always)]
-                #[allow(unreachable_code, non_snake_case)]
-                pub fn $variant(_tcx: TyCtxt<'_>, $(arg: $tuple_arg_ty)*) -> DepNode {
-                    // tuple args
-                    $({
-                        erase!($tuple_arg_ty);
-                        return DepNode::construct(_tcx, DepKind::$variant, &arg)
-                    })*
-
-                    return DepNode::construct(_tcx, DepKind::$variant, &())
-                }
-            )*
-        }
-
         fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {
                 $(stringify!($variant) => Ok(DepKind::$variant),)*
@@ -384,8 +358,15 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     [anon] TraitSelect,
 
+    // WARNING: if `Symbol` is changed, make sure you update `make_compile_codegen_unit` below.
     [] CompileCodegenUnit(Symbol),
 ]);
+
+// WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
+// Be very careful changing this type signature!
+crate fn make_compile_codegen_unit(tcx: TyCtxt<'_>, name: Symbol) -> DepNode {
+    DepNode::construct(tcx, DepKind::CompileCodegenUnit, &name)
+}
 
 pub type DepNode = rustc_query_system::dep_graph::DepNode<DepKind>;
 

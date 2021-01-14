@@ -1,4 +1,4 @@
-use crate::dep_graph::{dep_constructor, DepNode, WorkProduct, WorkProductId};
+use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
@@ -362,7 +362,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn codegen_dep_node(&self, tcx: TyCtxt<'tcx>) -> DepNode {
-        dep_constructor::CompileCodegenUnit(tcx, self.name())
+        crate::dep_graph::make_compile_codegen_unit(tcx, self.name())
     }
 }
 
