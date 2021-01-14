@@ -370,7 +370,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(
                         &self,
                         negative_impls,
-                        span.to(of_trait.as_ref().map(|t| t.path.span).unwrap_or(span)),
+                        span.to(of_trait.as_ref().map_or(span, |t| t.path.span)),
                         "negative trait bounds are not yet fully implemented; \
                          use marker types for now"
                     );
