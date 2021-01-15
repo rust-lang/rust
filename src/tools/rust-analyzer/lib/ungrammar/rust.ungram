@@ -21,7 +21,7 @@
 //*************************//
 
 Name =
-  'ident'
+  'ident' | 'self'
 
 NameRef =
   'ident' | 'int_number' | 'self' | 'super' | 'crate'
@@ -121,7 +121,7 @@ ItemList =
 
 ExternCrate =
   Attr* Visibility?
-  'extern' 'crate' (NameRef | 'self') Rename? ';'
+  'extern' 'crate' NameRef Rename? ';'
 
 Rename =
   'as' (Name | '_')
@@ -155,8 +155,8 @@ ParamList =
 
 SelfParam =
   Attr* (
-    ('&' Lifetime?)? 'mut'? 'self'
-  | 'mut'? 'self' ':' Type
+    ('&' Lifetime?)? 'mut'? Name
+  | 'mut'? Name ':' Type
   )
 
 Param =
@@ -292,12 +292,7 @@ WherePred =
   ('for' GenericParamList)?  (Lifetime | Type) ':' TypeBoundList
 
 Visibility =
-  'pub' ('('
-    'super'
-  | 'self'
-  | 'crate'
-  | 'in' Path
-  ')')?
+  'pub' ('(' 'in'? Path ')')?
 
 Attr =
   '#' '!'? '[' Path ('=' Literal | TokenTree)? ']'
