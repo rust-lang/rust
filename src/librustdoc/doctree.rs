@@ -48,12 +48,6 @@ crate enum StructType {
     Unit,
 }
 
-crate struct Variant<'hir> {
-    crate name: Symbol,
-    crate id: hir::HirId,
-    crate def: &'hir hir::VariantData<'hir>,
-}
-
 #[derive(Debug)]
 crate struct Import<'hir> {
     crate name: Symbol,
