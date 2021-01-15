@@ -4,7 +4,7 @@ error[E0059]: arguments to this function are incorrect
 LL |   empty("");
    |         ^^
    |         |
-   |         no parameter of type &'static str is needed in empty
+   |         this parameter of type &'static str isn't needed for empty
    |         help: removing this argument may help
    |
 note: function defined here
@@ -17,10 +17,10 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:9:14
    |
 LL |   one_arg(1, 1);
-   |              ^
-   |              |
-   |              no parameter of type {integer} is needed in one_arg
-   |              help: removing this argument may help
+   |            --^
+   |            | |
+   |            | this parameter of type {integer} isn't needed for one_arg
+   |            help: removing this argument may help
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:2:4
@@ -32,10 +32,10 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:10:14
    |
 LL |   one_arg(1, "");
-   |              ^^
-   |              |
-   |              no parameter of type &'static str is needed in one_arg
-   |              help: removing this argument may help
+   |            --^^
+   |            | |
+   |            | this parameter of type &'static str isn't needed for one_arg
+   |            help: removing this argument may help
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:2:4
@@ -47,28 +47,26 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:11:14
    |
 LL |   one_arg(1, "", 1.0);
-   |              ^^  ^^^ no parameter of type {float} is needed in one_arg
-   |              |
-   |              no parameter of type &'static str is needed in one_arg
+   |            --^^--^^^
+   |            | |   |
+   |            | |   this parameter of type {float} isn't needed for one_arg
+   |            | this parameter of type &'static str isn't needed for one_arg
+   |            help: removing these arguments may help
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg(_a: i32) {}
    |    ^^^^^^^ -------
-help: removing these argument may help
-   |
-LL |   one_arg(1, );
-   |             --  --
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:13:22
    |
 LL |   two_arg_same(1, 1, 1);
-   |                      ^
-   |                      |
-   |                      no parameter of type {integer} is needed in two_arg_same
-   |                      help: removing this argument may help
+   |                    --^
+   |                    | |
+   |                    | this parameter of type {integer} isn't needed for two_arg_same
+   |                    help: removing this argument may help
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:3:4
@@ -80,10 +78,10 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:14:22
    |
 LL |   two_arg_same(1, 1, 1.0);
-   |                      ^^^
-   |                      |
-   |                      no parameter of type {float} is needed in two_arg_same
-   |                      help: removing this argument may help
+   |                    --^^^
+   |                    | |
+   |                    | this parameter of type {float} isn't needed for two_arg_same
+   |                    help: removing this argument may help
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:3:4
@@ -91,32 +89,29 @@ note: function defined here
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0059]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:16:19
    |
 LL |   two_arg_diff(1, 1, "");
-   |                   ^  ^^ no parameter of type &'static str is needed in two_arg_diff
-   |                   |
-   |                   expected &str, found {integer}
+   |                 --^
+   |                 | |
+   |                 | this parameter of type {integer} isn't needed for two_arg_diff
+   |                 help: removing this argument may help
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
-help: the following changes might help
-   |
-LL |   two_arg_diff(1, {&str}, );
-   |                   ^^^^^^ --
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:17:23
    |
 LL |   two_arg_diff(1, "", "");
-   |                       ^^
-   |                       |
-   |                       no parameter of type &'static str is needed in two_arg_diff
-   |                       help: removing this argument may help
+   |                     --^^
+   |                     | |
+   |                     | this parameter of type &'static str isn't needed for two_arg_diff
+   |                     help: removing this argument may help
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
@@ -128,39 +123,100 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:18:19
    |
 LL |   two_arg_diff(1, 1, "", "");
-   |                   ^  ^^  ^^ no parameter of type &'static str is needed in two_arg_diff
-   |                   |  |
-   |                   |  no parameter of type &'static str is needed in two_arg_diff
-   |                   expected &str, found {integer}
+   |                   ^      ^^ this parameter of type &'static str isn't needed for two_arg_diff
+   |                   |
+   |                   this parameter of type {integer} isn't needed for two_arg_diff
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
-help: the following changes might help
+help: removing these arguments may help
    |
-LL |   two_arg_diff(1, {&str}, );
-   |                   ^^^^^^ --  --
+LL |   two_arg_diff(1, "");
+   |                --  --
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:19:23
    |
 LL |   two_arg_diff(1, "", 1, "");
-   |                       ^  ^^ no parameter of type &'static str is needed in two_arg_diff
-   |                       |
-   |                       no parameter of type {integer} is needed in two_arg_diff
+   |                     --^--^^
+   |                     | |  |
+   |                     | |  this parameter of type &'static str isn't needed for two_arg_diff
+   |                     | this parameter of type {integer} isn't needed for two_arg_diff
+   |                     help: removing these arguments may help
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
-help: removing these argument may help
-   |
-LL |   two_arg_diff(1, "", );
-   |                      -- --
 
-error: aborting due to 10 previous errors
+error[E0059]: arguments to this function are incorrect
+  --> $DIR/extra_arguments.rs:22:26
+   |
+LL |   two_arg_same(1, 1,     "");
+   |                    ------^^
+   |                    |     |
+   |                    |     this parameter of type &'static str isn't needed for two_arg_same
+   |                    help: removing this argument may help
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:3:4
+   |
+LL | fn two_arg_same(_a: i32, _b: i32) {}
+   |    ^^^^^^^^^^^^ -------  -------
+
+error[E0059]: arguments to this function are incorrect
+  --> $DIR/extra_arguments.rs:23:19
+   |
+LL |   two_arg_diff(1, 1,     "");
+   |                 --^
+   |                 | |
+   |                 | this parameter of type {integer} isn't needed for two_arg_diff
+   |                 help: removing this argument may help
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:4:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: &str) {}
+   |    ^^^^^^^^^^^^ -------  --------
+
+error[E0059]: arguments to this function are incorrect
+  --> $DIR/extra_arguments.rs:27:5
+   |
+LL |       1,
+   |  ______-
+LL | |     ""
+   | |     ^-
+   | |_____||
+   |       |help: removing this argument may help
+   |       this parameter of type &'static str isn't needed for two_arg_same
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:3:4
+   |
+LL | fn two_arg_same(_a: i32, _b: i32) {}
+   |    ^^^^^^^^^^^^ -------  -------
+
+error[E0059]: arguments to this function are incorrect
+  --> $DIR/extra_arguments.rs:32:5
+   |
+LL |       1,
+   |  ______-
+LL | |     1,
+   | |     ^
+   | |     |
+   | |_____this parameter of type {integer} isn't needed for two_arg_diff
+   |       help: removing this argument may help
+   |
+note: function defined here
+  --> $DIR/extra_arguments.rs:4:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: &str) {}
+   |    ^^^^^^^^^^^^ -------  --------
+
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0059`.

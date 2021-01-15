@@ -235,6 +235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let check_compatible = |arg_idx, input_idx| {
             let formal_input_ty: Ty<'tcx> = formal_input_tys[input_idx];
             let expected_input_ty: Ty<'tcx> = expected_input_tys[input_idx];
+            
 
             // If either is an error type, we defy the usual convention and consider them to *not* be
             // coercible.  This prevents our error message heuristic from trying to pass errors into
@@ -244,25 +245,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             let provided_arg: &hir::Expr<'tcx> = &provided_args[arg_idx];
-            let tables = self.in_progress_typeck_results.map(|t| t.borrow()).unwrap();
-            let maybe_ty = tables.node_type_opt(provided_arg.hir_id);
-            if let Some(checked_ty) = maybe_ty {
-                let expectation = Expectation::rvalue_hint(self, expected_input_ty);
-                let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
-                let can_coerce = self.can_coerce(checked_ty, coerced_ty);
+            let expectation = Expectation::rvalue_hint(self, expected_input_ty);
+            // TODO: check that this is safe; I don't believe this commits any of the obligations, but I can't be sure.
+            //
+            //   I had another method of "soft" type checking before,
+            //   but it was failing to find the type of some expressions (like "")
+            //   so I prodded this method and made it pub(super) so I could call it, and it seems to work well. 
+            let checked_ty = self.check_expr_kind(provided_arg, expectation);
 
-                let is_super = self
-                    .at(&self.misc(provided_arg.span), self.param_env)
-                    .sup(formal_input_ty, coerced_ty)
-                    .is_ok();
-                // Same as above: if either the coerce type or the checked type is an error type,
-                // consider them *not* compatible.
-                return !coerced_ty.references_error()
-                    && !checked_ty.references_error()
-                    && can_coerce
-                    && is_super;
-            }
-            return false;
+            let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
+            let can_coerce = self.can_coerce(checked_ty, coerced_ty);
+
+            let is_super = self
+                .at(&self.misc(provided_arg.span), self.param_env)
+                .sup(formal_input_ty, coerced_ty)
+                .is_ok();
+            // Same as above: if either the coerce type or the checked type is an error type,
+            // consider them *not* compatible.
+            return !coerced_ty.references_error()
+                && !checked_ty.references_error()
+                && can_coerce
+                && is_super;
         };
 
         // Check each argument, to satisfy the input it was provided for
@@ -652,6 +655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut labels = vec![];
                 let mut suggestions = vec![];
                 let mut suggestion_type = NoSuggestion;
+                let mut eliminated_args = vec![false; provided_arg_count];
                 let source_map = self.sess().source_map();
                 for issue in issues {
                     match issue {
@@ -667,18 +671,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             suggestions.push((span, format!("{{{}}}", expected_type)));
                         }
                         Issue::Extra(arg) => {
-                            // FIXME: This could probably be a lot cleaner, but I dunno how
                             let span = provided_args[arg].span;
-                            let hungry_span = if arg < provided_args.len() - 1 {
-                                // Eat the comma
-                                Span::new(
-                                    span.lo(),
-                                    span.hi() + BytePos(2),
-                                    span.ctxt(),
-                                )
-                            } else {
-                                span
-                            };
+
+                            // We want to suggest deleting this arg,
+                            // but dealing with formatting before and after is tricky
+                            // so we mark it as deleted, so we can do a scan afterwards
+                            eliminated_args[arg] = true;
                             let found_type = self.check_expr(&provided_args[arg]);
                             // TODO: if someone knows the method-chain-foo to achieve this, let me know
                             // but I didn't have the patience for it lol
@@ -688,23 +686,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let descr = def_kind.descr(def_id);
                                 if let Some(node) = node {
                                     if let Some(ident) = node.ident() {
-                                        format!("in {}", ident)
+                                        format!("for {}", ident)
                                     } else {
-                                        format!("in this {}", descr)
+                                        format!("for this {}", descr)
                                     }
                                 } else {
-                                    format!("in this {}", descr)
+                                    format!("for this {}", descr)
                                 }
                             } else {
                                 "here".to_string()
                             };
 
-                            labels.push((span, format!("no parameter of type {} is needed {}", found_type, fn_name)));
+                            labels.push((span, format!("this parameter of type {} isn't needed {}", found_type, fn_name)));
                             suggestion_type = match suggestion_type {
                                 NoSuggestion | Remove => Remove,
                                 _ => Changes,
                             };
-                            suggestions.push((hungry_span, format!("")));
                         }
                         Issue::Missing(arg) => {
                             // FIXME: The spans here are all kinds of wrong for multiple missing arguments etc.
@@ -808,13 +805,78 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for (span, label) in labels {
                     err.span_label(span, label);
                 }
+                
+                // Before constructing our multipart suggestions, we need to add in all the suggestions
+                // to eliminate extra parameters
+                // We can't overlap spans in a suggestion or weird things happen
+                let mut lo = None;
+                let mut hi = None;
+                let mut in_block = false;
+                for (idx, eliminated) in eliminated_args.iter().enumerate() {
+                    match (in_block, eliminated, idx == eliminated_args.len() - 1) {
+                        (false, true, false) => {
+                            // We just encountered the start of a block of eliminated parameters
+                            lo = Some(idx);
+                            in_block = true;
+                        },
+                        (false, true, true) => {
+                            // We encountered a single eliminated arg at the end of the arg list
+                            lo = Some(idx);
+                            hi = Some(idx);
+                        }
+                        (true, false, _) => {
+                            // We encountered the end of a block, set the hi so the logic below kicks in
+                            hi = Some(idx - 1);
+                            in_block = false;
+                        },
+                        (true, true, true) => {
+                            hi = Some(idx);
+                            in_block = false;
+                        }
+                        _ => {}
+                    }
+                    if lo.is_some() && hi.is_some() {
+                        let (lo_idx, hi_idx) = (lo.unwrap(), hi.unwrap());
+                        // We've found a contiguous block, so emit the elimination
+                        // be careful abound the boundaries
+                        let ctxt = provided_args[0].span.ctxt();
+                        let (lo_bp, hi_bp) = match (lo_idx == 0, hi_idx == provided_arg_count - 1) {
+                            // If we have an arg to our left, chop off it's comma
+                            // a, xx, xx, xx
+                            //  [-----------)
+                            (false, _) => {
+                                (provided_args[lo_idx - 1].span.hi(), provided_args[hi_idx].span.hi())
+                            },
+                            // If we start from the first arg, and we have an arg to our right, chop of the last params comma
+                            // xx, xx, xx, a
+                            // [-----------)
+                            (true, false) => {
+                                (provided_args[lo_idx].span.lo(), provided_args[hi_idx + 1].span.lo())
+                            },
+                            // If every argument was eliminated, don't need to worry about commas before or after
+                            // xx, xx, xx, xx
+                            // [-------------)
+                            (true, true) => {
+                                (provided_args[lo_idx].span.lo(), provided_args[hi_idx].span.hi())
+                            },
+                        };
+                        let eliminated_span = Span::new(
+                            lo_bp,
+                            hi_bp,
+                            ctxt,
+                        );
+                        suggestions.push((eliminated_span, "".to_string()));
+                        lo = None;
+                        hi = None;
+                    }
+                }
 
                 // And add a series of suggestions
                 // FIXME: for simpler cases, this might be overkill
                 if suggestions.len() > 0 {
                     let suggestion_text = match (suggestion_type, issue_count) {
                         (Remove, 1) => Some("removing this argument may help"),
-                        (Remove, _) => Some("removing these argument may help"),
+                        (Remove, _) => Some("removing these arguments may help"),
                         (Provide, 1) => Some("provideing a parameter of the correct type here may help"),
                         (Provide, _) => Some("providing parameters of these types may help"),
                         (Swap, 1) => Some("swapping these two arguments might help"),

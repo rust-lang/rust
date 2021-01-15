@@ -1,0 +1,11 @@
+~~ [false, true, true, false, true]
+~~ 0 - false
+~~ 1 - true
+~~ Start of block
+~~ 2 - true
+~~ 3 - false
+~~ End of block
+~~ Eliminating $DIR/scratch.rs:4:12: 4:21 (#0)
+~~ 4 - true
+~~ Single end
+~~ Eliminating $DIR/scratch.rs:4:24: 4:28 (#0)

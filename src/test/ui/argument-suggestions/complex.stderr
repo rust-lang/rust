@@ -9,7 +9,7 @@ LL |   complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
    |           |    |         ||    expected G, found G
    |           |    |         |expected F, found F
    |           |    |         missing argument of type E
-   |           |    no parameter of type H is needed in complex
+   |           |    this parameter of type H isn't needed for complex
    |           expected u32, found {float}
    |
 note: function defined here
@@ -20,7 +20,7 @@ LL | fn complex(_i: u32, _s: &str, _e: E, _f: F, _g: G, _x: X, _y: Y, _z: Z ) {}
 help: the following changes might help
    |
 LL |   complex({u32}, &"", {E}, F::X2, G{}, X {}, Y {}, Z {});
-   |           ^^^^^ --    ^^^^ ^^^^^  ^^^  ^^^^  ^^^^  ^^^^
+   |           ^^--^       ^^^^ ^^^^^  ^^^  ^^^^  ^^^^  ^^^^
 
 error: aborting due to previous error
 

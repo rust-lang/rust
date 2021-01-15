@@ -17,4 +17,19 @@ fn main() {
   two_arg_diff(1, "", ""); //~ ERROR arguments to this function are incorrect
   two_arg_diff(1, 1, "", ""); //~ ERROR arguments to this function are incorrect
   two_arg_diff(1, "", 1, ""); //~ ERROR arguments to this function are incorrect
+  
+  // Check with weird spacing and newlines
+  two_arg_same(1, 1,     ""); //~ ERROR arguments to this function are incorrect
+  two_arg_diff(1, 1,     ""); //~ ERROR arguments to this function are incorrect
+  two_arg_same(
+    1,
+    1,
+    "" //~ ERROR arguments to this function are incorrect
+  );
+  
+  two_arg_diff(
+    1,
+    1, //~ ERROR arguments to this function are incorrect
+    ""
+  );
 }
