@@ -379,6 +379,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 eliminate_arg(mat, ai, arg_idx);
             };
 
+            let eliminate_satisfied = |mat: &mut Vec<Vec<bool>>, ii: &mut Vec<usize>, ai: &mut Vec<usize>| {
+                let mut i = cmp::min(ii.len(), ai.len());
+                while i > 0 {
+                    let idx = i - 1;
+                    if mat[idx][idx] {
+                        satisfy_input(
+                            mat,
+                            ii,
+                            ai,
+                            idx,
+                            idx,
+                        );
+                    }
+                    i -= 1;
+                }
+            };
+
             // A list of the issues we might find
             enum Issue {
                 Invalid(usize),
@@ -528,6 +545,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return None;
             };
 
+            // Before we start looking for issues, eliminate any arguments that are already satisfied,
+            // so that an argument which is already spoken for by the input it's in doesn't
+            // spill over into another similarly typed input
+            // ex:
+            //   fn some_func(_a: i32, _a: i32) {}
+            //   some_func(1, "");
+            // Without this elimination, the first argument causes the second argument
+            // to show up as both a missing input and extra argument, rather than
+            // just an invalid type.
+            eliminate_satisfied(&mut compatibility_matrix, &mut input_indexes, &mut arg_indexes);
+
             // As we encounter issues, we'll transcribe them to their actual indices
             let mut issues: Vec<Issue> = vec![];
             // Until we've elimineated / satisfied all arguments/inputs
@@ -601,20 +629,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None => {
                         // We didn't find any issues, so we need to push the algorithm forward
                         // First, eliminate any arguments that currently satisfy their inputs
-                        let mut i = cmp::min(arg_indexes.len(), input_indexes.len());
-                        while i > 0 {
-                            let idx = i - 1;
-                            if compatibility_matrix[idx][idx] {
-                                satisfy_input(
-                                    &mut compatibility_matrix,
-                                    &mut input_indexes,
-                                    &mut arg_indexes,
-                                    idx,
-                                    idx,
-                                );
-                            }
-                            i -= 1;
-                        }
+                        eliminate_satisfied(&mut compatibility_matrix, &mut input_indexes, &mut arg_indexes);
                     }
                 };
             }
@@ -643,7 +658,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Issue::Invalid(arg) => {
                             let span = provided_args[arg].span;
                             let expected_type = expected_input_tys[arg];
-                            let found_type = final_arg_types[arg].unwrap().1;
+                            let found_type = final_arg_types[arg].unwrap().0;
                             labels.push((span, format!("expected {}, found {}", expected_type, found_type)));
                             suggestion_type = match suggestion_type {
                                 NoSuggestion | Provide => Provide,
@@ -673,12 +688,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let descr = def_kind.descr(def_id);
                                 if let Some(node) = node {
                                     if let Some(ident) = node.ident() {
-                                        format!("{}", ident)
+                                        format!("in {}", ident)
                                     } else {
-                                        format!("this {}", descr)
+                                        format!("in this {}", descr)
                                     }
                                 } else {
-                                    format!("this {}", descr)
+                                    format!("in this {}", descr)
                                 }
                             } else {
                                 "here".to_string()

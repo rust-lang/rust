@@ -288,26 +288,24 @@ LL |   complex(                                        {i32}, {f32}, {i32}, {f32
    |                                                   ^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:39:45
+  --> $DIR/missing_arguments.rs:39:48
    |
 LL |   complex(   1,                             ""   );
-   |                                             ^^ ^ ^
-   |                                             |  | |
-   |                                             |  | missing argument of type f32
-   |                                             |  | missing argument of type &str
-   |                                             |  | missing argument of type i32
-   |                                             |  missing argument of type f32
-   |                                             no parameter of type &'static str is needed complex
+   |                                                ^ ^
+   |                                                | |
+   |                                                | missing argument of type i32
+   |                                                | missing argument of type f32
+   |                                                missing argument of type f32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:7:4
    |
 LL | fn complex(_a: i32, _b: f32, _c: i32, _d: f32, _e: &str) {}
    |    ^^^^^^^ -------  -------  -------  -------  --------
-help: the following changes might help
+help: providing these parameters may help
    |
-LL |   complex(   1,                               {f32},   {f32}, {&str}, {i32},);
-   |                                            -- ^^^^^^   ^^^^^^^
+LL |   complex(   1,                             ""  {f32},   {i32}, {f32},);
+   |                                                 ^^^^^^   ^^^^^^
 
 error: aborting due to 19 previous errors
 

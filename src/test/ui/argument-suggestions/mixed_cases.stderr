@@ -2,9 +2,9 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:10:15
    |
 LL |   two_args(1, "", X {});
-   |               ^^  ^^^^ no parameter of type X is needed two_args
+   |               ^^  ^^^^ no parameter of type X is needed in two_args
    |               |
-   |               expected f32, found f32
+   |               expected f32, found &'static str
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:5:4
@@ -20,9 +20,9 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:11:20
    |
 LL |   three_args(1, "", X {}, "");
-   |                    ^^^^^  ^^ no parameter of type &'static str is needed three_args
+   |                    ^^^^^  ^^ no parameter of type &'static str is needed in three_args
    |                    ||
-   |                    |no parameter of type X is needed three_args
+   |                    |no parameter of type X is needed in three_args
    |                    missing argument of type f32
    |
 note: function defined here
@@ -41,7 +41,7 @@ error[E0059]: multiple arguments to this function are incorrect
 LL |   three_args(1, X {});
    |                 ^^^^^ missing argument of type &str
    |                 |
-   |                 expected f32, found f32
+   |                 expected f32, found X
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
@@ -57,7 +57,7 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:17:20
    |
 LL |   three_args(1, "", X {});
-   |                    ^^^^^ no parameter of type X is needed three_args
+   |                    ^^^^^ no parameter of type X is needed in three_args
    |                    |
    |                    missing argument of type f32
    |
@@ -77,7 +77,7 @@ error[E0059]: multiple arguments to this function are incorrect
 LL |   three_args("", X {}, 1);
    |              ^^  ^^^^  ^ expected &str, found &str
    |              |   |
-   |              |   expected f32, found f32
+   |              |   expected f32, found X
    |              expected i32, found i32
    |
 note: function defined here
