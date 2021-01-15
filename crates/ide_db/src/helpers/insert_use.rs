@@ -97,7 +97,7 @@ pub fn insert_use<'a>(
 ) -> SyntaxRewriter<'a> {
     let _p = profile::span("insert_use");
     let mut rewriter = SyntaxRewriter::default();
-    let use_item = make::use_(make::use_tree(path.clone(), None, None, false));
+    let use_item = make::use_(None, make::use_tree(path.clone(), None, None, false));
     // merge into existing imports if possible
     if let Some(mb) = merge {
         for existing_use in scope.as_syntax_node().children().filter_map(ast::Use::cast) {

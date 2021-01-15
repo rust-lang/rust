@@ -1138,6 +1138,20 @@ fn arithmetics {
 }
 
 #[test]
+fn doctest_unmerge_use() {
+    check_doc_test(
+        "unmerge_use",
+        r#####"
+use std::fmt::{Debug, Display$0};
+"#####,
+        r#####"
+use std::fmt::{Debug};
+use std::fmt::Display;
+"#####,
+    )
+}
+
+#[test]
 fn doctest_unwrap_block() {
     check_doc_test(
         "unwrap_block",

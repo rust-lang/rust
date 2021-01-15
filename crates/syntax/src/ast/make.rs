@@ -108,8 +108,12 @@ pub fn use_tree_list(use_trees: impl IntoIterator<Item = ast::UseTree>) -> ast::
     ast_from_text(&format!("use {{{}}};", use_trees))
 }
 
-pub fn use_(use_tree: ast::UseTree) -> ast::Use {
-    ast_from_text(&format!("use {};", use_tree))
+pub fn use_(visibility: Option<ast::Visibility>, use_tree: ast::UseTree) -> ast::Use {
+    let visibility = match visibility {
+        None => String::new(),
+        Some(it) => format!("{} ", it),
+    };
+    ast_from_text(&format!("{}use {};", visibility, use_tree))
 }
 
 pub fn record_expr_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordExprField {
