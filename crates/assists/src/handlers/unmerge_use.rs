@@ -3,6 +3,7 @@ use syntax::{
     ast::{self, edit::AstNodeEdit, VisibilityOwner},
     AstNode, SyntaxKind,
 };
+use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -26,6 +27,7 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
     let tree_list = tree.syntax().parent().and_then(ast::UseTreeList::cast)?;
     if tree_list.use_trees().count() < 2 {
+        mark::hit!(skip_single_use_item);
         return None;
     }
 
@@ -87,6 +89,7 @@ mod tests {
 
     #[test]
     fn skip_single_use_item() {
+        mark::check!(skip_single_use_item);
         check_assist_not_applicable(
             unmerge_use,
             r"
