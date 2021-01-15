@@ -1466,10 +1466,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     ) -> Result<&'tcx Layout, LayoutError<'tcx>> {
         use SavedLocalEligibility::*;
         let tcx = self.tcx;
-
         let subst_field = |ty: Ty<'tcx>| ty.subst(tcx, substs);
 
-        let info = tcx.generator_layout(def_id);
+        let info = match tcx.generator_layout(def_id) {
+            None => return Err(LayoutError::Unknown(ty)),
+            Some(info) => info,
+        };
         let (ineligible_locals, assignments) = self.generator_saved_local_eligibility(&info);
 
         // Build a prefix layout, including "promoting" all ineligible
