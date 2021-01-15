@@ -630,10 +630,16 @@ impl<T: Ord> BinaryHeap<T> {
         // and about 2 * (len1 + len2) comparisons in the worst case
         // while `extend` takes O(len2 * log(len1)) operations
         // and about 1 * len2 * log_2(len1) comparisons in the worst case,
-        // assuming len1 >= len2.
+        // assuming len1 >= len2. For larger heaps, the crossover point
+        // no longer follows this reasoning and was determined empirically.
         #[inline]
         fn better_to_rebuild(len1: usize, len2: usize) -> bool {
-            2 * (len1 + len2) < len2 * log2_fast(len1)
+            let tot_len = len1 + len2;
+            if tot_len <= 2048 {
+                2 * tot_len < len2 * log2_fast(len1)
+            } else {
+                2 * tot_len < len2 * 11
+            }
         }
 
         if better_to_rebuild(self.len(), other.len()) {
