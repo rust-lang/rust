@@ -1,5 +1,5 @@
 use crate::utils::SpanlessEq;
-use crate::utils::{get_item_name, higher, is_type_diagnostic_item, match_type, paths, snippet, snippet_opt};
+use crate::utils::{get_item_name, is_type_diagnostic_item, match_type, paths, snippet, snippet_opt};
 use crate::utils::{snippet_with_applicability, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -54,7 +54,7 @@ declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some((ref check, ref then_block, ref else_block)) = higher::if_block(&expr) {
+        if let ExprKind::If(ref check, ref then_block, ref else_block) = expr.kind {
             if let ExprKind::Unary(UnOp::UnNot, ref check) = check.kind {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
                     // in case of `if !m.contains_key(&k) { m.insert(k, v); }`

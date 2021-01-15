@@ -556,7 +556,7 @@ pub fn eq_mac_args(l: &MacArgs, r: &MacArgs) -> bool {
     match (l, r) {
         (Empty, Empty) => true,
         (Delimited(_, ld, lts), Delimited(_, rd, rts)) => ld == rd && lts.eq_unspanned(rts),
-        (Eq(_, lts), Eq(_, rts)) => lts.eq_unspanned(rts),
+        (Eq(_, lt), Eq(_, rt)) => lt.kind == rt.kind,
         _ => false,
     }
 }

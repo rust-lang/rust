@@ -119,6 +119,9 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             (&ExprKind::Index(ref la, ref li), &ExprKind::Index(ref ra, ref ri)) => {
                 self.eq_expr(la, ra) && self.eq_expr(li, ri)
             },
+            (&ExprKind::If(ref lc, ref lt, ref le), &ExprKind::If(ref rc, ref rt, ref re)) => {
+                self.eq_expr(lc, rc) && self.eq_expr(&**lt, &**rt) && both(le, re, |l, r| self.eq_expr(l, r))
+            },
             (&ExprKind::Lit(ref l), &ExprKind::Lit(ref r)) => l.node == r.node,
             (&ExprKind::Loop(ref lb, ref ll, ref lls), &ExprKind::Loop(ref rb, ref rl, ref rls)) => {
                 lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.name == r.ident.name)
@@ -563,6 +566,15 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_name(i.ident.name);
                 }
             },
+            ExprKind::If(ref cond, ref then, ref else_opt) => {
+                let c: fn(_, _, _) -> _ = ExprKind::If;
+                c.hash(&mut self.s);
+                self.hash_expr(cond);
+                self.hash_expr(&**then);
+                if let Some(ref e) = *else_opt {
+                    self.hash_expr(e);
+                }
+            },
             ExprKind::Match(ref e, arms, ref s) => {
                 self.hash_expr(e);
 
@@ -743,7 +755,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                     for segment in path.segments {
                         segment.ident.name.hash(&mut self.s);
-                        self.hash_generic_args(segment.generic_args().args);
+                        self.hash_generic_args(segment.args().args);
                     }
                 },
                 QPath::TypeRelative(ref ty, ref segment) => {

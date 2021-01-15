@@ -101,6 +101,13 @@ where
                 }
             } else {
                 match expr.kind {
+                    hir::ExprKind::If(cond, then, else_opt) => {
+                        self.inside_stmt(true).visit_expr(cond);
+                        self.visit_expr(then);
+                        if let Some(el) = else_opt {
+                            self.visit_expr(el);
+                        }
+                    },
                     hir::ExprKind::Match(cond, arms, _) => {
                         self.inside_stmt(true).visit_expr(cond);
                         for arm in arms {

@@ -1626,7 +1626,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let self_ty = cx.tcx.type_of(def_id);
 
         // if this impl block implements a trait, lint in trait definition instead
-        if let hir::ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
+        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
             return;
         }
 
@@ -2048,6 +2048,7 @@ fn lint_expect_fun_call(
             hir::ExprKind::Call(..)
             | hir::ExprKind::MethodCall(..)
             // These variants are debatable or require further examination
+            | hir::ExprKind::If(..)
             | hir::ExprKind::Match(..)
             | hir::ExprKind::Block{ .. } => true,
             _ => false,

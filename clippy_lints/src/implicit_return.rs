@@ -81,6 +81,13 @@ fn expr_match(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 lint(cx, expr.span, break_expr.span, LINT_BREAK);
             }
         },
+        ExprKind::If(.., if_expr, else_expr) => {
+            expr_match(cx, if_expr);
+
+            if let Some(else_expr) = else_expr {
+                expr_match(cx, else_expr);
+            }
+        },
         ExprKind::Match(.., arms, source) => {
             let check_all_arms = match source {
                 MatchSource::IfLetDesugar {

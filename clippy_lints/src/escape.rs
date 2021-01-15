@@ -1,5 +1,5 @@
 use rustc_hir::intravisit;
-use rustc_hir::{self, AssocItemKind, Body, FnDecl, HirId, HirIdSet, ItemKind, Node};
+use rustc_hir::{self, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, TraitRef, Ty};
@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         let mut trait_self_ty = None;
         if let Some(Node::Item(item)) = parent_node {
             // If the method is an impl for a trait, don't warn.
-            if let ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
+            if let ItemKind::Impl(Impl { of_trait: Some(_), .. }) = item.kind {
                 return;
             }
 
@@ -181,7 +181,6 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                 if is_non_trait_box(cmt.place.ty()) && !self.is_large_box(cmt.place.ty()) {
                     self.set.insert(cmt.hir_id);
                 }
-                return;
             }
         }
     }

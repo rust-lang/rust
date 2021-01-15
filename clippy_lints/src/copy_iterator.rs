@@ -1,5 +1,5 @@
 use crate::utils::{is_copy, match_path, paths, span_lint_and_note};
-use rustc_hir::{Item, ItemKind};
+use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -33,10 +33,10 @@ declare_lint_pass!(CopyIterator => [COPY_ITERATOR]);
 
 impl<'tcx> LateLintPass<'tcx> for CopyIterator {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl {
+        if let ItemKind::Impl(Impl {
             of_trait: Some(ref trait_ref),
             ..
-        } = item.kind
+        }) = item.kind
         {
             let ty = cx.tcx.type_of(cx.tcx.hir().local_def_id(item.hir_id));
 

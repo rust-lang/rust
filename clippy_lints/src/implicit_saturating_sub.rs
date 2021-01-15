@@ -1,4 +1,4 @@
-use crate::utils::{higher, in_macro, match_qpath, span_lint_and_sugg, SpanlessEq};
+use crate::utils::{in_macro, match_qpath, span_lint_and_sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             return;
         }
         if_chain! {
-            if let Some((ref cond, ref then, None)) = higher::if_block(&expr);
+            if let ExprKind::If(cond, then, None) = &expr.kind;
 
             // Check if the conditional expression is a binary operation
             if let ExprKind::Binary(ref cond_op, ref cond_left, ref cond_right) = cond.kind;

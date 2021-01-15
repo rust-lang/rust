@@ -28,10 +28,11 @@ fn check_that_clippy_has_the_same_major_version_as_rustc() {
     let clippy_minor = clippy_version.minor;
     let clippy_patch = clippy_version.patch;
 
-    // get the rustc version
-    // this way the rust-toolchain file version is honored
+    // get the rustc version either from the rustc installed with the toolchain file or from
+    // `RUSTC_REAL` if Clippy is build in the Rust repo with `./x.py`.
+    let rustc = std::env::var("RUSTC_REAL").unwrap_or_else(|_| "rustc".to_string());
     let rustc_version = String::from_utf8(
-        std::process::Command::new("rustc")
+        std::process::Command::new(&rustc)
             .arg("--version")
             .output()
             .expect("failed to run `rustc --version`")

@@ -7,7 +7,7 @@ use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, TraitRef, UnsafeSource, Unsafety,
+    BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Impl, Item, ItemKind, TraitRef, UnsafeSource, Unsafety,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
@@ -164,10 +164,10 @@ declare_lint_pass!(Derive => [
 
 impl<'tcx> LateLintPass<'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl {
+        if let ItemKind::Impl(Impl {
             of_trait: Some(ref trait_ref),
             ..
-        } = item.kind
+        }) = item.kind
         {
             let ty = cx.tcx.type_of(cx.tcx.hir().local_def_id(item.hir_id));
             let is_automatically_derived = is_automatically_derived(&*item.attrs);

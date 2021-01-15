@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
         }
 
         if_chain! {
-            if let Some((cond, then, _)) = higher::if_block(&expr);
+            if let ExprKind::If(cond, then, _) = &expr.kind;
             if let ExprKind::MethodCall(_, _, [target_arg, pattern], _) = cond.kind;
             if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id);
             if let ExprKind::Path(target_path) = &target_arg.kind;

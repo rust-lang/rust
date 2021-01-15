@@ -439,8 +439,8 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     if_chain! {
         if parent_impl != hir::CRATE_HIR_ID;
         if let hir::Node::Item(item) = cx.tcx.hir().get(parent_impl);
-        if let hir::ItemKind::Impl{ of_trait: trait_ref, .. } = &item.kind;
-        then { return trait_ref.as_ref(); }
+        if let hir::ItemKind::Impl(impl_) = &item.kind;
+        then { return impl_.of_trait.as_ref(); }
     }
     None
 }
@@ -1405,7 +1405,7 @@ pub fn if_sequence<'tcx>(
     let mut conds = SmallVec::new();
     let mut blocks: SmallVec<[&Block<'_>; 1]> = SmallVec::new();
 
-    while let Some((ref cond, ref then_expr, ref else_expr)) = higher::if_block(&expr) {
+    while let ExprKind::If(ref cond, ref then_expr, ref else_expr) = expr.kind {
         conds.push(&**cond);
         if let ExprKind::Block(ref block, _) = then_expr.kind {
             blocks.push(block);
@@ -1434,12 +1434,13 @@ pub fn parent_node_is_if_expr(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
     let map = cx.tcx.hir();
     let parent_id = map.get_parent_node(expr.hir_id);
     let parent_node = map.get(parent_id);
-
-    match parent_node {
-        Node::Expr(e) => higher::if_block(&e).is_some(),
-        Node::Arm(e) => higher::if_block(&e.body).is_some(),
-        _ => false,
-    }
+    matches!(
+        parent_node,
+        Node::Expr(Expr {
+            kind: ExprKind::If(_, _, _),
+            ..
+        })
+    )
 }
 
 // Finds the attribute with the given name, if any
@@ -1530,7 +1531,7 @@ pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
 /// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-        matches!(item.kind, ItemKind::Impl { of_trait: Some(_), .. })
+        matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
     } else {
         false
     }

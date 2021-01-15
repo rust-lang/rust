@@ -1,7 +1,7 @@
 use crate::utils::{match_def_path, match_trait_method, paths, qpath_res, span_lint};
 use if_chain::if_chain;
 use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, HirId, ImplItem, ImplItemKind, Item, ItemKind};
+use rustc_hir::{Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
@@ -111,7 +111,7 @@ impl LateLintPass<'_> for ToStringInDisplay {
 
 fn is_display_impl(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if_chain! {
-        if let ItemKind::Impl { of_trait: Some(trait_ref), .. } = &item.kind;
+        if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), .. }) = &item.kind;
         if let Some(did) = trait_ref.trait_def_id();
         then {
             match_def_path(cx, did, &paths::DISPLAY_TRAIT)

@@ -14,7 +14,7 @@ note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn_assertions.rs:9:9
    |
 LL |         assert!(x == 5, "wrong argument");
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
