@@ -41,8 +41,8 @@
       "inner": {
         "is_crate": false,
         "items": [
-          "0:7",
-          "0:4"
+          "0:4",
+          "0:7"
         ]
       },
       "kind": "module",
