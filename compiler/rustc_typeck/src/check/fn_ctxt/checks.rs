@@ -360,18 +360,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // First, set up some utility functions for the algorithm below
             // Remove a given input or argument from consideration
             let eliminate_input = |mat: &mut Vec<Vec<bool>>, ii: &mut Vec<usize>, idx| {
-                if idx >= ii.len() {
-                    return; // FIXME: Should this ICE as a compiler bug?
-                }
                 ii.remove(idx);
                 for row in mat {
                     row.remove(idx);
                 }
             };
             let eliminate_arg = |mat: &mut Vec<Vec<bool>>, ai: &mut Vec<usize>, idx| {
-                if idx >= ai.len() {
-                    return; // FIXME: Should this ICE as a compiler bug?
-                }
                 ai.remove(idx);
                 mat.remove(idx);
             };
