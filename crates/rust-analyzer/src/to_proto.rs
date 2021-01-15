@@ -8,8 +8,7 @@ use ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
     FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlPunct, HlRange, HlTag, Indel,
     InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget, ReferenceAccess,
-    RenameError, Runnable, Severity, SourceChange, SourceFileEdit, SymbolKind, TextEdit, TextRange,
-    TextSize,
+    RenameError, Runnable, Severity, SourceChange, SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 
@@ -634,13 +633,13 @@ pub(crate) fn goto_definition_response(
 pub(crate) fn snippet_text_document_edit(
     snap: &GlobalStateSnapshot,
     is_snippet: bool,
-    source_file_edit: SourceFileEdit,
+    file_id: FileId,
+    edit: TextEdit,
 ) -> Result<lsp_ext::SnippetTextDocumentEdit> {
-    let text_document = optional_versioned_text_document_identifier(snap, source_file_edit.file_id);
-    let line_index = snap.analysis.file_line_index(source_file_edit.file_id)?;
-    let line_endings = snap.file_line_endings(source_file_edit.file_id);
-    let edits = source_file_edit
-        .edit
+    let text_document = optional_versioned_text_document_identifier(snap, file_id);
+    let line_index = snap.analysis.file_line_index(file_id)?;
+    let line_endings = snap.file_line_endings(file_id);
+    let edits = edit
         .into_iter()
         .map(|it| snippet_text_edit(&line_index, line_endings, is_snippet, it))
         .collect();
@@ -699,8 +698,8 @@ pub(crate) fn snippet_workspace_edit(
         let ops = snippet_text_document_ops(snap, op);
         document_changes.extend_from_slice(&ops);
     }
-    for edit in source_change.source_file_edits {
-        let edit = snippet_text_document_edit(&snap, source_change.is_snippet, edit)?;
+    for (file_id, edit) in source_change.source_file_edits {
+        let edit = snippet_text_document_edit(&snap, source_change.is_snippet, file_id, edit)?;
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit));
     }
     let workspace_edit =

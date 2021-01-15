@@ -80,10 +80,8 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let actual = {
         let source_change = assist.source_change.unwrap();
         let mut actual = before;
-        for source_file_edit in source_change.source_file_edits {
-            if source_file_edit.file_id == file_id {
-                source_file_edit.edit.apply(&mut actual)
-            }
+        if let Some(source_file_edit) = source_change.get_source_edit(file_id) {
+            source_file_edit.apply(&mut actual);
         }
         actual
     };
@@ -116,37 +114,33 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
 
     match (assist, expected) {
         (Some(assist), ExpectedResult::After(after)) => {
-            let mut source_change = assist.source_change.unwrap();
+            let source_change = assist.source_change.unwrap();
             assert!(!source_change.source_file_edits.is_empty());
             let skip_header = source_change.source_file_edits.len() == 1
                 && source_change.file_system_edits.len() == 0;
-            source_change.source_file_edits.sort_by_key(|it| it.file_id);
 
             let mut buf = String::new();
-            for source_file_edit in source_change.source_file_edits {
-                let mut text = db.file_text(source_file_edit.file_id).as_ref().to_owned();
-                source_file_edit.edit.apply(&mut text);
+            for (file_id, edit) in source_change.source_file_edits {
+                let mut text = db.file_text(file_id).as_ref().to_owned();
+                edit.apply(&mut text);
                 if !skip_header {
-                    let sr = db.file_source_root(source_file_edit.file_id);
+                    let sr = db.file_source_root(file_id);
                     let sr = db.source_root(sr);
-                    let path = sr.path_for_file(&source_file_edit.file_id).unwrap();
+                    let path = sr.path_for_file(&file_id).unwrap();
                     format_to!(buf, "//- {}\n", path)
                 }
                 buf.push_str(&text);
             }
 
-            for file_system_edit in source_change.file_system_edits.clone() {
-                match file_system_edit {
-                    FileSystemEdit::CreateFile { dst, initial_contents } => {
-                        let sr = db.file_source_root(dst.anchor);
-                        let sr = db.source_root(sr);
-                        let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
-                        base.pop();
-                        let created_file_path = format!("{}{}", base.to_string(), &dst.path[1..]);
-                        format_to!(buf, "//- {}\n", created_file_path);
-                        buf.push_str(&initial_contents);
-                    }
-                    _ => (),
+            for file_system_edit in source_change.file_system_edits {
+                if let FileSystemEdit::CreateFile { dst, initial_contents } = file_system_edit {
+                    let sr = db.file_source_root(dst.anchor);
+                    let sr = db.source_root(sr);
+                    let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
+                    base.pop();
+                    let created_file_path = format!("{}{}", base.to_string(), &dst.path[1..]);
+                    format_to!(buf, "//- {}\n", created_file_path);
+                    buf.push_str(&initial_contents);
                 }
             }
 

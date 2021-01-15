@@ -15,8 +15,10 @@
 
 mod on_enter;
 
-use ide_db::base_db::{FilePosition, SourceDatabase};
-use ide_db::{source_change::SourceFileEdit, RootDatabase};
+use ide_db::{
+    base_db::{FilePosition, SourceDatabase},
+    RootDatabase,
+};
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, edit::IndentLevel, AstToken},
@@ -56,7 +58,7 @@ pub(crate) fn on_char_typed(
     let file = &db.parse(position.file_id).tree();
     assert_eq!(file.syntax().text().char_at(position.offset), Some(char_typed));
     let edit = on_char_typed_inner(file, position.offset, char_typed)?;
-    Some(SourceFileEdit { file_id: position.file_id, edit }.into())
+    Some(SourceChange::from_text_edit(position.file_id, edit))
 }
 
 fn on_char_typed_inner(file: &SourceFile, offset: TextSize, char_typed: char) -> Option<TextEdit> {

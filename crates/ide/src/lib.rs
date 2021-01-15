@@ -98,7 +98,7 @@ pub use ide_db::{
     label::Label,
     line_index::{LineCol, LineIndex},
     search::SearchScope,
-    source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
+    source_change::{FileSystemEdit, SourceChange},
     symbol_index::Query,
     RootDatabase,
 };
@@ -553,7 +553,7 @@ impl Analysis {
             let rule: ssr::SsrRule = query.parse()?;
             let mut match_finder = ssr::MatchFinder::in_context(db, resolve_context, selections);
             match_finder.add_rule(rule)?;
-            let edits = if parse_only { Vec::new() } else { match_finder.edits() };
+            let edits = if parse_only { Default::default() } else { match_finder.edits() };
             Ok(SourceChange::from(edits))
         })
     }

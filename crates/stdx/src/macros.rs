@@ -66,7 +66,7 @@ macro_rules! impl_from {
 /// Shamelessly stolen from: https://www.sqlite.org/assert.html
 #[macro_export]
 macro_rules! assert_never {
-    ($cond:expr) => { $crate::assert_always!($cond, "") };
+    ($cond:expr) => { $crate::assert_never!($cond, "") };
     ($cond:expr, $($fmt:tt)*) => {{
         let value = $cond;
         if value {
