@@ -231,6 +231,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
+    fn print_version(&self) {
+        println!("Cranelift version: {}", cranelift_codegen::VERSION);
+    }
+
     fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
         Box::new(crate::metadata::CraneliftMetadataLoader)
     }
