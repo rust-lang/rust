@@ -12,6 +12,7 @@ pub struct ArenaMap<ID, V> {
 }
 
 impl<T, V> ArenaMap<Idx<T>, V> {
+    /// Inserts a value associated with a given arena ID into the map.
     pub fn insert(&mut self, id: Idx<T>, t: V) {
         let idx = Self::to_idx(id);
 
@@ -19,22 +20,27 @@ impl<T, V> ArenaMap<Idx<T>, V> {
         self.v[idx] = Some(t);
     }
 
+    /// Returns a reference to the value associated with the provided ID if it is present.
     pub fn get(&self, id: Idx<T>) -> Option<&V> {
         self.v.get(Self::to_idx(id)).and_then(|it| it.as_ref())
     }
 
+    /// Returns a mutable reference to the value associated with the provided ID if it is present.
     pub fn get_mut(&mut self, id: Idx<T>) -> Option<&mut V> {
         self.v.get_mut(Self::to_idx(id)).and_then(|it| it.as_mut())
     }
 
+    /// Returns an iterator over the values in the map.
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.v.iter().filter_map(|o| o.as_ref())
     }
 
+    /// Returns an iterator over mutable references to the values in the map.
     pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
         self.v.iter_mut().filter_map(|o| o.as_mut())
     }
 
+    /// Returns an iterator over the arena IDs and values in the map.
     pub fn iter(&self) -> impl Iterator<Item = (Idx<T>, &V)> {
         self.v.iter().enumerate().filter_map(|(idx, o)| Some((Self::from_idx(idx), o.as_ref()?)))
     }
