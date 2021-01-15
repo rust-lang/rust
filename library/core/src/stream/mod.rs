@@ -16,13 +16,12 @@
 //!   exist and what you can do with them. The methods of these traits are worth
 //!   putting some extra study time into.
 //! * Functions provide some helpful ways to create some basic streams.
-//! * [Structs] are often the return types of the various methods on this
+//! * Structs are often the return types of the various methods on this
 //!   module's traits. You'll usually want to look at the method that creates
 //!   the `struct`, rather than the `struct` itself. For more detail about why,
 //!   see '[Implementing Stream](#implementing-stream)'.
 //!
 //! [Traits]: #traits
-//! [Structs]: #structs
 //!
 //! That's it! Let's dig into streams.
 //!
@@ -41,17 +40,17 @@
 //! ```
 //!
 //! Unlike `Iterator`, `Stream` makes a distinction between the [`poll_next`]
-//! method which is used when implementing a `Stream`, and the [`next`] method
-//! which is used when consuming a stream. Consumers of `Stream` only need to
-//! consider [`next`], which when called, returns a future which yields
-//! yields [`Option`][`<Item>`].
+//! method which is used when implementing a `Stream`, and a (to-be-implemented)
+//! `next` method which is used when consuming a stream. Consumers of `Stream`
+//! only need to consider `next`, which when called, returns a future which
+//! yields `Option<Stream::Item>`.
 //!
-//! The future returned by [`next`] will yield `Some(Item)` as long as there are
+//! The future returned by `next` will yield `Some(Item)` as long as there are
 //! elements, and once they've all been exhausted, will yield `None` to indicate
 //! that iteration is finished. If we're waiting on something asynchronous to
 //! resolve, the future will wait until the stream is ready to yield again.
 //!
-//! Individual streams may choose to resume iteration, and so calling [`next`]
+//! Individual streams may choose to resume iteration, and so calling `next`
 //! again may or may not eventually yield `Some(Item)` again at some point.
 //!
 //! [`Stream`]'s full definition includes a number of other methods as well,
@@ -60,8 +59,6 @@
 //!
 //! [`Poll`]: super::task::Poll
 //! [`poll_next`]: Stream::poll_next
-//! [`next`]: Stream::next
-//! [`<Item>`]: Stream::Item
 //!
 //! # Implementing Stream
 //!
@@ -112,36 +109,12 @@
 //!         }
 //!     }
 //! }
-//!
-//! // And now we can use it!
-//! # async fn run() {
-//! #
-//! let mut counter = Counter::new();
-//!
-//! let x = counter.next().await.unwrap();
-//! println!("{}", x);
-//!
-//! let x = counter.next().await.unwrap();
-//! println!("{}", x);
-//!
-//! let x = counter.next().await.unwrap();
-//! println!("{}", x);
-//!
-//! let x = counter.next().await.unwrap();
-//! println!("{}", x);
-//!
-//! let x = counter.next().await.unwrap();
-//! println!("{}", x);
-//! #
-//! }
 //! ```
-//!
-//! This will print `1` through `5`, each on their own line.
 //!
 //! # Laziness
 //!
 //! Streams are *lazy*. This means that just creating a stream doesn't _do_ a
-//! whole lot. Nothing really happens until you call [`next`]. This is sometimes a
+//! whole lot. Nothing really happens until you call `next`. This is sometimes a
 //! source of confusion when creating a stream solely for its side effects. The
 //! compiler will warn us about this kind of behavior:
 //!
@@ -151,4 +124,4 @@
 
 mod stream;
 
-pub use stream::{Next, Stream};
+pub use stream::Stream;

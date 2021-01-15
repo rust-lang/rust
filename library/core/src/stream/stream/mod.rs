@@ -1,7 +1,3 @@
-mod next;
-
-pub use next::Next;
-
 use crate::ops::DerefMut;
 use crate::pin::Pin;
 use crate::task::{Context, Poll};
@@ -80,21 +76,6 @@ pub trait Stream {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, None)
-    }
-
-    /// Advances the stream and returns a future which yields the next value.
-    ///
-    /// The returned future yields [`None`] when iteration is finished.
-    /// Individual stream implementations may choose to resume iteration, and so
-    /// calling `next()` again may or may not eventually start yielding
-    /// [`Some(Item)`] again at some point.
-    ///
-    /// [`Some(Item)`]: Some
-    fn next(&mut self) -> Next<'_, Self>
-    where
-        Self: Unpin,
-    {
-        Next::new(self)
     }
 }
 
