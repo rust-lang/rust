@@ -1052,7 +1052,7 @@ pub struct ResolverArenas<'a> {
 impl<'a> ResolverArenas<'a> {
     fn alloc_module(&'a self, module: ModuleData<'a>) -> Module<'a> {
         let module = self.modules.alloc(module);
-        if module.def_id().map(|def_id| def_id.is_local()).unwrap_or(true) {
+        if module.def_id().map_or(true, |def_id| def_id.is_local()) {
             self.local_modules.borrow_mut().push(module);
         }
         module
@@ -3031,7 +3031,7 @@ impl<'a> Resolver<'a> {
         let duplicate = new_binding.res().opt_def_id() == old_binding.res().opt_def_id();
         let has_dummy_span = new_binding.span.is_dummy() || old_binding.span.is_dummy();
         let from_item =
-            self.extern_prelude.get(&ident).map(|entry| entry.introduced_by_item).unwrap_or(true);
+            self.extern_prelude.get(&ident).map_or(true, |entry| entry.introduced_by_item);
         // Only suggest removing an import if both bindings are to the same def, if both spans
         // aren't dummy spans. Further, if both bindings are imports, then the ident must have
         // been introduced by a item.

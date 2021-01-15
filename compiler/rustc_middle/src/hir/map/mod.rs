@@ -815,7 +815,7 @@ impl<'hir> Map<'hir> {
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
-        let attrs = self.find_entry(id).map(|entry| match entry.node {
+        self.find_entry(id).map_or(&[], |entry| match entry.node {
             Node::Param(a) => &a.attrs[..],
             Node::Local(l) => &l.attrs[..],
             Node::Item(i) => &i.attrs[..],
@@ -842,8 +842,7 @@ impl<'hir> Map<'hir> {
             | Node::Block(..)
             | Node::Lifetime(..)
             | Node::Visibility(..) => &[],
-        });
-        attrs.unwrap_or(&[])
+        })
     }
 
     /// Gets the span of the definition of the specified HIR node.

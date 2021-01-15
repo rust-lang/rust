@@ -654,9 +654,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // Then we see that to get the same result, we must start with
         // `deref { deref { place_foo }}` instead of `place_foo` since the pattern is now `Some(x,)`
         // and not `&&Some(x,)`, even though its assigned type is that of `&&Some(x,)`.
-        for _ in
-            0..self.typeck_results.pat_adjustments().get(pat.hir_id).map(|v| v.len()).unwrap_or(0)
-        {
+        for _ in 0..self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(0, |v| v.len()) {
             debug!("cat_pattern: applying adjustment to place_with_id={:?}", place_with_id);
             place_with_id = self.cat_deref(pat, place_with_id)?;
         }

@@ -1925,7 +1925,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     {
                         // Check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
                         let item_span =
-                            path.iter().last().map(|segment| segment.ident.span).unwrap_or(span);
+                            path.iter().last().map_or(span, |segment| segment.ident.span);
 
                         let mut hm = self.r.session.confused_type_with_std_module.borrow_mut();
                         hm.insert(item_span, span);

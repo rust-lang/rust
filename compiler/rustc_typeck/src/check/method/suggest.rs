@@ -1193,7 +1193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .any(|imp_did| {
                             let imp = self.tcx.impl_trait_ref(imp_did).unwrap();
                             let imp_simp = simplify_type(self.tcx, imp.self_ty(), true);
-                            imp_simp.map(|s| s == simp_rcvr_ty).unwrap_or(false)
+                            imp_simp.map_or(false, |s| s == simp_rcvr_ty)
                         })
                     {
                         explicitly_negative.push(candidate);
@@ -1270,11 +1270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match ty.kind() {
                 ty::Adt(def, _) => def.did.is_local(),
                 ty::Foreign(did) => did.is_local(),
-
-                ty::Dynamic(ref tr, ..) => {
-                    tr.principal().map(|d| d.def_id().is_local()).unwrap_or(false)
-                }
-
+                ty::Dynamic(ref tr, ..) => tr.principal().map_or(false, |d| d.def_id().is_local()),
                 ty::Param(_) => true,
 
                 // Everything else (primitive types, etc.) is effectively
