@@ -42,7 +42,8 @@ SOURCE_FILE@0..71
       PATH@39..48
         PATH@39..43
           PATH_SEGMENT@39..43
-            SELF_KW@39..43 "self"
+            NAME_REF@39..43
+              SELF_KW@39..43 "self"
         COLON2@43..45 "::"
         PATH_SEGMENT@45..48
           NAME_REF@45..48
@@ -61,7 +62,8 @@ SOURCE_FILE@0..71
       PATH@59..69
         PATH@59..64
           PATH_SEGMENT@59..64
-            SUPER_KW@59..64 "super"
+            NAME_REF@59..64
+              SUPER_KW@59..64 "super"
         COLON2@64..66 "::"
         PATH_SEGMENT@66..69
           NAME_REF@66..69

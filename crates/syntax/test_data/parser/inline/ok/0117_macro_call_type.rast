@@ -30,7 +30,8 @@ SOURCE_FILE@0..41
       PATH@26..36
         PATH@26..31
           PATH_SEGMENT@26..31
-            CRATE_KW@26..31 "crate"
+            NAME_REF@26..31
+              CRATE_KW@26..31 "crate"
         COLON2@31..33 "::"
         PATH_SEGMENT@33..36
           NAME_REF@33..36

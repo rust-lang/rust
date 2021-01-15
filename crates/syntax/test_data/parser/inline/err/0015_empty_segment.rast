@@ -6,7 +6,8 @@ SOURCE_FILE@0..13
       PATH@4..11
         PATH@4..9
           PATH_SEGMENT@4..9
-            CRATE_KW@4..9 "crate"
+            NAME_REF@4..9
+              CRATE_KW@4..9 "crate"
         COLON2@9..11 "::"
     SEMICOLON@11..12 ";"
   WHITESPACE@12..13 "\n"

@@ -6,7 +6,8 @@ SOURCE_FILE@0..38
       PATH@4..13
         PATH@4..8
           PATH_SEGMENT@4..8
-            SELF_KW@4..8 "self"
+            NAME_REF@4..8
+              SELF_KW@4..8 "self"
         COLON2@8..10 "::"
         PATH_SEGMENT@10..13
           NAME_REF@10..13
@@ -21,10 +22,12 @@ SOURCE_FILE@0..38
         PATH@19..31
           PATH@19..24
             PATH_SEGMENT@19..24
-              SUPER_KW@19..24 "super"
+              NAME_REF@19..24
+                SUPER_KW@19..24 "super"
           COLON2@24..26 "::"
           PATH_SEGMENT@26..31
-            SUPER_KW@26..31 "super"
+            NAME_REF@26..31
+              SUPER_KW@26..31 "super"
         COLON2@31..33 "::"
         PATH_SEGMENT@33..36
           NAME_REF@33..36

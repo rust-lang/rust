@@ -879,7 +879,7 @@ use crate::AstNode;
 
                 replacements:
 
-                Line 2: Node(NAME_REF@5..14) -> crate
+                Line 2: Token(IDENT@5..14 "text_edit") -> crate
                 Line 2: Token(IDENT@16..24 "TextEdit") -> AstNode
                 Line 2: Token(WHITESPACE@25..27 "\n\n") -> "\n"
 

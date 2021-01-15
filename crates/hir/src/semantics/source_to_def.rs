@@ -114,6 +114,15 @@ impl SourceToDefCtx<'_, '_> {
         let pat_id = source_map.node_pat(src.as_ref())?;
         Some((container, pat_id))
     }
+    pub(super) fn self_param_to_def(
+        &mut self,
+        src: InFile<ast::SelfParam>,
+    ) -> Option<(DefWithBodyId, PatId)> {
+        let container = self.find_pat_or_label_container(src.as_ref().map(|it| it.syntax()))?;
+        let (_body, source_map) = self.db.body_with_source_map(container);
+        let pat_id = source_map.node_self_param(src.as_ref())?;
+        Some((container, pat_id))
+    }
     pub(super) fn label_to_def(
         &mut self,
         src: InFile<ast::Label>,

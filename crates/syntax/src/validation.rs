@@ -256,7 +256,7 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
             ));
         }
     } else if let Some(token) = segment.super_token() {
-        if !all_supers(&path) {
+        if segment.coloncolon_token().is_some() || !all_supers(&path) {
             errors.push(SyntaxError::new(
                 "The `super` keyword may only be preceded by other `super`s",
                 token.text_range(),

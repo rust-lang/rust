@@ -187,7 +187,8 @@ SOURCE_FILE@0..250
               PATH@164..173
                 PATH@164..168
                   PATH_SEGMENT@164..168
-                    SELF_KW@164..168 "self"
+                    NAME_REF@164..168
+                      SELF_KW@164..168 "self"
                 COLON2@168..170 "::"
                 PATH_SEGMENT@170..173
                   NAME_REF@170..173

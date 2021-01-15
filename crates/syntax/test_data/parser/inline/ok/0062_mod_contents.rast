@@ -43,7 +43,8 @@ SOURCE_FILE@0..70
     PATH@45..55
       PATH@45..50
         PATH_SEGMENT@45..50
-          SUPER_KW@45..50 "super"
+          NAME_REF@45..50
+            SUPER_KW@45..50 "super"
       COLON2@50..52 "::"
       PATH_SEGMENT@52..55
         NAME_REF@52..55

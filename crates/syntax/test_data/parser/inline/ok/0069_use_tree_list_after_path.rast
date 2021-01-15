@@ -5,7 +5,8 @@ SOURCE_FILE@0..37
     USE_TREE@4..17
       PATH@4..9
         PATH_SEGMENT@4..9
-          CRATE_KW@4..9 "crate"
+          NAME_REF@4..9
+            CRATE_KW@4..9 "crate"
       COLON2@9..11 "::"
       USE_TREE_LIST@11..17
         L_CURLY@11..12 "{"
@@ -23,7 +24,8 @@ SOURCE_FILE@0..37
     USE_TREE@23..35
       PATH@23..27
         PATH_SEGMENT@23..27
-          SELF_KW@23..27 "self"
+          NAME_REF@23..27
+            SELF_KW@23..27 "self"
       COLON2@27..29 "::"
       USE_TREE_LIST@29..35
         L_CURLY@29..30 "{"

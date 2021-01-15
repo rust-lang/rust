@@ -444,7 +444,7 @@ fn rename_reference(
             mark::hit!(rename_not_an_ident_ref);
             bail!("Invalid name `{}`: not an identifier", new_name)
         }
-        (IdentifierKind::ToSelf, ReferenceKind::SelfKw) => {
+        (IdentifierKind::ToSelf, ReferenceKind::SelfParam) => {
             unreachable!("rename_self_to_param should've been called instead")
         }
         (IdentifierKind::ToSelf, _) => {

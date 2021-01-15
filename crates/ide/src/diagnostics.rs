@@ -18,7 +18,7 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, AstNode},
-    SyntaxNode, TextRange, T,
+    SyntaxNode, TextRange,
 };
 use text_edit::TextEdit;
 
@@ -232,7 +232,7 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
     single_use_tree: &ast::UseTree,
 ) -> Option<TextEdit> {
     let use_tree_list_node = single_use_tree.syntax().parent()?;
-    if single_use_tree.path()?.segment()?.syntax().first_child_or_token()?.kind() == T![self] {
+    if single_use_tree.path()?.segment()?.self_token().is_some() {
         let start = use_tree_list_node.prev_sibling_or_token()?.text_range().start();
         let end = use_tree_list_node.text_range().end();
         return Some(TextEdit::delete(TextRange::new(start, end)));

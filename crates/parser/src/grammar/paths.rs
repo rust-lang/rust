@@ -82,7 +82,11 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
             }
             // test crate_path
             // use crate::foo;
-            T![self] | T![super] | T![crate] => p.bump_any(),
+            T![self] | T![super] | T![crate] => {
+                let m = p.start();
+                p.bump_any();
+                m.complete(p, NAME_REF);
+            }
             _ => {
                 p.err_recover("expected identifier", items::ITEM_RECOVERY_SET);
                 if empty {

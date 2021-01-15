@@ -49,7 +49,8 @@ SOURCE_FILE@0..183
                 PATH_EXPR@67..71
                   PATH@67..71
                     PATH_SEGMENT@67..71
-                      SELF_KW@67..71 "self"
+                      NAME_REF@67..71
+                        SELF_KW@67..71 "self"
                 DOT@71..72 "."
                 NAME_REF@72..78
                   IDENT@72..78 "scopes"
@@ -66,7 +67,8 @@ SOURCE_FILE@0..183
               PATH_EXPR@94..98
                 PATH@94..98
                   PATH_SEGMENT@94..98
-                    SELF_KW@94..98 "self"
+                    NAME_REF@94..98
+                      SELF_KW@94..98 "self"
               DOT@98..99 "."
               NAME_REF@99..105
                 IDENT@99..105 "scopes"
