@@ -132,4 +132,4 @@ jobs:
         run: |
           ~/.local/bin/zulip-send --stream miri --subject "Cron Job Failure" \
             --message '@**RalfJ** @**oli** the Miri cron job build failed. Please investigate!' \
-            --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN
+            --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com
