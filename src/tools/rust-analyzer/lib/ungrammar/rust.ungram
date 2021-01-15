@@ -24,7 +24,7 @@ Name =
   'ident'
 
 NameRef =
-  'ident' | 'int_number'
+  'ident' | 'int_number' | 'self' | 'super' | 'crate'
 
 Lifetime =
   'lifetime_ident'
@@ -33,8 +33,7 @@ Path =
   (qualifier:Path '::')? segment:PathSegment
 
 PathSegment =
-  'crate' | 'self' | 'super'
-| '::'? NameRef
+  '::'? NameRef
 | NameRef GenericArgList?
 | NameRef ParamList RetType?
 | '<' PathType ('as' PathType)? '>'
