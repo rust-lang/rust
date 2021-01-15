@@ -3201,8 +3201,8 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 let name = v.name.as_ref().unwrap();
                 match *v.kind {
                     clean::VariantItem(ref var) => match var {
-                        clean::VariantKind::CLike => write!(w, "{}", name),
-                        clean::VariantKind::Tuple(ref tys) => {
+                        clean::Variant::CLike => write!(w, "{}", name),
+                        clean::Variant::Tuple(ref tys) => {
                             write!(w, "{}(", name);
                             for (i, ty) in tys.iter().enumerate() {
                                 if i > 0 {
@@ -3212,7 +3212,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                             }
                             write!(w, ")");
                         }
-                        clean::VariantKind::Struct(ref s) => {
+                        clean::Variant::Struct(ref s) => {
                             render_struct(w, v, None, s.struct_type, &s.fields, "    ", false, cx);
                         }
                     },
@@ -3249,7 +3249,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 id = id,
                 name = variant.name.as_ref().unwrap()
             );
-            if let clean::VariantItem(clean::VariantKind::Tuple(ref tys)) = *variant.kind {
+            if let clean::VariantItem(clean::Variant::Tuple(ref tys)) = *variant.kind {
                 write!(w, "(");
                 for (i, ty) in tys.iter().enumerate() {
                     if i > 0 {
@@ -3263,8 +3263,8 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             document(w, cx, variant, Some(it));
             document_non_exhaustive(w, variant);
 
-            use crate::clean::VariantKind;
-            if let clean::VariantItem(VariantKind::Struct(ref s)) = *variant.kind {
+            use crate::clean::Variant;
+            if let clean::VariantItem(Variant::Struct(ref s)) = *variant.kind {
                 let variant_id = cx.derive_id(format!(
                     "{}.{}.fields",
                     ItemType::Variant,

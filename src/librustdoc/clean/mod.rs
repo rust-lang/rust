@@ -1840,11 +1840,11 @@ impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
 impl Clean<Item> for ty::VariantDef {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let kind = match self.ctor_kind {
-            CtorKind::Const => VariantKind::CLike,
-            CtorKind::Fn => VariantKind::Tuple(
+            CtorKind::Const => Variant::CLike,
+            CtorKind::Fn => Variant::Tuple(
                 self.fields.iter().map(|f| cx.tcx.type_of(f.did).clean(cx)).collect(),
             ),
-            CtorKind::Fictive => VariantKind::Struct(VariantStruct {
+            CtorKind::Fictive => Variant::Struct(VariantStruct {
                 struct_type: doctree::Plain,
                 fields_stripped: false,
                 fields: self
@@ -1868,14 +1868,14 @@ impl Clean<Item> for ty::VariantDef {
     }
 }
 
-impl Clean<VariantKind> for hir::VariantData<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> VariantKind {
+impl Clean<Variant> for hir::VariantData<'_> {
+    fn clean(&self, cx: &DocContext<'_>) -> Variant {
         match self {
-            hir::VariantData::Struct(..) => VariantKind::Struct(self.clean(cx)),
+            hir::VariantData::Struct(..) => Variant::Struct(self.clean(cx)),
             hir::VariantData::Tuple(..) => {
-                VariantKind::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
+                Variant::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
             }
-            hir::VariantData::Unit(..) => VariantKind::CLike,
+            hir::VariantData::Unit(..) => Variant::CLike,
         }
     }
 }

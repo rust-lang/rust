@@ -56,12 +56,12 @@ crate trait DocFolder: Sized {
             VariantItem(i) => {
                 let i2 = i.clone(); // this clone is small
                 match i {
-                    VariantKind::Struct(mut j) => {
+                    Variant::Struct(mut j) => {
                         let num_fields = j.fields.len();
                         j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
                         j.fields_stripped |= num_fields != j.fields.len()
                             || j.fields.iter().any(|f| f.is_stripped());
-                        VariantItem(VariantKind::Struct(j))
+                        VariantItem(Variant::Struct(j))
                     }
                     _ => VariantItem(i2),
                 }
