@@ -2477,7 +2477,7 @@ impl<R: Read> Iterator for Bytes<R> {
 }
 
 #[stable(feature = "bufreader_size_hint", since = "1.51.0")]
-impl<T> Iterator for Bytes<BufReader<T>> {
+impl<R: Read> Iterator for Bytes<BufReader<R>> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.inner.buffer().len(), None)
     }
