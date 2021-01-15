@@ -301,6 +301,7 @@ define_tables! {
     super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
     // As an optimization, a missing entry indicates an empty `&[]`.
     explicit_item_bounds: Table<DefIndex, Lazy!([(ty::Predicate<'tcx>, Span)])>,
+    is_trivial_mir: Table<DefIndex, ()>,
     mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     mir_for_ctfe: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,

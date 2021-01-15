@@ -71,6 +71,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         },
         mir_promoted,
         mir_drops_elaborated_and_const_checked,
+        is_trivial_mir: inline::is_trivial_mir,
         mir_for_ctfe,
         mir_for_ctfe_of_const_arg,
         optimized_mir,
@@ -555,7 +556,8 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         // constructors.
         return shim::build_adt_ctor(tcx, did.to_def_id());
     }
-
+    // `is_trivial_mir` uses `mir_drops_elaborated_and_const_checked` so run that first.
+    tcx.ensure().is_trivial_mir(did.to_def_id());
     match tcx.hir().body_const_context(did) {
         // Run the `mir_for_ctfe` query, which depends on `mir_drops_elaborated_and_const_checked`
         // which we are going to steal below. Thus we need to run `mir_for_ctfe` first, so it

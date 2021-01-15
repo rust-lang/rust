@@ -4,7 +4,7 @@ use rustc_index::vec::Idx;
 use rustc_serialize::opaque::Encoder;
 use std::convert::TryInto;
 use std::marker::PhantomData;
-use std::num::NonZeroUsize;
+use std::num::{NonZeroU8, NonZeroUsize};
 use tracing::debug;
 
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
@@ -72,6 +72,30 @@ impl FixedSizeEncoding for u32 {
 
     fn write_to_bytes(self, b: &mut [u8]) {
         b[..Self::BYTE_LEN].copy_from_slice(&self.to_le_bytes());
+    }
+}
+
+impl FixedSizeEncoding for Option<NonZeroU8> {
+    fixed_size_encoding_byte_len_and_defaults!(1);
+
+    fn from_bytes(b: &[u8]) -> Self {
+        NonZeroU8::new(b[0])
+    }
+
+    fn write_to_bytes(self, b: &mut [u8]) {
+        b[0] = self.map_or(0, |x| x.get());
+    }
+}
+
+impl FixedSizeEncoding for Option<()> {
+    fixed_size_encoding_byte_len_and_defaults!(Option::<NonZeroU8>::BYTE_LEN);
+
+    fn from_bytes(b: &[u8]) -> Self {
+        Option::<NonZeroU8>::from_bytes(b).map(|_| ())
+    }
+
+    fn write_to_bytes(self, b: &mut [u8]) {
+        self.map(|()| NonZeroU8::new(1).unwrap()).write_to_bytes(b)
     }
 }
 

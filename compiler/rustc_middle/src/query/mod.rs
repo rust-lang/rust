@@ -339,6 +339,11 @@ rustc_queries! {
             }
         }
 
+        query is_trivial_mir(key: DefId) -> bool {
+            desc { |tcx| "checking if MIR for `{}` is trivial", tcx.def_path_str(key) }
+            cache_on_disk_if { key.is_local() }
+        }
+
         /// MIR after our optimization passes have run. This is MIR that is ready
         /// for codegen. This is also the only query that can fetch non-local MIR, at present.
         query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {

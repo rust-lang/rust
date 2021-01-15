@@ -2,6 +2,7 @@
 
 use rustc_attr as attr;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -37,16 +38,19 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
-            return;
-        }
-
         if tcx.sess.opts.debugging_opts.instrument_coverage {
             // Since `Inline` happens after `InstrumentCoverage`, the function-specific coverage
             // counters can be invalidated, such as by merging coverage counter statements from
             // a pre-inlined function into a different function. This kind of change is invalid,
             // so inlining must be skipped. Note: This check is performed here so inlining can
             // be disabled without preventing other optimizations (regardless of `mir_opt_level`).
+            return;
+        }
+
+        if body.generator_kind.is_some() {
+            // Avoid inlining into generators, since their `optimized_mir` is used for layout
+            // computation, which can create a cycle, even when no attempt is made to inline
+            // the function in the other direction.
             return;
         }
 
@@ -104,7 +108,7 @@ impl Inliner<'tcx> {
                 Some(it) => it,
             };
 
-            if !self.is_mir_available(&callsite.callee, caller_body) {
+            if !self.is_mir_available(&callsite.callee) {
                 debug!("MIR unavailable {}", callsite.callee);
                 continue;
             }
@@ -137,11 +141,27 @@ impl Inliner<'tcx> {
         }
     }
 
-    fn is_mir_available(&self, callee: &Instance<'tcx>, caller_body: &Body<'tcx>) -> bool {
-        if let InstanceDef::Item(_) = callee.def {
-            if !self.tcx.is_mir_available(callee.def_id()) {
-                return false;
-            }
+    fn is_mir_available(&self, callee: &Instance<'tcx>) -> bool {
+        match callee.def {
+            InstanceDef::Virtual(..) | InstanceDef::Intrinsic(..) => return false,
+
+            InstanceDef::VtableShim(..)
+            | InstanceDef::ReifyShim(..)
+            | InstanceDef::FnPtrShim(..)
+            | InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::DropGlue(..)
+            | InstanceDef::CloneShim(..) => return true,
+
+            InstanceDef::Item(_) => {}
+        };
+
+        if !self.tcx.is_mir_available(callee.def_id()) {
+            return false;
+        }
+
+        if self.tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
+            // Only inline trivial functions by default.
+            return self.tcx.is_trivial_mir(callee.def_id());
         }
 
         if let Some(callee_def_id) = callee.def_id().as_local() {
@@ -153,9 +173,7 @@ impl Inliner<'tcx> {
             // since their `optimized_mir` is used for layout computation, which can
             // create a cycle, even when no attempt is made to inline the function
             // in the other direction.
-            !self.tcx.dep_graph.is_fully_enabled()
-                && self.hir_id < callee_hir_id
-                && caller_body.generator_kind.is_none()
+            !self.tcx.dep_graph.is_fully_enabled() && self.hir_id < callee_hir_id
         } else {
             // This cannot result in a cycle since the callee MIR is from another crate
             // and is already optimized.
@@ -884,4 +902,49 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             }
         }
     }
+}
+
+pub fn is_trivial_mir(tcx: TyCtxt<'tcx>, did: DefId) -> bool {
+    debug!("is_trivial_mir({:?})", did);
+    if tcx.is_constructor(did) {
+        debug!("is_trivial_mir = true (constructor)");
+        return true;
+    }
+
+    use rustc_hir::def::DefKind;
+    if !matches!(tcx.def_kind(did), DefKind::Fn | DefKind::AssocFn) {
+        debug!("is_trivial_mir = false (not a function)");
+        // Only inline functions, don't look at constants here.
+        return false;
+    }
+
+    if !did.is_local() {
+        // This branch is only taken if no `optimized_mir` is available for
+        // an extern crate, as `is_trivial_mir` has otherwise been encoded.
+        debug!("is_trivial_mir = false (no MIR available)");
+        return false;
+    };
+
+    let body = tcx
+        .mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did.expect_local()))
+        .borrow();
+
+    for bb in body.basic_blocks() {
+        let terminator = bb.terminator();
+        if let TerminatorKind::Call { func, .. } = &terminator.kind {
+            let func_ty = func.ty(body.local_decls(), tcx);
+            if let ty::FnDef(..) = *func_ty.kind() {
+                let fn_sig = func_ty.fn_sig(tcx);
+                if fn_sig.abi() == Abi::RustIntrinsic || fn_sig.abi() == Abi::PlatformIntrinsic {
+                    continue;
+                }
+            }
+
+            debug!("is_trivial_mir = false (function call)");
+            return false;
+        }
+    }
+
+    debug!("is_trivial_mir = true");
+    true
 }

@@ -1164,6 +1164,12 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EntryBuilder::encode_optimized_mir({:?})", def_id);
         record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
 
+        if self.tcx.is_trivial_mir(def_id) {
+            // We don't store anything if `is_trivial_mir` is `false`
+            // so we can use a unit type here.
+            self.tables.is_trivial_mir.set(def_id.local_def_index, ());
+        }
+
         let unused = self.tcx.unused_generic_params(def_id);
         if !unused.is_empty() {
             record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
