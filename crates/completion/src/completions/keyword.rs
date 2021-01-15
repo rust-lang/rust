@@ -1,6 +1,6 @@
 //! Completes keywords.
 
-use syntax::{ast, SyntaxKind};
+use syntax::SyntaxKind;
 use test_utils::mark;
 
 use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions};
@@ -143,47 +143,39 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         Some(it) => it,
         None => return,
     };
-    acc.add_all(complete_return(ctx, &fn_def, ctx.can_be_stmt));
-}
 
-fn keyword(ctx: &CompletionContext, kw: &str, snippet: &str) -> CompletionItem {
-    let res = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw)
-        .kind(CompletionItemKind::Keyword);
-
-    match ctx.config.snippet_cap {
-        Some(cap) => res.insert_snippet(cap, snippet),
-        _ => res.insert_text(if snippet.contains('$') { kw } else { snippet }),
-    }
-    .build()
+    add_keyword(
+        ctx,
+        acc,
+        "return",
+        match (ctx.can_be_stmt, fn_def.ret_type().is_some()) {
+            (true, true) => "return $0;",
+            (true, false) => "return;",
+            (false, true) => "return $0",
+            (false, false) => "return",
+        },
+    )
 }
 
 fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet: &str) {
-    acc.add(keyword(ctx, kw, snippet));
-}
-
-fn complete_return(
-    ctx: &CompletionContext,
-    fn_def: &ast::Fn,
-    can_be_stmt: bool,
-) -> Option<CompletionItem> {
-    let snip = match (can_be_stmt, fn_def.ret_type().is_some()) {
-        (true, true) => "return $0;",
-        (true, false) => "return;",
-        (false, true) => "return $0",
-        (false, false) => "return",
+    let builder = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw)
+        .kind(CompletionItemKind::Keyword);
+    let builder = match ctx.config.snippet_cap {
+        Some(cap) => builder.insert_snippet(cap, snippet),
+        None => builder.insert_text(if snippet.contains('$') { kw } else { snippet }),
     };
-    Some(keyword(ctx, "return", snip))
+    acc.add(builder.build());
 }
 
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
+    use test_utils::mark;
 
     use crate::{
         test_utils::{check_edit, completion_list},
         CompletionKind,
     };
-    use test_utils::mark;
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Keyword);
