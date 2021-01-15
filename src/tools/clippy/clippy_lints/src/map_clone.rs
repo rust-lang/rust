@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
         if_chain! {
             if let hir::ExprKind::MethodCall(ref method, _, ref args, _) = e.kind;
             if args.len() == 2;
-            if method.ident.as_str() == "map";
+            if method.ident.name == sym::map;
             let ty = cx.typeck_results().expr_ty(&args[0]);
             if is_type_diagnostic_item(cx, ty, sym::option_type) || match_trait_method(cx, e, &paths::ITERATOR);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;

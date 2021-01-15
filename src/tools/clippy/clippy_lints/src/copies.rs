@@ -112,7 +112,8 @@ impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
             if let Some(&Expr {
                 kind: ExprKind::If(_, _, Some(ref else_expr)),
                 ..
-            }) = get_parent_expr(cx, expr) {
+            }) = get_parent_expr(cx, expr)
+            {
                 if else_expr.hir_id == expr.hir_id {
                     return;
                 }
