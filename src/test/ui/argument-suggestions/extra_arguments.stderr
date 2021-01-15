@@ -106,8 +106,8 @@ LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
 help: the following changes might help
    |
-LL |   two_arg_diff(1,  {&str},, );
-   |                    ^^^^^^^ --
+LL |   two_arg_diff(1, {&str}, );
+   |                   ^^^^^^ --
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:17:23
@@ -140,8 +140,8 @@ LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
 help: the following changes might help
    |
-LL |   two_arg_diff(1,  {&str},, );
-   |                    ^^^^^^^ --  --
+LL |   two_arg_diff(1, {&str}, );
+   |                   ^^^^^^ --  --
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:19:23

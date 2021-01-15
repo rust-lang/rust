@@ -9,6 +9,10 @@ note: function defined here
    |
 LL | fn one_arg(_a: i32) {}
    |    ^^^^^^^ -------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   one_arg({i32});
+   |           ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:16:19
@@ -21,6 +25,10 @@ note: function defined here
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   two_arg_same(1, {i32});
+   |                   ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:17:16
@@ -33,6 +41,10 @@ note: function defined here
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   two_arg_same({i32}, 1);
+   |                ^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:18:16
@@ -47,10 +59,10 @@ note: function defined here
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   two_arg_same( {i32},,  {i32},);
-   |                 ^^^^^^   ^^^^^^
+LL |   two_arg_same({i32}, {i32});
+   |                ^^^^^  ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:19:19
@@ -63,6 +75,10 @@ note: function defined here
    |
 LL | fn two_arg_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^^^^^ -------  -------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   two_arg_diff(1, {f32});
+   |                   ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:20:16
@@ -75,6 +91,10 @@ note: function defined here
    |
 LL | fn two_arg_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^^^^^ -------  -------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   two_arg_diff({i32}, 1.0);
+   |                ^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:21:16
@@ -89,10 +109,10 @@ note: function defined here
    |
 LL | fn two_arg_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   two_arg_diff( {i32},,  {f32},);
-   |                 ^^^^^^   ^^^^^^
+LL |   two_arg_diff({i32}, {f32});
+   |                ^^^^^  ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:24:18
@@ -105,6 +125,10 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   three_arg_diff({i32}, 1.0, "");
+   |                  ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:25:21
@@ -117,6 +141,10 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   three_arg_diff(1, {f32}, "");
+   |                     ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:26:26
@@ -129,6 +157,10 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   three_arg_diff(1, 1.0, {&str});
+   |                          ^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:28:18
@@ -143,10 +175,10 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   three_arg_diff( {i32},,  {f32},, "");
-   |                   ^^^^^^   ^^^^^^
+LL |   three_arg_diff({i32}, {f32}, "");
+   |                  ^^^^^  ^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:29:18
@@ -161,10 +193,10 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   three_arg_diff( {i32},, 1.0,  {&str},);
-   |                   ^^^^^^        ^^^^^^^
+LL |   three_arg_diff({i32}, 1.0, {&str});
+   |                  ^^^^^       ^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:30:21
@@ -179,10 +211,10 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   three_arg_diff(1,  {f32},,  {&str},);
-   |                      ^^^^^^   ^^^^^^^
+LL |   three_arg_diff(1, {f32}, {&str});
+   |                     ^^^^^  ^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:32:18
@@ -198,10 +230,10 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   three_arg_diff( {i32},,  {f32},,  {&str},);
-   |                   ^^^^^^   ^^^^^^   ^^^^^^^
+LL |   three_arg_diff({i32}, {f32}, {&str});
+   |                  ^^^^^  ^^^^^  ^^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:34:20
@@ -214,6 +246,10 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   three_arg_repeat({i32}, 1, "");
+   |                    ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:35:23
@@ -226,6 +262,10 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   three_arg_repeat(1, {i32}, "");
+   |                       ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:36:26
@@ -238,6 +278,10 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
+help: provideing a parameter of the correct type here may help
+   |
+LL |   three_arg_repeat(1, 1, {&str});
+   |                          ^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:38:20
@@ -252,10 +296,10 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   three_arg_repeat( {i32},,  {i32},, "");
-   |                     ^^^^^^   ^^^^^^
+LL |   three_arg_repeat({i32}, {i32}, "");
+   |                    ^^^^^  ^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:39:20
@@ -270,10 +314,10 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   three_arg_repeat( {i32},, 1,  {&str},);
-   |                     ^^^^^^      ^^^^^^^
+LL |   three_arg_repeat({i32}, 1, {&str});
+   |                    ^^^^^     ^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:40:23
@@ -288,10 +332,10 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   three_arg_repeat(1,  {i32},,  {&str},);
-   |                        ^^^^^^   ^^^^^^^
+LL |   three_arg_repeat(1, {i32}, {&str});
+   |                       ^^^^^  ^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:42:20
@@ -307,10 +351,10 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   three_arg_repeat( {i32},,  {i32},,  {&str},);
-   |                     ^^^^^^   ^^^^^^   ^^^^^^^
+LL |   three_arg_repeat({i32}, {i32}, {&str});
+   |                    ^^^^^  ^^^^^  ^^^^^^
 
 error: aborting due to 21 previous errors
 

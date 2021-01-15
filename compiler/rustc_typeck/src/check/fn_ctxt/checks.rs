@@ -664,7 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 NoSuggestion | Provide => Provide,
                                 _ => Changes,
                             };
-                            suggestions.push((span, format!(" {{{}}},", expected_type)));
+                            suggestions.push((span, format!("{{{}}}", expected_type)));
                         }
                         Issue::Extra(arg) => {
                             // FIXME: This could probably be a lot cleaner, but I dunno how
@@ -815,8 +815,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let suggestion_text = match (suggestion_type, issue_count) {
                         (Remove, 1) => Some("removing this argument may help"),
                         (Remove, _) => Some("removing these argument may help"),
-                        (Provide, 1) => None,
-                        (Provide, _) => Some("providing these parameters may help"),
+                        (Provide, 1) => Some("provideing a parameter of the correct type here may help"),
+                        (Provide, _) => Some("providing parameters of these types may help"),
                         (Swap, 1) => Some("swapping these two arguments might help"),
                         (Swap, _) => Some("swapping these sets of arguments might help"),
                         (Reorder, _) => Some("reordering these parameters might help"),

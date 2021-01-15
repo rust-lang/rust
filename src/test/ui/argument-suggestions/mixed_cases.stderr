@@ -13,8 +13,8 @@ LL | fn two_args(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
 help: the following changes might help
    |
-LL |   two_args(1,  {f32},, );
-   |                ^^^^^^ --
+LL |   two_args(1, {f32}, );
+   |               ^^^^^ --
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:11:20
@@ -48,10 +48,10 @@ note: function defined here
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: providing these parameters may help
+help: providing parameters of these types may help
    |
-LL |   three_args(1,  {f32}, {&str},);
-   |                  ^^^^^^^^^^^
+LL |   three_args(1, {f32} {&str},);
+   |                 ^^^^^^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:17:20
@@ -87,8 +87,8 @@ LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: the following changes might help
    |
-LL |   three_args(1,  {f32},, "");
-   |              ^   ^^^^^^  ^^
+LL |   three_args(1, {f32}, "");
+   |              ^  ^^^^^  ^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:23:14

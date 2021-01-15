@@ -9,6 +9,10 @@ note: function defined here
    |
 LL | fn invalid(_i: u32) {}
    |    ^^^^^^^ -------
+help: provideing a parameter of the correct type here may help
+   |
+LL |     invalid({u32});
+   |             ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:21:11
@@ -36,6 +40,10 @@ note: function defined here
    |
 LL | fn missing(_i: u32) {}
    |    ^^^^^^^ -------
+help: provideing a parameter of the correct type here may help
+   |
+LL |     missing( {u32},);
+   |              ^^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:23:13
