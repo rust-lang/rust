@@ -382,7 +382,7 @@ impl Inliner<'tcx> {
             // Cost of the var is the size in machine-words, if we know
             // it.
             if let Some(size) = type_size_of(tcx, self.param_env, ty) {
-                cost += (size / ptr_size) as usize;
+                cost += ((size + ptr_size - 1) / ptr_size) as usize;
             } else {
                 cost += UNKNOWN_SIZE_COST;
             }
