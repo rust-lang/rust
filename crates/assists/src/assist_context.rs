@@ -2,7 +2,6 @@
 
 use std::mem;
 
-use algo::find_covering_element;
 use hir::Semantics;
 use ide_db::{
     base_db::{AnchoredPathBuf, FileId, FileRange},
@@ -94,11 +93,11 @@ impl<'a> AssistContext<'a> {
         self.sema.find_node_at_offset_with_descend(self.source_file.syntax(), self.offset())
     }
     pub(crate) fn covering_element(&self) -> SyntaxElement {
-        find_covering_element(self.source_file.syntax(), self.frange.range)
+        self.source_file.syntax().covering_element(self.frange.range)
     }
     // FIXME: remove
     pub(crate) fn covering_node_for_range(&self, range: TextRange) -> SyntaxElement {
-        find_covering_element(self.source_file.syntax(), range)
+        self.source_file.syntax().covering_element(range)
     }
 }
 

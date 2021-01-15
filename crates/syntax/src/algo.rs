@@ -45,7 +45,7 @@ pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextSize) ->
 }
 
 pub fn find_node_at_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
-    find_covering_element(syntax, range).ancestors().find_map(N::cast)
+    syntax.covering_element(range).ancestors().find_map(N::cast)
 }
 
 /// Skip to next non `trivia` token
@@ -72,10 +72,6 @@ pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Optio
             NodeOrToken::Token(token) => !token.kind().is_trivia(),
         }
     }
-}
-
-pub fn find_covering_element(root: &SyntaxNode, range: TextRange) -> SyntaxElement {
-    root.covering_element(range)
 }
 
 pub fn least_common_ancestor(u: &SyntaxNode, v: &SyntaxNode) -> Option<SyntaxNode> {

@@ -1,7 +1,7 @@
 use ide_db::base_db::{FileId, SourceDatabase};
 use ide_db::RootDatabase;
 use syntax::{
-    algo, AstNode, NodeOrToken, SourceFile, SyntaxKind::STRING, SyntaxToken, TextRange, TextSize,
+    AstNode, NodeOrToken, SourceFile, SyntaxKind::STRING, SyntaxToken, TextRange, TextSize,
 };
 
 // Feature: Show Syntax Tree
@@ -21,7 +21,7 @@ pub(crate) fn syntax_tree(
 ) -> String {
     let parse = db.parse(file_id);
     if let Some(text_range) = text_range {
-        let node = match algo::find_covering_element(parse.tree().syntax(), text_range) {
+        let node = match parse.tree().syntax().covering_element(text_range) {
             NodeOrToken::Node(node) => node,
             NodeOrToken::Token(token) => {
                 if let Some(tree) = syntax_tree_for_string(&token, text_range) {

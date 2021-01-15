@@ -4,10 +4,8 @@ use hir::{Local, ScopeDef, Semantics, SemanticsScope, Type};
 use ide_db::base_db::{FilePosition, SourceDatabase};
 use ide_db::{call_info::ActiveParameter, RootDatabase};
 use syntax::{
-    algo::{find_covering_element, find_node_at_offset},
-    ast, match_ast, AstNode, NodeOrToken,
-    SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize,
+    algo::find_node_at_offset, ast, match_ast, AstNode, NodeOrToken, SyntaxKind::*, SyntaxNode,
+    SyntaxToken, TextRange, TextSize,
 };
 use test_utils::mark;
 use text_edit::Indel;
@@ -513,7 +511,7 @@ impl<'a> CompletionContext<'a> {
 }
 
 fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
-    find_covering_element(syntax, range).ancestors().find_map(N::cast)
+    syntax.covering_element(range).ancestors().find_map(N::cast)
 }
 
 fn is_node<N: AstNode>(node: &SyntaxNode) -> bool {

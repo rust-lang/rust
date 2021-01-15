@@ -3,7 +3,7 @@ use std::iter::successors;
 use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
-    algo::{self, find_covering_element, skip_trivia_token},
+    algo::{self, skip_trivia_token},
     ast::{self, AstNode, AstToken},
     Direction, NodeOrToken,
     SyntaxKind::{self, *},
@@ -76,7 +76,7 @@ fn try_extend_selection(
         };
         return Some(leaf_range);
     };
-    let node = match find_covering_element(root, range) {
+    let node = match root.covering_element(range) {
         NodeOrToken::Token(token) => {
             if token.text_range() != range {
                 return Some(token.text_range());
@@ -120,7 +120,7 @@ fn extend_tokens_from_range(
     macro_call: ast::MacroCall,
     original_range: TextRange,
 ) -> Option<TextRange> {
-    let src = find_covering_element(&macro_call.syntax(), original_range);
+    let src = macro_call.syntax().covering_element(original_range);
     let (first_token, last_token) = match src {
         NodeOrToken::Node(it) => (it.first_token()?, it.last_token()?),
         NodeOrToken::Token(it) => (it.clone(), it),
