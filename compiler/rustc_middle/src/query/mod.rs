@@ -1240,6 +1240,8 @@ rustc_queries! {
             eval_always
             desc { "looking up the disambiguator a crate" }
         }
+        // The macro which defines `rustc_metadata::provide_extern` depends on this query's name.
+        // Changing the name should cause a compiler error, but in case that changes, be aware.
         query crate_hash(_: CrateNum) -> Svh {
             eval_always
             desc { "looking up the hash a crate" }

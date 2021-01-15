@@ -207,17 +207,6 @@ pub mod dep_kind {
         try_load_from_on_disk_cache: |_, _| {},
     };
 
-    // Represents metadata from an extern crate.
-    pub const CrateMetadata: DepKindStruct = DepKindStruct {
-        has_params: true,
-        is_anon: false,
-        is_eval_always: true,
-
-        can_reconstruct_query_key: || true,
-        force_from_dep_node: |_, dep_node| bug!("force_from_dep_node: encountered {:?}", dep_node),
-        try_load_from_on_disk_cache: |_, _| {},
-    };
-
     pub const TraitSelect: DepKindStruct = DepKindStruct {
         has_params: false,
         is_anon: true,
@@ -352,9 +341,6 @@ macro_rules! define_dep_nodes {
 rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
-
-    // Represents metadata from an extern crate.
-    [eval_always] CrateMetadata(CrateNum),
 
     [anon] TraitSelect,
 

@@ -797,12 +797,6 @@ pub fn create_global_ctxt<'tcx>(
         })
     });
 
-    // Do some initialization of the DepGraph that can only be done with the tcx available.
-    let icx = ty::tls::ImplicitCtxt::new(&gcx);
-    ty::tls::enter_context(&icx, |_| {
-        icx.tcx.sess.time("dep_graph_tcx_init", || rustc_incremental::dep_graph_tcx_init(icx.tcx));
-    });
-
     QueryContext(gcx)
 }
 

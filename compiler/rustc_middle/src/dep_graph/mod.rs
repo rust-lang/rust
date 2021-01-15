@@ -116,20 +116,9 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         // be removed. https://github.com/rust-lang/rust/issues/62649 is one such
         // bug that must be fixed before removing this.
         match dep_node.kind {
-            DepKind::hir_owner | DepKind::hir_owner_nodes | DepKind::CrateMetadata => {
+            DepKind::hir_owner | DepKind::hir_owner_nodes => {
                 if let Some(def_id) = dep_node.extract_def_id(*self) {
-                    if def_id_corresponds_to_hir_dep_node(*self, def_id.expect_local()) {
-                        if dep_node.kind == DepKind::CrateMetadata {
-                            // The `DefPath` has corresponding node,
-                            // and that node should have been marked
-                            // either red or green in `data.colors`.
-                            bug!(
-                                "DepNode {:?} should have been \
-                             pre-marked as red or green but wasn't.",
-                                dep_node
-                            );
-                        }
-                    } else {
+                    if !def_id_corresponds_to_hir_dep_node(*self, def_id.expect_local()) {
                         // This `DefPath` does not have a
                         // corresponding `DepNode` (e.g. a
                         // struct field), and the ` DefPath`
