@@ -2478,10 +2478,6 @@ impl<R: Read + SizeHint> Iterator for Bytes<R> {
 
 #[stable(feature = "bufreader_size_hint", since = "1.51.0")]
 trait SizeHint {
-    fn lower_bound(&self) -> usize {
-        0
-    }
-
     fn upper_bound(&self) -> Option<usize> {
         None
     }
@@ -2492,7 +2488,11 @@ trait SizeHint {
 }
 
 #[stable(feature = "bufreader_size_hint", since = "1.51.0")]
-impl<T> SizeHint for T {}
+impl<T> SizeHint for T {
+    default fn lower_bound(&self) -> usize {
+        0
+    }
+}
 
 #[stable(feature = "bufreader_size_hint", since = "1.51.0")]
 impl<T> SizeHint for BufReader<T> {
