@@ -2466,13 +2466,11 @@ impl<R: Read> Iterator for Bytes<R> {
 }
 
 impl Iterator for Bytes<fs::File> {
-    type Item = Result<u8>;
-
     fn size_hint(&self) -> (usize, Option<usize>) {
         match self.inner.metadata() {
             Ok(metadata) => {
                 let file_length = metadata.len() as usize;
-                (file_length, Some(file_length))
+                (0, Some(file_length))
             }
             Err(_) => (0, None),
         }
