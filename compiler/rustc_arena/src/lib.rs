@@ -19,21 +19,48 @@
 #![cfg_attr(bootstrap, feature(min_const_generics))]
 #![feature(min_specialization)]
 #![cfg_attr(test, feature(test))]
+#![feature(rustc_attrs)]
 
 use smallvec::SmallVec;
 
 use std::alloc::Layout;
 use std::cell::{Cell, RefCell};
 use std::cmp;
+use std::iter::Cloned;
 use std::marker::{PhantomData, Send};
 use std::mem::{self, MaybeUninit};
 use std::ptr;
-use std::slice;
+use std::slice::{self, Iter};
 
 #[inline(never)]
 #[cold]
 pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
     f()
+}
+
+/// Move the contents of an iterator to a contiguous memory region.
+///
+/// SAFETY: the caller must ensure that the destination memory is free and large enough to hold
+/// the contents of the iterator. Must not be called for iterators that may allocate on the same
+/// arena.
+#[inline]
+unsafe fn write_from_iter<'a, T, I: Iterator<Item = T>>(
+    mut iter: I,
+    len: usize,
+    mem: *mut T,
+) -> &'a mut [T] {
+    let mut l = len;
+    for i in 0..len {
+        if let Some(value) = iter.next() {
+            std::ptr::write(mem.add(i), value);
+        } else {
+            l = i;
+            break;
+        }
+    }
+    // We only return as many items as the iterator gave us, even
+    // though it was supposed to give us `len`
+    return std::slice::from_raw_parts_mut(mem, l);
 }
 
 /// An arena that can hold objects of only one type.
@@ -133,6 +160,10 @@ where
     }
 }
 
+#[rustc_unsafe_specialization_marker]
+trait Clonable: Clone {}
+impl<T: Clone> Clonable for T {}
+
 impl<T, const N: usize> IterExt<T> for std::array::IntoIter<T, N> {
     #[inline]
     fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T] {
@@ -163,6 +194,25 @@ impl<T> IterExt<T> for Vec<T> {
             self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
             self.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
+        }
+    }
+}
+
+impl<'a, T: 'a> IterExt<T> for Cloned<Iter<'a, T>>
+where
+    T: Clonable,
+{
+    #[inline]
+    fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T] {
+        let len = self.len();
+        if len == 0 {
+            return &mut [];
+        }
+        // Move the content to the arena by copying and then forgetting it
+        unsafe {
+            let len = self.len();
+            let start_ptr = arena.alloc_raw_slice(len);
+            write_from_iter(self, len, start_ptr)
         }
     }
 }
@@ -490,28 +540,6 @@ impl DroplessArena {
     }
 
     #[inline]
-    unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
-        &self,
-        mut iter: I,
-        len: usize,
-        mem: *mut T,
-    ) -> &mut [T] {
-        let mut i = 0;
-        // Use a manual loop since LLVM manages to optimize it better for
-        // slice iterators
-        loop {
-            let value = iter.next();
-            if i >= len || value.is_none() {
-                // We only return as many items as the iterator gave us, even
-                // though it was supposed to give us `len`
-                return slice::from_raw_parts_mut(mem, i);
-            }
-            ptr::write(mem.add(i), value.unwrap());
-            i += 1;
-        }
-    }
-
-    #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         let iter = iter.into_iter();
         assert!(mem::size_of::<T>() != 0);
@@ -529,7 +557,7 @@ impl DroplessArena {
                 }
 
                 let mem = self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
-                unsafe { self.write_from_iter(iter, len, mem) }
+                unsafe { write_from_iter(iter, len, mem) }
             }
             (_, _) => {
                 cold_path(move || -> &mut [T] {
