@@ -2492,7 +2492,7 @@ trait SizeHint {
 }
 
 #[stable(feature = "bufreader_size_hint", since = "1.51.0")]
-impl<T> SizeHint for T;
+impl<T> SizeHint for T {}
 
 #[stable(feature = "bufreader_size_hint", since = "1.51.0")]
 impl<T> SizeHint for BufReader<T> {
