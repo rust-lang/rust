@@ -1,7 +1,7 @@
 //! Utilities for mapping between hir IDs and the surface syntax.
 
 use hir_expand::InFile;
-use la_arena::map::ArenaMap;
+use la_arena::ArenaMap;
 
 use crate::{db::DefDatabase, item_tree::ItemTreeNode, AssocItemLoc, ItemLoc};
 

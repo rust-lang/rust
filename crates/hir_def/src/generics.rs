@@ -10,7 +10,7 @@ use hir_expand::{
     name::{name, AsName, Name},
     InFile,
 };
-use la_arena::{map::ArenaMap, Arena};
+use la_arena::{Arena, ArenaMap};
 use syntax::ast::{self, GenericParamsOwner, NameOwner, TypeBoundsOwner};
 
 use crate::{

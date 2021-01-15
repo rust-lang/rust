@@ -8,7 +8,8 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-pub mod map;
+mod map;
+pub use map::ArenaMap;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RawId(u32);

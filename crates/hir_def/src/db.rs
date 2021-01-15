@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use hir_expand::{db::AstDatabase, HirFileId};
-use la_arena::map::ArenaMap;
+use la_arena::ArenaMap;
 use syntax::SmolStr;
 
 use crate::{
