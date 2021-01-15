@@ -55,6 +55,7 @@ mod levels;
 mod methods;
 mod non_ascii_idents;
 mod nonstandard_style;
+mod noop_method_call;
 mod panic_fmt;
 mod passes;
 mod redundant_semicolon;
@@ -81,6 +82,7 @@ use internal::*;
 use methods::*;
 use non_ascii_idents::*;
 use nonstandard_style::*;
+use noop_method_call::*;
 use panic_fmt::PanicFmt;
 use redundant_semicolon::*;
 use traits::*;
@@ -168,6 +170,7 @@ macro_rules! late_lint_passes {
                 ClashingExternDeclarations: ClashingExternDeclarations::new(),
                 DropTraitConstraints: DropTraitConstraints,
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
+                NoopMethodCall: NoopMethodCall,
                 PanicFmt: PanicFmt,
             ]
         );

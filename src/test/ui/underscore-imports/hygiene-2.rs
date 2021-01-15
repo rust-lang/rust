@@ -29,5 +29,6 @@ m!(y);
 
 fn main() {
     use crate::y::*;
+    #[allow(noop_method_call)]
     (&()).deref();
 }

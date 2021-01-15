@@ -51,7 +51,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::Constant { value } => Test {
                 span: match_pair.pattern.span,
-                kind: TestKind::Eq { value, ty: match_pair.pattern.ty.clone() },
+                kind: TestKind::Eq { value, ty: match_pair.pattern.ty },
             },
 
             PatKind::Range(range) => {
