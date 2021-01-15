@@ -28,8 +28,9 @@ use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_session::config::{self, EntryFnType};
+use rustc_session::config::{self, DebugInfo, EntryFnType};
 use rustc_session::Session;
+use rustc_span::sym;
 use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
 use std::cmp;
@@ -827,6 +828,17 @@ pub fn provide(providers: &mut Providers) {
             }
         }
         tcx.sess.opts.optimize
+    };
+
+    providers.needs_gdb_debug_scripts_section = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+
+        let omit_gdb_pretty_printer_section =
+            tcx.sess.contains_name(&tcx.hir().krate_attrs(), sym::omit_gdb_pretty_printer_section);
+
+        !omit_gdb_pretty_printer_section
+            && tcx.sess.opts.debuginfo != DebugInfo::None
+            && tcx.sess.target.emit_debug_gdb_scripts
     };
 }
 

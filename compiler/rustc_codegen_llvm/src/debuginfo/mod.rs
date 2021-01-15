@@ -106,7 +106,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 
     debug!("finalize");
 
-    if gdb::needs_gdb_debug_scripts_section(cx) {
+    if cx.tcx.needs_gdb_debug_scripts_section(LOCAL_CRATE) {
         // Add a .debug_gdb_scripts section to this compile-unit. This will
         // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
         // which activates the Rust pretty printers for binary this section is

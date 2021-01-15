@@ -7,14 +7,12 @@ use crate::common::CodegenCx;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
-use rustc_session::config::DebugInfo;
-
-use rustc_span::symbol::sym;
+use rustc_span::def_id::LOCAL_CRATE;
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
 pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_, '_, '_>) {
-    if needs_gdb_debug_scripts_section(bx) {
+    if bx.tcx.needs_gdb_debug_scripts_section(LOCAL_CRATE) {
         let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx);
         // Load just the first byte as that's all that's necessary to force
         // LLVM to keep around the reference to the global.
@@ -57,15 +55,4 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_>) -
             section_var
         }
     })
-}
-
-pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
-    let omit_gdb_pretty_printer_section = cx
-        .tcx
-        .sess
-        .contains_name(&cx.tcx.hir().krate_attrs(), sym::omit_gdb_pretty_printer_section);
-
-    !omit_gdb_pretty_printer_section
-        && cx.sess().opts.debuginfo != DebugInfo::None
-        && cx.sess().target.emit_debug_gdb_scripts
 }

@@ -1214,6 +1214,13 @@ rustc_queries! {
         desc { "looking up the paths for extern crates" }
     }
 
+    /// Determines if we need to emit a GDB debug script section
+    /// during codegen for the current crate. The CrateNum
+    /// should always be LOCAL_CRATE
+    query needs_gdb_debug_scripts_section(_: CrateNum) -> bool {
+        desc { "determine if the current crate needs a gdb debug scripts section" }
+    }
+
     /// Given a crate and a trait, look up all impls of that trait in the crate.
     /// Return `(impl_id, self_ty)`.
     query implementations_of_trait(_: (CrateNum, DefId))
