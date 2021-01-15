@@ -297,7 +297,7 @@ LL |   complex(   1,                             ""   );
    |                                             |  | missing argument of type &str
    |                                             |  | missing argument of type i32
    |                                             |  missing argument of type f32
-   |                                             no parameter of type &'static str is needed in complex
+   |                                             no parameter of type &'static str is needed complex
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:7:4

@@ -16,7 +16,7 @@ error[E0059]: arguments to this function are incorrect
 LL |     extra("");
    |           ^^
    |           |
-   |           no parameter of type &'static str is needed in extra
+   |           no parameter of type &'static str is needed extra
    |           help: removing this argument may help
    |
 note: function defined here

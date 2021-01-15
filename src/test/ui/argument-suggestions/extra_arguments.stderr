@@ -4,7 +4,7 @@ error[E0059]: arguments to this function are incorrect
 LL |   empty("");
    |         ^^
    |         |
-   |         no parameter of type &'static str is needed in empty
+   |         no parameter of type &'static str is needed empty
    |         help: removing this argument may help
    |
 note: function defined here
@@ -19,7 +19,7 @@ error[E0059]: arguments to this function are incorrect
 LL |   one_arg(1, 1);
    |              ^
    |              |
-   |              no parameter of type {integer} is needed in one_arg
+   |              no parameter of type {integer} is needed one_arg
    |              help: removing this argument may help
    |
 note: function defined here
@@ -34,7 +34,7 @@ error[E0059]: arguments to this function are incorrect
 LL |   one_arg(1, "");
    |              ^^
    |              |
-   |              no parameter of type &'static str is needed in one_arg
+   |              no parameter of type &'static str is needed one_arg
    |              help: removing this argument may help
    |
 note: function defined here
@@ -47,9 +47,9 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:11:14
    |
 LL |   one_arg(1, "", 1.0);
-   |              ^^  ^^^ no parameter of type {float} is needed in one_arg
+   |              ^^  ^^^ no parameter of type {float} is needed one_arg
    |              |
-   |              no parameter of type &'static str is needed in one_arg
+   |              no parameter of type &'static str is needed one_arg
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:2:4
@@ -67,7 +67,7 @@ error[E0059]: arguments to this function are incorrect
 LL |   two_arg_same(1, 1, 1);
    |                      ^
    |                      |
-   |                      no parameter of type {integer} is needed in two_arg_same
+   |                      no parameter of type {integer} is needed two_arg_same
    |                      help: removing this argument may help
    |
 note: function defined here
@@ -82,7 +82,7 @@ error[E0059]: arguments to this function are incorrect
 LL |   two_arg_same(1, 1, 1.0);
    |                      ^^^
    |                      |
-   |                      no parameter of type {float} is needed in two_arg_same
+   |                      no parameter of type {float} is needed two_arg_same
    |                      help: removing this argument may help
    |
 note: function defined here
@@ -95,10 +95,10 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:16:19
    |
 LL |   two_arg_diff(1, 1, "");
-   |                   ^ ^^^ no parameter of type &'static str is needed in two_arg_diff
+   |                   ^ ^^^ no parameter of type &'static str is needed two_arg_diff
    |                   | |
    |                   | missing argument of type &str
-   |                   no parameter of type {integer} is needed in two_arg_diff
+   |                   no parameter of type {integer} is needed two_arg_diff
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
@@ -116,7 +116,7 @@ error[E0059]: arguments to this function are incorrect
 LL |   two_arg_diff(1, "", "");
    |                       ^^
    |                       |
-   |                       no parameter of type &'static str is needed in two_arg_diff
+   |                       no parameter of type &'static str is needed two_arg_diff
    |                       help: removing this argument may help
    |
 note: function defined here
@@ -129,11 +129,11 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:18:19
    |
 LL |   two_arg_diff(1, 1, "", "");
-   |                   ^ ^^^  ^^ no parameter of type &'static str is needed in two_arg_diff
+   |                   ^ ^^^  ^^ no parameter of type &'static str is needed two_arg_diff
    |                   | ||
-   |                   | |no parameter of type &'static str is needed in two_arg_diff
+   |                   | |no parameter of type &'static str is needed two_arg_diff
    |                   | missing argument of type &str
-   |                   no parameter of type {integer} is needed in two_arg_diff
+   |                   no parameter of type {integer} is needed two_arg_diff
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
@@ -149,9 +149,9 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:19:23
    |
 LL |   two_arg_diff(1, "", 1, "");
-   |                       ^  ^^ no parameter of type &'static str is needed in two_arg_diff
+   |                       ^  ^^ no parameter of type &'static str is needed two_arg_diff
    |                       |
-   |                       no parameter of type {integer} is needed in two_arg_diff
+   |                       no parameter of type {integer} is needed two_arg_diff
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4

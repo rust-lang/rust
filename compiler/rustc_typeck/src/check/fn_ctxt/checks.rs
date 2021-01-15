@@ -665,13 +665,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 span
                             };
                             let found_type = self.check_expr(&provided_args[arg]);
-                            let fn_name = fn_def_id
-                                .and_then(|def_id| tcx.hir().get_if_local(def_id))
-                                .and_then(|node| node.ident())
-                                .map(|ident| format!("{}", ident))
-                                .unwrap_or("this function".to_string());
+                            // TODO: if someone knows the method-chain-foo to achieve this, let me know
+                            // but I didn't have the patience for it lol
+                            let fn_name = if let Some(def_id) = fn_def_id {
+                                let node = tcx.hir().get_if_local(def_id);
+                                let def_kind = tcx.def_kind(def_id);
+                                let descr = def_kind.descr(def_id);
+                                if let Some(node) = node {
+                                    if let Some(ident) = node.ident() {
+                                        format!("{}", ident)
+                                    } else {
+                                        format!("this {}", descr)
+                                    }
+                                } else {
+                                    format!("this {}", descr)
+                                }
+                            } else {
+                                "here".to_string()
+                            };
 
-                            labels.push((span, format!("no parameter of type {} is needed in {}", found_type, fn_name)));
+                            labels.push((span, format!("no parameter of type {} is needed {}", found_type, fn_name)));
                             suggestion_type = match suggestion_type {
                                 NoSuggestion | Remove => Remove,
                                 _ => Changes,

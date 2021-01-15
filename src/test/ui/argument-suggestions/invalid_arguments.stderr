@@ -16,7 +16,7 @@ error[E0059]: multiple arguments to this function are incorrect
 LL |   two_arg_same(1, "");
    |                   ^^ ^ missing argument of type i32
    |                   |
-   |                   no parameter of type &'static str is needed in two_arg_same
+   |                   no parameter of type &'static str is needed two_arg_same
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:6:4
@@ -34,7 +34,7 @@ error[E0059]: multiple arguments to this function are incorrect
 LL |   two_arg_same("", 1);
    |                ^^    ^ missing argument of type i32
    |                |
-   |                no parameter of type &'static str is needed in two_arg_same
+   |                no parameter of type &'static str is needed two_arg_same
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:6:4
@@ -221,9 +221,9 @@ error[E0059]: multiple arguments to this function are incorrect
 LL |   three_arg_repeat(X {}, 1, "");
    |                    ^^^^    ^^^ ^ missing argument of type &str
    |                    |       ||
-   |                    |       |no parameter of type &'static str is needed in three_arg_repeat
+   |                    |       |no parameter of type &'static str is needed three_arg_repeat
    |                    |       missing argument of type i32
-   |                    no parameter of type X is needed in three_arg_repeat
+   |                    no parameter of type X is needed three_arg_repeat
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:9:4
@@ -241,9 +241,9 @@ error[E0059]: multiple arguments to this function are incorrect
 LL |   three_arg_repeat(1, X {}, "");
    |                       ^^^^ ^^^ ^ missing argument of type &str
    |                       |    ||
-   |                       |    |no parameter of type &'static str is needed in three_arg_repeat
+   |                       |    |no parameter of type &'static str is needed three_arg_repeat
    |                       |    missing argument of type i32
-   |                       no parameter of type X is needed in three_arg_repeat
+   |                       no parameter of type X is needed three_arg_repeat
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:9:4
@@ -291,9 +291,9 @@ error[E0059]: multiple arguments to this function are incorrect
 LL |   three_arg_repeat(X {}, 1, X {});
    |                    ^^^^    ^^^^^ ^ missing argument of type &str
    |                    |       ||
-   |                    |       |no parameter of type X is needed in three_arg_repeat
+   |                    |       |no parameter of type X is needed three_arg_repeat
    |                    |       missing argument of type i32
-   |                    no parameter of type X is needed in three_arg_repeat
+   |                    no parameter of type X is needed three_arg_repeat
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:9:4
@@ -311,9 +311,9 @@ error[E0059]: multiple arguments to this function are incorrect
 LL |   three_arg_repeat(1, X {}, X{});
    |                       ^^^^ ^^^^ ^ missing argument of type &str
    |                       |    ||
-   |                       |    |no parameter of type X is needed in three_arg_repeat
+   |                       |    |no parameter of type X is needed three_arg_repeat
    |                       |    missing argument of type i32
-   |                       no parameter of type X is needed in three_arg_repeat
+   |                       no parameter of type X is needed three_arg_repeat
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:9:4

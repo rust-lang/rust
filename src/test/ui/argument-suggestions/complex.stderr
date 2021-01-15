@@ -9,7 +9,7 @@ LL |   complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
    |           |    |         ||    expected G, found G
    |           |    |         |expected F, found F
    |           |    |         missing argument of type E
-   |           |    no parameter of type H is needed in complex
+   |           |    no parameter of type H is needed complex
    |           expected u32, found u32
    |
 note: function defined here
