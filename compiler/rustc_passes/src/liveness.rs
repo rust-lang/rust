@@ -346,14 +346,12 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             if let Some(expr) = block.expr {
                 if let ExprKind::Call(call, [arg]) = expr.kind {
                     if let ExprKind::Path(QPath::Resolved(_, path)) = call.kind {
-                        if matches!(&path.res, Res::Def(DefKind::Fn, path_def_id)) {
+                        if let Res::Def(DefKind::Fn, path_def_id) = &path.res {
                             let begin_panic_def_id = self.tcx.lang_items().begin_panic_fn();
-                            if begin_panic_def_id == Some(path_def_id) {
-                                // FIXME: Better way of extracting literal
+                            if begin_panic_def_id == Some(*path_def_id) {
                                 if let ExprKind::Lit(spanned) = &arg.kind {
                                     if let LitKind::Str(symbol, StrStyle::Cooked) = spanned.node {
-                                        // FIXME: Better way of matching symbol
-                                        if &*symbol.as_str() == "not yet implemented" {
+                                        if symbol.as_str().starts_with("not yet implemented") {
                                             return;
                                         }
                                     }
