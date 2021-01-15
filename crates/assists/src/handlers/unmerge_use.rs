@@ -32,28 +32,33 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     let use_: ast::Use = tree_list.syntax().ancestors().find_map(ast::Use::cast)?;
     let path = resolve_full_path(&tree)?;
 
-    let new_use = ast::make::use_(
-        use_.visibility(),
-        ast::make::use_tree(path, None, tree.rename(), tree.star_token().is_some()),
-    );
-
-    let mut rewriter = SyntaxRewriter::default();
-    rewriter += tree.remove();
-    rewriter.insert_after(use_.syntax(), &ast::make::tokens::single_newline());
-    if let ident_level @ 1..=usize::MAX = use_.indent_level().0 as usize {
-        rewriter.insert_after(
-            use_.syntax(),
-            &ast::make::tokens::whitespace(&" ".repeat(4 * ident_level)),
-        );
-    }
-    rewriter.insert_after(use_.syntax(), new_use.syntax());
-
     let target = tree.syntax().text_range();
     acc.add(
         AssistId("unmerge_use", AssistKind::RefactorRewrite),
         "Unmerge use",
         target,
         |builder| {
+            let new_use = ast::make::use_(
+                use_.visibility(),
+                ast::make::use_tree(
+                    path,
+                    tree.use_tree_list(),
+                    tree.rename(),
+                    tree.star_token().is_some(),
+                ),
+            );
+
+            let mut rewriter = SyntaxRewriter::default();
+            rewriter += tree.remove();
+            rewriter.insert_after(use_.syntax(), &ast::make::tokens::single_newline());
+            if let ident_level @ 1..=usize::MAX = use_.indent_level().0 as usize {
+                rewriter.insert_after(
+                    use_.syntax(),
+                    &ast::make::tokens::whitespace(&" ".repeat(4 * ident_level)),
+                );
+            }
+            rewriter.insert_after(use_.syntax(), new_use.syntax());
+
             builder.rewrite(rewriter);
         },
     )
@@ -193,6 +198,16 @@ use foo::bar::{baz::{qux$0, foobar}, barbaz};
             r"
 use foo::bar::{baz::{foobar}, barbaz};
 use foo::bar::baz::qux;
+",
+        );
+        check_assist(
+            unmerge_use,
+            r"
+use foo::bar::{baz$0::{qux, foobar}, barbaz};
+",
+            r"
+use foo::bar::{barbaz};
+use foo::bar::baz::{qux, foobar};
 ",
         );
     }
