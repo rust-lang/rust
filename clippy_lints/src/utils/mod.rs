@@ -1669,6 +1669,44 @@ where
     match_expr_list
 }
 
+/// Peels off all references on the pattern. Returns the underlying pattern and the number of
+/// references removed.
+pub fn peel_hir_pat_refs(pat: &'a Pat<'a>) -> (&'a Pat<'a>, usize) {
+    fn peel(pat: &'a Pat<'a>, count: usize) -> (&'a Pat<'a>, usize) {
+        if let PatKind::Ref(pat, _) = pat.kind {
+            peel(pat, count + 1)
+        } else {
+            (pat, count)
+        }
+    }
+    peel(pat, 0)
+}
+
+/// Peels off up to the given number of references on the expression. Returns the underlying
+/// expression and the number of references removed.
+pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
+    fn f(expr: &'a Expr<'a>, count: usize, target: usize) -> (&'a Expr<'a>, usize) {
+        match expr.kind {
+            ExprKind::AddrOf(_, _, expr) if count != target => f(expr, count + 1, target),
+            _ => (expr, count),
+        }
+    }
+    f(expr, 0, count)
+}
+
+/// Peels off all references on the type. Returns the underlying type and the number of references
+/// removed.
+pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
+    fn peel(ty: Ty<'_>, count: usize) -> (Ty<'_>, usize) {
+        if let ty::Ref(_, ty, _) = ty.kind() {
+            peel(ty, count + 1)
+        } else {
+            (ty, count)
+        }
+    }
+    peel(ty, 0)
+}
+
 #[macro_export]
 macro_rules! unwrap_cargo_metadata {
     ($cx: ident, $lint: ident, $deps: expr) => {{
