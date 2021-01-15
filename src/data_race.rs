@@ -824,8 +824,7 @@ impl VClockAlloc {
         // Throw the data-race detection.
         throw_ub_format!(
             "Data race detected between {} on {} and {} on {}, memory({:?},offset={},size={})\
-            \n\t\t -current vector clock = {:?}\
-            \n\t\t -conflicting timestamp = {:?}",
+            \n(current vector clock = {:?}, conflicting timestamp = {:?})",
             action,
             current_thread_info,
             other_action,

@@ -50,6 +50,7 @@ impl<T> TryLockErrorExt<T> for TryLockError<T> {
 }
 
 fn test_spin_loop_hint() {
+    #[allow(deprecated)]
     atomic::spin_loop_hint();
     hint::spin_loop();
 }
