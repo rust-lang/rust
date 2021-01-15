@@ -472,7 +472,7 @@ impl<'a> Parser<'a> {
     /// Parses a prefix-unary-operator expr.
     fn parse_prefix_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
-        let needs_tokens = super::attr::maybe_needs_tokens(&attrs);
+        let needs_tokens = self.maybe_needs_tokens(&attrs);
         let do_parse = |this: &mut Parser<'a>| {
             let lo = this.token.span;
             // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()

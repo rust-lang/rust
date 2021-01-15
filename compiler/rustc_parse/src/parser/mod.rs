@@ -116,6 +116,7 @@ pub struct Parser<'a> {
     pub last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
+    collecting: bool,
 }
 
 impl<'a> Drop for Parser<'a> {
@@ -367,6 +368,7 @@ impl<'a> Parser<'a> {
             last_unexpected_token_span: None,
             last_type_ascription: None,
             subparser_name,
+            collecting: false,
         };
 
         // Make parser point to the first token.
@@ -1218,6 +1220,31 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Returns `true` if we might need to have tokens available for
+    /// the attribute target, and `false` if we definitely do not need tokens.
+    pub(super) fn maybe_needs_tokens(&self, attrs: &[ast::Attribute]) -> bool {
+        // If we are already inside a call to `collect_tokens`, then always
+        // collect tokens. If the outer `collect_tokens` call ends up returning
+        // the same AST node (for example, during nonterminal parsing), we
+        // want to make sure that we already have a `LazyTokenStream` set
+        // (from the inner `collect_tokens` call). The innermost call
+        // will correctly exclude the attributes from the `TokenStream`,
+        // while the outer call will end up capturing the attribute tokens
+        // in its (discarded) `LazyTokenStream`
+        self.collecting || {
+            // One of the attributes may either itself be a macro,
+            // or expand to macro attributes (`cfg_attr`). In either case,
+            // we need tokens available to pass to the macro invocation
+            attrs.iter().any(|attr| {
+                attr.ident().map_or(true, |ident| {
+                    ident.name == sym::derive
+                        || ident.name == sym::cfg_attr
+                        || !rustc_feature::is_builtin_attr_name(ident.name)
+                })
+            })
+        }
+    }
+
     /// Records all tokens consumed by the provided callback,
     /// including the current token. These tokens are collected
     /// into a `LazyTokenStream`, and returned along with the result
@@ -1249,7 +1276,10 @@ impl<'a> Parser<'a> {
             append_unglued_token: self.token_cursor.append_unglued_token.clone(),
         };
 
-        let mut ret = f(self)?;
+        let prev_collecting = std::mem::replace(&mut self.collecting, true);
+        let ret = f(self);
+        self.collecting = prev_collecting;
+        let mut ret = ret?;
 
         // Produces a `TokenStream` on-demand. Using `cursor_snapshot`
         // and `num_calls`, we can reconstruct the `TokenStream` seen

@@ -116,7 +116,7 @@ impl<'a> Parser<'a> {
             Some(item.into_inner())
         });
 
-        let needs_tokens = super::attr::maybe_needs_tokens(&attrs);
+        let needs_tokens = self.maybe_needs_tokens(&attrs);
 
         let mut unclosed_delims = vec![];
         let parse_item = |this: &mut Self| {

@@ -4,7 +4,7 @@ use rustc_ast::attr;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{error_code, PResult};
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 use tracing::debug;
 
@@ -303,16 +303,4 @@ impl<'a> Parser<'a> {
         let msg = format!("expected unsuffixed literal or identifier, found `{}`", found);
         Err(self.struct_span_err(self.token.span, &msg))
     }
-}
-
-pub fn maybe_needs_tokens(attrs: &[ast::Attribute]) -> bool {
-    // One of the attributes may either itself be a macro, or apply derive macros (`derive`),
-    // or expand to macro attributes (`cfg_attr`).
-    attrs.iter().any(|attr| {
-        attr.ident().map_or(true, |ident| {
-            ident.name == sym::derive
-                || ident.name == sym::cfg_attr
-                || !rustc_feature::is_builtin_attr_name(ident.name)
-        })
-    })
 }
