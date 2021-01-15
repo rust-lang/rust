@@ -156,6 +156,7 @@ mod handlers {
     mod replace_unwrap_with_match;
     mod split_import;
     mod toggle_ignore;
+    mod unmerge_use;
     mod unwrap_block;
     mod wrap_return_type_in_result;
 
@@ -213,6 +214,7 @@ mod handlers {
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
             toggle_ignore::toggle_ignore,
+            unmerge_use::unmerge_use,
             unwrap_block::unwrap_block,
             wrap_return_type_in_result::wrap_return_type_in_result,
             // These are manually sorted for better priorities
