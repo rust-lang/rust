@@ -3,7 +3,7 @@ pub use self::inner::*;
 #[cfg(feature = "nightly")]
 mod inner {
     use crate::alloc::alloc::Layout;
-    pub use crate::alloc::alloc::{Allocator, Global};
+    pub use crate::alloc::alloc::{AllocError, Allocator, Global};
     use core::ptr::NonNull;
 
     #[allow(clippy::map_err_ignore)]
