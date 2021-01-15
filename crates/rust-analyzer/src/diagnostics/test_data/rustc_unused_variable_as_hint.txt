@@ -66,52 +66,7 @@
             ),
             data: None,
         },
-        fixes: [
-            CodeAction {
-                title: "consider prefixing with an underscore",
-                group: None,
-                kind: Some(
-                    CodeActionKind(
-                        "quickfix",
-                    ),
-                ),
-                edit: Some(
-                    SnippetWorkspaceEdit {
-                        changes: Some(
-                            {
-                                Url {
-                                    scheme: "file",
-                                    host: None,
-                                    port: None,
-                                    path: "/test/driver/subcommand/repl.rs",
-                                    query: None,
-                                    fragment: None,
-                                }: [
-                                    TextEdit {
-                                        range: Range {
-                                            start: Position {
-                                                line: 290,
-                                                character: 8,
-                                            },
-                                            end: Position {
-                                                line: 290,
-                                                character: 11,
-                                            },
-                                        },
-                                        new_text: "_foo",
-                                    },
-                                ],
-                            },
-                        ),
-                        document_changes: None,
-                    },
-                ),
-                is_preferred: Some(
-                    true,
-                ),
-                data: None,
-            },
-        ],
+        fixes: [],
     },
     MappedRustDiagnostic {
         url: Url {
