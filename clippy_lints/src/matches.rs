@@ -4,7 +4,7 @@ use crate::utils::usage::is_unused;
 use crate::utils::{
     expr_block, get_arg_name, get_parent_expr, implements_trait, in_macro, indent_of, is_allowed, is_expn_of,
     is_refutable, is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg,
-    peel_hir_pat_refs, peel_mid_ty_refs, peeln_hir_expr_refs, remove_blocks, snippet, snippet_block, snippet_opt,
+    peel_hir_pat_refs, peel_mid_ty_refs, peel_n_hir_expr_refs, remove_blocks, snippet, snippet_block, snippet_opt,
     snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
@@ -748,7 +748,7 @@ fn report_single_match_single_pattern(
             let ref_count_diff = ty_ref_count - pat_ref_count;
 
             // Try to remove address of expressions first.
-            let (ex, removed) = peeln_hir_expr_refs(ex, ref_count_diff);
+            let (ex, removed) = peel_n_hir_expr_refs(ex, ref_count_diff);
             let ref_count_diff = ref_count_diff - removed;
 
             let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
