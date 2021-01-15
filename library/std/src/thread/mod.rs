@@ -780,6 +780,7 @@ pub fn sleep_ms(ms: u32) {
 /// platforms the underlying [`Sleep`] syscall is always invoked.
 /// If the intention is to yield the current time-slice you may want to use
 /// [`yield_now`] instead.
+///
 /// [`nanosleep`]: https://linux.die.net/man/2/nanosleep
 /// [`Sleep`]: https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleep
 ///
