@@ -2493,7 +2493,7 @@ trait SizeHint {
 }
 
 #[stable(feature = "bufreader_size_hint", since = "1.51.0")]
-impl SizeHint for T {
+impl<T> SizeHint for T {
     fn lower_bound(&self) -> usize {
         0
     }
