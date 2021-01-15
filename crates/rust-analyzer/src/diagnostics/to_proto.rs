@@ -74,11 +74,13 @@ fn diagnostic_related_information(
     Some(lsp_types::DiagnosticRelatedInformation { location, message })
 }
 
+struct SubDiagnostic {
+    related: lsp_types::DiagnosticRelatedInformation,
+    suggested_fix: Option<lsp_ext::CodeAction>,
+}
+
 enum MappedRustChildDiagnostic {
-    Related {
-        related: lsp_types::DiagnosticRelatedInformation,
-        suggested_fix: Option<lsp_ext::CodeAction>,
-    },
+    SubDiagnostic(SubDiagnostic),
     MessageLine(String),
 }
 
@@ -105,15 +107,15 @@ fn map_rust_child_diagnostic(
     }
 
     if edit_map.is_empty() {
-        MappedRustChildDiagnostic::Related {
+        MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
             related: lsp_types::DiagnosticRelatedInformation {
                 location: location(workspace_root, spans[0]),
                 message: rd.message.clone(),
             },
             suggested_fix: None,
-        }
+        })
     } else {
-        MappedRustChildDiagnostic::Related {
+        MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
             related: lsp_types::DiagnosticRelatedInformation {
                 location: location(workspace_root, spans[0]),
                 message: rd.message.clone(),
@@ -130,7 +132,7 @@ fn map_rust_child_diagnostic(
                 is_preferred: Some(true),
                 data: None,
             }),
-        }
+        })
     }
 }
 
@@ -175,26 +177,22 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     }
 
     let mut needs_primary_span_label = true;
-    let mut related_information = Vec::new();
+    let mut subdiagnostics = Vec::new();
     let mut tags = Vec::new();
 
     for secondary_span in rd.spans.iter().filter(|s| !s.is_primary) {
         let related = diagnostic_related_information(workspace_root, secondary_span);
         if let Some(related) = related {
-            related_information.push(related);
+            subdiagnostics.push(SubDiagnostic { related, suggested_fix: None });
         }
     }
 
-    let mut fixes = Vec::new();
     let mut message = rd.message.clone();
     for child in &rd.children {
         let child = map_rust_child_diagnostic(workspace_root, &child);
         match child {
-            MappedRustChildDiagnostic::Related { related, suggested_fix } => {
-                related_information.push(related);
-                if let Some(code_action) = suggested_fix {
-                    fixes.push(code_action);
-                }
+            MappedRustChildDiagnostic::SubDiagnostic(sub) => {
+                subdiagnostics.push(sub);
             }
             MappedRustChildDiagnostic::MessageLine(message_line) => {
                 format_to!(message, "\n{}", message_line);
@@ -284,7 +282,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 diagnostics.push(MappedRustDiagnostic {
                     url: in_macro_location.uri,
                     diagnostic,
-                    fixes: fixes.clone(),
+                    fixes: Vec::new(),
                 });
             }
 
@@ -298,17 +296,20 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                     code_description: code_description.clone(),
                     source: Some(source.clone()),
                     message,
-                    related_information: if related_information.is_empty() {
+                    related_information: if subdiagnostics.is_empty() {
                         None
                     } else {
-                        let mut related = related_information.clone();
+                        let mut related = subdiagnostics
+                            .iter()
+                            .map(|sub| sub.related.clone())
+                            .collect::<Vec<_>>();
                         related.extend(related_macro_info);
                         Some(related)
                     },
                     tags: if tags.is_empty() { None } else { Some(tags.clone()) },
                     data: None,
                 },
-                fixes: fixes.clone(),
+                fixes: Vec::new(),
             });
 
             // Emit hint-level diagnostics for all `related_information` entries such as "help"s.
@@ -318,21 +319,21 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 location,
                 message: "original diagnostic".to_string(),
             };
-            for info in &related_information {
+            for sub in &subdiagnostics {
                 // Filter out empty/non-existent messages, as they greatly confuse VS Code.
-                if info.message.is_empty() {
+                if sub.related.message.is_empty() {
                     continue;
                 }
                 diagnostics.push(MappedRustDiagnostic {
-                    url: info.location.uri.clone(),
-                    fixes: fixes.clone(), // share fixes to make them easier to apply
+                    url: sub.related.location.uri.clone(),
+                    fixes: sub.suggested_fix.iter().cloned().collect(),
                     diagnostic: lsp_types::Diagnostic {
-                        range: info.location.range,
+                        range: sub.related.location.range,
                         severity: Some(lsp_types::DiagnosticSeverity::Hint),
                         code: code.clone().map(lsp_types::NumberOrString::String),
                         code_description: code_description.clone(),
                         source: Some(source.clone()),
-                        message: info.message.clone(),
+                        message: sub.related.message.clone(),
                         related_information: Some(vec![back_ref.clone()]),
                         tags: None, // don't apply modifiers again
                         data: None,
