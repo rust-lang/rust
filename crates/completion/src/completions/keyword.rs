@@ -86,8 +86,8 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword(ctx, acc, "match", "match $0 {}");
         add_keyword(ctx, acc, "while", "while $0 {}");
         add_keyword(ctx, acc, "loop", "loop {$0}");
-        add_keyword(ctx, acc, "if", "if ");
-        add_keyword(ctx, acc, "if let", "if let ");
+        add_keyword(ctx, acc, "if", "if $0 {}");
+        add_keyword(ctx, acc, "if let", "if let $1 = $0 {}");
     }
 
     if ctx.if_is_prev || ctx.block_expr_parent {
