@@ -32,7 +32,10 @@ SOURCE_FILE@0..98
     VISIBILITY@24..34
       PUB_KW@24..27 "pub"
       L_PAREN@27..28 "("
-      CRATE_KW@28..33 "crate"
+      PATH@28..33
+        PATH_SEGMENT@28..33
+          NAME_REF@28..33
+            CRATE_KW@28..33 "crate"
       R_PAREN@33..34 ")"
     WHITESPACE@34..35 " "
     FN_KW@35..37 "fn"
@@ -51,7 +54,10 @@ SOURCE_FILE@0..98
     VISIBILITY@45..55
       PUB_KW@45..48 "pub"
       L_PAREN@48..49 "("
-      SUPER_KW@49..54 "super"
+      PATH@49..54
+        PATH_SEGMENT@49..54
+          NAME_REF@49..54
+            SUPER_KW@49..54 "super"
       R_PAREN@54..55 ")"
     WHITESPACE@55..56 " "
     FN_KW@56..58 "fn"

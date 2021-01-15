@@ -19,7 +19,8 @@ SOURCE_FILE@0..69
         PARAM_LIST@17..30
           L_PAREN@17..18 "("
           SELF_PARAM@18..29
-            SELF_KW@18..22 "self"
+            NAME@18..22
+              SELF_KW@18..22 "self"
             COLON@22..23 ":"
             WHITESPACE@23..24 " "
             REF_TYPE@24..29
@@ -45,7 +46,8 @@ SOURCE_FILE@0..69
           SELF_PARAM@43..62
             MUT_KW@43..46 "mut"
             WHITESPACE@46..47 " "
-            SELF_KW@47..51 "self"
+            NAME@47..51
+              SELF_KW@47..51 "self"
             COLON@51..52 ":"
             WHITESPACE@52..53 " "
             PATH_TYPE@53..62

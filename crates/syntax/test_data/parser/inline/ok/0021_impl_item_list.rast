@@ -67,7 +67,8 @@ SOURCE_FILE@0..89
           L_PAREN@76..77 "("
           SELF_PARAM@77..82
             AMP@77..78 "&"
-            SELF_KW@78..82 "self"
+            NAME@78..82
+              SELF_KW@78..82 "self"
           R_PAREN@82..83 ")"
         WHITESPACE@83..84 " "
         BLOCK_EXPR@84..86

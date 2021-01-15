@@ -117,13 +117,6 @@ impl NameClass {
         }
     }
 
-    pub fn classify_self_param(
-        sema: &Semantics<RootDatabase>,
-        self_param: &ast::SelfParam,
-    ) -> Option<NameClass> {
-        sema.to_def(self_param).map(Definition::Local).map(NameClass::Definition)
-    }
-
     pub fn classify(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameClass> {
         let _p = profile::span("classify_name");
 
@@ -185,6 +178,10 @@ impl NameClass {
                     }
 
                     Some(NameClass::Definition(Definition::Local(local)))
+                },
+                ast::SelfParam(it) => {
+                    let def = sema.to_def(&it)?;
+                    Some(NameClass::Definition(Definition::Local(def.into())))
                 },
                 ast::RecordField(it) => {
                     let field: hir::Field = sema.to_def(&it)?;

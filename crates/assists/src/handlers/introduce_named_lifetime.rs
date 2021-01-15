@@ -61,7 +61,7 @@ fn generate_fn_def_assist(
     // compute the location which implicitly has the same lifetime as the anonymous lifetime
     let loc_needing_lifetime = if let Some(self_param) = self_param {
         // if we have a self reference, use that
-        Some(self_param.self_token()?.text_range().start())
+        Some(self_param.name()?.syntax().text_range().start())
     } else {
         // otherwise, if there's a single reference parameter without a named liftime, use that
         let fn_params_without_lifetime: Vec<_> = param_list

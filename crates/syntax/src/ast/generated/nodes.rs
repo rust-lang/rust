@@ -11,6 +11,7 @@ pub struct Name {
 }
 impl Name {
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
+    pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NameRef {
@@ -238,7 +239,6 @@ impl ExternCrate {
     pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
     pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     pub fn rename(&self) -> Option<Rename> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
@@ -406,9 +406,6 @@ pub struct Visibility {
 impl Visibility {
     pub fn pub_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![pub]) }
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn super_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![super]) }
-    pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
-    pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
     pub fn in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![in]) }
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
@@ -492,11 +489,11 @@ pub struct SelfParam {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for SelfParam {}
+impl ast::NameOwner for SelfParam {}
 impl SelfParam {
     pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
-    pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }

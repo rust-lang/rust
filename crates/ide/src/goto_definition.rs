@@ -55,11 +55,6 @@ pub(crate) fn goto_definition(
             } else {
                 reference_definition(&sema, Either::Left(&lt)).to_vec()
             },
-            ast::SelfParam(self_param) => {
-                let def = NameClass::classify_self_param(&sema, &self_param)?.referenced_or_defined(sema.db);
-                let nav = def.try_to_nav(sema.db)?;
-                vec![nav]
-            },
             _ => return None,
         }
     };

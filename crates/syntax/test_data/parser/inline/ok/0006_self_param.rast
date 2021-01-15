@@ -19,7 +19,8 @@ SOURCE_FILE@0..128
         PARAM_LIST@17..23
           L_PAREN@17..18 "("
           SELF_PARAM@18..22
-            SELF_KW@18..22 "self"
+            NAME@18..22
+              SELF_KW@18..22 "self"
           R_PAREN@22..23 ")"
         WHITESPACE@23..24 " "
         BLOCK_EXPR@24..26
@@ -35,7 +36,8 @@ SOURCE_FILE@0..128
           L_PAREN@35..36 "("
           SELF_PARAM@36..41
             AMP@36..37 "&"
-            SELF_KW@37..41 "self"
+            NAME@37..41
+              SELF_KW@37..41 "self"
           COMMA@41..42 ","
           R_PAREN@42..43 ")"
         WHITESPACE@43..44 " "
@@ -55,7 +57,8 @@ SOURCE_FILE@0..128
             LIFETIME@57..59
               LIFETIME_IDENT@57..59 "\'a"
             WHITESPACE@59..60 " "
-            SELF_KW@60..64 "self"
+            NAME@60..64
+              SELF_KW@60..64 "self"
           COMMA@64..65 ","
           R_PAREN@65..66 ")"
         WHITESPACE@66..67 " "
@@ -77,7 +80,8 @@ SOURCE_FILE@0..128
             WHITESPACE@82..83 " "
             MUT_KW@83..86 "mut"
             WHITESPACE@86..87 " "
-            SELF_KW@87..91 "self"
+            NAME@87..91
+              SELF_KW@87..91 "self"
           COMMA@91..92 ","
           WHITESPACE@92..93 " "
           PARAM@93..99
@@ -107,7 +111,8 @@ SOURCE_FILE@0..128
           SELF_PARAM@113..121
             MUT_KW@113..116 "mut"
             WHITESPACE@116..117 " "
-            SELF_KW@117..121 "self"
+            NAME@117..121
+              SELF_KW@117..121 "self"
           R_PAREN@121..122 ")"
         WHITESPACE@122..123 " "
         BLOCK_EXPR@123..125

@@ -156,7 +156,7 @@ fn variadic_param(p: &mut Parser) -> bool {
 fn opt_self_param(p: &mut Parser, m: Marker) {
     if p.at(T![self]) || p.at(T![mut]) && p.nth(1) == T![self] {
         p.eat(T![mut]);
-        p.eat(T![self]);
+        self_as_name(p);
         // test arb_self_types
         // impl S {
         //     fn a(self: &Self) {}
@@ -169,24 +169,29 @@ fn opt_self_param(p: &mut Parser, m: Marker) {
         let la1 = p.nth(1);
         let la2 = p.nth(2);
         let la3 = p.nth(3);
-        let mut n_toks = match (p.current(), la1, la2, la3) {
-            (T![&], T![self], _, _) => 2,
-            (T![&], T![mut], T![self], _) => 3,
-            (T![&], LIFETIME_IDENT, T![self], _) => 3,
-            (T![&], LIFETIME_IDENT, T![mut], T![self]) => 4,
-            _ => return m.abandon(p),
-        };
-        p.bump_any();
+        if !matches!((p.current(), la1, la2, la3),
+              (T![&], T![self], _, _)
+            | (T![&], T![mut], T![self], _)
+            | (T![&], LIFETIME_IDENT, T![self], _)
+            | (T![&], LIFETIME_IDENT, T![mut], T![self])
+        ) {
+            return m.abandon(p);
+        }
+        p.bump(T![&]);
         if p.at(LIFETIME_IDENT) {
             lifetime(p);
-            n_toks -= 1;
         }
-        for _ in 1..n_toks {
-            p.bump_any();
-        }
+        p.eat(T![mut]);
+        self_as_name(p);
     }
     m.complete(p, SELF_PARAM);
     if !p.at(T![')']) {
         p.expect(T![,]);
     }
+}
+
+fn self_as_name(p: &mut Parser) {
+    let m = p.start();
+    p.bump(T![self]);
+    m.complete(p, NAME);
 }

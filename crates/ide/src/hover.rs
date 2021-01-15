@@ -98,7 +98,6 @@ pub(crate) fn hover(
             ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db)),
             ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime)
                 .map_or_else(|| NameRefClass::classify_lifetime(&sema, &lifetime).map(|d| d.referenced(sema.db)), |d| d.defined(sema.db)),
-            ast::SelfParam(self_param) => NameClass::classify_self_param(&sema, &self_param).and_then(|d| d.defined(sema.db)),
             _ => None,
         }
     };
@@ -3223,7 +3222,7 @@ impl Foo {
 }
 "#,
             expect![[r#"
-                *&self*
+                *self*
 
                 ```rust
                 &Foo
@@ -3243,7 +3242,7 @@ impl Foo {
 }
 "#,
             expect![[r#"
-                *self: Arc<Foo>*
+                *self*
 
                 ```rust
                 Arc<Foo>

@@ -270,7 +270,9 @@ fn extern_crate(p: &mut Parser, m: Marker) {
     p.bump(T![crate]);
 
     if p.at(T![self]) {
+        let m = p.start();
         p.bump(T![self]);
+        m.complete(p, NAME_REF);
     } else {
         name_ref(p);
     }

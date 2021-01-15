@@ -16,7 +16,8 @@ SOURCE_FILE@0..26
                 IDENT@7..15 "must_use"
           R_BRACK@15..16 "]"
         WHITESPACE@16..17 " "
-        SELF_KW@17..21 "self"
+        NAME@17..21
+          SELF_KW@17..21 "self"
       R_PAREN@21..22 ")"
     WHITESPACE@22..23 " "
     BLOCK_EXPR@23..25

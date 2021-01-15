@@ -198,6 +198,13 @@ impl ast::Path {
     pub fn parent_path(&self) -> Option<ast::Path> {
         self.syntax().parent().and_then(ast::Path::cast)
     }
+
+    pub fn as_single_segment(&self) -> Option<ast::PathSegment> {
+        match self.qualifier() {
+            Some(_) => None,
+            None => self.segment(),
+        }
+    }
 }
 
 impl ast::UseTreeList {
@@ -448,16 +455,22 @@ pub enum VisibilityKind {
 
 impl ast::Visibility {
     pub fn kind(&self) -> VisibilityKind {
-        if let Some(path) = support::children(self.syntax()).next() {
-            VisibilityKind::In(path)
-        } else if self.crate_token().is_some() {
-            VisibilityKind::PubCrate
-        } else if self.super_token().is_some() {
-            VisibilityKind::PubSuper
-        } else if self.self_token().is_some() {
-            VisibilityKind::PubSelf
-        } else {
-            VisibilityKind::Pub
+        match self.path() {
+            Some(path) => {
+                if let Some(segment) =
+                    path.as_single_segment().filter(|it| it.coloncolon_token().is_none())
+                {
+                    if segment.crate_token().is_some() {
+                        return VisibilityKind::PubCrate;
+                    } else if segment.super_token().is_some() {
+                        return VisibilityKind::PubSuper;
+                    } else if segment.self_token().is_some() {
+                        return VisibilityKind::PubSelf;
+                    }
+                }
+                VisibilityKind::In(path)
+            }
+            None => VisibilityKind::Pub,
         }
     }
 }
