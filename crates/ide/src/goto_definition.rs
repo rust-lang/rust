@@ -1,7 +1,6 @@
 use either::Either;
 use hir::{HasAttrs, ModuleDef, Semantics};
 use ide_db::{
-    base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
     symbol_index, RootDatabase,
 };
@@ -13,7 +12,7 @@ use crate::{
     display::{ToNav, TryToNav},
     doc_links::extract_definitions_from_markdown,
     runnables::doc_owner_to_def,
-    FilePosition, NavigationTarget, RangeInfo, SymbolKind,
+    FilePosition, NavigationTarget, RangeInfo,
 };
 
 // Feature: Go to Definition
@@ -49,25 +48,17 @@ pub(crate) fn goto_definition(
                 let nav = def.try_to_nav(sema.db)?;
                 vec![nav]
             },
-            ast::SelfParam(self_param) => {
-                vec![self_to_nav_target(self_param, position.file_id)?]
-            },
-            ast::PathSegment(segment) => {
-                segment.self_token()?;
-                let path = segment.parent_path();
-                if path.qualifier().is_some() && !ast::PathExpr::can_cast(path.syntax().parent()?.kind()) {
-                    return None;
-                }
-                let func = segment.syntax().ancestors().find_map(ast::Fn::cast)?;
-                let self_param = func.param_list()?.self_param()?;
-                vec![self_to_nav_target(self_param, position.file_id)?]
-            },
             ast::Lifetime(lt) => if let Some(name_class) = NameClass::classify_lifetime(&sema, &lt) {
                 let def = name_class.referenced_or_defined(sema.db);
                 let nav = def.try_to_nav(sema.db)?;
                 vec![nav]
             } else {
                 reference_definition(&sema, Either::Left(&lt)).to_vec()
+            },
+            ast::SelfParam(self_param) => {
+                let def = NameClass::classify_self_param(&sema, &self_param)?.referenced_or_defined(sema.db);
+                let nav = def.try_to_nav(sema.db)?;
+                vec![nav]
             },
             _ => return None,
         }
@@ -132,20 +123,6 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
             _ => 1,
         }
     }
-}
-
-fn self_to_nav_target(self_param: ast::SelfParam, file_id: FileId) -> Option<NavigationTarget> {
-    let self_token = self_param.self_token()?;
-    Some(NavigationTarget {
-        file_id,
-        full_range: self_param.syntax().text_range(),
-        focus_range: Some(self_token.text_range()),
-        name: self_token.text().clone(),
-        kind: Some(SymbolKind::SelfParam),
-        container_name: None,
-        description: None,
-        docs: None,
-    })
 }
 
 #[derive(Debug)]

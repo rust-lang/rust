@@ -258,7 +258,7 @@ impl Resolver {
     ) -> Option<ResolveValueResult> {
         let n_segments = path.segments.len();
         let tmp = name![self];
-        let first_name = if path.is_self() { &tmp } else { &path.segments.first()? };
+        let first_name = if path.is_self() { &tmp } else { path.segments.first()? };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         for scope in self.scopes.iter().rev() {
             match scope {

@@ -10,7 +10,7 @@ use hir::{
     Module, ModuleDef, Name, PathResolution, Semantics, Visibility,
 };
 use syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, PathSegmentKind},
     match_ast, SyntaxKind, SyntaxNode,
 };
 
@@ -117,6 +117,13 @@ impl NameClass {
         }
     }
 
+    pub fn classify_self_param(
+        sema: &Semantics<RootDatabase>,
+        self_param: &ast::SelfParam,
+    ) -> Option<NameClass> {
+        sema.to_def(self_param).map(Definition::Local).map(NameClass::Definition)
+    }
+
     pub fn classify(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameClass> {
         let _p = profile::span("classify_name");
 
@@ -135,24 +142,26 @@ impl NameClass {
                         let path = use_tree.path()?;
                         let path_segment = path.segment()?;
                         let name_ref_class = path_segment
-                            .name_ref()
-                            // The rename might be from a `self` token, so fallback to the name higher
-                            // in the use tree.
-                            .or_else(||{
-                                if path_segment.self_token().is_none() {
-                                    return None;
+                            .kind()
+                            .and_then(|kind| {
+                                match kind {
+                                    // The rename might be from a `self` token, so fallback to the name higher
+                                    // in the use tree.
+                                    PathSegmentKind::SelfKw => {
+                                        let use_tree = use_tree
+                                            .syntax()
+                                            .parent()
+                                            .as_ref()
+                                            // Skip over UseTreeList
+                                            .and_then(SyntaxNode::parent)
+                                            .and_then(ast::UseTree::cast)?;
+                                        let path = use_tree.path()?;
+                                        let path_segment = path.segment()?;
+                                        path_segment.name_ref()
+                                    },
+                                    PathSegmentKind::Name(name_ref) => Some(name_ref),
+                                    _ => return None,
                                 }
-
-                                let use_tree = use_tree
-                                    .syntax()
-                                    .parent()
-                                    .as_ref()
-                                    // Skip over UseTreeList
-                                    .and_then(SyntaxNode::parent)
-                                    .and_then(ast::UseTree::cast)?;
-                                let path = use_tree.path()?;
-                                let path_segment = path.segment()?;
-                                path_segment.name_ref()
                             })
                             .and_then(|name_ref| NameRefClass::classify(sema, &name_ref))?;
 

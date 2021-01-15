@@ -11,6 +11,7 @@
 
 pub(crate) mod rename;
 
+use either::Either;
 use hir::Semantics;
 use ide_db::{
     base_db::FileId,
@@ -21,10 +22,10 @@ use ide_db::{
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
-    match_ast, AstNode, SyntaxNode, TextRange, TokenAtOffset, T,
+    AstNode, SyntaxNode, TextRange, TokenAtOffset, T,
 };
 
-use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo, SymbolKind};
+use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
@@ -90,10 +91,6 @@ pub(crate) fn find_all_refs(
     let _p = profile::span("find_all_refs");
     let syntax = sema.parse(position.file_id).syntax().clone();
 
-    if let Some(res) = try_find_self_references(&syntax, position) {
-        return Some(res);
-    }
-
     let (opt_name, search_kind) = if let Some(name) =
         get_struct_def_name_for_struct_literal_search(&sema, &syntax, position)
     {
@@ -122,13 +119,16 @@ pub(crate) fn find_all_refs(
 
     let mut kind = ReferenceKind::Other;
     if let Definition::Local(local) = def {
-        if let either::Either::Left(pat) = local.source(sema.db).value {
-            if matches!(
-                pat.syntax().parent().and_then(ast::RecordPatField::cast),
-                Some(pat_field) if pat_field.name_ref().is_none()
-            ) {
-                kind = ReferenceKind::FieldShorthandForLocal;
+        match local.source(sema.db).value {
+            Either::Left(pat) => {
+                if matches!(
+                    pat.syntax().parent().and_then(ast::RecordPatField::cast),
+                    Some(pat_field) if pat_field.name_ref().is_none()
+                ) {
+                    kind = ReferenceKind::FieldShorthandForLocal;
+                }
             }
+            Either::Right(_) => kind = ReferenceKind::SelfParam,
         }
     } else if matches!(
         def,
@@ -249,79 +249,6 @@ fn get_enum_def_name_for_struct_literal_search(
         }
     }
     None
-}
-
-fn try_find_self_references(
-    syntax: &SyntaxNode,
-    position: FilePosition,
-) -> Option<RangeInfo<ReferenceSearchResult>> {
-    let FilePosition { file_id, offset } = position;
-    let self_token = syntax.token_at_offset(offset).find(|t| t.kind() == T![self])?;
-    let parent = self_token.parent();
-    match_ast! {
-        match parent {
-            ast::SelfParam(it) => (),
-            ast::PathSegment(segment) => {
-                segment.self_token()?;
-                let path = segment.parent_path();
-                if path.qualifier().is_some() && !ast::PathExpr::can_cast(path.syntax().parent()?.kind()) {
-                    return None;
-                }
-            },
-            _ => return None,
-        }
-    };
-    let function = parent.ancestors().find_map(ast::Fn::cast)?;
-    let self_param = function.param_list()?.self_param()?;
-    let param_self_token = self_param.self_token()?;
-
-    let declaration = Declaration {
-        nav: NavigationTarget {
-            file_id,
-            full_range: self_param.syntax().text_range(),
-            focus_range: Some(param_self_token.text_range()),
-            name: param_self_token.text().clone(),
-            kind: Some(SymbolKind::SelfParam),
-            container_name: None,
-            description: None,
-            docs: None,
-        },
-        kind: ReferenceKind::SelfKw,
-        access: Some(if self_param.mut_token().is_some() {
-            ReferenceAccess::Write
-        } else {
-            ReferenceAccess::Read
-        }),
-    };
-    let refs = function
-        .body()
-        .map(|body| {
-            body.syntax()
-                .descendants()
-                .filter_map(ast::PathExpr::cast)
-                .filter_map(|expr| {
-                    let path = expr.path()?;
-                    if path.qualifier().is_none() {
-                        path.segment()?.self_token()
-                    } else {
-                        None
-                    }
-                })
-                .map(|token| FileReference {
-                    range: token.text_range(),
-                    kind: ReferenceKind::SelfKw,
-                    access: declaration.access, // FIXME: properly check access kind here instead of copying it from the declaration
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    let mut references = UsageSearchResult::default();
-    references.references.insert(file_id, refs);
-
-    Some(RangeInfo::new(
-        param_self_token.text_range(),
-        ReferenceSearchResult { declaration, references },
-    ))
 }
 
 #[cfg(test)]
@@ -512,7 +439,7 @@ fn main() {
     i = 5;
 }"#,
             expect![[r#"
-                i Local FileId(0) 24..25 Other Write
+                i Local FileId(0) 20..25 24..25 Other Write
 
                 FileId(0) 50..51 Other Write
                 FileId(0) 54..55 Other Read
@@ -536,7 +463,7 @@ fn bar() {
 }
 "#,
             expect![[r#"
-                spam Local FileId(0) 19..23 Other
+                spam Local FileId(0) 19..23 19..23 Other
 
                 FileId(0) 34..38 Other Read
                 FileId(0) 41..45 Other Read
@@ -551,7 +478,7 @@ fn bar() {
 fn foo(i : u32) -> u32 { i$0 }
 "#,
             expect![[r#"
-                i ValueParam FileId(0) 7..8 Other
+                i ValueParam FileId(0) 7..8 7..8 Other
 
                 FileId(0) 25..26 Other Read
             "#]],
@@ -565,7 +492,7 @@ fn foo(i : u32) -> u32 { i$0 }
 fn foo(i$0 : u32) -> u32 { i }
 "#,
             expect![[r#"
-                i ValueParam FileId(0) 7..8 Other
+                i ValueParam FileId(0) 7..8 7..8 Other
 
                 FileId(0) 25..26 Other Read
             "#]],
@@ -813,7 +740,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                i Local FileId(0) 23..24 Other Write
+                i Local FileId(0) 19..24 23..24 Other Write
 
                 FileId(0) 34..35 Other Write
                 FileId(0) 38..39 Other Read
@@ -853,7 +780,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                i Local FileId(0) 19..20 Other
+                i Local FileId(0) 19..20 19..20 Other
 
                 FileId(0) 26..27 Other Write
             "#]],
@@ -995,10 +922,10 @@ impl Foo {
 }
 "#,
             expect![[r#"
-                self SelfParam FileId(0) 47..51 47..51 SelfKw Read
+                self SelfParam FileId(0) 47..51 47..51 SelfParam
 
-                FileId(0) 71..75 SelfKw Read
-                FileId(0) 152..156 SelfKw Read
+                FileId(0) 71..75 Other Read
+                FileId(0) 152..156 Other Read
             "#]],
         );
     }
@@ -1105,7 +1032,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                a Local FileId(0) 59..60 Other
+                a Local FileId(0) 59..60 59..60 Other
 
                 FileId(0) 80..81 Other Read
             "#]],
@@ -1123,7 +1050,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                a Local FileId(0) 59..60 Other
+                a Local FileId(0) 59..60 59..60 Other
 
                 FileId(0) 80..81 Other Read
             "#]],

@@ -156,14 +156,28 @@ impl ast::PathSegment {
             .expect("segments are always nested in paths")
     }
 
+    pub fn crate_token(&self) -> Option<SyntaxToken> {
+        self.name_ref().and_then(|it| it.crate_token())
+    }
+
+    pub fn self_token(&self) -> Option<SyntaxToken> {
+        self.name_ref().and_then(|it| it.self_token())
+    }
+
+    pub fn super_token(&self) -> Option<SyntaxToken> {
+        self.name_ref().and_then(|it| it.super_token())
+    }
+
     pub fn kind(&self) -> Option<PathSegmentKind> {
         let res = if let Some(name_ref) = self.name_ref() {
-            PathSegmentKind::Name(name_ref)
+            match name_ref.syntax().first_token().map(|it| it.kind()) {
+                Some(T![self]) => PathSegmentKind::SelfKw,
+                Some(T![super]) => PathSegmentKind::SuperKw,
+                Some(T![crate]) => PathSegmentKind::CrateKw,
+                _ => PathSegmentKind::Name(name_ref),
+            }
         } else {
             match self.syntax().first_child_or_token()?.kind() {
-                T![self] => PathSegmentKind::SelfKw,
-                T![super] => PathSegmentKind::SuperKw,
-                T![crate] => PathSegmentKind::CrateKw,
                 T![<] => {
                     // <T> or <T as Trait>
                     // T is any TypeRef, Trait has to be a PathType

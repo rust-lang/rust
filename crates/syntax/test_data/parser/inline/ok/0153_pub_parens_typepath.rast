@@ -16,7 +16,8 @@ SOURCE_FILE@0..53
             PATH@14..22
               PATH@14..19
                 PATH_SEGMENT@14..19
-                  SUPER_KW@14..19 "super"
+                  NAME_REF@14..19
+                    SUPER_KW@14..19 "super"
               COLON2@19..21 "::"
               PATH_SEGMENT@21..22
                 NAME_REF@21..22
@@ -42,7 +43,8 @@ SOURCE_FILE@0..53
             PATH@40..48
               PATH@40..45
                 PATH_SEGMENT@40..45
-                  CRATE_KW@40..45 "crate"
+                  NAME_REF@40..45
+                    CRATE_KW@40..45 "crate"
               COLON2@45..47 "::"
               PATH_SEGMENT@47..48
                 NAME_REF@47..48

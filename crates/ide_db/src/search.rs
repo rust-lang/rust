@@ -65,7 +65,7 @@ pub enum ReferenceKind {
     FieldShorthandForLocal,
     StructLiteral,
     RecordFieldExprOrPat,
-    SelfKw,
+    SelfParam,
     EnumLiteral,
     Lifetime,
     Other,

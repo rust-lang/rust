@@ -400,24 +400,33 @@ impl TryToNav for hir::GenericParam {
 impl ToNav for hir::Local {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let node = match &src.value {
-            Either::Left(bind_pat) => {
-                bind_pat.name().map_or_else(|| bind_pat.syntax().clone(), |it| it.syntax().clone())
-            }
-            Either::Right(it) => it.syntax().clone(),
+        let (node, focus_range) = match &src.value {
+            Either::Left(bind_pat) => (
+                bind_pat.syntax().clone(),
+                bind_pat
+                    .name()
+                    .map(|it| src.with_value(&it.syntax().clone()).original_file_range(db).range),
+            ),
+            Either::Right(it) => (it.syntax().clone(), it.self_token().map(|it| it.text_range())),
         };
         let full_range = src.with_value(&node).original_file_range(db);
         let name = match self.name(db) {
             Some(it) => it.to_string().into(),
             None => "".into(),
         };
-        let kind = if self.is_param(db) { SymbolKind::ValueParam } else { SymbolKind::Local };
+        let kind = if self.is_self(db) {
+            SymbolKind::SelfParam
+        } else if self.is_param(db) {
+            SymbolKind::ValueParam
+        } else {
+            SymbolKind::Local
+        };
         NavigationTarget {
             file_id: full_range.file_id,
             name,
             kind: Some(kind),
             full_range: full_range.range,
-            focus_range: None,
+            focus_range,
             container_name: None,
             description: None,
             docs: None,

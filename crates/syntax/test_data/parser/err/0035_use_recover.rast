@@ -24,7 +24,8 @@ SOURCE_FILE@0..48
       PATH@22..32
         PATH@22..27
           PATH_SEGMENT@22..27
-            CRATE_KW@22..27 "crate"
+            NAME_REF@22..27
+              CRATE_KW@22..27 "crate"
         COLON2@27..29 "::"
         PATH_SEGMENT@29..32
           NAME_REF@29..32

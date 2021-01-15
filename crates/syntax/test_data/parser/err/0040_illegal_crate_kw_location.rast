@@ -6,7 +6,8 @@ SOURCE_FILE@0..98
       PATH@4..11
         PATH_SEGMENT@4..11
           COLON2@4..6 "::"
-          CRATE_KW@6..11 "crate"
+          NAME_REF@6..11
+            CRATE_KW@6..11 "crate"
     SEMICOLON@11..12 ";"
   WHITESPACE@12..13 "\n"
   USE@13..54
@@ -18,7 +19,8 @@ SOURCE_FILE@0..98
         USE_TREE@18..23
           PATH@18..23
             PATH_SEGMENT@18..23
-              CRATE_KW@18..23 "crate"
+              NAME_REF@18..23
+                CRATE_KW@18..23 "crate"
         COMMA@23..24 ","
         WHITESPACE@24..25 " "
         USE_TREE@25..52
@@ -35,7 +37,8 @@ SOURCE_FILE@0..98
                   PATH@31..41
                     PATH@31..36
                       PATH_SEGMENT@31..36
-                        CRATE_KW@31..36 "crate"
+                        NAME_REF@31..36
+                          CRATE_KW@31..36 "crate"
                     COLON2@36..38 "::"
                     PATH_SEGMENT@38..41
                       NAME_REF@38..41
@@ -63,7 +66,8 @@ SOURCE_FILE@0..98
               IDENT@59..64 "hello"
         COLON2@64..66 "::"
         PATH_SEGMENT@66..71
-          CRATE_KW@66..71 "crate"
+          NAME_REF@66..71
+            CRATE_KW@66..71 "crate"
     SEMICOLON@71..72 ";"
   WHITESPACE@72..73 "\n"
   USE@73..97
@@ -78,7 +82,8 @@ SOURCE_FILE@0..98
                 IDENT@77..82 "hello"
           COLON2@82..84 "::"
           PATH_SEGMENT@84..89
-            CRATE_KW@84..89 "crate"
+            NAME_REF@84..89
+              CRATE_KW@84..89 "crate"
         COLON2@89..91 "::"
         PATH_SEGMENT@91..96
           NAME_REF@91..96

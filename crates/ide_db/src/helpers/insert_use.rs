@@ -444,8 +444,14 @@ fn use_tree_path_cmp(a: &ast::Path, a_has_tl: bool, b: &ast::Path, b_has_tl: boo
 }
 
 fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
-    let a = a.name_ref();
-    let b = b.name_ref();
+    let a = a.kind().and_then(|kind| match kind {
+        PathSegmentKind::Name(name_ref) => Some(name_ref),
+        _ => None,
+    });
+    let b = b.kind().and_then(|kind| match kind {
+        PathSegmentKind::Name(name_ref) => Some(name_ref),
+        _ => None,
+    });
     a.as_ref().map(ast::NameRef::text).cmp(&b.as_ref().map(ast::NameRef::text))
 }
 

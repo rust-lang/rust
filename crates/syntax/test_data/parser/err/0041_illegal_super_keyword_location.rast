@@ -6,7 +6,8 @@ SOURCE_FILE@0..67
       PATH@4..11
         PATH_SEGMENT@4..11
           COLON2@4..6 "::"
-          SUPER_KW@6..11 "super"
+          NAME_REF@6..11
+            SUPER_KW@6..11 "super"
     SEMICOLON@11..12 ";"
   WHITESPACE@12..13 "\n"
   USE@13..26
@@ -20,7 +21,8 @@ SOURCE_FILE@0..67
               IDENT@17..18 "a"
         COLON2@18..20 "::"
         PATH_SEGMENT@20..25
-          SUPER_KW@20..25 "super"
+          NAME_REF@20..25
+            SUPER_KW@20..25 "super"
     SEMICOLON@25..26 ";"
   WHITESPACE@26..27 "\n"
   USE@27..47
@@ -31,14 +33,16 @@ SOURCE_FILE@0..67
         PATH@31..39
           PATH@31..36
             PATH_SEGMENT@31..36
-              SUPER_KW@31..36 "super"
+              NAME_REF@31..36
+                SUPER_KW@31..36 "super"
           COLON2@36..38 "::"
           PATH_SEGMENT@38..39
             NAME_REF@38..39
               IDENT@38..39 "a"
         COLON2@39..41 "::"
         PATH_SEGMENT@41..46
-          SUPER_KW@41..46 "super"
+          NAME_REF@41..46
+            SUPER_KW@41..46 "super"
     SEMICOLON@46..47 ";"
   WHITESPACE@47..48 "\n"
   USE@48..66
@@ -56,7 +60,8 @@ SOURCE_FILE@0..67
           PATH@56..64
             PATH@56..61
               PATH_SEGMENT@56..61
-                SUPER_KW@56..61 "super"
+                NAME_REF@56..61
+                  SUPER_KW@56..61 "super"
             COLON2@61..63 "::"
             PATH_SEGMENT@63..64
               NAME_REF@63..64
