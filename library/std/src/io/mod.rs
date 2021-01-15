@@ -253,6 +253,7 @@ mod tests;
 
 use crate::cmp;
 use crate::fmt;
+use crate::fs;
 use crate::memchr;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
@@ -2460,6 +2461,20 @@ impl<R: Read> Iterator for Bytes<R> {
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
                 Err(e) => Some(Err(e)),
             };
+        }
+    }
+}
+
+impl Iterator for Bytes<fs::File> {
+    type Item = Result<u8>;
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.inner.metadata() {
+            Ok(metadata) => {
+                let file_length = metadata.len() as usize;
+                (file_length, Some(file_length))
+            }
+            Err(_) => (0, None),
         }
     }
 }
