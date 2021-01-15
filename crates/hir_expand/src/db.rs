@@ -118,7 +118,7 @@ pub fn expand_hypothetical(
         parse_macro_with_arg(db, macro_file, Some(std::sync::Arc::new((tt, tmap_1)))).value?;
     let token_id = macro_def.0.map_id_down(token_id);
     let range = tmap_2.range_by_token(token_id)?.by_kind(token_to_map.kind())?;
-    let token = syntax::algo::find_covering_element(&node.syntax_node(), range).into_token()?;
+    let token = node.syntax_node().covering_element(range).into_token()?;
     Some((node.syntax_node(), token))
 }
 

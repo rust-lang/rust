@@ -10,7 +10,6 @@ use parser::Reparser;
 use text_edit::Indel;
 
 use crate::{
-    algo,
     parsing::{
         lexer::{lex_single_syntax_kind, tokenize, Token},
         text_token_source::TextTokenSource,
@@ -41,7 +40,7 @@ fn reparse_token<'node>(
     root: &'node SyntaxNode,
     edit: &Indel,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
-    let prev_token = algo::find_covering_element(root, edit.delete).as_token()?.clone();
+    let prev_token = root.covering_element(edit.delete).as_token()?.clone();
     let prev_token_kind = prev_token.kind();
     match prev_token_kind {
         WHITESPACE | COMMENT | IDENT | STRING => {
@@ -124,7 +123,7 @@ fn is_contextual_kw(text: &str) -> bool {
 }
 
 fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(SyntaxNode, Reparser)> {
-    let node = algo::find_covering_element(node, range);
+    let node = node.covering_element(range);
 
     let mut ancestors = match node {
         NodeOrToken::Token(it) => it.parent().ancestors(),

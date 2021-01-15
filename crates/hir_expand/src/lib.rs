@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 use base_db::{impl_intern_key, salsa, CrateId, FileId, FileRange};
 use syntax::{
-    algo::{self, skip_trivia_token},
+    algo::skip_trivia_token,
     ast::{self, AstNode},
     Direction, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
@@ -335,7 +335,7 @@ impl ExpansionInfo {
 
         let range = self.exp_map.range_by_token(token_id)?.by_kind(token.value.kind())?;
 
-        let token = algo::find_covering_element(&self.expanded.value, range).into_token()?;
+        let token = self.expanded.value.covering_element(range).into_token()?;
 
         Some(self.expanded.with_value(token))
     }
@@ -360,8 +360,8 @@ impl ExpansionInfo {
         };
 
         let range = token_map.range_by_token(token_id)?.by_kind(token.value.kind())?;
-        let token = algo::find_covering_element(&tt.value, range + tt.value.text_range().start())
-            .into_token()?;
+        let token =
+            tt.value.covering_element(range + tt.value.text_range().start()).into_token()?;
         Some((tt.with_value(token), origin))
     }
 }

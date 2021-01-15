@@ -1,7 +1,7 @@
 use assists::utils::extract_trivial_expression;
 use itertools::Itertools;
 use syntax::{
-    algo::{find_covering_element, non_trivia_sibling},
+    algo::non_trivia_sibling,
     ast::{self, AstNode, AstToken},
     Direction, NodeOrToken, SourceFile,
     SyntaxKind::{self, USE_TREE, WHITESPACE},
@@ -31,7 +31,7 @@ pub(crate) fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
         range
     };
 
-    let node = match find_covering_element(file.syntax(), range) {
+    let node = match file.syntax().covering_element(range) {
         NodeOrToken::Node(node) => node,
         NodeOrToken::Token(token) => token.parent(),
     };
