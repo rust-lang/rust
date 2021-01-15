@@ -202,7 +202,7 @@ fn check_final_expr<'tcx>(
                     check_final_expr(cx, &arm.body, Some(arm.body.span), RetReplacement::Block);
                 }
             },
-            | MatchSource::IfLetDesugar {
+            MatchSource::IfLetDesugar {
                 contains_else_clause: true,
             } => {
                 if let ExprKind::Block(ref ifblock, _) = arms[0].body.kind {

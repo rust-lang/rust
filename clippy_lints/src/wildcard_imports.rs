@@ -7,7 +7,8 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::BytePos;
+use rustc_span::symbol::kw;
+use rustc_span::{sym, BytePos};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `use Enum::*`.
@@ -198,12 +199,12 @@ impl WildcardImports {
 // Allow "...prelude::..::*" imports.
 // Many crates have a prelude, and it is imported as a glob by design.
 fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
-    segments.iter().any(|ps| ps.ident.as_str() == "prelude")
+    segments.iter().any(|ps| ps.ident.name == sym::prelude)
 }
 
 // Allow "super::*" imports in tests.
 fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
-    segments.len() == 1 && segments[0].ident.as_str() == "super"
+    segments.len() == 1 && segments[0].ident.name == kw::Super
 }
 
 fn is_test_module_or_function(item: &Item<'_>) -> bool {

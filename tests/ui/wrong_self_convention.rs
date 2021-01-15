@@ -94,7 +94,8 @@ mod issue6307 {
     trait T: Sized {
         fn as_i32(self) {}
         fn as_u32(&self) {}
-        fn into_i32(&self) {}
+        fn into_i32(self) {}
+        fn into_i32_ref(&self) {}
         fn into_u32(self) {}
         fn is_i32(self) {}
         fn is_u32(&self) {}
@@ -117,7 +118,32 @@ mod issue6307 {
     trait U {
         fn as_i32(self);
         fn as_u32(&self);
-        fn into_i32(&self);
+        fn into_i32(self);
+        fn into_i32_ref(&self);
+        fn into_u32(self);
+        fn is_i32(self);
+        fn is_u32(&self);
+        fn to_i32(self);
+        fn to_u32(&self);
+        fn from_i32(self);
+        // check whether the lint can be allowed at the function level
+        #[allow(clippy::wrong_self_convention)]
+        fn from_cake(self);
+
+        // test for false positives
+        fn as_(self);
+        fn into_(&self);
+        fn is_(self);
+        fn to_(self);
+        fn from_(self);
+        fn to_mut(&mut self);
+    }
+
+    trait C: Copy {
+        fn as_i32(self);
+        fn as_u32(&self);
+        fn into_i32(self);
+        fn into_i32_ref(&self);
         fn into_u32(self);
         fn is_i32(self);
         fn is_u32(&self);
