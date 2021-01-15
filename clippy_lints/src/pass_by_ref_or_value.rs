@@ -6,7 +6,7 @@ use rustc_ast::attr;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{BindingAnnotation, Body, FnDecl, HirId, ItemKind, MutTy, Mutability, Node, PatKind, Impl};
+use rustc_hir::{BindingAnnotation, Body, FnDecl, HirId, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -63,7 +63,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Arguments passed by value might result in an unnecessary
     /// shallow copy, taking up more space in the stack and requiring a call to
-    /// `memcpy`, which which can be expensive.
+    /// `memcpy`, which can be expensive.
     ///
     /// **Example:**
     ///

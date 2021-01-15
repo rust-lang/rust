@@ -7,8 +7,8 @@ fn main() {
     let matches = get_clap_config();
 
     match matches.subcommand() {
-        ("bless", Some(_)) => {
-            bless::bless();
+        ("bless", Some(matches)) => {
+            bless::bless(matches.is_present("ignore-timestamp"));
         },
         ("fmt", Some(matches)) => {
             fmt::run(matches.is_present("check"), matches.is_present("verbose"));
@@ -47,7 +47,15 @@ fn main() {
 
 fn get_clap_config<'a>() -> ArgMatches<'a> {
     App::new("Clippy developer tooling")
-        .subcommand(SubCommand::with_name("bless").about("bless the test output changes"))
+        .subcommand(
+            SubCommand::with_name("bless")
+                .about("bless the test output changes")
+                .arg(
+                    Arg::with_name("ignore-timestamp")
+                        .long("ignore-timestamp")
+                        .help("Include files updated before clippy was built"),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("fmt")
                 .about("Run rustfmt on all projects and tests")
