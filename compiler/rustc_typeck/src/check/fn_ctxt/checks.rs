@@ -816,7 +816,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(match &elem.kind {
                             // Point at the tail expression when possible.
                             hir::ExprKind::Block(block, _) => {
-                                block.expr.as_ref().map(|e| e.span).unwrap_or(block.span)
+                                block.expr.as_ref().map_or(block.span, |e| e.span)
                             }
                             _ => elem.span,
                         })
@@ -888,7 +888,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Write back the new resolution.
                 self.write_resolution(hir_id, result);
 
-                (result.map(|(kind, def_id)| Res::Def(kind, def_id)).unwrap_or(Res::Err), ty)
+                (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
             }
             QPath::LangItem(lang_item, span) => {
                 self.resolve_lang_item_path(lang_item, span, hir_id)

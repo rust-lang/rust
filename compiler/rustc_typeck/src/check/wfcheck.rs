@@ -108,7 +108,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 .impl_trait_ref(tcx.hir().local_def_id(item.hir_id))
                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
-                let sp = impl_.of_trait.as_ref().map(|t| t.path.span).unwrap_or(item.span);
+                let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
                 let mut err =
                     tcx.sess.struct_span_err(sp, "impls of auto traits cannot be default");
                 err.span_labels(impl_.defaultness_span, "default because of this");
