@@ -636,12 +636,10 @@ impl AutoTraitFinder<'tcx> {
             let bound_predicate = predicate.bound_atom();
             match bound_predicate.skip_binder() {
                 ty::PredicateAtom::Trait(p, _) => {
-                    if self.is_param_no_infer(p.trait_ref.substs)
-                        && !only_projections
-                        && is_new_pred
-                    {
-                        self.add_user_pred(computed_preds, predicate);
-                    }
+                    // Add this to `predicates` so that we end up calling `select`
+                    // with it. If this predicate ends up being unimplemented,
+                    // then `evaluate_predicates` will handle adding it the `ParamEnv`
+                    // if possible.
                     predicates.push_back(bound_predicate.rebind(p));
                 }
                 ty::PredicateAtom::Projection(p) => {
