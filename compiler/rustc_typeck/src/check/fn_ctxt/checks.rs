@@ -813,10 +813,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if ty.is_never() {
                         None
                     } else {
-                        Some(match &elem.kind {
+                        Some(match elem.kind {
                             // Point at the tail expression when possible.
                             hir::ExprKind::Block(block, _) => {
-                                block.expr.as_ref().map_or(block.span, |e| e.span)
+                                block.expr.map_or(block.span, |e| e.span)
                             }
                             _ => elem.span,
                         })
@@ -824,14 +824,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
         };
 
-        if let hir::ExprKind::If(_, _, Some(el)) = &expr.kind {
+        if let hir::ExprKind::If(_, _, Some(el)) = expr.kind {
             if let Some(rslt) = check_in_progress(el) {
                 return rslt;
             }
         }
 
-        if let hir::ExprKind::Match(_, arms, _) = &expr.kind {
-            let mut iter = arms.iter().filter_map(|arm| check_in_progress(&arm.body));
+        if let hir::ExprKind::Match(_, arms, _) = expr.kind {
+            let mut iter = arms.iter().filter_map(|arm| check_in_progress(arm.body));
             if let Some(span) = iter.next() {
                 if iter.next().is_none() {
                     return span;
