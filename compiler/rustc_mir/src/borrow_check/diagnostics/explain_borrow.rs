@@ -75,7 +75,7 @@ impl BorrowExplanation {
                     LaterUseKind::FakeLetRead => "stored here",
                     LaterUseKind::Other => "used here",
                 };
-                if !borrow_span.map(|sp| sp.overlaps(var_or_use_span)).unwrap_or(false) {
+                if !borrow_span.map_or(false, |sp| sp.overlaps(var_or_use_span)) {
                     err.span_label(
                         var_or_use_span,
                         format!("{}borrow later {}", borrow_desc, message),

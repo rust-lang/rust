@@ -529,8 +529,8 @@ trait UnusedDelimLint {
             pprust::expr_to_string(value)
         };
         let keep_space = (
-            left_pos.map(|s| s >= value.span.lo()).unwrap_or(false),
-            right_pos.map(|s| s <= value.span.hi()).unwrap_or(false),
+            left_pos.map_or(false, |s| s >= value.span.lo()),
+            right_pos.map_or(false, |s| s <= value.span.hi()),
         );
         self.emit_unused_delims(cx, value.span, &expr_text, ctx.into(), keep_space);
     }

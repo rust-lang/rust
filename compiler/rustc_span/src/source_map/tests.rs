@@ -107,7 +107,7 @@ fn t7() {
 fn span_from_selection(input: &str, selection: &str) -> Span {
     assert_eq!(input.len(), selection.len());
     let left_index = selection.find('~').unwrap() as u32;
-    let right_index = selection.rfind('~').map(|x| x as u32).unwrap_or(left_index);
+    let right_index = selection.rfind('~').map_or(left_index, |x| x as u32);
     Span::with_root_ctxt(BytePos(left_index), BytePos(right_index + 1))
 }
 

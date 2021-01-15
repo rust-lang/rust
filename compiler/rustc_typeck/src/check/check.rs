@@ -1259,8 +1259,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: &'tcx ty
         let layout = tcx.layout_of(param_env.and(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
-        let zst = layout.map(|layout| layout.is_zst()).unwrap_or(false);
-        let align1 = layout.map(|layout| layout.align.abi.bytes() == 1).unwrap_or(false);
+        let zst = layout.map_or(false, |layout| layout.is_zst());
+        let align1 = layout.map_or(false, |layout| layout.align.abi.bytes() == 1);
         (span, zst, align1)
     });
 

@@ -1837,19 +1837,6 @@ impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     }
 }
 
-impl Clean<Item> for doctree::Variant<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let what_rustc_thinks = Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            VariantItem(Variant { kind: self.def.clean(cx) }),
-            cx,
-        );
-        // don't show `pub` for variants, which are always public
-        Item { visibility: Inherited, ..what_rustc_thinks }
-    }
-}
-
 impl Clean<Item> for ty::VariantDef {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let kind = match self.ctor_kind {
