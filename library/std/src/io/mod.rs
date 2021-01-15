@@ -2469,7 +2469,7 @@ impl<R: Read> Iterator for Bytes<R> {
     }
 }
 
-#[unstable(feature = "file_size_hint", reason = "New implementation optimization")]
+#[unstable]
 impl Iterator for Bytes<fs::File> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         match self.inner.metadata() {
