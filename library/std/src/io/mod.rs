@@ -2464,7 +2464,9 @@ impl<R: Read> Iterator for Bytes<R> {
         }
     }
 
-    default fn size_hint(&self) -> (usize, Option<usize>) {}
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, None)
+    }
 }
 
 impl Iterator for Bytes<fs::File> {
