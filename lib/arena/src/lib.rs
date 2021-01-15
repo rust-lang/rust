@@ -1,4 +1,4 @@
-//! Yet another ID-based arena.
+//! Yet another index-based arena.
 
 #![warn(missing_docs)]
 
@@ -13,37 +13,37 @@ use std::{
 mod map;
 pub use map::ArenaMap;
 
-/// The raw ID of a value in an arena.
+/// The raw index of a value in an arena.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct RawId(u32);
+pub struct RawIdx(u32);
 
-impl From<RawId> for u32 {
-    fn from(raw: RawId) -> u32 {
+impl From<RawIdx> for u32 {
+    fn from(raw: RawIdx) -> u32 {
         raw.0
     }
 }
 
-impl From<u32> for RawId {
-    fn from(id: u32) -> RawId {
-        RawId(id)
+impl From<u32> for RawIdx {
+    fn from(idx: u32) -> RawIdx {
+        RawIdx(idx)
     }
 }
 
-impl fmt::Debug for RawId {
+impl fmt::Debug for RawIdx {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl fmt::Display for RawId {
+impl fmt::Display for RawIdx {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-/// The ID of a value allocated in an arena that holds `T`s.
+/// The index of a value allocated in an arena that holds `T`s.
 pub struct Idx<T> {
-    raw: RawId,
+    raw: RawIdx,
     _ty: PhantomData<fn() -> T>,
 }
 
@@ -78,18 +78,18 @@ impl<T> fmt::Debug for Idx<T> {
 }
 
 impl<T> Idx<T> {
-    /// Creates a new ID from a [`RawId`].
-    pub fn from_raw(raw: RawId) -> Self {
+    /// Creates a new index from a [`RawIdx`].
+    pub fn from_raw(raw: RawIdx) -> Self {
         Idx { raw, _ty: PhantomData }
     }
 
-    /// Converts this ID into the underlying [`RawId`].
-    pub fn into_raw(self) -> RawId {
+    /// Converts this index into the underlying [`RawIdx`].
+    pub fn into_raw(self) -> RawIdx {
         self.raw
     }
 }
 
-/// Yet another ID-based arena.
+/// Yet another index-based arena.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Arena<T> {
     data: Vec<T>,
@@ -161,37 +161,37 @@ impl<T> Arena<T> {
         self.data.is_empty()
     }
 
-    /// Allocates a new value on the arena, returning the value’s ID.
+    /// Allocates a new value on the arena, returning the value’s index.
     ///
     /// ```
     /// let mut arena = la_arena::Arena::new();
-    /// let id = arena.alloc(50);
+    /// let idx = arena.alloc(50);
     ///
-    /// assert_eq!(arena[id], 50);
+    /// assert_eq!(arena[idx], 50);
     /// ```
     pub fn alloc(&mut self, value: T) -> Idx<T> {
-        let id = RawId(self.data.len() as u32);
+        let idx = RawIdx(self.data.len() as u32);
         self.data.push(value);
-        Idx::from_raw(id)
+        Idx::from_raw(idx)
     }
 
     /// Returns an iterator over the arena’s elements.
     ///
     /// ```
     /// let mut arena = la_arena::Arena::new();
-    /// let id1 = arena.alloc(20);
-    /// let id2 = arena.alloc(40);
-    /// let id3 = arena.alloc(60);
+    /// let idx1 = arena.alloc(20);
+    /// let idx2 = arena.alloc(40);
+    /// let idx3 = arena.alloc(60);
     ///
     /// let mut iterator = arena.iter();
-    /// assert_eq!(iterator.next(), Some((id1, &20)));
-    /// assert_eq!(iterator.next(), Some((id2, &40)));
-    /// assert_eq!(iterator.next(), Some((id3, &60)));
+    /// assert_eq!(iterator.next(), Some((idx1, &20)));
+    /// assert_eq!(iterator.next(), Some((idx2, &40)));
+    /// assert_eq!(iterator.next(), Some((idx3, &60)));
     /// ```
     pub fn iter(
         &self,
     ) -> impl Iterator<Item = (Idx<T>, &T)> + ExactSizeIterator + DoubleEndedIterator {
-        self.data.iter().enumerate().map(|(idx, value)| (Idx::from_raw(RawId(idx as u32)), value))
+        self.data.iter().enumerate().map(|(idx, value)| (Idx::from_raw(RawIdx(idx as u32)), value))
     }
 
     /// Reallocates the arena to make it take up as little space as possible.

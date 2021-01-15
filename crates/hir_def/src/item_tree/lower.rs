@@ -683,12 +683,12 @@ impl Ctx {
     }
 
     fn next_field_idx(&self) -> Idx<Field> {
-        Idx::from_raw(RawId::from(
+        Idx::from_raw(RawIdx::from(
             self.tree.data.as_ref().map_or(0, |data| data.fields.len() as u32),
         ))
     }
     fn next_variant_idx(&self) -> Idx<Variant> {
-        Idx::from_raw(RawId::from(
+        Idx::from_raw(RawIdx::from(
             self.tree.data.as_ref().map_or(0, |data| data.variants.len() as u32),
         ))
     }
