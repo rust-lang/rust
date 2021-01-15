@@ -50,6 +50,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T![match],
         T![unsafe],
         T![return],
+        T![yield],
         T![break],
         T![continue],
         T![async],
@@ -142,6 +143,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             block_expr_unchecked(p)
         }
         T![return] => return_expr(p),
+        T![yield] => yield_expr(p),
         T![continue] => continue_expr(p),
         T![break] => break_expr(p, r),
         _ => {
@@ -507,6 +509,20 @@ fn return_expr(p: &mut Parser) -> CompletedMarker {
         expr(p);
     }
     m.complete(p, RETURN_EXPR)
+}
+// test yield_expr
+// fn foo() {
+//     yield;
+//     yield 1;
+// }
+fn yield_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(T![yield]));
+    let m = p.start();
+    p.bump(T![yield]);
+    if p.at_ts(EXPR_FIRST) {
+        expr(p);
+    }
+    m.complete(p, YIELD_EXPR)
 }
 
 // test continue_expr

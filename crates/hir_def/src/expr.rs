@@ -99,6 +99,9 @@ pub enum Expr {
     Return {
         expr: Option<ExprId>,
     },
+    Yield {
+        expr: Option<ExprId>,
+    },
     RecordLit {
         path: Option<Path>,
         fields: Vec<RecordLitField>,
@@ -294,7 +297,7 @@ impl Expr {
                 }
             }
             Expr::Continue { .. } => {}
-            Expr::Break { expr, .. } | Expr::Return { expr } => {
+            Expr::Break { expr, .. } | Expr::Return { expr } | Expr::Yield { expr } => {
                 if let Some(expr) = expr {
                     f(*expr);
                 }

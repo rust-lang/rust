@@ -367,6 +367,13 @@ impl<'a> InferenceContext<'a> {
                 }
                 Ty::simple(TypeCtor::Never)
             }
+            Expr::Yield { expr } => {
+                // FIXME: track yield type for coercion
+                if let Some(expr) = expr {
+                    self.infer_expr(*expr, &Expectation::none());
+                }
+                Ty::simple(TypeCtor::Never)
+            }
             Expr::RecordLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
                 if let Some(variant) = def_id {
