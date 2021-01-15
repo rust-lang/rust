@@ -194,10 +194,7 @@ impl Cache {
 
         cache.stack.push(krate.name.to_string());
 
-        krate = {
-            let mut cache_wrapper = CacheWrapper { cache: &mut cache, tmp_cache: Cache::default() };
-            cache_wrapper.fold_crate(krate)
-        };
+        krate = cache.fold_crate(krate);
 
         for (trait_did, dids, impl_) in cache.orphan_trait_impls.drain(..) {
             if cache.traits.contains_key(&trait_did) {
@@ -211,15 +208,7 @@ impl Cache {
     }
 }
 
-/// This struct is needed because we need to use an empty `Cache` for all functions requiring
-/// a `Cache`. If we use the already filled one (`cache` in here), it'll provide information
-/// about implementations that aren't related to the type being checked.
-struct CacheWrapper<'a> {
-    cache: &'a mut Cache,
-    tmp_cache: Cache,
-}
-
-impl<'a> DocFolder for CacheWrapper<'a> {
+impl DocFolder for Cache {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if item.def_id.is_local() {
             debug!("folding {} \"{:?}\", id {:?}", item.type_(), item.name, item.def_id);
@@ -229,21 +218,17 @@ impl<'a> DocFolder for CacheWrapper<'a> {
         // we don't want it or its children in the search index.
         let orig_stripped_mod = match *item.kind {
             clean::StrippedItem(box clean::ModuleItem(..)) => {
-                mem::replace(&mut self.cache.stripped_mod, true)
+                mem::replace(&mut self.stripped_mod, true)
             }
-            _ => self.cache.stripped_mod,
+            _ => self.stripped_mod,
         };
 
         // If the impl is from a masked crate or references something from a
         // masked crate then remove it completely.
         if let clean::ImplItem(ref i) = *item.kind {
-            if self.cache.masked_crates.contains(&item.def_id.krate)
-                || i.trait_
-                    .def_id(&self.tmp_cache)
-                    .map_or(false, |d| self.cache.masked_crates.contains(&d.krate))
-                || i.for_
-                    .def_id(&self.tmp_cache)
-                    .map_or(false, |d| self.cache.masked_crates.contains(&d.krate))
+            if self.masked_crates.contains(&item.def_id.krate)
+                || i.trait_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate))
+                || i.for_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate))
             {
                 return None;
             }
@@ -252,15 +237,14 @@ impl<'a> DocFolder for CacheWrapper<'a> {
         // Propagate a trait method's documentation to all implementors of the
         // trait.
         if let clean::TraitItem(ref t) = *item.kind {
-            self.cache.traits.entry(item.def_id).or_insert_with(|| t.clone());
+            self.traits.entry(item.def_id).or_insert_with(|| t.clone());
         }
 
         // Collect all the implementors of traits.
         if let clean::ImplItem(ref i) = *item.kind {
-            if let Some(did) = i.trait_.def_id(&self.tmp_cache) {
+            if let Some(did) = i.trait_.def_id() {
                 if i.blanket_impl.is_none() {
-                    self.cache
-                        .implementors
+                    self.implementors
                         .entry(did)
                         .or_default()
                         .push(Impl { impl_item: item.clone() });
@@ -273,7 +257,7 @@ impl<'a> DocFolder for CacheWrapper<'a> {
             let (parent, is_inherent_impl_item) = match *item.kind {
                 clean::StrippedItem(..) => ((None, None), false),
                 clean::AssocConstItem(..) | clean::TypedefItem(_, true)
-                    if self.cache.parent_is_trait_impl =>
+                    if self.parent_is_trait_impl =>
                 {
                     // skip associated items in trait impls
                     ((None, None), false)
@@ -283,18 +267,18 @@ impl<'a> DocFolder for CacheWrapper<'a> {
                 | clean::StructFieldItem(..)
                 | clean::VariantItem(..) => (
                     (
-                        Some(*self.cache.parent_stack.last().expect("parent_stack is empty")),
-                        Some(&self.cache.stack[..self.cache.stack.len() - 1]),
+                        Some(*self.parent_stack.last().expect("parent_stack is empty")),
+                        Some(&self.stack[..self.stack.len() - 1]),
                     ),
                     false,
                 ),
                 clean::MethodItem(..) | clean::AssocConstItem(..) => {
-                    if self.cache.parent_stack.is_empty() {
+                    if self.parent_stack.is_empty() {
                         ((None, None), false)
                     } else {
-                        let last = self.cache.parent_stack.last().expect("parent_stack is empty 2");
+                        let last = self.parent_stack.last().expect("parent_stack is empty 2");
                         let did = *last;
-                        let path = match self.cache.paths.get(&did) {
+                        let path = match self.paths.get(&did) {
                             // The current stack not necessarily has correlation
                             // for where the type was defined. On the other
                             // hand, `paths` always has the right
@@ -306,24 +290,24 @@ impl<'a> DocFolder for CacheWrapper<'a> {
                                 | ItemType::Union
                                 | ItemType::Enum,
                             )) => Some(&fqp[..fqp.len() - 1]),
-                            Some(..) => Some(&*self.cache.stack),
+                            Some(..) => Some(&*self.stack),
                             None => None,
                         };
                         ((Some(*last), path), true)
                     }
                 }
-                _ => ((None, Some(&*self.cache.stack)), false),
+                _ => ((None, Some(&*self.stack)), false),
             };
 
             match parent {
-                (parent, Some(path)) if is_inherent_impl_item || !self.cache.stripped_mod => {
+                (parent, Some(path)) if is_inherent_impl_item || !self.stripped_mod => {
                     debug_assert!(!item.is_stripped());
 
                     // A crate has a module at its root, containing all items,
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
                     if item.def_id.index != CRATE_DEF_INDEX {
-                        self.cache.search_index.push(IndexItem {
+                        self.search_index.push(IndexItem {
                             ty: item.type_(),
                             name: s.to_string(),
                             path: path.join("::"),
@@ -332,22 +316,21 @@ impl<'a> DocFolder for CacheWrapper<'a> {
                                 .map_or_else(String::new, |x| short_markdown_summary(&x.as_str())),
                             parent,
                             parent_idx: None,
-                            search_type: get_index_search_type(&item, &self.tmp_cache),
+                            search_type: get_index_search_type(&item, None),
                         });
 
                         for alias in item.attrs.get_doc_aliases() {
-                            self.cache
-                                .aliases
+                            self.aliases
                                 .entry(alias.to_lowercase())
                                 .or_insert(Vec::new())
-                                .push(self.cache.search_index.len() - 1);
+                                .push(self.search_index.len() - 1);
                         }
                     }
                 }
                 (Some(parent), None) if is_inherent_impl_item => {
                     // We have a parent, but we don't know where they're
                     // defined yet. Wait for later to index this item.
-                    self.cache.orphan_impl_items.push((parent, item.clone()));
+                    self.orphan_impl_items.push((parent, item.clone()));
                 }
                 _ => {}
             }
@@ -356,7 +339,7 @@ impl<'a> DocFolder for CacheWrapper<'a> {
         // Keep track of the fully qualified path for this item.
         let pushed = match item.name {
             Some(n) if !n.is_empty() => {
-                self.cache.stack.push(n.to_string());
+                self.stack.push(n.to_string());
                 true
             }
             _ => false,
@@ -378,7 +361,7 @@ impl<'a> DocFolder for CacheWrapper<'a> {
             | clean::MacroItem(..)
             | clean::ProcMacroItem(..)
             | clean::VariantItem(..)
-                if !self.cache.stripped_mod =>
+                if !self.stripped_mod =>
             {
                 // Re-exported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
@@ -386,21 +369,21 @@ impl<'a> DocFolder for CacheWrapper<'a> {
                 // `public_items` map, so we can skip inserting into the
                 // paths map if there was already an entry present and we're
                 // not a public item.
-                if !self.cache.paths.contains_key(&item.def_id)
-                    || self.cache.access_levels.is_public(item.def_id)
+                if !self.paths.contains_key(&item.def_id)
+                    || self.access_levels.is_public(item.def_id)
                 {
-                    self.cache.paths.insert(item.def_id, (self.cache.stack.clone(), item.type_()));
+                    self.paths.insert(item.def_id, (self.stack.clone(), item.type_()));
                 }
             }
             clean::PrimitiveItem(..) => {
-                self.cache.paths.insert(item.def_id, (self.cache.stack.clone(), item.type_()));
+                self.paths.insert(item.def_id, (self.stack.clone(), item.type_()));
             }
 
             _ => {}
         }
 
         // Maintain the parent stack
-        let orig_parent_is_trait_impl = self.cache.parent_is_trait_impl;
+        let orig_parent_is_trait_impl = self.parent_is_trait_impl;
         let parent_pushed = match *item.kind {
             clean::TraitItem(..)
             | clean::EnumItem(..)
@@ -408,24 +391,24 @@ impl<'a> DocFolder for CacheWrapper<'a> {
             | clean::StructItem(..)
             | clean::UnionItem(..)
             | clean::VariantItem(..) => {
-                self.cache.parent_stack.push(item.def_id);
-                self.cache.parent_is_trait_impl = false;
+                self.parent_stack.push(item.def_id);
+                self.parent_is_trait_impl = false;
                 true
             }
             clean::ImplItem(ref i) => {
-                self.cache.parent_is_trait_impl = i.trait_.is_some();
+                self.parent_is_trait_impl = i.trait_.is_some();
                 match i.for_ {
                     clean::ResolvedPath { did, .. } => {
-                        self.cache.parent_stack.push(did);
+                        self.parent_stack.push(did);
                         true
                     }
                     ref t => {
                         let prim_did = t
                             .primitive_type()
-                            .and_then(|t| self.cache.primitive_locations.get(&t).cloned());
+                            .and_then(|t| self.primitive_locations.get(&t).cloned());
                         match prim_did {
                             Some(did) => {
-                                self.cache.parent_stack.push(did);
+                                self.parent_stack.push(did);
                                 true
                             }
                             None => false,
@@ -450,9 +433,8 @@ impl<'a> DocFolder for CacheWrapper<'a> {
                     dids.insert(did);
                 }
                 ref t => {
-                    let did = t
-                        .primitive_type()
-                        .and_then(|t| self.cache.primitive_locations.get(&t).cloned());
+                    let did =
+                        t.primitive_type().and_then(|t| self.primitive_locations.get(&t).cloned());
 
                     if let Some(did) = did {
                         dids.insert(did);
@@ -462,22 +444,19 @@ impl<'a> DocFolder for CacheWrapper<'a> {
 
             if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
                 for bound in generics {
-                    if let Some(did) = bound.def_id(&self.tmp_cache) {
+                    if let Some(did) = bound.def_id() {
                         dids.insert(did);
                     }
                 }
             }
             let impl_item = Impl { impl_item: item };
-            if impl_item
-                .trait_did(&self.tmp_cache)
-                .map_or(true, |d| self.cache.traits.contains_key(&d))
-            {
+            if impl_item.trait_did().map_or(true, |d| self.traits.contains_key(&d)) {
                 for did in dids {
-                    self.cache.impls.entry(did).or_insert(vec![]).push(impl_item.clone());
+                    self.impls.entry(did).or_insert(vec![]).push(impl_item.clone());
                 }
             } else {
-                let trait_did = impl_item.trait_did(&self.tmp_cache).expect("no trait did");
-                self.cache.orphan_trait_impls.push((trait_did, dids, impl_item));
+                let trait_did = impl_item.trait_did().expect("no trait did");
+                self.orphan_trait_impls.push((trait_did, dids, impl_item));
             }
             None
         } else {
@@ -485,13 +464,13 @@ impl<'a> DocFolder for CacheWrapper<'a> {
         };
 
         if pushed {
-            self.cache.stack.pop().expect("stack already empty");
+            self.stack.pop().expect("stack already empty");
         }
         if parent_pushed {
-            self.cache.parent_stack.pop().expect("parent stack already empty");
+            self.parent_stack.pop().expect("parent stack already empty");
         }
-        self.cache.stripped_mod = orig_stripped_mod;
-        self.cache.parent_is_trait_impl = orig_parent_is_trait_impl;
+        self.stripped_mod = orig_stripped_mod;
+        self.parent_is_trait_impl = orig_parent_is_trait_impl;
         ret
     }
 }

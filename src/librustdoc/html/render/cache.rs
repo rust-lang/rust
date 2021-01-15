@@ -78,7 +78,7 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 desc: item.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)),
                 parent: Some(did),
                 parent_idx: None,
-                search_type: get_index_search_type(&item, cache),
+                search_type: get_index_search_type(&item, Some(cache)),
             });
             for alias in item.attrs.get_doc_aliases() {
                 cache
@@ -164,7 +164,10 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     )
 }
 
-crate fn get_index_search_type(item: &clean::Item, cache: &Cache) -> Option<IndexItemFunctionType> {
+crate fn get_index_search_type(
+    item: &clean::Item,
+    cache: Option<&Cache>,
+) -> Option<IndexItemFunctionType> {
     let (all_types, ret_types) = match *item.kind {
         clean::FunctionItem(ref f) => (&f.all_types, &f.ret_types),
         clean::MethodItem(ref m, _) => (&m.all_types, &m.ret_types),
@@ -174,12 +177,12 @@ crate fn get_index_search_type(item: &clean::Item, cache: &Cache) -> Option<Inde
 
     let inputs = all_types
         .iter()
-        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty, cache), *kind)))
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty, &cache), *kind)))
         .filter(|a| a.ty.name.is_some())
         .collect();
     let output = ret_types
         .iter()
-        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty, cache), *kind)))
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty, &cache), *kind)))
         .filter(|a| a.ty.name.is_some())
         .collect::<Vec<_>>();
     let output = if output.is_empty() { None } else { Some(output) };
@@ -187,9 +190,9 @@ crate fn get_index_search_type(item: &clean::Item, cache: &Cache) -> Option<Inde
     Some(IndexItemFunctionType { inputs, output })
 }
 
-fn get_index_type(clean_type: &clean::Type, cache: &Cache) -> RenderType {
+fn get_index_type(clean_type: &clean::Type, cache: &Option<&Cache>) -> RenderType {
     RenderType {
-        ty: clean_type.def_id(cache),
+        ty: cache.map_or_else(|| clean_type.def_id(), |cache| clean_type.def_id_full(cache)),
         idx: None,
         name: get_index_type_name(clean_type, true).map(|s| s.as_str().to_ascii_lowercase()),
         generics: get_generics(clean_type, cache),
@@ -216,14 +219,14 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
     }
 }
 
-fn get_generics(clean_type: &clean::Type, cache: &Cache) -> Option<Vec<Generic>> {
+fn get_generics(clean_type: &clean::Type, cache: &Option<&Cache>) -> Option<Vec<Generic>> {
     clean_type.generics().and_then(|types| {
         let r = types
             .iter()
             .filter_map(|t| {
                 get_index_type_name(t, false).map(|name| Generic {
                     name: name.as_str().to_ascii_lowercase(),
-                    defid: t.def_id(cache),
+                    defid: cache.map_or_else(|| t.def_id(), |cache| t.def_id_full(cache)),
                     idx: None,
                 })
             })

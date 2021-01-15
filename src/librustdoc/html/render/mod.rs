@@ -2515,7 +2515,7 @@ fn render_impls(
     let mut impls = traits
         .iter()
         .map(|i| {
-            let did = i.trait_did(cx.cache()).unwrap();
+            let did = i.trait_did_full(cx.cache()).unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
             let mut buffer = if w.is_for_html() { Buffer::html() } else { Buffer::new() };
             render_impl(
@@ -2755,7 +2755,10 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         }
 
         let (local, foreign) = implementors.iter().partition::<Vec<_>, _>(|i| {
-            i.inner_impl().for_.def_id(cx.cache()).map_or(true, |d| cx.cache.paths.contains_key(&d))
+            i.inner_impl()
+                .for_
+                .def_id_full(cx.cache())
+                .map_or(true, |d| cx.cache.paths.contains_key(&d))
         });
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
@@ -3518,7 +3521,9 @@ fn render_assoc_items(
                     "deref-methods-{:#}",
                     type_.print(cx.cache())
                 )));
-                cx.deref_id_map.borrow_mut().insert(type_.def_id(cx.cache()).unwrap(), id.clone());
+                cx.deref_id_map
+                    .borrow_mut()
+                    .insert(type_.def_id_full(cx.cache()).unwrap(), id.clone());
                 write!(
                     w,
                     "<h2 id=\"{id}\" class=\"small-section-header\">\
@@ -3553,11 +3558,11 @@ fn render_assoc_items(
     if !traits.is_empty() {
         let deref_impl = traits
             .iter()
-            .find(|t| t.inner_impl().trait_.def_id(cx.cache()) == cx.cache.deref_trait_did);
+            .find(|t| t.inner_impl().trait_.def_id_full(cx.cache()) == cx.cache.deref_trait_did);
         if let Some(impl_) = deref_impl {
-            let has_deref_mut = traits
-                .iter()
-                .any(|t| t.inner_impl().trait_.def_id(cx.cache()) == cx.cache.deref_mut_trait_did);
+            let has_deref_mut = traits.iter().any(|t| {
+                t.inner_impl().trait_.def_id_full(cx.cache()) == cx.cache.deref_mut_trait_did
+            });
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut);
         }
 
@@ -3636,8 +3641,8 @@ fn render_deref_methods(
         .expect("Expected associated type binding");
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
-    if let Some(did) = target.def_id(cx.cache()) {
-        if let Some(type_did) = impl_.inner_impl().for_.def_id(cx.cache()) {
+    if let Some(did) = target.def_id_full(cx.cache()) {
+        if let Some(type_did) = impl_.inner_impl().for_.def_id_full(cx.cache()) {
             // `impl Deref<Target = S> for S`
             if did == type_did {
                 // Avoid infinite cycles
@@ -3684,11 +3689,11 @@ fn spotlight_decl(decl: &clean::FnDecl, c: &Cache) -> String {
     let mut out = Buffer::html();
     let mut trait_ = String::new();
 
-    if let Some(did) = decl.output.def_id(c) {
+    if let Some(did) = decl.output.def_id_full(c) {
         if let Some(impls) = c.impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
-                if impl_.trait_.def_id(c).map_or(false, |d| c.traits[&d].is_spotlight) {
+                if impl_.trait_.def_id_full(c).map_or(false, |d| c.traits[&d].is_spotlight) {
                     if out.is_empty() {
                         out.push_str(&format!(
                             "<h3 class=\"notable\">Notable traits for {}</h3>\
@@ -3703,7 +3708,7 @@ fn spotlight_decl(decl: &clean::FnDecl, c: &Cache) -> String {
                         "<span class=\"where fmt-newline\">{}</span>",
                         impl_.print(c)
                     ));
-                    let t_did = impl_.trait_.def_id(c).unwrap();
+                    let t_did = impl_.trait_.def_id_full(c).unwrap();
                     for it in &impl_.items {
                         if let clean::TypedefItem(ref tydef, _) = *it.kind {
                             out.push_str("<span class=\"where fmt-newline\">    ");
@@ -3754,7 +3759,7 @@ fn render_impl(
     aliases: &[String],
 ) {
     let traits = &cx.cache.traits;
-    let trait_ = i.trait_did(cx.cache()).map(|did| &traits[&did]);
+    let trait_ = i.trait_did_full(cx.cache()).map(|did| &traits[&did]);
 
     if render_mode == RenderMode::Normal {
         let id = cx.derive_id(match i.inner_impl().trait_ {
@@ -3998,7 +4003,7 @@ fn render_impl(
             if i.items.iter().any(|m| m.name == n) {
                 continue;
             }
-            let did = i.trait_.as_ref().unwrap().def_id(cx.cache()).unwrap();
+            let did = i.trait_.as_ref().unwrap().def_id_full(cx.cache()).unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
 
             doc_impl_item(
@@ -4309,7 +4314,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, it: &clean::Item) -> String {
             if let Some(impl_) = v
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_some())
-                .find(|i| i.inner_impl().trait_.def_id(cx.cache()) == cx.cache.deref_trait_did)
+                .find(|i| i.inner_impl().trait_.def_id_full(cx.cache()) == cx.cache.deref_trait_did)
             {
                 out.push_str(&sidebar_deref_methods(cx, impl_, v));
             }
@@ -4396,9 +4401,9 @@ fn sidebar_deref_methods(cx: &Context<'_>, impl_: &Impl, v: &Vec<Impl>) -> Strin
         let deref_mut = v
             .iter()
             .filter(|i| i.inner_impl().trait_.is_some())
-            .any(|i| i.inner_impl().trait_.def_id(cx.cache()) == c.deref_mut_trait_did);
+            .any(|i| i.inner_impl().trait_.def_id_full(cx.cache()) == c.deref_mut_trait_did);
         let inner_impl = target
-            .def_id(cx.cache())
+            .def_id_full(cx.cache())
             .or_else(|| {
                 target.primitive_type().and_then(|prim| c.primitive_locations.get(&prim).cloned())
             })
@@ -4414,7 +4419,7 @@ fn sidebar_deref_methods(cx: &Context<'_>, impl_: &Impl, v: &Vec<Impl>) -> Strin
             if !ret.is_empty() {
                 let deref_id_map = cx.deref_id_map.borrow();
                 let id = deref_id_map
-                    .get(&real_target.def_id(cx.cache()).unwrap())
+                    .get(&real_target.def_id_full(cx.cache()).unwrap())
                     .expect("Deref section without derived id");
                 out.push_str(&format!(
                     "<a class=\"sidebar-title\" href=\"#{}\">Methods from {}&lt;Target={}&gt;</a>",
@@ -4429,14 +4434,14 @@ fn sidebar_deref_methods(cx: &Context<'_>, impl_: &Impl, v: &Vec<Impl>) -> Strin
         }
 
         // Recurse into any further impls that might exist for `target`
-        if let Some(target_did) = target.def_id(cx.cache()) {
+        if let Some(target_did) = target.def_id_full(cx.cache()) {
             if let Some(target_impls) = c.impls.get(&target_did) {
                 if let Some(target_deref_impl) = target_impls
                     .iter()
                     .filter(|i| i.inner_impl().trait_.is_some())
-                    .find(|i| i.inner_impl().trait_.def_id(cx.cache()) == c.deref_trait_did)
+                    .find(|i| i.inner_impl().trait_.def_id_full(cx.cache()) == c.deref_trait_did)
                 {
-                    if let Some(type_did) = impl_.inner_impl().for_.def_id(cx.cache()) {
+                    if let Some(type_did) = impl_.inner_impl().for_.def_id_full(cx.cache()) {
                         // `impl Deref<Target = S> for S`
                         if target_did == type_did {
                             // Avoid infinite cycles
@@ -4580,7 +4585,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
             .filter(|i| {
                 i.inner_impl()
                     .for_
-                    .def_id(cx.cache())
+                    .def_id_full(cx.cache())
                     .map_or(false, |d| !cx.cache.paths.contains_key(&d))
             })
             .filter_map(|i| extract_for_impl_name(&i.impl_item, cx.cache()))

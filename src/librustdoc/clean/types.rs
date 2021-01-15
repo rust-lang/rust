@@ -958,7 +958,7 @@ impl GenericBound {
     crate fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
         use rustc_hir::TraitBoundModifier as TBM;
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
-            if trait_.def_id(&cx.cache) == cx.tcx.lang_items().sized_trait() {
+            if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
                 return true;
             }
         }
@@ -1171,9 +1171,16 @@ crate enum FnRetTy {
 }
 
 impl GetDefId for FnRetTy {
-    fn def_id(&self, cache: &Cache) -> Option<DefId> {
+    fn def_id(&self) -> Option<DefId> {
         match *self {
-            Return(ref ty) => ty.def_id(cache),
+            Return(ref ty) => ty.def_id(),
+            DefaultReturn => None,
+        }
+    }
+
+    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+        match *self {
+            Return(ref ty) => ty.def_id_full(cache),
             DefaultReturn => None,
         }
     }
@@ -1299,12 +1306,20 @@ crate enum TypeKind {
 }
 
 crate trait GetDefId {
-    fn def_id(&self, cache: &Cache) -> Option<DefId>;
+    /// Doesn't retrieve primitive types `DefId`. Use `def_id_full` if you want it.
+    fn def_id(&self) -> Option<DefId>;
+    /// Retrieves all types' `DefId` (including primitives). If you're not interested about
+    /// primitives, use `def_id`.
+    fn def_id_full(&self, cache: &Cache) -> Option<DefId>;
 }
 
 impl<T: GetDefId> GetDefId for Option<T> {
-    fn def_id(&self, cache: &Cache) -> Option<DefId> {
-        self.as_ref().and_then(|d| d.def_id(cache))
+    fn def_id(&self) -> Option<DefId> {
+        self.as_ref().and_then(|d| d.def_id())
+    }
+
+    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+        self.as_ref().and_then(|d| d.def_id_full(cache))
     }
 }
 
@@ -1393,30 +1408,47 @@ impl Type {
     }
 }
 
-impl GetDefId for Type {
-    fn def_id(&self, cache: &Cache) -> Option<DefId> {
+impl Type {
+    fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
+        fn inner<T: GetDefId>(t: &T, cache: Option<&Cache>) -> Option<DefId> {
+            match cache {
+                Some(c) => t.def_id_full(c),
+                None => t.def_id(),
+            }
+        }
+
         match *self {
             ResolvedPath { did, .. } => Some(did),
-            Primitive(p) => cache.primitive_locations.get(&p).cloned(),
+            Primitive(p) => cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
             BorrowedRef { type_: box Generic(..), .. } => {
-                Primitive(PrimitiveType::Reference).def_id(cache)
+                inner(&Primitive(PrimitiveType::Reference), cache)
             }
-            BorrowedRef { ref type_, .. } => type_.def_id(cache),
+            BorrowedRef { ref type_, .. } => inner(&**type_, cache),
             Tuple(ref tys) => {
                 if tys.is_empty() {
-                    Primitive(PrimitiveType::Unit).def_id(cache)
+                    inner(&Primitive(PrimitiveType::Unit), cache)
                 } else {
-                    Primitive(PrimitiveType::Tuple).def_id(cache)
+                    inner(&Primitive(PrimitiveType::Tuple), cache)
                 }
             }
-            BareFunction(..) => Primitive(PrimitiveType::Fn).def_id(cache),
-            Never => Primitive(PrimitiveType::Never).def_id(cache),
-            Slice(..) => Primitive(PrimitiveType::Slice).def_id(cache),
-            Array(..) => Primitive(PrimitiveType::Array).def_id(cache),
-            RawPointer(..) => Primitive(PrimitiveType::RawPointer).def_id(cache),
-            QPath { ref self_type, .. } => self_type.def_id(cache),
+            BareFunction(..) => inner(&Primitive(PrimitiveType::Fn), cache),
+            Never => inner(&Primitive(PrimitiveType::Never), cache),
+            Slice(..) => inner(&Primitive(PrimitiveType::Slice), cache),
+            Array(..) => inner(&Primitive(PrimitiveType::Array), cache),
+            RawPointer(..) => inner(&Primitive(PrimitiveType::RawPointer), cache),
+            QPath { ref self_type, .. } => inner(&**self_type, cache),
             _ => None,
         }
+    }
+}
+
+impl GetDefId for Type {
+    fn def_id(&self) -> Option<DefId> {
+        self.inner_def_id(None)
+    }
+
+    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+        self.inner_def_id(Some(cache))
     }
 }
 
@@ -1814,8 +1846,12 @@ crate struct Typedef {
 }
 
 impl GetDefId for Typedef {
-    fn def_id(&self, cache: &Cache) -> Option<DefId> {
-        self.type_.def_id(cache)
+    fn def_id(&self) -> Option<DefId> {
+        self.type_.def_id()
+    }
+
+    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+        self.type_.def_id_full(cache)
     }
 }
 

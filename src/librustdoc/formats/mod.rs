@@ -39,7 +39,11 @@ impl Impl {
         }
     }
 
-    crate fn trait_did(&self, cache: &Cache) -> Option<DefId> {
-        self.inner_impl().trait_.def_id(cache)
+    crate fn trait_did(&self) -> Option<DefId> {
+        self.inner_impl().trait_.def_id()
+    }
+
+    crate fn trait_did_full(&self, cache: &Cache) -> Option<DefId> {
+        self.inner_impl().trait_.def_id_full(cache)
     }
 }

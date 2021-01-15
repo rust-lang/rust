@@ -368,7 +368,7 @@ crate fn build_impl(
     // Only inline impl if the implementing type is
     // reachable in rustdoc generated documentation
     if !did.is_local() {
-        if let Some(did) = for_.def_id(&cx.cache) {
+        if let Some(did) = for_.def_id() {
             if !cx.renderinfo.borrow().access_levels.is_public(did) {
                 return;
             }
@@ -410,19 +410,19 @@ crate fn build_impl(
         clean::GenericBound::TraitBound(polyt, _) => polyt.trait_,
         clean::GenericBound::Outlives(..) => unreachable!(),
     });
-    if trait_.def_id(&cx.cache) == tcx.lang_items().deref_trait() {
+    if trait_.def_id() == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
-    if let Some(trait_did) = trait_.def_id(&cx.cache) {
+    if let Some(trait_did) = trait_.def_id() {
         record_extern_trait(cx, trait_did);
     }
 
     let provided = trait_
-        .def_id(&cx.cache)
+        .def_id()
         .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
         .unwrap_or_default();
 
-    debug!("build_impl: impl {:?} for {:?}", trait_.def_id(&cx.cache), for_.def_id(&cx.cache));
+    debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 
     let mut item = clean::Item::from_def_id_and_parts(
         did,

@@ -2089,17 +2089,17 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &DocContext<'_>) ->
 
     // If this impl block is an implementation of the Deref trait, then we
     // need to try inlining the target's inherent impl blocks as well.
-    if trait_.def_id(&cx.cache) == cx.tcx.lang_items().deref_trait() {
+    if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
         build_deref_target_impls(cx, &items, &mut ret);
     }
 
     let provided: FxHashSet<Symbol> = trait_
-        .def_id(&cx.cache)
+        .def_id()
         .map(|did| cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
         .unwrap_or_default();
 
     let for_ = impl_.self_ty.clean(cx);
-    let type_alias = for_.def_id(&cx.cache).and_then(|did| match cx.tcx.def_kind(did) {
+    let type_alias = for_.def_id().and_then(|did| match cx.tcx.def_kind(did) {
         DefKind::TyAlias => Some(cx.tcx.type_of(did).clean(cx)),
         _ => None,
     });
