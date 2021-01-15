@@ -87,6 +87,7 @@
         </div>
         <script>
             const RusfmtTagsUrl = 'https://api.github.com/repos/rust-lang/rustfmt/tags';
+            const RustfmtLatestUrl = 'https://api.github.com/repos/rust-lang/rustfmt/releases/latest';
             const UrlHash = window.location.hash.replace(/^#/, '');
             const queryParams = new URLSearchParams(window.location.search);
             const searchParam = queryParams.get('search');
@@ -112,6 +113,16 @@
                 scrolledOnce: false,
               },
               asyncComputed: {
+                async updateVersion() {
+                  let latest;
+                  try {
+                    latest = (await axios.get(RustfmtLatestUrl)).data;
+                  } catch(err) {
+                      console.log(err);
+                    return;
+                  }
+                  this.version = latest.name;
+                },
                 async outputHtml() {
                   if (this.version !== this.oldVersion) {
                     const ConfigurationMdUrl =
