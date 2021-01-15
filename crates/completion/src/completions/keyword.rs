@@ -161,7 +161,17 @@ fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet
     let builder = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw)
         .kind(CompletionItemKind::Keyword);
     let builder = match ctx.config.snippet_cap {
-        Some(cap) => builder.insert_snippet(cap, snippet),
+        Some(cap) => {
+            let tmp;
+            let snippet = if snippet.ends_with('}') && ctx.incomplete_let {
+                mark::hit!(let_semi);
+                tmp = format!("{};", snippet);
+                &tmp
+            } else {
+                snippet
+            };
+            builder.insert_snippet(cap, snippet)
+        }
         None => builder.insert_text(if snippet.contains('$') { kw } else { snippet }),
     };
     acc.add(builder.build());
@@ -599,6 +609,52 @@ fn foo() {
                 kw if let
                 kw return
             "#]],
+        );
+    }
+
+    #[test]
+    fn let_semi() {
+        mark::check!(let_semi);
+        check_edit(
+            "match",
+            r#"
+fn main() { let x = $0 }
+"#,
+            r#"
+fn main() { let x = match $0 {}; }
+"#,
+        );
+
+        check_edit(
+            "if",
+            r#"
+fn main() {
+    let x = $0
+    let y = 92;
+}
+"#,
+            r#"
+fn main() {
+    let x = if $0 {};
+    let y = 92;
+}
+"#,
+        );
+
+        check_edit(
+            "loop",
+            r#"
+fn main() {
+    let x = $0
+    bar();
+}
+"#,
+            r#"
+fn main() {
+    let x = loop {$0};
+    bar();
+}
+"#,
         );
     }
 }

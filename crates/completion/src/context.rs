@@ -92,6 +92,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) has_item_list_or_source_file_parent: bool,
     pub(super) for_is_prev2: bool,
     pub(super) fn_is_prev: bool,
+    pub(super) incomplete_let: bool,
     pub(super) locals: Vec<(String, Local)>,
 }
 
@@ -132,9 +133,9 @@ impl<'a> CompletionContext<'a> {
             scope,
             db,
             config,
+            position,
             original_token,
             token,
-            position,
             krate,
             expected_type: None,
             name_ref_syntax: None,
@@ -155,30 +156,31 @@ impl<'a> CompletionContext<'a> {
             is_expr: false,
             is_new_item: false,
             dot_receiver: None,
+            dot_receiver_is_ambiguous_float_literal: false,
             is_call: false,
             is_pattern_call: false,
             is_macro_call: false,
             is_path_type: false,
             has_type_args: false,
-            dot_receiver_is_ambiguous_float_literal: false,
             attribute_under_caret: None,
             mod_declaration_under_caret: None,
             unsafe_is_prev: false,
-            in_loop_body: false,
-            ref_pat_parent: false,
-            bind_pat_parent: false,
+            if_is_prev: false,
             block_expr_parent: false,
+            bind_pat_parent: false,
+            ref_pat_parent: false,
+            in_loop_body: false,
             has_trait_parent: false,
             has_impl_parent: false,
             inside_impl_trait_block: false,
             has_field_list_parent: false,
             trait_as_prev_sibling: false,
             impl_as_prev_sibling: false,
-            if_is_prev: false,
             is_match_arm: false,
             has_item_list_or_source_file_parent: false,
             for_is_prev2: false,
             fn_is_prev: false,
+            incomplete_let: false,
             locals,
         };
 
@@ -270,6 +272,10 @@ impl<'a> CompletionContext<'a> {
                 .filter(|module| module.item_list().is_none());
         self.for_is_prev2 = for_is_prev2(syntax_element.clone());
         self.fn_is_prev = fn_is_prev(syntax_element.clone());
+        self.incomplete_let =
+            syntax_element.ancestors().take(6).find_map(ast::LetStmt::cast).map_or(false, |it| {
+                it.syntax().text_range().end() == syntax_element.text_range().end()
+            });
     }
 
     fn fill(
