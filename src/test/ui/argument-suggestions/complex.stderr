@@ -2,15 +2,15 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/complex.rs:14:11
    |
 LL |   complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
-   |           ^^^  ^^^^      ^^^^  ^^^^^  ^^^^  ^^^^  ^^^^ expected Z, found Y
+   |           ^^^  ^^^^      ^^^^  ^^^^^  ^^^^  ^^^^  ^^^^ expected Z, found Z
    |           |    |         ||    |      |     |
-   |           |    |         ||    |      |     expected Y, found X
-   |           |    |         ||    |      expected X, found Z
-   |           |    |         ||    expected G, found F
-   |           |    |         |expected F, found G
+   |           |    |         ||    |      |     expected Y, found Y
+   |           |    |         ||    |      expected X, found X
+   |           |    |         ||    expected G, found G
+   |           |    |         |expected F, found F
    |           |    |         missing argument of type E
    |           |    no parameter of type H is needed in complex
-   |           expected u32, found {float}
+   |           expected u32, found u32
    |
 note: function defined here
   --> $DIR/complex.rs:11:4

@@ -189,7 +189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut deferred_arguments: Vec<usize> = vec![];
 
         // We'll also want to keep track of the fully coerced argument types, for an awkward hack near the end
-        let mut final_arg_types: Vec<(usize, Ty<'_>, Ty<'_>)> = vec![];
+        let mut final_arg_types: Vec<Option<(Ty<'_>, Ty<'_>)>> = vec![None; provided_arg_count];
 
         // We introduce a helper function to demand that a given argument satisfy a given input
         // This is more complicated than just checking type equality, as arguments could be coerced
@@ -291,7 +291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Demand that this argument satisfies the input in the slot it's in
             let (compatible, checked_ty, coerced_ty) = demand_compatible(idx, idx);
             // Keep track of these for below
-            final_arg_types.push((idx, checked_ty, coerced_ty));
+            final_arg_types[idx] = Some((checked_ty, coerced_ty));
 
             // If we fail at some point, we'll want to provide better error messages, so hold onto this info
             if compatible {
@@ -309,7 +309,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.point_at_type_arg_instead_of_call_if_possible(errors, call_expr);
             self.point_at_arg_instead_of_call_if_possible(
                 errors,
-                &final_arg_types[..],
+                &final_arg_types,
                 call_span,
                 &provided_args,
             );
@@ -649,7 +649,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Issue::Invalid(arg) => {
                             let span = provided_args[arg].span;
                             let expected_type = expected_input_tys[arg];
-                            let found_type = final_arg_types.iter().find(|(i, _, _)| *i == arg).unwrap().1;
+                            let found_type = final_arg_types[arg].unwrap().1;
                             labels.push((span, format!("expected {}, found {}", expected_type, found_type)));
                             suggestion_type = match suggestion_type {
                                 NoSuggestion | Provide => Provide,
@@ -720,8 +720,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let second_snippet = source_map.span_to_snippet(second_span).unwrap();
                             let expected_types = (expected_input_tys[arg], expected_input_tys[other]);
                             let found_types = (
-                                final_arg_types.iter().find(|(i, _, _)| *i == arg).unwrap().1,
-                                final_arg_types.iter().find(|(i, _, _)| *i == other).unwrap().1,
+                                final_arg_types[arg].unwrap().1,
+                                final_arg_types[other].unwrap().1,
                             );
                             labels.push((first_span, format!("expected {}, found {}", expected_types.0, found_types.0)));
                             suggestions.push((first_span, second_snippet));
@@ -739,7 +739,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     let dst_span = provided_args[dst].span;
                                     let snippet = source_map.span_to_snippet(src_span).unwrap();
                                     let expected_type = expected_input_tys[dst];
-                                    let found_type = final_arg_types.iter().find(|(i, _, _)| *i == dst).unwrap().1;
+                                    let found_type = final_arg_types[dst].unwrap().1;
                                     labels.push((dst_span, format!("expected {}, found {}", expected_type, found_type)));
                                     suggestions.push((dst_span, snippet));
                                     suggestion_type = match suggestion_type {
@@ -1356,7 +1356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn point_at_arg_instead_of_call_if_possible(
         &self,
         errors: &mut Vec<traits::FulfillmentError<'tcx>>,
-        final_arg_types: &[(usize, Ty<'tcx>, Ty<'tcx>)],
+        final_arg_types: &[Option<(Ty<'tcx>, Ty<'tcx>)>],
         call_sp: Span,
         args: &'tcx [hir::Expr<'tcx>],
     ) {
@@ -1379,21 +1379,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 // Collect the argument position for all arguments that could have caused this
                 // `FulfillmentError`.
-                let mut referenced_in = final_arg_types
-                    .iter()
-                    .map(|&(i, checked_ty, _)| (i, checked_ty))
-                    .chain(final_arg_types.iter().map(|&(i, _, coerced_ty)| (i, coerced_ty)))
-                    .flat_map(|(i, ty)| {
-                        let ty = self.resolve_vars_if_possible(ty);
-                        // We walk the argument type because the argument's type could have
-                        // been `Option<T>`, but the `FulfillmentError` references `T`.
-                        if ty.walk().any(|arg| arg == predicate.self_ty().into()) {
-                            Some(i)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<usize>>();
+                let mut checked_tys = vec![];
+                let mut coerced_tys = vec![];
+                for (i, &type_pair) in final_arg_types.iter().enumerate() {
+                    if let Some((checked_ty, coerced_ty)) = type_pair {
+                        checked_tys.push((i, checked_ty));
+                        coerced_tys.push((i, coerced_ty));
+                    }
+                }
+                let mut referenced_in = vec![];
+                for &(i, ty) in checked_tys.iter().chain(coerced_tys.iter()) {
+                    let ty = self.resolve_vars_if_possible(ty);
+                    // We walk the argument type because the argument's type could have
+                    // been `Option<T>`, but the `FulfillmentError` references `T`.
+                    if ty.walk().any(|arg| arg == predicate.self_ty().into()) {
+                        referenced_in.push(i);
+                    }
+                }
 
                 // Both checked and coerced types could have matched, thus we need to remove
                 // duplicates.

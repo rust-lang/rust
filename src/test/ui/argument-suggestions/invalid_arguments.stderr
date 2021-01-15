@@ -2,7 +2,7 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:13:11
    |
 LL |   one_arg(1.0);
-   |           ^^^ expected i32, found {float}
+   |           ^^^ expected i32, found i32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:5:4
@@ -50,9 +50,9 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:18:16
    |
 LL |   two_arg_same("", "");
-   |                ^^  ^^ expected i32, found &'static str
+   |                ^^  ^^ expected i32, found i32
    |                |
-   |                expected i32, found &'static str
+   |                expected i32, found i32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:6:4
@@ -68,7 +68,7 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:19:19
    |
 LL |   two_arg_diff(1, "");
-   |                   ^^ expected f32, found &'static str
+   |                   ^^ expected f32, found f32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:7:4
@@ -80,7 +80,7 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:20:16
    |
 LL |   two_arg_diff("", 1.0);
-   |                ^^ expected i32, found &'static str
+   |                ^^ expected i32, found i32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:7:4
@@ -92,9 +92,9 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:21:16
    |
 LL |   two_arg_diff("", "");
-   |                ^^  ^^ expected f32, found &'static str
+   |                ^^  ^^ expected f32, found f32
    |                |
-   |                expected i32, found &'static str
+   |                expected i32, found i32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:7:4
@@ -110,7 +110,7 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:24:18
    |
 LL |   three_arg_diff(X{}, 1.0, "");
-   |                  ^^^ expected i32, found X
+   |                  ^^^ expected i32, found i32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:8:4
@@ -122,7 +122,7 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:25:21
    |
 LL |   three_arg_diff(1, X {}, "");
-   |                     ^^^^ expected f32, found X
+   |                     ^^^^ expected f32, found f32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:8:4
@@ -134,7 +134,7 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:26:26
    |
 LL |   three_arg_diff(1, 1.0, X {});
-   |                          ^^^^ expected &str, found X
+   |                          ^^^^ expected &str, found &str
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:8:4
@@ -146,9 +146,9 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:28:18
    |
 LL |   three_arg_diff(X {}, X {}, "");
-   |                  ^^^^  ^^^^ expected f32, found X
+   |                  ^^^^  ^^^^ expected f32, found f32
    |                  |
-   |                  expected i32, found X
+   |                  expected i32, found i32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:8:4
@@ -164,9 +164,9 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:29:18
    |
 LL |   three_arg_diff(X {}, 1.0, X {});
-   |                  ^^^^       ^^^^ expected &str, found X
+   |                  ^^^^       ^^^^ expected &str, found &str
    |                  |
-   |                  expected i32, found X
+   |                  expected i32, found i32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:8:4
@@ -182,9 +182,9 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:30:21
    |
 LL |   three_arg_diff(1, X {}, X {});
-   |                     ^^^^  ^^^^ expected &str, found X
+   |                     ^^^^  ^^^^ expected &str, found &str
    |                     |
-   |                     expected f32, found X
+   |                     expected f32, found f32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:8:4
@@ -200,10 +200,10 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:32:18
    |
 LL |   three_arg_diff(X {}, X {}, X {});
-   |                  ^^^^  ^^^^  ^^^^ expected &str, found X
+   |                  ^^^^  ^^^^  ^^^^ expected &str, found &str
    |                  |     |
-   |                  |     expected f32, found X
-   |                  expected i32, found X
+   |                  |     expected f32, found f32
+   |                  expected i32, found i32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:8:4
@@ -259,7 +259,7 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:36:26
    |
 LL |   three_arg_repeat(1, 1, X {});
-   |                          ^^^^ expected &str, found X
+   |                          ^^^^ expected &str, found &str
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:9:4
@@ -271,9 +271,9 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:38:20
    |
 LL |   three_arg_repeat(X {}, X {}, "");
-   |                    ^^^^  ^^^^ expected i32, found X
+   |                    ^^^^  ^^^^ expected i32, found i32
    |                    |
-   |                    expected i32, found X
+   |                    expected i32, found i32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:9:4
@@ -329,10 +329,10 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:42:20
    |
 LL |   three_arg_repeat(X {}, X {}, X {});
-   |                    ^^^^  ^^^^  ^^^^ expected &str, found X
+   |                    ^^^^  ^^^^  ^^^^ expected &str, found &str
    |                    |     |
-   |                    |     expected i32, found X
-   |                    expected i32, found X
+   |                    |     expected i32, found i32
+   |                    expected i32, found i32
    |
 note: function defined here
   --> $DIR/invalid_arguments.rs:9:4
