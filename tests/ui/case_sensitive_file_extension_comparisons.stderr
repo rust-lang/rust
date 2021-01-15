@@ -1,0 +1,43 @@
+error: case-sensitive file extension comparison
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:12:14
+   |
+LL |     filename.ends_with(".rs")
+   |              ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::case-sensitive-file-extension-comparisons` implied by `-D warnings`
+   = help: consider using a case-insensitive comparison instead
+
+error: case-sensitive file extension comparison
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:17:30
+   |
+LL |     let _ = String::from("").ends_with(".ext12");
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+
+error: case-sensitive file extension comparison
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:18:19
+   |
+LL |     let _ = "str".ends_with(".ext12");
+   |                   ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+
+error: case-sensitive file extension comparison
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:24:30
+   |
+LL |     let _ = String::from("").ends_with(".EXT12");
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+
+error: case-sensitive file extension comparison
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:25:19
+   |
+LL |     let _ = "str".ends_with(".EXT12");
+   |                   ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+
+error: aborting due to 5 previous errors
+
