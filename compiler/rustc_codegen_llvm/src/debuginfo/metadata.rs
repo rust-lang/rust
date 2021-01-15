@@ -1832,8 +1832,9 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
     fn source_info(&self, cx: &CodegenCx<'ll, 'tcx>) -> Option<SourceInfo<'ll>> {
         match self {
             VariantInfo::Generator { def_id, variant_index, .. } => {
-                let span =
-                    cx.tcx.generator_layout(*def_id).variant_source_info[*variant_index].span;
+                let span = cx.tcx.generator_layout(*def_id).unwrap().variant_source_info
+                    [*variant_index]
+                    .span;
                 if !span.is_dummy() {
                     let loc = cx.lookup_debug_loc(span.lo());
                     return Some(SourceInfo {
