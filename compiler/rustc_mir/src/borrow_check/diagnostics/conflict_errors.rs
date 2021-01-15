@@ -1331,9 +1331,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             ConstraintCategory::CallArgument => {
                 fr_name.highlight_region_name(&mut err);
-                if matches!(use_span.generator_kind(), Some(generator_kind)
-                    if matches!(generator_kind, GeneratorKind::Async(_)))
-                {
+                if matches!(use_span.generator_kind(), Some(GeneratorKind::Async(_))) {
                     err.note(
                         "async blocks are not executed immediately and must either take a \
                     reference or ownership of outside variables they use",
