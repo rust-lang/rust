@@ -2456,7 +2456,7 @@ pub struct Bytes<R> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<R: Read> Iterator for Bytes<R> {
+impl<R: Read + SizeHint> Iterator for Bytes<R> {
     type Item = Result<u8>;
 
     fn next(&mut self) -> Option<Result<u8>> {
@@ -2472,14 +2472,34 @@ impl<R: Read> Iterator for Bytes<R> {
     }
 
     default fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, None)
+        self.inner.size_hint()
     }
 }
 
 #[stable(feature = "bufreader_size_hint", since = "1.51.0")]
-impl<R: Read> Iterator for Bytes<BufReader<R>> {
+trait SizeHint {
+    fn lower_bound(&self) -> usize;
+
+    fn upper_bound(&self) -> Option<usize> {
+        None
+    }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.inner.buffer().len(), None)
+        (self.lower_bound(), self.upper_bound())
+    }
+}
+
+#[stable(feature = "bufreader_size_hint", since = "1.51.0")]
+impl SizeHint for T {
+    fn lower_bound(&self) -> usize {
+        0
+    }
+}
+
+#[stable(feature = "bufreader_size_hint", since = "1.51.0")]
+impl<T> SizeHint for BufReader<T> {
+    fn lower_bound(&self) -> usize {
+        self.buffer().len()
     }
 }
 
