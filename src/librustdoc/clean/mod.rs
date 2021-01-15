@@ -1861,12 +1861,8 @@ impl Clean<Item> for ty::VariantDef {
                     .collect(),
             }),
         };
-        let what_rustc_thinks = Item::from_def_id_and_parts(
-            self.def_id,
-            Some(self.ident.name),
-            VariantItem(Variant { kind }),
-            cx,
-        );
+        let what_rustc_thinks =
+            Item::from_def_id_and_parts(self.def_id, Some(self.ident.name), VariantItem(kind), cx);
         // don't show `pub` for fields, which are always public
         Item { visibility: Inherited, ..what_rustc_thinks }
     }
@@ -2048,7 +2044,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
 
 impl Clean<Item> for hir::Variant<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let kind = VariantItem(Variant { kind: self.data.clean(cx) });
+        let kind = VariantItem(self.data.clean(cx));
         let what_rustc_thinks =
             Item::from_hir_id_and_parts(self.id, Some(self.ident.name), kind, cx);
         // don't show `pub` for variants, which are always public
