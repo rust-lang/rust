@@ -11,7 +11,7 @@ note: function defined here
    |
 LL | fn two_args(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
-help: swapping these two arguments might help
+help: swap these two arguments
    |
 LL |   two_args(1, 1.0);
    |            ^  ^^^
@@ -29,7 +29,7 @@ note: function defined here
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: swapping these two arguments might help
+help: swap these two arguments
    |
 LL |   three_args(1,   1.0,  "");
    |              ^    ^^^
@@ -47,7 +47,7 @@ note: function defined here
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: swapping these two arguments might help
+help: swap these two arguments
    |
 LL |   three_args(  1,  1.0, "");
    |                    ^^^  ^^
@@ -65,7 +65,7 @@ note: function defined here
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: swapping these two arguments might help
+help: swap these two arguments
    |
 LL |   three_args( 1, 1.0,   "");
    |               ^         ^^
@@ -85,7 +85,7 @@ note: function defined here
    |
 LL | fn four_args(_a: i32, _b: f32, _c: &str, _d: X) {}
    |    ^^^^^^^^^ -------  -------  --------  -----
-help: swapping these sets of arguments might help
+help: swap these arguments
    |
 LL |   four_args(1, 1.0, "", X {});
    |             ^  ^^^  ^^  ^^^^

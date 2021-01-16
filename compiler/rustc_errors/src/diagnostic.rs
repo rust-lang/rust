@@ -307,6 +307,28 @@ impl Diagnostic {
         self
     }
 
+    /// Show a suggestion that has multiple parts to it, always as it's own subwindow.
+    /// In other words, multiple changes need to be applied as part of this suggestion.
+    pub fn multipart_suggestion_verbose(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: suggestion
+                    .into_iter()
+                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                    .collect(),
+            }],
+            msg: msg.to_owned(),
+            style: SuggestionStyle::ShowAlways,
+            applicability,
+        });
+        self
+    }
+
     /// Show multiple suggestions that have multiple parts.
     /// See also [`Diagnostic::multipart_suggestion()`].
     pub fn multipart_suggestions(

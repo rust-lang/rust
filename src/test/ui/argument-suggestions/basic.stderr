@@ -9,7 +9,7 @@ note: function defined here
    |
 LL | fn invalid(_i: u32) {}
    |    ^^^^^^^ -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |     invalid({u32});
    |             ^^^^^
@@ -18,16 +18,17 @@ error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:21:11
    |
 LL |     extra("");
-   |           ^^
-   |           |
-   |           this parameter of type &'static str isn't needed for extra
-   |           help: removing this argument may help
+   |           ^^ this parameter of type &'static str isn't needed for extra
    |
 note: function defined here
   --> $DIR/basic.rs:14:4
    |
 LL | fn extra() {}
    |    ^^^^^
+help: remove this argument
+   |
+LL |     extra();
+   |          --
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:22:13
@@ -40,7 +41,7 @@ note: function defined here
    |
 LL | fn missing(_i: u32) {}
    |    ^^^^^^^ -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |     missing( {u32},);
    |              ^^^^^^
@@ -58,7 +59,7 @@ note: function defined here
    |
 LL | fn swapped(_i: u32, _s: &str) {}
    |    ^^^^^^^ -------  --------
-help: swapping these two arguments might help
+help: swap these two arguments
    |
 LL |     swapped(1, "");
    |             ^  ^^
@@ -77,7 +78,7 @@ note: function defined here
    |
 LL | fn permuted(_x: X, _y: Y, _z: Z) {}
    |    ^^^^^^^^ -----  -----  -----
-help: reordering these parameters might help
+help: reorder these parameters
    |
 LL |     permuted(X {}, Y {}, Z {});
    |              ^^^^  ^^^^  ^^^^

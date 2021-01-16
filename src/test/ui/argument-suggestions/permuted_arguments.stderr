@@ -12,7 +12,7 @@ note: function defined here
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: reordering these parameters might help
+help: reorder these parameters
    |
 LL |   three_args(1, 1.0, "");
    |              ^  ^^^  ^^
@@ -33,7 +33,7 @@ note: function defined here
    |
 LL | fn many_args(_a: i32, _b: f32, _c: &str, _d: X, _e: Y) {}
    |    ^^^^^^^^^ -------  -------  --------  -----  -----
-help: reordering these parameters might help
+help: reorder these parameters
    |
 LL |   many_args(1, 1.0, "", X {}, Y {});
    |             ^  ^^^  ^^  ^^^^  ^^^^

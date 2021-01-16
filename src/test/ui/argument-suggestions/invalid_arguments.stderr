@@ -9,7 +9,7 @@ note: function defined here
    |
 LL | fn one_arg(_a: i32) {}
    |    ^^^^^^^ -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   one_arg({i32});
    |           ^^^^^
@@ -25,7 +25,7 @@ note: function defined here
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   two_arg_same(1, {i32});
    |                   ^^^^^
@@ -41,7 +41,7 @@ note: function defined here
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   two_arg_same({i32}, 1);
    |                ^^^^^
@@ -59,7 +59,7 @@ note: function defined here
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   two_arg_same({i32}, {i32});
    |                ^^^^^  ^^^^^
@@ -75,7 +75,7 @@ note: function defined here
    |
 LL | fn two_arg_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   two_arg_diff(1, {f32});
    |                   ^^^^^
@@ -91,7 +91,7 @@ note: function defined here
    |
 LL | fn two_arg_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   two_arg_diff({i32}, 1.0);
    |                ^^^^^
@@ -109,7 +109,7 @@ note: function defined here
    |
 LL | fn two_arg_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   two_arg_diff({i32}, {f32});
    |                ^^^^^  ^^^^^
@@ -125,7 +125,7 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   three_arg_diff({i32}, 1.0, "");
    |                  ^^^^^
@@ -141,7 +141,7 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   three_arg_diff(1, {f32}, "");
    |                     ^^^^^
@@ -157,7 +157,7 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   three_arg_diff(1, 1.0, {&str});
    |                          ^^^^^^
@@ -175,7 +175,7 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_arg_diff({i32}, {f32}, "");
    |                  ^^^^^  ^^^^^
@@ -193,7 +193,7 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_arg_diff({i32}, 1.0, {&str});
    |                  ^^^^^       ^^^^^^
@@ -211,7 +211,7 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_arg_diff(1, {f32}, {&str});
    |                     ^^^^^  ^^^^^^
@@ -230,7 +230,7 @@ note: function defined here
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_arg_diff({i32}, {f32}, {&str});
    |                  ^^^^^  ^^^^^  ^^^^^^
@@ -246,7 +246,7 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   three_arg_repeat({i32}, 1, "");
    |                    ^^^^^
@@ -262,7 +262,7 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   three_arg_repeat(1, {i32}, "");
    |                       ^^^^^
@@ -278,7 +278,7 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   three_arg_repeat(1, 1, {&str});
    |                          ^^^^^^
@@ -296,7 +296,7 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_arg_repeat({i32}, {i32}, "");
    |                    ^^^^^  ^^^^^
@@ -314,7 +314,7 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_arg_repeat({i32}, 1, {&str});
    |                    ^^^^^     ^^^^^^
@@ -332,7 +332,7 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_arg_repeat(1, {i32}, {&str});
    |                       ^^^^^  ^^^^^^
@@ -351,7 +351,7 @@ note: function defined here
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
    |    ^^^^^^^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_arg_repeat({i32}, {i32}, {&str});
    |                    ^^^^^  ^^^^^  ^^^^^^

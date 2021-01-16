@@ -874,21 +874,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // And add a series of suggestions
                 // FIXME: for simpler cases, this might be overkill
                 if suggestions.len() > 0 {
-                    let suggestion_text = match (suggestion_type, issue_count) {
-                        (Remove, 1) => Some("removing this argument may help"),
-                        (Remove, _) => Some("removing these arguments may help"),
-                        (Provide, 1) => Some("provideing a parameter of the correct type here may help"),
-                        (Provide, _) => Some("providing parameters of these types may help"),
-                        (Swap, 1) => Some("swapping these two arguments might help"),
-                        (Swap, _) => Some("swapping these sets of arguments might help"),
-                        (Reorder, _) => Some("reordering these parameters might help"),
-                        _ => Some("the following changes might help"),
+                    let suggestion_text = match (&suggestion_type, issue_count) {
+                        (Remove, 1) => Some("remove this argument"),
+                        (Remove, _) => Some("remove these arguments"),
+                        (Provide, 1) => Some("provide a parameter of the correct type here"),
+                        (Provide, _) => Some("provide parameters of the correct types"),
+                        (Swap, 1) => Some("swap these two arguments"),
+                        (Swap, _) => Some("swap these arguments"),
+                        (Reorder, _) => Some("reorder these parameters"),
+                        _ => Some("make these changes"),
                     };
                     if let Some(suggestion_text) = suggestion_text {
-                        err.multipart_suggestion(
+                        err.multipart_suggestion_verbose(
                             suggestion_text,
                             suggestions,
-                            Applicability::MaybeIncorrect,
+                            if matches!(suggestion_type, Provide) { Applicability::HasPlaceholders } else { Applicability::MaybeIncorrect },
                         );
                     }
                 }

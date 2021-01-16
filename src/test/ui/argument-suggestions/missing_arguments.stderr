@@ -9,7 +9,7 @@ note: function defined here
    |
 LL | fn one_arg(_a: i32) {}
    |    ^^^^^^^ -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   one_arg( {i32},);
    |            ^^^^^^
@@ -28,7 +28,7 @@ note: function defined here
    |
 LL | fn two_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^ -------  -------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   two_same(                {i32}, {i32},);
    |                            ^^^^^^
@@ -44,7 +44,7 @@ note: function defined here
    |
 LL | fn two_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^ -------  -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   two_same(   1            {i32},);
    |                            ^^^^^^
@@ -63,7 +63,7 @@ note: function defined here
    |
 LL | fn two_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   two_diff(                {i32}, {f32},);
    |                            ^^^^^^
@@ -79,7 +79,7 @@ note: function defined here
    |
 LL | fn two_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   two_diff(   1            {f32},);
    |                            ^^^^^^
@@ -95,7 +95,7 @@ note: function defined here
    |
 LL | fn two_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   two_diff(          1.0  {i32}, );
    |                           ^^^^^^
@@ -115,7 +115,7 @@ note: function defined here
    |
 LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
    |    ^^^^^^^^^^ -------  -------  -------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_same(                        {i32}, {i32}, {i32},);
    |                                      ^^^^^^
@@ -134,7 +134,7 @@ note: function defined here
    |
 LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
    |    ^^^^^^^^^^ -------  -------  -------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_same(   1                    {i32}, {i32},);
    |                                      ^^^^^^
@@ -150,7 +150,7 @@ note: function defined here
    |
 LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
    |    ^^^^^^^^^^ -------  -------  -------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   three_same(   1,      1            {i32},);
    |                                      ^^^^^^
@@ -166,7 +166,7 @@ note: function defined here
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   three_diff(          1.0, {i32},     ""  );
    |                             ^^^^^^
@@ -182,7 +182,7 @@ note: function defined here
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   three_diff(   1,              ""  {f32}, );
    |                                     ^^^^^^
@@ -198,7 +198,7 @@ note: function defined here
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: provideing a parameter of the correct type here may help
+help: provide a parameter of the correct type here
    |
 LL |   three_diff(   1,     1.0,          {&str},);
    |                                      ^^^^^^^
@@ -216,7 +216,7 @@ note: function defined here
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_diff(                   ""  {i32},  {f32},);
    |                                     ^^^^^^  ^^^^^^
@@ -234,7 +234,7 @@ note: function defined here
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_diff(          1.0  {i32},          {&str},);
    |                             ^^^^^^          ^^^^^^^
@@ -253,7 +253,7 @@ note: function defined here
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   three_diff(   1,                   {f32}, {&str},);
    |                                      ^^^^^^^
@@ -274,7 +274,7 @@ note: function defined here
    |
 LL | fn four_repeated(_a: i32, _b: f32, _c: f32, _d: &str) {}
    |    ^^^^^^^^^^^^^ -------  -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   four_repeated(                                {i32}, {f32}, {f32}, {&str},);
    |                                                 ^^^^^^^
@@ -292,7 +292,7 @@ note: function defined here
    |
 LL | fn four_repeated(_a: i32, _b: f32, _c: f32, _d: &str) {}
    |    ^^^^^^^^^^^^^ -------  -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   four_repeated(   1,                     ""  {f32},   {f32},);
    |                                               ^^^^^^   ^^^^^^
@@ -314,7 +314,7 @@ note: function defined here
    |
 LL | fn complex(_a: i32, _b: f32, _c: i32, _d: f32, _e: &str) {}
    |    ^^^^^^^ -------  -------  -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   complex(                                        {i32}, {f32}, {i32}, {f32}, {&str},);
    |                                                   ^^^^^^^
@@ -334,7 +334,7 @@ note: function defined here
    |
 LL | fn complex(_a: i32, _b: f32, _c: i32, _d: f32, _e: &str) {}
    |    ^^^^^^^ -------  -------  -------  -------  --------
-help: providing parameters of these types may help
+help: provide parameters of the correct types
    |
 LL |   complex(   1,                             ""  {f32},   {i32}, {f32},);
    |                                                 ^^^^^^   ^^^^^^
