@@ -87,4 +87,33 @@ fn complexer_example() {
     }
 }
 
+/// This should add a note to the lint msg since the moved expression is not `()`
+fn added_note_for_expression_use() -> u32 {
+    let x = 9;
+
+    let _ = if x == 7 {
+        let _ = 19;
+
+        let _splitter = 6;
+
+        x << 2
+    } else {
+        let _ = 19;
+
+        x << 2
+    };
+
+    if x == 9 {
+        let _ = 17;
+
+        let _splitter = 6;
+
+        x * 4
+    } else {
+        let _ = 17;
+
+        x * 4
+    }
+}
+
 fn main() {}

@@ -1366,7 +1366,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&casts::PTR_AS_PTR),
         LintId::of(&checked_conversions::CHECKED_CONVERSIONS),
         LintId::of(&copies::SAME_FUNCTIONS_IN_IF_CONDITION),
-        LintId::of(&copies::SHARED_CODE_IN_IF_BLOCKS),
         LintId::of(&copy_iterator::COPY_ITERATOR),
         LintId::of(&default::DEFAULT_TRAIT_ACCESS),
         LintId::of(&dereference::EXPLICIT_DEREF_METHODS),
@@ -2064,6 +2063,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
         LintId::of(&attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(&cognitive_complexity::COGNITIVE_COMPLEXITY),
+        LintId::of(&copies::SHARED_CODE_IN_IF_BLOCKS),
         LintId::of(&disallowed_method::DISALLOWED_METHOD),
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
         LintId::of(&floating_point_arithmetic::IMPRECISE_FLOPS),

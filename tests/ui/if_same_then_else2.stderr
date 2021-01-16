@@ -27,7 +27,7 @@ LL | |     } else {
    |
    = note: `-D clippy::if-same-then-else` implied by `-D warnings`
 note: same as this
-  --> $DIR/if_same_then_else2.rs:21:12
+  --> $DIR/if_same_then_else2.rs:22:12
    |
 LL |       } else {
    |  ____________^
@@ -40,7 +40,7 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:33:13
+  --> $DIR/if_same_then_else2.rs:34:13
    |
 LL |       if true {
    |  _____________^
@@ -49,7 +49,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:35:12
+  --> $DIR/if_same_then_else2.rs:36:12
    |
 LL |       } else {
    |  ____________^
@@ -59,7 +59,7 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:40:13
+  --> $DIR/if_same_then_else2.rs:41:13
    |
 LL |       if true {
    |  _____________^
@@ -68,7 +68,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:42:12
+  --> $DIR/if_same_then_else2.rs:43:12
    |
 LL |       } else {
    |  ____________^
@@ -78,7 +78,7 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:90:21
+  --> $DIR/if_same_then_else2.rs:91:21
    |
 LL |       let _ = if true {
    |  _____________________^
@@ -87,7 +87,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:92:12
+  --> $DIR/if_same_then_else2.rs:93:12
    |
 LL |       } else {
    |  ____________^
@@ -97,7 +97,7 @@ LL | |     };
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:97:13
+  --> $DIR/if_same_then_else2.rs:98:13
    |
 LL |       if true {
    |  _____________^
@@ -106,7 +106,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:99:12
+  --> $DIR/if_same_then_else2.rs:100:12
    |
 LL |       } else {
    |  ____________^
@@ -116,7 +116,7 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:121:20
+  --> $DIR/if_same_then_else2.rs:122:20
    |
 LL |       } else if true {
    |  ____________________^
@@ -126,7 +126,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:124:12
+  --> $DIR/if_same_then_else2.rs:125:12
    |
 LL |       } else {
    |  ____________^

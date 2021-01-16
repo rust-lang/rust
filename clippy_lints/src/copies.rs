@@ -1,16 +1,16 @@
 use crate::utils::{both, count_eq, eq_expr_value, in_macro, search_same, SpanlessEq, SpanlessHash};
 use crate::utils::{
-    first_line_of_span, get_parent_expr, if_sequence, indent_of, parent_node_is_if_expr, reindent_multiline, snippet,
-    snippet_opt, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
+    first_line_of_span, get_enclosing_block, get_parent_expr, if_sequence, indent_of, parent_node_is_if_expr,
+    reindent_multiline, snippet, snippet_opt, span_lint_and_note, span_lint_and_then, ContainsName,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{source_map::Span, BytePos};
+use rustc_span::{source_map::Span, symbol::Symbol, BytePos};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -184,7 +184,6 @@ fn lint_same_then_else<'tcx>(
     expr: &'tcx Expr<'_>,
 ) {
     // We only lint ifs with multiple blocks
-    // TODO xFrednet 2021-01-01: Check if it's an else if block
     if blocks.len() < 2 || parent_node_is_if_expr(expr, cx) {
         return;
     }
@@ -242,36 +241,61 @@ fn lint_same_then_else<'tcx>(
 
     // Only the start is the same
     if start_eq != 0 && end_eq == 0 && (!has_expr || !expr_eq) {
-        emit_shared_code_in_if_blocks_lint(cx, start_eq, 0, false, blocks, expr);
-    } else if end_eq != 0 && (!has_expr || !expr_eq) {
+        let block = blocks[0];
+        let start_stmts = block.stmts.split_at(start_eq).0;
+
+        let mut start_walker = UsedValueFinderVisitor::new(cx);
+        for stmt in start_stmts {
+            intravisit::walk_stmt(&mut start_walker, stmt);
+        }
+
+        emit_shared_code_in_if_blocks_lint(
+            cx,
+            start_eq,
+            0,
+            false,
+            check_for_warn_of_moved_symbol(cx, &start_walker.def_symbols, expr),
+            blocks,
+            expr,
+        );
+    } else if end_eq != 0 || (has_expr && expr_eq) {
         let block = blocks[blocks.len() - 1];
-        let stmts = block.stmts.split_at(start_eq).1;
-        let (block_stmts, moved_stmts) = stmts.split_at(stmts.len() - end_eq);
+        let (start_stmts, block_stmts) = block.stmts.split_at(start_eq);
+        let (block_stmts, end_stmts) = block_stmts.split_at(block_stmts.len() - end_eq);
+
+        // Scan start
+        let mut start_walker = UsedValueFinderVisitor::new(cx);
+        for stmt in start_stmts {
+            intravisit::walk_stmt(&mut start_walker, stmt);
+        }
+        let mut moved_syms = start_walker.def_symbols;
 
         // Scan block
-        let mut walker = SymbolFinderVisitor::new(cx);
+        let mut block_walker = UsedValueFinderVisitor::new(cx);
         for stmt in block_stmts {
-            intravisit::walk_stmt(&mut walker, stmt);
+            intravisit::walk_stmt(&mut block_walker, stmt);
         }
-        let mut block_defs = walker.defs;
+        let mut block_defs = block_walker.defs;
 
         // Scan moved stmts
         let mut moved_start: Option<usize> = None;
-        let mut walker = SymbolFinderVisitor::new(cx);
-        for (index, stmt) in moved_stmts.iter().enumerate() {
-            intravisit::walk_stmt(&mut walker, stmt);
+        let mut end_walker = UsedValueFinderVisitor::new(cx);
+        for (index, stmt) in end_stmts.iter().enumerate() {
+            intravisit::walk_stmt(&mut end_walker, stmt);
 
-            for value in &walker.uses {
+            for value in &end_walker.uses {
                 // Well we can't move this and all prev statements. So reset
                 if block_defs.contains(&value) {
                     moved_start = Some(index + 1);
-                    walker.defs.drain().for_each(|x| {
+                    end_walker.defs.drain().for_each(|x| {
                         block_defs.insert(x);
                     });
+
+                    end_walker.def_symbols.clear();
                 }
             }
 
-            walker.uses.clear();
+            end_walker.uses.clear();
         }
 
         if let Some(moved_start) = moved_start {
@@ -279,15 +303,65 @@ fn lint_same_then_else<'tcx>(
         }
 
         let end_linable = if let Some(expr) = block.expr {
-            intravisit::walk_expr(&mut walker, expr);
-            walker.uses.iter().any(|x| !block_defs.contains(x))
+            intravisit::walk_expr(&mut end_walker, expr);
+            end_walker.uses.iter().any(|x| !block_defs.contains(x))
         } else if end_eq == 0 {
             false
         } else {
             true
         };
 
-        emit_shared_code_in_if_blocks_lint(cx, start_eq, end_eq, end_linable, blocks, expr);
+        if end_linable {
+            end_walker.def_symbols.drain().for_each(|x| {
+                moved_syms.insert(x);
+            });
+        }
+
+        emit_shared_code_in_if_blocks_lint(
+            cx,
+            start_eq,
+            end_eq,
+            end_linable,
+            check_for_warn_of_moved_symbol(cx, &moved_syms, expr),
+            blocks,
+            expr,
+        );
+    }
+}
+
+fn check_for_warn_of_moved_symbol(
+    cx: &LateContext<'tcx>,
+    symbols: &FxHashSet<Symbol>,
+    if_expr: &'tcx Expr<'_>,
+) -> bool {
+    // Obs true as we include the current if block
+    if let Some(block) = get_enclosing_block(cx, if_expr.hir_id) {
+        let ignore_span = block.span.shrink_to_lo().to(if_expr.span);
+
+        symbols
+            .iter()
+            .filter(|sym| !sym.as_str().starts_with('_'))
+            .any(move |sym| {
+                let mut walker = ContainsName {
+                    name: *sym,
+                    result: false,
+                };
+
+                // Scan block
+                block
+                    .stmts
+                    .iter()
+                    .filter(|stmt| !ignore_span.overlaps(stmt.span))
+                    .for_each(|stmt| intravisit::walk_stmt(&mut walker, stmt));
+
+                if let Some(expr) = block.expr {
+                    intravisit::walk_expr(&mut walker, expr);
+                }
+
+                walker.result
+            })
+    } else {
+        false
     }
 }
 
@@ -296,6 +370,7 @@ fn emit_shared_code_in_if_blocks_lint(
     start_stmts: usize,
     end_stmts: usize,
     lint_end: bool,
+    warn_about_moved_symbol: bool,
     blocks: &[&Block<'tcx>],
     if_expr: &'tcx Expr<'_>,
 ) {
@@ -305,7 +380,9 @@ fn emit_shared_code_in_if_blocks_lint(
 
     // (help, span, suggestion)
     let mut suggestions: Vec<(&str, Span, String)> = vec![];
+    let mut add_expr_note = false;
 
+    // Construct suggestions
     if start_stmts > 0 {
         let block = blocks[0];
         let span_start = first_line_of_span(cx, if_expr.span).shrink_to_lo();
@@ -357,21 +434,29 @@ fn emit_shared_code_in_if_blocks_lint(
         }
 
         suggestions.push(("end", span, suggestion.to_string()));
+        add_expr_note = !cx.typeck_results().expr_ty(if_expr).is_unit()
     }
 
+    let add_optional_msgs = |diag: &mut DiagnosticBuilder<'_>| {
+        if add_expr_note {
+            diag.note("The end suggestion probably needs some adjustments to use the expression result correctly.");
+        }
+
+        if warn_about_moved_symbol {
+            diag.warn("Some moved values might need to be renamed to avoid wrong references.");
+        }
+    };
+
+    // Emit lint
     if suggestions.len() == 1 {
         let (place_str, span, sugg) = suggestions.pop().unwrap();
         let msg = format!("All if blocks contain the same code at the {}", place_str);
         let help = format!("Consider moving the {} statements out like this", place_str);
-        span_lint_and_sugg(
-            cx,
-            SHARED_CODE_IN_IF_BLOCKS,
-            span,
-            msg.as_str(),
-            help.as_str(),
-            sugg,
-            Applicability::Unspecified,
-        );
+        span_lint_and_then(cx, SHARED_CODE_IN_IF_BLOCKS, span, msg.as_str(), |diag| {
+            diag.span_suggestion(span, help.as_str(), sugg, Applicability::Unspecified);
+
+            add_optional_msgs(diag);
+        });
     } else if suggestions.len() == 2 {
         let (_, end_span, end_sugg) = suggestions.pop().unwrap();
         let (_, start_span, start_sugg) = suggestions.pop().unwrap();
@@ -396,28 +481,39 @@ fn emit_shared_code_in_if_blocks_lint(
                     end_sugg,
                     Applicability::Unspecified,
                 );
+
+                add_optional_msgs(diag);
             },
         );
     }
 }
 
-pub struct SymbolFinderVisitor<'a, 'tcx> {
+/// This visitor collects HirIds and Symbols of defined symbols and HirIds of used values.
+struct UsedValueFinderVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
+
+    /// The `HirId`s of defined values in the scanned statements
     defs: FxHashSet<HirId>,
+
+    /// The Symbols of the defined symbols in the scanned statements
+    def_symbols: FxHashSet<Symbol>,
+
+    /// The `HirId`s of the used values
     uses: FxHashSet<HirId>,
 }
 
-impl<'a, 'tcx> SymbolFinderVisitor<'a, 'tcx> {
+impl<'a, 'tcx> UsedValueFinderVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> Self {
-        SymbolFinderVisitor {
+        UsedValueFinderVisitor {
             cx,
             defs: FxHashSet::default(),
+            def_symbols: FxHashSet::default(),
             uses: FxHashSet::default(),
         }
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SymbolFinderVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for UsedValueFinderVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -427,6 +523,11 @@ impl<'a, 'tcx> Visitor<'tcx> for SymbolFinderVisitor<'a, 'tcx> {
     fn visit_local(&mut self, l: &'tcx rustc_hir::Local<'tcx>) {
         let local_id = l.pat.hir_id;
         self.defs.insert(local_id);
+
+        if let Some(sym) = l.pat.simple_ident() {
+            self.def_symbols.insert(sym.name);
+        }
+
         if let Some(expr) = l.init {
             intravisit::walk_expr(self, expr);
         }

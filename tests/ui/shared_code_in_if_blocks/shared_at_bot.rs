@@ -171,6 +171,25 @@ fn not_moveable_due_to_value_scope() {
     };
 }
 
+/// This should add a note to the lint msg since the moved expression is not `()`
+fn added_note_for_expression_use() -> u32 {
+    let x = 9;
+
+    let _ = if x == 7 {
+        x << 2
+    } else {
+        let _ = 6;
+        x << 2
+    };
+
+    if x == 9 {
+        x * 4
+    } else {
+        let _ = 17;
+        x * 4
+    }
+}
+
 #[rustfmt::skip]
 fn test_suggestion_with_weird_formatting() {
     let x = 9;

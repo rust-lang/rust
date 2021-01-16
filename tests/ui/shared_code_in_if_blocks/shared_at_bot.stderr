@@ -1,0 +1,131 @@
+error: All if blocks contain the same code at the end
+  --> $DIR/shared_at_bot.rs:31:5
+   |
+LL | /         let result = false;
+LL | |         println!("Block end!");
+LL | |         result
+LL | |     };
+   | |_____^
+   |
+note: the lint level is defined here
+  --> $DIR/shared_at_bot.rs:2:36
+   |
+LL | #![deny(clippy::if_same_then_else, clippy::shared_code_in_if_blocks)]
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly.
+help: Consider moving the end statements out like this
+   |
+LL |     }
+LL |     let result = false;
+LL |     println!("Block end!");
+LL |     result;
+   |
+
+error: All if blocks contain the same code at the end
+  --> $DIR/shared_at_bot.rs:66:5
+   |
+LL | /         println!(
+LL | |             "I'm moveable because I know: `outer_scope_value`: '{}'",
+LL | |             outer_scope_value
+LL | |         );
+LL | |     }
+   | |_____^
+   |
+help: Consider moving the end statements out like this
+   |
+LL |     }
+LL |     println!(
+LL |         "I'm moveable because I know: `outer_scope_value`: '{}'",
+LL |         outer_scope_value
+LL |     );
+   |
+
+error: All if blocks contain the same code at the start
+  --> $DIR/shared_at_bot.rs:83:9
+   |
+LL | /         if x == 8 {
+LL | |             // No parent!!
+LL | |             println!("Hello World");
+   | |____________________________________^
+   |
+help: Consider moving the start statements out like this
+   |
+LL |         println!("Hello World");
+LL |         if x == 8 {
+   |
+
+error: All if blocks contain the same code at the end
+  --> $DIR/shared_at_bot.rs:104:5
+   |
+LL | /         let later_used_value = "A string value";
+LL | |         println!("{}", later_used_value);
+LL | |         // I'm expecting a note about this
+LL | |     }
+   | |_____^
+   |
+   = warning: Some moved values might need to be renamed to avoid wrong references.
+help: Consider moving the end statements out like this
+   |
+LL |     }
+LL |     let later_used_value = "A string value";
+LL |     println!("{}", later_used_value);
+   |
+
+error: All if blocks contain the same code at the end
+  --> $DIR/shared_at_bot.rs:117:5
+   |
+LL | /         let simple_examples = "I now identify as a &str :)";
+LL | |         println!("This is the new simple_example: {}", simple_examples);
+LL | |     }
+   | |_____^
+   |
+   = warning: Some moved values might need to be renamed to avoid wrong references.
+help: Consider moving the end statements out like this
+   |
+LL |     }
+LL |     let simple_examples = "I now identify as a &str :)";
+LL |     println!("This is the new simple_example: {}", simple_examples);
+   |
+
+error: All if blocks contain the same code at the end
+  --> $DIR/shared_at_bot.rs:182:5
+   |
+LL | /         x << 2
+LL | |     };
+   | |_____^
+   |
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly.
+help: Consider moving the end statements out like this
+   |
+LL |     }
+LL |     x << 2;
+   |
+
+error: All if blocks contain the same code at the end
+  --> $DIR/shared_at_bot.rs:189:5
+   |
+LL | /         x * 4
+LL | |     }
+   | |_____^
+   |
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly.
+help: Consider moving the end statements out like this
+   |
+LL |     }
+LL |     x * 4
+   |
+
+error: All if blocks contain the same code at the end
+  --> $DIR/shared_at_bot.rs:201:44
+   |
+LL |     if x == 17 { b = 1; a = 0x99; } else { a = 0x99; }
+   |                                            ^^^^^^^^^^^
+   |
+help: Consider moving the end statements out like this
+   |
+LL |     if x == 17 { b = 1; a = 0x99; } else { }
+LL |     a = 0x99;
+   |
+
+error: aborting due to 8 previous errors
+
