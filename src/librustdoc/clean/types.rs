@@ -237,9 +237,7 @@ impl Item {
         match *self.kind {
             StructItem(ref _struct) => Some(_struct.fields_stripped),
             UnionItem(ref union) => Some(union.fields_stripped),
-            VariantItem(Variant { kind: VariantKind::Struct(ref vstruct) }) => {
-                Some(vstruct.fields_stripped)
-            }
+            VariantItem(Variant::Struct(ref vstruct)) => Some(vstruct.fields_stripped),
             _ => None,
         }
     }
@@ -353,7 +351,7 @@ impl ItemKind {
         match self {
             StructItem(s) => s.fields.iter(),
             UnionItem(u) => u.fields.iter(),
-            VariantItem(Variant { kind: VariantKind::Struct(v) }) => v.fields.iter(),
+            VariantItem(Variant::Struct(v)) => v.fields.iter(),
             EnumItem(e) => e.variants.iter(),
             TraitItem(t) => t.items.iter(),
             ImplItem(i) => i.items.iter(),
@@ -1719,12 +1717,7 @@ crate struct Enum {
 }
 
 #[derive(Clone, Debug)]
-crate struct Variant {
-    crate kind: VariantKind,
-}
-
-#[derive(Clone, Debug)]
-crate enum VariantKind {
+crate enum Variant {
     CLike,
     Tuple(Vec<Type>),
     Struct(VariantStruct),

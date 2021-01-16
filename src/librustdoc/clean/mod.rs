@@ -1840,11 +1840,11 @@ impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
 impl Clean<Item> for ty::VariantDef {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let kind = match self.ctor_kind {
-            CtorKind::Const => VariantKind::CLike,
-            CtorKind::Fn => VariantKind::Tuple(
+            CtorKind::Const => Variant::CLike,
+            CtorKind::Fn => Variant::Tuple(
                 self.fields.iter().map(|f| cx.tcx.type_of(f.did).clean(cx)).collect(),
             ),
-            CtorKind::Fictive => VariantKind::Struct(VariantStruct {
+            CtorKind::Fictive => Variant::Struct(VariantStruct {
                 struct_type: doctree::Plain,
                 fields_stripped: false,
                 fields: self
@@ -1861,25 +1861,21 @@ impl Clean<Item> for ty::VariantDef {
                     .collect(),
             }),
         };
-        let what_rustc_thinks = Item::from_def_id_and_parts(
-            self.def_id,
-            Some(self.ident.name),
-            VariantItem(Variant { kind }),
-            cx,
-        );
+        let what_rustc_thinks =
+            Item::from_def_id_and_parts(self.def_id, Some(self.ident.name), VariantItem(kind), cx);
         // don't show `pub` for fields, which are always public
         Item { visibility: Inherited, ..what_rustc_thinks }
     }
 }
 
-impl Clean<VariantKind> for hir::VariantData<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> VariantKind {
+impl Clean<Variant> for hir::VariantData<'_> {
+    fn clean(&self, cx: &DocContext<'_>) -> Variant {
         match self {
-            hir::VariantData::Struct(..) => VariantKind::Struct(self.clean(cx)),
+            hir::VariantData::Struct(..) => Variant::Struct(self.clean(cx)),
             hir::VariantData::Tuple(..) => {
-                VariantKind::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
+                Variant::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
             }
-            hir::VariantData::Unit(..) => VariantKind::CLike,
+            hir::VariantData::Unit(..) => Variant::CLike,
         }
     }
 }
@@ -2048,7 +2044,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
 
 impl Clean<Item> for hir::Variant<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let kind = VariantItem(Variant { kind: self.data.clean(cx) });
+        let kind = VariantItem(self.data.clean(cx));
         let what_rustc_thinks =
             Item::from_hir_id_and_parts(self.id, Some(self.ident.name), kind, cx);
         // don't show `pub` for variants, which are always public
