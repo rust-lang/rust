@@ -361,10 +361,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
-                    _ => self.fail(
-                        location,
-                        format!("encountered non-callable type {} in `Call` terminator", func_ty),
-                    ),
+                    _ => {
+                        // FIXME: Requires normalization before validation.
+                        // self.fail(
+                        //     location,
+                        //     format!("encountered non-callable type {} in `Call` terminator", func_ty),
+                        // ),
+                    }
                 }
                 if let Some((_, target)) = destination {
                     self.check_edge(location, *target, EdgeKind::Normal);
