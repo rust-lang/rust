@@ -18,7 +18,7 @@ use DefIdForest::*;
 /// We store the minimal set of `DefId`s required to represent the whole set. If A and B are
 /// `DefId`s in the `DefIdForest`, and A is a parent of B, then only A will be stored. When this is
 /// used with `type_uninhabited_from`, there will very rarely be more than one `DefId` stored.
-#[derive(Clone, HashStable)]
+#[derive(Clone, HashStable, Debug)]
 pub enum DefIdForest {
     Empty,
     Single(DefId),
