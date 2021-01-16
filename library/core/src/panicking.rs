@@ -93,6 +93,7 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 }
 
 #[derive(Debug)]
+#[doc(hidden)]
 pub enum AssertKind {
     Eq,
     Ne,
@@ -101,6 +102,7 @@ pub enum AssertKind {
 /// Internal function for `assert_eq!` and `assert_ne!` macros
 #[cold]
 #[track_caller]
+#[doc(hidden)]
 pub fn assert_failed<T, U>(
     kind: AssertKind,
     left: &T,
