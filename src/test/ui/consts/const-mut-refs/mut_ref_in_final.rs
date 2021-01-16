@@ -9,9 +9,8 @@ const A: *const i32 = &4;
 // as that would be an enormous footgun in oli-obk's opinion.
 const B: *mut i32 = &mut 4; //~ ERROR mutable references are not allowed
 
-// Could be ok, but the same analysis that prevents the mutable one above will also bail out here
-// Using a block with some complex content, because just `&45` would get promoted,
-// which is not what we want to test here.
+// Ok, because no references to mutable data exist here, since the `{}` moves
+// its value and then takes a reference to that.
 const C: *const i32 = &{
     let mut x = 42;
     x += 3;
