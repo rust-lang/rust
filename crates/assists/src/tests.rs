@@ -3,16 +3,17 @@ mod generated;
 use hir::Semantics;
 use ide_db::{
     base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
-    helpers::{insert_use::MergeBehavior, SnippetCap},
+    helpers::{
+        insert_use::{InsertUseConfig, MergeBehavior},
+        SnippetCap,
+    },
     source_change::FileSystemEdit,
     RootDatabase,
 };
 use syntax::TextRange;
 use test_utils::{assert_eq_text, extract_offset, extract_range};
 
-use crate::{
-    handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind, Assists, InsertUseConfig,
-};
+use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind, Assists};
 use stdx::{format_to, trim_indent};
 
 pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {

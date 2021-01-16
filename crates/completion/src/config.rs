@@ -4,7 +4,7 @@
 //! module, and we use to statically check that we only produce snippet
 //! completions if we are allowed to.
 
-use ide_db::helpers::{insert_use::MergeBehavior, SnippetCap};
+use ide_db::helpers::{insert_use::InsertUseConfig, SnippetCap};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig {
@@ -13,5 +13,5 @@ pub struct CompletionConfig {
     pub add_call_parenthesis: bool,
     pub add_call_argument_snippets: bool,
     pub snippet_cap: Option<SnippetCap>,
-    pub merge: Option<MergeBehavior>,
+    pub insert_use: InsertUseConfig,
 }

@@ -15,6 +15,12 @@ use syntax::{
 };
 use test_utils::mark;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InsertUseConfig {
+    pub merge: Option<MergeBehavior>,
+    pub prefix_kind: hir::PrefixKind,
+}
+
 #[derive(Debug, Clone)]
 pub enum ImportScope {
     File(ast::SourceFile),

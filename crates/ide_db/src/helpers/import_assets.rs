@@ -1,19 +1,17 @@
 //! Look up accessible paths for items.
 use either::Either;
 use hir::{AsAssocItem, AssocItemContainer, ModuleDef, Semantics};
-use ide_db::{imports_locator, RootDatabase};
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode, SyntaxNode};
 
-use crate::assist_config::InsertUseConfig;
+use crate::{imports_locator, RootDatabase};
+
+use super::insert_use::InsertUseConfig;
 
 #[derive(Debug)]
-pub(crate) enum ImportCandidate {
-    /// Simple name like 'HashMap'
-    UnqualifiedName(PathImportCandidate),
-    /// First part of the qualified name.
-    /// For 'std::collections::HashMap', that will be 'std'.
-    QualifierStart(PathImportCandidate),
+pub enum ImportCandidate {
+    // A path, qualified (`std::collections::HashMap`) or not (`HashMap`).
+    Path(PathImportCandidate),
     /// A trait associated function (with no self parameter) or associated constant.
     /// For 'test_mod::TestEnum::test_function', `ty` is the `test_mod::TestEnum` expression type
     /// and `name` is the `test_function`
@@ -25,25 +23,26 @@ pub(crate) enum ImportCandidate {
 }
 
 #[derive(Debug)]
-pub(crate) struct TraitImportCandidate {
-    pub(crate) ty: hir::Type,
-    pub(crate) name: ast::NameRef,
+pub struct TraitImportCandidate {
+    pub ty: hir::Type,
+    pub name: ast::NameRef,
 }
 
 #[derive(Debug)]
-pub(crate) struct PathImportCandidate {
-    pub(crate) name: ast::NameRef,
+pub struct PathImportCandidate {
+    pub qualifier: Option<ast::Path>,
+    pub name: ast::NameRef,
 }
 
 #[derive(Debug)]
-pub(crate) struct ImportAssets {
+pub struct ImportAssets {
     import_candidate: ImportCandidate,
     module_with_name_to_import: hir::Module,
     syntax_under_caret: SyntaxNode,
 }
 
 impl ImportAssets {
-    pub(crate) fn for_method_call(
+    pub fn for_method_call(
         method_call: ast::MethodCallExpr,
         sema: &Semantics<RootDatabase>,
     ) -> Option<Self> {
@@ -56,7 +55,7 @@ impl ImportAssets {
         })
     }
 
-    pub(crate) fn for_regular_path(
+    pub fn for_regular_path(
         path_under_caret: ast::Path,
         sema: &Semantics<RootDatabase>,
     ) -> Option<Self> {
@@ -73,24 +72,23 @@ impl ImportAssets {
         })
     }
 
-    pub(crate) fn syntax_under_caret(&self) -> &SyntaxNode {
+    pub fn syntax_under_caret(&self) -> &SyntaxNode {
         &self.syntax_under_caret
     }
 
-    pub(crate) fn import_candidate(&self) -> &ImportCandidate {
+    pub fn import_candidate(&self) -> &ImportCandidate {
         &self.import_candidate
     }
 
     fn get_search_query(&self) -> &str {
         match &self.import_candidate {
-            ImportCandidate::UnqualifiedName(candidate)
-            | ImportCandidate::QualifierStart(candidate) => candidate.name.text(),
+            ImportCandidate::Path(candidate) => candidate.name.text(),
             ImportCandidate::TraitAssocItem(candidate)
             | ImportCandidate::TraitMethod(candidate) => candidate.name.text(),
         }
     }
 
-    pub(crate) fn search_for_imports(
+    pub fn search_for_imports(
         &self,
         sema: &Semantics<RootDatabase>,
         config: &InsertUseConfig,
@@ -101,7 +99,7 @@ impl ImportAssets {
 
     /// This may return non-absolute paths if a part of the returned path is already imported into scope.
     #[allow(dead_code)]
-    pub(crate) fn search_for_relative_paths(
+    pub fn search_for_relative_paths(
         &self,
         sema: &Semantics<RootDatabase>,
     ) -> Vec<(hir::ModPath, hir::ItemInNs)> {
@@ -253,10 +251,14 @@ impl ImportCandidate {
                     _ => return None,
                 }
             } else {
-                ImportCandidate::QualifierStart(PathImportCandidate { name: qualifier_start })
+                ImportCandidate::Path(PathImportCandidate {
+                    qualifier: Some(qualifier),
+                    name: qualifier_start,
+                })
             }
         } else {
-            ImportCandidate::UnqualifiedName(PathImportCandidate {
+            ImportCandidate::Path(PathImportCandidate {
+                qualifier: None,
                 name: segment.syntax().descendants().find_map(ast::NameRef::cast)?,
             })
         };

@@ -1,7 +1,10 @@
 use std::iter;
 
 use hir::AsName;
-use ide_db::helpers::mod_path_to_ast;
+use ide_db::helpers::{
+    import_assets::{ImportAssets, ImportCandidate},
+    mod_path_to_ast,
+};
 use ide_db::RootDatabase;
 use syntax::{
     ast,
@@ -12,7 +15,6 @@ use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::import_assets::{ImportAssets, ImportCandidate},
     AssistId, AssistKind, GroupLabel,
 };
 
@@ -53,17 +55,18 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let range = ctx.sema.original_range(import_assets.syntax_under_caret()).range;
 
     let qualify_candidate = match candidate {
-        ImportCandidate::QualifierStart(_) => {
-            mark::hit!(qualify_path_qualifier_start);
-            let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
-            let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
-            QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
-        }
-        ImportCandidate::UnqualifiedName(_) => {
-            mark::hit!(qualify_path_unqualified_name);
-            let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
-            let generics = path.segment()?.generic_arg_list();
-            QualifyCandidate::UnqualifiedName(generics)
+        ImportCandidate::Path(candidate) => {
+            if candidate.qualifier.is_some() {
+                mark::hit!(qualify_path_qualifier_start);
+                let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
+                let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
+                QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
+            } else {
+                mark::hit!(qualify_path_unqualified_name);
+                let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
+                let generics = path.segment()?.generic_arg_list();
+                QualifyCandidate::UnqualifiedName(generics)
+            }
         }
         ImportCandidate::TraitAssocItem(_) => {
             mark::hit!(qualify_path_trait_assoc_item);
@@ -186,7 +189,7 @@ fn item_as_trait(item: hir::ItemInNs) -> Option<hir::Trait> {
 
 fn group_label(candidate: &ImportCandidate) -> GroupLabel {
     let name = match candidate {
-        ImportCandidate::UnqualifiedName(it) | ImportCandidate::QualifierStart(it) => &it.name,
+        ImportCandidate::Path(it) => &it.name,
         ImportCandidate::TraitAssocItem(it) | ImportCandidate::TraitMethod(it) => &it.name,
     };
     GroupLabel(format!("Qualify {}", name))
@@ -194,8 +197,13 @@ fn group_label(candidate: &ImportCandidate) -> GroupLabel {
 
 fn label(candidate: &ImportCandidate, import: &hir::ModPath) -> String {
     match candidate {
-        ImportCandidate::UnqualifiedName(_) => format!("Qualify as `{}`", &import),
-        ImportCandidate::QualifierStart(_) => format!("Qualify with `{}`", &import),
+        ImportCandidate::Path(candidate) => {
+            if candidate.qualifier.is_some() {
+                format!("Qualify with `{}`", &import)
+            } else {
+                format!("Qualify as `{}`", &import)
+            }
+        }
         ImportCandidate::TraitAssocItem(_) => format!("Qualify `{}`", &import),
         ImportCandidate::TraitMethod(_) => format!("Qualify with cast as `{}`", &import),
     }

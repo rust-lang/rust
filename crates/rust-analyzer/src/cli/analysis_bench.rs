@@ -3,6 +3,7 @@
 use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 
 use anyhow::{bail, format_err, Result};
+use hir::PrefixKind;
 use ide::{
     Analysis, AnalysisHost, Change, CompletionConfig, DiagnosticsConfig, FilePosition, LineCol,
 };
@@ -11,7 +12,7 @@ use ide_db::{
         salsa::{Database, Durability},
         FileId,
     },
-    helpers::SnippetCap,
+    helpers::{insert_use::InsertUseConfig, SnippetCap},
 };
 use vfs::AbsPathBuf;
 
@@ -96,7 +97,7 @@ impl BenchCmd {
                         add_call_parenthesis: true,
                         add_call_argument_snippets: true,
                         snippet_cap: SnippetCap::new(true),
-                        merge: None,
+                        insert_use: InsertUseConfig { merge: None, prefix_kind: PrefixKind::Plain },
                     };
                     let res = do_work(&mut host, file_id, |analysis| {
                         analysis.completions(&options, file_position)

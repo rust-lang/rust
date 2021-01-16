@@ -1,13 +1,11 @@
 use ide_db::helpers::{
+    import_assets::{ImportAssets, ImportCandidate},
     insert_use::{insert_use, ImportScope},
     mod_path_to_ast,
 };
 use syntax::ast;
 
-use crate::{
-    utils::import_assets::{ImportAssets, ImportCandidate},
-    AssistContext, AssistId, AssistKind, Assists, GroupLabel,
-};
+use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 
 // Feature: Auto Import
 //
@@ -121,8 +119,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
 fn import_group_message(import_candidate: &ImportCandidate) -> GroupLabel {
     let name = match import_candidate {
-        ImportCandidate::UnqualifiedName(candidate)
-        | ImportCandidate::QualifierStart(candidate) => format!("Import {}", &candidate.name),
+        ImportCandidate::Path(candidate) => format!("Import {}", &candidate.name),
         ImportCandidate::TraitAssocItem(candidate) => {
             format!("Import a trait for item {}", &candidate.name)
         }
