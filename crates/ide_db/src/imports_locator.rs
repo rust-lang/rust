@@ -15,7 +15,7 @@ use crate::{
 use either::Either;
 use rustc_hash::FxHashSet;
 
-const QUERY_SEARCH_LIMIT: usize = 40;
+pub(crate) const DEFAULT_QUERY_SEARCH_LIMIT: usize = 40;
 
 pub fn find_exact_imports<'a>(
     sema: &Semantics<'a, RootDatabase>,
@@ -29,11 +29,11 @@ pub fn find_exact_imports<'a>(
         {
             let mut local_query = symbol_index::Query::new(name_to_import.clone());
             local_query.exact();
-            local_query.limit(QUERY_SEARCH_LIMIT);
+            local_query.limit(DEFAULT_QUERY_SEARCH_LIMIT);
             local_query
         },
         import_map::Query::new(name_to_import)
-            .limit(QUERY_SEARCH_LIMIT)
+            .limit(DEFAULT_QUERY_SEARCH_LIMIT)
             .name_only()
             .search_mode(import_map::SearchMode::Equals)
             .case_sensitive(),
@@ -51,13 +51,13 @@ pub fn find_similar_imports<'a>(
     krate: Crate,
     fuzzy_search_string: String,
     assoc_item_search: AssocItemSearch,
+    limit: Option<usize>,
 ) -> Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>> + 'a> {
     let _p = profile::span("find_similar_imports");
 
     let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
         .search_mode(import_map::SearchMode::Fuzzy)
-        .name_only()
-        .limit(QUERY_SEARCH_LIMIT);
+        .name_only();
 
     match assoc_item_search {
         AssocItemSearch::Include => {}
@@ -70,7 +70,11 @@ pub fn find_similar_imports<'a>(
     }
 
     let mut local_query = symbol_index::Query::new(fuzzy_search_string);
-    local_query.limit(QUERY_SEARCH_LIMIT);
+
+    if let Some(limit) = limit {
+        external_query = external_query.limit(limit);
+        local_query.limit(limit);
+    }
 
     let db = sema.db;
     Box::new(find_imports(sema, krate, local_query, external_query).filter(

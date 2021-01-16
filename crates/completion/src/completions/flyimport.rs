@@ -20,11 +20,14 @@
 //! # pub mod std { pub mod marker { pub struct PhantomData { } } }
 //! ```
 //!
+//! Also completes associated items, that require trait imports.
+//!
 //! .Fuzzy search details
 //!
 //! To avoid an excessive amount of the results returned, completion input is checked for inclusion in the names only
 //! (i.e. in `HashMap` in the `std::collections::HashMap` path).
-//! For the same reasons, avoids searching for any imports for inputs with their length less that 2 symbols.
+//! For the same reasons, avoids searching for any path imports for inputs with their length less that 2 symbols
+//! (but shows all associated items for any input length).
 //!
 //! .Import configuration
 //!
@@ -46,8 +49,11 @@
 //! capability enabled.
 
 use hir::{ModPath, ScopeDef};
-use ide_db::helpers::{import_assets::ImportAssets, insert_use::ImportScope};
-use syntax::AstNode;
+use ide_db::helpers::{
+    import_assets::{ImportAssets, ImportCandidate},
+    insert_use::ImportScope,
+};
+use syntax::{AstNode, SyntaxNode, T};
 use test_utils::mark;
 
 use crate::{
@@ -65,16 +71,24 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     if ctx.attribute_under_caret.is_some() || ctx.mod_declaration_under_caret.is_some() {
         return None;
     }
-    let potential_import_name = ctx.token.to_string();
-    if potential_import_name.len() < 2 {
-        return None;
-    }
+    let potential_import_name = {
+        let token_kind = ctx.token.kind();
+        if token_kind == T![.] || token_kind == T![::] {
+            String::new()
+        } else {
+            ctx.token.to_string()
+        }
+    };
+
     let _p = profile::span("import_on_the_fly").detail(|| potential_import_name.to_string());
 
-    let import_scope =
-        ImportScope::find_insert_use_container(ctx.name_ref_syntax.as_ref()?.syntax(), &ctx.sema)?;
     let user_input_lowercased = potential_import_name.to_lowercase();
-    let mut all_mod_paths = import_assets(ctx, potential_import_name)?
+    let import_assets = import_assets(ctx, potential_import_name)?;
+    let import_scope = ImportScope::find_insert_use_container(
+        position_for_import(ctx, import_assets.import_candidate())?,
+        &ctx.sema,
+    )?;
+    let mut all_mod_paths = import_assets
         .search_for_relative_paths(&ctx.sema)
         .into_iter()
         .map(|(mod_path, item_in_ns)| {
@@ -108,6 +122,17 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     Some(())
 }
 
+fn position_for_import<'a>(
+    ctx: &'a CompletionContext,
+    import_candidate: &ImportCandidate,
+) -> Option<&'a SyntaxNode> {
+    Some(match import_candidate {
+        ImportCandidate::Path(_) => ctx.name_ref_syntax.as_ref()?.syntax(),
+        ImportCandidate::TraitAssocItem(_) => ctx.path_qual.as_ref()?.syntax(),
+        ImportCandidate::TraitMethod(_) => ctx.dot_receiver.as_ref()?.syntax(),
+    })
+}
+
 fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAssets> {
     let current_module = ctx.scope.module()?;
     if let Some(dot_receiver) = &ctx.dot_receiver {
@@ -117,7 +142,22 @@ fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAs
             fuzzy_name,
         )
     } else {
-        ImportAssets::for_fuzzy_path(current_module, ctx.path_qual.clone(), fuzzy_name, &ctx.sema)
+        let fuzzy_name_length = fuzzy_name.len();
+        let assets_for_path = ImportAssets::for_fuzzy_path(
+            current_module,
+            ctx.path_qual.clone(),
+            fuzzy_name,
+            &ctx.sema,
+        );
+
+        if matches!(assets_for_path.as_ref()?.import_candidate(), ImportCandidate::Path(_))
+            && fuzzy_name_length < 2
+        {
+            mark::hit!(ignore_short_input_for_path);
+            None
+        } else {
+            assets_for_path
+        }
     }
 }
 
@@ -229,6 +269,30 @@ fn main() {
     ThirdStruct
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn short_paths_are_ignored() {
+        mark::check!(ignore_short_input_for_path);
+
+        check(
+            r#"
+//- /lib.rs crate:dep
+pub struct FirstStruct;
+pub mod some_module {
+    pub struct SecondStruct;
+    pub struct ThirdStruct;
+}
+
+//- /main.rs crate:main deps:dep
+use dep::{FirstStruct, some_module::SecondStruct};
+
+fn main() {
+    t$0
+}
+"#,
+            expect![[r#""#]],
         );
     }
 
@@ -522,6 +586,69 @@ fn main() {
             expect![[r#"
                 fn another_function() (dep::test_mod::TestTrait) fn another_function()
             "#]],
+        );
+    }
+
+    #[test]
+    fn zero_input_assoc_item_completion() {
+        check(
+            r#"
+        //- /lib.rs crate:dep
+        pub mod test_mod {
+            pub trait TestTrait {
+                const SPECIAL_CONST: u8;
+                type HumbleType;
+                fn weird_function();
+                fn random_method(&self);
+            }
+            pub struct TestStruct {}
+            impl TestTrait for TestStruct {
+                const SPECIAL_CONST: u8 = 42;
+                type HumbleType = ();
+                fn weird_function() {}
+                fn random_method(&self) {}
+            }
+        }
+
+        //- /main.rs crate:main deps:dep
+        fn main() {
+            let test_struct = dep::test_mod::TestStruct {};
+            test_struct.$0
+        }
+        "#,
+            expect![[r#"
+                        me random_method() (dep::test_mod::TestTrait) fn random_method(&self)
+                "#]],
+        );
+
+        check(
+            r#"
+//- /lib.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        const SPECIAL_CONST: u8;
+        type HumbleType;
+        fn weird_function();
+        fn random_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        const SPECIAL_CONST: u8 = 42;
+        type HumbleType = ();
+        fn weird_function() {}
+        fn random_method(&self) {}
+    }
+}
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    dep::test_mod::TestStruct::$0
+}
+"#,
+            expect![[r#"
+                ct SPECIAL_CONST (dep::test_mod::TestTrait)
+                fn weird_function() (dep::test_mod::TestTrait) fn weird_function()
+        "#]],
         );
     }
 }

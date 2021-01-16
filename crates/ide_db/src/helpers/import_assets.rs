@@ -5,7 +5,7 @@ use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
-    imports_locator::{self, AssocItemSearch},
+    imports_locator::{self, AssocItemSearch, DEFAULT_QUERY_SEARCH_LIMIT},
     RootDatabase,
 };
 
@@ -173,6 +173,7 @@ impl ImportAssets {
         let current_crate = self.module_with_candidate.krate();
 
         let filter = |candidate: Either<hir::ModuleDef, hir::MacroDef>| {
+            // TODO kb process all traits at once instead?
             trait_candidates.clear();
             match &self.import_candidate {
                 ImportCandidate::TraitAssocItem(trait_candidate) => {
@@ -191,6 +192,11 @@ impl ImportAssets {
                             None,
                             |_, assoc| {
                                 if canidate_assoc_item == assoc {
+                                    if let AssocItem::Function(f) = assoc {
+                                        if f.self_param(db).is_some() {
+                                            return None;
+                                        }
+                                    }
                                     Some(assoc_to_module_def(assoc))
                                 } else {
                                     None
@@ -238,17 +244,21 @@ impl ImportAssets {
             // see https://github.com/rust-analyzer/rust-analyzer/pull/7293#issuecomment-761585032
             // and https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0/topic/Blanket.20trait.20impls.20lookup
             // for the details
-            NameToImport::Fuzzy(fuzzy_name) => imports_locator::find_similar_imports(
-                sema,
-                current_crate,
-                fuzzy_name.clone(),
-                match self.import_candidate {
+            NameToImport::Fuzzy(fuzzy_name) => {
+                let (assoc_item_search, limit) = match self.import_candidate {
                     ImportCandidate::TraitAssocItem(_) | ImportCandidate::TraitMethod(_) => {
-                        AssocItemSearch::AssocItemsOnly
+                        (AssocItemSearch::AssocItemsOnly, None)
                     }
-                    _ => AssocItemSearch::Exclude,
-                },
-            ),
+                    _ => (AssocItemSearch::Exclude, Some(DEFAULT_QUERY_SEARCH_LIMIT)),
+                };
+                imports_locator::find_similar_imports(
+                    sema,
+                    current_crate,
+                    fuzzy_name.clone(),
+                    assoc_item_search,
+                    limit,
+                )
+            }
         };
 
         let mut res = unfiltered_imports
