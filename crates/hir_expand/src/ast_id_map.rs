@@ -72,10 +72,12 @@ impl AstIdMap {
         // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
         // trait does not change ids of top-level items, which helps caching.
-        bfs(node, |it| {
-            if let Some(module_item) = ast::Item::cast(it) {
+        bdfs(node, |it| match ast::Item::cast(it) {
+            Some(module_item) => {
                 res.alloc(module_item.syntax());
+                true
             }
+            None => false,
         });
         res
     }
@@ -105,14 +107,30 @@ impl AstIdMap {
     }
 }
 
-/// Walks the subtree in bfs order, calling `f` for each node.
-fn bfs(node: &SyntaxNode, mut f: impl FnMut(SyntaxNode)) {
+/// Walks the subtree in bdfs order, calling `f` for each node. What is bdfs
+/// order? It is a mix of breadth-first and depth first orders. Nodes for which
+/// `f` returns true are visited breadth-first, all the other nodes are explored
+/// depth-first.
+///
+/// In other words, the size of the bfs queue is bound by the number of "true"
+/// nodes.
+fn bdfs(node: &SyntaxNode, mut f: impl FnMut(SyntaxNode) -> bool) {
     let mut curr_layer = vec![node.clone()];
     let mut next_layer = vec![];
     while !curr_layer.is_empty() {
         curr_layer.drain(..).for_each(|node| {
-            next_layer.extend(node.children());
-            f(node);
+            let mut preorder = node.preorder();
+            while let Some(event) = preorder.next() {
+                match event {
+                    syntax::WalkEvent::Enter(node) => {
+                        if f(node.clone()) {
+                            next_layer.extend(node.children());
+                            preorder.skip_subtree();
+                        }
+                    }
+                    syntax::WalkEvent::Leave(_) => {}
+                }
+            }
         });
         std::mem::swap(&mut curr_layer, &mut next_layer);
     }
