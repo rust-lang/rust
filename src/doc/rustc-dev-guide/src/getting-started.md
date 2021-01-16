@@ -70,7 +70,7 @@ recommend trying to build on a Raspberry Pi :P
   clearing incremental caches. More space is better, the compiler is a bit of a
   hog; it's a problem we are aware of.
 - Recommended >=8GB RAM.
-- Recommended >=2 cores; more cores really helps.
+- Recommended >=2 cores; having more cores really helps.
 - You will need an internet connection to build; the bootstrapping process
   involves updating git submodules and downloading a beta compiler. It doesn't
   need to be super fast, but that can help.
