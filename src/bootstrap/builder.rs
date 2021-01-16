@@ -814,12 +814,22 @@ impl<'a> Builder<'a> {
             cargo.env("REAL_LIBRARY_PATH", e);
         }
 
+        // Found with `rg "init_env_logger\("`. If anyone uses `init_env_logger`
+        // from out of tree it shouldn't matter, since x.py is only used for
+        // building in-tree.
+        let color_logs = ["RUSTDOC_LOG_COLOR", "RUSTC_LOG_COLOR", "RUST_LOG_COLOR"];
         match self.build.config.color {
             Color::Always => {
                 cargo.arg("--color=always");
+                for log in &color_logs {
+                    cargo.env(log, "always");
+                }
             }
             Color::Never => {
                 cargo.arg("--color=never");
+                for log in &color_logs {
+                    cargo.env(log, "never");
+                }
             }
             Color::Auto => {} // nothing to do
         }

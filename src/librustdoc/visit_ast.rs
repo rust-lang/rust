@@ -316,15 +316,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     }
                 }
 
-                om.imports.push(Import {
-                    name,
-                    id: item.hir_id,
-                    vis: &item.vis,
-                    attrs: &item.attrs,
-                    path,
-                    glob: is_glob,
-                    span: item.span,
-                });
+                om.items.push((item, renamed))
             }
             hir::ItemKind::Mod(ref m) => {
                 om.mods.push(self.visit_mod_contents(

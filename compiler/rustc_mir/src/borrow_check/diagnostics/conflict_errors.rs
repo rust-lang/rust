@@ -141,6 +141,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             self.add_moved_or_invoked_closure_note(location, used_place, &mut err);
 
             let mut is_loop_move = false;
+            let mut in_pattern = false;
 
             for move_site in &move_site_vec {
                 let move_out = self.move_data.moves[(*move_site).moi];
@@ -256,6 +257,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         "ref ".to_string(),
                         Applicability::MachineApplicable,
                     );
+                    in_pattern = true;
                 }
 
                 if let Some(DesugaringKind::ForLoop(_)) = move_span.desugaring_kind() {
@@ -302,7 +304,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let place = &self.move_data.move_paths[mpi].place;
             let ty = place.ty(self.body, self.infcx.tcx).ty;
 
-            if is_loop_move {
+            // If we're in pattern, we do nothing in favor of the previous suggestion (#80913).
+            if is_loop_move & !in_pattern {
                 if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
                     // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
                     err.span_suggestion_verbose(
@@ -1318,21 +1321,30 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Applicability::MachineApplicable,
         );
 
-        let msg = match category {
+        match category {
             ConstraintCategory::Return(_) | ConstraintCategory::OpaqueType => {
-                format!("{} is returned here", kind)
+                let msg = format!("{} is returned here", kind);
+                err.span_note(constraint_span, &msg);
             }
             ConstraintCategory::CallArgument => {
                 fr_name.highlight_region_name(&mut err);
-                format!("function requires argument type to outlive `{}`", fr_name)
+                if matches!(use_span.generator_kind(), Some(GeneratorKind::Async(_))) {
+                    err.note(
+                        "async blocks are not executed immediately and must either take a \
+                    reference or ownership of outside variables they use",
+                    );
+                } else {
+                    let msg = format!("function requires argument type to outlive `{}`", fr_name);
+                    err.span_note(constraint_span, &msg);
+                }
             }
             _ => bug!(
                 "report_escaping_closure_capture called with unexpected constraint \
                  category: `{:?}`",
                 category
             ),
-        };
-        err.span_note(constraint_span, &msg);
+        }
+
         err
     }
 
