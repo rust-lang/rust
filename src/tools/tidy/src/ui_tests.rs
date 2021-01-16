@@ -7,8 +7,8 @@ use std::path::Path;
 
 const ENTRY_LIMIT: usize = 1000;
 // FIXME: The following limits should be reduced eventually.
-const ROOT_ENTRY_LIMIT: usize = 1500;
-const ISSUES_ENTRY_LIMIT: usize = 2830;
+const ROOT_ENTRY_LIMIT: usize = 1458;
+const ISSUES_ENTRY_LIMIT: usize = 2669;
 
 fn check_entries(path: &Path, bad: &mut bool) {
     let dirs = walkdir::WalkDir::new(&path.join("test/ui"))
@@ -30,7 +30,7 @@ fn check_entries(path: &Path, bad: &mut bool) {
             };
 
             let count = std::fs::read_dir(dir_path).unwrap().count();
-            if count >= limit {
+            if count > limit {
                 tidy_error!(
                     bad,
                     "following path contains more than {} entries, \
