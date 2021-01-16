@@ -2475,7 +2475,7 @@ impl<R: Read> Iterator for Bytes<R> {
     }
 
     default fn size_hint(&self) -> (usize, Option<usize>) {
-        (&self.inner as &SizeHint).size_hint()
+        (&self.inner as &dyn SizeHint).size_hint()
     }
 }
 
