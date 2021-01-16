@@ -871,6 +871,41 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
     }
 }
 
+fn should_encode_generics(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::Static
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::AnonConst
+        | DefKind::OpaqueTy
+        | DefKind::Impl
+        | DefKind::Closure
+        | DefKind::Generator => true,
+        DefKind::Mod
+        | DefKind::Field
+        | DefKind::ForeignMod
+        | DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Macro(..)
+        | DefKind::Use
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::ExternCrate => false,
+    }
+}
+
 impl EncodeContext<'a, 'tcx> {
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
@@ -903,12 +938,14 @@ impl EncodeContext<'a, 'tcx> {
                 let v = self.tcx.variances_of(def_id);
                 record!(self.tables.variances[def_id] <- v);
             }
-            let g = tcx.generics_of(def_id);
-            record!(self.tables.generics[def_id] <- g);
-            record!(self.tables.explicit_predicates[def_id] <- self.tcx.explicit_predicates_of(def_id));
-            let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
-            if !inferred_outlives.is_empty() {
-                record!(self.tables.inferred_outlives[def_id] <- inferred_outlives);
+            if should_encode_generics(def_kind) {
+                let g = tcx.generics_of(def_id);
+                record!(self.tables.generics[def_id] <- g);
+                record!(self.tables.explicit_predicates[def_id] <- self.tcx.explicit_predicates_of(def_id));
+                let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
+                if !inferred_outlives.is_empty() {
+                    record!(self.tables.inferred_outlives[def_id] <- inferred_outlives);
+                }
             }
         }
         let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
