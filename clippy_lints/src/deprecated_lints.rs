@@ -163,6 +163,19 @@ declare_deprecated_lint! {
 }
 
 declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** This lint has been uplifted to rustc and is now called
+    /// `panic_fmt`.
     pub PANIC_PARAMS,
     "this lint has been uplifted to rustc and is now called `panic_fmt`"
+}
+
+declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** This lint has been integrated into the `unknown_lints`
+    /// rustc lint.
+    pub UNKNOWN_CLIPPY_LINTS,
+    "this lint has been integrated into the `unknown_lints` rustc lint"
 }
