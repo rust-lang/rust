@@ -736,7 +736,7 @@ fn find_skips_from_snippet(
 
     fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
         let mut eat_ws = false;
-        let mut s = snippet.chars().enumerate().peekable();
+        let mut s = snippet.char_indices().peekable();
         let mut skips = vec![];
         while let Some((pos, c)) = s.next() {
             match (c, s.peek()) {
