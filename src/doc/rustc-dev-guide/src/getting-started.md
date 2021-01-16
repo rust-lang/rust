@@ -50,7 +50,7 @@ and a bunch of tools (e.g. `rustdoc`, the bootstrapping infrastructure, etc).
 
 There are also a bunch of submodules for things like LLVM, `clippy`, `miri`,
 etc. You don't need to clone these immediately, but the build tool will
-automatically clone and sync them (more later).
+automatically clone and sync them (more on this later).
 
 [**Take a look at the "Suggested Workflows" chapter for some helpful
 advice.**][suggested]
