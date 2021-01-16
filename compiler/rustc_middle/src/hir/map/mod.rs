@@ -1,7 +1,6 @@
 use self::collector::NodeCollector;
 
 use crate::hir::{Owner, OwnerNodes};
-use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::svh::Svh;
@@ -187,14 +186,14 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions.iter_local_def_id()
     }
 
-    pub fn def_kind(&self, local_def_id: LocalDefId) -> DefKind {
+    pub fn opt_def_kind(&self, local_def_id: LocalDefId) -> Option<DefKind> {
         // FIXME(eddyb) support `find` on the crate root.
         if local_def_id.to_def_id().index == CRATE_DEF_INDEX {
-            return DefKind::Mod;
+            return Some(DefKind::Mod);
         }
 
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
-        match self.get(hir_id) {
+        let def_kind = match self.find(hir_id)? {
             Node::Item(item) => match item.kind {
                 ItemKind::Static(..) => DefKind::Static,
                 ItemKind::Const(..) => DefKind::Const,
@@ -265,8 +264,14 @@ impl<'hir> Map<'hir> {
             | Node::Lifetime(_)
             | Node::Visibility(_)
             | Node::Block(_)
-            | Node::Crate(_) => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
-        }
+            | Node::Crate(_) => return None,
+        };
+        Some(def_kind)
+    }
+
+    pub fn def_kind(&self, local_def_id: LocalDefId) -> DefKind {
+        self.opt_def_kind(local_def_id)
+            .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", local_def_id))
     }
 
     fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {
@@ -1109,8 +1114,4 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
         Some(Node::Crate(..)) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
     }
-}
-
-pub fn provide(providers: &mut Providers) {
-    providers.def_kind = |tcx, def_id| tcx.hir().def_kind(def_id.expect_local());
 }

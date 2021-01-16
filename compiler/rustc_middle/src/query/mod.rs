@@ -878,7 +878,7 @@ rustc_queries! {
             cache_on_disk_if { true }
         }
 
-        query def_kind(def_id: DefId) -> DefKind {
+        query opt_def_kind(def_id: DefId) -> Option<DefKind> {
             desc { |tcx| "looking up definition kind of `{}`", tcx.def_path_str(def_id) }
         }
 

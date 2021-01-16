@@ -130,3 +130,19 @@ mod sealed {
 }
 
 use sealed::IntoQueryParam;
+
+impl TyCtxt<'tcx> {
+    pub fn def_kind(self, def_id: impl IntoQueryParam<DefId>) -> DefKind {
+        let def_id = def_id.into_query_param();
+        self.opt_def_kind(def_id)
+            .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
+    }
+}
+
+impl TyCtxtAt<'tcx> {
+    pub fn def_kind(self, def_id: impl IntoQueryParam<DefId>) -> DefKind {
+        let def_id = def_id.into_query_param();
+        self.opt_def_kind(def_id)
+            .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
+    }
+}

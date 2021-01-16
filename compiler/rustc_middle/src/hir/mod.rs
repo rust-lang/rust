@@ -94,5 +94,5 @@ pub fn provide(providers: &mut Providers) {
             span_bug!(hir.span(hir_id), "fn_arg_names: unexpected item {:?}", id);
         }
     };
-    map::provide(providers);
+    providers.opt_def_kind = |tcx, def_id| tcx.hir().opt_def_kind(def_id.expect_local());
 }
