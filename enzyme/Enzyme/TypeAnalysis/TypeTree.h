@@ -312,7 +312,6 @@ public:
     mapping.insert(std::pair<const std::vector<int>, ConcreteType>(Seq, CT));
     return true;
   }
-
   /// How this TypeTree compares with another
   bool operator<(const TypeTree &vd) const { return mapping < vd.mapping; }
 
