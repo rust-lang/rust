@@ -87,7 +87,6 @@ impl LitKind {
                             }
                         });
                         error?;
-                        buf.shrink_to_fit();
                         Symbol::intern(&buf)
                     } else {
                         symbol
@@ -105,7 +104,6 @@ impl LitKind {
                     }
                 });
                 error?;
-                buf.shrink_to_fit();
                 LitKind::ByteStr(buf.into())
             }
             token::ByteStrRaw(_) => {
@@ -120,7 +118,6 @@ impl LitKind {
                         }
                     });
                     error?;
-                    buf.shrink_to_fit();
                     buf
                 } else {
                     symbol.to_string().into_bytes()
