@@ -1,7 +1,7 @@
 use super::{repeat, Cursor, SeekFrom};
 use crate::cmp::{self, min};
 use crate::io::{self, IoSlice, IoSliceMut};
-use crate::io::{BufRead, Read, Seek, Write};
+use crate::io::{BufRead, BufReader, Read, Seek, Write};
 use crate::ops::Deref;
 
 #[test]
@@ -196,6 +196,26 @@ fn chain_bufread() {
         (&testdata[..3]).chain(&testdata[3..6]).chain(&testdata[6..9]).chain(&testdata[9..]);
     let chain2 = (&testdata[..4]).chain(&testdata[4..8]).chain(&testdata[8..]);
     cmp_bufread(chain1, chain2, &testdata[..]);
+}
+
+#[test]
+fn bufreader_size_hint() {
+    let testdata = b"ABCDEFGHIJKL";
+    let mut buf_reader = BufReader::new(&testdata[..]);
+    assert_eq!(buf_reader.buffer().len(), 0);
+
+    let buffer = buf_reader.fill_buf().unwrap();
+    let buffer_length = buffer.len();
+
+    // Check that size hint matches buffer contents
+    let mut buffered_bytes = buf_reader.bytes();
+    let (lower_bound, _upper_bound) = buffered_bytes.size_hint();
+    assert_eq!(lower_bound, buffer_length);
+
+    // Check that size hint matches buffer contents after advancing
+    buffered_bytes.next().unwrap().unwrap();
+    let (lower_bound, _upper_bound) = buffered_bytes.size_hint();
+    assert_eq!(lower_bound, buffer_length - 1);
 }
 
 #[test]
