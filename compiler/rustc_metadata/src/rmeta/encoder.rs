@@ -906,6 +906,41 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
     }
 }
 
+fn should_encode_type(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::AssocTy
+        | DefKind::TyParam
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::ConstParam
+        | DefKind::Static
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::AnonConst
+        | DefKind::OpaqueTy
+        | DefKind::Field
+        | DefKind::Impl
+        | DefKind::Closure
+        | DefKind::Generator => true,
+        DefKind::Mod
+        | DefKind::ForeignMod
+        | DefKind::Trait
+        | DefKind::TraitAlias
+        | DefKind::Macro(..)
+        | DefKind::Use
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::ExternCrate => false,
+    }
+}
+
 impl EncodeContext<'a, 'tcx> {
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
@@ -950,8 +985,10 @@ impl EncodeContext<'a, 'tcx> {
             if let DefKind::Trait | DefKind::TraitAlias = def_kind {
                 record!(self.tables.super_predicates[def_id] <- self.tcx.super_predicates_of(def_id));
             }
-            if let Ok(ty) = self.tcx.try_type_of(def_id) {
-                record!(self.tables.ty[def_id] <- ty);
+            if should_encode_type(def_kind) {
+                if let Ok(ty) = self.tcx.try_type_of(def_id) {
+                    record!(self.tables.ty[def_id] <- ty);
+                }
             }
         }
         let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
