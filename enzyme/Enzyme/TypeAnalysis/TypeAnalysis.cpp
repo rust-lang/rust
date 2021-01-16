@@ -2797,8 +2797,31 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
   }
 
   auto insert = [&](int64_t v) {
-    if (v > -100 && v < 100) {
+    if (intseen[val].size() == 0) {
       intseen[val].insert(v);
+    } else {
+      if (intseen[val].size() == 1) {
+        if (abs(*intseen[val].begin()) > 100) {
+          if (abs(*intseen[val].begin()) > abs(v)) {
+            intseen[val].clear();
+            intseen[val].insert(v);
+          } else {
+            return;
+          }
+        } else {
+          if (abs(v) > 100) {
+            return;
+          } else {
+            intseen[val].insert(v);
+          }
+        }
+      } else {
+        if (abs(v) > 100) {
+          return;
+        } else {
+          intseen[val].insert(v);
+        }
+      }
     }
   };
   if (auto LI = dyn_cast<LoadInst>(val)) {
