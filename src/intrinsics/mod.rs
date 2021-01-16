@@ -824,7 +824,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                     }
                     ty => unreachable!("bswap {}", ty),
                 }
-            };
+            }
             let res = CValue::by_val(swap(&mut fx.bcx, arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
