@@ -589,23 +589,23 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         if let Some(typeck_results) = self.in_progress_typeck_results {
                             let typeck_results = typeck_results.borrow();
                             match (found_kind, typeck_results.closure_kind_origins().get(hir_id)) {
-                                (ty::ClosureKind::FnOnce, Some((span, name))) => {
+                                (ty::ClosureKind::FnOnce, Some((span, place))) => {
                                     err.span_label(
                                         *span,
                                         format!(
                                             "closure is `FnOnce` because it moves the \
                                          variable `{}` out of its environment",
-                                            name
+                                            ty::place_to_string_for_capture(tcx, place)
                                         ),
                                     );
                                 }
-                                (ty::ClosureKind::FnMut, Some((span, name))) => {
+                                (ty::ClosureKind::FnMut, Some((span, place))) => {
                                     err.span_label(
                                         *span,
                                         format!(
                                             "closure is `FnMut` because it mutates the \
                                          variable `{}` here",
-                                            name
+                                            ty::place_to_string_for_capture(tcx, place)
                                         ),
                                     );
                                 }

@@ -103,7 +103,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let did = did.expect_local();
                         let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
 
-                        if let Some((span, name)) =
+                        if let Some((span, hir_place)) =
                             self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
                         {
                             diag.span_note(
@@ -111,7 +111,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 &format!(
                                     "closure cannot be invoked more than once because it moves the \
                                     variable `{}` out of its environment",
-                                    name,
+                                    ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
                                 ),
                             );
                             return;
@@ -127,7 +127,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let did = did.expect_local();
                 let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
 
-                if let Some((span, name)) =
+                if let Some((span, hir_place)) =
                     self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
                 {
                     diag.span_note(
@@ -135,7 +135,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         &format!(
                             "closure cannot be moved more than once as it is not `Copy` due to \
                              moving the variable `{}` out of its environment",
-                            name
+                            ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
                         ),
                     );
                 }
