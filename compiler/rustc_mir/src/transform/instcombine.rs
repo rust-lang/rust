@@ -277,11 +277,9 @@ impl OptimizationFinder<'b, 'tcx> {
 impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::Ref(_, _, place) = rvalue {
-            if let PlaceRef { local, projection: &[ref proj_base @ .., ProjectionElem::Deref] } =
-                place.as_ref()
-            {
+            if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
                 // The dereferenced place must have type `&_`.
-                let ty = Place::ty_from(local, proj_base, self.body, self.tcx).ty;
+                let ty = place_base.ty(self.body, self.tcx).ty;
                 if let ty::Ref(_, _, Mutability::Not) = ty.kind() {
                     self.optimizations.and_stars.insert(location);
                 }

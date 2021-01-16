@@ -1616,20 +1616,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn classify_drop_access_kind(&self, place: PlaceRef<'tcx>) -> StorageDeadOrDrop<'tcx> {
         let tcx = self.infcx.tcx;
-        match place.projection {
-            [] => StorageDeadOrDrop::LocalStorageDead,
-            [proj_base @ .., elem] => {
+        match place.last_projection() {
+            None => StorageDeadOrDrop::LocalStorageDead,
+            Some((place_base, elem)) => {
                 // FIXME(spastorino) make this iterate
-                let base_access = self.classify_drop_access_kind(PlaceRef {
-                    local: place.local,
-                    projection: proj_base,
-                });
+                let base_access = self.classify_drop_access_kind(place_base);
                 match elem {
                     ProjectionElem::Deref => match base_access {
                         StorageDeadOrDrop::LocalStorageDead
                         | StorageDeadOrDrop::BoxedStorageDead => {
                             assert!(
-                                Place::ty_from(place.local, proj_base, self.body, tcx).ty.is_box(),
+                                place_base.ty(self.body, tcx).ty.is_box(),
                                 "Drop of value behind a reference or raw pointer"
                             );
                             StorageDeadOrDrop::BoxedStorageDead
@@ -1637,7 +1634,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::Destructor(_) => base_access,
                     },
                     ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
-                        let base_ty = Place::ty_from(place.local, proj_base, self.body, tcx).ty;
+                        let base_ty = place_base.ty(self.body, tcx).ty;
                         match base_ty.kind() {
                             ty::Adt(def, _) if def.has_dtor(tcx) => {
                                 // Report the outermost adt with a destructor
@@ -1652,7 +1649,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             _ => base_access,
                         }
                     }
-
                     ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::Index(_) => base_access,
