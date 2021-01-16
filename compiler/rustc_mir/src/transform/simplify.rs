@@ -33,6 +33,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::config::OptLevel;
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::convert::TryInto;
@@ -323,7 +324,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
         trace!("running SimplifyLocals on {:?}", body.source);
 
         // First, we're going to get a count of *actual* uses for every `Local`.
-        let mut used_locals = UsedLocals::new(body);
+        let mut used_locals = UsedLocals::new(tcx, body);
 
         // Next, we're going to remove any `Local` with zero actual uses. When we remove those
         // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
@@ -375,15 +376,19 @@ struct UsedLocals {
     increment: bool,
     arg_count: u32,
     use_count: IndexVec<Local, u32>,
+    /// When true var debug info is always preserved. When false the var debug
+    /// info that refers to otherwise unused local variables will be removed.
+    preserve_var_debug_info: bool,
 }
 
 impl UsedLocals {
     /// Determines which locals are used & unused in the given body.
-    fn new(body: &Body<'_>) -> Self {
+    fn new(tcx: TyCtxt<'_>, body: &Body<'_>) -> Self {
         let mut this = Self {
             increment: true,
             arg_count: body.arg_count.try_into().unwrap(),
             use_count: IndexVec::from_elem(0, &body.local_decls),
+            preserve_var_debug_info: tcx.sess.opts.optimize != OptLevel::Aggressive,
         };
         this.visit_body(body);
         this
@@ -397,13 +402,69 @@ impl UsedLocals {
         local.as_u32() <= self.arg_count || self.use_count[local] != 0
     }
 
+    /// Removes the statement when it is unused or returns an error otherwise.
     /// Updates the use counts to reflect the removal of given statement.
-    fn statement_removed(&mut self, statement: &Statement<'tcx>) {
-        self.increment = false;
+    fn try_remove_statement(&mut self, statement: &Statement<'_>) -> Result<(), ()> {
+        if self.is_statement_used(statement) {
+            return Err(());
+        }
 
         // The location of the statement is irrelevant.
         let location = Location { block: START_BLOCK, statement_index: 0 };
+        self.increment = false;
         self.visit_statement(statement, location);
+        Ok(())
+    }
+
+    fn is_statement_used(&self, statement: &Statement<'_>) -> bool {
+        match statement.kind {
+            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                self.is_used(local)
+            }
+            StatementKind::Assign(box (place, _)) => self.is_used(place.local),
+            StatementKind::SetDiscriminant { ref place, .. } => self.is_used(place.local),
+            _ => true,
+        }
+    }
+
+    /// Removes the var debug info when it refers to any locals that are unused
+    /// or returns an error otherwise.
+    fn try_remove_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'_>) -> Result<(), ()> {
+        if self.is_var_debug_info_valid(var_debug_info) {
+            return Err(());
+        }
+
+        self.increment = false;
+        self.visit_var_debug_info(var_debug_info);
+        Ok(())
+    }
+
+    /// Determines if a var debug info is valid, i.e., it refers only to locals
+    /// that are used.
+    fn is_var_debug_info_valid(&self, var_debug_info: &VarDebugInfo<'_>) -> bool {
+        let place = match var_debug_info.value {
+            VarDebugInfoContents::Const(_) => return true,
+            VarDebugInfoContents::Place(place) => place,
+        };
+        if !self.is_used(place.local) {
+            return false;
+        }
+        for elem in place.projection {
+            match elem {
+                PlaceElem::Index(local) => {
+                    if !self.is_used(local) {
+                        return false;
+                    }
+                }
+                PlaceElem::Deref
+                | PlaceElem::Field(..)
+                | PlaceElem::ConstantIndex { .. }
+                | PlaceElem::Subslice { .. }
+                | PlaceElem::Downcast(..) => {}
+            }
+        }
+
+        true
     }
 
     /// Visits a left-hand side of an assignment.
@@ -424,6 +485,12 @@ impl UsedLocals {
 }
 
 impl Visitor<'_> for UsedLocals {
+    fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'tcx>) {
+        if self.preserve_var_debug_info {
+            self.super_var_debug_info(var_debug_info);
+        }
+    }
+
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::LlvmInlineAsm(..)
@@ -465,35 +532,24 @@ fn remove_unused_definitions<'a, 'tcx>(used_locals: &'a mut UsedLocals, body: &m
     // during the retain operation, leading to a temporary inconsistency (storage statements or
     // definitions referencing the local might remain). For correctness it is crucial that this
     // computation reaches a fixed point.
-
-    let mut modified = true;
-    while modified {
-        modified = false;
+    loop {
+        let mut modified = false;
 
         for data in body.basic_blocks_mut() {
             // Remove unnecessary StorageLive and StorageDead annotations.
-            data.statements.retain(|statement| {
-                let keep = match &statement.kind {
-                    StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                        used_locals.is_used(*local)
-                    }
-                    StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
-
-                    StatementKind::SetDiscriminant { ref place, .. } => {
-                        used_locals.is_used(place.local)
-                    }
-                    _ => true,
-                };
-
-                if !keep {
-                    trace!("removing statement {:?}", statement);
-                    modified = true;
-                    used_locals.statement_removed(statement);
-                }
-
-                keep
-            });
+            let old_len = data.statements.len();
+            data.statements.retain(|s| used_locals.try_remove_statement(s).is_err());
+            let new_len = data.statements.len();
+            modified |= old_len != new_len;
         }
+
+        if !modified {
+            break;
+        }
+    }
+
+    if !used_locals.preserve_var_debug_info {
+        body.var_debug_info.retain(|v| used_locals.try_remove_var_debug_info(v).is_err());
     }
 }
 
