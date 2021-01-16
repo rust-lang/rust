@@ -1318,21 +1318,30 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Applicability::MachineApplicable,
         );
 
-        let msg = match category {
+        match category {
             ConstraintCategory::Return(_) | ConstraintCategory::OpaqueType => {
-                format!("{} is returned here", kind)
+                let msg = format!("{} is returned here", kind);
+                err.span_note(constraint_span, &msg);
             }
             ConstraintCategory::CallArgument => {
                 fr_name.highlight_region_name(&mut err);
-                format!("function requires argument type to outlive `{}`", fr_name)
+                if matches!(use_span.generator_kind(), Some(GeneratorKind::Async(_))) {
+                    err.note(
+                        "async blocks are not executed immediately and must either take a \
+                    reference or ownership of outside variables they use",
+                    );
+                } else {
+                    let msg = format!("function requires argument type to outlive `{}`", fr_name);
+                    err.span_note(constraint_span, &msg);
+                }
             }
             _ => bug!(
                 "report_escaping_closure_capture called with unexpected constraint \
                  category: `{:?}`",
                 category
             ),
-        };
-        err.span_note(constraint_span, &msg);
+        }
+
         err
     }
 
