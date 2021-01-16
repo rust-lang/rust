@@ -1,5 +1,5 @@
 error[E0658]: dereferencing raw pointers in constants is unstable
-  --> $DIR/projection_qualif.rs:11:18
+  --> $DIR/write_to_mut_ref_dest.rs:11:18
    |
 LL |         unsafe { *b = 5; }
    |                  ^^^^^^

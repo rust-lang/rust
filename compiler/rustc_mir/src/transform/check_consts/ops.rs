@@ -298,7 +298,7 @@ impl NonConstOp for MutBorrow {
             ccx.tcx.sess,
             span,
             E0764,
-            "{}mutable references are not allowed in final value of {}s",
+            "{}mutable references are not allowed in the final value of {}s",
             raw,
             ccx.const_kind(),
         );

@@ -1,4 +1,4 @@
-error[E0764]: mutable references are not allowed in final value of constants
+error[E0764]: mutable references are not allowed in the final value of constants
   --> $DIR/issue-17718-const-bad-values.rs:1:34
    |
 LL | const C1: &'static mut [usize] = &mut [];
