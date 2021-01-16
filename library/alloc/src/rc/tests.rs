@@ -209,6 +209,30 @@ fn into_from_weak_raw() {
 }
 
 #[test]
+fn test_into_from_weak_raw_unsized() {
+    use std::fmt::Display;
+    use std::string::ToString;
+
+    let arc: Rc<str> = Rc::from("foo");
+    let weak: Weak<str> = Rc::downgrade(&arc);
+
+    let ptr = Weak::into_raw(weak.clone());
+    let weak2 = unsafe { Weak::from_raw(ptr) };
+
+    assert_eq!(unsafe { &*ptr }, "foo");
+    assert!(weak.ptr_eq(&weak2));
+
+    let arc: Rc<dyn Display> = Rc::new(123);
+    let weak: Weak<dyn Display> = Rc::downgrade(&arc);
+
+    let ptr = Weak::into_raw(weak.clone());
+    let weak2 = unsafe { Weak::from_raw(ptr) };
+
+    assert_eq!(unsafe { &*ptr }.to_string(), "123");
+    assert!(weak.ptr_eq(&weak2));
+}
+
+#[test]
 fn get_mut() {
     let mut x = Rc::new(3);
     *Rc::get_mut(&mut x).unwrap() = 4;
@@ -292,6 +316,23 @@ fn test_show() {
 fn test_unsized() {
     let foo: Rc<[i32]> = Rc::new([1, 2, 3]);
     assert_eq!(foo, foo.clone());
+}
+
+#[test]
+fn test_maybe_thin_unsized() {
+    // If/when custom thin DSTs exist, this test should be updated to use one
+    use std::ffi::{CStr, CString};
+
+    let x: Rc<CStr> = Rc::from(CString::new("swordfish").unwrap().into_boxed_c_str());
+    assert_eq!(format!("{:?}", x), "\"swordfish\"");
+    let y: Weak<CStr> = Rc::downgrade(&x);
+    drop(x);
+
+    // At this point, the weak points to a dropped DST
+    assert!(y.upgrade().is_none());
+    // But we still need to be able to get the alloc layout to drop.
+    // CStr has no drop glue, but custom DSTs might, and need to work.
+    drop(y);
 }
 
 #[test]
