@@ -2,7 +2,7 @@
 
 use crate::utils::{in_macro, span_lint_and_then};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{def_id, Crate, Item, ItemKind, Impl};
+use rustc_hir::{def_id, Crate, Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;

@@ -1,5 +1,5 @@
 #[macro_use]
-pub mod sym;
+pub mod sym_helper;
 
 #[allow(clippy::module_name_repetitions)]
 pub mod ast_utils;
@@ -56,8 +56,8 @@ use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
-use rustc_span::sym as rustc_sym;
-use rustc_span::symbol::{self, kw, Symbol};
+use rustc_span::sym;
+use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 use rustc_trait_selection::traits::query::normalize::AtExt;
@@ -1121,7 +1121,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
 /// Checks for the `#[automatically_derived]` attribute all `#[derive]`d
 /// implementations have.
 pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(|attr| attr.has_name(rustc_sym::automatically_derived))
+    attrs.iter().any(|attr| attr.has_name(sym::automatically_derived))
 }
 
 /// Remove blocks around an expression.
@@ -1434,12 +1434,13 @@ pub fn parent_node_is_if_expr(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
     let map = cx.tcx.hir();
     let parent_id = map.get_parent_node(expr.hir_id);
     let parent_node = map.get(parent_id);
-    if let Node::Expr(Expr { kind: ExprKind::If(_, _, _), .. }) = parent_node {
-        true
-    }
-    else {
-        false
-    }
+    matches!(
+        parent_node,
+        Node::Expr(Expr {
+            kind: ExprKind::If(_, _, _),
+            ..
+        })
+    )
 }
 
 // Finds the attribute with the given name, if any
@@ -1514,7 +1515,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
     krate.item.attrs.iter().any(|attr| {
         if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
-            attr.path == symbol::sym::no_std
+            attr.path == sym::no_std
         } else {
             false
         }
@@ -1684,6 +1685,18 @@ macro_rules! unwrap_cargo_metadata {
             },
         }
     }};
+}
+
+pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
+    if_chain! {
+        if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
+        if let Res::Def(_, def_id) = path.res;
+        then {
+            cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr)
+        } else {
+            false
+        }
+    }
 }
 
 #[cfg(test)]

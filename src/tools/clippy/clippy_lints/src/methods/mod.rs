@@ -3096,7 +3096,7 @@ fn lint_flat_map_identity<'tcx>(
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.kind;
 
             if path.segments.len() == 1;
-            if path.segments[0].ident.as_str() == binding_ident.as_str();
+            if path.segments[0].ident.name == binding_ident.name;
 
             then {
                 apply_lint("called `flat_map(|x| x)` on an `Iterator`");
