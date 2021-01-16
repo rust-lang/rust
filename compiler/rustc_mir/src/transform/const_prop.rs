@@ -440,6 +440,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
+        let mut data = &self.source_scopes[source_info.scope];
+        while data.inlined.is_some() {
+            data = &self.source_scopes[data.parent_scope.unwrap()];
+        }
         match &self.source_scopes[source_info.scope].local_data {
             ClearCrossCrate::Set(data) => Some(data.lint_root),
             ClearCrossCrate::Clear => None,
