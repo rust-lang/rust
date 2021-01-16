@@ -28,7 +28,7 @@ fn associated_type_bounds<'tcx>(
     let bounds = AstConv::compute_bounds(
         &ItemCtxt::new(tcx, assoc_item_def_id),
         item_ty,
-        bounds,
+        &bounds,
         SizedByDefault::Yes,
         span,
     );
@@ -68,7 +68,7 @@ fn opaque_type_bounds<'tcx>(
         let bounds = AstConv::compute_bounds(
             &ItemCtxt::new(tcx, opaque_def_id),
             item_ty,
-            bounds,
+            &bounds,
             SizedByDefault::Yes,
             span,
         )

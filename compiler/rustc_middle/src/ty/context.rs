@@ -2059,6 +2059,43 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_fn_ptr(sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig }))
     }
 
+    /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
+    /// returns true if the `trait_def_id` defines an associated item of name `assoc_name`.
+    pub fn trait_may_define_assoc_type(self, trait_def_id: DefId, assoc_name: Symbol) -> bool {
+        self.super_traits_of(trait_def_id).any(|trait_did| {
+            self.associated_items(trait_did)
+                .find_by_name_and_kind_unhygienic(assoc_name, ty::AssocKind::Type)
+                .next()
+                .is_some()
+        })
+    }
+
+    /// Computes the def-ids of the transitive super-traits of `trait_def_id`. This (intentionally)
+    /// does not compute the full elaborated super-predicates but just the set of def-ids. It is used
+    /// to identify which traits may define a given associated type to help avoid cycle errors.
+    /// Returns a `DefId` iterator.
+    fn super_traits_of(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
+        let mut set = FxHashSet::default();
+        let mut stack = vec![trait_def_id];
+
+        set.insert(trait_def_id);
+
+        iter::from_fn(move || -> Option<DefId> {
+            let trait_did = stack.pop()?;
+            let generic_predicates = self.super_predicates_of(trait_did);
+
+            for (predicate, _) in generic_predicates.predicates {
+                if let ty::PredicateAtom::Trait(data, _) = predicate.skip_binders() {
+                    if set.insert(data.def_id()) {
+                        stack.push(data.def_id());
+                    }
+                }
+            }
+
+            Some(trait_did)
+        })
+    }
+
     /// Given a closure signature, returns an equivalent fn signature. Detuples
     /// and so forth -- so e.g., if we have a sig with `Fn<(u32, i32)>` then
     /// you would get a `fn(u32, i32)`.

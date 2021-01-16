@@ -149,6 +149,28 @@ impl Key for (LocalDefId, DefId) {
     }
 }
 
+impl Key for (DefId, Option<Symbol>) {
+    type CacheSelector = DefaultCacheSelector;
+
+    fn query_crate(&self) -> CrateNum {
+        self.0.krate
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.0)
+    }
+}
+
+impl Key for (DefId, LocalDefId, Symbol) {
+    type CacheSelector = DefaultCacheSelector;
+
+    fn query_crate(&self) -> CrateNum {
+        self.0.krate
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.1.default_span(tcx)
+    }
+}
+
 impl Key for (CrateNum, DefId) {
     type CacheSelector = DefaultCacheSelector;
 
