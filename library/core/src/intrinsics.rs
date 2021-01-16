@@ -768,13 +768,6 @@ extern "rust-intrinsic" {
     #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
     pub fn size_of<T>() -> usize;
 
-    /// Moves a value to an uninitialized memory location.
-    ///
-    /// Drop glue is not run on the destination.
-    ///
-    /// The stabilized version of this intrinsic is [`core::ptr::write`](crate::ptr::write).
-    pub fn move_val_init<T>(dst: *mut T, src: T);
-
     /// The minimum alignment of a type.
     ///
     /// The stabilized version of this intrinsic is [`core::mem::align_of`](crate::mem::align_of).

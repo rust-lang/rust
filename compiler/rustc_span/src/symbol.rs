@@ -716,7 +716,6 @@ symbols! {
         more_struct_aliases,
         movbe_target_feature,
         move_ref_pattern,
-        move_val_init,
         mul,
         mul_assign,
         mul_with_overflow,
