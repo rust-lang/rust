@@ -80,4 +80,24 @@ fn simple_but_suggestion_is_invalid() {
     }
 }
 
+/// This function tests that the `IS_SAME_THAN_ELSE` only covers the lint if it's enabled.
+fn check_if_same_than_else_mask() {
+    let x = 2021;
+
+    #[allow(clippy::if_same_then_else)]
+    if x == 2020 {
+        println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint.");
+        println!("Because `IF_SAME_THEN_ELSE` is allowed here");
+    } else {
+        println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint.");
+        println!("Because `IF_SAME_THEN_ELSE` is allowed here");
+    }
+
+    if x == 2019 {
+        println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
+    } else {
+        println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
+    }
+}
+
 fn main() {}

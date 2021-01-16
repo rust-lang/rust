@@ -1,8 +1,9 @@
-use crate::utils::{both, count_eq, eq_expr_value, in_macro, search_same, SpanlessEq, SpanlessHash};
 use crate::utils::{
-    first_line_of_span, get_enclosing_block, get_parent_expr, if_sequence, indent_of, parent_node_is_if_expr,
-    reindent_multiline, snippet, snippet_opt, span_lint_and_note, span_lint_and_then, ContainsName,
+    both, count_eq, eq_expr_value, first_line_of_span, get_enclosing_block, get_parent_expr, if_sequence, in_macro,
+    indent_of, parent_node_is_if_expr, reindent_multiline, run_lints, search_same, snippet, snippet_opt,
+    span_lint_and_note, span_lint_and_then, ContainsName, SpanlessEq, SpanlessHash,
 };
+use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -188,55 +189,13 @@ fn lint_same_then_else<'tcx>(
         return;
     }
 
-    let has_expr = blocks[0].expr.is_some();
-
     // Check if each block has shared code
-    let mut start_eq = usize::MAX;
-    let mut end_eq = usize::MAX;
-    let mut expr_eq = true;
-    for win in blocks.windows(2) {
-        let l_stmts = win[0].stmts;
-        let r_stmts = win[1].stmts;
-
-        let mut evaluator = SpanlessEq::new(cx);
-        let current_start_eq = count_eq(&mut l_stmts.iter(), &mut r_stmts.iter(), |l, r| evaluator.eq_stmt(l, r));
-        let current_end_eq = count_eq(&mut l_stmts.iter().rev(), &mut r_stmts.iter().rev(), |l, r| {
-            evaluator.eq_stmt(l, r)
-        });
-        let block_expr_eq = both(&win[0].expr, &win[1].expr, |l, r| evaluator.eq_expr(l, r));
-
-        // IF_SAME_THEN_ELSE
-        if block_expr_eq && l_stmts.len() == r_stmts.len() && l_stmts.len() == current_start_eq {
-            span_lint_and_note(
-                cx,
-                IF_SAME_THEN_ELSE,
-                win[0].span,
-                "this `if` has identical blocks",
-                Some(win[1].span),
-                "same as this",
-            );
-
-            return;
-        }
-
-        start_eq = start_eq.min(current_start_eq);
-        end_eq = end_eq.min(current_end_eq);
-        expr_eq &= block_expr_eq;
-    }
+    let has_expr = blocks[0].expr.is_some();
+    let (start_eq, mut end_eq, expr_eq) = scan_block_for_eq(cx, blocks);
 
     // SHARED_CODE_IN_IF_BLOCKS prerequisites
     if !has_unconditional_else || (start_eq == 0 && end_eq == 0 && (has_expr && !expr_eq)) {
         return;
-    }
-
-    if has_expr && !expr_eq {
-        end_eq = 0;
-    }
-
-    // Check if the regions are overlapping. Set `end_eq` to prevent the overlap
-    let min_block_size = blocks.iter().map(|x| x.stmts.len()).min().unwrap();
-    if (start_eq + end_eq) > min_block_size {
-        end_eq = min_block_size - start_eq;
     }
 
     // Only the start is the same
@@ -302,14 +261,13 @@ fn lint_same_then_else<'tcx>(
             end_eq -= moved_start;
         }
 
-        let end_linable = if let Some(expr) = block.expr {
-            intravisit::walk_expr(&mut end_walker, expr);
-            end_walker.uses.iter().any(|x| !block_defs.contains(x))
-        } else if end_eq == 0 {
-            false
-        } else {
-            true
-        };
+        let end_linable = block.expr.map_or_else(
+            || end_eq != 0,
+            |expr| {
+                intravisit::walk_expr(&mut end_walker, expr);
+                end_walker.uses.iter().any(|x| !block_defs.contains(x))
+            },
+        );
 
         if end_linable {
             end_walker.def_symbols.drain().for_each(|x| {
@@ -329,13 +287,67 @@ fn lint_same_then_else<'tcx>(
     }
 }
 
+fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> (usize, usize, bool) {
+    let mut start_eq = usize::MAX;
+    let mut end_eq = usize::MAX;
+    let mut expr_eq = true;
+    for win in blocks.windows(2) {
+        let l_stmts = win[0].stmts;
+        let r_stmts = win[1].stmts;
+
+        let mut evaluator = SpanlessEq::new(cx);
+        let current_start_eq = count_eq(&mut l_stmts.iter(), &mut r_stmts.iter(), |l, r| evaluator.eq_stmt(l, r));
+        let current_end_eq = count_eq(&mut l_stmts.iter().rev(), &mut r_stmts.iter().rev(), |l, r| {
+            evaluator.eq_stmt(l, r)
+        });
+        let block_expr_eq = both(&win[0].expr, &win[1].expr, |l, r| evaluator.eq_expr(l, r));
+
+        // IF_SAME_THEN_ELSE
+        if_chain! {
+            if block_expr_eq;
+            if l_stmts.len() == r_stmts.len();
+            if l_stmts.len() == current_start_eq;
+            if run_lints(cx, &[IF_SAME_THEN_ELSE], win[0].hir_id);
+            if run_lints(cx, &[IF_SAME_THEN_ELSE], win[1].hir_id);
+            then {
+                span_lint_and_note(
+                    cx,
+                    IF_SAME_THEN_ELSE,
+                    win[0].span,
+                    "this `if` has identical blocks",
+                    Some(win[1].span),
+                    "same as this",
+                );
+
+                return (0, 0, false);
+            }
+        }
+
+        start_eq = start_eq.min(current_start_eq);
+        end_eq = end_eq.min(current_end_eq);
+        expr_eq &= block_expr_eq;
+    }
+
+    let has_expr = blocks[0].expr.is_some();
+    if has_expr && !expr_eq {
+        end_eq = 0;
+    }
+
+    // Check if the regions are overlapping. Set `end_eq` to prevent the overlap
+    let min_block_size = blocks.iter().map(|x| x.stmts.len()).min().unwrap();
+    if (start_eq + end_eq) > min_block_size {
+        end_eq = min_block_size - start_eq;
+    }
+
+    (start_eq, end_eq, expr_eq)
+}
+
 fn check_for_warn_of_moved_symbol(
     cx: &LateContext<'tcx>,
     symbols: &FxHashSet<Symbol>,
     if_expr: &'tcx Expr<'_>,
 ) -> bool {
-    // Obs true as we include the current if block
-    if let Some(block) = get_enclosing_block(cx, if_expr.hir_id) {
+    get_enclosing_block(cx, if_expr.hir_id).map_or(false, |block| {
         let ignore_span = block.span.shrink_to_lo().to(if_expr.span);
 
         symbols
@@ -360,9 +372,7 @@ fn check_for_warn_of_moved_symbol(
 
                 walker.result
             })
-    } else {
-        false
-    }
+    })
 }
 
 fn emit_shared_code_in_if_blocks_lint(
@@ -410,12 +420,10 @@ fn emit_shared_code_in_if_blocks_lint(
             block.stmts[block.stmts.len() - end_stmts].span
         }
         .source_callsite();
-        let moved_end = if let Some(expr) = block.expr {
-            expr.span
-        } else {
-            block.stmts[block.stmts.len() - 1].span
-        }
-        .source_callsite();
+        let moved_end = block
+            .expr
+            .map_or_else(|| block.stmts[block.stmts.len() - 1].span, |expr| expr.span)
+            .source_callsite();
 
         let moved_span = moved_start.to(moved_end);
         let moved_snipped = reindent_multiline(snippet(cx, moved_span, "_"), true, None);
@@ -488,7 +496,7 @@ fn emit_shared_code_in_if_blocks_lint(
     }
 }
 
-/// This visitor collects HirIds and Symbols of defined symbols and HirIds of used values.
+/// This visitor collects `HirId`s and Symbols of defined symbols and `HirId`s of used values.
 struct UsedValueFinderVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 
