@@ -861,8 +861,9 @@ pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
 
 #[cfg(test)]
 mod tests {
+    use hir::PrefixKind;
     use ide::Analysis;
-    use ide_db::helpers::SnippetCap;
+    use ide_db::helpers::{insert_use::InsertUseConfig, SnippetCap};
 
     use super::*;
 
@@ -887,7 +888,7 @@ mod tests {
                     add_call_parenthesis: true,
                     add_call_argument_snippets: true,
                     snippet_cap: SnippetCap::new(true),
-                    merge: None,
+                    insert_use: InsertUseConfig { merge: None, prefix_kind: PrefixKind::Plain },
                 },
                 ide_db::base_db::FilePosition { file_id, offset },
             )

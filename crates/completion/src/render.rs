@@ -51,11 +51,16 @@ pub(crate) fn render_resolution_with_import<'a>(
     import_edit: ImportEdit,
     resolution: &ScopeDef,
 ) -> Option<CompletionItem> {
-    Render::new(ctx).render_resolution(
-        import_edit.import_path.segments.last()?.to_string(),
-        Some(import_edit),
-        resolution,
-    )
+    Render::new(ctx)
+        .render_resolution(
+            import_edit.import_path.segments.last()?.to_string(),
+            Some(import_edit),
+            resolution,
+        )
+        .map(|mut item| {
+            item.completion_kind = CompletionKind::Magic;
+            item
+        })
 }
 
 /// Interface for data and methods required for items rendering.

@@ -1,9 +1,12 @@
 //! Runs completion for testing purposes.
 
-use hir::Semantics;
+use hir::{PrefixKind, Semantics};
 use ide_db::{
     base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
-    helpers::{insert_use::MergeBehavior, SnippetCap},
+    helpers::{
+        insert_use::{InsertUseConfig, MergeBehavior},
+        SnippetCap,
+    },
     RootDatabase,
 };
 use itertools::Itertools;
@@ -19,7 +22,10 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     add_call_parenthesis: true,
     add_call_argument_snippets: true,
     snippet_cap: SnippetCap::new(true),
-    merge: Some(MergeBehavior::Full),
+    insert_use: InsertUseConfig {
+        merge: Some(MergeBehavior::Full),
+        prefix_kind: PrefixKind::Plain,
+    },
 };
 
 /// Creates analysis from a multi-file fixture, returns positions marked with $0.
@@ -110,7 +116,7 @@ pub(crate) fn check_edit_with_config(
 
     let mut combined_edit = completion.text_edit().to_owned();
     if let Some(import_text_edit) =
-        completion.import_to_add().and_then(|edit| edit.to_text_edit(config.merge))
+        completion.import_to_add().and_then(|edit| edit.to_text_edit(config.insert_use.merge))
     {
         combined_edit.union(import_text_edit).expect(
             "Failed to apply completion resolve changes: change ranges overlap, but should not",

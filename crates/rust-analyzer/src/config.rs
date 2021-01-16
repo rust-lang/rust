@@ -11,11 +11,11 @@ use std::{convert::TryFrom, ffi::OsString, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use hir::PrefixKind;
-use ide::{
-    AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig,
-    InsertUseConfig,
+use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
+use ide_db::helpers::{
+    insert_use::{InsertUseConfig, MergeBehavior},
+    SnippetCap,
 };
-use ide_db::helpers::{insert_use::MergeBehavior, SnippetCap};
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
@@ -542,11 +542,18 @@ impl Config {
             max_length: self.data.inlayHints_maxLength,
         }
     }
-    fn merge_behavior(&self) -> Option<MergeBehavior> {
-        match self.data.assist_importMergeBehavior {
-            MergeBehaviorDef::None => None,
-            MergeBehaviorDef::Full => Some(MergeBehavior::Full),
-            MergeBehaviorDef::Last => Some(MergeBehavior::Last),
+    fn insert_use_config(&self) -> InsertUseConfig {
+        InsertUseConfig {
+            merge: match self.data.assist_importMergeBehavior {
+                MergeBehaviorDef::None => None,
+                MergeBehaviorDef::Full => Some(MergeBehavior::Full),
+                MergeBehaviorDef::Last => Some(MergeBehavior::Last),
+            },
+            prefix_kind: match self.data.assist_importPrefix {
+                ImportPrefixDef::Plain => PrefixKind::Plain,
+                ImportPrefixDef::ByCrate => PrefixKind::ByCrate,
+                ImportPrefixDef::BySelf => PrefixKind::BySelf,
+            },
         }
     }
     pub fn completion(&self) -> CompletionConfig {
@@ -556,7 +563,7 @@ impl Config {
                 && completion_item_edit_resolve(&self.caps),
             add_call_parenthesis: self.data.completion_addCallParenthesis,
             add_call_argument_snippets: self.data.completion_addCallArgumentSnippets,
-            merge: self.merge_behavior(),
+            insert_use: self.insert_use_config(),
             snippet_cap: SnippetCap::new(try_or!(
                 self.caps
                     .text_document
@@ -575,7 +582,11 @@ impl Config {
             snippet_cap: SnippetCap::new(self.experimental("snippetTextEdit")),
             allowed: None,
             insert_use: InsertUseConfig {
-                merge: self.merge_behavior(),
+                merge: match self.data.assist_importMergeBehavior {
+                    MergeBehaviorDef::None => None,
+                    MergeBehaviorDef::Full => Some(MergeBehavior::Full),
+                    MergeBehaviorDef::Last => Some(MergeBehavior::Last),
+                },
                 prefix_kind: match self.data.assist_importPrefix {
                     ImportPrefixDef::Plain => PrefixKind::Plain,
                     ImportPrefixDef::ByCrate => PrefixKind::ByCrate,

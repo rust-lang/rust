@@ -13,6 +13,7 @@ pub(crate) mod postfix;
 pub(crate) mod macro_in_item_position;
 pub(crate) mod trait_impl;
 pub(crate) mod mod_;
+pub(crate) mod flyimport;
 
 use hir::{ModPath, ScopeDef, Type};
 

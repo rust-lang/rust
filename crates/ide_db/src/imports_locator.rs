@@ -12,6 +12,8 @@ use crate::{
 use either::Either;
 use rustc_hash::FxHashSet;
 
+const QUERY_SEARCH_LIMIT: usize = 40;
+
 pub fn find_exact_imports<'a>(
     sema: &Semantics<'a, RootDatabase>,
     krate: Crate,
@@ -24,11 +26,11 @@ pub fn find_exact_imports<'a>(
         {
             let mut local_query = symbol_index::Query::new(name_to_import.clone());
             local_query.exact();
-            local_query.limit(40);
+            local_query.limit(QUERY_SEARCH_LIMIT);
             local_query
         },
         import_map::Query::new(name_to_import)
-            .limit(40)
+            .limit(QUERY_SEARCH_LIMIT)
             .name_only()
             .search_mode(import_map::SearchMode::Equals)
             .case_sensitive(),

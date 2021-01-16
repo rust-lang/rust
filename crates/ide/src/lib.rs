@@ -80,7 +80,7 @@ pub use crate::{
         HlRange,
     },
 };
-pub use assists::{Assist, AssistConfig, AssistId, AssistKind, InsertUseConfig};
+pub use assists::{Assist, AssistConfig, AssistId, AssistKind};
 pub use completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, ImportEdit,
     InsertTextFormat,

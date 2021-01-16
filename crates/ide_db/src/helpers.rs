@@ -1,5 +1,6 @@
 //! A module with ide helpers for high-level ide features.
 pub mod insert_use;
+pub mod import_assets;
 
 use hir::{Crate, Enum, Module, ScopeDef, Semantics, Trait};
 use syntax::ast::{self, make};
