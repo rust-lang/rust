@@ -4,6 +4,8 @@
 # `index` or `paths`. It DOES NOT check that the structure of the produced json is actually in
 # any way correct, for example an empty map would pass.
 
+# FIXME: Better error output
+
 import sys
 import json
 

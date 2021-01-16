@@ -1072,6 +1072,8 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--docck-python").arg(builder.python());
 
+        cmd.arg("--jsondocck-path").arg(builder.jsondocck(compiler, target));
+
         if builder.config.build.ends_with("apple-darwin") {
             // Force /usr/bin/python3 on macOS for LLDB tests because we're loading the
             // LLDB plugin's compiled module which only works with the system python

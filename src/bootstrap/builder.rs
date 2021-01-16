@@ -751,6 +751,11 @@ impl<'a> Builder<'a> {
         cmd
     }
 
+    /// Gets a path to the jsondocck tool
+    pub fn jsondocck(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
+        self.ensure(tool::JsonDocCk { compiler, target })
+    }
+
     /// Return the path to `llvm-config` for the target, if it exists.
     ///
     /// Note that this returns `None` if LLVM is disabled, or if we're in a
