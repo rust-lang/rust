@@ -73,7 +73,7 @@ impl Step for Std {
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-        let compiler = builder.compiler(0, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build);
 
         let mut cargo = builder.cargo(
             compiler,
@@ -84,7 +84,10 @@ impl Step for Std {
         );
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
-        builder.info(&format!("Checking std artifacts ({} -> {})", &compiler.host, target));
+        builder.info(&format!(
+            "Checking stage{} std artifacts ({} -> {})",
+            builder.top_stage, &compiler.host, target
+        ));
         run_cargo(
             builder,
             cargo,
@@ -94,9 +97,13 @@ impl Step for Std {
             true,
         );
 
-        let libdir = builder.sysroot_libdir(compiler, target);
-        let hostdir = builder.sysroot_libdir(compiler, compiler.host);
-        add_to_sysroot(&builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
+        // We skip populating the sysroot in non-zero stage because that'll lead
+        // to rlib/rmeta conflicts if std gets built during this session.
+        if compiler.stage == 0 {
+            let libdir = builder.sysroot_libdir(compiler, target);
+            let hostdir = builder.sysroot_libdir(compiler, compiler.host);
+            add_to_sysroot(&builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
+        }
 
         // Then run cargo again, once we've put the rmeta files for the library
         // crates into the sysroot. This is needed because e.g., core's tests
@@ -124,8 +131,8 @@ impl Step for Std {
             }
 
             builder.info(&format!(
-                "Checking std test/bench/example targets ({} -> {})",
-                &compiler.host, target
+                "Checking stage{} std test/bench/example targets ({} -> {})",
+                builder.top_stage, &compiler.host, target
             ));
             run_cargo(
                 builder,
@@ -163,10 +170,20 @@ impl Step for Rustc {
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(0, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
 
-        builder.ensure(Std { target });
+        if compiler.stage != 0 {
+            // If we're not in stage 0, then we won't have a std from the beta
+            // compiler around. That means we need to make sure there's one in
+            // the sysroot for the compiler to find. Otherwise, we're going to
+            // fail when building crates that need to generate code (e.g., build
+            // scripts and their dependencies).
+            builder.ensure(crate::compile::Std { target: compiler.host, compiler });
+            builder.ensure(crate::compile::Std { target, compiler });
+        } else {
+            builder.ensure(Std { target });
+        }
 
         let mut cargo = builder.cargo(
             compiler,
@@ -187,7 +204,10 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate.name);
         }
 
-        builder.info(&format!("Checking compiler artifacts ({} -> {})", &compiler.host, target));
+        builder.info(&format!(
+            "Checking stage{} compiler artifacts ({} -> {})",
+            builder.top_stage, &compiler.host, target
+        ));
         run_cargo(
             builder,
             cargo,
@@ -225,7 +245,7 @@ impl Step for CodegenBackend {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(0, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
         let backend = self.backend;
 
@@ -244,8 +264,8 @@ impl Step for CodegenBackend {
         rustc_cargo_env(builder, &mut cargo, target);
 
         builder.info(&format!(
-            "Checking {} artifacts ({} -> {})",
-            backend, &compiler.host.triple, target.triple
+            "Checking stage{} {} artifacts ({} -> {})",
+            builder.top_stage, backend, &compiler.host.triple, target.triple
         ));
 
         run_cargo(
@@ -280,7 +300,7 @@ macro_rules! tool_check_step {
             }
 
             fn run(self, builder: &Builder<'_>) {
-                let compiler = builder.compiler(0, builder.config.build);
+                let compiler = builder.compiler(builder.top_stage, builder.config.build);
                 let target = self.target;
 
                 builder.ensure(Rustc { target });
@@ -301,7 +321,8 @@ macro_rules! tool_check_step {
                 }
 
                 builder.info(&format!(
-                    "Checking {} artifacts ({} -> {})",
+                    "Checking stage{} {} artifacts ({} -> {})",
+                    builder.top_stage,
                     stringify!($name).to_lowercase(),
                     &compiler.host.triple,
                     target.triple
