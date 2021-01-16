@@ -1038,22 +1038,22 @@ impl<T> [T] {
     /// let slice: &mut [char] = &mut ['l', 'o', 'r', 'e', 'm', '!'];
     /// let chunks: &mut [[char; 1]] =
     ///     // SAFETY: 1-element chunks never have remainder
-    ///     unsafe { slice.as_chunks_mut_unchecked() };
+    ///     unsafe { slice.as_chunks_unchecked_mut() };
     /// chunks[0] = ['L'];
     /// assert_eq!(chunks, &[['L'], ['o'], ['r'], ['e'], ['m'], ['!']]);
     /// let chunks: &mut [[char; 3]] =
     ///     // SAFETY: The slice length (6) is a multiple of 3
-    ///     unsafe { slice.as_chunks_mut_unchecked() };
+    ///     unsafe { slice.as_chunks_unchecked_mut() };
     /// chunks[1] = ['a', 'x', '?'];
     /// assert_eq!(slice, &['L', 'o', 'r', 'a', 'x', '?']);
     ///
     /// // These would be unsound:
-    /// // let chunks: &[[_; 5]] = slice.as_chunks_mut_unchecked() // The slice length is not a multiple of 5
-    /// // let chunks: &[[_; 0]] = slice.as_chunks_mut_unchecked() // Zero-length chunks are never allowed
+    /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked_mut() // The slice length is not a multiple of 5
+    /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked_mut() // Zero-length chunks are never allowed
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
-    pub unsafe fn as_chunks_mut_unchecked<const N: usize>(&mut self) -> &mut [[T; N]] {
+    pub unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
         debug_assert_ne!(N, 0);
         debug_assert_eq!(self.len() % N, 0);
         let new_len =
@@ -1096,7 +1096,7 @@ impl<T> [T] {
         let (multiple_of_n, remainder) = self.split_at_mut(len * N);
         // SAFETY: We already panicked for zero, and ensured by construction
         // that the length of the subslice is a multiple of N.
-        let array_slice = unsafe { multiple_of_n.as_chunks_mut_unchecked() };
+        let array_slice = unsafe { multiple_of_n.as_chunks_unchecked_mut() };
         (array_slice, remainder)
     }
 
@@ -1132,7 +1132,7 @@ impl<T> [T] {
         let (remainder, multiple_of_n) = self.split_at_mut(self.len() - len * N);
         // SAFETY: We already panicked for zero, and ensured by construction
         // that the length of the subslice is a multiple of N.
-        let array_slice = unsafe { multiple_of_n.as_chunks_mut_unchecked() };
+        let array_slice = unsafe { multiple_of_n.as_chunks_unchecked_mut() };
         (remainder, array_slice)
     }
 
