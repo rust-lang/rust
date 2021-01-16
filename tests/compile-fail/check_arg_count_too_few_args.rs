@@ -1,5 +1,3 @@
-#![feature(core_intrinsics)]
-
 fn main() {
     extern "C" {
         fn malloc() -> *mut std::ffi::c_void;
