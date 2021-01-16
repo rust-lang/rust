@@ -18,8 +18,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
         let message = format!("Usage: {} <doc-dir> <template>", argv0);
         println!("{}", opts.usage(&message));
-        println!();
-        panic!()
+        std::process::exit(1);
     }
 
     let matches = opts.parse(args_).unwrap();
