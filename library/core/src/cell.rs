@@ -1283,7 +1283,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// let b2: Result<Ref<u32>, _> = Ref::filter_map(b1, |v| v.get(1));
     /// assert_eq!(*b2.unwrap(), 2);
     /// ```
-    #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "none")]
+    #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "81061")]
     #[inline]
     pub fn filter_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Result<Ref<'b, U>, Self>
     where
@@ -1436,7 +1436,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// assert_eq!(*c.borrow(), vec![1, 4, 3]);
     /// ```
-    #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "none")]
+    #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "81061")]
     #[inline]
     pub fn filter_map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> Result<RefMut<'b, U>, Self>
     where
