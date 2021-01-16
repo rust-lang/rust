@@ -238,13 +238,12 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 /// such restrictions:
 /// - For each type parameter, we can only define a method either generically
 ///   or for one particular type. For example, we cannot define a method like
-///   `key_at` generically for all `BorrowType`, because we want it to return
-///   `&'a K` for most choices of `BorrowType`, but plain `K` for `Owned`.
-///   We cannot define `key_at` once for all types that carry a lifetime.
+///   `into_kv` generically for all `BorrowType`, or once for all types that
+///   carry a lifetime, because we want it to return `&'a` references.
 ///   Therefore, we define it only for the least powerful type `Immut<'a>`.
 /// - We cannot get implicit coercion from say `Mut<'a>` to `Immut<'a>`.
 ///   Therefore, we have to explicitly call `reborrow` on a more powerfull
-///   `NodeRef` in order to reach a method like `key_at`.
+///   `NodeRef` in order to reach a method like `into_kv`.
 ///
 /// All methods on `NodeRef` that return some kind of reference, either:
 /// - Take `self` by value, and return the lifetime carried by `BorrowType`.
@@ -344,26 +343,6 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 }
 
-impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
-    /// Exposes one of the keys stored in the node.
-    ///
-    /// # Safety
-    /// The node has more than `idx` initialized elements.
-    pub unsafe fn key_at(self, idx: usize) -> &'a K {
-        debug_assert!(idx < self.len());
-        unsafe { self.into_leaf().keys.get_unchecked(idx).assume_init_ref() }
-    }
-
-    /// Exposes one of the values stored in the node.
-    ///
-    /// # Safety
-    /// The node has more than `idx` initialized elements.
-    unsafe fn val_at(self, idx: usize) -> &'a V {
-        debug_assert!(idx < self.len());
-        unsafe { self.into_leaf().vals.get_unchecked(idx).assume_init_ref() }
-    }
-}
-
 impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// Finds the parent of the current node. Returns `Ok(handle)` if the current
     /// node actually has a parent, where `handle` points to the edge of the parent
@@ -420,6 +399,14 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
         let ptr = Self::as_leaf_ptr(&self);
         // SAFETY: there can be no mutable references into this tree borrowed as `Immut`.
         unsafe { &*ptr }
+    }
+
+    /// Borrows a view into the keys stored in the node.
+    pub fn keys(&self) -> &[K] {
+        let leaf = self.into_leaf();
+        unsafe {
+            MaybeUninit::slice_assume_init_ref(leaf.keys.get_unchecked(..usize::from(leaf.len)))
+        }
     }
 }
 
@@ -987,7 +974,11 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeType>, marker::KV> {
     pub fn into_kv(self) -> (&'a K, &'a V) {
-        (unsafe { self.node.key_at(self.idx) }, unsafe { self.node.val_at(self.idx) })
+        debug_assert!(self.idx < self.node.len());
+        let leaf = self.node.into_leaf();
+        let k = unsafe { leaf.keys.get_unchecked(self.idx).assume_init_ref() };
+        let v = unsafe { leaf.vals.get_unchecked(self.idx).assume_init_ref() };
+        (k, v)
     }
 }
 
@@ -997,6 +988,7 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
     }
 
     pub fn into_val_mut(self) -> &'a mut V {
+        debug_assert!(self.idx < self.node.len());
         let leaf = self.node.into_leaf_mut();
         unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() }
     }
@@ -1010,6 +1002,7 @@ impl<'a, K, V, NodeType> Handle<NodeRef<marker::ValMut<'a>, K, V, NodeType>, mar
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
     pub fn kv_mut(&mut self) -> (&mut K, &mut V) {
+        debug_assert!(self.idx < self.node.len());
         // We cannot call separate key and value methods, because calling the second one
         // invalidates the reference returned by the first.
         unsafe {
