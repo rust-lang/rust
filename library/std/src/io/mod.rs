@@ -2466,7 +2466,7 @@ impl<R: Read> Iterator for Bytes<R> {
         }
     }
 
-    default fn size_hint(&self) -> (usize, Option<usize>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         (&self.inner as &dyn SizeHint).size_hint()
     }
 }
@@ -2474,9 +2474,7 @@ impl<R: Read> Iterator for Bytes<R> {
 trait SizeHint {
     fn lower_bound(&self) -> usize;
 
-    fn upper_bound(&self) -> Option<usize> {
-        None
-    }
+    fn upper_bound(&self) -> Option<usize>;
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.lower_bound(), self.upper_bound())
@@ -2486,6 +2484,10 @@ trait SizeHint {
 impl<T> SizeHint for T {
     default fn lower_bound(&self) -> usize {
         0
+    }
+
+    default fn upper_bound(&self) -> Option<usize> {
+        None
     }
 }
 
