@@ -117,7 +117,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                     // derefs, except we stop at the deref of a shared
                     // reference.
 
-                    let ty = PlaceRef::ty(&cursor_base, self.body, self.tcx).ty;
+                    let ty = cursor_base.ty(self.body, self.tcx).ty;
                     match ty.kind() {
                         ty::RawPtr(_) | ty::Ref(_ /*rgn*/, _ /*ty*/, hir::Mutability::Not) => {
                             // don't continue traversing over derefs of raw pointers or shared
