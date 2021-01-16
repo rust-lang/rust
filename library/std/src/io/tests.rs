@@ -204,8 +204,8 @@ fn bufreader_size_hint() {
     let mut buf_reader = BufReader::new(&testdata[..]);
     assert_eq!(buf_reader.buffer().len(), 0);
 
-    let buffer = buf_reader.fill_buf().unwrap();
-    let buffer_length = buffer.len();
+    let buffer_length = testdata.len();
+    buf_reader.fill_buf().unwrap();
 
     // Check that size hint matches buffer contents
     let mut buffered_bytes = buf_reader.bytes();
@@ -216,6 +216,33 @@ fn bufreader_size_hint() {
     buffered_bytes.next().unwrap().unwrap();
     let (lower_bound, _upper_bound) = buffered_bytes.size_hint();
     assert_eq!(lower_bound, buffer_length - 1);
+}
+
+#[test]
+fn empty_size_hint() {
+    let size_hint = io::empty().bytes().size_hint();
+    assert_eq!(size_hint, (0, Some(0)));
+}
+
+#[test]
+fn chain_empty_size_hint() {
+    let chain = io::empty().chain(io::empty());
+    let size_hint = chain.bytes().size_hint();
+    assert_eq!(size_hint, (0, Some(0)));
+}
+
+#[test]
+fn chain_size_hint() {
+    let testdata = b"ABCDEFGHIJKL";
+    let mut buf_reader_1 = BufReader::new(&testdata[..6]);
+    let mut buf_reader_2 = BufReader::new(&testdata[6..]);
+
+    buf_reader_1.fill_buf().unwrap();
+    buf_reader_2.fill_buf().unwrap();
+
+    let chain = buf_reader_1.chain(buf_reader_2);
+    let size_hint = chain.bytes().size_hint();
+    assert_eq!(size_hint, (testdata.len(), None));
 }
 
 #[test]
