@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.4.32] 2021-01-16
+
+### Fixed
+- Indentation now correct on first bound in cases where the generic bounds are multiline formatted and the first bound itself is multiline formatted ([#4636](https://github.com/rust-lang/rustfmt/issues/4636))
+
+### Install/Download Options
+- **crates.io package** - *pending*
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.32](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.32)
+- **Build from source** - [Tag v1.4.32](https://github.com/rust-lang/rustfmt/tree/v1.4.32), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.31] 2021-01-09
 
 ### Changed
@@ -13,7 +24,7 @@
 
 ### Install/Download Options
 - **crates.io package** - *pending*
-- **rustup (nightly)** - *pending*
+- **rustup (nightly)** - Starting in `2021-01-16`
 - **GitHub Release Binaries** - [Release v1.4.31](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.31)
 - **Build from source** - [Tag v1.4.31](https://github.com/rust-lang/rustfmt/tree/v1.4.31), see instructions for how to [install rustfmt from source][install-from-source]
 
