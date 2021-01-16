@@ -1679,15 +1679,8 @@ impl<T: ?Sized> From<Box<T>> for Rc<T> {
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T> From<Vec<T>> for Rc<[T]> {
     #[inline]
-    fn from(mut v: Vec<T>) -> Rc<[T]> {
-        unsafe {
-            let rc = Rc::copy_from_slice(&v);
-
-            // Allow the Vec to free its memory, but not destroy its contents
-            v.set_len(0);
-
-            rc
-        }
+    fn from(v: Vec<T>) -> Rc<[T]> {
+        Rc::from_box(v.into_boxed_slice())
     }
 }
 
