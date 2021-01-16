@@ -1,6 +1,8 @@
 use crate::cmp;
 use crate::fmt;
-use crate::io::{self, BufRead, Initializer, IoSliceMut, Read, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE};
+use crate::io::{
+    self, BufRead, Initializer, IoSliceMut, Read, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
+};
 
 /// The `BufReader<R>` struct adds buffering to any reader.
 ///
@@ -428,4 +430,3 @@ impl<T> SizeHint for BufReader<T> {
         self.buffer().len()
     }
 }
-
