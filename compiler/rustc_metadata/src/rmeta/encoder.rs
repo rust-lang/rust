@@ -1613,11 +1613,18 @@ impl EncodeContext<'a, 'tcx> {
             let tcx = self.tcx;
             let hir = tcx.hir();
 
-            record!(self.tables.span[LOCAL_CRATE.as_def_id()] <- hir.span(hir::CRATE_HIR_ID));
-
             let proc_macro_decls_static = tcx.proc_macro_decls_static(LOCAL_CRATE).unwrap().index;
             let stability = tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).copied();
             let macros = self.lazy(hir.krate().proc_macros.iter().map(|p| p.owner.local_def_index));
+
+            record!(self.tables.def_kind[LOCAL_CRATE.as_def_id()] <- DefKind::Mod);
+            record!(self.tables.span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
+            record!(self.tables.attributes[LOCAL_CRATE.as_def_id()] <- tcx.get_attrs(LOCAL_CRATE.as_def_id()));
+            record!(self.tables.visibility[LOCAL_CRATE.as_def_id()] <- tcx.visibility(LOCAL_CRATE.as_def_id()));
+            if let Some(stability) = stability {
+                record!(self.tables.stability[LOCAL_CRATE.as_def_id()] <- stability);
+            }
+            self.encode_deprecation(LOCAL_CRATE.as_def_id());
 
             // Normally, this information is encoded when we walk the items
             // defined in this crate. However, we skip doing that for proc-macro crates,
