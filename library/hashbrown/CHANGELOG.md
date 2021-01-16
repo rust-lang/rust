@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.10.0] - 2021-01-16
+
+## Changed
+- Parametrized `RawTable`, `HashSet` and `HashMap` over an allocator. (#133)
+- Improved branch prediction hints on stable. (#209)
+- Optimized hashing of primitive types with AHash using specialization. (#207)
+- Only instantiate `RawTable`'s reserve functions once per key-value. (#204)
+
 ## [v0.9.1] - 2020-09-28
 
 ## Added
@@ -263,7 +271,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.10.0...HEAD
+[v0.10.0]: https://github.com/rust-lang/hashbrown/compare/v0.9.1...v0.10.0
 [v0.9.1]: https://github.com/rust-lang/hashbrown/compare/v0.9.0...v0.9.1
 [v0.9.0]: https://github.com/rust-lang/hashbrown/compare/v0.8.2...v0.9.0
 [v0.8.2]: https://github.com/rust-lang/hashbrown/compare/v0.8.1...v0.8.2
