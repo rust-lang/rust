@@ -12,8 +12,7 @@ pub enum SearchResult<BorrowType, K, V, FoundType, GoDownType> {
 
 /// Looks up a given key in a (sub)tree headed by the given node, recursively.
 /// Returns a `Found` with the handle of the matching KV, if any. Otherwise,
-/// returns a `GoDown` with the handle of the possible leaf edge where the key
-/// belongs.
+/// returns a `GoDown` with the handle of the leaf edge where the key belongs.
 ///
 /// The result is meaningful only if the tree is ordered by key, like the tree
 /// in a `BTreeMap` is.
