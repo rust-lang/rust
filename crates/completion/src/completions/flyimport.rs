@@ -262,29 +262,29 @@ fn main() {
     fn does_not_propose_names_in_scope() {
         check(
             r#"
-        //- /lib.rs crate:dep
-        pub mod test_mod {
-            pub trait TestTrait {
-                const SPECIAL_CONST: u8;
-                type HumbleType;
-                fn weird_function();
-                fn random_method(&self);
-            }
-            pub struct TestStruct {}
-            impl TestTrait for TestStruct {
-                const SPECIAL_CONST: u8 = 42;
-                type HumbleType = ();
-                fn weird_function() {}
-                fn random_method(&self) {}
-            }
-        }
+//- /lib.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        const SPECIAL_CONST: u8;
+        type HumbleType;
+        fn weird_function();
+        fn random_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        const SPECIAL_CONST: u8 = 42;
+        type HumbleType = ();
+        fn weird_function() {}
+        fn random_method(&self) {}
+    }
+}
 
-        //- /main.rs crate:main deps:dep
-        use dep::test_mod::TestStruct;
-        fn main() {
-            TestSt$0
-        }
-        "#,
+//- /main.rs crate:main deps:dep
+use dep::test_mod::TestStruct;
+fn main() {
+    TestSt$0
+}
+"#,
             expect![[r#""#]],
         );
     }
