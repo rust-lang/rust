@@ -1,8 +1,9 @@
 // build-fail
 // normalize-stderr-test: ".nll/" -> "/"
+#![feature(test)]
 
 fn main() {
-    rec(Empty);
+    rec(Empty, std::hint::black_box(false));
 }
 
 struct Empty;
@@ -18,14 +19,14 @@ fn identity<T>(x: T) -> T {
     x
 }
 
-fn rec<T>(mut it: T)
+fn rec<T>(mut it: T, b: bool)
 where
     T: Iterator,
 {
-    if () == () {
+    if b {
         T::count(it);
     } else {
-        rec(identity(&mut it))
+        rec(identity(&mut it), b)
         //~^ ERROR reached the recursion limit while instantiating
     }
 }
