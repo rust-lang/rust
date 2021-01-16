@@ -135,7 +135,6 @@ mod tests {
         let result = format!("{:#?}", remove_derive_attrs(&tt).unwrap());
 
         assert_eq_text!(
-            &result,
             r#"
 SUBTREE $
   PUNCH   # [alone] 0
@@ -150,7 +149,8 @@ SUBTREE $
     PUNCH   : [alone] 19
     IDENT   u32 20
 "#
-            .trim()
+            .trim(),
+            &result
         );
     }
 }
