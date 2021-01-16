@@ -117,6 +117,9 @@ pub(crate) fn codegen_fn<'tcx>(
     context.compute_domtree();
     context.eliminate_unreachable_code(cx.module.isa()).unwrap();
     context.dce(cx.module.isa()).unwrap();
+    // Some Cranelift optimizations expect the domtree to not yet be computed and as such don't
+    // invalidate it when it would change.
+    context.domtree.clear();
 
     context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
 
