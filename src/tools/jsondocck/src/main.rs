@@ -62,28 +62,15 @@ impl CommandKind {
             return false;
         }
 
-        match self {
-            CommandKind::Has => {
-                if args[0] == "-" && command_num == 0 {
-                    print_err(
-                        &format!("Tried to use the previous path in the first command"),
-                        lineno,
-                    );
-                    return false;
-                }
-            }
-            CommandKind::Count => {
-                if args[0] == "-" && command_num == 0 {
-                    print_err(
-                        &format!("Tried to use the previous path in the first command"),
-                        lineno,
-                    );
-                    return false;
-                }
-                if args[2].parse::<usize>().is_err() {
-                    print_err(&format!("Third argument to @count must be a valid usize"), lineno);
-                    return false;
-                }
+        if args[0] == "-" && command_num == 0 {
+            print_err(&format!("Tried to use the previous path in the first command"), lineno);
+            return false;
+        }
+
+        if let CommandKind::Count = self {
+            if args[2].parse::<usize>().is_err() {
+                print_err(&format!("Third argument to @count must be a valid usize"), lineno);
+                return false;
             }
         }
 
@@ -132,10 +119,7 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
             None => continue,
         };
 
-        let negated = match cap.name("negated") {
-            Some(m) => m.as_str() == "!",
-            None => false,
-        };
+        let negated = cap.name("negated").unwrap().as_str() == "!";
         let cmd = cap.name("cmd").unwrap().as_str();
 
         let cmd = match cmd {
@@ -209,26 +193,18 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                         Err(_) => false,
                     }
                 }
-                _ => {
-                    unreachable!()
-                }
+                _ => unreachable!(),
             }
         }
         CommandKind::Count => {
-            match command.args.len() {
-                // @count <path> <jsonpath> <count> = Check that the jsonpath matches exactly [count] times
-                3 => {
-                    let expected: usize = command.args[2].parse().unwrap();
+            // @count <path> <jsonpath> <count> = Check that the jsonpath matches exactly [count] times
+            assert_eq!(command.args.len(), 3);
+            let expected: usize = command.args[2].parse().unwrap();
 
-                    let val = cache.get_value(&command.args[0])?;
-                    match select(&val, &command.args[1]) {
-                        Ok(results) => results.len() == expected,
-                        Err(_) => false,
-                    }
-                }
-                _ => {
-                    unreachable!()
-                }
+            let val = cache.get_value(&command.args[0])?;
+            match select(&val, &command.args[1]) {
+                Ok(results) => results.len() == expected,
+                Err(_) => false,
             }
         }
     };

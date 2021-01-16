@@ -22,16 +22,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         panic!()
     }
 
-    let matches = &match opts.parse(args_) {
-        Ok(m) => m,
-        Err(f) => panic!("{:?}", f),
-    };
+    let matches = opts.parse(args_).unwrap();
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} <doc-dir> <template>", argv0);
         println!("{}", opts.usage(&message));
-        println!();
-        panic!()
+        std::process::exit(1);
     }
 
     Config {
