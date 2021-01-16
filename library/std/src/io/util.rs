@@ -67,7 +67,7 @@ impl fmt::Debug for Empty {
 
 impl SizeHint for Empty {
     fn upper_bound(&self) -> Option<usize> {
-       Some(0)
+        Some(0)
     }
 }
 
