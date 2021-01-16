@@ -750,6 +750,41 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
     }
 }
 
+fn should_encode_stability(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Mod
+        | DefKind::Ctor(..)
+        | DefKind::Variant
+        | DefKind::Field
+        | DefKind::Struct
+        | DefKind::AssocTy
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Static
+        | DefKind::Const
+        | DefKind::Fn
+        | DefKind::ForeignMod
+        | DefKind::TyAlias
+        | DefKind::OpaqueTy
+        | DefKind::Enum
+        | DefKind::Union
+        | DefKind::Impl
+        | DefKind::Trait
+        | DefKind::TraitAlias
+        | DefKind::Macro(..)
+        | DefKind::ForeignTy => true,
+        DefKind::Use
+        | DefKind::LifetimeParam
+        | DefKind::AnonConst
+        | DefKind::GlobalAsm
+        | DefKind::Closure
+        | DefKind::Generator
+        | DefKind::ExternCrate => false,
+    }
+}
+
 impl EncodeContext<'a, 'tcx> {
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
@@ -773,9 +808,11 @@ impl EncodeContext<'a, 'tcx> {
             if should_encode_visibility(def_kind) {
                 record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
             }
-            self.encode_stability(def_id);
-            self.encode_const_stability(def_id);
-            self.encode_deprecation(def_id);
+            if should_encode_stability(def_kind) {
+                self.encode_stability(def_id);
+                self.encode_const_stability(def_id);
+                self.encode_deprecation(def_id);
+            }
         }
     }
 
