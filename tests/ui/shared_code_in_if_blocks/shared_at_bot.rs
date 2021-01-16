@@ -33,6 +33,7 @@ fn simple_examples() {
         result
     };
 
+    // Else if block
     if x == 9 {
         println!("The index is: 6");
 
@@ -40,9 +41,32 @@ fn simple_examples() {
     } else if x == 8 {
         println!("The index is: 4");
 
+        // We should only get a lint trigger for the last statement
+        println!("This is also eq with the else block");
         println!("Same end of block");
     } else {
         println!("Same end of block");
+        println!("This is also eq with the else block");
+    }
+
+    // Use of outer scope value
+    let outer_scope_value = "I'm outside the if block";
+    if x < 99 {
+        let z = "How are you";
+        println!("I'm a local because I use the value `z`: `{}`", z);
+
+        println!(
+            "I'm moveable because I know: `outer_scope_value`: '{}'",
+            outer_scope_value
+        );
+    } else {
+        let z = 45678000;
+        println!("I'm a local because I use the value `z`: `{}`", z);
+
+        println!(
+            "I'm moveable because I know: `outer_scope_value`: '{}'",
+            outer_scope_value
+        );
     }
 
     // TODO xFrednet 2021-01.13: Fix lint for `if let`
@@ -145,6 +169,17 @@ fn not_moveable_due_to_value_scope() {
 
         z2
     };
+}
+
+#[rustfmt::skip]
+fn test_suggestion_with_weird_formatting() {
+    let x = 9;
+    let mut a = 0;
+    let mut b = 0;
+
+    // The error message still looks weird tbh but this is the best I can do
+    // for weird formatting
+    if x == 17 { b = 1; a = 0x99; } else { a = 0x99; }
 }
 
 fn main() {}

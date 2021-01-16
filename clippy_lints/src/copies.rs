@@ -1,16 +1,16 @@
 use crate::utils::{both, count_eq, eq_expr_value, in_macro, search_same, SpanlessEq, SpanlessHash};
 use crate::utils::{
-    first_line_of_span, get_parent_expr, higher, if_sequence, indent_of, parent_node_is_if_expr, reindent_multiline,
-    snippet, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
+    first_line_of_span, get_parent_expr, if_sequence, indent_of, parent_node_is_if_expr, reindent_multiline, snippet,
+    snippet_opt, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Block, Expr, HirId};
+use rustc_hir::{Block, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
+use rustc_span::{source_map::Span, BytePos};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -218,14 +218,6 @@ fn lint_same_then_else<'tcx>(
             );
 
             return;
-        } else {
-            println!(
-                "{:?}\n - expr_eq: {:10}, l_stmts.len(): {:10}, r_stmts.len(): {:10}",
-                win[0].span,
-                block_expr_eq,
-                l_stmts.len(),
-                r_stmts.len()
-            )
         }
 
         start_eq = start_eq.min(current_start_eq);
@@ -328,7 +320,7 @@ fn emit_shared_code_in_if_blocks_lint(
         let suggestion = reindent_multiline(Cow::Borrowed(&suggestion), true, cond_indent);
 
         let span = span_start.to(span_end);
-        suggestions.push(("START HELP", span, suggestion.to_string()));
+        suggestions.push(("start", span, suggestion.to_string()));
     }
 
     if lint_end {
@@ -354,31 +346,56 @@ fn emit_shared_code_in_if_blocks_lint(
         let suggestion = "}\n".to_string() + &moved_snipped;
         let suggestion = reindent_multiline(Cow::Borrowed(&suggestion), true, indent);
 
-        let span = moved_start.to(span_end);
-        suggestions.push(("END_RANGE", span, suggestion.to_string()));
+        let mut span = moved_start.to(span_end);
+        // Improve formatting if the inner block has indention (i.e. normal Rust formatting)
+        let test_span = Span::new(span.lo() - BytePos(4), span.lo(), span.ctxt());
+        if snippet_opt(cx, test_span)
+            .map(|snip| snip == "    ")
+            .unwrap_or_default()
+        {
+            span = span.with_lo(test_span.lo());
+        }
+
+        suggestions.push(("end", span, suggestion.to_string()));
     }
 
     if suggestions.len() == 1 {
-        let (_, span, sugg) = &suggestions[0];
+        let (place_str, span, sugg) = suggestions.pop().unwrap();
+        let msg = format!("All if blocks contain the same code at the {}", place_str);
+        let help = format!("Consider moving the {} statements out like this", place_str);
         span_lint_and_sugg(
             cx,
             SHARED_CODE_IN_IF_BLOCKS,
-            *span,
-            "All code blocks contain the same code",
-            "Consider moving the statements out like this",
-            sugg.clone(),
+            span,
+            msg.as_str(),
+            help.as_str(),
+            sugg,
             Applicability::Unspecified,
         );
-    } else {
+    } else if suggestions.len() == 2 {
+        let (_, end_span, end_sugg) = suggestions.pop().unwrap();
+        let (_, start_span, start_sugg) = suggestions.pop().unwrap();
         span_lint_and_then(
             cx,
             SHARED_CODE_IN_IF_BLOCKS,
-            if_expr.span,
-            "All if blocks contain the same code",
+            start_span,
+            "All if blocks contain the same code at the start and the end. Here at the start:",
             move |diag| {
-                for (help, span, sugg) in suggestions {
-                    diag.span_suggestion(span, help, sugg, Applicability::Unspecified);
-                }
+                diag.span_note(end_span, "And here at the end:");
+
+                diag.span_suggestion(
+                    start_span,
+                    "Consider moving the start statements out like this:",
+                    start_sugg,
+                    Applicability::Unspecified,
+                );
+
+                diag.span_suggestion(
+                    end_span,
+                    "And consider moving the end statements out like this:",
+                    end_sugg,
+                    Applicability::Unspecified,
+                );
             },
         );
     }
