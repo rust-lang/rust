@@ -353,6 +353,26 @@ impl<T> Rc<T> {
     /// to upgrade the weak reference before this function returns will result
     /// in a `None` value. However, the weak reference may be cloned freely and
     /// stored for use at a later time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(arc_new_cyclic)]
+    /// #![allow(dead_code)]
+    /// use std::rc::{Rc, Weak};
+    ///
+    /// struct Gadget {
+    ///     self_weak: Weak<Self>,
+    ///     // ... more fields
+    /// }
+    /// impl Gadget {
+    ///     pub fn new() -> Rc<Self> {
+    ///         Rc::new_cyclic(|self_weak| {
+    ///             Gadget { self_weak: self_weak.clone(), /* ... */ }
+    ///         })
+    ///     }
+    /// }
+    /// ```
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
         // Construct the inner in the "uninitialized" state with a single
