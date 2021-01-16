@@ -32,11 +32,11 @@ LL |     Struct { a, _ } = Struct { a: 1, b: 2 };
    |
 help: include the missing field in the pattern
    |
-LL |     Struct { a, b, _ } = Struct { a: 1, b: 2 };
+LL |     Struct { a, b _ } = Struct { a: 1, b: 2 };
    |               ^^^
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL |     Struct { a, .., _ } = Struct { a: 1, b: 2 };
+LL |     Struct { a, .. _ } = Struct { a: 1, b: 2 };
    |               ^^^^
 
 error: aborting due to 5 previous errors

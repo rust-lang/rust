@@ -1,5 +1,5 @@
 error[E0027]: pattern does not mention field `name`
-  --> $DIR/E0027.rs:10:9
+  --> $DIR/E0027.rs:11:9
    |
 LL |         Dog { age: x } => {}
    |         ^^^^^^^^^^^^^^ missing field `name`
@@ -13,8 +13,38 @@ help: if you don't care about this missing field, you can explicitly ignore it
 LL |         Dog { age: x, .. } => {}
    |                     ^^^^
 
+error[E0027]: pattern does not mention field `age`
+  --> $DIR/E0027.rs:15:9
+   |
+LL |         Dog { name: x, } => {}
+   |         ^^^^^^^^^^^^^^^^ missing field `age`
+   |
+help: include the missing field in the pattern
+   |
+LL |         Dog { name: x, age } => {}
+   |                      ^^^^^
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |         Dog { name: x, .. } => {}
+   |                      ^^^^
+
+error[E0027]: pattern does not mention field `age`
+  --> $DIR/E0027.rs:19:9
+   |
+LL |         Dog { name: x  , } => {}
+   |         ^^^^^^^^^^^^^^^^^^ missing field `age`
+   |
+help: include the missing field in the pattern
+   |
+LL |         Dog { name: x, age } => {}
+   |                      ^^^^^
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |         Dog { name: x, .. } => {}
+   |                      ^^^^
+
 error[E0027]: pattern does not mention fields `name`, `age`
-  --> $DIR/E0027.rs:13:9
+  --> $DIR/E0027.rs:22:9
    |
 LL |         Dog {} => {}
    |         ^^^^^^ missing fields `name`, `age`
@@ -28,6 +58,6 @@ help: if you don't care about these missing fields, you can explicitly ignore th
 LL |         Dog { .. } => {}
    |             ^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0027`.
