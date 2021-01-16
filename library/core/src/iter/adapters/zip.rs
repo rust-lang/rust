@@ -286,6 +286,7 @@ where
 
     #[inline]
     unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item {
+        let idx = self.index + idx;
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
         unsafe { (self.a.__iterator_get_unchecked(idx), self.b.__iterator_get_unchecked(idx)) }
