@@ -2241,14 +2241,13 @@ impl<T, U> SizeHint for Chain<T, U> {
         SizeHint::lower_bound(&self.first) + SizeHint::lower_bound(&self.second)
     }
 
-    fn upper_bound(&self) -> Option<usize > {
+    fn upper_bound(&self) -> Option<usize> {
         match (SizeHint::upper_bound(&self.first), SizeHint::upper_bound(&self.second)) {
             (Some(first), Some(second)) => Some(first + second),
             _ => None,
         }
     }
 }
-
 
 /// Reader adaptor which limits the bytes read from an underlying reader.
 ///
