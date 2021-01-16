@@ -7,6 +7,9 @@
 # and then create `yourtest.expected` by stripping unnecessary details from `yourtest.json`. If
 # you're on windows, replace `\` with `/`.
 
+# WARNING: The error messages produced by this may be misleading, in the case of list re-ordering
+#          it may point to apparently unrelated keys.
+
 import copy
 import sys
 import json
