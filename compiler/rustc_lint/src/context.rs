@@ -412,12 +412,18 @@ impl LintStore {
     }
 
     fn no_lint_suggestion(&self, lint_name: &str) -> CheckLintNameResult<'_> {
-        let symbols = self.by_name.keys().map(|name| Symbol::intern(&name)).collect::<Vec<_>>();
+        let name_lower = lint_name.to_lowercase();
+        let symbols =
+            self.get_lints().iter().map(|l| Symbol::intern(&l.name_lower())).collect::<Vec<_>>();
 
-        let suggestion =
-            find_best_match_for_name(&symbols, Symbol::intern(&lint_name.to_lowercase()), None);
-
-        CheckLintNameResult::NoLint(suggestion)
+        if lint_name.chars().any(char::is_uppercase) && self.find_lints(&name_lower).is_ok() {
+            // First check if the lint name is (partly) in upper case instead of lower case...
+            CheckLintNameResult::NoLint(Some(Symbol::intern(&name_lower)))
+        } else {
+            // ...if not, search for lints with a similar name
+            let suggestion = find_best_match_for_name(&symbols, Symbol::intern(&name_lower), None);
+            CheckLintNameResult::NoLint(suggestion)
+        }
     }
 
     fn check_tool_name_for_backwards_compat(
