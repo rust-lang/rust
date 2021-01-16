@@ -274,12 +274,8 @@ impl NonConstOp for CellBorrow {
 pub struct MutBorrow(pub hir::BorrowKind);
 
 impl NonConstOp for MutBorrow {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        match ccx.const_kind() {
-            // Mutable statics can handle mutable references in their final value
-            hir::ConstContext::Static(hir::Mutability::Mut) => Status::Allowed,
-            _ => Status::Forbidden,
-        }
+    fn status_in_item(&self, _ccx: &ConstCx<'_, '_>) -> Status {
+        Status::Forbidden
     }
 
     fn importance(&self) -> DiagnosticImportance {
