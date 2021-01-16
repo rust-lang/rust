@@ -70,12 +70,9 @@ These defaults are as follows:
 - `install`: `--stage 2`
 - `bench`: `--stage 2`
 
-You can always override the stage by passing `--stage N` explicitly, except for `check`,
-which is [hard-coded to stage 0][stage1-check].
+You can always override the stage by passing `--stage N` explicitly.
 
 For more information about stages, [see below](#understanding-stages-of-bootstrap).
-
-[stage1-check]: https://github.com/rust-lang/rust/issues/46955
 
 ## Complications of bootstrapping
 
