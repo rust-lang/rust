@@ -106,8 +106,10 @@ public:
   /// Remove a given offset sequence
   void erase(const std::vector<int> Seq) { mapping.erase(Seq); }
 
-  void insert(const std::vector<int> Seq, ConcreteType CT,
+  /// Return if changed
+  bool insert(const std::vector<int> Seq, ConcreteType CT,
               bool intsAreLegalSubPointer = false) {
+    bool changed = false;
     if (Seq.size() > 0) {
 
       // check pointer abilities from before
@@ -134,13 +136,13 @@ public:
         if (found != mapping.end()) {
           // Already exists as is
           if (found->second == CT)
-            return;
+            return changed;
 
           if (intsAreLegalSubPointer &&
               ((found->second == BaseType::Integer &&
                 CT == BaseType::Pointer) ||
                (found->second == BaseType::Integer && CT == BaseType::Pointer)))
-            return;
+            return changed;
 
           // Conflicts with an existing -1
           if (CT != BaseType::Anything) {
@@ -160,13 +162,13 @@ public:
         if (found != mapping.end()) {
           // Already exists as is
           if (found->second == CT)
-            return;
+            return changed;
 
           if (intsAreLegalSubPointer &&
               ((found->second == BaseType::Integer &&
                 CT == BaseType::Pointer) ||
                (found->second == BaseType::Integer && CT == BaseType::Pointer)))
-            return;
+            return changed;
 
           // Conflicts with an existing -1
           if (CT != BaseType::Anything) {
@@ -212,6 +214,7 @@ public:
 
         for (const auto &val : toremove) {
           mapping.erase(val);
+          changed = true;
         }
       }
 
@@ -248,6 +251,7 @@ public:
 
         for (const auto &val : toremove) {
           mapping.erase(val);
+          changed = true;
         }
       }
     }
@@ -255,7 +259,7 @@ public:
       llvm::errs() << "not handling more than 6 pointer lookups deep dt:"
                    << str() << " adding v: " << to_string(Seq) << ": "
                    << CT.str() << "\n";
-      return;
+      return changed;
     }
 
     std::vector<std::pair<int,std::set<std::vector<int>>>> best;
@@ -285,8 +289,10 @@ public:
       if (i < best.size()) {
         if (Off < best[i].first) {
           if (best[i].first > 500)
-            for(auto v : best[i].second)
+            for(auto v : best[i].second) {
               mapping.erase(v);
+              changed = true;
+            }
           keep = true;
         } else {
           if (Off > 500) {
@@ -298,8 +304,9 @@ public:
       }
       i++;
     }
-    if (considerErase && !keep) return;
+    if (considerErase && !keep) return changed;
     mapping.insert(std::pair<const std::vector<int>, ConcreteType>(Seq, CT));
+    return true;
   }
 
   /// How this TypeTree compares with another
@@ -954,8 +961,7 @@ public:
         }
       }
 
-      changed |= subchanged;
-      insert(pair.first, CT);
+      changed |= insert(pair.first, CT);
     }
     return changed;
   }
