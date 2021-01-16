@@ -941,6 +941,41 @@ fn should_encode_type(def_kind: DefKind) -> bool {
     }
 }
 
+fn should_encode_fn_sig(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Variant
+        | DefKind::TraitAlias
+        | DefKind::Fn
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn => true,
+        DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::AssocTy
+        | DefKind::Const
+        | DefKind::Static
+        | DefKind::AssocConst
+        | DefKind::AnonConst
+        | DefKind::OpaqueTy
+        | DefKind::Impl
+        | DefKind::Closure
+        | DefKind::Generator
+        | DefKind::Mod
+        | DefKind::Field
+        | DefKind::ForeignMod
+        | DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Macro(..)
+        | DefKind::Use
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::ExternCrate => false,
+    }
+}
+
 impl EncodeContext<'a, 'tcx> {
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
@@ -990,8 +1025,10 @@ impl EncodeContext<'a, 'tcx> {
                     record!(self.tables.ty[def_id] <- ty);
                 }
             }
-            if let Ok(sig) = tcx.try_fn_sig(def_id) {
-                record!(self.tables.fn_sig[def_id] <- sig);
+            if should_encode_fn_sig(def_kind) {
+                if let Ok(sig) = tcx.try_fn_sig(def_id) {
+                    record!(self.tables.fn_sig[def_id] <- sig);
+                }
             }
             self.encode_explicit_item_bounds(def_id);
         }
