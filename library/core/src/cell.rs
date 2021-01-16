@@ -1261,6 +1261,40 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         Ref { value: f(orig.value), borrow: orig.borrow }
     }
 
+    /// Makes a new `Ref` for an optional component of the borrowed data. The
+    /// original guard is returned as an `Err(..)` if the closure returns
+    /// `None`.
+    ///
+    /// The `RefCell` is already immutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `Ref::filter_map(...)`. A method would interfere with methods of the same
+    /// name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_filter_map)]
+    ///
+    /// use std::cell::{RefCell, Ref};
+    ///
+    /// let c = RefCell::new(vec![1, 2, 3]);
+    /// let b1: Ref<Vec<u32>> = c.borrow();
+    /// let b2: Result<Ref<u32>, _> = Ref::filter_map(b1, |v| v.get(1));
+    /// assert_eq!(*b2.unwrap(), 2);
+    /// ```
+    #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "81061")]
+    #[inline]
+    pub fn filter_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Result<Ref<'b, U>, Self>
+    where
+        F: FnOnce(&T) -> Option<&U>,
+    {
+        match f(orig.value) {
+            Some(value) => Ok(Ref { value, borrow: orig.borrow }),
+            None => Err(orig),
+        }
+    }
+
     /// Splits a `Ref` into multiple `Ref`s for different components of the
     /// borrowed data.
     ///
@@ -1370,6 +1404,58 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         // FIXME(nll-rfc#40): fix borrow-check
         let RefMut { value, borrow } = orig;
         RefMut { value: f(value), borrow }
+    }
+
+    /// Makes a new `RefMut` for an optional component of the borrowed data. The
+    /// original guard is returned as an `Err(..)` if the closure returns
+    /// `None`.
+    ///
+    /// The `RefCell` is already mutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RefMut::filter_map(...)`. A method would interfere with methods of the
+    /// same name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_filter_map)]
+    ///
+    /// use std::cell::{RefCell, RefMut};
+    ///
+    /// let c = RefCell::new(vec![1, 2, 3]);
+    ///
+    /// {
+    ///     let b1: RefMut<Vec<u32>> = c.borrow_mut();
+    ///     let mut b2: Result<RefMut<u32>, _> = RefMut::filter_map(b1, |v| v.get_mut(1));
+    ///
+    ///     if let Ok(mut b2) = b2 {
+    ///         *b2 += 2;
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(*c.borrow(), vec![1, 4, 3]);
+    /// ```
+    #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "81061")]
+    #[inline]
+    pub fn filter_map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> Result<RefMut<'b, U>, Self>
+    where
+        F: FnOnce(&mut T) -> Option<&mut U>,
+    {
+        // FIXME(nll-rfc#40): fix borrow-check
+        let RefMut { value, borrow } = orig;
+        let value = value as *mut T;
+        // SAFETY: function holds onto an exclusive reference for the duration
+        // of its call through `orig`, and the pointer is only de-referenced
+        // inside of the function call never allowing the exclusive reference to
+        // escape.
+        match f(unsafe { &mut *value }) {
+            Some(value) => Ok(RefMut { value, borrow }),
+            None => {
+                // SAFETY: same as above.
+                Err(RefMut { value: unsafe { &mut *value }, borrow })
+            }
+        }
     }
 
     /// Splits a `RefMut` into multiple `RefMut`s for different components of the
