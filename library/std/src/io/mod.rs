@@ -2459,7 +2459,7 @@ pub struct Bytes<R> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<R: Read + SizeHint> Iterator for Bytes<R> {
+impl<R: Read> Iterator for Bytes<R> {
     type Item = Result<u8>;
 
     fn next(&mut self) -> Option<Result<u8>> {
@@ -2475,7 +2475,7 @@ impl<R: Read + SizeHint> Iterator for Bytes<R> {
     }
 
     default fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
+        (&self.inner as &SizeHint).size_hint()
     }
 }
 
