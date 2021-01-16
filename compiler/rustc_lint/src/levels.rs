@@ -20,8 +20,11 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{source_map::MultiSpan, Span, DUMMY_SP};
+use rustc_span::{
+    symbol::{sym, Symbol},
+    ExpnId,
+};
 
 use std::cmp;
 
@@ -56,6 +59,15 @@ pub struct LintLevelsBuilder<'s> {
 pub struct BuilderPush {
     prev: u32,
     pub changed: bool,
+}
+
+/// Returns true when a lint level can override a previously set forbid.
+fn can_overrule_forbidden(span: Span, expn: Option<ExpnId>) -> bool {
+    if let Some(expn_id) = expn {
+        !span.in_derive_expansion() || span.ctxt().outer_expn() != expn_id
+    } else {
+        false
+    }
 }
 
 impl<'s> LintLevelsBuilder<'s> {
@@ -109,6 +121,7 @@ impl<'s> LintLevelsBuilder<'s> {
         specs: &mut FxHashMap<LintId, LevelAndSource>,
         id: LintId,
         (level, src): LevelAndSource,
+        derive_expansion: Option<ExpnId>,
     ) {
         // Setting to a non-forbid level is an error if the lint previously had
         // a forbid level. Note that this is not necessarily true even with a
@@ -116,9 +129,15 @@ impl<'s> LintLevelsBuilder<'s> {
         //
         // This means that this only errors if we're truly lowering the lint
         // level from forbid.
+        //
+        // An exception to this is when the lint comes from a different derive macro
+        // expansion than the previous forbid level.
         if level != Level::Forbid {
-            if let (Level::Forbid, old_src) =
-                self.sets.get_lint_level(id.lint, self.cur, Some(&specs), &self.sess)
+            let (old_level, old_src) =
+                self.sets.get_lint_level(id.lint, self.cur, Some(&specs), &self.sess);
+
+            if old_level == Level::Forbid
+                && !can_overrule_forbidden(old_src.span(), derive_expansion)
             {
                 let mut diag_builder = struct_span_err!(
                     self.sess,
@@ -178,7 +197,13 @@ impl<'s> LintLevelsBuilder<'s> {
         let mut specs = FxHashMap::default();
         let sess = self.sess;
         let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
+
         for attr in attrs {
+            let derive_expansion = if attr.span.in_derive_expansion() {
+                Some(attr.span.ctxt().outer_expn())
+            } else {
+                None
+            };
             let level = match Level::from_symbol(attr.name_or_empty()) {
                 None => continue,
                 Some(lvl) => lvl,
@@ -281,7 +306,7 @@ impl<'s> LintLevelsBuilder<'s> {
                         let src = LintLevelSource::Node(name, li.span(), reason);
                         for &id in ids {
                             self.check_gated_lint(id, attr.span);
-                            self.insert_spec(&mut specs, id, (level, src));
+                            self.insert_spec(&mut specs, id, (level, src), derive_expansion);
                         }
                     }
 
@@ -295,7 +320,12 @@ impl<'s> LintLevelsBuilder<'s> {
                                     reason,
                                 );
                                 for id in ids {
-                                    self.insert_spec(&mut specs, *id, (level, src));
+                                    self.insert_spec(
+                                        &mut specs,
+                                        *id,
+                                        (level, src),
+                                        derive_expansion,
+                                    );
                                 }
                             }
                             Err((Some(ids), new_lint_name)) => {
@@ -332,7 +362,12 @@ impl<'s> LintLevelsBuilder<'s> {
                                     reason,
                                 );
                                 for id in ids {
-                                    self.insert_spec(&mut specs, *id, (level, src));
+                                    self.insert_spec(
+                                        &mut specs,
+                                        *id,
+                                        (level, src),
+                                        derive_expansion,
+                                    );
                                 }
                             }
                             Err((None, _)) => {
