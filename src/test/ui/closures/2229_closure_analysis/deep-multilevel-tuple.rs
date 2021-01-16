@@ -1,4 +1,3 @@
-
 #![feature(capture_disjoint_fields)]
 //~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 //~| NOTE: `#[warn(incomplete_features)]` on by default
