@@ -257,12 +257,48 @@ public:
                    << CT.str() << "\n";
       return;
     }
-    for (auto Off : Seq) {
-      if (Off > 500) {
-        // TODO perhaps issue warning for too large an offset
-        return;
+
+    std::vector<std::pair<int,std::set<std::vector<int>>>> best;
+    for (const auto &pair : mapping) {
+      size_t i=0;
+      for(int val : pair.first) {
+        if (best.size() <= i) {
+          best.emplace_back(val, std::set<std::vector<int>>());
+        }
+        assert(best.size() > i);
+        if (val > best[i].first) {
+          best[i].first = val;
+          best[i].second.clear();
+        }
+
+        if (val == best[i].first) {
+          best[i].first = val;
+          best[i].second.insert(pair.first);
+        }
+        i++;
       }
     }
+    size_t i=0;
+    bool keep = false;
+    bool considerErase = false;
+    for (auto Off : Seq) {
+      if (i < best.size()) {
+        if (Off < best[i].first) {
+          if (best[i].first > 500)
+            for(auto v : best[i].second)
+              mapping.erase(v);
+          keep = true;
+        } else {
+          if (Off > 500) {
+            considerErase = true;
+          }
+        }
+      } else {
+        keep = true;
+      }
+      i++;
+    }
+    if (considerErase && !keep) return;
     mapping.insert(std::pair<const std::vector<int>, ConcreteType>(Seq, CT));
   }
 

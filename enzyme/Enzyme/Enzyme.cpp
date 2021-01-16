@@ -65,7 +65,8 @@ llvm::cl::opt<bool>
                   cl::desc("Run enzymepostprocessing optimizations"));
 
 /// Return whether successful
-bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
+template<typename T>
+bool HandleAutoDiff(T *CI, TargetLibraryInfo &TLI, AAResults &AA,
                     bool PostOpt) {
 
   Value *fn = CI->getArgOperand(0);
@@ -487,6 +488,7 @@ public:
     bool Changed = false;
 
     std::set<CallInst *> toLower;
+    std::set<InvokeInst *> toLowerI;
   retry:;
     for (BasicBlock &BB : F) {
       for (Instruction &I : BB) {
@@ -556,6 +558,12 @@ public:
     }
 
     for (auto CI : toLower) {
+      successful &= HandleAutoDiff(CI, TLI, AA, PostOpt);
+      Changed = true;
+      if (!successful)
+        break;
+    }
+    for (auto CI : toLowerI) {
       successful &= HandleAutoDiff(CI, TLI, AA, PostOpt);
       Changed = true;
       if (!successful)

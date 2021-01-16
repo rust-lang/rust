@@ -1534,9 +1534,11 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
 
 /// Is the value potentially actively returned or stored
 bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
-                                                       llvm::Value *val) {
+                                                       llvm::Value *val,
+                                                       bool outside) {
   // Must be an analyzer only searching down
-  assert(directions == DOWN);
+  if (!outside)
+    assert(directions == DOWN);
 
   if (StoredOrReturnedCache.find(val) != StoredOrReturnedCache.end()) {
     return StoredOrReturnedCache[val];
@@ -1604,7 +1606,7 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
         // if not written to memory and returning a value itself
         // not actively stored or returned, this is not actively
         // stored or returned
-        if (!isValueActivelyStoredOrReturned(TR, a)) {
+        if (!isValueActivelyStoredOrReturned(TR, a, outside)) {
           continue;
         }
       }
@@ -1620,7 +1622,7 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
         // if not written to memory and returning a value itself
         // not actively stored or returned, this is not actively
         // stored or returned
-        if (!isValueActivelyStoredOrReturned(TR, a)) {
+        if (!isValueActivelyStoredOrReturned(TR, a, outside)) {
           continue;
         }
       } else if (isDeallocationFunction(*F, TLI)) {

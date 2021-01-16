@@ -143,9 +143,10 @@ public:
   /// Is the value free of any active uses
   bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val);
 
-private:
   /// Is the value potentially actively returned or stored
-  bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value *val);
+  bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value *val, bool outside=false);
+
+private:
   /// StoredOrReturnedCache acts as an inductive cache of results for
   /// isValueActivelyStoredOrReturned
   std::map<llvm::Value *, bool> StoredOrReturnedCache;
