@@ -71,7 +71,6 @@ jobs:
         run: |
           if [[ ${{ github.event_name }} == 'schedule' ]]; then
             RUSTC_HASH=$(git ls-remote https://github.com/rust-lang/rust.git master | awk '{print $1}')
-            exit 1 # just to test cron notifications
           else
             RUSTC_HASH=$(< rust-version)
           fi
