@@ -294,6 +294,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         "x64 linux": "x86_64-unknown-linux-gnu",
         "x64 darwin": "x86_64-apple-darwin",
         "arm64 win32": "aarch64-pc-windows-msvc",
+        "arm64 linux": "aarch64-unknown-linux-gnu",
         "arm64 darwin": "aarch64-apple-darwin",
     };
     const platform = platforms[`${process.arch} ${process.platform}`];
