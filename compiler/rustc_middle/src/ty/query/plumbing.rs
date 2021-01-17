@@ -337,14 +337,20 @@ macro_rules! define_queries {
 
             $(pub type $name<$tcx> = $V;)*
         }
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_stored {
+            use super::*;
+
+            $(pub type $name<$tcx> = <
+                query_storage!([$($modifiers)*][$($K)*, $V])
+                as QueryStorage
+            >::Stored;)*
+        }
 
         $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
             type Key = $($K)*;
             type Value = $V;
-            type Stored = <
-                query_storage!([$($modifiers)*][$($K)*, $V])
-                as QueryStorage
-            >::Stored;
+            type Stored = query_stored::$name<$tcx>;
             const NAME: &'static str = stringify!($name);
         }
 
@@ -437,8 +443,7 @@ macro_rules! define_queries {
             $($(#[$attr])*
             #[inline(always)]
             #[must_use]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*))
-                -> <queries::$name<$tcx> as QueryConfig>::Stored
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
             {
                 self.at(DUMMY_SP).$name(key.into_query_param())
             })*
@@ -476,8 +481,7 @@ macro_rules! define_queries {
         impl TyCtxtAt<$tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*))
-                -> <queries::$name<$tcx> as QueryConfig>::Stored
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
             {
                 get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into_query_param())
             })*
