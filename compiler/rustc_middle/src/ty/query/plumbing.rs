@@ -427,8 +427,7 @@ macro_rules! define_queries {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                let qcx = QueryCtxt(self.tcx);
-                get_query::<queries::$name<'_>, _>(qcx, DUMMY_SP, key.into_query_param(), QueryMode::Ensure);
+                self.tcx.queries.$name(self.tcx, DUMMY_SP, key.into_query_param(), QueryMode::Ensure);
             })*
         }
 
@@ -509,8 +508,7 @@ macro_rules! define_queries {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
             {
-                let qcx = QueryCtxt(self.tcx);
-                get_query::<queries::$name<'_>, _>(qcx, self.span, key.into_query_param(), QueryMode::Get).unwrap()
+                self.tcx.queries.$name(self.tcx, self.span, key.into_query_param(), QueryMode::Get).unwrap()
             })*
         }
 
@@ -565,6 +563,19 @@ macro_rules! define_queries_struct {
 
                 Some(jobs)
             }
+
+            $($(#[$attr])*
+            #[inline(always)]
+            fn $name(
+                &self,
+                tcx: TyCtxt<$tcx>,
+                span: Span,
+                key: query_keys::$name<$tcx>,
+                mode: QueryMode,
+            ) -> Option<query_stored::$name<$tcx>> {
+                let qcx = QueryCtxt(tcx);
+                get_query::<queries::$name<$tcx>, _>(qcx, span, key, mode)
+            })*
         }
     };
 }
