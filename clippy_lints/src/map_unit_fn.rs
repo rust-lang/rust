@@ -131,7 +131,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
             Some(expr.span)
         },
         hir::ExprKind::Block(ref block, _) => {
-            match (&block.stmts[..], block.expr.as_ref()) {
+            match (block.stmts, block.expr.as_ref()) {
                 (&[], Some(inner_expr)) => {
                     // If block only contains an expression,
                     // reduce `{ X }` to `X`
