@@ -46,7 +46,6 @@ pub(super) struct EncodeContext<'a, 'tcx> {
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
-    predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
 
     interpret_allocs: FxIndexSet<interpret::AllocId>,
 
@@ -326,10 +325,6 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
 
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
         &mut self.type_shorthands
-    }
-
-    fn predicate_shorthands(&mut self) -> &mut FxHashMap<rustc_middle::ty::Predicate<'tcx>, usize> {
-        &mut self.predicate_shorthands
     }
 
     fn encode_alloc_id(
@@ -2151,7 +2146,6 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         tables: Default::default(),
         lazy_state: LazyState::NoNode,
         type_shorthands: Default::default(),
-        predicate_shorthands: Default::default(),
         source_file_cache,
         interpret_allocs: Default::default(),
         required_source_files,

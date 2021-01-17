@@ -293,7 +293,6 @@ impl<'sess> OnDiskCache<'sess> {
                 tcx,
                 encoder,
                 type_shorthands: Default::default(),
-                predicate_shorthands: Default::default(),
                 interpret_allocs: Default::default(),
                 source_map: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,
@@ -989,7 +988,6 @@ struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
     tcx: TyCtxt<'tcx>,
     encoder: &'a mut E,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
-    predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
     interpret_allocs: FxIndexSet<interpret::AllocId>,
     source_map: CachingSourceMapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
@@ -1102,9 +1100,6 @@ where
     }
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
         &mut self.type_shorthands
-    }
-    fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::Predicate<'tcx>, usize> {
-        &mut self.predicate_shorthands
     }
     fn encode_alloc_id(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
         let (index, _) = self.interpret_allocs.insert_full(*alloc_id);

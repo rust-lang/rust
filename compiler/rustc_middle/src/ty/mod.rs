@@ -1064,11 +1064,6 @@ impl<'tcx> Predicate<'tcx> {
     pub fn kind(self) -> Binder<PredicateKind<'tcx>> {
         self.inner.kind
     }
-
-    /// Like `kind` but returns a reference. Only needed because of encoding.
-    pub(super) fn kind_ref(self) -> &'tcx Binder<PredicateKind<'tcx>> {
-        &self.inner.kind
-    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
