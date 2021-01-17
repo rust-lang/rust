@@ -812,11 +812,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut lo = None;
                 let mut hi = None;
                 let mut in_block = false;
-                for (idx, eliminated) in eliminated_args.iter().enumerate() {
-                    match (in_block, eliminated, idx == eliminated_args.len() - 1) {
+                // Scan backwards over the args (scanning backwards lets us favor the commas after, rather than before)
+                for (idx, eliminated) in eliminated_args.iter().enumerate().rev() {
+                    match (in_block, eliminated, idx == 0) {
                         (false, true, false) => {
                             // We just encountered the start of a block of eliminated parameters
-                            lo = Some(idx);
+                            hi = Some(idx);
                             in_block = true;
                         },
                         (false, true, true) => {
@@ -826,11 +827,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         (true, false, _) => {
                             // We encountered the end of a block, set the hi so the logic below kicks in
-                            hi = Some(idx - 1);
+                            lo = Some(idx + 1);
                             in_block = false;
                         },
                         (true, true, true) => {
-                            hi = Some(idx);
+                            lo = Some(idx);
                             in_block = false;
                         }
                         _ => {}
@@ -841,17 +842,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // be careful abound the boundaries
                         let ctxt = provided_args[0].span.ctxt();
                         let (lo_bp, hi_bp) = match (lo_idx == 0, hi_idx == provided_arg_count - 1) {
-                            // If we have an arg to our left, chop off it's comma
-                            // a, xx, xx, xx
-                            //  [-----------)
-                            (false, _) => {
-                                (provided_args[lo_idx - 1].span.hi(), provided_args[hi_idx].span.hi())
-                            },
-                            // If we start from the first arg, and we have an arg to our right, chop of the last params comma
+                            // If we have an arg to our right, we need to eat the comma of the last eliminated param
                             // xx, xx, xx, a
                             // [-----------)
-                            (true, false) => {
+                            (_, false) => {
                                 (provided_args[lo_idx].span.lo(), provided_args[hi_idx + 1].span.lo())
+                            },
+                            // If this block extends to the last argument, and theres an arg to the left, eat its comma
+                            // a, xx, xx, xx
+                            //  [-----------)
+                            (false, true) => {
+                                (provided_args[lo_idx - 1].span.hi(), provided_args[hi_idx].span.hi())
                             },
                             // If every argument was eliminated, don't need to worry about commas before or after
                             // xx, xx, xx, xx
