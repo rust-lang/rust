@@ -411,24 +411,24 @@ impl Validator<'mir, 'tcx> {
         loop {
             let predicates = tcx.predicates_of(current);
             for (predicate, _) in predicates.predicates {
-                match predicate.skip_binders() {
-                    ty::PredicateAtom::RegionOutlives(_)
-                    | ty::PredicateAtom::TypeOutlives(_)
-                    | ty::PredicateAtom::WellFormed(_)
-                    | ty::PredicateAtom::Projection(_)
-                    | ty::PredicateAtom::ConstEvaluatable(..)
-                    | ty::PredicateAtom::ConstEquate(..)
-                    | ty::PredicateAtom::TypeWellFormedFromEnv(..) => continue,
-                    ty::PredicateAtom::ObjectSafe(_) => {
+                match predicate.kind().skip_binder() {
+                    ty::PredicateKind::RegionOutlives(_)
+                    | ty::PredicateKind::TypeOutlives(_)
+                    | ty::PredicateKind::WellFormed(_)
+                    | ty::PredicateKind::Projection(_)
+                    | ty::PredicateKind::ConstEvaluatable(..)
+                    | ty::PredicateKind::ConstEquate(..)
+                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
+                    ty::PredicateKind::ObjectSafe(_) => {
                         bug!("object safe predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateAtom::ClosureKind(..) => {
+                    ty::PredicateKind::ClosureKind(..) => {
                         bug!("closure kind predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateAtom::Subtype(_) => {
+                    ty::PredicateKind::Subtype(_) => {
                         bug!("subtype predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateAtom::Trait(pred, constness) => {
+                    ty::PredicateKind::Trait(pred, constness) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }

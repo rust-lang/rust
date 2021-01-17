@@ -202,8 +202,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     let mut has_emitted = false;
                     for &(predicate, _) in cx.tcx.explicit_item_bounds(def) {
                         // We only look at the `DefId`, so it is safe to skip the binder here.
-                        if let ty::PredicateAtom::Trait(ref poly_trait_predicate, _) =
-                            predicate.skip_binders()
+                        if let ty::PredicateKind::Trait(ref poly_trait_predicate, _) =
+                            predicate.kind().skip_binder()
                         {
                             let def_id = poly_trait_predicate.trait_ref.def_id;
                             let descr_pre =

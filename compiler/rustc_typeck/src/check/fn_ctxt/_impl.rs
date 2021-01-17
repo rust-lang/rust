@@ -542,7 +542,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_predicate(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::PredicateAtom::WellFormed(arg).to_predicate(self.tcx),
+            ty::PredicateKind::WellFormed(arg).to_predicate(self.tcx),
         ));
     }
 
@@ -764,21 +764,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .pending_obligations()
             .into_iter()
             .filter_map(move |obligation| {
-                let bound_predicate = obligation.predicate.bound_atom();
+                let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateAtom::Projection(data) => {
+                    ty::PredicateKind::Projection(data) => {
                         Some((bound_predicate.rebind(data).to_poly_trait_ref(self.tcx), obligation))
                     }
-                    ty::PredicateAtom::Trait(data, _) => {
+                    ty::PredicateKind::Trait(data, _) => {
                         Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
                     }
-                    ty::PredicateAtom::Subtype(..) => None,
-                    ty::PredicateAtom::RegionOutlives(..) => None,
-                    ty::PredicateAtom::TypeOutlives(..) => None,
-                    ty::PredicateAtom::WellFormed(..) => None,
-                    ty::PredicateAtom::ObjectSafe(..) => None,
-                    ty::PredicateAtom::ConstEvaluatable(..) => None,
-                    ty::PredicateAtom::ConstEquate(..) => None,
+                    ty::PredicateKind::Subtype(..) => None,
+                    ty::PredicateKind::RegionOutlives(..) => None,
+                    ty::PredicateKind::TypeOutlives(..) => None,
+                    ty::PredicateKind::WellFormed(..) => None,
+                    ty::PredicateKind::ObjectSafe(..) => None,
+                    ty::PredicateKind::ConstEvaluatable(..) => None,
+                    ty::PredicateKind::ConstEquate(..) => None,
                     // N.B., this predicate is created by breaking down a
                     // `ClosureType: FnFoo()` predicate, where
                     // `ClosureType` represents some `Closure`. It can't
@@ -787,8 +787,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // this closure yet; this is exactly why the other
                     // code is looking for a self type of a unresolved
                     // inference variable.
-                    ty::PredicateAtom::ClosureKind(..) => None,
-                    ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
+                    ty::PredicateKind::ClosureKind(..) => None,
+                    ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
                 }
             })
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))

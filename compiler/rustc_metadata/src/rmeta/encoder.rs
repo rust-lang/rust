@@ -46,7 +46,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
-    predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
+    predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
 
     interpret_allocs: FxIndexSet<interpret::AllocId>,
 
@@ -328,7 +328,7 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
         &mut self.type_shorthands
     }
 
-    fn predicate_shorthands(&mut self) -> &mut FxHashMap<rustc_middle::ty::Predicate<'tcx>, usize> {
+    fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize> {
         &mut self.predicate_shorthands
     }
 

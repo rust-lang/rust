@@ -465,20 +465,20 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
 
 impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
-        let bound_predicate = self.bound_atom();
+        let bound_predicate = self.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateAtom::Trait(pred, _) => Some(bound_predicate.rebind(pred).clean(cx)),
-            ty::PredicateAtom::RegionOutlives(pred) => pred.clean(cx),
-            ty::PredicateAtom::TypeOutlives(pred) => pred.clean(cx),
-            ty::PredicateAtom::Projection(pred) => Some(pred.clean(cx)),
+            ty::PredicateKind::Trait(pred, _) => Some(bound_predicate.rebind(pred).clean(cx)),
+            ty::PredicateKind::RegionOutlives(pred) => pred.clean(cx),
+            ty::PredicateKind::TypeOutlives(pred) => pred.clean(cx),
+            ty::PredicateKind::Projection(pred) => Some(pred.clean(cx)),
 
-            ty::PredicateAtom::Subtype(..)
-            | ty::PredicateAtom::WellFormed(..)
-            | ty::PredicateAtom::ObjectSafe(..)
-            | ty::PredicateAtom::ClosureKind(..)
-            | ty::PredicateAtom::ConstEvaluatable(..)
-            | ty::PredicateAtom::ConstEquate(..)
-            | ty::PredicateAtom::TypeWellFormedFromEnv(..) => panic!("not user writable"),
+            ty::PredicateKind::Subtype(..)
+            | ty::PredicateKind::WellFormed(..)
+            | ty::PredicateKind::ObjectSafe(..)
+            | ty::PredicateKind::ClosureKind(..)
+            | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::TypeWellFormedFromEnv(..) => panic!("not user writable"),
         }
     }
 }
@@ -743,19 +743,19 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
             .flat_map(|(p, _)| {
                 let mut projection = None;
                 let param_idx = (|| {
-                    let bound_p = p.bound_atom();
+                    let bound_p = p.kind();
                     match bound_p.skip_binder() {
-                        ty::PredicateAtom::Trait(pred, _constness) => {
+                        ty::PredicateKind::Trait(pred, _constness) => {
                             if let ty::Param(param) = pred.self_ty().kind() {
                                 return Some(param.index);
                             }
                         }
-                        ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+                        ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
                             if let ty::Param(param) = ty.kind() {
                                 return Some(param.index);
                             }
                         }
-                        ty::PredicateAtom::Projection(p) => {
+                        ty::PredicateKind::Projection(p) => {
                             if let ty::Param(param) = p.projection_ty.self_ty().kind() {
                                 projection = Some(bound_p.rebind(p));
                                 return Some(param.index);
@@ -1684,14 +1684,12 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let mut bounds = bounds
                     .iter()
                     .filter_map(|bound| {
-                        // Note: The substs of opaque types can contain unbound variables,
-                        // meaning that we have to use `ignore_quantifiers_with_unbound_vars` here.
-                        let bound_predicate = bound.bound_atom_with_opt_escaping(cx.tcx);
+                        let bound_predicate = bound.kind();
                         let trait_ref = match bound_predicate.skip_binder() {
-                            ty::PredicateAtom::Trait(tr, _constness) => {
+                            ty::PredicateKind::Trait(tr, _constness) => {
                                 bound_predicate.rebind(tr.trait_ref)
                             }
-                            ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
+                            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
                                 if let Some(r) = reg.clean(cx) {
                                     regions.push(GenericBound::Outlives(r));
                                 }
@@ -1710,8 +1708,8 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                         let bounds: Vec<_> = bounds
                             .iter()
                             .filter_map(|bound| {
-                                if let ty::PredicateAtom::Projection(proj) =
-                                    bound.bound_atom_with_opt_escaping(cx.tcx).skip_binder()
+                                if let ty::PredicateKind::Projection(proj) =
+                                    bound.kind().skip_binder()
                                 {
                                     if proj.projection_ty.trait_ref(cx.tcx)
                                         == trait_ref.skip_binder()

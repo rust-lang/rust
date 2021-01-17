@@ -1,4 +1,4 @@
-error: cannot specialize on `ProjectionPredicate(ProjectionTy { substs: [V], item_def_id: DefId(0:6 ~ repeated_projection_type[317d]::Id::This) }, (I,))`
+error: cannot specialize on `Binder(ProjectionPredicate(ProjectionTy { substs: [V], item_def_id: DefId(0:6 ~ repeated_projection_type[317d]::Id::This) }, (I,)))`
   --> $DIR/repeated_projection_type.rs:19:1
    |
 LL | / impl<I, V: Id<This = (I,)>> X for V {

@@ -5,7 +5,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{
-    self, Binder, Predicate, PredicateAtom, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
+    self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
 };
 use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
@@ -378,8 +378,8 @@ fn well_formed_types_in_env<'tcx>(
     let input_clauses = inputs.into_iter().filter_map(|arg| {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
-                let binder = Binder::dummy(PredicateAtom::TypeWellFormedFromEnv(ty));
-                Some(tcx.mk_predicate(PredicateKind::ForAll(binder)))
+                let binder = Binder::dummy(PredicateKind::TypeWellFormedFromEnv(ty));
+                Some(tcx.mk_predicate(binder))
             }
 
             // FIXME(eddyb) no WF conditions from lifetimes?

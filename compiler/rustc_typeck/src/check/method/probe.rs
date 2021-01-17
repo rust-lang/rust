@@ -795,9 +795,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug!("assemble_inherent_candidates_from_param(param_ty={:?})", param_ty);
 
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
-            let bound_predicate = predicate.bound_atom();
+            let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateAtom::Trait(trait_predicate, _) => {
+                ty::PredicateKind::Trait(trait_predicate, _) => {
                     match *trait_predicate.trait_ref.self_ty().kind() {
                         ty::Param(p) if p == param_ty => {
                             Some(bound_predicate.rebind(trait_predicate.trait_ref))
@@ -805,16 +805,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         _ => None,
                     }
                 }
-                ty::PredicateAtom::Subtype(..)
-                | ty::PredicateAtom::Projection(..)
-                | ty::PredicateAtom::RegionOutlives(..)
-                | ty::PredicateAtom::WellFormed(..)
-                | ty::PredicateAtom::ObjectSafe(..)
-                | ty::PredicateAtom::ClosureKind(..)
-                | ty::PredicateAtom::TypeOutlives(..)
-                | ty::PredicateAtom::ConstEvaluatable(..)
-                | ty::PredicateAtom::ConstEquate(..)
-                | ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
+                ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Projection(..)
+                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::TypeOutlives(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
             }
         });
 

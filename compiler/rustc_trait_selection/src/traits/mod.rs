@@ -324,7 +324,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
         .drain_filter(|predicate| {
-            matches!(predicate.skip_binders(), ty::PredicateAtom::TypeOutlives(..))
+            matches!(predicate.kind().skip_binder(), ty::PredicateKind::TypeOutlives(..))
         })
         .collect();
 

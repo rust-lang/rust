@@ -100,19 +100,19 @@ where
     }
 
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<V::BreakTy> {
-        match predicate.skip_binders() {
-            ty::PredicateAtom::Trait(ty::TraitPredicate { trait_ref }, _) => {
+        match predicate.kind().skip_binder() {
+            ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref }, _) => {
                 self.visit_trait(trait_ref)
             }
-            ty::PredicateAtom::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
+            ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
                 ty.visit_with(self)?;
                 self.visit_trait(projection_ty.trait_ref(self.def_id_visitor.tcx()))
             }
-            ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => {
+            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => {
                 ty.visit_with(self)
             }
-            ty::PredicateAtom::RegionOutlives(..) => ControlFlow::CONTINUE,
-            ty::PredicateAtom::ConstEvaluatable(..)
+            ty::PredicateKind::RegionOutlives(..) => ControlFlow::CONTINUE,
+            ty::PredicateKind::ConstEvaluatable(..)
                 if self.def_id_visitor.tcx().features().const_evaluatable_checked =>
             {
                 // FIXME(const_evaluatable_checked): If the constant used here depends on a

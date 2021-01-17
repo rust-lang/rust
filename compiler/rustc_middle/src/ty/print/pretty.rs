@@ -623,12 +623,8 @@ pub trait PrettyPrinter<'tcx>:
                     p!("impl");
                     for (predicate, _) in bounds {
                         let predicate = predicate.subst(self.tcx(), substs);
-                        // Note: We can't use `to_opt_poly_trait_ref` here as `predicate`
-                        // may contain unbound variables. We therefore do this manually.
-                        //
-                        // FIXME(lcnr): Find out why exactly this is the case :)
-                        let bound_predicate = predicate.bound_atom_with_opt_escaping(self.tcx());
-                        if let ty::PredicateAtom::Trait(pred, _) = bound_predicate.skip_binder() {
+                        let bound_predicate = predicate.kind();
+                        if let ty::PredicateKind::Trait(pred, _) = bound_predicate.skip_binder() {
                             let trait_ref = bound_predicate.rebind(pred.trait_ref);
                             // Don't print +Sized, but rather +?Sized if absent.
                             if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {
@@ -2068,40 +2064,38 @@ define_print_and_forward_display! {
     }
 
     ty::Predicate<'tcx> {
-        match self.kind() {
-            &ty::PredicateKind::Atom(atom) => p!(print(atom)),
-            ty::PredicateKind::ForAll(binder) => p!(print(binder)),
-        }
+        let binder = self.kind();
+        p!(print(binder))
     }
 
-    ty::PredicateAtom<'tcx> {
+    ty::PredicateKind<'tcx> {
         match *self {
-            ty::PredicateAtom::Trait(ref data, constness) => {
+            ty::PredicateKind::Trait(ref data, constness) => {
                 if let hir::Constness::Const = constness {
                     p!("const ");
                 }
                 p!(print(data))
             }
-            ty::PredicateAtom::Subtype(predicate) => p!(print(predicate)),
-            ty::PredicateAtom::RegionOutlives(predicate) => p!(print(predicate)),
-            ty::PredicateAtom::TypeOutlives(predicate) => p!(print(predicate)),
-            ty::PredicateAtom::Projection(predicate) => p!(print(predicate)),
-            ty::PredicateAtom::WellFormed(arg) => p!(print(arg), " well-formed"),
-            ty::PredicateAtom::ObjectSafe(trait_def_id) => {
+            ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),
+            ty::PredicateKind::RegionOutlives(predicate) => p!(print(predicate)),
+            ty::PredicateKind::TypeOutlives(predicate) => p!(print(predicate)),
+            ty::PredicateKind::Projection(predicate) => p!(print(predicate)),
+            ty::PredicateKind::WellFormed(arg) => p!(print(arg), " well-formed"),
+            ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
             }
-            ty::PredicateAtom::ClosureKind(closure_def_id, _closure_substs, kind) => {
+            ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => {
                 p!("the closure `",
                 print_value_path(closure_def_id, &[]),
                 write("` implements the trait `{}`", kind))
             }
-            ty::PredicateAtom::ConstEvaluatable(def, substs) => {
+            ty::PredicateKind::ConstEvaluatable(def, substs) => {
                 p!("the constant `", print_value_path(def.did, substs), "` can be evaluated")
             }
-            ty::PredicateAtom::ConstEquate(c1, c2) => {
+            ty::PredicateKind::ConstEquate(c1, c2) => {
                 p!("the constant `", print(c1), "` equals `", print(c2), "`")
             }
-            ty::PredicateAtom::TypeWellFormedFromEnv(ty) => {
+            ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 p!("the type `", print(ty), "` is found in the environment")
             }
         }

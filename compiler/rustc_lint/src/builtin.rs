@@ -1550,13 +1550,13 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::fold::TypeFoldable;
-        use rustc_middle::ty::PredicateAtom::*;
+        use rustc_middle::ty::PredicateKind::*;
 
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let predicates = cx.tcx.predicates_of(def_id);
             for &(predicate, span) in predicates.predicates {
-                let predicate_kind_name = match predicate.skip_binders() {
+                let predicate_kind_name = match predicate.kind().skip_binder() {
                     Trait(..) => "Trait",
                     TypeOutlives(..) |
                     RegionOutlives(..) => "Lifetime",
@@ -1936,8 +1936,8 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.skip_binders() {
-                ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(a, b)) => match a {
+            .filter_map(|(pred, _)| match pred.kind().skip_binder() {
+                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match a {
                     ty::ReEarlyBound(ebr) if ebr.index == index => Some(b),
                     _ => None,
                 },
@@ -1952,8 +1952,8 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.skip_binders() {
-                ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
+            .filter_map(|(pred, _)| match pred.kind().skip_binder() {
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     a.is_param(index).then_some(b)
                 }
                 _ => None,

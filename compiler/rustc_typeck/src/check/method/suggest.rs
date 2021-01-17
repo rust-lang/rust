@@ -582,8 +582,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut collect_type_param_suggestions =
                         |self_ty: Ty<'tcx>, parent_pred: &ty::Predicate<'tcx>, obligation: &str| {
                             // We don't care about regions here, so it's fine to skip the binder here.
-                            if let (ty::Param(_), ty::PredicateAtom::Trait(p, _)) =
-                                (self_ty.kind(), parent_pred.skip_binders())
+                            if let (ty::Param(_), ty::PredicateKind::Trait(p, _)) =
+                                (self_ty.kind(), parent_pred.kind().skip_binder())
                             {
                                 if let ty::Adt(def, _) = p.trait_ref.self_ty().kind() {
                                     let node = def.did.as_local().map(|def_id| {
@@ -637,9 +637,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     };
                     let mut format_pred = |pred: ty::Predicate<'tcx>| {
-                        let bound_predicate = pred.bound_atom();
+                        let bound_predicate = pred.kind();
                         match bound_predicate.skip_binder() {
-                            ty::PredicateAtom::Projection(pred) => {
+                            ty::PredicateKind::Projection(pred) => {
                                 let pred = bound_predicate.rebind(pred);
                                 // `<Foo as Iterator>::Item = String`.
                                 let trait_ref =
@@ -658,7 +658,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 bound_span_label(trait_ref.self_ty(), &obligation, &quiet);
                                 Some((obligation, trait_ref.self_ty()))
                             }
-                            ty::PredicateAtom::Trait(poly_trait_ref, _) => {
+                            ty::PredicateKind::Trait(poly_trait_ref, _) => {
                                 let p = poly_trait_ref.trait_ref;
                                 let self_ty = p.self_ty();
                                 let path = p.print_only_trait_path();
@@ -992,11 +992,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // implementing a trait would be legal but is rejected
                 // here).
                 unsatisfied_predicates.iter().all(|(p, _)| {
-                    match p.skip_binders() {
+                    match p.kind().skip_binder() {
                         // Hide traits if they are present in predicates as they can be fixed without
                         // having to implement them.
-                        ty::PredicateAtom::Trait(t, _) => t.def_id() == info.def_id,
-                        ty::PredicateAtom::Projection(p) => {
+                        ty::PredicateKind::Trait(t, _) => t.def_id() == info.def_id,
+                        ty::PredicateKind::Projection(p) => {
                             p.projection_ty.item_def_id == info.def_id
                         }
                         _ => false,

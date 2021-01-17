@@ -1706,8 +1706,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             for (predicate, _) in bounds {
                 let predicate = predicate.subst(self.tcx, substs);
-                if let ty::PredicateAtom::Projection(projection_predicate) =
-                    predicate.skip_binders()
+                if let ty::PredicateKind::Projection(projection_predicate) =
+                    predicate.kind().skip_binder()
                 {
                     if projection_predicate.projection_ty.item_def_id == item_def_id {
                         // We don't account for multiple `Future::Output = Ty` contraints.

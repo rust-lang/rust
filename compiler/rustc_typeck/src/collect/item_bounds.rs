@@ -36,13 +36,14 @@ fn associated_type_bounds<'tcx>(
     let trait_def_id = tcx.associated_item(assoc_item_def_id).container.id();
     let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id.expect_local());
 
-    let bounds_from_parent =
-        trait_predicates.predicates.iter().copied().filter(|(pred, _)| match pred.skip_binders() {
-            ty::PredicateAtom::Trait(tr, _) => tr.self_ty() == item_ty,
-            ty::PredicateAtom::Projection(proj) => proj.projection_ty.self_ty() == item_ty,
-            ty::PredicateAtom::TypeOutlives(outlives) => outlives.0 == item_ty,
+    let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {
+        match pred.kind().skip_binder() {
+            ty::PredicateKind::Trait(tr, _) => tr.self_ty() == item_ty,
+            ty::PredicateKind::Projection(proj) => proj.projection_ty.self_ty() == item_ty,
+            ty::PredicateKind::TypeOutlives(outlives) => outlives.0 == item_ty,
             _ => false,
-        });
+        }
+    });
 
     let all_bounds = tcx
         .arena

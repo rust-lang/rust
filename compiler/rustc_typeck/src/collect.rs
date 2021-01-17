@@ -562,8 +562,8 @@ fn type_param_predicates(
     let extra_predicates = extend.into_iter().chain(
         icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty, OnlySelfBounds(true))
             .into_iter()
-            .filter(|(predicate, _)| match predicate.skip_binders() {
-                ty::PredicateAtom::Trait(data, _) => data.self_ty().is_param(index),
+            .filter(|(predicate, _)| match predicate.kind().skip_binder() {
+                ty::PredicateKind::Trait(data, _) => data.self_ty().is_param(index),
                 _ => false,
             }),
     );
@@ -1027,7 +1027,7 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
     // which will, in turn, reach indirect supertraits.
     for &(pred, span) in superbounds {
         debug!("superbound: {:?}", pred);
-        if let ty::PredicateAtom::Trait(bound, _) = pred.skip_binders() {
+        if let ty::PredicateKind::Trait(bound, _) = pred.kind().skip_binder() {
             tcx.at(span).super_predicates_of(bound.def_id());
         }
     }
@@ -1946,13 +1946,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     } else {
                         let span = bound_pred.bounded_ty.span;
                         let re_root_empty = tcx.lifetimes.re_root_empty;
-                        let predicate = ty::Binder::bind(ty::PredicateAtom::TypeOutlives(
+                        let predicate = ty::Binder::bind(ty::PredicateKind::TypeOutlives(
                             ty::OutlivesPredicate(ty, re_root_empty),
                         ));
-                        predicates.insert((
-                            predicate.potentially_quantified(tcx, ty::PredicateKind::ForAll),
-                            span,
-                        ));
+                        predicates.insert((predicate.to_predicate(tcx), span));
                     }
                 }
 
@@ -1993,10 +1990,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         hir::GenericBound::Outlives(lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx, lifetime, None);
                             predicates.insert((
-                                ty::Binder::bind(ty::PredicateAtom::TypeOutlives(
+                                ty::Binder::bind(ty::PredicateKind::TypeOutlives(
                                     ty::OutlivesPredicate(ty, region),
                                 ))
-                                .potentially_quantified(tcx, ty::PredicateKind::ForAll),
+                                .to_predicate(tcx),
                                 lifetime.span,
                             ));
                         }
@@ -2013,7 +2010,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         }
                         _ => bug!(),
                     };
-                    let pred = ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r1, r2))
+                    let pred = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
                         .to_predicate(icx.tcx);
 
                     (pred, span)
@@ -2078,7 +2075,7 @@ fn const_evaluatable_predicates_of<'tcx>(
             if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
                 let span = self.tcx.hir().span(c.hir_id);
                 self.preds.insert((
-                    ty::PredicateAtom::ConstEvaluatable(def, substs).to_predicate(self.tcx),
+                    ty::PredicateKind::ConstEvaluatable(def, substs).to_predicate(self.tcx),
                     span,
                 ));
             }
@@ -2097,7 +2094,7 @@ fn const_evaluatable_predicates_of<'tcx>(
                 fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
                     if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
                         self.preds.insert((
-                            ty::PredicateAtom::ConstEvaluatable(def, substs).to_predicate(self.tcx),
+                            ty::PredicateKind::ConstEvaluatable(def, substs).to_predicate(self.tcx),
                             self.span,
                         ));
                     }
@@ -2183,12 +2180,12 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
             .predicates
             .iter()
             .copied()
-            .filter(|(pred, _)| match pred.skip_binders() {
-                ty::PredicateAtom::Trait(tr, _) => !is_assoc_item_ty(tr.self_ty()),
-                ty::PredicateAtom::Projection(proj) => {
+            .filter(|(pred, _)| match pred.kind().skip_binder() {
+                ty::PredicateKind::Trait(tr, _) => !is_assoc_item_ty(tr.self_ty()),
+                ty::PredicateKind::Projection(proj) => {
                     !is_assoc_item_ty(proj.projection_ty.self_ty())
                 }
-                ty::PredicateAtom::TypeOutlives(outlives) => !is_assoc_item_ty(outlives.0),
+                ty::PredicateKind::TypeOutlives(outlives) => !is_assoc_item_ty(outlives.0),
                 _ => true,
             })
             .collect();
@@ -2217,7 +2214,8 @@ fn projection_ty_from_predicates(
     let (ty_def_id, item_def_id) = key;
     let mut projection_ty = None;
     for (predicate, _) in tcx.predicates_of(ty_def_id).predicates {
-        if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
+        if let ty::PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder()
+        {
             if item_def_id == projection_predicate.projection_ty.item_def_id {
                 projection_ty = Some(projection_predicate.projection_ty);
                 break;
@@ -2264,7 +2262,7 @@ fn predicates_from_bound<'tcx>(
         }
         hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
-            let pred = ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(param_ty, region))
+            let pred = ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(param_ty, region))
                 .to_predicate(astconv.tcx());
             vec![(pred, lifetime.span)]
         }

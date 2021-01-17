@@ -1069,14 +1069,14 @@ impl<'tcx> GenericPredicates<'tcx> {
 
 #[derive(Debug)]
 crate struct PredicateInner<'tcx> {
-    kind: PredicateKind<'tcx>,
+    kind: Binder<PredicateKind<'tcx>>,
     flags: TypeFlags,
     /// See the comment for the corresponding field of [TyS].
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PredicateInner<'_>, 48);
+static_assert_size!(PredicateInner<'_>, 40);
 
 #[derive(Clone, Copy, Lift)]
 pub struct Predicate<'tcx> {
@@ -1099,59 +1099,9 @@ impl Hash for Predicate<'_> {
 impl<'tcx> Eq for Predicate<'tcx> {}
 
 impl<'tcx> Predicate<'tcx> {
-    #[inline(always)]
-    pub fn kind(self) -> &'tcx PredicateKind<'tcx> {
-        &self.inner.kind
-    }
-
-    /// Returns the inner `PredicateAtom`.
-    ///
-    /// The returned atom may contain unbound variables bound to binders skipped in this method.
-    /// It is safe to reapply binders to the given atom.
-    ///
-    /// Note that this method panics in case this predicate has unbound variables.
-    pub fn skip_binders(self) -> PredicateAtom<'tcx> {
-        match self.kind() {
-            &PredicateKind::ForAll(binder) => binder.skip_binder(),
-            &PredicateKind::Atom(atom) => {
-                debug_assert!(!atom.has_escaping_bound_vars());
-                atom
-            }
-        }
-    }
-
-    /// Returns the inner `PredicateAtom`.
-    ///
-    /// Note that this method does not check if the predicate has unbound variables.
-    ///
-    /// Rebinding the returned atom can causes the previously bound variables
-    /// to end up at the wrong binding level.
-    pub fn skip_binders_unchecked(self) -> PredicateAtom<'tcx> {
-        match self.kind() {
-            &PredicateKind::ForAll(binder) => binder.skip_binder(),
-            &PredicateKind::Atom(atom) => atom,
-        }
-    }
-
-    /// Converts this to a `Binder<PredicateAtom<'tcx>>`. If the value was an
-    /// `Atom`, then it is not allowed to contain escaping bound vars.
-    pub fn bound_atom(self) -> Binder<PredicateAtom<'tcx>> {
-        match self.kind() {
-            &PredicateKind::ForAll(binder) => binder,
-            &PredicateKind::Atom(atom) => {
-                debug_assert!(!atom.has_escaping_bound_vars());
-                Binder::dummy(atom)
-            }
-        }
-    }
-
-    /// Allows using a `Binder<PredicateAtom<'tcx>>` even if the given predicate previously
-    /// contained unbound variables by shifting these variables outwards.
-    pub fn bound_atom_with_opt_escaping(self, tcx: TyCtxt<'tcx>) -> Binder<PredicateAtom<'tcx>> {
-        match self.kind() {
-            &PredicateKind::ForAll(binder) => binder,
-            &PredicateKind::Atom(atom) => Binder::wrap_nonbinding(tcx, atom),
-        }
+    /// Gets the inner `Binder<PredicateKind<'tcx>>`.
+    pub fn kind(self) -> Binder<PredicateKind<'tcx>> {
+        self.inner.kind
     }
 }
 
@@ -1173,14 +1123,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub enum PredicateKind<'tcx> {
-    /// `for<'a>: ...`
-    ForAll(Binder<PredicateAtom<'tcx>>),
-    Atom(PredicateAtom<'tcx>),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
-pub enum PredicateAtom<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
@@ -1224,21 +1166,6 @@ pub enum PredicateAtom<'tcx> {
     ///
     /// Only used for Chalk.
     TypeWellFormedFromEnv(Ty<'tcx>),
-}
-
-impl<'tcx> Binder<PredicateAtom<'tcx>> {
-    /// Wraps `self` with the given qualifier if this predicate has any unbound variables.
-    pub fn potentially_quantified(
-        self,
-        tcx: TyCtxt<'tcx>,
-        qualifier: impl FnOnce(Binder<PredicateAtom<'tcx>>) -> PredicateKind<'tcx>,
-    ) -> Predicate<'tcx> {
-        match self.no_bound_vars() {
-            Some(atom) => PredicateKind::Atom(atom),
-            None => qualifier(self),
-        }
-        .to_predicate(tcx)
-    }
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -1326,13 +1253,9 @@ impl<'tcx> Predicate<'tcx> {
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
         let substs = trait_ref.skip_binder().substs;
-        let pred = self.skip_binders();
+        let pred = self.kind().skip_binder();
         let new = pred.subst(tcx, substs);
-        if new != pred {
-            ty::Binder::bind(new).potentially_quantified(tcx, PredicateKind::ForAll)
-        } else {
-            self
-        }
+        tcx.reuse_or_mk_predicate(self, ty::Binder::bind(new))
     }
 }
 
@@ -1453,24 +1376,23 @@ pub trait ToPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx>;
 }
 
-impl ToPredicate<'tcx> for PredicateKind<'tcx> {
+impl ToPredicate<'tcx> for Binder<PredicateKind<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(self)
     }
 }
 
-impl ToPredicate<'tcx> for PredicateAtom<'tcx> {
+impl ToPredicate<'tcx> for PredicateKind<'tcx> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        debug_assert!(!self.has_escaping_bound_vars(), "escaping bound vars for {:?}", self);
-        tcx.mk_predicate(PredicateKind::Atom(self))
+        tcx.mk_predicate(Binder::dummy(self))
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateAtom::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness)
+        PredicateKind::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness)
             .to_predicate(tcx)
     }
 }
@@ -1487,66 +1409,62 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.value
-            .map_bound(|value| PredicateAtom::Trait(value, self.constness))
-            .potentially_quantified(tcx, PredicateKind::ForAll)
+        self.value.map_bound(|value| PredicateKind::Trait(value, self.constness)).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(PredicateAtom::RegionOutlives)
-            .potentially_quantified(tcx, PredicateKind::ForAll)
+        self.map_bound(PredicateKind::RegionOutlives).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(PredicateAtom::TypeOutlives)
-            .potentially_quantified(tcx, PredicateKind::ForAll)
+        self.map_bound(PredicateKind::TypeOutlives).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(PredicateAtom::Projection).potentially_quantified(tcx, PredicateKind::ForAll)
+        self.map_bound(PredicateKind::Projection).to_predicate(tcx)
     }
 }
 
 impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_ref(self) -> Option<ConstnessAnd<PolyTraitRef<'tcx>>> {
-        let predicate = self.bound_atom();
+        let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateAtom::Trait(t, constness) => {
+            PredicateKind::Trait(t, constness) => {
                 Some(ConstnessAnd { constness, value: predicate.rebind(t.trait_ref) })
             }
-            PredicateAtom::Projection(..)
-            | PredicateAtom::Subtype(..)
-            | PredicateAtom::RegionOutlives(..)
-            | PredicateAtom::WellFormed(..)
-            | PredicateAtom::ObjectSafe(..)
-            | PredicateAtom::ClosureKind(..)
-            | PredicateAtom::TypeOutlives(..)
-            | PredicateAtom::ConstEvaluatable(..)
-            | PredicateAtom::ConstEquate(..)
-            | PredicateAtom::TypeWellFormedFromEnv(..) => None,
+            PredicateKind::Projection(..)
+            | PredicateKind::Subtype(..)
+            | PredicateKind::RegionOutlives(..)
+            | PredicateKind::WellFormed(..)
+            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::ClosureKind(..)
+            | PredicateKind::TypeOutlives(..)
+            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::ConstEquate(..)
+            | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }
 
     pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
-        let predicate = self.bound_atom();
+        let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateAtom::TypeOutlives(data) => Some(predicate.rebind(data)),
-            PredicateAtom::Trait(..)
-            | PredicateAtom::Projection(..)
-            | PredicateAtom::Subtype(..)
-            | PredicateAtom::RegionOutlives(..)
-            | PredicateAtom::WellFormed(..)
-            | PredicateAtom::ObjectSafe(..)
-            | PredicateAtom::ClosureKind(..)
-            | PredicateAtom::ConstEvaluatable(..)
-            | PredicateAtom::ConstEquate(..)
-            | PredicateAtom::TypeWellFormedFromEnv(..) => None,
+            PredicateKind::TypeOutlives(data) => Some(predicate.rebind(data)),
+            PredicateKind::Trait(..)
+            | PredicateKind::Projection(..)
+            | PredicateKind::Subtype(..)
+            | PredicateKind::RegionOutlives(..)
+            | PredicateKind::WellFormed(..)
+            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::ClosureKind(..)
+            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::ConstEquate(..)
+            | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }
 }

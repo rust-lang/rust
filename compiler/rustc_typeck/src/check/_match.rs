@@ -544,9 +544,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.infcx.instantiate_opaque_types(id, self.body_id, self.param_env, ty, span);
                 let mut suggest_box = !impl_trait_ret_ty.obligations.is_empty();
                 for o in impl_trait_ret_ty.obligations {
-                    match o.predicate.skip_binders_unchecked() {
-                        ty::PredicateAtom::Trait(t, constness) => {
-                            let pred = ty::PredicateAtom::Trait(
+                    match o.predicate.kind().skip_binder() {
+                        ty::PredicateKind::Trait(t, constness) => {
+                            let pred = ty::PredicateKind::Trait(
                                 ty::TraitPredicate {
                                     trait_ref: ty::TraitRef {
                                         def_id: t.def_id(),
