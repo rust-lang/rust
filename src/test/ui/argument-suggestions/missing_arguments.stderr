@@ -11,8 +11,8 @@ LL | fn one_arg(_a: i32) {}
    |    ^^^^^^^ -------
 help: provide a parameter of the correct type here
    |
-LL |   one_arg( {i32},);
-   |            ^^^^^^
+LL |   one_arg({i32});
+   |           ^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:14:27
@@ -30,14 +30,14 @@ LL | fn two_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^ -------  -------
 help: provide parameters of the correct types
    |
-LL |   two_same(                {i32}, {i32},);
-   |                            ^^^^^^
+LL |   two_same(               {i32}, {i32});
+   |                           ^^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:15:27
+  --> $DIR/missing_arguments.rs:15:16
    |
 LL |   two_same(   1           );
-   |                           ^ missing argument of type i32
+   |                ^ missing argument of type i32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:2:4
@@ -46,8 +46,8 @@ LL | fn two_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^ -------  -------
 help: provide a parameter of the correct type here
    |
-LL |   two_same(   1            {i32},);
-   |                            ^^^^^^
+LL |   two_same(   1, {i32}           );
+   |                ^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:16:27
@@ -65,14 +65,14 @@ LL | fn two_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
 help: provide parameters of the correct types
    |
-LL |   two_diff(                {i32}, {f32},);
-   |                            ^^^^^^
+LL |   two_diff(               {i32}, {f32});
+   |                           ^^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:17:27
+  --> $DIR/missing_arguments.rs:17:16
    |
 LL |   two_diff(   1           );
-   |                           ^ missing argument of type f32
+   |                ^ missing argument of type f32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:3:4
@@ -81,14 +81,14 @@ LL | fn two_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
 help: provide a parameter of the correct type here
    |
-LL |   two_diff(   1            {f32},);
-   |                            ^^^^^^
+LL |   two_diff(   1, {f32}           );
+   |                ^^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:18:26
+  --> $DIR/missing_arguments.rs:18:22
    |
 LL |   two_diff(          1.0  );
-   |                          ^ missing argument of type i32
+   |                      ^ missing argument of type i32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:3:4
@@ -97,8 +97,8 @@ LL | fn two_diff(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
 help: provide a parameter of the correct type here
    |
-LL |   two_diff(          1.0  {i32}, );
-   |                           ^^^^^^
+LL |   two_diff(          {i32}, 1.0  );
+   |                      ^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:21:37
@@ -117,17 +117,17 @@ LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
    |    ^^^^^^^^^^ -------  -------  -------
 help: provide parameters of the correct types
    |
-LL |   three_same(                        {i32}, {i32}, {i32},);
-   |                                      ^^^^^^
+LL |   three_same(                       {i32}, {i32}, {i32});
+   |                                     ^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:22:37
+  --> $DIR/missing_arguments.rs:22:18
    |
 LL |   three_same(   1                   );
-   |                                     ^
-   |                                     |
-   |                                     missing argument of type i32
-   |                                     missing argument of type i32
+   |                  ^
+   |                  |
+   |                  missing argument of type i32
+   |                  missing argument of type i32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:4:4
@@ -136,14 +136,14 @@ LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
    |    ^^^^^^^^^^ -------  -------  -------
 help: provide parameters of the correct types
    |
-LL |   three_same(   1                    {i32}, {i32},);
-   |                                      ^^^^^^
+LL |   three_same(   1, {i32}, {i32}                   );
+   |                  ^^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:23:37
+  --> $DIR/missing_arguments.rs:23:26
    |
 LL |   three_same(   1,      1           );
-   |                                     ^ missing argument of type i32
+   |                          ^ missing argument of type i32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:4:4
@@ -152,14 +152,14 @@ LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
    |    ^^^^^^^^^^ -------  -------  -------
 help: provide a parameter of the correct type here
    |
-LL |   three_same(   1,      1            {i32},);
-   |                                      ^^^^^^
+LL |   three_same(   1,      1, {i32}           );
+   |                          ^^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:26:28
+  --> $DIR/missing_arguments.rs:26:24
    |
 LL |   three_diff(          1.0,     ""  );
-   |                            ^ missing argument of type i32
+   |                        ^ missing argument of type i32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:5:4
@@ -168,14 +168,14 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: provide a parameter of the correct type here
    |
-LL |   three_diff(          1.0, {i32},     ""  );
-   |                             ^^^^^^
+LL |   three_diff(          {i32}, 1.0,     ""  );
+   |                        ^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:27:36
+  --> $DIR/missing_arguments.rs:27:33
    |
 LL |   three_diff(   1,              ""  );
-   |                                    ^ missing argument of type f32
+   |                                 ^ missing argument of type f32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:5:4
@@ -184,14 +184,14 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: provide a parameter of the correct type here
    |
-LL |   three_diff(   1,              ""  {f32}, );
-   |                                     ^^^^^^
+LL |   three_diff(   1,              {f32}, ""  );
+   |                                 ^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:28:37
+  --> $DIR/missing_arguments.rs:28:27
    |
 LL |   three_diff(   1,     1.0,         );
-   |                                     ^ missing argument of type &str
+   |                           ^ missing argument of type &str
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:5:4
@@ -200,16 +200,16 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: provide a parameter of the correct type here
    |
-LL |   three_diff(   1,     1.0,          {&str},);
-   |                                      ^^^^^^^
+LL |   three_diff(   1,     1.0, {&str},         );
+   |                           ^^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:29:36
+  --> $DIR/missing_arguments.rs:29:33
    |
 LL |   three_diff(                   ""  );
-   |                                    ^^ missing argument of type f32
-   |                                    |
-   |                                    missing argument of type i32
+   |                                 ^ ^ missing argument of type f32
+   |                                 |
+   |                                 missing argument of type i32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:5:4
@@ -218,16 +218,16 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: provide parameters of the correct types
    |
-LL |   three_diff(                   ""  {i32},  {f32},);
-   |                                     ^^^^^^  ^^^^^^
+LL |   three_diff(                   {i32}, "", {f32}  );
+   |                                 ^^^^^^   ^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:30:28
+  --> $DIR/missing_arguments.rs:30:24
    |
 LL |   three_diff(          1.0          );
-   |                            ^        ^ missing argument of type &str
-   |                            |
-   |                            missing argument of type i32
+   |                        ^  ^ missing argument of type &str
+   |                        |
+   |                        missing argument of type i32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:5:4
@@ -236,17 +236,17 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: provide parameters of the correct types
    |
-LL |   three_diff(          1.0  {i32},          {&str},);
-   |                             ^^^^^^          ^^^^^^^
+LL |   three_diff(          {i32}, 1.0, {&str}          );
+   |                        ^^^^^^    ^^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:31:37
+  --> $DIR/missing_arguments.rs:31:18
    |
 LL |   three_diff(   1,                  );
-   |                                     ^
-   |                                     |
-   |                                     missing argument of type f32
-   |                                     missing argument of type &str
+   |                  ^
+   |                  |
+   |                  missing argument of type f32
+   |                  missing argument of type &str
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:5:4
@@ -255,8 +255,8 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: provide parameters of the correct types
    |
-LL |   three_diff(   1,                   {f32}, {&str},);
-   |                                      ^^^^^^^
+LL |   three_diff(   1, {f32}, {&str},                  );
+   |                  ^^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:34:48
@@ -276,16 +276,16 @@ LL | fn four_repeated(_a: i32, _b: f32, _c: f32, _d: &str) {}
    |    ^^^^^^^^^^^^^ -------  -------  -------  --------
 help: provide parameters of the correct types
    |
-LL |   four_repeated(                                {i32}, {f32}, {f32}, {&str},);
-   |                                                 ^^^^^^^
+LL |   four_repeated(                               {i32}, {f32}, {f32}, {&str});
+   |                                                ^^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:35:46
+  --> $DIR/missing_arguments.rs:35:43
    |
 LL |   four_repeated(   1,                     ""   );
-   |                                              ^ ^ missing argument of type f32
-   |                                              |
-   |                                              missing argument of type f32
+   |                                           ^ ^ missing argument of type f32
+   |                                           |
+   |                                           missing argument of type f32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:6:4
@@ -294,8 +294,8 @@ LL | fn four_repeated(_a: i32, _b: f32, _c: f32, _d: &str) {}
    |    ^^^^^^^^^^^^^ -------  -------  -------  --------
 help: provide parameters of the correct types
    |
-LL |   four_repeated(   1,                     ""  {f32},   {f32},);
-   |                                               ^^^^^^   ^^^^^^
+LL |   four_repeated(   1,                     {f32}, "", {f32}   );
+   |                                           ^^^^^^   ^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:38:50
@@ -316,18 +316,18 @@ LL | fn complex(_a: i32, _b: f32, _c: i32, _d: f32, _e: &str) {}
    |    ^^^^^^^ -------  -------  -------  -------  --------
 help: provide parameters of the correct types
    |
-LL |   complex(                                        {i32}, {f32}, {i32}, {f32}, {&str},);
-   |                                                   ^^^^^^^
+LL |   complex(                                       {i32}, {f32}, {i32}, {f32}, {&str});
+   |                                                  ^^^^^^^^
 
 error[E0059]: multiple arguments to this function are incorrect
-  --> $DIR/missing_arguments.rs:39:48
+  --> $DIR/missing_arguments.rs:39:45
    |
 LL |   complex(   1,                             ""   );
-   |                                                ^ ^
-   |                                                | |
-   |                                                | missing argument of type i32
-   |                                                | missing argument of type f32
-   |                                                missing argument of type f32
+   |                                             ^ ^
+   |                                             | |
+   |                                             | missing argument of type i32
+   |                                             | missing argument of type f32
+   |                                             missing argument of type f32
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:7:4
@@ -336,8 +336,8 @@ LL | fn complex(_a: i32, _b: f32, _c: i32, _d: f32, _e: &str) {}
    |    ^^^^^^^ -------  -------  -------  -------  --------
 help: provide parameters of the correct types
    |
-LL |   complex(   1,                             ""  {f32},   {i32}, {f32},);
-   |                                                 ^^^^^^   ^^^^^^
+LL |   complex(   1,                             {f32}, "", {i32}, {f32}   );
+   |                                             ^^^^^^   ^^^^^^^
 
 error: aborting due to 19 previous errors
 

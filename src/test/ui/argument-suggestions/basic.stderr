@@ -43,8 +43,8 @@ LL | fn missing(_i: u32) {}
    |    ^^^^^^^ -------
 help: provide a parameter of the correct type here
    |
-LL |     missing( {u32},);
-   |              ^^^^^^
+LL |     missing({u32});
+   |             ^^^^^
 
 error[E0059]: arguments to this function are incorrect
   --> $DIR/basic.rs:23:13

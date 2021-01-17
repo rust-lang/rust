@@ -25,10 +25,10 @@ fn main() {
   /*           i32     f32     &str   */
   three_diff(          1.0,     ""  ); //~ ERROR arguments to this function are incorrect
   three_diff(   1,              ""  ); //~ ERROR arguments to this function are incorrect
-  three_diff(   1,     1.0,         ); //~ ERROR arguments to this function are incorrect
+  three_diff(   1,     1.0          ); //~ ERROR arguments to this function are incorrect
   three_diff(                   ""  ); //~ ERROR arguments to this function are incorrect
   three_diff(          1.0          ); //~ ERROR arguments to this function are incorrect
-  three_diff(   1,                  ); //~ ERROR arguments to this function are incorrect
+  three_diff(   1                   ); //~ ERROR arguments to this function are incorrect
   
   /*              i32     f32     f32     &str   */
   four_repeated(                               ); //~ ERROR arguments to this function are incorrect

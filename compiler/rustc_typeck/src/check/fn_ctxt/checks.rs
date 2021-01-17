@@ -19,10 +19,9 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::Session;
-use rustc_span::{self, MultiSpan, Span};
+use rustc_span::{self, BytePos, MultiSpan, Span};
 use rustc_span::{
     symbol::{sym, Ident},
-    BytePos,
 };
 use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
 
@@ -656,6 +655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut suggestions = vec![];
                 let mut suggestion_type = NoSuggestion;
                 let mut eliminated_args = vec![false; provided_arg_count];
+                let mut current_arg_count = provided_arg_count; // Incremented if we insert an argument
                 let source_map = self.sess().source_map();
                 for issue in issues {
                     match issue {
@@ -704,33 +704,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             };
                         }
                         Issue::Missing(arg) => {
-                            // FIXME: The spans here are all kinds of wrong for multiple missing arguments etc.
-                            let prev_span = if arg < provided_args.len() {
-                                provided_args[arg].span
-                            } else {
-                                call_span
-                            };
-                            // If we're missing something in the middle, shift the span slightly to eat the comma
-                            let missing_span = if arg < provided_args.len() {
-                                Span::new(
-                                    prev_span.hi() + BytePos(1),
-                                    prev_span.hi() + BytePos(1),
-                                    prev_span.ctxt(),
-                                )
-                            } else {
-                                Span::new(
-                                    prev_span.hi() - BytePos(1),
-                                    prev_span.hi() - BytePos(1),
-                                    prev_span.ctxt(),
-                                )
-                            };
                             let expected_type = expected_input_tys[arg];
+                            let (missing_span, suggested_arg) = if arg < provided_arg_count {
+                                let span = provided_args[arg].span;
+                                (
+                                    Span::new(
+                                        span.lo(),
+                                        span.lo(),
+                                        span.ctxt(),
+                                    ),
+                                    format!("{{{}}}, ", expected_type)
+                                )
+                            } else if provided_arg_count > 0 {
+                                let prev = provided_args[provided_arg_count - 1].span;
+                                (
+                                    Span::new(
+                                        prev.hi(),
+                                        prev.hi(),
+                                        prev.ctxt(),
+                                    ),
+                                    format!(", {{{}}}", expected_type)
+                                )
+                            } else {
+                                let include_comma = current_arg_count > 0;
+                                (
+                                    Span::new(
+                                        call_span.hi() - BytePos(1),
+                                        call_span.hi() - BytePos(1),
+                                        call_span.ctxt()
+                                    ),
+                                    format!("{}{{{}}}", if include_comma { ", " } else { "" }, expected_type)
+                                )
+                            };
+                            current_arg_count += 1;
                             labels.push((missing_span, format!("missing argument of type {}", expected_type)));
                             suggestion_type = match suggestion_type {
                                 NoSuggestion | Provide => Provide,
                                 _ => Changes,
                             };
-                            suggestions.push((missing_span, format!(" {{{}}},", expected_type)));
+                            suggestions.push((missing_span, suggested_arg));
                         }
                         Issue::Swap(arg, other) => {
                             let first_span = provided_args[arg].span;

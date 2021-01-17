@@ -2,13 +2,13 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/complex.rs:14:11
    |
 LL |   complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
-   |           ^^^  ^^^^      ^^^^  ^^^^^  ^^^^  ^^^^  ^^^^ expected Z, found Z
-   |           |    |         ||    |      |     |
-   |           |    |         ||    |      |     expected Y, found Y
-   |           |    |         ||    |      expected X, found X
-   |           |    |         ||    expected G, found G
-   |           |    |         |expected F, found F
-   |           |    |         missing argument of type E
+   |           ^^^  ^^^^  ^    ^^^  ^^^^^  ^^^^  ^^^^  ^^^^ expected Z, found Z
+   |           |    |     |    |    |      |     |
+   |           |    |     |    |    |      |     expected Y, found Y
+   |           |    |     |    |    |      expected X, found X
+   |           |    |     |    |    expected G, found G
+   |           |    |     |    expected F, found F
+   |           |    |     missing argument of type E
    |           |    this parameter of type H isn't needed for complex
    |           expected u32, found {float}
    |
@@ -19,8 +19,8 @@ LL | fn complex(_i: u32, _s: &str, _e: E, _f: F, _g: G, _x: X, _y: Y, _z: Z ) {}
    |    ^^^^^^^ -------  --------  -----  -----  -----  -----  -----  ------
 help: make these changes
    |
-LL |   complex({u32}, &"", {E}, F::X2, G{}, X {}, Y {}, Z {});
-   |           ^^^^^ --    ^^^^ ^^^^^  ^^^  ^^^^  ^^^^  ^^^^
+LL |   complex({u32}, {E}, &"", F::X2, G{}, X {}, Y {}, Z {});
+   |           ^^^^^ --     ^^^^^^^^^  ^^^  ^^^^  ^^^^  ^^^^
 
 error: aborting due to previous error
 
