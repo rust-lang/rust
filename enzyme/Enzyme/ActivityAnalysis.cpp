@@ -107,7 +107,7 @@ static inline bool couldFunctionArgumentCapture(CallInst *CI, Value *val) {
 const char *KnownInactiveFunctionsStartingWith[] = {
     "_ZN4core3fmt", "_ZN3std2io5stdio6_print", "f90io"};
 
-const char *KnownInactiveFunctions[] = {"__assert_fail",
+std::set<std::string> KnownInactiveFunctions = {"__assert_fail",
                                         "__cxa_guard_acquire",
                                         "__cxa_guard_release",
                                         "__cxa_guard_abort",
@@ -186,9 +186,8 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
       return true;
     }
   }
-  for (auto FuncName : KnownInactiveFunctions) {
-    if (Name == FuncName)
-      return true;
+  if (KnownInactiveFunctions.count(Name.str())) {
+    return true;
   }
   if (F->getIntrinsicID() == Intrinsic::trap)
     return true;
@@ -756,12 +755,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
               return true;
             }
           }
-          for (auto FuncName : KnownInactiveFunctions) {
-            if (called->getName() == FuncName) {
-              ConstantValues.insert(Val);
-              insertConstantsFrom(*UpHypothesis);
-              return true;
-            }
+
+          if (KnownInactiveFunctions.count(called->getName().str())) {
+            ConstantValues.insert(Val);
+            insertConstantsFrom(*UpHypothesis);
+            return true;
           }
 
           if (called->getIntrinsicID() == Intrinsic::trap) {
@@ -859,17 +857,44 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     for (BasicBlock &BB : *TR.info.Function) {
       if (potentialStore && potentiallyActiveLoad)
         break;
+      if (!TR.isBlockAnalyzed(&BB))
+        continue;
       for (Instruction &I : BB) {
         if (potentialStore && potentiallyActiveLoad)
           break;
 
         // If this is a malloc or free, this doesn't impact the activity
         if (auto CI = dyn_cast<CallInst>(&I)) {
-          if (auto F = CI->getCalledFunction()) {
+          Function* F = CI->getCalledFunction();
+          #if LLVM_VERSION_MAJOR >= 11
+          if (auto Cst = dyn_cast<CastInst>(CI->getCalledOperand()))
+          #else
+          if (auto Cst = dyn_cast<CastInst>(CI->getCalledValue()))
+          #endif
+          {
+            F = dyn_cast<Function>(Cst->getOperand(0));
+          }
+
+          if (F) {
             if (isAllocationFunction(*F, TLI) ||
                 isDeallocationFunction(*F, TLI)) {
               continue;
             }
+            
+            bool noUse = false;
+            for (auto FuncName : KnownInactiveFunctionsStartingWith) {
+              if (F->getName().startswith(FuncName)) {
+                noUse = true;
+                break;
+              }
+            }
+            if (KnownInactiveFunctions.count(F->getName().str())) {
+              continue;
+            }
+            if (isMemFreeLibMFunction(F->getName())) {
+              continue;
+            }
+
             if (F->getName() == "__cxa_guard_acquire" ||
                 F->getName() == "__cxa_guard_release" ||
                 F->getName() == "__cxa_guard_abort" ||
@@ -877,7 +902,6 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
               continue;
             }
 
-            bool noUse = true;
             switch (F->getIntrinsicID()) {
             case Intrinsic::nvvm_barrier0:
             case Intrinsic::nvvm_barrier0_popc:
@@ -904,6 +928,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             case Intrinsic::type_test:
             case Intrinsic::donothing:
             case Intrinsic::prefetch:
+            case Intrinsic::trap:
 #if LLVM_VERSION_MAJOR >= 8
             case Intrinsic::is_constant:
 #endif
@@ -1278,13 +1303,12 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
           return true;
         }
       }
-      for (auto FuncName : KnownInactiveFunctions) {
-        if (called->getName() == FuncName) {
-          if (printconst)
-            llvm::errs() << "constant(" << (int)directions
-                         << ") up-knowninactivecall " << *inst << "\n";
-          return true;
-        }
+
+      if (KnownInactiveFunctions.count(called->getName().str())) {
+        if (printconst)
+        llvm::errs() << "constant(" << (int)directions << ") up-knowninactivecall " << *inst
+                      << "\n";
+        return true;
       }
 
       if (called->getIntrinsicID() == Intrinsic::trap)

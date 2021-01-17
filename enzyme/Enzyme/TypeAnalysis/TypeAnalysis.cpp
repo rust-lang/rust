@@ -3308,6 +3308,12 @@ FnTypeInfo TypeResults::getAnalyzedTypeInfo() {
   return res;
 }
 
+bool TypeResults::isBlockAnalyzed(llvm::BasicBlock* BB) {
+  assert(analysis.analyzedFunctions.find(info) !=
+         analysis.analyzedFunctions.end());
+  return analysis.analyzedFunctions.find(info)->second.notForAnalysis.count(BB) == 0;
+}
+
 FnTypeInfo TypeResults::getCallInfo(CallInst &CI, Function &fn) {
   assert(analysis.analyzedFunctions.find(info) !=
          analysis.analyzedFunctions.end());
