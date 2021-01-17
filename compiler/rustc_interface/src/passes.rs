@@ -1014,6 +1014,7 @@ fn encode_and_write_metadata(
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
+    queries: &'tcx query::Queries<'tcx>,
     outputs: &OutputFilenames,
 ) -> Box<dyn Any> {
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
@@ -1038,7 +1039,7 @@ pub fn start_codegen<'tcx>(
     // after this point, they'll show up as "<unknown>" in self-profiling data.
     {
         let _prof_timer = tcx.prof.generic_activity("self_profile_alloc_query_strings");
-        tcx.alloc_self_profile_query_strings();
+        queries.alloc_self_profile_query_strings(tcx);
     }
 
     info!("Post-codegen\n{:?}", tcx.debug_stats());

@@ -287,7 +287,12 @@ impl<'tcx> Queries<'tcx> {
                 // Hook for UI tests.
                 Self::check_for_rustc_errors_attr(tcx);
 
-                Ok(passes::start_codegen(&***self.codegen_backend(), tcx, &*outputs.peek()))
+                Ok(passes::start_codegen(
+                    &***self.codegen_backend(),
+                    tcx,
+                    self.queries.get().unwrap(),
+                    &*outputs.peek(),
+                ))
             })
         })
     }
