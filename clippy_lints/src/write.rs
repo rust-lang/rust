@@ -470,10 +470,7 @@ impl Write {
                 ExprKind::Assign(lhs, rhs, _) => {
                     if_chain! {
                         if let ExprKind::Lit(ref lit) = rhs.kind;
-                        if match lit.kind {
-                            LitKind::Int(_, _) | LitKind::Float(_, _) => false,
-                            _ => true,
-                        };
+                        if matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..));
                         if let ExprKind::Path(_, p) = &lhs.kind;
                         then {
                             let mut all_simple = true;
