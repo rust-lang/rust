@@ -1800,19 +1800,11 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
     }
 }
 
-/// Maybe add libLLVM.so to the given destination lib-dir. It will only have
-/// been built if LLVM tools are linked dynamically.
+/// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic linking.
 ///
-/// Note: This function does not yet support Windows, but we also don't support
-///       linking LLVM tools dynamically on Windows yet.
-fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) {
-    if !builder.config.llvm_link_shared {
-        // We do not need to copy LLVM files into the sysroot if it is not
-        // dynamically linked; it is already included into librustc_llvm
-        // statically.
-        return;
-    }
 
+/// Returns whether the files were actually copied.
+fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) -> bool {
     if let Some(config) = builder.config.target_config.get(&target) {
         if config.llvm_config.is_some() && !builder.config.llvm_from_ci {
             // If the LLVM was externally provided, then we don't currently copy
@@ -1828,7 +1820,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
             //
             // If the LLVM is coming from ourselves (just from CI) though, we
             // still want to install it, as it otherwise won't be available.
-            return;
+            return false;
         }
     }
 
@@ -1837,31 +1829,48 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
     // clear why this is the case, though. llvm-config will emit the versioned
     // paths and we don't want those in the sysroot (as we're expecting
     // unversioned paths).
-    if target.contains("apple-darwin") {
+    if target.contains("apple-darwin") && builder.config.llvm_link_shared {
         let src_libdir = builder.llvm_out(target).join("lib");
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
+        !builder.config.dry_run
     } else if let Ok(llvm_config) = crate::native::prebuilt_llvm_config(builder, target) {
-        let files = output(Command::new(llvm_config).arg("--libfiles"));
-        for file in files.lines() {
+        let mut cmd = Command::new(llvm_config);
+        cmd.arg("--libfiles");
+        builder.verbose(&format!("running {:?}", cmd));
+        let files = output(&mut cmd);
+        for file in files.trim_end().split(' ') {
             builder.install(Path::new(file), dst_libdir, 0o644);
         }
+        !builder.config.dry_run
+    } else {
+        false
     }
 }
 
 /// Maybe add libLLVM.so to the target lib-dir for linking.
 pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
     let dst_libdir = sysroot.join("lib/rustlib").join(&*target.triple).join("lib");
-    maybe_install_llvm(builder, target, &dst_libdir);
+    // We do not need to copy LLVM files into the sysroot if it is not
+    // dynamically linked; it is already included into librustc_llvm
+    // statically.
+    if builder.config.llvm_link_shared {
+        maybe_install_llvm(builder, target, &dst_libdir);
+    }
 }
 
 /// Maybe add libLLVM.so to the runtime lib-dir for rustc itself.
 pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
     let dst_libdir =
         sysroot.join(builder.sysroot_libdir_relative(Compiler { stage: 1, host: target }));
-    maybe_install_llvm(builder, target, &dst_libdir);
+    // We do not need to copy LLVM files into the sysroot if it is not
+    // dynamically linked; it is already included into librustc_llvm
+    // statically.
+    if builder.config.llvm_link_shared {
+        maybe_install_llvm(builder, target, &dst_libdir);
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -1973,7 +1982,10 @@ impl Step for RustDev {
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
         // of `rustc-dev` to support the inherited `-lLLVM` when using the
         // compiler libraries.
-        maybe_install_llvm(builder, target, &tarball.image_dir().join("lib"));
+        let dst_libdir = tarball.image_dir().join("lib");
+        maybe_install_llvm(builder, target, &dst_libdir);
+        let link_type = if builder.config.llvm_link_shared { "dynamic" } else { "static" };
+        t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
 
         Some(tarball.generate())
     }

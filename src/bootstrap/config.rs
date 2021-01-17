@@ -816,8 +816,10 @@ impl Config {
                 check_ci_llvm!(llvm.allow_old_toolchain);
                 check_ci_llvm!(llvm.polly);
 
-                // CI-built LLVM is shared
-                config.llvm_link_shared = true;
+                // CI-built LLVM can be either dynamic or static.
+                let ci_llvm = config.out.join(&*config.build.triple).join("ci-llvm");
+                let link_type = t!(std::fs::read_to_string(ci_llvm.join("link-type.txt")));
+                config.llvm_link_shared = link_type == "dynamic";
             }
 
             if config.llvm_thin_lto {
