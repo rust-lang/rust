@@ -8,7 +8,7 @@ use hir_expand::{
     name::{AsName, Name},
     InFile,
 };
-use la_arena::{map::ArenaMap, Arena};
+use la_arena::{Arena, ArenaMap};
 use syntax::ast::{self, NameOwner, VisibilityOwner};
 use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 

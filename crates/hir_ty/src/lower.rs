@@ -20,7 +20,7 @@ use hir_def::{
     TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::name::Name;
-use la_arena::map::ArenaMap;
+use la_arena::ArenaMap;
 use smallvec::SmallVec;
 use stdx::impl_from;
 use test_utils::mark;

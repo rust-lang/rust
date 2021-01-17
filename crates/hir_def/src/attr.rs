@@ -7,7 +7,7 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{hygiene::Hygiene, name::AsName, AstId, InFile};
 use itertools::Itertools;
-use la_arena::map::ArenaMap;
+use la_arena::ArenaMap;
 use mbe::ast_to_token_tree;
 use syntax::{
     ast::{self, AstNode, AttrsOwner},

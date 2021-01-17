@@ -9,7 +9,7 @@
 //! absolute offsets. The `Trace` structure (inspired, at least in name, by
 //! Kotlin's `BindingTrace`) allows use the same code to compute both
 //! projections.
-use la_arena::{map::ArenaMap, Arena, Idx, RawId};
+use la_arena::{Arena, ArenaMap, Idx, RawId};
 
 pub(crate) struct Trace<T, V> {
     arena: Option<Arena<T>>,

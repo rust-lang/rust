@@ -16,7 +16,7 @@ use hir_expand::{
     ast_id_map::AstIdMap, diagnostics::DiagnosticSink, hygiene::Hygiene, AstId, ExpandResult,
     HirFileId, InFile, MacroDefId,
 };
-use la_arena::{map::ArenaMap, Arena};
+use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
 use test_utils::mark;

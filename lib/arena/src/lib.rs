@@ -10,7 +10,8 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-pub mod map;
+mod map;
+pub use map::ArenaMap;
 
 /// The raw ID of a value in an arena.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

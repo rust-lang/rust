@@ -7,7 +7,7 @@ use hir_def::{
     db::DefDatabase, expr::ExprId, ConstParamId, DefWithBodyId, FunctionId, GenericDefId, ImplId,
     LocalFieldId, TypeParamId, VariantId,
 };
-use la_arena::map::ArenaMap;
+use la_arena::ArenaMap;
 
 use crate::{
     method_resolution::{InherentImpls, TraitImpls},
