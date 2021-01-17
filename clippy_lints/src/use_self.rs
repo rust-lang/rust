@@ -1,4 +1,4 @@
-use crate::utils::{meets_msrv, qpath_res, snippet_opt, span_lint_and_sugg};
+use crate::utils::{in_macro, meets_msrv, qpath_res, snippet_opt, span_lint_and_sugg};
 use if_chain::if_chain;
 
 use rustc_errors::Applicability;
@@ -13,7 +13,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{AssocKind, Ty};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -232,7 +231,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
-        if in_external_macro(cx.sess(), hir_ty.span)
+        if in_macro(hir_ty.span)
             | in_impl(cx, hir_ty)
             | self.types_to_skip.contains(&hir_ty.hir_id)
             | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV)
@@ -274,7 +273,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             }
         }
 
-        if in_external_macro(cx.sess(), expr.span) | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
+        if in_macro(expr.span) | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
             return;
         }
 

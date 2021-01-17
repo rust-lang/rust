@@ -1,9 +1,13 @@
 // run-rustfix
 // edition:2018
+// aux-build:proc_macro_derive.rs
 
 #![warn(clippy::use_self)]
 #![allow(dead_code)]
 #![allow(clippy::should_implement_trait, clippy::upper_case_acronyms, clippy::from_over_into)]
+
+#[macro_use]
+extern crate proc_macro_derive;
 
 fn main() {}
 
@@ -118,8 +122,11 @@ mod macros {
     struct Foo {}
 
     impl Foo {
-        use_self_expand!(); // Should lint in local macros
+        use_self_expand!(); // Should not lint in local macros
     }
+
+    #[derive(StructAUseSelf)] // Should not lint in derives
+    struct A;
 }
 
 mod nesting {
