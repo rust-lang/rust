@@ -679,6 +679,7 @@ symbols! {
         loop_break_value,
         lt,
         macro_at_most_once_rep,
+        macro_attributes_in_derive_output,
         macro_escape,
         macro_export,
         macro_lifetime_matcher,
