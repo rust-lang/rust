@@ -443,7 +443,7 @@ impl Write {
                 return (Some(fmtstr), None);
             };
             match &token_expr.kind {
-                ExprKind::Lit(lit) if matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..)) => {
+                ExprKind::Lit(lit) if !matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..)) => {
                     let mut all_simple = true;
                     let mut seen = false;
                     for arg in &args {
@@ -465,7 +465,7 @@ impl Write {
                 ExprKind::Assign(lhs, rhs, _) => {
                     if_chain! {
                         if let ExprKind::Lit(ref lit) = rhs.kind;
-                        if matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..));
+                        if !matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..));
                         if let ExprKind::Path(_, p) = &lhs.kind;
                         then {
                             let mut all_simple = true;
