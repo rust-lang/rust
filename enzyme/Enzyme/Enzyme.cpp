@@ -663,11 +663,23 @@ public:
       for (BasicBlock &BB : F) {
         for (Instruction &I : BB) {
           if (auto CI = dyn_cast<CallInst>(&I)) {
-            if (auto called = CI->getCalledFunction()) {
-              if (called->getName() == "__enzyme_float" ||
-                  called->getName() == "__enzyme_double" ||
-                  called->getName() == "__enzyme_integer" ||
-                  called->getName() == "__enzyme_pointer") {
+            Function* F = CI->getCalledFunction();
+          #if LLVM_VERSION_MAJOR >= 11
+            if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
+          #else
+            if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
+          #endif
+            {
+              if (castinst->isCast())
+                if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                    F = fn;
+                }
+            }
+            if (F) {
+              if (F->getName() == "__enzyme_float" ||
+                  F->getName() == "__enzyme_double" ||
+                  F->getName() == "__enzyme_integer" ||
+                  F->getName() == "__enzyme_pointer") {
                 toErase.push_back(CI);
               }
             }

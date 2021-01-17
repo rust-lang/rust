@@ -557,8 +557,20 @@ void TypeAnalyzer::considerTBAA() {
     for (Instruction &I : BB) {
 
       if (CallInst *call = dyn_cast<CallInst>(&I)) {
-        if (call->getCalledFunction() &&
-            call->getCalledFunction()->getName() == "__enzyme_float") {
+        Function* F = call->getCalledFunction();
+      #if LLVM_VERSION_MAJOR >= 11
+        if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
+      #else
+        if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
+      #endif
+        {
+          if (castinst->isCast())
+            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                F = fn;
+            }
+        }
+        if (F &&
+            F->getName() == "__enzyme_float") {
           assert(call->getNumArgOperands() == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
           assert(isa<ConstantInt>(call->getArgOperand(1)));
@@ -570,8 +582,8 @@ void TypeAnalyzer::considerTBAA() {
           TT.insert({}, BaseType::Pointer);
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
-        if (call->getCalledFunction() &&
-            call->getCalledFunction()->getName() == "__enzyme_double") {
+        if (F &&
+            F->getName() == "__enzyme_double") {
           assert(call->getNumArgOperands() == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
           assert(isa<ConstantInt>(call->getArgOperand(1)));
@@ -583,21 +595,25 @@ void TypeAnalyzer::considerTBAA() {
           TT.insert({}, BaseType::Pointer);
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
-        if (call->getCalledFunction() &&
-            call->getCalledFunction()->getName() == "__enzyme_integer") {
-          assert(call->getNumArgOperands() == 2);
+        if (F &&
+            F->getName() == "__enzyme_integer") {
+          assert(call->getNumArgOperands() == 1 || call->getNumArgOperands() == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
-          assert(isa<ConstantInt>(call->getArgOperand(1)));
+          size_t num = 1;
+          if (call->getNumArgOperands() == 2) {
+            assert(isa<ConstantInt>(call->getArgOperand(1)));
+            num = cast<ConstantInt>(call->getArgOperand(1))->getLimitedValue();
+          }
           TypeTree TT;
           for (size_t i = 0;
-               i < cast<ConstantInt>(call->getArgOperand(1))->getLimitedValue();
+               i < num;
                i++)
             TT.insert({(int)i}, BaseType::Integer);
           TT.insert({}, BaseType::Pointer);
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
-        if (call->getCalledFunction() &&
-            call->getCalledFunction()->getName() == "__enzyme_pointer") {
+        if (F &&
+            F->getName() == "__enzyme_pointer") {
           assert(call->getNumArgOperands() == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());
           assert(isa<ConstantInt>(call->getArgOperand(1)));
