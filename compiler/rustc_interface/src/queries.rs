@@ -429,7 +429,7 @@ impl Compiler {
             {
                 let _prof_timer =
                     queries.session().prof.generic_activity("self_profile_alloc_query_strings");
-                gcx.enter(|tcx| tcx.alloc_self_profile_query_strings());
+                gcx.enter(query::alloc_self_profile_query_strings);
             }
 
             if self.session().opts.debugging_opts.query_stats {
