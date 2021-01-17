@@ -162,7 +162,7 @@ documentation in `test.rs`, but instead of going through the full clean and
 render process, it runs a much simpler crate walk to grab *just* the
 hand-written documentation. Combined with the aforementioned
 "`find_testable_code`" in `html/markdown.rs`, it builds up a collection of
-tests to run before handing them off to the test test runner. One notable
+tests to run before handing them off to the test runner. One notable
 location in `test.rs` is the function `make_test`, which is where hand-written
 doctests get transformed into something that can be executed.
 
