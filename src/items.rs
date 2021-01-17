@@ -302,7 +302,7 @@ impl<'a> FmtVisitor<'a> {
         let context = self.get_context();
 
         let mut fn_brace_style = newline_for_brace(self.config, &fn_sig.generics.where_clause);
-        let (result, force_newline_brace) =
+        let (result, _, force_newline_brace) =
             rewrite_fn_base(&context, indent, ident, fn_sig, span, fn_brace_style)?;
 
         // 2 = ` {`
@@ -328,7 +328,7 @@ impl<'a> FmtVisitor<'a> {
         let span = mk_sp(span.lo(), span.hi() - BytePos(1));
         let context = self.get_context();
 
-        let (mut result, _) = rewrite_fn_base(
+        let (mut result, ends_with_comment, _) = rewrite_fn_base(
             &context,
             indent,
             ident,
@@ -336,6 +336,11 @@ impl<'a> FmtVisitor<'a> {
             span,
             FnBraceStyle::None,
         )?;
+
+        // If `result` ends with a comment, then remember to add a newline
+        if ends_with_comment {
+            result.push_str(&indent.to_string_with_newline(context.config));
+        }
 
         // Re-attach semicolon
         result.push(';');
@@ -2142,7 +2147,7 @@ fn rewrite_fn_base(
     fn_sig: &FnSig<'_>,
     span: Span,
     fn_brace_style: FnBraceStyle,
-) -> Option<(String, bool)> {
+) -> Option<(String, bool, bool)> {
     let mut force_new_line_for_brace = false;
 
     let where_clause = &fn_sig.generics.where_clause;
@@ -2450,10 +2455,11 @@ fn rewrite_fn_base(
 
     result.push_str(&where_clause_str);
 
-    force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
+    let ends_with_comment = last_line_contains_single_line_comment(&result);
+    force_new_line_for_brace |= ends_with_comment;
     force_new_line_for_brace |=
         is_params_multi_lined && context.config.where_single_line() && !where_clause_str.is_empty();
-    Some((result, force_new_line_for_brace))
+    Some((result, ends_with_comment, force_new_line_for_brace))
 }
 
 /// Kind of spaces to put before `where`.
@@ -3137,7 +3143,7 @@ impl Rewrite for ast::ForeignItem {
                 span,
                 FnBraceStyle::None,
             )
-            .map(|(s, _)| format!("{};", s)),
+            .map(|(s, _, _)| format!("{};", s)),
             ast::ForeignItemKind::Static(ref ty, mutability, _) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function kw here.
