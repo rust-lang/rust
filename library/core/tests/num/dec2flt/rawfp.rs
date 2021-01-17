@@ -81,7 +81,6 @@ fn rounding_overflow() {
     assert_eq!(rounded.k, adjusted_k + 1);
 }
 
-#[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
 #[test]
 fn prev_float_monotonic() {
     let mut x = 1.0;
@@ -117,7 +116,6 @@ fn next_float_inf() {
     assert_eq!(next_float(f64::INFINITY), f64::INFINITY);
 }
 
-#[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
 #[test]
 fn next_prev_identity() {
     for &x in &SOME_FLOATS {
@@ -128,7 +126,6 @@ fn next_prev_identity() {
     }
 }
 
-#[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
 #[test]
 fn next_float_monotonic() {
     let mut x = 0.49999999999999;
