@@ -450,8 +450,7 @@ macro_rules! define_queries {
                     Err(lookup) => lookup,
                 };
 
-                let qcx = QueryCtxt(self.tcx);
-                get_query::<queries::$name<'_>, _>(qcx, DUMMY_SP, key, lookup, QueryMode::Ensure);
+                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, lookup, QueryMode::Ensure);
             })*
         }
 
@@ -542,8 +541,7 @@ macro_rules! define_queries {
                     Err(lookup) => lookup,
                 };
 
-                let qcx = QueryCtxt(self.tcx);
-                get_query::<queries::$name<'_>, _>(qcx, self.span, key, lookup, QueryMode::Get).unwrap()
+                self.tcx.queries.$name(self.tcx, self.span, key, lookup, QueryMode::Get).unwrap()
             })*
         }
 
@@ -598,6 +596,20 @@ macro_rules! define_queries_struct {
 
                 Some(jobs)
             }
+
+            $($(#[$attr])*
+            #[inline(always)]
+            fn $name(
+                &self,
+                tcx: TyCtxt<$tcx>,
+                span: Span,
+                key: query_keys::$name<$tcx>,
+                lookup: QueryLookup,
+                mode: QueryMode,
+            ) -> Option<query_stored::$name<$tcx>> {
+                let qcx = QueryCtxt(tcx);
+                get_query::<queries::$name<$tcx>, _>(qcx, span, key, lookup, mode)
+            })*
         }
     };
 }
