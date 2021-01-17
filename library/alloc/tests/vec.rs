@@ -288,6 +288,78 @@ fn test_retain() {
 }
 
 #[test]
+fn test_retain_pred_panic() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    struct Wrap<'a>(&'a AtomicU64, u64, bool);
+
+    impl Drop for Wrap<'_> {
+        fn drop(&mut self) {
+            self.0.fetch_or(self.1, Ordering::SeqCst);
+        }
+    }
+
+    let dropped = AtomicU64::new(0);
+
+    let ret = std::panic::catch_unwind(|| {
+        let mut v = vec![
+            Wrap(&dropped, 1, false),
+            Wrap(&dropped, 2, false),
+            Wrap(&dropped, 4, false),
+            Wrap(&dropped, 8, false),
+            Wrap(&dropped, 16, false),
+        ];
+        v.retain(|w| match w.1 {
+            1 => true,
+            2 => false,
+            4 => true,
+            _ => panic!(),
+        });
+    });
+    assert!(ret.is_err());
+    // Everything is dropped when predicate panicked.
+    assert_eq!(dropped.load(Ordering::SeqCst), 1 | 2 | 4 | 8 | 16);
+}
+
+#[test]
+fn test_retain_drop_panic() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    struct Wrap<'a>(&'a AtomicU64, u64);
+
+    impl Drop for Wrap<'_> {
+        fn drop(&mut self) {
+            if self.1 == 8 {
+                panic!();
+            }
+            self.0.fetch_or(self.1, Ordering::SeqCst);
+        }
+    }
+
+    let dropped = AtomicU64::new(0);
+
+    let ret = std::panic::catch_unwind(|| {
+        let mut v = vec![
+            Wrap(&dropped, 1),
+            Wrap(&dropped, 2),
+            Wrap(&dropped, 4),
+            Wrap(&dropped, 8),
+            Wrap(&dropped, 16),
+        ];
+        v.retain(|w| match w.1 {
+            1 => true,
+            2 => false,
+            4 => true,
+            8 => false,
+            _ => true,
+        });
+    });
+    assert!(ret.is_err());
+    // Other elements are dropped when `drop` of one element panicked.
+    assert_eq!(dropped.load(Ordering::SeqCst), 1 | 2 | 4 | 16);
+}
+
+#[test]
 fn test_dedup() {
     fn case(a: Vec<i32>, b: Vec<i32>) {
         let mut v = a;
