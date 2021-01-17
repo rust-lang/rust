@@ -286,3 +286,43 @@ nonzero_integers_div! {
     NonZeroU128(u128);
     NonZeroUsize(usize);
 }
+
+macro_rules! nonzero_unsigned_is_power_of_two {
+    ( $( $Ty: ident )+ ) => {
+        $(
+            impl $Ty {
+
+                /// Returns `true` if and only if `self == (1 << k)` for some `k`.
+                ///
+                /// On many architectures, this function can perform better than `is_power_of_two()`
+                /// on the underlying integer type, as special handling of zero can be avoided.
+                ///
+                /// # Examples
+                ///
+                /// Basic usage:
+                ///
+                /// ```
+                /// #![feature(nonzero_is_power_of_two)]
+                ///
+                #[doc = concat!("let eight = std::num::", stringify!($Ty), "::new(8).unwrap();")]
+                /// assert!(eight.is_power_of_two());
+                #[doc = concat!("let ten = std::num::", stringify!($Ty), "::new(10).unwrap();")]
+                /// assert!(!ten.is_power_of_two());
+                /// ```
+                #[unstable(feature = "nonzero_is_power_of_two", issue = "81106")]
+                #[inline]
+                pub const fn is_power_of_two(self) -> bool {
+                    // LLVM 11 normalizes `unchecked_sub(x, 1) & x == 0` to the implementation seen here.
+                    // On the basic x86-64 target, this saves 3 instructions for the zero check.
+                    // On x86_64 with BMI1, being nonzero lets it codegen to `BLSR`, which saves an instruction
+                    // compared to the `POPCNT` implementation on the underlying integer type.
+
+                    intrinsics::ctpop(self.get()) < 2
+                }
+
+            }
+        )+
+    }
+}
+
+nonzero_unsigned_is_power_of_two! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize }
