@@ -43,11 +43,21 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for Ty<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::PredicateKind<'tcx> {
+    type Variant = ty::PredicateKind<'tcx>;
+
+    #[inline]
+    fn variant(&self) -> &Self::Variant {
+        self
+    }
+}
+
 pub trait TyEncoder<'tcx>: Encoder {
     const CLEAR_CROSS_CRATE: bool;
 
     fn position(&self) -> usize;
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize>;
+    fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize>;
     fn encode_alloc_id(&mut self, alloc_id: &AllocId) -> Result<(), Self::Error>;
 }
 
@@ -107,6 +117,12 @@ where
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Ty<'tcx> {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         encode_with_shorthand(e, self, TyEncoder::type_shorthands)
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::PredicateKind<'tcx> {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+        encode_with_shorthand(e, self, TyEncoder::predicate_shorthands)
     }
 }
 
@@ -206,6 +222,21 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
         } else {
             let tcx = decoder.tcx();
             Ok(tcx.mk_ty(ty::TyKind::decode(decoder)?))
+        }
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::PredicateKind<'tcx> {
+    fn decode(decoder: &mut D) -> Result<ty::PredicateKind<'tcx>, D::Error> {
+        // Handle shorthands first, if we have an usize > 0x80.
+        if decoder.positioned_at_shorthand() {
+            let pos = decoder.read_usize()?;
+            assert!(pos >= SHORTHAND_OFFSET);
+            let shorthand = pos - SHORTHAND_OFFSET;
+
+            decoder.with_position(shorthand, ty::PredicateKind::decode)
+        } else {
+            Ok(ty::PredicateKind::decode(decoder)?)
         }
     }
 }
