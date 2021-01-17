@@ -24,12 +24,9 @@ fn main() {
     writeln!(&mut v, "{number:>0width$}", number = 1, width = 6);
 
     // these should throw warnings
-    writeln!(&mut v, "{} of {:b} people know binary, the other half doesn't", 1, 2);
     write!(&mut v, "Hello {}", "world");
     writeln!(&mut v, "Hello {} {}", world, "world");
     writeln!(&mut v, "Hello {}", "world");
-    writeln!(&mut v, "10 / 4 is {}", 2.5);
-    writeln!(&mut v, "2 + 1 = {}", 3);
 
     // positional args don't change the fact
     // that we're using a literal -- this should

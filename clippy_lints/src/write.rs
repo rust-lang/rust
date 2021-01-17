@@ -461,7 +461,7 @@ impl Write {
                         span_lint(cx, lint, token_expr.span, "literal with an empty format string");
                     }
                     idx += 1;
-                }
+                },
                 ExprKind::Assign(lhs, rhs, _) => {
                     if_chain! {
                         if let ExprKind::Lit(ref lit) = rhs.kind;
