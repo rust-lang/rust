@@ -53,6 +53,7 @@ fn test_units() {
 /// DirectX
 /// ECMAScript
 /// OAuth GraphQL
+/// WebGL
 /// TeX LaTeX BibTeX BibLaTeX
 /// CamelCase (see also #2395)
 /// be_sure_we_got_to_the_end_of_it
