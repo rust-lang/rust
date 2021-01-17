@@ -7,13 +7,11 @@
 #![deny(rustdoc::x)]
 //~^ ERROR unknown lint: `rustdoc::x`
 #![deny(intra_doc_link_resolution_failure)]
-//~^ ERROR has been renamed
+//~^ ERROR renamed to `rustdoc::broken_intra_doc_links`
 
-// This would ideally say 'renamed to rustdoc::non_autolinks', but this is close enough.
 #![deny(non_autolinks)]
-//~^ ERROR has been removed: use `rustdoc::non_autolinks` instead [renamed_and_removed_lints]
+//~^ ERROR renamed to `rustdoc::non_autolinks`
 
-// This doesn't give you the right code directly, but at least points you on the
-// right path.
+// Explicitly don't try to handle this case, it was never valid
 #![deny(rustdoc::intra_doc_link_resolution_failure)]
 //~^ ERROR unknown lint

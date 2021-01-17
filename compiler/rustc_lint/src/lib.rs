@@ -339,6 +339,10 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         // FIXME: maybe we could get `register_renamed` to work for tool lints?
         store.register_removed(rustdoc_lint, &format!("use `rustdoc::{}` instead", rustdoc_lint));
     }
+    store.register_removed(
+        "intra_doc_link_resolution_failure",
+        "use `rustdoc::broken_intra_doc_links` instead",
+    );
 
     store.register_removed("unknown_features", "replaced by an error");
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
