@@ -854,10 +854,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
                 break;
               }
             }
+            if (noUse) continue;
             if (KnownInactiveFunctions.count(F->getName().str())) {
               continue;
             }
-            if (isMemFreeLibMFunction(F->getName())) {
+            if (isMemFreeLibMFunction(F->getName()) || F->getName() == "__fd_sincos_1") {
               continue;
             }
 
@@ -901,7 +902,6 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
               noUse = true;
               break;
             default:
-              noUse = false;
               break;
             }
             if (noUse)
@@ -966,6 +966,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             // If the ref'ing value is a load check if the loaded value is
             // active
             potentiallyActiveLoad = !Hypothesis->isConstantValue(TR, LI);
+          } else if (auto MTI = dyn_cast<MemTransferInst>(&I)) {
+            potentiallyActiveLoad = !Hypothesis->isConstantValue(
+                TR, MTI->getArgOperand(0));
           } else {
             // Otherwise fallback and check any part of the instruction is
             // active
@@ -979,7 +982,10 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             llvm::errs() << "potential active store: " << I << "\n";
           if (auto SI = dyn_cast<StoreInst>(&I)) {
             potentialStore = !Hypothesis->isConstantValue(
-                TR, SI->getValueOperand()); // true;
+                TR, SI->getValueOperand());
+          } else if (auto MTI = dyn_cast<MemTransferInst>(&I)) {
+            potentialStore = !Hypothesis->isConstantValue(
+                TR, MTI->getArgOperand(1));
           } else {
             // Otherwise fallback and check if the instruction is active
             // TODO: note that this can be optimized (especially for function
