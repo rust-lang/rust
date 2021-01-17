@@ -1417,7 +1417,7 @@ fn generator_layout_and_saved_local_names(
     def_id: DefId,
 ) -> (&'tcx GeneratorLayout<'tcx>, IndexVec<mir::GeneratorSavedLocal, Option<Symbol>>) {
     let body = tcx.optimized_mir(def_id);
-    let generator_layout = body.generator_layout.as_ref().unwrap();
+    let generator_layout = body.generator_layout().unwrap();
     let mut generator_saved_local_names = IndexVec::from_elem(None, &generator_layout.field_tys);
 
     let state_arg = mir::Local::new(1);

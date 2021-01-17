@@ -1177,7 +1177,7 @@ pub fn promote_candidates<'tcx>(
             0,
             vec![],
             body.span,
-            body.generator_kind,
+            body.generator_kind(),
         );
 
         let promoter = Promoter {

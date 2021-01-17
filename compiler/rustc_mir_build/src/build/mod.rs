@@ -188,7 +188,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 body,
                 span_with_body,
             );
-            mir.yield_ty = yield_ty;
+            if yield_ty.is_some() {
+                mir.generator.as_mut().unwrap().yield_ty = yield_ty;
+            }
             mir
         } else {
             // Get the revealed type of this const. This is *not* the adjusted
@@ -218,7 +220,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             !(body.local_decls.has_free_regions()
                 || body.basic_blocks().has_free_regions()
                 || body.var_debug_info.has_free_regions()
-                || body.yield_ty.has_free_regions()),
+                || body.yield_ty().has_free_regions()),
             "Unexpected free regions in MIR: {:?}",
             body,
         );
@@ -686,10 +688,11 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
     let def_id = tcx.hir().local_def_id(owner_id);
     let span = tcx.hir().span(owner_id);
     let ty = tcx.ty_error();
+    let generator_kind = tcx.hir().body(body_id).generator_kind;
     let num_params = match hir.body_owner_kind {
         hir::BodyOwnerKind::Fn => tcx.hir().fn_decl_by_hir_id(owner_id).unwrap().inputs.len(),
         hir::BodyOwnerKind::Closure => {
-            if tcx.hir().body(body_id).generator_kind().is_some() {
+            if generator_kind.is_some() {
                 // Generators have an implicit `self` parameter *and* a possibly
                 // implicit resume parameter.
                 2
@@ -701,8 +704,16 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
         hir::BodyOwnerKind::Const => 0,
         hir::BodyOwnerKind::Static(_) => 0,
     };
-    let mut builder =
-        Builder::new(hir, def_id.to_def_id(), span, num_params, Safety::Safe, ty, span, None);
+    let mut builder = Builder::new(
+        hir,
+        def_id.to_def_id(),
+        span,
+        num_params,
+        Safety::Safe,
+        ty,
+        span,
+        generator_kind,
+    );
     let source_info = builder.source_info(span);
     // Some MIR passes will expect the number of parameters to match the
     // function declaration.
@@ -711,9 +722,7 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
     }
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
     let mut body = builder.finish();
-    if tcx.hir().body(body_id).generator_kind.is_some() {
-        body.yield_ty = Some(ty);
-    }
+    body.generator.as_mut().map(|gen| gen.yield_ty = Some(ty));
     body
 }
 
