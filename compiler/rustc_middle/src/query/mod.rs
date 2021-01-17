@@ -1281,11 +1281,6 @@ rustc_queries! {
     }
 
     Other {
-        query dllimport_foreign_items(_: CrateNum)
-            -> FxHashSet<DefId> {
-            storage(ArenaCacheSelector<'tcx>)
-            desc { "dllimport_foreign_items" }
-        }
         query is_dllimport_foreign_item(def_id: DefId) -> bool {
             desc { |tcx| "is_dllimport_foreign_item({})", tcx.def_path_str(def_id) }
         }
