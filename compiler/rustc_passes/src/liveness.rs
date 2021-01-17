@@ -332,8 +332,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         // Allow todo! macro
         /*
             Skips checking for unused variables when the trailing expression
-            of the body is core::panicking::panic("not yet implemented"), ie
-            as emitted by todo!().
+            of the body is a panic with a message that contains "not yet implemented".
 
             # Example
 
@@ -347,14 +346,23 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 if let ExprKind::Call(call, [arg]) = expr.kind {
                     if let ExprKind::Path(QPath::Resolved(_, path)) = call.kind {
                         if let Res::Def(DefKind::Fn, path_def_id) = &path.res {
-                            let begin_panic_def_id = self.tcx.lang_items().begin_panic_fn();
-                            if begin_panic_def_id == Some(*path_def_id) {
+                            let panic_fn = self.tcx.lang_items().panic_fn();
+                            // Note: there is no function for panic_fmt, so we have to extract it from the debug output :(
+                            // builder doesn't like this being called without panic `self.tcx.def_path_str(*path_def_id);`
+                            let path_str = format!("{:?}", path_def_id);
+                            if Some(*path_def_id) == panic_fn
+                                || ((path_str.contains("std[") || path_str.contains("core["))
+                                    && path_str.contains("panicking::panic"))
+                            {
                                 if let ExprKind::Lit(spanned) = &arg.kind {
                                     if let LitKind::Str(symbol, StrStyle::Cooked) = spanned.node {
                                         if symbol.as_str().starts_with("not yet implemented") {
                                             return;
                                         }
                                     }
+                                } else if format!("{:?}", &arg.kind).contains("not yet implemented")
+                                {
+                                    return;
                                 }
                             }
                         }

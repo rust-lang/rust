@@ -1,17 +1,30 @@
 // check-pass
 
 #[deny(unused_variables)]
-fn foo(x: i32, y: i32) -> i32 {
+fn plain(x: i32, y: i32) -> i32 {
+    todo!()
+}
+
+#[deny(unused_variables)]
+fn message(x: i32, y: i32) -> i32 {
+    todo!("message")
+}
+
+#[deny(unused_variables)]
+fn statement(x: i32, y: i32) -> i32 {
     let z = x + y;
     todo!()
 }
 
 #[deny(unused_variables)]
-fn bar(x: i32, y: i32) -> i32 {
-    todo!("Some message")
+fn statement_message(x: i32, y: i32) -> i32 {
+    let z = x + y;
+    todo!("message")
 }
 
 fn main() {
-    foo(0, 1);
-    bar(0, 1);
+    plain(0, 1);
+    message(0, 1);
+    statement(0, 1);
+    statement_message(0, 1);
 }
