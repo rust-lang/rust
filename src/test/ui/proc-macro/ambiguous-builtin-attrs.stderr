@@ -60,6 +60,20 @@ LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
    = help: use `crate::repr` to refer to this attribute macro unambiguously
 
+error[E0659]: `allow` is ambiguous (built-in attribute vs any other name)
+  --> $DIR/ambiguous-builtin-attrs.rs:36:3
+   |
+LL | #[allow(unused)]
+   |   ^^^^^ ambiguous name
+   |
+   = note: `allow` could refer to a built-in attribute
+note: `allow` could also refer to the built-in attribute imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:35:5
+   |
+LL | use deny as allow;
+   |     ^^^^^^^^^^^^^
+   = help: use `crate::allow` to refer to this built-in attribute unambiguously
+
 error[E0659]: `feature` is ambiguous (built-in attribute vs any other name)
   --> $DIR/ambiguous-builtin-attrs.rs:3:4
    |
@@ -80,7 +94,7 @@ error[E0517]: attribute should be applied to a struct, enum, or union
 LL | fn non_macro_expanded_location<#[repr(C)] T>() {
    |                                       ^   - not a struct, enum, or union
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0425, E0517, E0659.
 For more information about an error, try `rustc --explain E0425`.
