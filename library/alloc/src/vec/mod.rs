@@ -1411,12 +1411,8 @@ impl<T, A: Allocator> Vec<T, A> {
             }
         }
 
-        let mut guard = BackshiftOnDrop {
-            v: self,
-            processed_len: 0,
-            deleted_cnt: 0,
-            original_len: len,
-        };
+        let mut guard =
+            BackshiftOnDrop { v: self, processed_len: 0, deleted_cnt: 0, original_len: len };
 
         let mut del = 0usize;
         for i in 0..len {
