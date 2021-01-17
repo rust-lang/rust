@@ -259,7 +259,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let regioncx = Rc::new(regioncx);
 
-    let flow_borrows = Borrows::new(tcx, &body, regioncx.clone(), &borrow_set)
+    let flow_borrows = Borrows::new(tcx, &body, regioncx.clone(), Rc::clone(borrow_set))
         .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
