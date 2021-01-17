@@ -794,6 +794,9 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
                     F->getName() == "__mth_i_ipowi" || F->getName() == "f90_pausea")) {
             continue;
           }
+          if (F && F->getName() == "__enzyme_integer") {
+            continue;
+          }
 
 #if LLVM_VERSION_MAJOR >= 9
           AAQueryInfo AAQIP;
@@ -838,6 +841,9 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
                     }
                 }
               if (F && (isMemFreeLibMFunction(F->getName()) || F->getName() == "__fd_sincos_1")) {
+                continue;
+              }
+              if (F && F->getName() == "__enzyme_integer") {
                 continue;
               }
               if (F && (F->getName().startswith("f90io") || F->getName() == "ftnio_fmt_write64" ||
