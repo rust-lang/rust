@@ -439,7 +439,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         match terminator.kind {
             TerminatorKind::Goto { target } => Ok(Some(target)),
             TerminatorKind::Return => Ok(None),
-            TerminatorKind::Call {
+            TerminatorKind::Call(box mir::CallTerminator {
                 ref func,
                 ref args,
                 destination: Some((ref place, target)),
@@ -457,7 +457,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 // This is currently fairly irrelevant as it requires `const Trait`s.
                 from_hir_call: true,
                 fn_span,
-            } => {
+            }) => {
                 let local = self.place_to_local(fn_span, place)?;
                 let func = self.operand_to_node(fn_span, func)?;
                 let args = self.tcx.arena.alloc_from_iter(
@@ -468,7 +468,12 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 self.locals[local] = self.add_node(Node::FunctionCall(func, args), fn_span);
                 Ok(Some(target))
             }
-            TerminatorKind::Assert { ref cond, expected: false, target, .. } => {
+            TerminatorKind::Assert(box mir::AssertTerminator {
+                ref cond,
+                expected: false,
+                target,
+                ..
+            }) => {
                 let p = match cond {
                     mir::Operand::Copy(p) | mir::Operand::Move(p) => p,
                     mir::Operand::Constant(_) => bug!("unexpected assert"),

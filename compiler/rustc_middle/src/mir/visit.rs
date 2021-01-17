@@ -483,11 +483,11 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    TerminatorKind::SwitchInt {
+                    TerminatorKind::SwitchInt(box SwitchIntTerminator {
                         discr,
                         switch_ty,
                         targets: _
-                    } => {
+                    }) => {
                         self.visit_operand(discr, location);
                         self.visit_ty(switch_ty, TyContext::Location(location));
                     }
@@ -518,14 +518,14 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(value, location);
                     }
 
-                    TerminatorKind::Call {
+                    TerminatorKind::Call(box CallTerminator {
                         func,
                         args,
                         destination,
                         cleanup: _,
                         from_hir_call: _,
                         fn_span: _
-                    } => {
+                    }) => {
                         self.visit_operand(func, location);
                         for arg in args {
                             self.visit_operand(arg, location);
@@ -539,13 +539,13 @@ macro_rules! make_mir_visitor {
                         }
                     }
 
-                    TerminatorKind::Assert {
+                    TerminatorKind::Assert(box AssertTerminator {
                         cond,
                         expected: _,
                         msg,
                         target: _,
                         cleanup: _,
-                    } => {
+                    }) => {
                         self.visit_operand(cond, location);
                         self.visit_assert_message(msg, location);
                     }
@@ -564,13 +564,13 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    TerminatorKind::InlineAsm {
+                    TerminatorKind::InlineAsm(box InlineAsmTerminator {
                         template: _,
                         operands,
                         options: _,
                         line_spans: _,
                         destination: _,
-                    } => {
+                    }) => {
                         for op in operands {
                             match op {
                                 InlineAsmOperand::In { value, .. }

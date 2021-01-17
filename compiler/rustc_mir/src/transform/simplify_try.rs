@@ -589,7 +589,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
             .iter_enumerated()
             .filter_map(|(bb_idx, bb)| {
                 let (discr_switched_on, targets_and_values) = match &bb.terminator().kind {
-                    TerminatorKind::SwitchInt { targets, discr, .. } => {
+                    TerminatorKind::SwitchInt(box SwitchIntTerminator{ targets, discr, .. }) => {
                         let targets_and_values: Vec<_> = targets.iter()
                             .map(|(val, target)| SwitchTargetAndValue { target, value: Some(val) })
                             .chain(once(SwitchTargetAndValue { target: targets.otherwise(), value: None }))

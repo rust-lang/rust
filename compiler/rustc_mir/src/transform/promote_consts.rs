@@ -226,7 +226,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         self.super_terminator(terminator, location);
 
         match terminator.kind {
-            TerminatorKind::Call { ref func, .. } => {
+            TerminatorKind::Call(box CallTerminator { ref func, .. }) => {
                 if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).kind() {
                     let fn_sig = self.ccx.tcx.fn_sig(def_id);
                     if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
@@ -247,7 +247,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::InlineAsm { ref operands, .. } => {
+            TerminatorKind::InlineAsm(box InlineAsmTerminator { ref operands, .. }) => {
                 for (index, op) in operands.iter().enumerate() {
                     if let InlineAsmOperand::Const { .. } = op {
                         self.candidates.push(Candidate::InlineAsm { bb: location.block, index })
@@ -354,7 +354,9 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                 let terminator = self.body[bb].terminator();
                 match &terminator.kind {
-                    TerminatorKind::Call { args, .. } => self.validate_operand(&args[index]),
+                    TerminatorKind::Call(box CallTerminator { args, .. }) => {
+                        self.validate_operand(&args[index])
+                    }
                     _ => bug!(),
                 }
             }
@@ -363,10 +365,12 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                 let terminator = self.body[bb].terminator();
                 match &terminator.kind {
-                    TerminatorKind::InlineAsm { operands, .. } => match &operands[index] {
-                        InlineAsmOperand::Const { value } => self.validate_operand(value),
-                        _ => bug!(),
-                    },
+                    TerminatorKind::InlineAsm(box InlineAsmTerminator { operands, .. }) => {
+                        match &operands[index] {
+                            InlineAsmOperand::Const { value } => self.validate_operand(value),
+                            _ => bug!(),
+                        }
+                    }
                     _ => bug!(),
                 }
             }
@@ -397,7 +401,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             } else {
                 let terminator = self.body[loc.block].terminator();
                 match &terminator.kind {
-                    TerminatorKind::Call { .. } => {
+                    TerminatorKind::Call(..) => {
                         let return_ty = self.body.local_decls[local].ty;
                         Q::in_any_value_of_ty(&self.ccx, return_ty)
                     }
@@ -432,7 +436,9 @@ impl<'tcx> Validator<'_, 'tcx> {
             } else {
                 let terminator = self.body[loc.block].terminator();
                 match &terminator.kind {
-                    TerminatorKind::Call { func, args, .. } => self.validate_call(func, args),
+                    TerminatorKind::Call(box CallTerminator { func, args, .. }) => {
+                        self.validate_call(func, args)
+                    }
                     TerminatorKind::Yield { .. } => Err(Unpromotable),
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
@@ -896,7 +902,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             } else {
                 let terminator = self.source[loc.block].terminator_mut();
                 let target = match terminator.kind {
-                    TerminatorKind::Call { destination: Some((_, target)), .. } => target,
+                    TerminatorKind::Call(box CallTerminator {
+                        destination: Some((_, target)),
+                        ..
+                    }) => target,
                     ref kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                     }
@@ -908,7 +917,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             };
 
             match terminator.kind {
-                TerminatorKind::Call { mut func, mut args, from_hir_call, fn_span, .. } => {
+                TerminatorKind::Call(box CallTerminator {
+                    mut func,
+                    mut args,
+                    from_hir_call,
+                    fn_span,
+                    ..
+                }) => {
                     self.visit_operand(&mut func, loc);
                     for arg in &mut args {
                         self.visit_operand(arg, loc);
@@ -918,14 +933,14 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     let new_target = self.new_block();
 
                     *self.promoted[last].terminator_mut() = Terminator {
-                        kind: TerminatorKind::Call {
+                        kind: TerminatorKind::Call(box CallTerminator {
                             func,
                             args,
                             cleanup: None,
                             destination: Some((Place::from(new_temp), new_target)),
                             from_hir_call,
                             fn_span,
-                        },
+                        }),
                         source_info: SourceInfo::outermost(terminator.source_info.span),
                         ..terminator
                     };
@@ -1041,7 +1056,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Candidate::Argument { bb, index } => {
                     let terminator = blocks[bb].terminator_mut();
                     match terminator.kind {
-                        TerminatorKind::Call { ref mut args, .. } => {
+                        TerminatorKind::Call(box CallTerminator { ref mut args, .. }) => {
                             let ty = args[index].ty(local_decls, self.tcx);
                             let span = terminator.source_info.span;
 
@@ -1061,17 +1076,18 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Candidate::InlineAsm { bb, index } => {
                     let terminator = blocks[bb].terminator_mut();
                     match terminator.kind {
-                        TerminatorKind::InlineAsm { ref mut operands, .. } => {
-                            match &mut operands[index] {
-                                InlineAsmOperand::Const { ref mut value } => {
-                                    let ty = value.ty(local_decls, self.tcx);
-                                    let span = terminator.source_info.span;
+                        TerminatorKind::InlineAsm(box InlineAsmTerminator {
+                            ref mut operands,
+                            ..
+                        }) => match &mut operands[index] {
+                            InlineAsmOperand::Const { ref mut value } => {
+                                let ty = value.ty(local_decls, self.tcx);
+                                let span = terminator.source_info.span;
 
-                                    Rvalue::Use(mem::replace(value, promoted_operand(ty, span)))
-                                }
-                                _ => bug!(),
+                                Rvalue::Use(mem::replace(value, promoted_operand(ty, span)))
                             }
-                        }
+                            _ => bug!(),
+                        },
 
                         _ => bug!(),
                     }

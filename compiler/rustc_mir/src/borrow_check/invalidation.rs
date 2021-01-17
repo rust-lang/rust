@@ -1,8 +1,11 @@
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::{
+    AssertTerminator, CallTerminator, InlineAsmOperand, InlineAsmTerminator, SwitchIntTerminator,
+    Terminator, TerminatorKind,
+};
 use rustc_middle::mir::{BasicBlock, Body, Location, Place, Rvalue};
 use rustc_middle::mir::{BorrowKind, Mutability, Operand};
-use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
 
@@ -117,7 +120,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
         self.check_activations(location);
 
         match &terminator.kind {
-            TerminatorKind::SwitchInt { ref discr, switch_ty: _, targets: _ } => {
+            TerminatorKind::SwitchInt(box SwitchIntTerminator {
+                ref discr,
+                switch_ty: _,
+                targets: _,
+            }) => {
                 self.consume_operand(location, discr);
             }
             TerminatorKind::Drop { place: drop_place, target: _, unwind: _ } => {
@@ -137,14 +144,14 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 self.mutate_place(location, *drop_place, Deep, JustWrite);
                 self.consume_operand(location, new_value);
             }
-            TerminatorKind::Call {
+            TerminatorKind::Call(box CallTerminator {
                 ref func,
                 ref args,
                 destination,
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
-            } => {
+            }) => {
                 self.consume_operand(location, func);
                 for arg in args {
                     self.consume_operand(location, arg);
@@ -153,7 +160,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     self.mutate_place(location, *dest, Deep, JustWrite);
                 }
             }
-            TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
+            TerminatorKind::Assert(box AssertTerminator {
+                ref cond,
+                expected: _,
+                ref msg,
+                target: _,
+                cleanup: _,
+            }) => {
                 self.consume_operand(location, cond);
                 use rustc_middle::mir::AssertKind;
                 if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
@@ -185,13 +198,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::InlineAsm {
+            TerminatorKind::InlineAsm(box InlineAsmTerminator {
                 template: _,
                 ref operands,
                 options: _,
                 line_spans: _,
                 destination: _,
-            } => {
+            }) => {
                 for op in operands {
                     match *op {
                         InlineAsmOperand::In { reg: _, ref value }

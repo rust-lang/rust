@@ -81,7 +81,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 // safe (at least as emitted during MIR construction)
             }
 
-            TerminatorKind::Call { ref func, .. } => {
+            TerminatorKind::Call(box CallTerminator { ref func, .. }) => {
                 let func_ty = func.ty(self.body, self.tcx);
                 let sig = func_ty.fn_sig(self.tcx);
                 if let hir::Unsafety::Unsafe = sig.unsafety() {

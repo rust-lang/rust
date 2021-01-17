@@ -40,7 +40,7 @@ pub(crate) fn analyze(fx: &FunctionCx<'_, '_, impl Module>) -> IndexVec<Local, S
         }
 
         match &bb.terminator().kind {
-            TerminatorKind::Call { destination, .. } => {
+            TerminatorKind::Call(box mir::CallTerminator { destination, .. }) => {
                 if let Some((dest_place, _dest_bb)) = destination {
                     let dest_layout = fx
                         .layout_of(fx.monomorphize(&dest_place.ty(&fx.mir.local_decls, fx.tcx).ty));

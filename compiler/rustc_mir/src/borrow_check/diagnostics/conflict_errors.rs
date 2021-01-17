@@ -1861,8 +1861,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 "annotate_argument_and_return_for_borrow: target={:?} terminator={:?}",
                 target, terminator
             );
-            if let TerminatorKind::Call { destination: Some((place, _)), args, .. } =
-                &terminator.kind
+            if let TerminatorKind::Call(box mir::CallTerminator {
+                destination: Some((place, _)),
+                args,
+                ..
+            }) = &terminator.kind
             {
                 if let Some(assigned_to) = place.as_local() {
                     debug!(

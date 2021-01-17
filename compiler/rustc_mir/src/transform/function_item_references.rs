@@ -32,14 +32,14 @@ impl<'a, 'tcx> Visitor<'tcx> for FunctionItemRefChecker<'a, 'tcx> {
     /// `transmute`. This only handles arguments in calls outside macro expansions to avoid double
     /// counting function references formatted as pointers by macros.
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        if let TerminatorKind::Call {
+        if let TerminatorKind::Call(box CallTerminator {
             func,
             args,
             destination: _,
             cleanup: _,
             from_hir_call: _,
             fn_span: _,
-        } = &terminator.kind
+        }) = &terminator.kind
         {
             let source_info = *self.body.source_info(location);
             // Only handle function calls outside macros

@@ -218,7 +218,9 @@ where
         self.results.seek_to_block_end(block);
         if self.results.get() != &block_start_state || A::Direction::is_backward() {
             let after_terminator_name = match terminator.kind {
-                mir::TerminatorKind::Call { destination: Some(_), .. } => "(on unwind)",
+                mir::TerminatorKind::Call(box mir::CallTerminator {
+                    destination: Some(_), ..
+                }) => "(on unwind)",
                 _ => "(on end)",
             };
 
@@ -231,12 +233,12 @@ where
         // for the basic block itself. That way, we could display terminator-specific effects for
         // backward dataflow analyses as well as effects for `SwitchInt` terminators.
         match terminator.kind {
-            mir::TerminatorKind::Call {
+            mir::TerminatorKind::Call(box mir::CallTerminator {
                 destination: Some((return_place, _)),
                 ref func,
                 ref args,
                 ..
-            } => {
+            }) => {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
                     let state_on_unwind = this.results.get().clone();
                     this.results.apply_custom_effect(|analysis, state| {

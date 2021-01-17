@@ -10,13 +10,13 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
+use rustc_middle::mir::{self, InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
     PlaceRef, VarDebugInfoContents,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
-use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
@@ -675,7 +675,11 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
         self.check_activations(loc, span, flow_state);
 
         match term.kind {
-            TerminatorKind::SwitchInt { ref discr, switch_ty: _, targets: _ } => {
+            TerminatorKind::SwitchInt(box mir::SwitchIntTerminator {
+                ref discr,
+                switch_ty: _,
+                targets: _,
+            }) => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
             TerminatorKind::Drop { place, target: _, unwind: _ } => {
@@ -702,14 +706,14 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 self.mutate_place(loc, (drop_place, span), Deep, JustWrite, flow_state);
                 self.consume_operand(loc, (new_value, span), flow_state);
             }
-            TerminatorKind::Call {
+            TerminatorKind::Call(box mir::CallTerminator {
                 ref func,
                 ref args,
                 ref destination,
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
-            } => {
+            }) => {
                 self.consume_operand(loc, (func, span), flow_state);
                 for arg in args {
                     self.consume_operand(loc, (arg, span), flow_state);
@@ -718,7 +722,13 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                     self.mutate_place(loc, (dest, span), Deep, JustWrite, flow_state);
                 }
             }
-            TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
+            TerminatorKind::Assert(box mir::AssertTerminator {
+                ref cond,
+                expected: _,
+                ref msg,
+                target: _,
+                cleanup: _,
+            }) => {
                 self.consume_operand(loc, (cond, span), flow_state);
                 use rustc_middle::mir::AssertKind;
                 if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
@@ -732,13 +742,13 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 self.mutate_place(loc, (resume_arg, span), Deep, JustWrite, flow_state);
             }
 
-            TerminatorKind::InlineAsm {
+            TerminatorKind::InlineAsm(box mir::InlineAsmTerminator {
                 template: _,
                 ref operands,
                 options: _,
                 line_spans: _,
                 destination: _,
-            } => {
+            }) => {
                 for op in operands {
                     match *op {
                         InlineAsmOperand::In { reg: _, ref value }

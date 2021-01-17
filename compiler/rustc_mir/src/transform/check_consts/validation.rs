@@ -796,7 +796,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
-            TerminatorKind::Call { func, .. } => {
+            TerminatorKind::Call(box CallTerminator { func, .. }) => {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id().to_def_id();
 

@@ -3,8 +3,8 @@
 use crate::transform::MirPass;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, SwitchTargets,
-    TerminatorKind,
+    BasicBlock, BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, SwitchIntTerminator,
+    SwitchTargets, TerminatorKind,
 };
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -13,7 +13,9 @@ use rustc_target::abi::{Abi, Variants};
 pub struct UninhabitedEnumBranching;
 
 fn get_discriminant_local(terminator: &TerminatorKind<'_>) -> Option<Local> {
-    if let TerminatorKind::SwitchInt { discr: Operand::Move(p), .. } = terminator {
+    if let TerminatorKind::SwitchInt(box SwitchIntTerminator { discr: Operand::Move(p), .. }) =
+        terminator
+    {
         p.as_local()
     } else {
         None
@@ -102,7 +104,7 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
 
             trace!("allowed_variants = {:?}", allowed_variants);
 
-            if let TerminatorKind::SwitchInt { targets, .. } =
+            if let TerminatorKind::SwitchInt(box SwitchIntTerminator { targets, .. }) =
                 &mut body.basic_blocks_mut()[bb].terminator_mut().kind
             {
                 let new_targets = SwitchTargets::new(

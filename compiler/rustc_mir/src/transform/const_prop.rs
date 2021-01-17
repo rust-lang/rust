@@ -13,9 +13,10 @@ use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{
-    AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, Local, LocalDecl, LocalKind,
-    Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
-    StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
+    AssertKind, AssertTerminator, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, Local,
+    LocalDecl, LocalKind, Location, Operand, Place, Rvalue, SourceInfo, SourceScope,
+    SourceScopeData, Statement, StatementKind, SwitchIntTerminator, Terminator, TerminatorKind,
+    UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -1168,7 +1169,12 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         self.source_info = Some(source_info);
         self.super_terminator(terminator, location);
         match &mut terminator.kind {
-            TerminatorKind::Assert { expected, ref msg, ref mut cond, .. } => {
+            TerminatorKind::Assert(box AssertTerminator {
+                expected,
+                ref msg,
+                ref mut cond,
+                ..
+            }) => {
                 if let Some(value) = self.eval_operand(&cond, source_info) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
                     let expected = ScalarMaybeUninit::from(Scalar::from_bool(*expected));
@@ -1242,7 +1248,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::SwitchInt { ref mut discr, .. } => {
+            TerminatorKind::SwitchInt(box SwitchIntTerminator { ref mut discr, .. }) => {
                 // FIXME: This is currently redundant with `visit_operand`, but sadly
                 // always visiting operands currently causes a perf regression in LLVM codegen, so
                 // `visit_operand` currently only runs for propagates places for `mir_opt_level=3`.

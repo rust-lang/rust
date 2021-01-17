@@ -21,11 +21,13 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
 
         let kind = match self.kind {
             Goto { target } => Goto { target },
-            SwitchInt { discr, switch_ty, targets } => SwitchInt {
-                discr: discr.fold_with(folder),
-                switch_ty: switch_ty.fold_with(folder),
-                targets,
-            },
+            SwitchInt(box SwitchIntTerminator { discr, switch_ty, targets }) => {
+                SwitchInt(box SwitchIntTerminator {
+                    discr: discr.fold_with(folder),
+                    switch_ty: switch_ty.fold_with(folder),
+                    targets,
+                })
+            }
             Drop { place, target, unwind } => {
                 Drop { place: place.fold_with(folder), target, unwind }
             }
@@ -41,19 +43,26 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 resume_arg: resume_arg.fold_with(folder),
                 drop,
             },
-            Call { func, args, destination, cleanup, from_hir_call, fn_span } => {
+            Call(box CallTerminator {
+                func,
+                args,
+                destination,
+                cleanup,
+                from_hir_call,
+                fn_span,
+            }) => {
                 let dest = destination.map(|(loc, dest)| (loc.fold_with(folder), dest));
 
-                Call {
+                Call(box CallTerminator {
                     func: func.fold_with(folder),
                     args: args.fold_with(folder),
                     destination: dest,
                     cleanup,
                     from_hir_call,
                     fn_span,
-                }
+                })
             }
-            Assert { cond, expected, msg, target, cleanup } => {
+            Assert(box AssertTerminator { cond, expected, msg, target, cleanup }) => {
                 use AssertKind::*;
                 let msg = match msg {
                     BoundsCheck { len, index } => {
@@ -65,7 +74,13 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     RemainderByZero(op) => RemainderByZero(op.fold_with(folder)),
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) => msg,
                 };
-                Assert { cond: cond.fold_with(folder), expected, msg, target, cleanup }
+                Assert(box AssertTerminator {
+                    cond: cond.fold_with(folder),
+                    expected,
+                    msg,
+                    target,
+                    cleanup,
+                })
             }
             GeneratorDrop => GeneratorDrop,
             Resume => Resume,
@@ -76,13 +91,19 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 FalseEdge { real_target, imaginary_target }
             }
             FalseUnwind { real_target, unwind } => FalseUnwind { real_target, unwind },
-            InlineAsm { template, operands, options, line_spans, destination } => InlineAsm {
+            InlineAsm(box InlineAsmTerminator {
+                template,
+                operands,
+                options,
+                line_spans,
+                destination,
+            }) => InlineAsm(box InlineAsmTerminator {
                 template,
                 operands: operands.fold_with(folder),
                 options,
                 line_spans,
                 destination,
-            },
+            }),
         };
         Terminator { source_info: self.source_info, kind }
     }
@@ -91,7 +112,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
         use crate::mir::TerminatorKind::*;
 
         match self.kind {
-            SwitchInt { ref discr, switch_ty, .. } => {
+            SwitchInt(box SwitchIntTerminator { ref discr, switch_ty, .. }) => {
                 discr.visit_with(visitor)?;
                 switch_ty.visit_with(visitor)
             }
@@ -101,14 +122,14 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 value.visit_with(visitor)
             }
             Yield { ref value, .. } => value.visit_with(visitor),
-            Call { ref func, ref args, ref destination, .. } => {
+            Call(box CallTerminator { ref func, ref args, ref destination, .. }) => {
                 if let Some((ref loc, _)) = *destination {
                     loc.visit_with(visitor)?;
                 };
                 func.visit_with(visitor)?;
                 args.visit_with(visitor)
             }
-            Assert { ref cond, ref msg, .. } => {
+            Assert(box AssertTerminator { ref cond, ref msg, .. }) => {
                 cond.visit_with(visitor)?;
                 use AssertKind::*;
                 match msg {
@@ -126,7 +147,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) => ControlFlow::CONTINUE,
                 }
             }
-            InlineAsm { ref operands, .. } => operands.visit_with(visitor),
+            InlineAsm(box InlineAsmTerminator { ref operands, .. }) => operands.visit_with(visitor),
             Goto { .. }
             | Resume
             | Abort

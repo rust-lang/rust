@@ -6,7 +6,8 @@
     never_type,
     try_blocks,
     hash_drain_filter,
-    str_split_once
+    str_split_once,
+    box_patterns
 )]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
@@ -145,11 +146,8 @@ struct CodegenCx<'tcx, M: Module> {
 impl<'tcx, M: Module> CodegenCx<'tcx, M> {
     fn new(tcx: TyCtxt<'tcx>, module: M, debug_info: bool, pic_eh_frame: bool) -> Self {
         let unwind_context = UnwindContext::new(tcx, module.isa(), pic_eh_frame);
-        let debug_context = if debug_info {
-            Some(DebugContext::new(tcx, module.isa()))
-        } else {
-            None
-        };
+        let debug_context =
+            if debug_info { Some(DebugContext::new(tcx, module.isa())) } else { None };
         CodegenCx {
             tcx,
             module,
@@ -164,12 +162,7 @@ impl<'tcx, M: Module> CodegenCx<'tcx, M> {
 
     fn finalize(mut self) -> (M, String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
         self.constants_cx.finalize(self.tcx, &mut self.module);
-        (
-            self.module,
-            self.global_asm,
-            self.debug_context,
-            self.unwind_context,
-        )
+        (self.module, self.global_asm, self.debug_context, self.unwind_context)
     }
 }
 
@@ -310,14 +303,7 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     flags_builder.enable("is_pic").unwrap();
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
     flags_builder
-        .set(
-            "enable_verifier",
-            if cfg!(debug_assertions) {
-                "true"
-            } else {
-                "false"
-            },
-        )
+        .set("enable_verifier", if cfg!(debug_assertions) { "true" } else { "false" })
         .unwrap();
 
     let tls_model = match target_triple.binary_format {

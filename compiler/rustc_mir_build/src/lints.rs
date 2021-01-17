@@ -3,7 +3,9 @@ use rustc_data_structures::graph::iterate::{
 };
 use rustc_hir::intravisit::FnKind;
 use rustc_middle::hir::map::blocks::FnLikeNode;
-use rustc_middle::mir::{BasicBlock, Body, Operand, TerminatorKind};
+use rustc_middle::mir::{
+    BasicBlock, Body, CallTerminator, InlineAsmTerminator, Operand, TerminatorKind,
+};
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
@@ -117,7 +119,7 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::Yield { .. } => ControlFlow::Break(NonRecursive),
 
             // A diverging InlineAsm is treated as non-recursing
-            TerminatorKind::InlineAsm { destination, .. } => {
+            TerminatorKind::InlineAsm(box InlineAsmTerminator { destination, .. }) => {
                 if destination.is_some() {
                     ControlFlow::CONTINUE
                 } else {
@@ -140,7 +142,7 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
     fn node_settled(&mut self, bb: BasicBlock) -> ControlFlow<Self::BreakVal> {
         // When we examine a node for the last time, remember it if it is a recursive call.
         let terminator = self.body[bb].terminator();
-        if let TerminatorKind::Call { func, .. } = &terminator.kind {
+        if let TerminatorKind::Call(box CallTerminator { func, .. }) = &terminator.kind {
             if self.is_recursive_call(func) {
                 self.reachable_recursive_calls.push(terminator.source_info.span);
             }
@@ -152,7 +154,9 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
     fn ignore_edge(&mut self, bb: BasicBlock, target: BasicBlock) -> bool {
         // Don't traverse successors of recursive calls or false CFG edges.
         match self.body[bb].terminator().kind {
-            TerminatorKind::Call { ref func, .. } => self.is_recursive_call(func),
+            TerminatorKind::Call(box CallTerminator { ref func, .. }) => {
+                self.is_recursive_call(func)
+            }
 
             TerminatorKind::FalseUnwind { unwind: Some(imaginary_target), .. }
             | TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,

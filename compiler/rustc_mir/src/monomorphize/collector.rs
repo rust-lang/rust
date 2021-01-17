@@ -669,7 +669,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
         let tcx = self.tcx;
         match terminator.kind {
-            mir::TerminatorKind::Call { ref func, .. } => {
+            mir::TerminatorKind::Call(box mir::CallTerminator { ref func, .. }) => {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output);
@@ -680,7 +680,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let ty = self.monomorphize(ty);
                 visit_drop_use(self.tcx, ty, true, source, self.output);
             }
-            mir::TerminatorKind::InlineAsm { ref operands, .. } => {
+            mir::TerminatorKind::InlineAsm(box mir::InlineAsmTerminator {
+                ref operands, ..
+            }) => {
                 for op in operands {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {

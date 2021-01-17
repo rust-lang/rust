@@ -7,8 +7,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItemGroup;
 use rustc_hir::GeneratorKind;
 use rustc_middle::mir::{
-    AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand, Place,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    AggregateKind, CallTerminator, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand,
+    Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
@@ -80,11 +80,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Check if we are attempting to call a closure after it has been invoked.
         let terminator = self.body[location.block].terminator();
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
-        if let TerminatorKind::Call {
+        if let TerminatorKind::Call(box CallTerminator {
             func: Operand::Constant(box Constant { literal: ty::Const { ty: const_ty, .. }, .. }),
             args,
             ..
-        } = &terminator.kind
+        }) = &terminator.kind
         {
             if let ty::FnDef(id, _) = *const_ty.kind() {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
@@ -455,7 +455,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if !is_terminator {
                         continue;
                     } else if let Some(Terminator {
-                        kind: TerminatorKind::Call { ref func, from_hir_call: false, .. },
+                        kind:
+                            TerminatorKind::Call(box CallTerminator {
+                                ref func,
+                                from_hir_call: false,
+                                ..
+                            }),
                         ..
                     }) = bbd.terminator
                     {
@@ -817,7 +822,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("move_spans: target_temp = {:?}", target_temp);
 
         if let Some(Terminator {
-            kind: TerminatorKind::Call { fn_span, from_hir_call, .. }, ..
+            kind: TerminatorKind::Call(box CallTerminator { fn_span, from_hir_call, .. }),
+            ..
         }) = &self.body[location.block].terminator
         {
             let (method_did, method_substs) = if let Some(info) =

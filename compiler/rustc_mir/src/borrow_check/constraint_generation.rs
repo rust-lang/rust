@@ -2,8 +2,9 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::visit::TyContext;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, Body, Local, Location, Place, PlaceRef, ProjectionElem, Rvalue,
-    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UserTypeProjection,
+    BasicBlock, BasicBlockData, Body, CallTerminator, Local, Location, Place, PlaceRef,
+    ProjectionElem, Rvalue, SourceInfo, Statement, StatementKind, Terminator, TerminatorKind,
+    UserTypeProjection,
 };
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::SubstsRef;
@@ -139,7 +140,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
 
         // A `Call` terminator's return value can be a local which has borrows,
         // so we need to record those as `killed` as well.
-        if let TerminatorKind::Call { destination, .. } = terminator.kind {
+        if let TerminatorKind::Call(box CallTerminator { destination, .. }) = terminator.kind {
             if let Some((place, _)) = destination {
                 self.record_killed_borrows_for_place(place, location);
             }

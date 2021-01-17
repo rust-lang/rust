@@ -26,12 +26,12 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
         for block in body.basic_blocks_mut() {
             let terminator = block.terminator_mut();
             terminator.kind = match terminator.kind {
-                TerminatorKind::SwitchInt {
+                TerminatorKind::SwitchInt(box SwitchIntTerminator {
                     discr: Operand::Constant(ref c),
                     switch_ty,
                     ref targets,
                     ..
-                } => {
+                }) => {
                     let constant = c.literal.try_eval_bits(tcx, param_env, switch_ty);
                     if let Some(constant) = constant {
                         let otherwise = targets.otherwise();
@@ -47,9 +47,12 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
                         continue;
                     }
                 }
-                TerminatorKind::Assert {
-                    target, cond: Operand::Constant(ref c), expected, ..
-                } => match c.literal.try_eval_bool(tcx, param_env) {
+                TerminatorKind::Assert(box AssertTerminator {
+                    target,
+                    cond: Operand::Constant(ref c),
+                    expected,
+                    ..
+                }) => match c.literal.try_eval_bool(tcx, param_env) {
                     Some(v) if v == expected => TerminatorKind::Goto { target },
                     _ => continue,
                 },

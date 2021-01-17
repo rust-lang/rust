@@ -113,12 +113,12 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             // new block that jumps to the correct discriminant case. This block is switched to if the discriminants are equal
             let new_switch_data = BasicBlockData::new(Some(Terminator {
                 source_info: opt_to_apply.infos[0].second_switch_info.discr_source_info,
-                kind: TerminatorKind::SwitchInt {
+                kind: TerminatorKind::SwitchInt(box SwitchIntTerminator {
                     // the first and second discriminants are equal, so just pick one
                     discr: Operand::Copy(first_descriminant_place),
                     switch_ty: discr_type,
                     targets,
-                },
+                }),
             }));
 
             let new_switch_bb = patch.new_block(new_switch_data);
@@ -329,7 +329,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
         switch: &Terminator<'tcx>,
     ) -> Option<SwitchDiscriminantInfo<'tcx>> {
         match &switch.kind {
-            TerminatorKind::SwitchInt { discr, targets, .. } => {
+            TerminatorKind::SwitchInt(box SwitchIntTerminator { discr, targets, .. }) => {
                 let discr_local = discr.place()?.as_local()?;
                 // the declaration of the discriminant read. Place of this read is being used in the switch
                 let discr_decl = &self.body.local_decls()[discr_local];

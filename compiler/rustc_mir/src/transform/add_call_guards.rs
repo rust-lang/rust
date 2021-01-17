@@ -49,11 +49,11 @@ impl AddCallGuards {
             match block.terminator {
                 Some(Terminator {
                     kind:
-                        TerminatorKind::Call {
+                        TerminatorKind::Call(box CallTerminator {
                             destination: Some((_, ref mut destination)),
                             cleanup,
                             ..
-                        },
+                        }),
                     source_info,
                 }) if pred_count[*destination] > 1
                     && (cleanup.is_some() || self == &AllCallEdges) =>

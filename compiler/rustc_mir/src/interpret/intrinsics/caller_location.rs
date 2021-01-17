@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::TerminatorKind;
+use rustc_middle::mir::{CallTerminator, TerminatorKind};
 use rustc_middle::ty::subst::Subst;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::LayoutOf;
@@ -34,7 +34,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     block.terminator(),
                     block.terminator().kind
                 );
-                if let TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
+                if let TerminatorKind::Call(box CallTerminator { fn_span, .. }) =
+                    block.terminator().kind
+                {
                     source_info.span = fn_span;
                 }
             }

@@ -74,7 +74,11 @@ where
 {
     let terminator = match *terminator_kind {
         TerminatorKind::Goto { target } if predicate(target) => TerminatorKind::Unreachable,
-        TerminatorKind::SwitchInt { ref discr, switch_ty, ref targets } => {
+        TerminatorKind::SwitchInt(box SwitchIntTerminator {
+            ref discr,
+            switch_ty,
+            ref targets,
+        }) => {
             let otherwise = targets.otherwise();
 
             let original_targets_len = targets.iter().len() + 1;
@@ -94,14 +98,14 @@ where
             } else if targets.len() == 1 {
                 TerminatorKind::Goto { target: targets[0] }
             } else if original_targets_len != retained_targets_len {
-                TerminatorKind::SwitchInt {
+                TerminatorKind::SwitchInt(Box::new(SwitchIntTerminator {
                     discr: discr.clone(),
                     switch_ty,
                     targets: SwitchTargets::new(
                         values.iter().copied().zip(targets.iter().copied()),
                         *targets.last().unwrap(),
                     ),
-                }
+                }))
             } else {
                 return None;
             }

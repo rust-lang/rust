@@ -1570,7 +1570,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
+            TerminatorKind::SwitchInt(box SwitchIntTerminator { ref discr, switch_ty, .. }) => {
                 let discr_ty = discr.ty(body, tcx);
                 if let Err(terr) = self.sub_types(
                     discr_ty,
@@ -1592,7 +1592,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            TerminatorKind::Call { ref func, ref args, ref destination, from_hir_call, .. } => {
+            TerminatorKind::Call(box CallTerminator {
+                ref func,
+                ref args,
+                ref destination,
+                from_hir_call,
+                ..
+            }) => {
                 let func_ty = func.ty(body, tcx);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
                 let sig = match func_ty.kind() {
@@ -1634,7 +1640,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 self.check_call_inputs(body, term, &sig, args, term_location, from_hir_call);
             }
-            TerminatorKind::Assert { ref cond, ref msg, .. } => {
+            TerminatorKind::Assert(box AssertTerminator { ref cond, ref msg, .. }) => {
                 let cond_ty = cond.ty(body, tcx);
                 if cond_ty != tcx.types.bool {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
@@ -1785,7 +1791,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             TerminatorKind::Goto { target } => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup)
             }
-            TerminatorKind::SwitchInt { ref targets, .. } => {
+            TerminatorKind::SwitchInt(box SwitchIntTerminator { ref targets, .. }) => {
                 for target in targets.all_targets() {
                     self.assert_iscleanup(body, block_data, *target, is_cleanup);
                 }
@@ -1822,7 +1828,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. }
             | TerminatorKind::DropAndReplace { target, unwind, .. }
-            | TerminatorKind::Assert { target, cleanup: unwind, .. } => {
+            | TerminatorKind::Assert(box AssertTerminator { target, cleanup: unwind, .. }) => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup);
                 if let Some(unwind) = unwind {
                     if is_cleanup {
@@ -1831,7 +1837,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.assert_iscleanup(body, block_data, unwind, true);
                 }
             }
-            TerminatorKind::Call { ref destination, cleanup, .. } => {
+            TerminatorKind::Call(box CallTerminator { ref destination, cleanup, .. }) => {
                 if let &Some((_, target)) = destination {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }
@@ -1855,7 +1861,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.assert_iscleanup(body, block_data, unwind, true);
                 }
             }
-            TerminatorKind::InlineAsm { destination, .. } => {
+            TerminatorKind::InlineAsm(box InlineAsmTerminator { destination, .. }) => {
                 if let Some(target) = destination {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }

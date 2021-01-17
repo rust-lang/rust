@@ -230,12 +230,14 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         let check = match terminator.kind {
-            mir::TerminatorKind::Call { func: mir::Operand::Constant(ref c), ref args, .. } => {
-                match *c.literal.ty.kind() {
-                    ty::FnDef(did, _) => Some((did, args)),
-                    _ => None,
-                }
-            }
+            mir::TerminatorKind::Call(box mir::CallTerminator {
+                func: mir::Operand::Constant(ref c),
+                ref args,
+                ..
+            }) => match *c.literal.ty.kind() {
+                ty::FnDef(did, _) => Some((did, args)),
+                _ => None,
+            },
             _ => None,
         };
         if let Some((def_id, args)) = check {
@@ -349,13 +351,13 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::Return
                 | TerminatorKind::GeneratorDrop
                 | TerminatorKind::Unreachable
-                | TerminatorKind::SwitchInt { .. }
+                | TerminatorKind::SwitchInt(..)
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::FalseEdge { .. }
                 | TerminatorKind::FalseUnwind { .. }
-                | TerminatorKind::InlineAsm { .. } => { /* nothing to do */ }
-                TerminatorKind::Call { cleanup: unwind, .. }
-                | TerminatorKind::Assert { cleanup: unwind, .. }
+                | TerminatorKind::InlineAsm(..) => { /* nothing to do */ }
+                TerminatorKind::Call(box mir::CallTerminator { cleanup: unwind, .. })
+                | TerminatorKind::Assert(box mir::AssertTerminator { cleanup: unwind, .. })
                 | TerminatorKind::DropAndReplace { unwind, .. }
                 | TerminatorKind::Drop { unwind, .. } => {
                     if let Some(unwind) = unwind {

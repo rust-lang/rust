@@ -174,7 +174,9 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
         self.borrowed_locals.borrow().analysis().terminator_effect(trans, terminator, loc);
 
         match &terminator.kind {
-            TerminatorKind::Call { destination: Some((place, _)), .. } => {
+            TerminatorKind::Call(box mir::CallTerminator {
+                destination: Some((place, _)), ..
+            }) => {
                 trans.gen(place.local);
             }
 
@@ -184,7 +186,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             // place to have storage *before* the yield, only after.
             TerminatorKind::Yield { .. } => {}
 
-            TerminatorKind::InlineAsm { operands, .. } => {
+            TerminatorKind::InlineAsm(box mir::InlineAsmTerminator { operands, .. }) => {
                 for op in operands {
                     match op {
                         InlineAsmOperand::Out { place, .. }
@@ -203,7 +205,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
-            TerminatorKind::Call { destination: None, .. }
+            TerminatorKind::Call(box mir::CallTerminator { destination: None, .. })
             | TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Drop { .. }
@@ -230,13 +232,15 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             // and after the call returns successfully, but not after a panic.
             // Since `propagate_call_unwind` doesn't exist, we have to kill the
             // destination here, and then gen it again in `call_return_effect`.
-            TerminatorKind::Call { destination: Some((place, _)), .. } => {
+            TerminatorKind::Call(box mir::CallTerminator {
+                destination: Some((place, _)), ..
+            }) => {
                 trans.kill(place.local);
             }
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
-            TerminatorKind::Call { destination: None, .. }
+            TerminatorKind::Call(box mir::CallTerminator { destination: None, .. })
             | TerminatorKind::Yield { .. }
             | TerminatorKind::Abort
             | TerminatorKind::Assert { .. }

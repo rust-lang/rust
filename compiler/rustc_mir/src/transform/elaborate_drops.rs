@@ -494,11 +494,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn drop_flags_for_fn_rets(&mut self) {
         for (bb, data) in self.body.basic_blocks().iter_enumerated() {
-            if let TerminatorKind::Call {
+            if let TerminatorKind::Call(box CallTerminator {
                 destination: Some((ref place, tgt)),
                 cleanup: Some(_),
                 ..
-            } = data.terminator().kind
+            }) = data.terminator().kind
             {
                 assert!(!self.patch.is_patched(bb));
 
@@ -572,9 +572,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             // There may be a critical edge after this call,
             // so mark the return as initialized *before* the
             // call.
-            if let TerminatorKind::Call {
-                destination: Some((ref place, _)), cleanup: None, ..
-            } = data.terminator().kind
+            if let TerminatorKind::Call(box CallTerminator {
+                destination: Some((ref place, _)),
+                cleanup: None,
+                ..
+            }) = data.terminator().kind
             {
                 assert!(!self.patch.is_patched(bb));
 

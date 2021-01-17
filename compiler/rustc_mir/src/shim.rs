@@ -438,14 +438,14 @@ impl CloneShimBuilder<'tcx> {
         // `let loc = Clone::clone(ref_loc);`
         self.block(
             vec![statement],
-            TerminatorKind::Call {
+            TerminatorKind::Call(box CallTerminator {
                 func,
                 args: vec![Operand::Move(ref_loc)],
                 destination: Some((dest, next)),
                 cleanup: Some(cleanup),
                 from_hir_call: true,
                 fn_span: self.span,
-            },
+            }),
             false,
         );
     }
@@ -814,7 +814,7 @@ fn build_call_shim<'tcx>(
     block(
         &mut blocks,
         statements,
-        TerminatorKind::Call {
+        TerminatorKind::Call(box CallTerminator {
             func: callee,
             args,
             destination: Some((Place::return_place(), BasicBlock::new(1))),
@@ -825,7 +825,7 @@ fn build_call_shim<'tcx>(
             },
             from_hir_call: true,
             fn_span: span,
-        },
+        }),
         false,
     );
 

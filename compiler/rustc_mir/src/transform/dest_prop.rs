@@ -111,8 +111,9 @@ use rustc_index::{
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, PlaceElem,
-    Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    traversal, Body, CallTerminator, InlineAsmOperand, InlineAsmTerminator, Local, LocalKind,
+    Location, Operand, Place, PlaceElem, Rvalue, Statement, StatementKind, Terminator,
+    TerminatorKind,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -615,14 +616,14 @@ impl Conflicts<'a> {
                     }
                 }
             }
-            TerminatorKind::Call {
+            TerminatorKind::Call(box CallTerminator {
                 func,
                 args,
                 destination: Some((dest_place, _)),
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
-            } => {
+            }) => {
                 // No arguments may overlap with the destination.
                 for arg in args.iter().chain(Some(func)) {
                     if let Some(place) = arg.place() {
@@ -636,13 +637,13 @@ impl Conflicts<'a> {
                     }
                 }
             }
-            TerminatorKind::InlineAsm {
+            TerminatorKind::InlineAsm(box InlineAsmTerminator {
                 template: _,
                 operands,
                 options: _,
                 line_spans: _,
                 destination: _,
-            } => {
+            }) => {
                 // The intended semantics here aren't documented, we just assume that nothing that
                 // could be written to by the assembly may overlap with any other operands.
                 for op in operands {
@@ -732,7 +733,7 @@ impl Conflicts<'a> {
             }
 
             TerminatorKind::Goto { .. }
-            | TerminatorKind::Call { destination: None, .. }
+            | TerminatorKind::Call(box CallTerminator { destination: None, .. })
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Abort

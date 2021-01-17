@@ -931,10 +931,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local_scope = self.local_scope();
         let scope = self.scopes.scopes.last_mut().unwrap();
 
-        assert_eq!(
-            scope.region_scope, local_scope,
-            "local scope is not the topmost scope!",
-        );
+        assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!",);
 
         // look for moves of a local variable, like `MOVE(_X)`
         let locals_moved = operands
@@ -1046,9 +1043,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             matches!(
                 self.cfg.block_data(start).terminator().kind,
                 TerminatorKind::Assert { .. }
-                | TerminatorKind::Call {..}
-                | TerminatorKind::DropAndReplace { .. }
-                | TerminatorKind::FalseUnwind { .. }
+                    | TerminatorKind::Call { .. }
+                    | TerminatorKind::DropAndReplace { .. }
+                    | TerminatorKind::FalseUnwind { .. }
             ),
             "diverge_from called on block with terminator that cannot unwind."
         );
@@ -1129,7 +1126,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::Assert { cond, expected, msg, target: success_block, cleanup: None },
+            TerminatorKind::Assert(box AssertTerminator {
+                cond,
+                expected,
+                msg,
+                target: success_block,
+                cleanup: None,
+            }),
         );
         self.diverge_from(block);
 
@@ -1488,8 +1491,8 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             TerminatorKind::Drop { unwind, .. }
             | TerminatorKind::DropAndReplace { unwind, .. }
             | TerminatorKind::FalseUnwind { unwind, .. }
-            | TerminatorKind::Call { cleanup: unwind, .. }
-            | TerminatorKind::Assert { cleanup: unwind, .. } => {
+            | TerminatorKind::Call(box CallTerminator { cleanup: unwind, .. })
+            | TerminatorKind::Assert(box AssertTerminator { cleanup: unwind, .. }) => {
                 *unwind = Some(to);
             }
             TerminatorKind::Goto { .. }

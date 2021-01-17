@@ -11,8 +11,8 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, PlaceRef,
-    Rvalue, SourceScope, Statement, StatementKind, Terminator, TerminatorKind,
+    self, AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand,
+    PlaceRef, Rvalue, SourceScope, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeFoldable};
@@ -305,7 +305,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             TerminatorKind::Goto { target } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
             }
-            TerminatorKind::SwitchInt { targets, switch_ty, discr } => {
+            TerminatorKind::SwitchInt(box mir::SwitchIntTerminator {
+                targets,
+                switch_ty,
+                discr,
+            }) => {
                 let ty = discr.ty(&self.body.local_decls, self.tcx);
                 if ty != *switch_ty {
                     self.fail(
@@ -357,7 +361,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::Call { func, args, destination, cleanup, .. } => {
+            TerminatorKind::Call(box mir::CallTerminator {
+                func,
+                args,
+                destination,
+                cleanup,
+                ..
+            }) => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
@@ -399,7 +409,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::Assert { cond, target, cleanup, .. } => {
+            TerminatorKind::Assert(box mir::AssertTerminator { cond, target, cleanup, .. }) => {
                 let cond_ty = cond.ty(&self.body.local_decls, self.tcx);
                 if cond_ty != self.tcx.types.bool {
                     self.fail(
@@ -434,7 +444,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::InlineAsm { destination, .. } => {
+            TerminatorKind::InlineAsm(box mir::InlineAsmTerminator { destination, .. }) => {
                 if let Some(destination) = destination {
                     self.check_edge(location, *destination, EdgeKind::Normal);
                 }

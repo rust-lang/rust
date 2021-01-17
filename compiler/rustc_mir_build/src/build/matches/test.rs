@@ -199,11 +199,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::SwitchInt {
+                    TerminatorKind::SwitchInt(box SwitchIntTerminator {
                         discr: Operand::Move(discr),
                         switch_ty: discr_ty,
                         targets: switch_targets,
-                    },
+                    }),
                 );
             }
 
@@ -229,11 +229,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         options.values().copied().zip(target_blocks),
                         otherwise_block,
                     );
-                    TerminatorKind::SwitchInt {
+                    TerminatorKind::SwitchInt(box SwitchIntTerminator {
                         discr: Operand::Copy(place),
                         switch_ty,
                         targets: switch_targets,
-                    }
+                    })
                 };
                 self.cfg.terminate(block, source_info, terminator);
             }
@@ -417,7 +417,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::Call {
+            TerminatorKind::Call(box CallTerminator {
                 func: Operand::Constant(box Constant {
                     span: source_info.span,
 
@@ -434,7 +434,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 cleanup: None,
                 from_hir_call: false,
                 fn_span: source_info.span,
-            },
+            }),
         );
         self.diverge_from(block);
 

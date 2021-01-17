@@ -374,11 +374,11 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable => {}
 
-            TerminatorKind::Assert { ref cond, .. } => {
+            TerminatorKind::Assert (box AssertTerminator{ ref cond, .. }) => {
                 self.gather_operand(cond);
             }
 
-            TerminatorKind::SwitchInt { ref discr, .. } => {
+            TerminatorKind::SwitchInt (box SwitchIntTerminator{ ref discr, .. }) => {
                 self.gather_operand(discr);
             }
 
@@ -396,14 +396,14 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_operand(value);
                 self.gather_init(place.as_ref(), InitKind::Deep);
             }
-            TerminatorKind::Call {
+            TerminatorKind::Call (box CallTerminator{
                 ref func,
                 ref args,
                 ref destination,
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
-            } => {
+            }) => {
                 self.gather_operand(func);
                 for arg in args {
                     self.gather_operand(arg);
@@ -413,13 +413,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }
             }
-            TerminatorKind::InlineAsm {
+            TerminatorKind::InlineAsm (box InlineAsmTerminator{
                 template: _,
                 ref operands,
                 options: _,
                 line_spans: _,
                 destination: _,
-            } => {
+            }) => {
                 for op in operands {
                     match *op {
                         InlineAsmOperand::In { reg: _, ref value }

@@ -235,12 +235,12 @@ impl Direction for Backward {
                 // Apply terminator-specific edge effects.
                 //
                 // FIXME(ecstaticmorse): Avoid cloning the exit state unconditionally.
-                mir::TerminatorKind::Call {
+                mir::TerminatorKind::Call(box mir::CallTerminator {
                     destination: Some((return_place, dest)),
                     ref func,
                     ref args,
                     ..
-                } if dest == bb => {
+                }) if dest == bb => {
                     let mut tmp = exit_state.clone();
                     analysis.apply_call_return_effect(&mut tmp, pred, func, args, return_place);
                     propagate(pred, &tmp);
@@ -253,8 +253,14 @@ impl Direction for Backward {
                 }
 
                 // Ignore dead unwinds.
-                mir::TerminatorKind::Call { cleanup: Some(unwind), .. }
-                | mir::TerminatorKind::Assert { cleanup: Some(unwind), .. }
+                mir::TerminatorKind::Call(box mir::CallTerminator {
+                    cleanup: Some(unwind),
+                    ..
+                })
+                | mir::TerminatorKind::Assert(box mir::AssertTerminator {
+                    cleanup: Some(unwind),
+                    ..
+                })
                 | mir::TerminatorKind::Drop { unwind: Some(unwind), .. }
                 | mir::TerminatorKind::DropAndReplace { unwind: Some(unwind), .. }
                 | mir::TerminatorKind::FalseUnwind { unwind: Some(unwind), .. }
@@ -435,12 +441,19 @@ impl Direction for Forward {
         A: Analysis<'tcx>,
     {
         use mir::TerminatorKind::*;
+        use mir::{AssertTerminator, CallTerminator, InlineAsmTerminator, SwitchIntTerminator};
         match bb_data.terminator().kind {
             Return | Resume | Abort | GeneratorDrop | Unreachable => {}
 
             Goto { target } => propagate(target, exit_state),
 
-            Assert { target, cleanup: unwind, expected: _, msg: _, cond: _ }
+            Assert(box AssertTerminator {
+                target,
+                cleanup: unwind,
+                expected: _,
+                msg: _,
+                cond: _,
+            })
             | Drop { target, unwind, place: _ }
             | DropAndReplace { target, unwind, value: _, place: _ }
             | FalseUnwind { real_target: target, unwind } => {
@@ -467,7 +480,14 @@ impl Direction for Forward {
                 propagate(target, exit_state);
             }
 
-            Call { cleanup, destination, ref func, ref args, from_hir_call: _, fn_span: _ } => {
+            Call(box CallTerminator {
+                cleanup,
+                destination,
+                ref func,
+                ref args,
+                from_hir_call: _,
+                fn_span: _,
+            }) => {
                 if let Some(unwind) = cleanup {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
                         propagate(unwind, exit_state);
@@ -482,13 +502,19 @@ impl Direction for Forward {
                 }
             }
 
-            InlineAsm { template: _, operands: _, options: _, line_spans: _, destination } => {
+            InlineAsm(box InlineAsmTerminator {
+                template: _,
+                operands: _,
+                options: _,
+                line_spans: _,
+                destination,
+            }) => {
                 if let Some(target) = destination {
                     propagate(target, exit_state);
                 }
             }
 
-            SwitchInt { ref targets, ref discr, switch_ty: _ } => {
+            SwitchInt(box SwitchIntTerminator { ref targets, ref discr, switch_ty: _ }) => {
                 let mut applier = SwitchIntEdgeEffectApplier {
                     exit_state,
                     targets,

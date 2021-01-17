@@ -34,27 +34,27 @@ fn mock_body() -> mir::Body<'static> {
     block(1, mir::TerminatorKind::Return);
     block(
         2,
-        mir::TerminatorKind::Call {
+        mir::TerminatorKind::Call(box mir::CallTerminator {
             func: mir::Operand::Copy(dummy_place.clone()),
             args: vec![],
             destination: Some((dummy_place.clone(), mir::START_BLOCK)),
             cleanup: None,
             from_hir_call: false,
             fn_span: DUMMY_SP,
-        },
+        }),
     );
     block(3, mir::TerminatorKind::Return);
     block(0, mir::TerminatorKind::Return);
     block(
         4,
-        mir::TerminatorKind::Call {
+        mir::TerminatorKind::Call(box mir::CallTerminator {
             func: mir::Operand::Copy(dummy_place.clone()),
             args: vec![],
             destination: Some((dummy_place.clone(), mir::START_BLOCK)),
             cleanup: None,
             from_hir_call: false,
             fn_span: DUMMY_SP,
-        },
+        }),
     );
 
     mir::Body::new_cfg_only(blocks)

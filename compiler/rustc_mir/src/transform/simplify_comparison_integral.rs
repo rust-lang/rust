@@ -4,7 +4,7 @@ use super::MirPass;
 use rustc_middle::{
     mir::{
         interpret::Scalar, BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement,
-        StatementKind, SwitchTargets, TerminatorKind,
+        StatementKind, SwitchIntTerminator, SwitchTargets, TerminatorKind,
     },
     ty::{Ty, TyCtxt},
 };
@@ -123,11 +123,11 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
             let targets = SwitchTargets::new(iter::once((new_value, bb_cond)), bb_otherwise);
 
             let terminator = bb.terminator_mut();
-            terminator.kind = TerminatorKind::SwitchInt {
+            terminator.kind = TerminatorKind::SwitchInt(Box::new(SwitchIntTerminator {
                 discr: Operand::Move(opt.to_switch_on),
                 switch_ty: opt.branch_value_ty,
                 targets,
-            };
+            }));
         }
 
         for (idx, bb_idx) in storage_deads_to_remove {
@@ -153,9 +153,11 @@ impl<'a, 'tcx> OptimizationFinder<'a, 'tcx> {
                 // find switch
                 let (place_switched_on, targets, place_switched_on_moved) =
                     match &bb.terminator().kind {
-                        rustc_middle::mir::TerminatorKind::SwitchInt { discr, targets, .. } => {
-                            Some((discr.place()?, targets, discr.is_move()))
-                        }
+                        rustc_middle::mir::TerminatorKind::SwitchInt(box SwitchIntTerminator {
+                            discr,
+                            targets,
+                            ..
+                        }) => Some((discr.place()?, targets, discr.is_move())),
                         _ => None,
                     }?;
 

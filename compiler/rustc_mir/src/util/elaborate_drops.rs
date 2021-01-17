@@ -585,14 +585,14 @@ where
             statements: vec![self.assign(discr, discr_rv)],
             terminator: Some(Terminator {
                 source_info: self.source_info,
-                kind: TerminatorKind::SwitchInt {
+                kind: TerminatorKind::SwitchInt(Box::new(SwitchIntTerminator {
                     discr: Operand::Move(discr),
                     switch_ty: discr_ty,
                     targets: SwitchTargets::new(
                         values.iter().copied().zip(blocks.iter().copied()),
                         *blocks.last().unwrap(),
                     ),
-                },
+                })),
             }),
             is_cleanup: unwind.is_cleanup(),
         };
@@ -623,7 +623,7 @@ where
                 ),
             )],
             terminator: Some(Terminator {
-                kind: TerminatorKind::Call {
+                kind: TerminatorKind::Call(Box::new(CallTerminator {
                     func: Operand::function_handle(
                         tcx,
                         drop_fn.def_id,
@@ -635,7 +635,7 @@ where
                     cleanup: unwind.into_option(),
                     from_hir_call: true,
                     fn_span: self.source_info.span,
-                },
+                })),
                 source_info: self.source_info,
             }),
             is_cleanup: unwind.is_cleanup(),
@@ -768,7 +768,7 @@ where
             is_cleanup: self.unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
-                kind: TerminatorKind::SwitchInt {
+                kind: TerminatorKind::SwitchInt(Box::new(SwitchIntTerminator {
                     discr: move_(elem_size),
                     switch_ty: tcx.types.usize,
                     targets: SwitchTargets::static_if(
@@ -776,7 +776,7 @@ where
                         self.drop_loop_pair(ety, false, len),
                         self.drop_loop_pair(ety, true, len),
                     ),
-                },
+                })),
             }),
         };
         self.elaborator.patch().new_block(base_block)
@@ -959,14 +959,14 @@ where
             })
             .collect();
 
-        let call = TerminatorKind::Call {
+        let call = TerminatorKind::Call(Box::new(CallTerminator {
             func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
             args,
             destination: Some((unit_temp, target)),
             cleanup: None,
             from_hir_call: false,
             fn_span: self.source_info.span,
-        }; // FIXME(#43234)
+        })); // FIXME(#43234)
         let free_block = self.new_block(unwind, call);
 
         let block_start = Location { block: free_block, statement_index: 0 };
