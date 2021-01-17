@@ -46,6 +46,7 @@
 #include "ActivityAnalysis.h"
 #include "Utils.h"
 
+#include "FunctionUtils.h"
 #include "LibraryFuncs.h"
 #include "TypeAnalysis/TBAA.h"
 
@@ -68,41 +69,6 @@ cl::opt<bool> emptyfnconst("enzyme-emptyfn-inactive", cl::init(false),
 #include <map>
 #include <set>
 #include <unordered_map>
-
-/// Is the use of value val as an argument of call CI potentially captured
-static inline bool couldFunctionArgumentCapture(CallInst *CI, Value *val) {
-  Function *F = CI->getCalledFunction();
-  if (F == nullptr)
-    return true;
-
-  if (F->getIntrinsicID() == Intrinsic::memset)
-    return false;
-  if (F->getIntrinsicID() == Intrinsic::memcpy)
-    return false;
-  if (F->getIntrinsicID() == Intrinsic::memmove)
-    return false;
-
-  if (F->empty())
-    return false;
-
-  auto arg = F->arg_begin();
-  for (size_t i = 0, size = CI->getNumArgOperands(); i < size; i++) {
-    if (val == CI->getArgOperand(i)) {
-      // This is a vararg, assume captured
-      if (arg == F->arg_end()) {
-        return true;
-      } else {
-        if (!arg->hasNoCaptureAttr()) {
-          return true;
-        }
-      }
-    }
-    if (arg != F->arg_end())
-      arg++;
-  }
-  // No argument captured
-  return false;
-}
 
 const char *KnownInactiveFunctionsStartingWith[] = {
     "_ZN4core3fmt", "_ZN3std2io5stdio6_print", "f90io"};

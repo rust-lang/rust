@@ -112,6 +112,54 @@ static cl::opt<int>
     EnzymeInlineCount("enzyme-inline-count", cl::init(10000), cl::Hidden,
                       cl::desc("Limit of number of functions to inline"));
 
+/// Is the use of value val as an argument of call CI potentially captured
+bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val) {
+  Function *F = CI->getCalledFunction();
+
+  #if LLVM_VERSION_MAJOR >= 11
+    if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
+  #else
+    if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
+  #endif
+    {
+      if (castinst->isCast())
+        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+            F = fn;
+        }
+    }
+
+  if (F == nullptr)
+    return true;
+
+  if (F->getIntrinsicID() == Intrinsic::memset)
+    return false;
+  if (F->getIntrinsicID() == Intrinsic::memcpy)
+    return false;
+  if (F->getIntrinsicID() == Intrinsic::memmove)
+    return false;
+
+  if (F->empty())
+    return false;
+
+  auto arg = F->arg_begin();
+  for (size_t i = 0, size = CI->getNumArgOperands(); i < size; i++) {
+    if (val == CI->getArgOperand(i)) {
+      // This is a vararg, assume captured
+      if (arg == F->arg_end()) {
+        return true;
+      } else {
+        if (!arg->hasNoCaptureAttr()) {
+          return true;
+        }
+      }
+    }
+    if (arg != F->arg_end())
+      arg++;
+  }
+  // No argument captured
+  return false;
+}
+
 // Locally run mem2reg on F, if ASsumptionCache AC is given it will
 // be updated
 static bool PromoteMemoryToRegister(Function &F, DominatorTree &DT,
@@ -688,9 +736,10 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
     );
 
     for (auto &g : NewF->getParent()->globals()) {
-      std::set<Constant *> seen;
-      std::deque<Constant *> todo = {(Constant *)&g};
       bool inF = false;
+      {
+      std::set<Constant *> seen;
+      std::deque<Constant *> todo = {(Constant*)&g};
       while (todo.size()) {
         auto GV = todo.front();
         todo.pop_front();
@@ -707,9 +756,11 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
           }
         }
       }
-    doneF:;
+      }
+      doneF:;
       if (inF) {
-        bool seen = false;
+        bool activeCall = false;  
+        bool hasWrite = false;  
         MemoryLocation
 #if LLVM_VERSION_MAJOR >= 12
             Loc = MemoryLocation(&g, LocationSize::beforeOrAfterPointer());
@@ -749,20 +800,82 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
           if (llvm::isModOrRefSet(AA2.getModRefInfo(CI, Loc, AAQIP))) {
             llvm::errs() << " failed to inline global: " << g << " due to "
                          << *CI << "\n";
-            seen = true;
-            goto endCheck;
+            activeCall = true;
           }
 #else
           if (llvm::isModOrRefSet(AA2.getModRefInfo(CI, Loc))) {
             llvm::errs() << " failed to inline global: " << g << " due to "
                          << *CI << "\n";
-            seen = true;
-            goto endCheck;
+            activeCall = true;
           }
 #endif
         }
-      endCheck:;
-        if (!seen) {
+
+        {
+        std::set<Value*> seen;
+        std::deque<Value*> todo = { (Value*)&g };
+        while(todo.size()) {
+          auto GV = todo.front();
+          todo.pop_front();
+          if (!seen.insert(GV).second) continue;
+          for (auto u : GV->users()) {
+            if (isa<Constant>(u) || isa<GetElementPtrInst>(u) || isa<CastInst>(u) || isa<LoadInst>(u)) {
+              todo.push_back(u);
+              continue;
+            }
+            
+            if (auto CI = dyn_cast<CallInst>(u)) {
+              Function* F = CI->getCalledFunction();
+              #if LLVM_VERSION_MAJOR >= 11
+                if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
+              #else
+                if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
+              #endif
+                {
+                  if (castinst->isCast())
+                    if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                        F = fn;
+                    }
+                }
+              if (F && (isMemFreeLibMFunction(F->getName()) || F->getName() == "__fd_sincos_1")) {
+                continue;
+              }
+              if (F && (F->getName().startswith("f90io") || F->getName() == "ftnio_fmt_write64" ||
+                        F->getName() == "__mth_i_ipowi" || F->getName() == "f90_pausea")) {
+                continue;
+              }
+
+              if (couldFunctionArgumentCapture(CI, GV)) {
+                hasWrite = true;
+                goto endCheck;
+              }
+
+              #if LLVM_VERSION_MAJOR >= 9
+              AAQueryInfo AAQIP;
+              if (llvm::isModSet(AA2.getModRefInfo(CI, Loc, AAQIP))) {
+                hasWrite = true;
+                goto endCheck;
+              }
+              #else
+              if (llvm::isModSet(AA2.getModRefInfo(CI, Loc))) {
+                hasWrite = true;
+                goto endCheck;
+              }
+              #endif
+            }
+            
+            else if (auto I = dyn_cast<Instruction>(u)) {
+              if (I->getParent()->getParent() == NewF) {
+                inF = true;
+                goto doneF;
+              }
+            }
+          }
+        }
+        }
+
+        endCheck:;
+        if (!activeCall && hasWrite) {
           IRBuilder<> bb(&NewF->getEntryBlock(), NewF->getEntryBlock().begin());
           AllocaInst *antialloca = bb.CreateAlloca(
               g.getValueType(), g.getType()->getPointerAddressSpace(), nullptr,

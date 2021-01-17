@@ -319,4 +319,7 @@ static inline void calculateUnusedStores(
 }
 
 void ReplaceReallocs(llvm::Function *NewF, bool mem2reg = false);
+
+/// Is the use of value val as an argument of call CI potentially captured
+bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val);
 #endif
