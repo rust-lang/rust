@@ -5,7 +5,8 @@
     clippy::redundant_clone,
     clippy::deref_addrof,
     clippy::no_effect,
-    clippy::unnecessary_operation
+    clippy::unnecessary_operation,
+    clippy::vec_init_then_push
 )]
 
 use std::cell::RefCell;

@@ -3,7 +3,7 @@
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // This module takes an absolute path to a rustc repo and alters the dependencies to point towards
 // the respective rustc subcrates instead of using extern crate xyz.
@@ -44,7 +44,7 @@ pub fn run(rustc_path: Option<&str>) {
 }
 
 fn inject_deps_into_manifest(
-    rustc_source_dir: &PathBuf,
+    rustc_source_dir: &Path,
     manifest_path: &str,
     cargo_toml: &str,
     lib_rs: &str,
@@ -52,7 +52,7 @@ fn inject_deps_into_manifest(
     // do not inject deps if we have aleady done so
     if cargo_toml.contains("[target.'cfg(NOT_A_PLATFORM)'.dependencies]") {
         eprintln!(
-            "cargo dev ra-setup: warning: deps already found inside {}, doing nothing.",
+            "cargo dev ra_setup: warning: deps already found inside {}, doing nothing.",
             manifest_path
         );
         return Ok(());

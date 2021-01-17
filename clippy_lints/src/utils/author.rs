@@ -1,7 +1,7 @@
 //! A group of attributes that can be attached to Rust code in order
 //! to generate a clippy lint detecting said code automatically.
 
-use crate::utils::{get_attr, higher};
+use crate::utils::get_attr;
 use rustc_ast::ast::{Attribute, LitFloatType, LitKind};
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashMap;
@@ -201,32 +201,6 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
 
     #[allow(clippy::too_many_lines)]
     fn visit_expr(&mut self, expr: &Expr<'_>) {
-        // handle if desugarings
-        // TODO add more desugarings here
-        if let Some((cond, then, opt_else)) = higher::if_block(&expr) {
-            let cond_pat = self.next("cond");
-            let then_pat = self.next("then");
-            if let Some(else_) = opt_else {
-                let else_pat = self.next("else_");
-                println!(
-                    "    if let Some((ref {}, ref {}, Some({}))) = higher::if_block(&{});",
-                    cond_pat, then_pat, else_pat, self.current
-                );
-                self.current = else_pat;
-                self.visit_expr(else_);
-            } else {
-                println!(
-                    "    if let Some((ref {}, ref {}, None)) = higher::if_block(&{});",
-                    cond_pat, then_pat, self.current
-                );
-            }
-            self.current = cond_pat;
-            self.visit_expr(cond);
-            self.current = then_pat;
-            self.visit_expr(then);
-            return;
-        }
-
         print!("    if let ExprKind::");
         let current = format!("{}.kind", self.current);
         match expr.kind {
@@ -351,6 +325,25 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = body_pat;
                 self.visit_block(body);
             },
+            ExprKind::If(ref cond, ref then, ref opt_else) => {
+                let cond_pat = self.next("cond");
+                let then_pat = self.next("then");
+                if let Some(ref else_) = *opt_else {
+                    let else_pat = self.next("else_");
+                    println!(
+                        "If(ref {}, ref {}, Some(ref {})) = {};",
+                        cond_pat, then_pat, else_pat, current
+                    );
+                    self.current = else_pat;
+                    self.visit_expr(else_);
+                } else {
+                    println!("If(ref {}, ref {}, None) = {};", cond_pat, then_pat, current);
+                }
+                self.current = cond_pat;
+                self.visit_expr(cond);
+                self.current = then_pat;
+                self.visit_expr(then);
+            },
             ExprKind::Match(ref expr, ref arms, desugaring) => {
                 let des = desugaring_name(desugaring);
                 let expr_pat = self.next("expr");
@@ -371,6 +364,18 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                                 println!("    if let Guard::If(ref {}) = {};", if_expr_pat, guard_pat);
                                 self.current = if_expr_pat;
                                 self.visit_expr(if_expr);
+                            },
+                            hir::Guard::IfLet(ref if_let_pat, ref if_let_expr) => {
+                                let if_let_pat_pat = self.next("pat");
+                                let if_let_expr_pat = self.next("expr");
+                                println!(
+                                    "    if let Guard::IfLet(ref {}, ref {}) = {};",
+                                    if_let_pat_pat, if_let_expr_pat, guard_pat
+                                );
+                                self.current = if_let_expr_pat;
+                                self.visit_expr(if_let_expr);
+                                self.current = if_let_pat_pat;
+                                self.visit_pat(if_let_pat);
                             },
                         }
                     }
@@ -730,10 +735,7 @@ fn desugaring_name(des: hir::MatchSource) -> String {
             "MatchSource::IfLetDesugar {{ contains_else_clause: {} }}",
             contains_else_clause
         ),
-        hir::MatchSource::IfDesugar { contains_else_clause } => format!(
-            "MatchSource::IfDesugar {{ contains_else_clause: {} }}",
-            contains_else_clause
-        ),
+        hir::MatchSource::IfLetGuardDesugar => "MatchSource::IfLetGuardDesugar".to_string(),
         hir::MatchSource::AwaitDesugar => "MatchSource::AwaitDesugar".to_string(),
     }
 }

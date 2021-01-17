@@ -3,7 +3,7 @@ use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{AssocItemKind, BinOpKind, Expr, ExprKind, ImplItemRef, Item, ItemKind, TraitItemRef};
+use rustc_hir::{AssocItemKind, BinOpKind, Expr, ExprKind, Impl, ImplItemRef, Item, ItemKind, TraitItemRef};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -115,11 +115,11 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
 
         match item.kind {
             ItemKind::Trait(_, _, _, _, ref trait_items) => check_trait_items(cx, item, trait_items),
-            ItemKind::Impl {
+            ItemKind::Impl(Impl {
                 of_trait: None,
                 items: ref impl_items,
                 ..
-            } => check_impl_items(cx, item, impl_items),
+            }) => check_impl_items(cx, item, impl_items),
             _ => (),
         }
     }
@@ -222,9 +222,8 @@ fn check_impl_items(cx: &LateContext<'_>, item: &Item<'_>, impl_items: &[ImplIte
     let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, "is_empty")) {
         if cx.access_levels.is_exported(is_empty.id.hir_id) {
             return;
-        } else {
-            "a private"
         }
+        "a private"
     } else {
         "no corresponding"
     };

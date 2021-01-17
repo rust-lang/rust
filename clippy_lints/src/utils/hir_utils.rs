@@ -81,12 +81,12 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             }
         }
 
-        match (&left.kind, &right.kind) {
+        match (&reduce_exprkind(&left.kind), &reduce_exprkind(&right.kind)) {
             (&ExprKind::AddrOf(lb, l_mut, ref le), &ExprKind::AddrOf(rb, r_mut, ref re)) => {
                 lb == rb && l_mut == r_mut && self.eq_expr(le, re)
             },
             (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
-                both(&li.label, &ri.label, |l, r| l.ident.as_str() == r.ident.as_str())
+                both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
             },
             (&ExprKind::Assign(ref ll, ref lr, _), &ExprKind::Assign(ref rl, ref rr, _)) => {
                 self.allow_side_effects && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
@@ -102,7 +102,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                     })
             },
             (&ExprKind::Break(li, ref le), &ExprKind::Break(ri, ref re)) => {
-                both(&li.label, &ri.label, |l, r| l.ident.as_str() == r.ident.as_str())
+                both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
                     && both(le, re, |l, r| self.eq_expr(l, r))
             },
             (&ExprKind::Box(ref l), &ExprKind::Box(ref r)) => self.eq_expr(l, r),
@@ -119,9 +119,12 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             (&ExprKind::Index(ref la, ref li), &ExprKind::Index(ref ra, ref ri)) => {
                 self.eq_expr(la, ra) && self.eq_expr(li, ri)
             },
+            (&ExprKind::If(ref lc, ref lt, ref le), &ExprKind::If(ref rc, ref rt, ref re)) => {
+                self.eq_expr(lc, rc) && self.eq_expr(&**lt, &**rt) && both(le, re, |l, r| self.eq_expr(l, r))
+            },
             (&ExprKind::Lit(ref l), &ExprKind::Lit(ref r)) => l.node == r.node,
             (&ExprKind::Loop(ref lb, ref ll, ref lls), &ExprKind::Loop(ref rb, ref rl, ref rls)) => {
-                lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.as_str() == r.ident.as_str())
+                lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.name == r.ident.name)
             },
             (&ExprKind::Match(ref le, ref la, ref ls), &ExprKind::Match(ref re, ref ra, ref rs)) => {
                 ls == rs
@@ -169,6 +172,8 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     fn eq_guard(&mut self, left: &Guard<'_>, right: &Guard<'_>) -> bool {
         match (left, right) {
             (Guard::If(l), Guard::If(r)) => self.eq_expr(l, r),
+            (Guard::IfLet(lp, le), Guard::IfLet(rp, re)) => self.eq_pat(lp, rp) && self.eq_expr(le, re),
+            _ => false,
         }
     }
 
@@ -186,7 +191,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     pub fn eq_fieldpat(&mut self, left: &FieldPat<'_>, right: &FieldPat<'_>) -> bool {
         let (FieldPat { ident: li, pat: lp, .. }, FieldPat { ident: ri, pat: rp, .. }) = (&left, &right);
-        li.name.as_str() == ri.name.as_str() && self.eq_pat(lp, rp)
+        li.name == ri.name && self.eq_pat(lp, rp)
     }
 
     /// Checks whether two patterns are the same.
@@ -200,7 +205,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                 self.eq_qpath(lp, rp) && over(la, ra, |l, r| self.eq_pat(l, r)) && ls == rs
             },
             (&PatKind::Binding(ref lb, .., ref li, ref lp), &PatKind::Binding(ref rb, .., ref ri, ref rp)) => {
-                lb == rb && li.name.as_str() == ri.name.as_str() && both(lp, rp, |l, r| self.eq_pat(l, r))
+                lb == rb && li.name == ri.name && both(lp, rp, |l, r| self.eq_pat(l, r))
             },
             (&PatKind::Path(ref l), &PatKind::Path(ref r)) => self.eq_qpath(l, r),
             (&PatKind::Lit(ref l), &PatKind::Lit(ref r)) => self.eq_expr(l, r),
@@ -261,8 +266,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn eq_path_segment(&mut self, left: &PathSegment<'_>, right: &PathSegment<'_>) -> bool {
         // The == of idents doesn't work with different contexts,
         // we have to be explicit about hygiene
-        left.ident.as_str() == right.ident.as_str()
-            && both(&left.args, &right.args, |l, r| self.eq_path_parameters(l, r))
+        left.ident.name == right.ident.name && both(&left.args, &right.args, |l, r| self.eq_path_parameters(l, r))
     }
 
     pub fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {
@@ -303,6 +307,32 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     fn eq_type_binding(&mut self, left: &TypeBinding<'_>, right: &TypeBinding<'_>) -> bool {
         left.ident.name == right.ident.name && self.eq_ty(&left.ty(), &right.ty())
+    }
+}
+
+/// Some simple reductions like `{ return }` => `return`
+fn reduce_exprkind<'hir>(kind: &'hir ExprKind<'hir>) -> &ExprKind<'hir> {
+    if let ExprKind::Block(block, _) = kind {
+        match (block.stmts, block.expr) {
+            // `{}` => `()`
+            ([], None) => &ExprKind::Tup(&[]),
+            ([], Some(expr)) => match expr.kind {
+                // `{ return .. }` => `return ..`
+                ExprKind::Ret(..) => &expr.kind,
+                _ => kind,
+            },
+            ([stmt], None) => match stmt.kind {
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => match expr.kind {
+                    // `{ return ..; }` => `return ..`
+                    ExprKind::Ret(..) => &expr.kind,
+                    _ => kind,
+                },
+                _ => kind,
+            },
+            _ => kind,
+        }
+    } else {
+        kind
     }
 }
 
@@ -491,7 +521,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                 }
                 asm.options.hash(&mut self.s);
-                for op in asm.operands {
+                for (op, _op_sp) in asm.operands {
                     match op {
                         InlineAsmOperand::In { reg, expr } => {
                             reg.hash(&mut self.s);
@@ -534,6 +564,15 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_block(b);
                 if let Some(i) = *i {
                     self.hash_name(i.ident.name);
+                }
+            },
+            ExprKind::If(ref cond, ref then, ref else_opt) => {
+                let c: fn(_, _, _) -> _ = ExprKind::If;
+                c.hash(&mut self.s);
+                self.hash_expr(cond);
+                self.hash_expr(&**then);
+                if let Some(ref e) = *else_opt {
+                    self.hash_expr(e);
                 }
             },
             ExprKind::Match(ref e, arms, ref s) => {
@@ -643,7 +682,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_guard(&mut self, g: &Guard<'_>) {
         match g {
-            Guard::If(ref expr) => {
+            Guard::If(ref expr) | Guard::IfLet(_, ref expr) => {
                 self.hash_expr(expr);
             },
         }
@@ -716,7 +755,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                     for segment in path.segments {
                         segment.ident.name.hash(&mut self.s);
-                        self.hash_generic_args(segment.generic_args().args);
+                        self.hash_generic_args(segment.args().args);
                     }
                 },
                 QPath::TypeRelative(ref ty, ref segment) => {

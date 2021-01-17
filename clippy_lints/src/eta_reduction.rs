@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// **Known problems:** If creating the closure inside the closure has a side-
     /// effect then moving the closure creation out will change when that side-
     /// effect runs.
-    /// See rust-lang/rust-clippy#1439 for more details.
+    /// See [#1439](https://github.com/rust-lang/rust-clippy/issues/1439) for more details.
     ///
     /// **Example:**
     /// ```rust,ignore
@@ -45,8 +45,9 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** It's unnecessary to create the closure.
     ///
-    /// **Known problems:** rust-lang/rust-clippy#3071, rust-lang/rust-clippy#4002,
-    /// rust-lang/rust-clippy#3942
+    /// **Known problems:** [#3071](https://github.com/rust-lang/rust-clippy/issues/3071),
+    /// [#3942](https://github.com/rust-lang/rust-clippy/issues/3942),
+    /// [#4002](https://github.com/rust-lang/rust-clippy/issues/4002)
     ///
     ///
     /// **Example:**

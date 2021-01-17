@@ -14,6 +14,7 @@ use rustc_middle::ty;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::edition::Edition;
 use rustc_span::source_map::{BytePos, FilePathMapping, MultiSpan, SourceMap, Span};
 use rustc_span::{sym, FileName, Pos};
 use std::io;
@@ -181,11 +182,8 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                     lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id));
                 }
             },
-            hir::ItemKind::Impl {
-                of_trait: ref trait_ref,
-                ..
-            } => {
-                self.in_trait_impl = trait_ref.is_some();
+            hir::ItemKind::Impl(ref impl_) => {
+                self.in_trait_impl = impl_.of_trait.is_some();
             },
             _ => {},
         }
@@ -377,7 +375,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
     check_doc(cx, valid_idents, events, &spans)
 }
 
-const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail", "edition2018"];
+const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
 
 fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
     cx: &LateContext<'_>,
@@ -400,13 +398,24 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut in_link = None;
     let mut in_heading = false;
     let mut is_rust = false;
+    let mut edition = None;
     for (event, range) in events {
         match event {
             Start(CodeBlock(ref kind)) => {
                 in_code = true;
                 if let CodeBlockKind::Fenced(lang) = kind {
-                    is_rust =
-                        lang.is_empty() || !lang.contains("ignore") && lang.split(',').any(|i| RUST_CODE.contains(&i));
+                    for item in lang.split(',') {
+                        if item == "ignore" {
+                            is_rust = false;
+                            break;
+                        }
+                        if let Some(stripped) = item.strip_prefix("edition") {
+                            is_rust = true;
+                            edition = stripped.parse::<Edition>().ok();
+                        } else if item.is_empty() || RUST_CODE.contains(&item) {
+                            is_rust = true;
+                        }
+                    }
                 }
             },
             End(CodeBlock(_)) => {
@@ -436,7 +445,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 let (begin, span) = spans[index];
                 if in_code {
                     if is_rust {
-                        check_code(cx, &text, span);
+                        let edition = edition.unwrap_or_else(|| cx.tcx.sess.edition());
+                        check_code(cx, &text, edition, span);
                     }
                 } else {
                     // Adjust for the beginning of the current `Event`
@@ -450,67 +460,73 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     headers
 }
 
-fn check_code(cx: &LateContext<'_>, text: &str, span: Span) {
-    fn has_needless_main(code: &str) -> bool {
-        let filename = FileName::anon_source_code(code);
+fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
+    fn has_needless_main(code: &str, edition: Edition) -> bool {
+        rustc_driver::catch_fatal_errors(|| {
+            rustc_span::with_session_globals(edition, || {
+                let filename = FileName::anon_source_code(code);
 
-        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
-        let handler = Handler::with_emitter(false, None, box emitter);
-        let sess = ParseSess::with_span_handler(handler, sm);
+                let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+                let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
+                let handler = Handler::with_emitter(false, None, box emitter);
+                let sess = ParseSess::with_span_handler(handler, sm);
 
-        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code.into()) {
-            Ok(p) => p,
-            Err(errs) => {
-                for mut err in errs {
-                    err.cancel();
-                }
-                return false;
-            },
-        };
-
-        let mut relevant_main_found = false;
-        loop {
-            match parser.parse_item() {
-                Ok(Some(item)) => match &item.kind {
-                    // Tests with one of these items are ignored
-                    ItemKind::Static(..)
-                    | ItemKind::Const(..)
-                    | ItemKind::ExternCrate(..)
-                    | ItemKind::ForeignMod(..) => return false,
-                    // We found a main function ...
-                    ItemKind::Fn(_, sig, _, Some(block)) if item.ident.name == sym::main => {
-                        let is_async = matches!(sig.header.asyncness, Async::Yes{..});
-                        let returns_nothing = match &sig.decl.output {
-                            FnRetTy::Default(..) => true,
-                            FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
-                            _ => false,
-                        };
-
-                        if returns_nothing && !is_async && !block.stmts.is_empty() {
-                            // This main function should be linted, but only if there are no other functions
-                            relevant_main_found = true;
-                        } else {
-                            // This main function should not be linted, we're done
-                            return false;
+                let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code.into()) {
+                    Ok(p) => p,
+                    Err(errs) => {
+                        for mut err in errs {
+                            err.cancel();
                         }
+                        return false;
                     },
-                    // Another function was found; this case is ignored too
-                    ItemKind::Fn(..) => return false,
-                    _ => {},
-                },
-                Ok(None) => break,
-                Err(mut e) => {
-                    e.cancel();
-                    return false;
-                },
-            }
-        }
+                };
 
-        relevant_main_found
+                let mut relevant_main_found = false;
+                loop {
+                    match parser.parse_item() {
+                        Ok(Some(item)) => match &item.kind {
+                            // Tests with one of these items are ignored
+                            ItemKind::Static(..)
+                            | ItemKind::Const(..)
+                            | ItemKind::ExternCrate(..)
+                            | ItemKind::ForeignMod(..) => return false,
+                            // We found a main function ...
+                            ItemKind::Fn(_, sig, _, Some(block)) if item.ident.name == sym::main => {
+                                let is_async = matches!(sig.header.asyncness, Async::Yes { .. });
+                                let returns_nothing = match &sig.decl.output {
+                                    FnRetTy::Default(..) => true,
+                                    FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
+                                    _ => false,
+                                };
+
+                                if returns_nothing && !is_async && !block.stmts.is_empty() {
+                                    // This main function should be linted, but only if there are no other functions
+                                    relevant_main_found = true;
+                                } else {
+                                    // This main function should not be linted, we're done
+                                    return false;
+                                }
+                            },
+                            // Another function was found; this case is ignored too
+                            ItemKind::Fn(..) => return false,
+                            _ => {},
+                        },
+                        Ok(None) => break,
+                        Err(mut e) => {
+                            e.cancel();
+                            return false;
+                        },
+                    }
+                }
+
+                relevant_main_found
+            })
+        })
+        .ok()
+        .unwrap_or_default()
     }
 
-    if has_needless_main(text) {
+    if has_needless_main(text, edition) {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }

@@ -2,7 +2,7 @@
 
 use crate::utils::{in_macro, span_lint_and_then};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{def_id, Crate, Item, ItemKind};
+use rustc_hir::{def_id, Crate, Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -49,11 +49,11 @@ impl_lint_pass!(MultipleInherentImpl => [MULTIPLE_INHERENT_IMPL]);
 
 impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
     fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl {
+        if let ItemKind::Impl(Impl {
             ref generics,
             of_trait: None,
             ..
-        } = item.kind
+        }) = item.kind
         {
             // Remember for each inherent implementation encountered its span and generics
             // but filter out implementations that have generic params (type or lifetime)

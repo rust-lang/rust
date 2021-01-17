@@ -69,10 +69,9 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
                             }
                         }
                         return (true, false);
-                    } else {
-                        // We don't know. It might do anything.
-                        return (true, true);
                     }
+                    // We don't know. It might do anything.
+                    return (true, true);
                 }
             }
             (true, true)
@@ -90,6 +89,12 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
                 found_filtering |= f;
             }
             (found_mapping, found_filtering)
+        },
+        // There must be an else_arm or there will be a type error
+        hir::ExprKind::If(_, ref if_arm, Some(ref else_arm)) => {
+            let if_check = check_expression(cx, arg_id, if_arm);
+            let else_check = check_expression(cx, arg_id, else_arm);
+            (if_check.0 | else_check.0, if_check.1 | else_check.1)
         },
         hir::ExprKind::Path(path) if match_qpath(path, &paths::OPTION_NONE) => (false, true),
         _ => (true, true),

@@ -1,75 +1,87 @@
 error: field assignment outside of initializer for an instance created with Default::default()
-  --> $DIR/field_reassign_with_default.rs:30:5
+  --> $DIR/field_reassign_with_default.rs:48:5
    |
 LL |     a.i = 42;
    |     ^^^^^^^^^
    |
    = note: `-D clippy::field-reassign-with-default` implied by `-D warnings`
-note: consider initializing the variable with `A { i: 42, ..Default::default() }` and removing relevant reassignments
-  --> $DIR/field_reassign_with_default.rs:29:5
+note: consider initializing the variable with `main::A { i: 42, ..Default::default() }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:47:5
    |
 LL |     let mut a: A = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: field assignment outside of initializer for an instance created with Default::default()
-  --> $DIR/field_reassign_with_default.rs:70:5
+  --> $DIR/field_reassign_with_default.rs:88:5
    |
 LL |     a.j = 43;
    |     ^^^^^^^^^
    |
-note: consider initializing the variable with `A { j: 43, i: 42 }` and removing relevant reassignments
-  --> $DIR/field_reassign_with_default.rs:69:5
+note: consider initializing the variable with `main::A { j: 43, i: 42 }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:87:5
    |
 LL |     let mut a: A = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: field assignment outside of initializer for an instance created with Default::default()
-  --> $DIR/field_reassign_with_default.rs:75:5
+  --> $DIR/field_reassign_with_default.rs:93:5
    |
 LL |     a.i = 42;
    |     ^^^^^^^^^
    |
-note: consider initializing the variable with `A { i: 42, j: 44 }` and removing relevant reassignments
-  --> $DIR/field_reassign_with_default.rs:74:5
+note: consider initializing the variable with `main::A { i: 42, j: 44 }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:92:5
    |
 LL |     let mut a: A = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: field assignment outside of initializer for an instance created with Default::default()
-  --> $DIR/field_reassign_with_default.rs:81:5
+  --> $DIR/field_reassign_with_default.rs:99:5
    |
 LL |     a.i = 42;
    |     ^^^^^^^^^
    |
-note: consider initializing the variable with `A { i: 42, ..Default::default() }` and removing relevant reassignments
-  --> $DIR/field_reassign_with_default.rs:80:5
+note: consider initializing the variable with `main::A { i: 42, ..Default::default() }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:98:5
    |
 LL |     let mut a = A::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: field assignment outside of initializer for an instance created with Default::default()
-  --> $DIR/field_reassign_with_default.rs:91:5
+  --> $DIR/field_reassign_with_default.rs:109:5
    |
 LL |     a.i = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: consider initializing the variable with `A::default()` and removing relevant reassignments
-  --> $DIR/field_reassign_with_default.rs:90:5
+note: consider initializing the variable with `main::A { i: Default::default(), ..Default::default() }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:108:5
    |
 LL |     let mut a: A = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: field assignment outside of initializer for an instance created with Default::default()
-  --> $DIR/field_reassign_with_default.rs:95:5
+  --> $DIR/field_reassign_with_default.rs:113:5
    |
 LL |     a.i = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: consider initializing the variable with `A { j: 45, ..Default::default() }` and removing relevant reassignments
-  --> $DIR/field_reassign_with_default.rs:94:5
+note: consider initializing the variable with `main::A { i: Default::default(), j: 45 }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:112:5
    |
 LL |     let mut a: A = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> $DIR/field_reassign_with_default.rs:135:5
+   |
+LL |     a.i = vec![1];
+   |     ^^^^^^^^^^^^^^
+   |
+note: consider initializing the variable with `C { i: vec![1], ..Default::default() }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:134:5
+   |
+LL |     let mut a: C = C::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
 

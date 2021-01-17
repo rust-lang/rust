@@ -4,17 +4,11 @@ use rustc_ast::ast::{Attribute, Item, ItemKind, StructField, Variant, VariantDat
 use rustc_attr as attr;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
-use semver::{Version, VersionReq};
 
-const MANUAL_NON_EXHAUSTIVE_MSRV: Version = Version {
-    major: 1,
-    minor: 40,
-    patch: 0,
-    pre: Vec::new(),
-    build: Vec::new(),
-};
+const MANUAL_NON_EXHAUSTIVE_MSRV: RustcVersion = RustcVersion::new(1, 40, 0);
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual implementations of the non-exhaustive pattern.
@@ -66,12 +60,12 @@ declare_clippy_lint! {
 
 #[derive(Clone)]
 pub struct ManualNonExhaustive {
-    msrv: Option<VersionReq>,
+    msrv: Option<RustcVersion>,
 }
 
 impl ManualNonExhaustive {
     #[must_use]
-    pub fn new(msrv: Option<VersionReq>) -> Self {
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
         Self { msrv }
     }
 }

@@ -9,7 +9,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// **What it does:** It checks for manual implementations of `async` functions.
@@ -69,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                     |diag| {
                         if_chain! {
                             if let Some(header_snip) = snippet_opt(cx, header_span);
-                            if let Some(ret_pos) = position_before_rarrow(header_snip.clone());
+                            if let Some(ret_pos) = position_before_rarrow(&header_snip);
                             if let Some((ret_sugg, ret_snip)) = suggested_ret(cx, output);
                             then {
                                 let help = format!("make the function `async` and {}", ret_sugg);
@@ -137,7 +137,7 @@ fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'t
         if let Some(args) = segment.args;
         if args.bindings.len() == 1;
         let binding = &args.bindings[0];
-        if binding.ident.as_str() == "Output";
+        if binding.ident.name == sym::Output;
         if let TypeBindingKind::Equality{ty: output} = binding.kind;
         then {
             return Some(output)

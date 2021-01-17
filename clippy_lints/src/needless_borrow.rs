@@ -2,7 +2,7 @@
 //!
 //! This lint is **warn** by default
 
-use crate::utils::{snippet_opt, span_lint_and_then};
+use crate::utils::{is_automatically_derived, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, BorrowKind, Expr, ExprKind, HirId, Item, Mutability, Pat, PatKind};
@@ -10,7 +10,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for address of operations (`&`) that are going to
@@ -47,7 +46,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
             return;
         }
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, ref inner) = e.kind {
-            if let ty::Ref(..) = cx.typeck_results().expr_ty(inner).kind() {
+            if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(inner).kind() {
                 for adj3 in cx.typeck_results().expr_adjustments(e).windows(3) {
                     if let [Adjustment {
                         kind: Adjust::Deref(_), ..
@@ -62,8 +61,11 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
                             cx,
                             NEEDLESS_BORROW,
                             e.span,
-                            "this expression borrows a reference that is immediately dereferenced \
+                            &format!(
+                                "this expression borrows a reference (`&{}`) that is immediately dereferenced \
                              by the compiler",
+                                ty
+                            ),
                             |diag| {
                                 if let Some(snippet) = snippet_opt(cx, inner.span) {
                                     diag.span_suggestion(
@@ -113,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
     }
 
     fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if item.attrs.iter().any(|a| a.has_name(sym::automatically_derived)) {
+        if is_automatically_derived(item.attrs) {
             debug_assert!(self.derived_item.is_none());
             self.derived_item = Some(item.hir_id);
         }

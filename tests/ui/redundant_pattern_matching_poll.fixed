@@ -34,8 +34,7 @@ fn main() {
     let _ = Pending::<()>.is_pending();
 
     let poll = Ready(false);
-    let x = if poll.is_ready() { true } else { false };
-    takes_poll(x);
+    let _ = if poll.is_ready() { true } else { false };
 
     poll_const();
 
@@ -51,8 +50,6 @@ fn main() {
 fn gen_poll() -> Poll<()> {
     Pending
 }
-
-fn takes_poll(_: bool) {}
 
 fn foo() {}
 

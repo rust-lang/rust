@@ -10,7 +10,8 @@ use rustc_lexer::unescape::{self, EscapeError};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_parse::parser;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, BytePos, Span, Symbol};
+use rustc_span::symbol::kw;
+use rustc_span::{sym, BytePos, Span};
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `println!("")` to
@@ -73,6 +74,24 @@ declare_clippy_lint! {
     pub PRINT_STDOUT,
     restriction,
     "printing on stdout"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for printing on *stderr*. The purpose of this lint
+    /// is to catch debugging remnants.
+    ///
+    /// **Why is this bad?** People often print on *stderr* while debugging an
+    /// application and might forget to remove those prints afterward.
+    ///
+    /// **Known problems:** Only catches `eprint!` and `eprintln!` calls.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// eprintln!("Hello world!");
+    /// ```
+    pub PRINT_STDERR,
+    restriction,
+    "printing on stderr"
 }
 
 declare_clippy_lint! {
@@ -201,6 +220,7 @@ impl_lint_pass!(Write => [
     PRINT_WITH_NEWLINE,
     PRINTLN_EMPTY_STRING,
     PRINT_STDOUT,
+    PRINT_STDERR,
     USE_DEBUG,
     PRINT_LITERAL,
     WRITE_WITH_NEWLINE,
@@ -243,47 +263,22 @@ impl EarlyLintPass for Write {
                 .map_or(false, |crate_name| crate_name == "build_script_build")
         }
 
-        if mac.path == sym!(println) {
-            if !is_build_script(cx) {
-                span_lint(cx, PRINT_STDOUT, mac.span(), "use of `println!`");
-            }
-            if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
-                if fmt_str.symbol == Symbol::intern("") {
-                    span_lint_and_sugg(
-                        cx,
-                        PRINTLN_EMPTY_STRING,
-                        mac.span(),
-                        "using `println!(\"\")`",
-                        "replace it with",
-                        "println!()".to_string(),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-        } else if mac.path == sym!(print) {
+        if mac.path == sym!(print) {
             if !is_build_script(cx) {
                 span_lint(cx, PRINT_STDOUT, mac.span(), "use of `print!`");
             }
-            if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
-                if check_newlines(&fmt_str) {
-                    span_lint_and_then(
-                        cx,
-                        PRINT_WITH_NEWLINE,
-                        mac.span(),
-                        "using `print!()` with a format string that ends in a single newline",
-                        |err| {
-                            err.multipart_suggestion(
-                                "use `println!` instead",
-                                vec![
-                                    (mac.path.span, String::from("println")),
-                                    (newline_span(&fmt_str), String::new()),
-                                ],
-                                Applicability::MachineApplicable,
-                            );
-                        },
-                    );
-                }
+            self.lint_print_with_newline(cx, mac);
+        } else if mac.path == sym!(println) {
+            if !is_build_script(cx) {
+                span_lint(cx, PRINT_STDOUT, mac.span(), "use of `println!`");
             }
+            self.lint_println_empty_string(cx, mac);
+        } else if mac.path == sym!(eprint) {
+            span_lint(cx, PRINT_STDERR, mac.span(), "use of `eprint!`");
+            self.lint_print_with_newline(cx, mac);
+        } else if mac.path == sym!(eprintln) {
+            span_lint(cx, PRINT_STDERR, mac.span(), "use of `eprintln!`");
+            self.lint_println_empty_string(cx, mac);
         } else if mac.path == sym!(write) {
             if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), true) {
                 if check_newlines(&fmt_str) {
@@ -307,7 +302,7 @@ impl EarlyLintPass for Write {
             }
         } else if mac.path == sym!(writeln) {
             if let (Some(fmt_str), expr) = self.check_tts(cx, mac.args.inner_tokens(), true) {
-                if fmt_str.symbol == Symbol::intern("") {
+                if fmt_str.symbol == kw::Empty {
                     let mut applicability = Applicability::MachineApplicable;
                     // FIXME: remove this `#[allow(...)]` once the issue #5822 gets fixed
                     #[allow(clippy::option_if_let_else)]
@@ -484,6 +479,45 @@ impl Write {
                     }
                 },
                 _ => idx += 1,
+            }
+        }
+    }
+
+    fn lint_println_empty_string(&self, cx: &EarlyContext<'_>, mac: &MacCall) {
+        if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
+            if fmt_str.symbol == kw::Empty {
+                let name = mac.path.segments[0].ident.name;
+                span_lint_and_sugg(
+                    cx,
+                    PRINTLN_EMPTY_STRING,
+                    mac.span(),
+                    &format!("using `{}!(\"\")`", name),
+                    "replace it with",
+                    format!("{}!()", name),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+    }
+
+    fn lint_print_with_newline(&self, cx: &EarlyContext<'_>, mac: &MacCall) {
+        if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
+            if check_newlines(&fmt_str) {
+                let name = mac.path.segments[0].ident.name;
+                let suggested = format!("{}ln", name);
+                span_lint_and_then(
+                    cx,
+                    PRINT_WITH_NEWLINE,
+                    mac.span(),
+                    &format!("using `{}!()` with a format string that ends in a single newline", name),
+                    |err| {
+                        err.multipart_suggestion(
+                            &format!("use `{}!` instead", suggested),
+                            vec![(mac.path.span, suggested), (newline_span(&fmt_str), String::new())],
+                            Applicability::MachineApplicable,
+                        );
+                    },
+                );
             }
         }
     }

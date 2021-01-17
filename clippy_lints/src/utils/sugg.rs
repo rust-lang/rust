@@ -103,6 +103,7 @@ impl<'a> Sugg<'a> {
         match expr.kind {
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Box(..)
+            | hir::ExprKind::If(..)
             | hir::ExprKind::Closure(..)
             | hir::ExprKind::Unary(..)
             | hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),

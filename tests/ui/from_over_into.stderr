@@ -1,0 +1,11 @@
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> $DIR/from_over_into.rs:6:1
+   |
+LL | impl Into<StringWrapper> for String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::from-over-into` implied by `-D warnings`
+   = help: consider to implement `From` instead
+
+error: aborting due to previous error
+

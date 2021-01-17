@@ -5,7 +5,6 @@ use crate::utils::{
     span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -15,6 +14,7 @@ use rustc_lint::{CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, 
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, SymbolStr};
@@ -399,7 +399,7 @@ fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
         if let Some(meta_item) = lint.meta_item();
         if meta_item.path.segments.len() > 1;
         if let tool_name = meta_item.path.segments[0].ident;
-        if tool_name.as_str() == "clippy";
+        if tool_name.name == sym::clippy;
         let lint_name = meta_item.path.segments.last().unwrap().ident.name;
         then {
             return Some(lint_name.as_str());
@@ -427,7 +427,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMet
                             .map(|l| Symbol::intern(&l.name_lower()))
                             .collect::<Vec<_>>();
                         let sugg = find_best_match_for_name(
-                            symbols.iter(),
+                            &symbols,
                             Symbol::intern(&format!("clippy::{}", name_lower)),
                             None,
                         );

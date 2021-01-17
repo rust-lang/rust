@@ -222,8 +222,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             if method_names[0] == sym!(as_bytes);
 
             // Check for slicer
-            if let ExprKind::Struct(ref path, _, _) = right.kind;
-            if let QPath::LangItem(LangItem::Range, _) = path;
+            if let ExprKind::Struct(QPath::LangItem(LangItem::Range, _), _, _) = right.kind;
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -373,7 +372,7 @@ impl LateLintPass<'_> for StringToString {
             if let ExprKind::MethodCall(path, _, args, _) = &expr.kind;
             if path.ident.name == sym!(to_string);
             let ty = cx.typeck_results().expr_ty(&args[0]);
-            if is_type_diagnostic_item(cx, ty, sym!(string_type));
+            if is_type_diagnostic_item(cx, ty, sym::string_type);
             then {
                 span_lint_and_help(
                     cx,

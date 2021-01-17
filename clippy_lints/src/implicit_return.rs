@@ -68,8 +68,7 @@ fn expr_match(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 if_chain! {
                     if let StmtKind::Semi(expr, ..) = &stmt.kind;
                     // make sure it's a break, otherwise we want to skip
-                    if let ExprKind::Break(.., break_expr) = &expr.kind;
-                    if let Some(break_expr) = break_expr;
+                    if let ExprKind::Break(.., Some(break_expr)) = &expr.kind;
                     then {
                             lint(cx, expr.span, break_expr.span, LINT_BREAK);
                     }
@@ -80,6 +79,13 @@ fn expr_match(cx: &LateContext<'_>, expr: &Expr<'_>) {
         ExprKind::Break(.., break_expr) => {
             if let Some(break_expr) = break_expr {
                 lint(cx, expr.span, break_expr.span, LINT_BREAK);
+            }
+        },
+        ExprKind::If(.., if_expr, else_expr) => {
+            expr_match(cx, if_expr);
+
+            if let Some(else_expr) = else_expr {
+                expr_match(cx, else_expr);
             }
         },
         ExprKind::Match(.., arms, source) => {

@@ -2,10 +2,10 @@ use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
-    expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
-    is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg, remove_blocks,
-    snippet, snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
-    span_lint_and_then,
+    expr_block, get_arg_name, get_parent_expr, implements_trait, in_macro, indent_of, is_allowed, is_expn_of,
+    is_refutable, is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg,
+    peel_hir_pat_refs, peel_mid_ty_refs, peel_n_hir_expr_refs, remove_blocks, snippet, snippet_block, snippet_opt,
+    snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use if_chain::if_chain;
@@ -20,10 +20,10 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty, TyS};
+use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::{sym, Symbol};
-use semver::{Version, VersionReq};
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::collections::Bound;
@@ -412,8 +412,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Lint for redundant pattern matching over `Result`, `Option` or
-    /// `std::task::Poll`
+    /// **What it does:** Lint for redundant pattern matching over `Result`, `Option`,
+    /// `std::task::Poll` or `std::net::IpAddr`
     ///
     /// **Why is this bad?** It's more concise and clear to just use the proper
     /// utility function
@@ -424,12 +424,15 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// # use std::task::Poll;
+    /// # use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     /// if let Ok(_) = Ok::<i32, i32>(42) {}
     /// if let Err(_) = Err::<i32, i32>(42) {}
     /// if let None = None::<()> {}
     /// if let Some(_) = Some(42) {}
     /// if let Poll::Pending = Poll::Pending::<()> {}
     /// if let Poll::Ready(_) = Poll::Ready(42) {}
+    /// if let IpAddr::V4(_) = IpAddr::V4(Ipv4Addr::LOCALHOST) {}
+    /// if let IpAddr::V6(_) = IpAddr::V6(Ipv6Addr::LOCALHOST) {}
     /// match Ok::<i32, i32>(42) {
     ///     Ok(_) => true,
     ///     Err(_) => false,
@@ -440,12 +443,15 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// # use std::task::Poll;
+    /// # use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     /// if Ok::<i32, i32>(42).is_ok() {}
     /// if Err::<i32, i32>(42).is_err() {}
     /// if None::<()>.is_none() {}
     /// if Some(42).is_some() {}
     /// if Poll::Pending::<()>.is_pending() {}
     /// if Poll::Ready(42).is_ready() {}
+    /// if IpAddr::V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
+    /// if IpAddr::V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
     /// Ok::<i32, i32>(42).is_ok();
     /// ```
     pub REDUNDANT_PATTERN_MATCHING,
@@ -459,7 +465,8 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Readability and needless complexity.
     ///
-    /// **Known problems:** None
+    /// **Known problems:** This lint falsely triggers, if there are arms with
+    /// `cfg` attributes that remove an arm evaluating to `false`.
     ///
     /// **Example:**
     /// ```rust
@@ -528,13 +535,13 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct Matches {
-    msrv: Option<VersionReq>,
+    msrv: Option<RustcVersion>,
     infallible_destructuring_match_linted: bool,
 }
 
 impl Matches {
     #[must_use]
-    pub fn new(msrv: Option<VersionReq>) -> Self {
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
         Self {
             msrv,
             ..Matches::default()
@@ -561,13 +568,7 @@ impl_lint_pass!(Matches => [
     MATCH_SAME_ARMS,
 ]);
 
-const MATCH_LIKE_MATCHES_MACRO_MSRV: Version = Version {
-    major: 1,
-    minor: 42,
-    patch: 0,
-    pre: Vec::new(),
-    build: Vec::new(),
-};
+const MATCH_LIKE_MATCHES_MACRO_MSRV: RustcVersion = RustcVersion::new(1, 42, 0);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -645,8 +646,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         if_chain! {
             if !in_external_macro(cx.sess(), pat.span);
             if !in_macro(pat.span);
-            if let PatKind::Struct(ref qpath, fields, true) = pat.kind;
-            if let QPath::Resolved(_, ref path) = qpath;
+            if let PatKind::Struct(QPath::Resolved(_, ref path), fields, true) = pat.kind;
             if let Some(def_id) = path.res.opt_def_id();
             let ty = cx.tcx.type_of(def_id);
             if let ty::Adt(def, _) = ty.kind();
@@ -689,10 +689,9 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
             if stmts.len() == 1 && block_expr.is_none() || stmts.is_empty() && block_expr.is_some() {
                 // single statement/expr "else" block, don't lint
                 return;
-            } else {
-                // block with 2+ statements or 1 expr and 1+ statement
-                Some(els)
             }
+            // block with 2+ statements or 1 expr and 1+ statement
+            Some(els)
         } else {
             // not a block, don't lint
             return;
@@ -729,20 +728,60 @@ fn report_single_match_single_pattern(
     let els_str = els.map_or(String::new(), |els| {
         format!(" else {}", expr_block(cx, els, None, "..", Some(expr.span)))
     });
+
+    let (msg, sugg) = if_chain! {
+        let (pat, pat_ref_count) = peel_hir_pat_refs(arms[0].pat);
+        if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind;
+        let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex));
+        if let Some(trait_id) = cx.tcx.lang_items().structural_peq_trait();
+        if ty.is_integral() || ty.is_char() || ty.is_str() || implements_trait(cx, ty, trait_id, &[]);
+        then {
+            // scrutinee derives PartialEq and the pattern is a constant.
+            let pat_ref_count = match pat.kind {
+                // string literals are already a reference.
+                PatKind::Lit(Expr { kind: ExprKind::Lit(lit), .. }) if lit.node.is_str() => pat_ref_count + 1,
+                _ => pat_ref_count,
+            };
+            // References are only implicitly added to the pattern, so no overflow here.
+            // e.g. will work: match &Some(_) { Some(_) => () }
+            // will not: match Some(_) { &Some(_) => () }
+            let ref_count_diff = ty_ref_count - pat_ref_count;
+
+            // Try to remove address of expressions first.
+            let (ex, removed) = peel_n_hir_expr_refs(ex, ref_count_diff);
+            let ref_count_diff = ref_count_diff - removed;
+
+            let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
+            let sugg = format!(
+                "if {} == {}{} {}{}",
+                snippet(cx, ex.span, ".."),
+                // PartialEq for different reference counts may not exist.
+                "&".repeat(ref_count_diff),
+                snippet(cx, arms[0].pat.span, ".."),
+                expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
+                els_str,
+            );
+            (msg, sugg)
+        } else {
+            let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
+            let sugg = format!(
+                "if let {} = {} {}{}",
+                snippet(cx, arms[0].pat.span, ".."),
+                snippet(cx, ex.span, ".."),
+                expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
+                els_str,
+            );
+            (msg, sugg)
+        }
+    };
+
     span_lint_and_sugg(
         cx,
         lint,
         expr.span,
-        "you seem to be trying to use match for destructuring a single pattern. Consider using `if \
-         let`",
+        msg,
         "try this",
-        format!(
-            "if let {} = {} {}{}",
-            snippet(cx, arms[0].pat.span, ".."),
-            snippet(cx, ex.span, ".."),
-            expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
-            els_str,
-        ),
+        sugg,
         Applicability::HasPlaceholders,
     );
 }
@@ -955,16 +994,14 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
                 if let QPath::Resolved(_, p) = path {
                     missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
                 }
-            } else if let PatKind::TupleStruct(ref path, ref patterns, ..) = arm.pat.kind {
-                if let QPath::Resolved(_, p) = path {
-                    // Some simple checks for exhaustive patterns.
-                    // There is a room for improvements to detect more cases,
-                    // but it can be more expensive to do so.
-                    let is_pattern_exhaustive =
-                        |pat: &&Pat<'_>| matches!(pat.kind, PatKind::Wild | PatKind::Binding(.., None));
-                    if patterns.iter().all(is_pattern_exhaustive) {
-                        missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
-                    }
+            } else if let PatKind::TupleStruct(QPath::Resolved(_, p), ref patterns, ..) = arm.pat.kind {
+                // Some simple checks for exhaustive patterns.
+                // There is a room for improvements to detect more cases,
+                // but it can be more expensive to do so.
+                let is_pattern_exhaustive =
+                    |pat: &&Pat<'_>| matches!(pat.kind, PatKind::Wild | PatKind::Binding(.., None));
+                if patterns.iter().all(is_pattern_exhaustive) {
+                    missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
                 }
             }
         }
@@ -1167,13 +1204,16 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
         if b0 != b1;
         let if_guard = &b0_arms[0].guard;
         if if_guard.is_none() || b0_arms.len() == 1;
+        if b0_arms[0].attrs.is_empty();
         if b0_arms[1..].iter()
             .all(|arm| {
                 find_bool_lit(&arm.body.kind, desugared).map_or(false, |b| b == b0) &&
-                arm.guard.is_none()
+                arm.guard.is_none() && arm.attrs.is_empty()
             });
         then {
-            let mut applicability = Applicability::MachineApplicable;
+            // The suggestion may be incorrect, because some arms can have `cfg` attributes
+            // evaluated into `false` and so such arms will be stripped before.
+            let mut applicability = Applicability::MaybeIncorrect;
             let pat = {
                 use itertools::Itertools as _;
                 b0_arms.iter()
@@ -1237,6 +1277,24 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
     if in_macro(expr.span) || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
     }
+
+    // HACK:
+    // This is a hack to deal with arms that are excluded by macros like `#[cfg]`. It is only used here
+    // to prevent false positives as there is currently no better way to detect if code was excluded by
+    // a macro. See PR #6435
+    if_chain! {
+        if let Some(match_snippet) = snippet_opt(cx, expr.span);
+        if let Some(arm_snippet) = snippet_opt(cx, arms[0].span);
+        if let Some(ex_snippet) = snippet_opt(cx, ex.span);
+        let rest_snippet = match_snippet.replace(&arm_snippet, "").replace(&ex_snippet, "");
+        if rest_snippet.contains("=>");
+        then {
+            // The code it self contains another thick arrow "=>"
+            // -> Either another arm or a comment
+            return;
+        }
+    }
+
     let matched_vars = ex.span;
     let bind_names = arms[0].pat.span;
     let match_body = remove_blocks(&arms[0].body);
@@ -1436,8 +1494,7 @@ fn is_ref_some_arm(arm: &Arm<'_>) -> Option<BindingAnnotation> {
         if let ExprKind::Call(ref e, ref args) = remove_blocks(&arm.body).kind;
         if let ExprKind::Path(ref some_path) = e.kind;
         if match_qpath(some_path, &paths::OPTION_SOME) && args.len() == 1;
-        if let ExprKind::Path(ref qpath) = args[0].kind;
-        if let &QPath::Resolved(_, ref path2) = qpath;
+        if let ExprKind::Path(QPath::Resolved(_, ref path2)) = args[0].kind;
         if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;
         then {
             return Some(rb)
@@ -1573,6 +1630,10 @@ mod redundant_pattern_match {
                         "is_some()"
                     } else if match_qpath(path, &paths::POLL_READY) {
                         "is_ready()"
+                    } else if match_qpath(path, &paths::IPADDR_V4) {
+                        "is_ipv4()"
+                    } else if match_qpath(path, &paths::IPADDR_V6) {
+                        "is_ipv6()"
                     } else {
                         return;
                     }
@@ -1653,6 +1714,17 @@ mod redundant_pattern_match {
                             "is_ok()",
                             "is_err()",
                         )
+                        .or_else(|| {
+                            find_good_method_for_match(
+                                arms,
+                                path_left,
+                                path_right,
+                                &paths::IPADDR_V4,
+                                &paths::IPADDR_V6,
+                                "is_ipv4()",
+                                "is_ipv6()",
+                            )
+                        })
                     } else {
                         None
                     }

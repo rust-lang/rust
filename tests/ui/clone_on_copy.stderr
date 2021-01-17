@@ -1,31 +1,31 @@
-error: using `clone` on a `Copy` type
-  --> $DIR/clone_on_copy.rs:22:5
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> $DIR/clone_on_copy.rs:23:5
    |
 LL |     42.clone();
    |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
    |
    = note: `-D clippy::clone-on-copy` implied by `-D warnings`
 
-error: using `clone` on a `Copy` type
-  --> $DIR/clone_on_copy.rs:26:5
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> $DIR/clone_on_copy.rs:27:5
    |
 LL |     (&42).clone();
    |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
 
-error: using `clone` on a `Copy` type
-  --> $DIR/clone_on_copy.rs:29:5
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> $DIR/clone_on_copy.rs:30:5
    |
 LL |     rc.borrow().clone();
    |     ^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*rc.borrow()`
 
-error: using `clone` on a `Copy` type
-  --> $DIR/clone_on_copy.rs:35:14
+error: using `clone` on type `char` which implements the `Copy` trait
+  --> $DIR/clone_on_copy.rs:36:14
    |
 LL |     is_ascii('z'.clone());
    |              ^^^^^^^^^^^ help: try removing the `clone` call: `'z'`
 
-error: using `clone` on a `Copy` type
-  --> $DIR/clone_on_copy.rs:39:14
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> $DIR/clone_on_copy.rs:40:14
    |
 LL |     vec.push(42.clone());
    |              ^^^^^^^^^^ help: try removing the `clone` call: `42`

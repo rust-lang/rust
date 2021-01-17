@@ -23,9 +23,7 @@ use rustc_errors::Applicability;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for nested `if` statements which can be collapsed
-    /// by `&&`-combining their conditions and for `else { if ... }` expressions
-    /// that
-    /// can be collapsed to `else if ...`.
+    /// by `&&`-combining their conditions.
     ///
     /// **Why is this bad?** Each `if`-statement adds one level of nesting, which
     /// makes code look more complex than it really is.
@@ -40,7 +38,31 @@ declare_clippy_lint! {
     ///     }
     /// }
     ///
-    /// // or
+    /// ```
+    ///
+    /// Should be written:
+    ///
+    /// ```rust.ignore
+    /// if x && y {
+    ///     …
+    /// }
+    /// ```
+    pub COLLAPSIBLE_IF,
+    style,
+    "nested `if`s that can be collapsed (e.g., `if x { if y { ... } }`"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for collapsible `else { if ... }` expressions
+    /// that can be collapsed to `else if ...`.
+    ///
+    /// **Why is this bad?** Each `if`-statement adds one level of nesting, which
+    /// makes code look more complex than it really is.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
     ///
     /// if x {
     ///     …
@@ -54,24 +76,18 @@ declare_clippy_lint! {
     /// Should be written:
     ///
     /// ```rust.ignore
-    /// if x && y {
-    ///     …
-    /// }
-    ///
-    /// // or
-    ///
     /// if x {
     ///     …
     /// } else if y {
     ///     …
     /// }
     /// ```
-    pub COLLAPSIBLE_IF,
+    pub COLLAPSIBLE_ELSE_IF,
     style,
-    "`if`s that can be collapsed (e.g., `if x { if y { ... } }` and `else { if x { ... } }`)"
+    "nested `else`-`if` expressions that can be collapsed (e.g., `else { if x { ... } }`)"
 }
 
-declare_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF]);
+declare_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
 
 impl EarlyLintPass for CollapsibleIf {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
@@ -112,7 +128,7 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, else_: &ast::Expr) {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
-                COLLAPSIBLE_IF,
+                COLLAPSIBLE_ELSE_IF,
                 block.span,
                 "this `else { if .. }` block can be collapsed",
                 "collapse nested if block",

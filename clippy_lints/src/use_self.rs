@@ -12,11 +12,12 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_middle::ty::{DefIdTree, Ty};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::kw;
 use rustc_typeck::hir_ty_to_ty;
 
-use crate::utils::{differing_macro_contexts, span_lint_and_sugg};
+use crate::utils::{differing_macro_contexts, meets_msrv, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for unnecessary repetition of structure name when a
@@ -27,8 +28,8 @@ declare_clippy_lint! {
     /// feels inconsistent.
     ///
     /// **Known problems:**
-    /// - False positive when using associated types (#2843)
-    /// - False positives in some situations when using generics (#3410)
+    /// - False positive when using associated types ([#2843](https://github.com/rust-lang/rust-clippy/issues/2843))
+    /// - False positives in some situations when using generics ([#3410](https://github.com/rust-lang/rust-clippy/issues/3410))
     ///
     /// **Example:**
     /// ```rust
@@ -53,7 +54,7 @@ declare_clippy_lint! {
     "unnecessary structure name repetition whereas `Self` is applicable"
 }
 
-declare_lint_pass!(UseSelf => [USE_SELF]);
+impl_lint_pass!(UseSelf => [USE_SELF]);
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
@@ -157,14 +158,31 @@ fn check_trait_method_impl_decl<'tcx>(
     }
 }
 
+const USE_SELF_MSRV: RustcVersion = RustcVersion::new(1, 37, 0);
+
+pub struct UseSelf {
+    msrv: Option<RustcVersion>,
+}
+
+impl UseSelf {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        if !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
+            return;
+        }
+
         if in_external_macro(cx.sess(), item.span) {
             return;
         }
         if_chain! {
-            if let ItemKind::Impl{ self_ty: ref item_type, items: refs, .. } = item.kind;
-            if let TyKind::Path(QPath::Resolved(_, ref item_path)) = item_type.kind;
+            if let ItemKind::Impl(impl_) = &item.kind;
+            if let TyKind::Path(QPath::Resolved(_, ref item_path)) = impl_.self_ty.kind;
             then {
                 let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
                 let should_check = parameters.as_ref().map_or(
@@ -182,7 +200,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     let impl_trait_ref = cx.tcx.impl_trait_ref(impl_def_id);
 
                     if let Some(impl_trait_ref) = impl_trait_ref {
-                        for impl_item_ref in refs {
+                        for impl_item_ref in impl_.items {
                             let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
                             if let ImplItemKind::Fn(FnSig{ decl: impl_decl, .. }, impl_body_id)
                                     = &impl_item.kind {
@@ -195,7 +213,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                             }
                         }
                     } else {
-                        for impl_item_ref in refs {
+                        for impl_item_ref in impl_.items {
                             let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
                             visitor.visit_impl_item(impl_item);
                         }
@@ -204,6 +222,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             }
         }
     }
+    extract_msrv_attr!(LateContext);
 }
 
 struct UseSelfVisitor<'a, 'tcx> {

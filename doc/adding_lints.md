@@ -98,12 +98,12 @@ While we are working on implementing our lint, we can keep running the UI
 test. That allows us to check if the output is turning into what we want.
 
 Once we are satisfied with the output, we need to run
-`tests/ui/update-all-references.sh` to update the `.stderr` file for our lint.
+`cargo dev bless` to update the `.stderr` file for our lint.
 Please note that, we should run `TESTNAME=foo_functions cargo uitest`
-every time before running `tests/ui/update-all-references.sh`.
+every time before running `cargo dev bless`.
 Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit
 our lint, we need to commit the generated `.stderr` files, too. In general, you
-should only commit files changed by `tests/ui/update-all-references.sh` for the
+should only commit files changed by `cargo dev bless` for the
 specific lint you are creating/editing. Note that if the generated files are
 empty, they should be removed.
 
@@ -122,8 +122,7 @@ we will find by default two new crates, each with its manifest file:
 If you need more cases, you can copy one of those crates (under `foo_categories`) and rename it.
 
 The process of generating the `.stderr` file is the same, and prepending the `TESTNAME`
-variable to `cargo uitest` works too, but the script to update the references
-is in another path: `tests/ui-cargo/update-all-references.sh`.
+variable to `cargo uitest` works too.
 
 ## Rustfix tests
 
@@ -133,7 +132,7 @@ additionally run [rustfix] for that test. Rustfix will apply the suggestions
 from the lint to the code of the test file and compare that to the contents of
 a `.fixed` file.
 
-Use `tests/ui/update-all-references.sh` to automatically generate the
+Use `cargo dev bless` to automatically generate the
 `.fixed` file after running the tests.
 
 [rustfix]: https://github.com/rust-lang/rustfix
@@ -148,10 +147,14 @@ add `// edition:2018` at the top of the test file (note that it's space-sensitiv
 
 Manually testing against an example file can be useful if you have added some
 `println!`s and the test suite output becomes unreadable. To try Clippy with
-your local modifications, run `env CLIPPY_TESTS=true cargo run --bin
-clippy-driver -- -L ./target/debug input.rs` from the working copy root.
+your local modifications, run
 
-With tests in place, let's have a look at implementing our lint now.
+```
+env __CLIPPY_INTERNAL_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs
+```
+
+from the working copy root. With tests in place, let's have a look at
+implementing our lint now.
 
 ## Lint declaration
 
@@ -226,13 +229,13 @@ store.register_early_pass(|| box foo_functions::FooFunctions);
 ```
 
 As one may expect, there is a corresponding `register_late_pass` method
-available as well. Without a call to one of `register_early_pass` or 
+available as well. Without a call to one of `register_early_pass` or
 `register_late_pass`, the lint pass in question will not be run.
 
-One reason that `cargo dev` does not automate this step is that multiple lints 
+One reason that `cargo dev` does not automate this step is that multiple lints
 can use the same lint pass, so registering the lint pass may already be done
 when adding a new lint. Another reason that this step is not automated is that
-the order that the passes are registered determines the order the passes 
+the order that the passes are registered determines the order the passes
 actually run, which in turn affects the order that any emitted lints are output
 in.
 
@@ -368,7 +371,7 @@ fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
 
 Now we should also run the full test suite with `cargo test`. At this point
 running `cargo test` should produce the expected output. Remember to run
-`tests/ui/update-all-references.sh` to update the `.stderr` file.
+`cargo dev bless` to update the `.stderr` file.
 
 `cargo test` (as opposed to `cargo uitest`) will also ensure that our lint
 implementation is not violating any Clippy lints itself.
@@ -379,6 +382,57 @@ pass.
 [fn_kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html
 [`FnKind::Fn`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html#variant.Fn
 [ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
+
+## Specifying the lint's minimum supported Rust version (msrv)
+
+Projects supporting older versions of Rust would need to disable a lint if it targets features
+present in later versions. Support for this can be added by specifying an msrv in your lint like so,
+
+```rust
+const MANUAL_STRIP_MSRV: RustcVersion = RustcVersion::new(1, 45, 0);
+```
+
+The project's msrv will also have to be an attribute in the lint so you'll have to add a struct
+and constructor for your lint. The project's msrv needs to be passed when the lint is registered
+in `lib.rs`
+
+```rust
+pub struct ManualStrip {
+    msrv: Option<RustcVersion>,
+}
+
+impl ManualStrip {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
+```
+
+The project's msrv can then be matched against the lint's msrv in the LintPass using the `meets_msrv` utility
+function.
+
+``` rust
+if !meets_msrv(self.msrv.as_ref(), &MANUAL_STRIP_MSRV) {
+    return;
+}
+```
+
+The project's msrv can also be specified as an inner attribute, which overrides the value from
+`clippy.toml`. This can be accounted for using the `extract_msrv_attr!(LintContext)` macro and passing
+LateContext/EarlyContext.
+
+```rust
+impl<'tcx> LateLintPass<'tcx> for ManualStrip {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        ...
+    }
+    extract_msrv_attr!(LateContext);
+}
+```
+
+Once the msrv is added to the lint, a relevant test case should be added to `tests/ui/min_rust_version_attr.rs`
+which verifies that the lint isn't emitted if the project's msrv is lower.
 
 ## Author lint
 

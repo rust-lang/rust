@@ -72,5 +72,77 @@ error: methods called `from_*` usually take no self; consider choosing a less am
 LL |     pub fn from_i64(self) {}
    |                     ^^^^
 
-error: aborting due to 12 previous errors
+error: methods called `as_*` usually take self by reference or self by mutable reference; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:95:19
+   |
+LL |         fn as_i32(self) {}
+   |                   ^^^^
+
+error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:98:25
+   |
+LL |         fn into_i32_ref(&self) {}
+   |                         ^^^^^
+
+error: methods called `is_*` usually take self by reference or no self; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:100:19
+   |
+LL |         fn is_i32(self) {}
+   |                   ^^^^
+
+error: methods called `to_*` usually take self by reference; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:102:19
+   |
+LL |         fn to_i32(self) {}
+   |                   ^^^^
+
+error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:104:21
+   |
+LL |         fn from_i32(self) {}
+   |                     ^^^^
+
+error: methods called `as_*` usually take self by reference or self by mutable reference; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:119:19
+   |
+LL |         fn as_i32(self);
+   |                   ^^^^
+
+error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:122:25
+   |
+LL |         fn into_i32_ref(&self);
+   |                         ^^^^^
+
+error: methods called `is_*` usually take self by reference or no self; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:124:19
+   |
+LL |         fn is_i32(self);
+   |                   ^^^^
+
+error: methods called `to_*` usually take self by reference; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:126:19
+   |
+LL |         fn to_i32(self);
+   |                   ^^^^
+
+error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:128:21
+   |
+LL |         fn from_i32(self);
+   |                     ^^^^
+
+error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:146:25
+   |
+LL |         fn into_i32_ref(&self);
+   |                         ^^^^^
+
+error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
+  --> $DIR/wrong_self_convention.rs:152:21
+   |
+LL |         fn from_i32(self);
+   |                     ^^^^
+
+error: aborting due to 24 previous errors
 

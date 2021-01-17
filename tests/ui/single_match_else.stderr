@@ -1,4 +1,4 @@
-error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match_else.rs:14:5
    |
 LL | /     match ExprNode::Butterflies {
@@ -19,7 +19,7 @@ LL |         None
 LL |     }
    |
 
-error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match_else.rs:70:5
    |
 LL | /     match Some(1) {
@@ -39,7 +39,7 @@ LL |         return
 LL |     }
    |
 
-error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match_else.rs:79:5
    |
 LL | /     match Some(1) {

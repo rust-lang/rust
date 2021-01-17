@@ -8,8 +8,8 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    BinOpKind, BodyId, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind,
-    Lifetime, MutTy, Mutability, Node, PathSegment, QPath, TraitFn, TraitItem, TraitItemKind, Ty, TyKind,
+    BinOpKind, BodyId, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, HirId, Impl, ImplItem, ImplItemKind, Item,
+    ItemKind, Lifetime, MutTy, Mutability, Node, PathSegment, QPath, TraitFn, TraitItem, TraitItemKind, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -132,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         if let ImplItemKind::Fn(ref sig, body_id) = item.kind {
             let parent_item = cx.tcx.hir().get_parent_item(item.hir_id);
             if let Some(Node::Item(it)) = cx.tcx.hir().find(parent_item) {
-                if let ItemKind::Impl { of_trait: Some(_), .. } = it.kind {
+                if let ItemKind::Impl(Impl { of_trait: Some(_), .. }) = it.kind {
                     return; // ignore trait impls
                 }
             }
@@ -182,20 +182,6 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
 
         if let ty::Ref(_, ty, Mutability::Not) = ty.kind() {
             if is_type_diagnostic_item(cx, ty, sym::vec_type) {
-                let mut ty_snippet = None;
-                if_chain! {
-                    if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).kind;
-                    if let Some(&PathSegment{args: Some(ref parameters), ..}) = path.segments.last();
-                    then {
-                        let types: Vec<_> = parameters.args.iter().filter_map(|arg| match arg {
-                            GenericArg::Type(ty) => Some(ty),
-                            _ => None,
-                        }).collect();
-                        if types.len() == 1 {
-                            ty_snippet = snippet_opt(cx, types[0].span);
-                        }
-                    }
-                };
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_owned()")]) {
                     span_lint_and_then(
                         cx,
@@ -204,7 +190,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
                          with non-Vec-based slices.",
                         |diag| {
-                            if let Some(ref snippet) = ty_snippet {
+                            if let Some(ref snippet) = get_only_generic_arg_snippet(cx, arg) {
                                 diag.span_suggestion(
                                     arg.span,
                                     "change this to",
@@ -234,6 +220,33 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         "writing `&String` instead of `&str` involves a new object where a slice will do.",
                         |diag| {
                             diag.span_suggestion(arg.span, "change this to", "&str".into(), Applicability::Unspecified);
+                            for (clonespan, suggestion) in spans {
+                                diag.span_suggestion_short(
+                                    clonespan,
+                                    &snippet_opt(cx, clonespan).map_or("change the call to".into(), |x| {
+                                        Cow::Owned(format!("change `{}` to", x))
+                                    }),
+                                    suggestion.into(),
+                                    Applicability::Unspecified,
+                                );
+                            }
+                        },
+                    );
+                }
+            } else if match_type(cx, ty, &paths::PATH_BUF) {
+                if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_path_buf()"), ("as_path", "")]) {
+                    span_lint_and_then(
+                        cx,
+                        PTR_ARG,
+                        arg.span,
+                        "writing `&PathBuf` instead of `&Path` involves a new object where a slice will do.",
+                        |diag| {
+                            diag.span_suggestion(
+                                arg.span,
+                                "change this to",
+                                "&Path".into(),
+                                Applicability::Unspecified,
+                            );
                             for (clonespan, suggestion) in spans {
                                 diag.span_suggestion_short(
                                     clonespan,
@@ -305,6 +318,23 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                     diag.span_note(ms, "immutable borrow here");
                 },
             );
+        }
+    }
+}
+
+fn get_only_generic_arg_snippet(cx: &LateContext<'_>, arg: &Ty<'_>) -> Option<String> {
+    if_chain! {
+        if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).kind;
+        if let Some(&PathSegment{args: Some(ref parameters), ..}) = path.segments.last();
+        let types: Vec<_> = parameters.args.iter().filter_map(|arg| match arg {
+            GenericArg::Type(ty) => Some(ty),
+            _ => None,
+        }).collect();
+        if types.len() == 1;
+        then {
+            snippet_opt(cx, types[0].span)
+        } else {
+            None
         }
     }
 }

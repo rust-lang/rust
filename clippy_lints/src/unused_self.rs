@@ -1,7 +1,7 @@
 use if_chain::if_chain;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
-use rustc_hir::{HirId, ImplItem, ImplItemKind, ItemKind, Path};
+use rustc_hir::{HirId, Impl, ImplItem, ImplItemKind, ItemKind, Path};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
         let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
         let assoc_item = cx.tcx.associated_item(def_id);
         if_chain! {
-            if let ItemKind::Impl { of_trait: None, .. } = parent_item.kind;
+            if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind;
             if assoc_item.fn_has_self_parameter;
             if let ImplItemKind::Fn(.., body_id) = &impl_item.kind;
             let body = cx.tcx.hir().body(*body_id);

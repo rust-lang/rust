@@ -46,8 +46,7 @@ fn main() {
     };
 
     let opt = Some(false);
-    let x = if let Some(_) = opt { true } else { false };
-    takes_bool(x);
+    let _ = if let Some(_) = opt { true } else { false };
 
     issue6067();
 
@@ -63,8 +62,6 @@ fn main() {
 fn gen_opt() -> Option<()> {
     None
 }
-
-fn takes_bool(_: bool) {}
 
 fn foo() {}
 
