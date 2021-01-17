@@ -443,12 +443,7 @@ impl Write {
                 return (Some(fmtstr), None);
             };
             match &token_expr.kind {
-                ExprKind::Lit(lit)
-                    if match lit.kind {
-                        LitKind::Int(_, _) | LitKind::Float(_, _) => false,
-                        _ => true,
-                    } =>
-                {
+                ExprKind::Lit(lit) if matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..)) => {
                     let mut all_simple = true;
                     let mut seen = false;
                     for arg in &args {
