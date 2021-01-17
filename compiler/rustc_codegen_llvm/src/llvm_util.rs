@@ -214,11 +214,7 @@ fn handle_native(name: &str) -> &str {
 }
 
 pub fn target_cpu(sess: &Session) -> &str {
-    let name = match sess.opts.cg.target_cpu {
-        Some(ref s) => &**s,
-        None => &*sess.target.cpu,
-    };
-
+    let name = sess.opts.cg.target_cpu.as_ref().unwrap_or(&sess.target.cpu);
     handle_native(name)
 }
 
