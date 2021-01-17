@@ -115,7 +115,7 @@ impl<'a> Resolver<'a> {
         self.get_module(parent_id)
     }
 
-    crate fn get_module(&mut self, def_id: DefId) -> Module<'a> {
+    pub fn get_module(&mut self, def_id: DefId) -> Module<'a> {
         // If this is a local module, it will be in `module_map`, no need to recalculate it.
         if let Some(def_id) = def_id.as_local() {
             return self.module_map[&def_id];

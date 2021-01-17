@@ -1281,11 +1281,6 @@ rustc_queries! {
     }
 
     Other {
-        query dllimport_foreign_items(_: CrateNum)
-            -> FxHashSet<DefId> {
-            storage(ArenaCacheSelector<'tcx>)
-            desc { "dllimport_foreign_items" }
-        }
         query is_dllimport_foreign_item(def_id: DefId) -> bool {
             desc { |tcx| "is_dllimport_foreign_item({})", tcx.def_path_str(def_id) }
         }
@@ -1316,7 +1311,7 @@ rustc_queries! {
             desc { "looking up a named region" }
         }
         query is_late_bound_map(_: LocalDefId) ->
-            Option<&'tcx FxHashSet<ItemLocalId>> {
+            Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
             desc { "testing if a region is late bound" }
         }
         query object_lifetime_defaults_map(_: LocalDefId)

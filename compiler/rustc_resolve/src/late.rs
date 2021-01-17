@@ -14,7 +14,6 @@ use crate::{ResolutionError, Resolver, Segment, UseError};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
-use rustc_ast::{unwrap_or, walk_list};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::DiagnosticId;
@@ -1911,7 +1910,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // it needs to be added to the trait map.
                 if ns == ValueNS {
                     let item_name = path.last().unwrap().ident;
-                    let traits = self.get_traits_containing_item(item_name, ns);
+                    let traits = self.traits_in_scope(item_name, ns);
                     self.r.trait_map.insert(id, traits);
                 }
 
@@ -2371,12 +2370,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.get_traits_containing_item(ident, ValueNS);
+                let traits = self.traits_in_scope(ident, ValueNS);
                 self.r.trait_map.insert(expr.id, traits);
             }
             ExprKind::MethodCall(ref segment, ..) => {
                 debug!("(recording candidate traits for expr) recording traits for {}", expr.id);
-                let traits = self.get_traits_containing_item(segment.ident, ValueNS);
+                let traits = self.traits_in_scope(segment.ident, ValueNS);
                 self.r.trait_map.insert(expr.id, traits);
             }
             _ => {
@@ -2385,64 +2384,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
-    fn get_traits_containing_item(
-        &mut self,
-        mut ident: Ident,
-        ns: Namespace,
-    ) -> Vec<TraitCandidate> {
-        debug!("(getting traits containing item) looking for '{}'", ident.name);
-
-        let mut found_traits = Vec::new();
-        // Look for the current trait.
-        if let Some((module, _)) = self.current_trait_ref {
-            if self
-                .r
-                .resolve_ident_in_module(
-                    ModuleOrUniformRoot::Module(module),
-                    ident,
-                    ns,
-                    &self.parent_scope,
-                    false,
-                    module.span,
-                )
-                .is_ok()
-            {
-                let def_id = module.def_id().unwrap();
-                found_traits.push(TraitCandidate { def_id, import_ids: smallvec![] });
-            }
-        }
-
-        ident.span = ident.span.normalize_to_macros_2_0();
-        let mut search_module = self.parent_scope.module;
-        loop {
-            self.r.get_traits_in_module_containing_item(
-                ident,
-                ns,
-                search_module,
-                &mut found_traits,
-                &self.parent_scope,
-            );
-            let mut span_data = ident.span.data();
-            search_module = unwrap_or!(
-                self.r.hygienic_lexical_parent(search_module, &mut span_data.ctxt),
-                break
-            );
-            ident.span = span_data.span();
-        }
-
-        if let Some(prelude) = self.r.prelude {
-            if !search_module.no_implicit_prelude {
-                self.r.get_traits_in_module_containing_item(
-                    ident,
-                    ns,
-                    prelude,
-                    &mut found_traits,
-                    &self.parent_scope,
-                );
-            }
-        }
-
-        found_traits
+    fn traits_in_scope(&mut self, ident: Ident, ns: Namespace) -> Vec<TraitCandidate> {
+        self.r.traits_in_scope(
+            self.current_trait_ref.as_ref().map(|(module, _)| *module),
+            &self.parent_scope,
+            ident.span.ctxt(),
+            Some((ident.name, ns)),
+        )
     }
 }
 

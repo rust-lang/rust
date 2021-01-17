@@ -19,7 +19,7 @@ use rustc_session::lint::{
     builtin::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS},
     Lint,
 };
-use rustc_span::hygiene::MacroKind;
+use rustc_span::hygiene::{MacroKind, SyntaxContext};
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
@@ -770,7 +770,12 @@ fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> Fx
     let mut cache = cx.module_trait_cache.borrow_mut();
     let in_scope_traits = cache.entry(module).or_insert_with(|| {
         cx.enter_resolver(|resolver| {
-            resolver.traits_in_scope(module).into_iter().map(|candidate| candidate.def_id).collect()
+            let parent_scope = &ParentScope::module(resolver.get_module(module), resolver);
+            resolver
+                .traits_in_scope(None, parent_scope, SyntaxContext::root(), None)
+                .into_iter()
+                .map(|candidate| candidate.def_id)
+                .collect()
         })
     });
 

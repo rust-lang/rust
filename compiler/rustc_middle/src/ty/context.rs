@@ -3,6 +3,7 @@
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::hir::exports::ExportMap;
+use crate::hir::place::Place as HirPlace;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
@@ -379,7 +380,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Records the reasons that we picked the kind of each closure;
     /// not all closures are present in the map.
-    closure_kind_origins: ItemLocalMap<(Span, Symbol)>,
+    closure_kind_origins: ItemLocalMap<(Span, HirPlace<'tcx>)>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
@@ -642,11 +643,13 @@ impl<'tcx> TypeckResults<'tcx> {
         self.upvar_capture_map[&upvar_id]
     }
 
-    pub fn closure_kind_origins(&self) -> LocalTableInContext<'_, (Span, Symbol)> {
+    pub fn closure_kind_origins(&self) -> LocalTableInContext<'_, (Span, HirPlace<'tcx>)> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.closure_kind_origins }
     }
 
-    pub fn closure_kind_origins_mut(&mut self) -> LocalTableInContextMut<'_, (Span, Symbol)> {
+    pub fn closure_kind_origins_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, (Span, HirPlace<'tcx>)> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.closure_kind_origins }
     }
 
@@ -2578,7 +2581,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner).map_or(false, |set| set.contains(&id.local_id))
+        self.is_late_bound_map(id.owner)
+            .map_or(false, |(owner, set)| owner == id.owner && set.contains(&id.local_id))
     }
 
     pub fn object_lifetime_defaults(self, id: HirId) -> Option<&'tcx [ObjectLifetimeDefault]> {

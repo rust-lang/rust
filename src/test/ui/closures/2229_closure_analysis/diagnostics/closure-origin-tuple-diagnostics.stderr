@@ -1,0 +1,23 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/closure-origin-tuple-diagnostics.rs:1:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
+  --> $DIR/closure-origin-tuple-diagnostics.rs:11:13
+   |
+LL |     let c = || {
+   |             ^^ this closure implements `FnOnce`, not `Fn`
+LL |         let s = s.1;
+   |                 --- closure is `FnOnce` because it moves the variable `s.1` out of its environment
+LL |     };
+LL |     expect_fn(c);
+   |     --------- the requirement to implement `Fn` derives from here
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0525`.

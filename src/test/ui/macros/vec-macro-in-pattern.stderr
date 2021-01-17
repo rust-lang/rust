@@ -1,0 +1,10 @@
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/vec-macro-in-pattern.rs:7:14
+   |
+LL |         Some(vec![43]) => {}
+   |              ^^^^^^^^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

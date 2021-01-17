@@ -377,6 +377,7 @@ struct Build {
     configure_args: Option<Vec<String>>,
     local_rebuild: Option<bool>,
     print_step_timings: Option<bool>,
+    check_stage: Option<u32>,
     doc_stage: Option<u32>,
     build_stage: Option<u32>,
     test_stage: Option<u32>,
@@ -676,6 +677,7 @@ impl Config {
 
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
+            Subcommand::Check { .. } => flags.stage.or(build.check_stage).unwrap_or(0),
             Subcommand::Doc { .. } => flags.stage.or(build.doc_stage).unwrap_or(0),
             Subcommand::Build { .. } => flags.stage.or(build.build_stage).unwrap_or(1),
             Subcommand::Test { .. } => flags.stage.or(build.test_stage).unwrap_or(1),
@@ -685,7 +687,6 @@ impl Config {
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
             Subcommand::Clean { .. }
-            | Subcommand::Check { .. }
             | Subcommand::Clippy { .. }
             | Subcommand::Fix { .. }
             | Subcommand::Run { .. }
@@ -816,8 +817,10 @@ impl Config {
                 check_ci_llvm!(llvm.allow_old_toolchain);
                 check_ci_llvm!(llvm.polly);
 
-                // CI-built LLVM is shared
-                config.llvm_link_shared = true;
+                // CI-built LLVM can be either dynamic or static.
+                let ci_llvm = config.out.join(&*config.build.triple).join("ci-llvm");
+                let link_type = t!(std::fs::read_to_string(ci_llvm.join("link-type.txt")));
+                config.llvm_link_shared = link_type == "dynamic";
             }
 
             if config.llvm_thin_lto {
