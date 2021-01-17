@@ -387,7 +387,7 @@ impl LintStore {
                 Some(new_name.to_owned()),
             ),
             Some(&Removed(ref reason)) => CheckLintNameResult::Warning(
-                format!("lint `{}` has been removed: `{}`", complete_name, reason),
+                format!("lint `{}` has been removed: {}", complete_name, reason),
                 None,
             ),
             None => match self.lint_groups.get(&*complete_name) {

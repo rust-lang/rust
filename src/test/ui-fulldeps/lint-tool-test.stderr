@@ -1,4 +1,4 @@
-warning: lint name `test_lint` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
+warning: lint name `test_lint` is deprecated and may not have an effect in the future.
   --> $DIR/lint-tool-test.rs:9:23
    |
 LL | #![cfg_attr(foo, warn(test_lint))]
@@ -6,13 +6,13 @@ LL | #![cfg_attr(foo, warn(test_lint))]
    |
    = note: `#[warn(renamed_and_removed_lints)]` on by default
 
-warning: lint name `clippy_group` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
+warning: lint name `clippy_group` is deprecated and may not have an effect in the future.
   --> $DIR/lint-tool-test.rs:13:9
    |
 LL | #![deny(clippy_group)]
    |         ^^^^^^^^^^^^ help: change it to: `clippy::group`
 
-warning: lint name `test_group` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
+warning: lint name `test_group` is deprecated and may not have an effect in the future.
   --> $DIR/lint-tool-test.rs:29:9
    |
 LL | #[allow(test_group)]
@@ -26,19 +26,19 @@ LL | #[deny(this_lint_does_not_exist)]
    |
    = note: `#[warn(unknown_lints)]` on by default
 
-warning: lint name `test_lint` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
+warning: lint name `test_lint` is deprecated and may not have an effect in the future.
   --> $DIR/lint-tool-test.rs:9:23
    |
 LL | #![cfg_attr(foo, warn(test_lint))]
    |                       ^^^^^^^^^ help: change it to: `clippy::test_lint`
 
-warning: lint name `clippy_group` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
+warning: lint name `clippy_group` is deprecated and may not have an effect in the future.
   --> $DIR/lint-tool-test.rs:13:9
    |
 LL | #![deny(clippy_group)]
    |         ^^^^^^^^^^^^ help: change it to: `clippy::group`
 
-warning: lint name `test_group` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
+warning: lint name `test_group` is deprecated and may not have an effect in the future.
   --> $DIR/lint-tool-test.rs:29:9
    |
 LL | #[allow(test_group)]
@@ -52,13 +52,13 @@ LL | #![plugin(lint_tool_test)]
    |
    = note: `#[warn(deprecated)]` on by default
 
-warning: lint name `test_lint` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
+warning: lint name `test_lint` is deprecated and may not have an effect in the future.
   --> $DIR/lint-tool-test.rs:9:23
    |
 LL | #![cfg_attr(foo, warn(test_lint))]
    |                       ^^^^^^^^^ help: change it to: `clippy::test_lint`
 
-warning: lint name `clippy_group` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
+warning: lint name `clippy_group` is deprecated and may not have an effect in the future.
   --> $DIR/lint-tool-test.rs:13:9
    |
 LL | #![deny(clippy_group)]
@@ -90,7 +90,7 @@ LL | #![deny(clippy_group)]
    |         ^^^^^^^^^^^^
    = note: `#[deny(clippy::test_group)]` implied by `#[deny(clippy::group)]`
 
-warning: lint name `test_group` is deprecated and may not have an effect in the future. Also `cfg_attr(cargo-clippy)` won't be necessary anymore
+warning: lint name `test_group` is deprecated and may not have an effect in the future.
   --> $DIR/lint-tool-test.rs:29:9
    |
 LL | #[allow(test_group)]
