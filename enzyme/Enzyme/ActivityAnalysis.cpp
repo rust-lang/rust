@@ -846,16 +846,6 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
                 isDeallocationFunction(*F, TLI)) {
               continue;
             }
-
-            bool noUse = false;
-            for (auto FuncName : KnownInactiveFunctionsStartingWith) {
-              if (F->getName().startswith(FuncName)) {
-                noUse = true;
-                break;
-              }
-            }
-            if (noUse)
-              continue;
             if (KnownInactiveFunctions.count(F->getName().str())) {
               continue;
             }
@@ -871,6 +861,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
               continue;
             }
 
+            bool noUse = false;
             switch (F->getIntrinsicID()) {
             case Intrinsic::nvvm_barrier0:
             case Intrinsic::nvvm_barrier0_popc:
@@ -1300,7 +1291,6 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
       }
     }
   }
-
   // Intrinsics known always to be inactive
   if (auto II = dyn_cast<IntrinsicInst>(inst)) {
     switch (II->getIntrinsicID()) {
