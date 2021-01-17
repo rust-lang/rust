@@ -167,6 +167,10 @@ crate fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
         None,
         RUSTDOC_LINTS.iter().map(|&lint| LintId::of(lint)).collect(),
     );
+    for lint in &*RUSTDOC_LINTS {
+        let name = lint.name_lower();
+        lint_store.register_renamed(&name.replace("rustdoc::", ""), &name);
+    }
     lint_store
         .register_renamed("intra_doc_link_resolution_failure", "rustdoc::broken_intra_doc_links");
 }
