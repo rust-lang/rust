@@ -156,17 +156,55 @@ LL |     });
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:62:5
    |
-LL |     foo(foo(()))
+LL |     foo(foo(()));
    |     ^^^^^^^^^^^^
    |
 help: move the expression in front of the call and replace it with the unit literal `()`
    |
 LL |     foo(());
-LL |     foo(())
+LL |     foo(());
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:95:5
+  --> $DIR/unit_arg.rs:63:5
+   |
+LL | /     foo(if true {
+LL | |         1;
+LL | |     });
+   | |______^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL |     if true {
+LL |         1;
+LL |     };
+LL |     foo(());
+   |
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:66:5
+   |
+LL | /     foo(match Some(1) {
+LL | |         Some(_) => {
+LL | |             1;
+LL | |         },
+...  |
+LL | |         },
+LL | |     });
+   | |______^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL |     match Some(1) {
+LL |         Some(_) => {
+LL |             1;
+LL |         },
+LL |         None => {
+LL |             0;
+ ...
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:113:5
    |
 LL |     Some(foo(1))
    |     ^^^^^^^^^^^^
@@ -177,5 +215,5 @@ LL |     foo(1);
 LL |     Some(())
    |
 
-error: aborting due to 10 previous errors
+error: aborting due to 12 previous errors
 

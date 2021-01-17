@@ -59,7 +59,18 @@ fn bad() {
     None.or(Some(foo(2)));
     // in this case, the suggestion can be inlined, no need for a surrounding block
     // foo(()); foo(()) instead of { foo(()); foo(()) }
-    foo(foo(()))
+    foo(foo(()));
+    foo(if true {
+        1;
+    });
+    foo(match Some(1) {
+        Some(_) => {
+            1;
+        },
+        None => {
+            0;
+        },
+    });
 }
 
 fn ok() {
@@ -71,6 +82,13 @@ fn ok() {
     b.bar({ 1 });
     b.bar(());
     question_mark();
+    let named_unit_arg = ();
+    foo(named_unit_arg);
+    foo(if true { 1 } else { 0 });
+    foo(match Some(1) {
+        Some(_) => 1,
+        None => 0,
+    });
 }
 
 fn question_mark() -> Result<(), ()> {
