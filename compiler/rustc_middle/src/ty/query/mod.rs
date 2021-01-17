@@ -88,7 +88,7 @@ mod on_disk_cache;
 pub use self::on_disk_cache::OnDiskCache;
 
 mod profiling_support;
-pub use self::profiling_support::{IntoSelfProfilingString, QueryKeyStringBuilder};
+pub use self::profiling_support::alloc_self_profile_query_strings;
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
