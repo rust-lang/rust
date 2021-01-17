@@ -955,6 +955,8 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 /// erase, or otherwise "discharge" these bound vars, we change the
 /// type from `Binder<T>` to just `T` (see
 /// e.g., `liberate_late_bound_regions`).
+///
+/// `Decodable` and `Encodable` is implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro. 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct Binder<T>(T);
 
