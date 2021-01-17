@@ -56,36 +56,11 @@ crate fn annotate_err_with_kind(
     };
 }
 
-/// Instead of e.g. `vec![a, b, c]` in a pattern context, suggest `[a, b, c]`.
-fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Parser<'_>) {
-    let mut suggestion = None;
-    if let Ok(code) = parser.sess.source_map().span_to_snippet(site_span) {
-        if let Some(bang) = code.find('!') {
-            suggestion = Some(code[bang + 1..].to_string());
-        }
-    }
-    if let Some(suggestion) = suggestion {
-        e.span_suggestion(
-            site_span,
-            "use a slice pattern here instead",
-            suggestion,
-            Applicability::MachineApplicable,
-        );
-    } else {
-        e.span_label(site_span, "use a slice pattern here instead");
-    }
-    e.help(
-        "for more information, see https://doc.rust-lang.org/edition-guide/\
-        rust-2018/slice-patterns.html",
-    );
-}
-
 fn emit_frag_parse_err(
     mut e: DiagnosticBuilder<'_>,
     parser: &Parser<'_>,
     orig_parser: &mut Parser<'_>,
     site_span: Span,
-    macro_ident: Ident,
     arm_span: Span,
     kind: AstFragmentKind,
 ) {
@@ -113,9 +88,6 @@ fn emit_frag_parse_err(
         e.span_label(site_span, "in this macro invocation");
     }
     match kind {
-        AstFragmentKind::Pat if macro_ident.name == sym::vec => {
-            suggest_slice_pat(&mut e, site_span, parser);
-        }
         // Try a statement if an expression is wanted but failed and suggest adding `;` to call.
         AstFragmentKind::Expr => match parse_ast_fragment(orig_parser, AstFragmentKind::Stmts) {
             Err(mut err) => err.cancel(),
@@ -143,7 +115,7 @@ impl<'a> ParserAnyMacro<'a> {
         let fragment = match parse_ast_fragment(parser, kind) {
             Ok(f) => f,
             Err(err) => {
-                emit_frag_parse_err(err, parser, snapshot, site_span, macro_ident, arm_span, kind);
+                emit_frag_parse_err(err, parser, snapshot, site_span, arm_span, kind);
                 return kind.dummy(site_span);
             }
         };

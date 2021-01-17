@@ -37,16 +37,16 @@
 #[cfg(not(test))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable(box_syntax)]
+#[allow_internal_unstable(box_syntax, liballoc_internals)]
 macro_rules! vec {
     () => (
-        $crate::vec::Vec::new()
+        $crate::__export::force_expr!($crate::vec::Vec::new())
     );
     ($elem:expr; $n:expr) => (
-        $crate::vec::from_elem($elem, $n)
+        $crate::__export::force_expr!($crate::vec::from_elem($elem, $n))
     );
     ($($x:expr),+ $(,)?) => (
-        <[_]>::into_vec(box [$($x),+])
+        $crate::__export::force_expr!(<[_]>::into_vec(box [$($x),+]))
     );
 }
 
