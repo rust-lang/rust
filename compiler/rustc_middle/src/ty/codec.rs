@@ -120,9 +120,9 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::PredicateKind<'tcx> {
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<ty::PredicateKind<'tcx>> {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        encode_with_shorthand(e, self, TyEncoder::predicate_shorthands)
+        encode_with_shorthand(e, &self.skip_binder(), TyEncoder::predicate_shorthands)
     }
 }
 
@@ -226,18 +226,18 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::PredicateKind<'tcx> {
-    fn decode(decoder: &mut D) -> Result<ty::PredicateKind<'tcx>, D::Error> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<ty::PredicateKind<'tcx>> {
+    fn decode(decoder: &mut D) -> Result<ty::Binder<ty::PredicateKind<'tcx>>, D::Error> {
         // Handle shorthands first, if we have an usize > 0x80.
-        if decoder.positioned_at_shorthand() {
+        Ok(ty::Binder::bind(if decoder.positioned_at_shorthand() {
             let pos = decoder.read_usize()?;
             assert!(pos >= SHORTHAND_OFFSET);
             let shorthand = pos - SHORTHAND_OFFSET;
 
-            decoder.with_position(shorthand, ty::PredicateKind::decode)
+            decoder.with_position(shorthand, ty::PredicateKind::decode)?
         } else {
-            Ok(ty::PredicateKind::decode(decoder)?)
-        }
+            ty::PredicateKind::decode(decoder)?
+        }))
     }
 }
 
@@ -470,4 +470,29 @@ macro_rules! implement_ty_decoder {
             }
         }
     }
+}
+
+macro_rules! impl_binder_encode_decode {
+    ($($t:ty),+ $(,)?) => {
+        $(
+            impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<$t> {
+                fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+                    self.as_ref().skip_binder().encode(e)
+                }
+            }
+            impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<$t> {
+                fn decode(decoder: &mut D) -> Result<Self, D::Error> {
+                    Ok(ty::Binder::bind(Decodable::decode(decoder)?))
+                }
+            }
+        )*
+    }
+}
+
+impl_binder_encode_decode! {
+    &'tcx ty::List<Ty<'tcx>>,
+    ty::FnSig<'tcx>,
+    ty::ExistentialPredicate<'tcx>,
+    ty::TraitRef<'tcx>,
+    Vec<ty::GeneratorInteriorTypeCause<'tcx>>,
 }
