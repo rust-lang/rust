@@ -564,12 +564,7 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
 
     let old_hash = tcx.dep_graph().fingerprint_of(dep_node_index);
 
-    assert!(
-        new_hash == old_hash,
-        "found unstable fingerprints for {:?}: result {:?}",
-        dep_node,
-        result
-    );
+    assert!(new_hash == old_hash, "found unstable fingerprints for {:?}", dep_node,);
 }
 
 fn force_query_with_job<C, CTX>(
