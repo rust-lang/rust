@@ -184,7 +184,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 
     /// Removes the internal root node, using its first child as the new root node.
     /// As it is intended only to be called when the root node has only one child,
-    /// no cleanup is done on any of the other children.
+    /// no cleanup is done on any of the keys, values and other children.
     /// This decreases the height by 1 and is the opposite of `push_internal_level`.
     ///
     /// Requires exclusive access to the `Root` object but not to the root node;
@@ -225,7 +225,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 ///    - When this is `Owned`, the `NodeRef` acts roughly like `Box<Node>`,
 ///      but does not have a destructor, and must be cleaned up manually.
 ///   Since any `NodeRef` allows navigating through the tree, `BorrowType`
-///   effectively applies to the entire tree, not just the node itself.
+///   effectively applies to the entire tree, not just to the node itself.
 /// - `K` and `V`: These are the types of keys and values stored in the nodes.
 /// - `Type`: This can be `Leaf`, `Internal`, or `LeafOrInternal`. When this is
 ///   `Leaf`, the `NodeRef` points to a leaf node, when this is `Internal` the
@@ -425,7 +425,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// Similar to `ascend`, gets a reference to a node's parent node, but also
-    /// deallocate the current node in the process. This is unsafe because the
+    /// deallocates the current node in the process. This is unsafe because the
     /// current node will still be accessible despite being deallocated.
     pub unsafe fn deallocate_and_ascend(
         self,
@@ -661,7 +661,10 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Removes a key-value pair from the end of the node and returns the pair.
     /// Also removes the edge that was to the right of that pair and, if the node
     /// is internal, returns the orphaned subtree that this edge owned.
-    fn pop(&mut self) -> (K, V, Option<Root<K, V>>) {
+    ///
+    /// # Safety
+    /// The node must not be empty.
+    unsafe fn pop(&mut self) -> (K, V, Option<Root<K, V>>) {
         debug_assert!(self.len() > 0);
 
         let idx = self.len() - 1;
