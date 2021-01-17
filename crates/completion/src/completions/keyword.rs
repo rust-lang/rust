@@ -99,7 +99,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword(ctx, acc, "else if", "else if $0 {}");
     }
     if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
-        add_keyword(ctx, acc, "mod", "mod $0 {}");
+        add_keyword(ctx, acc, "mod", "mod $0");
     }
     if ctx.bind_pat_parent || ctx.ref_pat_parent {
         add_keyword(ctx, acc, "mut", "mut ");
