@@ -66,11 +66,17 @@ error: lint `clippy::panic_params` has been removed: `this lint has been uplifte
 LL | #[warn(clippy::panic_params)]
    |        ^^^^^^^^^^^^^^^^^^^^
 
+error: lint `clippy::unknown_clippy_lints` has been removed: `this lint has been integrated into the `unknown_lints` rustc lint`
+  --> $DIR/deprecated.rs:12:8
+   |
+LL | #[warn(clippy::unknown_clippy_lints)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: lint `clippy::unstable_as_slice` has been removed: ``Vec::as_slice` has been stabilized in 1.7`
   --> $DIR/deprecated.rs:1:8
    |
 LL | #[warn(clippy::unstable_as_slice)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 

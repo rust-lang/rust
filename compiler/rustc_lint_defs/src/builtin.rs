@@ -4,7 +4,7 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use crate::{declare_lint, declare_lint_pass, declare_tool_lint};
+use crate::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
 
@@ -2825,8 +2825,29 @@ declare_lint! {
     };
 }
 
-declare_tool_lint! {
-    pub rustc::INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+declare_lint! {
+    /// The `ineffective_unstable_trait_impl` lint detects `#[unstable]` attributes which are not used.
+    ///
+    /// ### Example
+    ///
+    /// ```compile_fail
+    /// #![feature(staged_api)]
+    ///
+    /// #[derive(Clone)]
+    /// #[stable(feature = "x", since = "1")]
+    /// struct S {}
+    ///
+    /// #[unstable(feature = "y", issue = "none")]
+    /// impl Copy for S {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// `staged_api` does not currently support using a stability attribute on `impl` blocks.
+    /// `impl`s are always stable if both the type and trait are stable, and always unstable otherwise.
+    pub INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
     Deny,
     "detects `#[unstable]` on stable trait implementations for stable types"
 }
