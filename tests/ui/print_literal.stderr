@@ -1,5 +1,5 @@
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:22:24
+  --> $DIR/print_literal.rs:25:24
    |
 LL |     print!("Hello {}", "world");
    |                        ^^^^^^^
@@ -7,61 +7,61 @@ LL |     print!("Hello {}", "world");
    = note: `-D clippy::print-literal` implied by `-D warnings`
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:23:36
+  --> $DIR/print_literal.rs:26:36
    |
 LL |     println!("Hello {} {}", world, "world");
    |                                    ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:24:26
+  --> $DIR/print_literal.rs:27:26
    |
 LL |     println!("Hello {}", "world");
    |                          ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:29:25
+  --> $DIR/print_literal.rs:32:25
    |
 LL |     println!("{0} {1}", "hello", "world");
    |                         ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:29:34
+  --> $DIR/print_literal.rs:32:34
    |
 LL |     println!("{0} {1}", "hello", "world");
    |                                  ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:30:25
+  --> $DIR/print_literal.rs:33:25
    |
 LL |     println!("{1} {0}", "hello", "world");
    |                         ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:30:34
+  --> $DIR/print_literal.rs:33:34
    |
 LL |     println!("{1} {0}", "hello", "world");
    |                                  ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:33:35
+  --> $DIR/print_literal.rs:36:35
    |
 LL |     println!("{foo} {bar}", foo = "hello", bar = "world");
    |                                   ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:33:50
+  --> $DIR/print_literal.rs:36:50
    |
 LL |     println!("{foo} {bar}", foo = "hello", bar = "world");
    |                                                  ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:34:35
+  --> $DIR/print_literal.rs:37:35
    |
 LL |     println!("{bar} {foo}", foo = "hello", bar = "world");
    |                                   ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:34:50
+  --> $DIR/print_literal.rs:37:50
    |
 LL |     println!("{bar} {foo}", foo = "hello", bar = "world");
    |                                                  ^^^^^^^
