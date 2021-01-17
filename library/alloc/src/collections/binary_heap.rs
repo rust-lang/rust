@@ -565,7 +565,7 @@ impl<T: Ord> BinaryHeap<T> {
         let mut child = 2 * hole.pos() + 1;
 
         // Loop invariant: child == 2 * hole.pos() + 1.
-        while child < end - 1 {
+        while child <= end.saturating_sub(2) {
             // compare with the greater of the two children
             // SAFETY: child < end - 1 < self.len() and
             //  child + 1 < end <= self.len(), so they're valid indexes.
@@ -624,7 +624,7 @@ impl<T: Ord> BinaryHeap<T> {
         let mut child = 2 * hole.pos() + 1;
 
         // Loop invariant: child == 2 * hole.pos() + 1.
-        while child < end - 1 {
+        while child <= end.saturating_sub(2) {
             // SAFETY: child < end - 1 < self.len() and
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child == 2 * hole.pos() + 1 != hole.pos() and
