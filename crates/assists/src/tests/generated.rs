@@ -104,6 +104,25 @@ impl Trait<u32> for () {
 }
 
 #[test]
+fn doctest_add_lifetime_to_type() {
+    check_doc_test(
+        "add_lifetime_to_type",
+        r#####"
+struct Point$0 {
+    x: &u32,
+    y: u32,
+}
+"#####,
+        r#####"
+struct Point<'a> {
+    x: &'a u32,
+    y: u32,
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_turbo_fish() {
     check_doc_test(
         "add_turbo_fish",
