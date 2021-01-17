@@ -85,7 +85,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     let user_input_lowercased = potential_import_name.to_lowercase();
     let import_assets = import_assets(ctx, potential_import_name)?;
     let import_scope = ImportScope::find_insert_use_container(
-        position_for_import(ctx, import_assets.import_candidate())?,
+        position_for_import(ctx, Some(import_assets.import_candidate()))?,
         &ctx.sema,
     )?;
     let mut all_mod_paths = import_assets
@@ -122,14 +122,20 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     Some(())
 }
 
-fn position_for_import<'a>(
+pub(crate) fn position_for_import<'a>(
     ctx: &'a CompletionContext,
-    import_candidate: &ImportCandidate,
+    import_candidate: Option<&ImportCandidate>,
 ) -> Option<&'a SyntaxNode> {
     Some(match import_candidate {
-        ImportCandidate::Path(_) => ctx.name_ref_syntax.as_ref()?.syntax(),
-        ImportCandidate::TraitAssocItem(_) => ctx.path_qual.as_ref()?.syntax(),
-        ImportCandidate::TraitMethod(_) => ctx.dot_receiver.as_ref()?.syntax(),
+        Some(ImportCandidate::Path(_)) => ctx.name_ref_syntax.as_ref()?.syntax(),
+        Some(ImportCandidate::TraitAssocItem(_)) => ctx.path_qual.as_ref()?.syntax(),
+        Some(ImportCandidate::TraitMethod(_)) => ctx.dot_receiver.as_ref()?.syntax(),
+        None => ctx
+            .name_ref_syntax
+            .as_ref()
+            .map(|name_ref| name_ref.syntax())
+            .or_else(|| ctx.path_qual.as_ref().map(|path| path.syntax()))
+            .or_else(|| ctx.dot_receiver.as_ref().map(|expr| expr.syntax()))?,
     })
 }
 
@@ -565,7 +571,8 @@ fn main() {
 
     #[test]
     fn blanket_trait_impl_import() {
-        check(
+        check_edit(
+            "another_function",
             r#"
 //- /lib.rs crate:dep
 pub mod test_mod {
@@ -583,9 +590,13 @@ fn main() {
     dep::test_mod::TestStruct::ano$0
 }
 "#,
-            expect![[r#"
-                fn another_function() (dep::test_mod::TestTrait) fn another_function()
-            "#]],
+            r#"
+use dep::test_mod::TestTrait;
+
+fn main() {
+    dep::test_mod::TestStruct::another_function()$0
+}
+"#,
         );
     }
 
@@ -593,28 +604,28 @@ fn main() {
     fn zero_input_assoc_item_completion() {
         check(
             r#"
-        //- /lib.rs crate:dep
-        pub mod test_mod {
-            pub trait TestTrait {
-                const SPECIAL_CONST: u8;
-                type HumbleType;
-                fn weird_function();
-                fn random_method(&self);
-            }
-            pub struct TestStruct {}
-            impl TestTrait for TestStruct {
-                const SPECIAL_CONST: u8 = 42;
-                type HumbleType = ();
-                fn weird_function() {}
-                fn random_method(&self) {}
-            }
-        }
+//- /lib.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        const SPECIAL_CONST: u8;
+        type HumbleType;
+        fn weird_function();
+        fn random_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        const SPECIAL_CONST: u8 = 42;
+        type HumbleType = ();
+        fn weird_function() {}
+        fn random_method(&self) {}
+    }
+}
 
-        //- /main.rs crate:main deps:dep
-        fn main() {
-            let test_struct = dep::test_mod::TestStruct {};
-            test_struct.$0
-        }
+//- /main.rs crate:main deps:dep
+fn main() {
+    let test_struct = dep::test_mod::TestStruct {};
+    test_struct.$0
+}
         "#,
             expect![[r#"
                         me random_method() (dep::test_mod::TestTrait) fn random_method(&self)
