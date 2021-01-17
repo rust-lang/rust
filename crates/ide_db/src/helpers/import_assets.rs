@@ -1,6 +1,6 @@
 //! Look up accessible paths for items.
 use either::Either;
-use hir::{AsAssocItem, AssocItem, Module, ModuleDef, PrefixKind, Semantics};
+use hir::{AsAssocItem, AssocItem, Crate, MacroDef, Module, ModuleDef, PrefixKind, Semantics};
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
@@ -168,72 +168,7 @@ impl ImportAssets {
         sema: &Semantics<RootDatabase>,
         prefixed: Option<hir::PrefixKind>,
     ) -> Vec<(hir::ModPath, hir::ItemInNs)> {
-        let db = sema.db;
-        let mut trait_candidates = FxHashSet::default();
         let current_crate = self.module_with_candidate.krate();
-
-        let filter = |candidate: Either<hir::ModuleDef, hir::MacroDef>| {
-            // TODO kb process all traits at once instead?
-            trait_candidates.clear();
-            match &self.import_candidate {
-                ImportCandidate::TraitAssocItem(trait_candidate) => {
-                    let canidate_assoc_item = match candidate {
-                        Either::Left(module_def) => module_def.as_assoc_item(db),
-                        _ => None,
-                    }?;
-                    trait_candidates.insert(canidate_assoc_item.containing_trait(db)?.into());
-
-                    trait_candidate
-                        .receiver_ty
-                        .iterate_path_candidates(
-                            db,
-                            current_crate,
-                            &trait_candidates,
-                            None,
-                            |_, assoc| {
-                                if canidate_assoc_item == assoc {
-                                    if let AssocItem::Function(f) = assoc {
-                                        if f.self_param(db).is_some() {
-                                            return None;
-                                        }
-                                    }
-                                    Some(assoc_to_module_def(assoc))
-                                } else {
-                                    None
-                                }
-                            },
-                        )
-                        .map(Either::Left)
-                }
-                ImportCandidate::TraitMethod(trait_candidate) => {
-                    let canidate_assoc_item = match candidate {
-                        Either::Left(module_def) => module_def.as_assoc_item(db),
-                        _ => None,
-                    }?;
-                    trait_candidates.insert(canidate_assoc_item.containing_trait(db)?.into());
-
-                    trait_candidate
-                        .receiver_ty
-                        .iterate_method_candidates(
-                            db,
-                            current_crate,
-                            &trait_candidates,
-                            None,
-                            |_, function| {
-                                let assoc = function.as_assoc_item(db)?;
-                                if canidate_assoc_item == assoc {
-                                    Some(assoc_to_module_def(assoc))
-                                } else {
-                                    None
-                                }
-                            },
-                        )
-                        .map(ModuleDef::from)
-                        .map(Either::Left)
-                }
-                _ => Some(candidate),
-            }
-        };
 
         let unfiltered_imports = match self.name_to_import() {
             NameToImport::Exact(exact_name) => {
@@ -261,40 +196,107 @@ impl ImportAssets {
             }
         };
 
-        let mut res = unfiltered_imports
-            .filter_map(filter)
-            .filter_map(|candidate| {
-                let item: hir::ItemInNs = candidate.clone().either(Into::into, Into::into);
+        let db = sema.db;
+        let mut res =
+            applicable_defs(self.import_candidate(), current_crate, db, unfiltered_imports)
+                .filter_map(|candidate| {
+                    let item: hir::ItemInNs = candidate.clone().either(Into::into, Into::into);
 
-                let item_to_search = match self.import_candidate {
-                    ImportCandidate::TraitAssocItem(_) | ImportCandidate::TraitMethod(_) => {
-                        let canidate_trait = match candidate {
-                            Either::Left(module_def) => {
-                                module_def.as_assoc_item(db)?.containing_trait(db)
-                            }
-                            _ => None,
-                        }?;
-                        ModuleDef::from(canidate_trait).into()
+                    let item_to_search = match self.import_candidate {
+                        ImportCandidate::TraitAssocItem(_) | ImportCandidate::TraitMethod(_) => {
+                            let canidate_trait = match candidate {
+                                Either::Left(module_def) => {
+                                    module_def.as_assoc_item(db)?.containing_trait(db)
+                                }
+                                _ => None,
+                            }?;
+                            ModuleDef::from(canidate_trait).into()
+                        }
+                        _ => item,
+                    };
+
+                    if let Some(prefix_kind) = prefixed {
+                        self.module_with_candidate.find_use_path_prefixed(
+                            db,
+                            item_to_search,
+                            prefix_kind,
+                        )
+                    } else {
+                        self.module_with_candidate.find_use_path(db, item_to_search)
                     }
-                    _ => item,
-                };
-
-                if let Some(prefix_kind) = prefixed {
-                    self.module_with_candidate.find_use_path_prefixed(
-                        db,
-                        item_to_search,
-                        prefix_kind,
-                    )
-                } else {
-                    self.module_with_candidate.find_use_path(db, item_to_search)
-                }
-                .map(|path| (path, item))
-            })
-            .filter(|(use_path, _)| use_path.len() > 1)
-            .collect::<Vec<_>>();
+                    .map(|path| (path, item))
+                })
+                .filter(|(use_path, _)| use_path.len() > 1)
+                .collect::<Vec<_>>();
         res.sort_by_cached_key(|(path, _)| path.clone());
         res
     }
+}
+
+fn applicable_defs<'a>(
+    import_candidate: &ImportCandidate,
+    current_crate: Crate,
+    db: &RootDatabase,
+    unfiltered_imports: Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>> + 'a>,
+) -> Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>> + 'a> {
+    let receiver_ty = match import_candidate {
+        ImportCandidate::Path(_) => return unfiltered_imports,
+        ImportCandidate::TraitAssocItem(candidate) | ImportCandidate::TraitMethod(candidate) => {
+            &candidate.receiver_ty
+        }
+    };
+
+    let mut required_assoc_items = FxHashSet::default();
+
+    let trait_candidates = unfiltered_imports
+        .filter_map(|input| match input {
+            Either::Left(module_def) => module_def.as_assoc_item(db),
+            _ => None,
+        })
+        .filter_map(|assoc| {
+            let assoc_item_trait = assoc.containing_trait(db)?;
+            required_assoc_items.insert(assoc);
+            Some(assoc_item_trait.into())
+        })
+        .collect();
+
+    let mut applicable_defs = FxHashSet::default();
+
+    match import_candidate {
+        ImportCandidate::Path(_) => unreachable!(),
+        ImportCandidate::TraitAssocItem(_) => receiver_ty.iterate_path_candidates(
+            db,
+            current_crate,
+            &trait_candidates,
+            None,
+            |_, assoc| {
+                if required_assoc_items.contains(&assoc) {
+                    if let AssocItem::Function(f) = assoc {
+                        if f.self_param(db).is_some() {
+                            return None;
+                        }
+                    }
+                    applicable_defs.insert(Either::Left(assoc_to_module_def(assoc)));
+                }
+                None::<()>
+            },
+        ),
+        ImportCandidate::TraitMethod(_) => receiver_ty.iterate_method_candidates(
+            db,
+            current_crate,
+            &trait_candidates,
+            None,
+            |_, function| {
+                let assoc = function.as_assoc_item(db)?;
+                if required_assoc_items.contains(&assoc) {
+                    applicable_defs.insert(Either::Left(assoc_to_module_def(assoc)));
+                }
+                None::<()>
+            },
+        ),
+    };
+
+    Box::new(applicable_defs.into_iter())
 }
 
 fn assoc_to_module_def(assoc: AssocItem) -> ModuleDef {
