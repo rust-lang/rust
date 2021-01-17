@@ -1,0 +1,26 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/closure-origin-multi-variant-diagnostics.rs:1:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error[E0382]: use of moved value: `c`
+  --> $DIR/closure-origin-multi-variant-diagnostics.rs:30:13
+   |
+LL |     let a = c;
+   |             - value moved here
+LL |     let b = c;
+   |             ^ value used here after move
+   |
+note: closure cannot be moved more than once as it is not `Copy` due to moving the variable `point.0` out of its environment
+  --> $DIR/closure-origin-multi-variant-diagnostics.rs:20:52
+   |
+LL |         if let MultiVariant::Point(ref mut x, _) = point {
+   |                                                    ^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0382`.
