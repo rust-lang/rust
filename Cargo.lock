@@ -552,7 +552,7 @@ dependencies = [
  "hir_expand",
  "indexmap",
  "itertools 0.10.0",
- "la-arena 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "la-arena",
  "log",
  "mbe",
  "once_cell",
@@ -571,7 +571,7 @@ version = "0.0.0"
 dependencies = [
  "base_db",
  "either",
- "la-arena 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "la-arena",
  "log",
  "mbe",
  "parser",
@@ -596,7 +596,7 @@ dependencies = [
  "hir_def",
  "hir_expand",
  "itertools 0.10.0",
- "la-arena 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "la-arena",
  "log",
  "once_cell",
  "profile",
@@ -770,12 +770,6 @@ dependencies = [
 [[package]]
 name = "la-arena"
 version = "0.1.1"
-
-[[package]]
-name = "la-arena"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "383ed2a74426d1051751f6483a7160b98f36068224857cd4c953b34719476fc3"
 
 [[package]]
 name = "lazy_static"
@@ -1212,7 +1206,7 @@ name = "profile"
 version = "0.0.0"
 dependencies = [
  "cfg-if 1.0.0",
- "la-arena 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "la-arena",
  "libc",
  "once_cell",
  "perf-event",
@@ -1227,7 +1221,7 @@ dependencies = [
  "cargo_metadata",
  "cfg",
  "itertools 0.10.0",
- "la-arena 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "la-arena",
  "log",
  "paths",
  "proc_macro_api",
