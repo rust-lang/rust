@@ -29,7 +29,6 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, EntryFnType};
-use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
 use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
@@ -817,32 +816,6 @@ pub fn provide_both(providers: &mut Providers) {
         }
         tcx.sess.opts.optimize
     };
-
-    providers.dllimport_foreign_items = |tcx, krate| {
-        let module_map = tcx.foreign_modules(krate);
-
-        let dllimports = tcx
-            .native_libraries(krate)
-            .iter()
-            .filter(|lib| {
-                if !matches!(lib.kind, NativeLibKind::Dylib | NativeLibKind::Unspecified) {
-                    return false;
-                }
-                let cfg = match lib.cfg {
-                    Some(ref cfg) => cfg,
-                    None => return true,
-                };
-                attr::cfg_matches(cfg, &tcx.sess.parse_sess, None)
-            })
-            .filter_map(|lib| lib.foreign_module)
-            .map(|id| &module_map[&id])
-            .flat_map(|module| module.foreign_items.iter().cloned())
-            .collect();
-        dllimports
-    };
-
-    providers.is_dllimport_foreign_item =
-        |tcx, def_id| tcx.dllimport_foreign_items(def_id.krate).contains(&def_id);
 }
 
 fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {
