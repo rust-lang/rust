@@ -1,5 +1,5 @@
+// edition:2018
 // aux-build:builtin-attrs.rs
-
 #![feature(decl_macro)] //~ ERROR `feature` is ambiguous
 
 extern crate builtin_attrs;
@@ -31,3 +31,7 @@ fn main() {
     Bench;
     NonExistent; //~ ERROR cannot find value `NonExistent` in this scope
 }
+
+use deny as allow;
+#[allow(unused)] //~ ERROR `allow` is ambiguous (built-in attribute vs any other name)
+fn builtin_renamed() {}
