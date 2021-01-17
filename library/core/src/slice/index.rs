@@ -81,6 +81,8 @@ mod private_slice_index {
     impl Sealed for ops::RangeInclusive<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for ops::RangeToInclusive<usize> {}
+    #[stable(feature = "slice_index_bound_pair", since = "1.51.0")]
+    impl Sealed for (ops::Bound<usize>, ops::Bound<usize>) {}
 }
 
 /// A helper trait used for indexing operations.
@@ -447,5 +449,106 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         (0..=self.end).index_mut(slice)
+    }
+}
+
+#[stable(feature = "slice_index_bound_pair", since = "1.51.0")]
+unsafe impl<T> SliceIndex<[T]> for (ops::Bound<usize>, ops::Bound<usize>) {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        let start = match self.0 {
+            ops::Bound::Unbounded => 0,
+            ops::Bound::Included(start) => start,
+            ops::Bound::Excluded(start) => start.checked_add(1)?,
+        };
+        let end = match self.1 {
+            ops::Bound::Unbounded => slice.len(),
+            ops::Bound::Included(end) => end.checked_add(1)?,
+            ops::Bound::Excluded(end) => end,
+        };
+        (start..end).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        let start = match self.0 {
+            ops::Bound::Unbounded => 0,
+            ops::Bound::Included(start) => start,
+            ops::Bound::Excluded(start) => start.checked_add(1)?,
+        };
+        let end = match self.1 {
+            ops::Bound::Unbounded => slice.len(),
+            ops::Bound::Included(end) => end.checked_add(1)?,
+            ops::Bound::Excluded(end) => end,
+        };
+        (start..end).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        let start = match self.0 {
+            ops::Bound::Unbounded => 0,
+            ops::Bound::Included(start) => start,
+            ops::Bound::Excluded(start) => start + 1,
+        };
+        let end = match self.1 {
+            ops::Bound::Unbounded => slice.len(),
+            ops::Bound::Included(end) => end + 1,
+            ops::Bound::Excluded(end) => end,
+        };
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { (start..end).get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        let start = match self.0 {
+            ops::Bound::Unbounded => 0,
+            ops::Bound::Included(start) => start,
+            ops::Bound::Excluded(start) => start + 1,
+        };
+        let end = match self.1 {
+            ops::Bound::Unbounded => slice.len(),
+            ops::Bound::Included(end) => end + 1,
+            ops::Bound::Excluded(end) => end,
+        };
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { (start..end).get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        let start = match self.0 {
+            ops::Bound::Unbounded => 0,
+            ops::Bound::Included(start) => start,
+            ops::Bound::Excluded(start) if start == usize::MAX => slice_start_index_overflow_fail(),
+            ops::Bound::Excluded(start) => start + 1,
+        };
+        let end = match self.1 {
+            ops::Bound::Unbounded => slice.len(),
+            ops::Bound::Included(end) if end == usize::MAX => slice_end_index_overflow_fail(),
+            ops::Bound::Included(end) => end + 1,
+            ops::Bound::Excluded(end) => end,
+        };
+        (start..end).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        let start = match self.0 {
+            ops::Bound::Unbounded => 0,
+            ops::Bound::Included(start) => start,
+            ops::Bound::Excluded(start) if start == usize::MAX => slice_start_index_overflow_fail(),
+            ops::Bound::Excluded(start) => start + 1,
+        };
+        let end = match self.1 {
+            ops::Bound::Unbounded => slice.len(),
+            ops::Bound::Included(end) if end == usize::MAX => slice_end_index_overflow_fail(),
+            ops::Bound::Included(end) => end + 1,
+            ops::Bound::Excluded(end) => end,
+        };
+        (start..end).index_mut(slice)
     }
 }
