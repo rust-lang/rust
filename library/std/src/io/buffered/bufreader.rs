@@ -271,6 +271,20 @@ impl<R: Read> Read for BufReader<R> {
         Ok(nread)
     }
 
+    // Small read_exacts from a BufReader are extremely common when used with a deserializer.
+    // The default implementation calls read in a loop, which results in surprisingly poor code
+    // generation for the common path where the buffer has enough bytes to fill the passed-in
+    // buffer.
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        if self.buffer().len() >= buf.len() {
+            buf.copy_from_slice(&self.buffer()[..buf.len()]);
+            self.consume(buf.len());
+            return Ok(());
+        }
+
+        crate::io::default_read_exact(self, buf)
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
         if self.pos == self.cap && total_len >= self.buf.len() {

@@ -444,6 +444,18 @@ fn bench_buffered_reader(b: &mut test::Bencher) {
 }
 
 #[bench]
+fn bench_buffered_reader_small_reads(b: &mut test::Bencher) {
+    let data = (0..u8::MAX).cycle().take(1024 * 4).collect::<Vec<_>>();
+    b.iter(|| {
+        let mut reader = BufReader::new(&data[..]);
+        let mut buf = [0u8; 4];
+        for _ in 0..1024 {
+            reader.read_exact(&mut buf).unwrap();
+        }
+    });
+}
+
+#[bench]
 fn bench_buffered_writer(b: &mut test::Bencher) {
     b.iter(|| BufWriter::new(io::sink()));
 }
