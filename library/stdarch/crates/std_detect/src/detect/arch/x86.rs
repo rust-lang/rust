@@ -158,7 +158,7 @@ features! {
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vnni: "avx512vnni";
     /// AVX-512 VNNI (Vector Neural Network Instructions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512bitalg: "avx512bitalg";
-    /// AVX-512 BITALG (Support for VPOPCNT[B,W] and VPSHUFBITQMB)
+    /// AVX-512 BITALG (Support for VPOPCNT\[B,W\] and VPSHUFBITQMB)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512bf16: "avx512bf16";
     /// AVX-512 BF16 (BFLOAT16 instructions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vp2intersect: "avx512vp2intersect";
