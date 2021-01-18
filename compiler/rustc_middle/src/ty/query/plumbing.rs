@@ -2,8 +2,8 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{self, DepKind, DepNode, DepNodeExt, DepNodeIndex, SerializedDepNodeIndex};
-use crate::ty::query::{on_disk_cache, queries, Queries, Query};
+use crate::dep_graph::{DepKind, DepNode, DepNodeExt, DepNodeIndex, SerializedDepNodeIndex};
+use crate::ty::query::{on_disk_cache, queries, Query};
 use crate::ty::tls::{self, ImplicitCtxt};
 use crate::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
@@ -13,7 +13,7 @@ use rustc_query_system::query::{QueryContext, QueryDescription};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, Handler, Level};
+use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder};
 use rustc_serialize::opaque;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
@@ -264,49 +264,6 @@ impl<'tcx> QueryCtxt<'tcx> {
         rustc_cached_queries!(encode_queries!);
 
         Ok(())
-    }
-}
-
-impl<'tcx> Queries<'tcx> {
-    pub fn try_print_query_stack(
-        &'tcx self,
-        tcx: TyCtxt<'tcx>,
-        query: Option<QueryJobId<dep_graph::DepKind>>,
-        handler: &Handler,
-        num_frames: Option<usize>,
-    ) -> usize {
-        let query_map = self.try_collect_active_jobs();
-
-        let mut current_query = query;
-        let mut i = 0;
-
-        while let Some(query) = current_query {
-            if Some(i) == num_frames {
-                break;
-            }
-            let query_info = if let Some(info) = query_map.as_ref().and_then(|map| map.get(&query))
-            {
-                info
-            } else {
-                break;
-            };
-            let mut diag = Diagnostic::new(
-                Level::FailureNote,
-                &format!(
-                    "#{} [{}] {}",
-                    i,
-                    query_info.info.query.name(),
-                    query_info.info.query.describe(QueryCtxt { tcx, queries: self })
-                ),
-            );
-            diag.span = tcx.sess.source_map().guess_head_span(query_info.info.span).into();
-            handler.force_print_diagnostic(diag);
-
-            current_query = query_info.job.parent;
-            i += 1;
-        }
-
-        i
     }
 }
 
@@ -700,14 +657,16 @@ macro_rules! define_queries_struct {
 
                 Some(jobs)
             }
+        }
 
+        impl QueryEngine<'tcx> for Queries<'tcx> {
             #[cfg(parallel_compiler)]
-            pub unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry) {
+            unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry) {
                 let tcx = QueryCtxt { tcx, queries: self };
                 rustc_query_system::query::deadlock(tcx, registry)
             }
 
-            pub(crate) fn encode_query_results(
+            fn encode_query_results(
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,
                 encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
@@ -720,6 +679,52 @@ macro_rules! define_queries_struct {
             fn exec_cache_promotions(&'tcx self, tcx: TyCtxt<'tcx>) {
                 let tcx = QueryCtxt { tcx, queries: self };
                 tcx.dep_graph.exec_cache_promotions(tcx)
+            }
+
+            fn try_mark_green(&'tcx self, tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool {
+                let qcx = QueryCtxt { tcx, queries: self };
+                tcx.dep_graph.try_mark_green(qcx, dep_node).is_some()
+            }
+
+            fn try_print_query_stack(
+                &'tcx self,
+                tcx: TyCtxt<'tcx>,
+                query: Option<QueryJobId<dep_graph::DepKind>>,
+                handler: &Handler,
+                num_frames: Option<usize>,
+            ) -> usize {
+                let query_map = self.try_collect_active_jobs();
+
+                let mut current_query = query;
+                let mut i = 0;
+
+                while let Some(query) = current_query {
+                    if Some(i) == num_frames {
+                        break;
+                    }
+                    let query_info = if let Some(info) = query_map.as_ref().and_then(|map| map.get(&query))
+                    {
+                        info
+                    } else {
+                        break;
+                    };
+                    let mut diag = Diagnostic::new(
+                        Level::FailureNote,
+                        &format!(
+                            "#{} [{}] {}",
+                            i,
+                            query_info.info.query.name(),
+                            query_info.info.query.describe(QueryCtxt { tcx, queries: self })
+                        ),
+                    );
+                    diag.span = tcx.sess.source_map().guess_head_span(query_info.info.span).into();
+                    handler.force_print_diagnostic(diag);
+
+                    current_query = query_info.job.parent;
+                    i += 1;
+                }
+
+                i
             }
 
             $($(#[$attr])*

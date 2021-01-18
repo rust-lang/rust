@@ -37,7 +37,7 @@ use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::ErrorReported;
+use rustc_errors::{Diagnostic, ErrorReported, Handler, Level};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -123,8 +123,7 @@ impl TyCtxt<'tcx> {
     }
 
     pub fn try_mark_green(self, dep_node: &dep_graph::DepNode) -> bool {
-        let qcx = QueryCtxt { tcx: self, queries: self.queries };
-        self.dep_graph.try_mark_green(qcx, dep_node).is_some()
+        self.queries.try_mark_green(self, dep_node)
     }
 }
 
@@ -229,6 +228,39 @@ macro_rules! define_callbacks {
         impl Copy for Providers {}
         impl Clone for Providers {
             fn clone(&self) -> Self { *self }
+        }
+
+        pub trait QueryEngine<'tcx>: rustc_data_structures::sync::Sync {
+            #[cfg(parallel_compiler)]
+            unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry);
+
+            fn encode_query_results(
+                &'tcx self,
+                tcx: TyCtxt<'tcx>,
+                encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
+                query_result_index: &mut on_disk_cache::EncodedQueryResultIndex,
+            ) -> opaque::FileEncodeResult;
+
+            fn exec_cache_promotions(&'tcx self, tcx: TyCtxt<'tcx>);
+
+            fn try_mark_green(&'tcx self, tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool;
+
+            fn try_print_query_stack(
+                &'tcx self,
+                tcx: TyCtxt<'tcx>,
+                query: Option<QueryJobId<dep_graph::DepKind>>,
+                handler: &Handler,
+                num_frames: Option<usize>,
+            ) -> usize;
+
+            $($(#[$attr])*
+            fn $name(
+                &'tcx self,
+                tcx: TyCtxt<$tcx>,
+                span: Span,
+                key: query_keys::$name<$tcx>,
+                mode: QueryMode,
+            ) -> Option<query_stored::$name<$tcx>>;)*
         }
     };
 }
