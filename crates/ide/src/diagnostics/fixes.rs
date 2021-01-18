@@ -140,7 +140,7 @@ impl DiagnosticWithFix for IncorrectCase {
             rename_with_semantics(sema, file_position, &self.suggested_text).ok()?;
 
         let label = format!("Rename to {}", self.suggested_text);
-        Some(Fix::new(&label, rename_changes.info, frange.range))
+        Some(Fix::new(&label, rename_changes, frange.range))
     }
 }
 
