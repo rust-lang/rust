@@ -8,6 +8,7 @@ use rustc_ast::{self as ast, PatKind};
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_errors::PResult;
 use rustc_parse::new_parser_from_source_str;
+use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -29,7 +30,7 @@ fn parse_item_from_source_str(
     source: String,
     sess: &ParseSess,
 ) -> PResult<'_, Option<P<ast::Item>>> {
-    new_parser_from_source_str(sess, name, source).parse_item()
+    new_parser_from_source_str(sess, name, source).parse_item(ForceCollect::No)
 }
 
 // Produces a `rustc_span::span`.
@@ -44,7 +45,7 @@ fn string_to_expr(source_str: String) -> P<ast::Expr> {
 
 /// Parses a string, returns an item.
 fn string_to_item(source_str: String) -> Option<P<ast::Item>> {
-    with_error_checking_parse(source_str, &sess(), |p| p.parse_item())
+    with_error_checking_parse(source_str, &sess(), |p| p.parse_item(ForceCollect::No))
 }
 
 #[should_panic]

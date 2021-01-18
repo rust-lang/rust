@@ -3,8 +3,8 @@ use super::diagnostics::{AttemptLocalParseRecovery, Error};
 use super::expr::LhsExpr;
 use super::pat::{GateOr, RecoverComma};
 use super::path::PathStyle;
-use super::{BlockMode, Parser, Restrictions, SemiColonMode};
-use crate::maybe_whole;
+use super::{BlockMode, ForceCollect, Parser, Restrictions, SemiColonMode};
+use crate::{maybe_collect_tokens, maybe_whole};
 
 use rustc_ast as ast;
 use rustc_ast::attr::HasAttrs;
@@ -24,17 +24,21 @@ impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     // Public for rustfmt usage.
-    pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_without_recovery().unwrap_or_else(|mut e| {
+    pub fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
+        Ok(self.parse_stmt_without_recovery(force_collect).unwrap_or_else(|mut e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
         }))
     }
 
-    fn parse_stmt_without_recovery(&mut self) -> PResult<'a, Option<Stmt>> {
+    /// If `force_capture` is true, forces collection of tokens regardless of whether
+    /// or not we have attributes
+    fn parse_stmt_without_recovery(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Option<Stmt>> {
         let mut attrs = self.parse_outer_attributes()?;
-        let has_attrs = !attrs.is_empty();
         let lo = self.token.span;
 
         maybe_whole!(self, NtStmt, |stmt| {
@@ -46,7 +50,7 @@ impl<'a> Parser<'a> {
             Some(stmt)
         });
 
-        let parse_stmt_inner = |this: &mut Self| {
+        maybe_collect_tokens!(self, force_collect, &attrs, |this: &mut Self| {
             let stmt = if this.eat_keyword(kw::Let) {
                 this.parse_local_mk(lo, attrs.into())?
             } else if this.is_kw_followed_by_ident(kw::Mut) {
@@ -69,7 +73,7 @@ impl<'a> Parser<'a> {
                 // Also, we avoid stealing syntax from `parse_item_`.
                 this.parse_stmt_path_start(lo, attrs)?
             } else if let Some(item) =
-                this.parse_item_common(attrs.clone(), false, true, |_| true)?
+                this.parse_item_common(attrs.clone(), false, true, |_| true, force_collect)?
             {
                 // FIXME: Bad copy of attrs
                 this.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
@@ -86,14 +90,7 @@ impl<'a> Parser<'a> {
                 return Ok(None);
             };
             Ok(Some(stmt))
-        };
-
-        let stmt = if has_attrs {
-            self.collect_tokens(parse_stmt_inner)?
-        } else {
-            parse_stmt_inner(self)?
-        };
-        Ok(stmt)
+        })
     }
 
     fn parse_stmt_path_start(&mut self, lo: Span, attrs: Vec<Attribute>) -> PResult<'a, Stmt> {
@@ -292,7 +289,7 @@ impl<'a> Parser<'a> {
         //      bar;
         //
         // which is valid in other languages, but not Rust.
-        match self.parse_stmt_without_recovery() {
+        match self.parse_stmt_without_recovery(ForceCollect::No) {
             // If the next token is an open brace (e.g., `if a b {`), the place-
             // inside-a-block suggestion would be more likely wrong than right.
             Ok(Some(_))
@@ -395,7 +392,7 @@ impl<'a> Parser<'a> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
         maybe_whole!(self, NtStmt, |x| Some(x));
 
-        let mut stmt = match self.parse_stmt_without_recovery()? {
+        let mut stmt = match self.parse_stmt_without_recovery(ForceCollect::No)? {
             Some(stmt) => stmt,
             None => return Ok(None),
         };

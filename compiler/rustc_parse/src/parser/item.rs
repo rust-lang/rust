@@ -1,8 +1,8 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{FollowedByType, Parser, PathStyle};
+use super::{FollowedByType, ForceCollect, Parser, PathStyle};
 
-use crate::maybe_whole;
+use crate::{maybe_collect_tokens, maybe_whole};
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
@@ -69,7 +69,7 @@ impl<'a> Parser<'a> {
         unsafety: Unsafe,
     ) -> PResult<'a, Mod> {
         let mut items = vec![];
-        while let Some(item) = self.parse_item()? {
+        while let Some(item) = self.parse_item(ForceCollect::No)? {
             items.push(item);
             self.maybe_consume_incorrect_semicolon(&items);
         }
@@ -93,13 +93,17 @@ impl<'a> Parser<'a> {
 pub(super) type ItemInfo = (Ident, ItemKind);
 
 impl<'a> Parser<'a> {
-    pub fn parse_item(&mut self) -> PResult<'a, Option<P<Item>>> {
-        self.parse_item_(|_| true).map(|i| i.map(P))
+    pub fn parse_item(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<P<Item>>> {
+        self.parse_item_(|_| true, force_collect).map(|i| i.map(P))
     }
 
-    fn parse_item_(&mut self, req_name: ReqName) -> PResult<'a, Option<Item>> {
+    fn parse_item_(
+        &mut self,
+        req_name: ReqName,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Option<Item>> {
         let attrs = self.parse_outer_attributes()?;
-        self.parse_item_common(attrs, true, false, req_name)
+        self.parse_item_common(attrs, true, false, req_name, force_collect)
     }
 
     pub(super) fn parse_item_common(
@@ -108,6 +112,7 @@ impl<'a> Parser<'a> {
         mac_allowed: bool,
         attrs_allowed: bool,
         req_name: ReqName,
+        force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
         maybe_whole!(self, NtItem, |item| {
             let mut item = item;
@@ -116,16 +121,12 @@ impl<'a> Parser<'a> {
             Some(item.into_inner())
         });
 
-        let needs_tokens = super::attr::maybe_needs_tokens(&attrs);
-
         let mut unclosed_delims = vec![];
-        let parse_item = |this: &mut Self| {
+        let item = maybe_collect_tokens!(self, force_collect, &attrs, |this: &mut Self| {
             let item = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name);
             unclosed_delims.append(&mut this.unclosed_delims);
             item
-        };
-
-        let item = if needs_tokens { self.collect_tokens(parse_item) } else { parse_item(self) }?;
+        })?;
 
         self.unclosed_delims.append(&mut unclosed_delims);
         Ok(item)
@@ -731,20 +732,22 @@ impl<'a> Parser<'a> {
 
     /// Parses associated items.
     fn parse_assoc_item(&mut self, req_name: ReqName) -> PResult<'a, Option<Option<P<AssocItem>>>> {
-        Ok(self.parse_item_(req_name)?.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
-            let kind = match AssocItemKind::try_from(kind) {
-                Ok(kind) => kind,
-                Err(kind) => match kind {
-                    ItemKind::Static(a, _, b) => {
-                        self.struct_span_err(span, "associated `static` items are not allowed")
-                            .emit();
-                        AssocItemKind::Const(Defaultness::Final, a, b)
-                    }
-                    _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
-                },
-            };
-            Some(P(Item { attrs, id, span, vis, ident, kind, tokens }))
-        }))
+        Ok(self.parse_item_(req_name, ForceCollect::No)?.map(
+            |Item { attrs, id, span, vis, ident, kind, tokens }| {
+                let kind = match AssocItemKind::try_from(kind) {
+                    Ok(kind) => kind,
+                    Err(kind) => match kind {
+                        ItemKind::Static(a, _, b) => {
+                            self.struct_span_err(span, "associated `static` items are not allowed")
+                                .emit();
+                            AssocItemKind::Const(Defaultness::Final, a, b)
+                        }
+                        _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
+                    },
+                };
+                Some(P(Item { attrs, id, span, vis, ident, kind, tokens }))
+            },
+        ))
     }
 
     /// Parses a `type` alias with the following grammar:
@@ -921,19 +924,21 @@ impl<'a> Parser<'a> {
 
     /// Parses a foreign item (one in an `extern { ... }` block).
     pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
-        Ok(self.parse_item_(|_| true)?.map(|Item { attrs, id, span, vis, ident, kind, tokens }| {
-            let kind = match ForeignItemKind::try_from(kind) {
-                Ok(kind) => kind,
-                Err(kind) => match kind {
-                    ItemKind::Const(_, a, b) => {
-                        self.error_on_foreign_const(span, ident);
-                        ForeignItemKind::Static(a, Mutability::Not, b)
-                    }
-                    _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
-                },
-            };
-            Some(P(Item { attrs, id, span, vis, ident, kind, tokens }))
-        }))
+        Ok(self.parse_item_(|_| true, ForceCollect::No)?.map(
+            |Item { attrs, id, span, vis, ident, kind, tokens }| {
+                let kind = match ForeignItemKind::try_from(kind) {
+                    Ok(kind) => kind,
+                    Err(kind) => match kind {
+                        ItemKind::Const(_, a, b) => {
+                            self.error_on_foreign_const(span, ident);
+                            ForeignItemKind::Static(a, Mutability::Not, b)
+                        }
+                        _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
+                    },
+                };
+                Some(P(Item { attrs, id, span, vis, ident, kind, tokens }))
+            },
+        ))
     }
 
     fn error_bad_item_kind<T>(&self, span: Span, kind: &ItemKind, ctx: &str) -> Option<T> {
@@ -1515,7 +1520,7 @@ impl<'a> Parser<'a> {
         {
             let kw_token = self.token.clone();
             let kw_str = pprust::token_to_string(&kw_token);
-            let item = self.parse_item()?;
+            let item = self.parse_item(ForceCollect::No)?;
 
             self.struct_span_err(
                 kw_token.span,

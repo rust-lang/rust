@@ -423,6 +423,7 @@ crate fn make_test(
             use rustc_errors::emitter::{Emitter, EmitterWriter};
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
+            use rustc_parse::parser::ForceCollect;
             use rustc_session::parse::ParseSess;
             use rustc_span::source_map::FilePathMapping;
 
@@ -459,7 +460,7 @@ crate fn make_test(
             };
 
             loop {
-                match parser.parse_item() {
+                match parser.parse_item(ForceCollect::No) {
                     Ok(Some(item)) => {
                         if !found_main {
                             if let ast::ItemKind::Fn(..) = item.kind {
