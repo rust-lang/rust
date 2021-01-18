@@ -145,7 +145,6 @@ impl ItemTree {
                 macro_calls,
                 macro_rules,
                 macro_defs,
-                exprs,
                 vis,
                 generics,
             } = &mut **data;
@@ -167,7 +166,6 @@ impl ItemTree {
             macro_calls.shrink_to_fit();
             macro_rules.shrink_to_fit();
             macro_defs.shrink_to_fit();
-            exprs.shrink_to_fit();
 
             vis.arena.shrink_to_fit();
             generics.arena.shrink_to_fit();
@@ -296,7 +294,6 @@ struct ItemTreeData {
     macro_calls: Arena<MacroCall>,
     macro_rules: Arena<MacroRules>,
     macro_defs: Arena<MacroDef>,
-    exprs: Arena<Expr>,
 
     vis: ItemVisibilities,
     generics: GenericParamsStorage,
@@ -461,7 +458,7 @@ macro_rules! impl_index {
     };
 }
 
-impl_index!(fields: Field, variants: Variant, exprs: Expr);
+impl_index!(fields: Field, variants: Variant);
 
 impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
@@ -663,11 +660,6 @@ pub struct MacroDef {
     pub visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::MacroDef>,
 }
-
-// NB: There's no `FileAstId` for `Expr`. The only case where this would be useful is for array
-// lengths, but we don't do much with them yet.
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Expr;
 
 macro_rules! impl_froms {
     ($e:ident { $($v:ident ($t:ty)),* $(,)? }) => {
