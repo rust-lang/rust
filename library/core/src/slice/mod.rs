@@ -542,10 +542,9 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn swap(&mut self, a: usize, b: usize) {
-        // Can't take two mutable loans from one vector, so instead just cast
-        // them to their raw pointers to do the swap.
-        let pa: *mut T = &mut self[a];
-        let pb: *mut T = &mut self[b];
+        // Can't take two mutable loans from one vector, so instead use raw pointers.
+        let pa = ptr::raw_mut!(self[a]);
+        let pb = ptr::raw_mut!(self[b]);
         // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
         // to elements in the slice and therefore are guaranteed to be valid and aligned.
         // Note that accessing the elements behind `a` and `b` is checked and will
