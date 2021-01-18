@@ -14,7 +14,6 @@ pub(crate) mod rename;
 use either::Either;
 use hir::Semantics;
 use ide_db::{
-    base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, ReferenceAccess, ReferenceKind, SearchScope, UsageSearchResult},
     RootDatabase,
@@ -35,14 +34,14 @@ pub struct ReferenceSearchResult {
 
 #[derive(Debug, Clone)]
 pub struct Declaration {
-    pub nav: NavigationTarget,
-    pub kind: ReferenceKind,
-    pub access: Option<ReferenceAccess>,
+    nav: NavigationTarget,
+    kind: ReferenceKind,
+    access: Option<ReferenceAccess>,
 }
 
 impl ReferenceSearchResult {
-    pub fn references(&self) -> &UsageSearchResult {
-        &self.references
+    pub fn references(self) -> UsageSearchResult {
+        self.references
     }
 
     pub fn references_with_declaration(mut self) -> UsageSearchResult {
@@ -54,24 +53,6 @@ impl ReferenceSearchResult {
         let file_id = self.declaration.nav.file_id;
         self.references.references.entry(file_id).or_default().push(decl_ref);
         self.references
-    }
-
-    /// Total number of references
-    /// At least 1 since all valid references should
-    /// Have a declaration
-    pub fn len(&self) -> usize {
-        self.references.len() + 1
-    }
-}
-
-// allow turning ReferenceSearchResult into an iterator
-// over References
-impl IntoIterator for ReferenceSearchResult {
-    type Item = (FileId, Vec<FileReference>);
-    type IntoIter = std::collections::hash_map::IntoIter<FileId, Vec<FileReference>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.references_with_declaration().into_iter()
     }
 }
 
