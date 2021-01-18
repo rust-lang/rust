@@ -59,7 +59,7 @@ SUBTREE $
           IDENT   _serde 4294967295
           PUNCH   : [joint] 4294967295
           PUNCH   : [alone] 4294967295
-          IDENT   export 4294967295
+          IDENT   __private 4294967295
           PUNCH   : [joint] 4294967295
           PUNCH   : [alone] 4294967295
           IDENT   Ok 4294967295
@@ -72,7 +72,7 @@ SUBTREE $
           IDENT   _serde 4294967295
           PUNCH   : [joint] 4294967295
           PUNCH   : [alone] 4294967295
-          IDENT   export 4294967295
+          IDENT   __private 4294967295
           PUNCH   : [joint] 4294967295
           PUNCH   : [alone] 4294967295
           IDENT   Err 4294967295
@@ -85,7 +85,7 @@ SUBTREE $
             IDENT   _serde 4294967295
             PUNCH   : [joint] 4294967295
             PUNCH   : [alone] 4294967295
-            IDENT   export 4294967295
+            IDENT   __private 4294967295
             PUNCH   : [joint] 4294967295
             PUNCH   : [alone] 4294967295
             IDENT   Err 4294967295
@@ -120,7 +120,7 @@ SUBTREE $
       IDENT   _serde 4294967295
       PUNCH   : [joint] 4294967295
       PUNCH   : [alone] 4294967295
-      IDENT   export 4294967295
+      IDENT   __private 4294967295
       PUNCH   : [joint] 4294967295
       PUNCH   : [alone] 4294967295
       IDENT   Result 4294967295
