@@ -1,6 +1,6 @@
 // run-rustfix
 struct Foo {
-    x: isize
+    x: i32,
 }
 
 impl Drop for Foo {
@@ -10,7 +10,9 @@ impl Drop for Foo {
 }
 
 fn main() {
-    let x = Foo { x: 3 };
+    let mut x = Foo { x: -7 };
+    x.x = 0;
     println!("{}", x.x);
-    x.drop();   //~ ERROR explicit use of destructor method
+    drop(x);
+    //~^ ERROR E0040
 }
