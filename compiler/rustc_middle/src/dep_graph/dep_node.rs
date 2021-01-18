@@ -132,7 +132,7 @@ pub struct DepKindStruct {
     /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
     /// add it to the "We don't have enough information to reconstruct..." group in
     /// the match below.
-    pub(super) force_from_dep_node: fn(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool,
+    pub(crate) force_from_dep_node: fn(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool,
 
     /// Invoke a query to put the on-disk cached value in memory.
     pub(crate) try_load_from_on_disk_cache: fn(QueryCtxt<'_>, &DepNode),

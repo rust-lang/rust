@@ -441,7 +441,7 @@ where
         tcx.dep_context().dep_graph().read_index(dep_node_index);
 
         if unlikely!(!diagnostics.is_empty()) {
-            tcx.dep_context().store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+            tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
         }
 
         return job.complete(result, dep_node_index);
@@ -454,10 +454,7 @@ where
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         let loaded = tcx.start_query(job.id, None, || {
-            let marked = tcx
-                .dep_context()
-                .dep_graph()
-                .try_mark_green_and_read(*tcx.dep_context(), &dep_node);
+            let marked = tcx.dep_context().dep_graph().try_mark_green_and_read(tcx, &dep_node);
             marked.map(|(prev_dep_node_index, dep_node_index)| {
                 (
                     load_from_disk_and_cache_in_memory(
@@ -622,7 +619,7 @@ where
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
     if unlikely!(!diagnostics.is_empty()) && dep_node.kind != DepKind::NULL {
-        tcx.dep_context().store_diagnostics(dep_node_index, diagnostics);
+        tcx.store_diagnostics(dep_node_index, diagnostics);
     }
 
     let result = job.complete(result, dep_node_index);
@@ -678,7 +675,7 @@ where
 
     let dep_node = query.to_dep_node(tcx, key);
 
-    match tcx.dep_context().dep_graph().try_mark_green_and_read(*tcx.dep_context(), &dep_node) {
+    match tcx.dep_context().dep_graph().try_mark_green_and_read(tcx, &dep_node) {
         None => {
             // A None return from `try_mark_green_and_read` means that this is either
             // a new dep node or that the dep node has already been marked red.

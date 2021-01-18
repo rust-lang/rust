@@ -120,6 +120,11 @@ impl TyCtxt<'tcx> {
     pub fn at(self, span: Span) -> TyCtxtAt<'tcx> {
         TyCtxtAt { tcx: self, span }
     }
+
+    pub fn try_mark_green(self, dep_node: &dep_graph::DepNode) -> bool {
+        let qcx = QueryCtxt { tcx: self, queries: self.queries };
+        self.dep_graph.try_mark_green(qcx, dep_node).is_some()
+    }
 }
 
 macro_rules! define_callbacks {
