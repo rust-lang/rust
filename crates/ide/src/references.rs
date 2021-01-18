@@ -25,7 +25,7 @@ use syntax::{
     AstNode, SyntaxNode, TextRange, TokenAtOffset, T,
 };
 
-use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
+use crate::{display::TryToNav, FilePosition, NavigationTarget};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
@@ -41,14 +41,6 @@ pub struct Declaration {
 }
 
 impl ReferenceSearchResult {
-    pub fn declaration(&self) -> &Declaration {
-        &self.declaration
-    }
-
-    pub fn decl_target(&self) -> &NavigationTarget {
-        &self.declaration.nav
-    }
-
     pub fn references(&self) -> &UsageSearchResult {
         &self.references
     }
@@ -87,7 +79,7 @@ pub(crate) fn find_all_refs(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
     search_scope: Option<SearchScope>,
-) -> Option<RangeInfo<ReferenceSearchResult>> {
+) -> Option<ReferenceSearchResult> {
     let _p = profile::span("find_all_refs");
     let syntax = sema.parse(position.file_id).syntax().clone();
 
@@ -105,7 +97,7 @@ pub(crate) fn find_all_refs(
         )
     };
 
-    let RangeInfo { range, info: def } = find_name(&sema, &syntax, position, opt_name)?;
+    let def = find_name(&sema, &syntax, position, opt_name)?;
 
     let mut usages = def.usages(sema).set_scope(search_scope).all();
     usages
@@ -139,7 +131,7 @@ pub(crate) fn find_all_refs(
 
     let declaration = Declaration { nav, kind, access: decl_access(&def, &syntax, decl_range) };
 
-    Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references: usages }))
+    Some(ReferenceSearchResult { declaration, references: usages })
 }
 
 fn find_name(
@@ -147,35 +139,27 @@ fn find_name(
     syntax: &SyntaxNode,
     position: FilePosition,
     opt_name: Option<ast::Name>,
-) -> Option<RangeInfo<Definition>> {
-    if let Some(name) = opt_name {
-        let def = NameClass::classify(sema, &name)?.referenced_or_defined(sema.db);
-        let FileRange { range, .. } = sema.original_range(name.syntax());
-        return Some(RangeInfo::new(range, def));
-    }
-
-    let (FileRange { range, .. }, def) = if let Some(lifetime) =
+) -> Option<Definition> {
+    let def = if let Some(name) = opt_name {
+        NameClass::classify(sema, &name)?.referenced_or_defined(sema.db)
+    } else if let Some(lifetime) =
         sema.find_node_at_offset_with_descend::<ast::Lifetime>(&syntax, position.offset)
     {
-        if let Some(def) = NameRefClass::classify_lifetime(sema, &lifetime)
-            .map(|class| NameRefClass::referenced(class, sema.db))
+        if let Some(def) =
+            NameRefClass::classify_lifetime(sema, &lifetime).map(|class| class.referenced(sema.db))
         {
-            (sema.original_range(lifetime.syntax()), def)
+            def
         } else {
-            (
-                sema.original_range(lifetime.syntax()),
-                NameClass::classify_lifetime(sema, &lifetime)?.referenced_or_defined(sema.db),
-            )
+            NameClass::classify_lifetime(sema, &lifetime)?.referenced_or_defined(sema.db)
         }
+    } else if let Some(name_ref) =
+        sema.find_node_at_offset_with_descend::<ast::NameRef>(&syntax, position.offset)
+    {
+        NameRefClass::classify(sema, &name_ref)?.referenced(sema.db)
     } else {
-        let name_ref =
-            sema.find_node_at_offset_with_descend::<ast::NameRef>(&syntax, position.offset)?;
-        (
-            sema.original_range(name_ref.syntax()),
-            NameRefClass::classify(sema, &name_ref)?.referenced(sema.db),
-        )
+        return None;
     };
-    Some(RangeInfo::new(range, def))
+    Some(def)
 }
 
 fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Option<ReferenceAccess> {

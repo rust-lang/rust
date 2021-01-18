@@ -369,9 +369,7 @@ impl Analysis {
         position: FilePosition,
         search_scope: Option<SearchScope>,
     ) -> Cancelable<Option<ReferenceSearchResult>> {
-        self.with_db(|db| {
-            references::find_all_refs(&Semantics::new(db), position, search_scope).map(|it| it.info)
-        })
+        self.with_db(|db| references::find_all_refs(&Semantics::new(db), position, search_scope))
     }
 
     /// Finds all methods and free functions for the file. Does not return tests!
