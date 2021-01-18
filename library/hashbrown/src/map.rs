@@ -1428,7 +1428,7 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
 ///
 /// [`keys`]: struct.HashMap.html#method.keys
 /// [`HashMap`]: struct.HashMap.html
-pub struct Keys<'a, K, V = Global> {
+pub struct Keys<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
 
