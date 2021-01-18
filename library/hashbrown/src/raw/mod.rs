@@ -367,7 +367,7 @@ impl<T> Bucket<T> {
 }
 
 /// A raw hash table with an unsafe API.
-pub struct RawTable<T, A: Allocator + Clone> {
+pub struct RawTable<T, A: Allocator + Clone = Global> {
     // Mask to get an index from a hash value. The value is one less than the
     // number of buckets in the table.
     bucket_mask: usize,
@@ -1770,7 +1770,7 @@ impl<T> ExactSizeIterator for RawIter<T> {}
 impl<T> FusedIterator for RawIter<T> {}
 
 /// Iterator which consumes a table and returns elements.
-pub struct RawIntoIter<T, A: Allocator + Clone> {
+pub struct RawIntoIter<T, A: Allocator + Clone = Global> {
     iter: RawIter<T>,
     allocation: Option<(NonNull<u8>, Layout)>,
     marker: PhantomData<T>,
@@ -1845,7 +1845,7 @@ impl<T, A: Allocator + Clone> ExactSizeIterator for RawIntoIter<T, A> {}
 impl<T, A: Allocator + Clone> FusedIterator for RawIntoIter<T, A> {}
 
 /// Iterator which consumes elements without freeing the table storage.
-pub struct RawDrain<'a, T, A: Allocator + Clone> {
+pub struct RawDrain<'a, T, A: Allocator + Clone = Global> {
     iter: RawIter<T>,
 
     // The table is moved into the iterator for the duration of the drain. This
@@ -1915,7 +1915,7 @@ impl<T, A: Allocator + Clone> FusedIterator for RawDrain<'_, T, A> {}
 /// Iterator over occupied buckets that could match a given hash.
 ///
 /// In rare cases, the iterator may return a bucket with a different hash.
-pub struct RawIterHash<'a, T, A: Allocator + Clone> {
+pub struct RawIterHash<'a, T, A: Allocator + Clone = Global> {
     table: &'a RawTable<T, A>,
 
     // The top 7 bits of the hash.
