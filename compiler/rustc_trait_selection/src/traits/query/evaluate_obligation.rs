@@ -1,6 +1,11 @@
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_span::DUMMY_SP;
+
 use crate::infer::InferCtxt;
+use crate::infer::canonical::OriginalQueryValues;
+use crate::traits::ty::ParamEnvAnd;
 use crate::traits::{
-    EvaluationResult, OverflowError, PredicateObligation, SelectionContext, TraitQueryMode,
+    EvaluationResult, Obligation, ObligationCause, OverflowError, PredicateObligation, SelectionContext, TraitQueryMode,
 };
 
 pub trait InferCtxtExt<'tcx> {
@@ -62,8 +67,24 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        let mut selcx = SelectionContext::with_query_mode(self, TraitQueryMode::Canonical);
-        selcx.evaluate_root_obligation(&obligation)
+        let mut _orig_values = OriginalQueryValues::default();
+        let c_pred = self
+            .canonicalize_query(obligation.param_env.and(obligation.predicate), &mut _orig_values);
+
+        debug!("evaluate_obligation: c_pred={:#?}", c_pred);
+        self.tcx.infer_ctxt().enter_with_canonical(
+            DUMMY_SP,
+            &c_pred,
+            |ref infcx, goal, _canonical_inference_vars| {
+                debug!("evaluate_obligation: goal={:#?}", goal);
+                let ParamEnvAnd { param_env, value: predicate } = goal;
+    
+                let mut selcx = SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);
+                let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
+    
+                selcx.evaluate_root_obligation(&obligation)
+            },
+        )
     }
 
     // Helper function that canonicalizes and runs the query. If an
