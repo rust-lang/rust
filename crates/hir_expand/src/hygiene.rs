@@ -76,6 +76,8 @@ pub struct HygieneFrame {
 
 impl HygieneFrames {
     fn new(db: &dyn AstDatabase, file_id: HirFileId) -> Self {
+        // Note that this intentionally avoids the `hygiene_frame` query to avoid blowing up memory
+        // usage. The query is only helpful for nested `HygieneFrame`s as it avoids redundant work.
         HygieneFrames(Arc::new(HygieneFrame::new(db, file_id)))
     }
 
