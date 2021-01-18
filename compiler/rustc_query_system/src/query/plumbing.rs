@@ -460,7 +460,7 @@ where
         tcx.dep_context().dep_graph().read_index(dep_node_index);
 
         if unlikely!(!diagnostics.is_empty()) {
-            tcx.dep_context().store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+            tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
         }
 
         return job.complete(result, dep_node_index);
@@ -473,10 +473,7 @@ where
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         let loaded = tcx.start_query(job.id, None, || {
-            let marked = tcx
-                .dep_context()
-                .dep_graph()
-                .try_mark_green_and_read(*tcx.dep_context(), &dep_node);
+            let marked = tcx.dep_context().dep_graph().try_mark_green_and_read(tcx, &dep_node);
             marked.map(|(prev_dep_node_index, dep_node_index)| {
                 (
                     load_from_disk_and_cache_in_memory(
@@ -641,7 +638,7 @@ where
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
     if unlikely!(!diagnostics.is_empty()) && dep_node.kind != DepKind::NULL {
-        tcx.dep_context().store_diagnostics(dep_node_index, diagnostics);
+        tcx.store_diagnostics(dep_node_index, diagnostics);
     }
 
     let result = job.complete(result, dep_node_index);
@@ -676,7 +673,7 @@ where
 ///
 /// Note: The optimization is only available during incr. comp.
 #[inline(never)]
-fn ensure_must_run<CTX, K, V>(tcx: CTX::DepContext, key: &K, query: &QueryVtable<CTX, K, V>) -> bool
+fn ensure_must_run<CTX, K, V>(tcx: CTX, key: &K, query: &QueryVtable<CTX, K, V>) -> bool
 where
     K: crate::dep_graph::DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
@@ -688,9 +685,9 @@ where
     // Ensuring an anonymous query makes no sense
     assert!(!query.anon);
 
-    let dep_node = query.to_dep_node(tcx, key);
+    let dep_node = query.to_dep_node(*tcx.dep_context(), key);
 
-    match tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node) {
+    match tcx.dep_context().dep_graph().try_mark_green_and_read(tcx, &dep_node) {
         None => {
             // A None return from `try_mark_green_and_read` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -701,7 +698,7 @@ where
             true
         }
         Some((_, dep_node_index)) => {
-            tcx.profiler().query_cache_hit(dep_node_index.into());
+            tcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
             false
         }
     }
@@ -768,7 +765,7 @@ where
 {
     let query = &Q::VTABLE;
     if let QueryMode::Ensure = mode {
-        if !ensure_must_run(*tcx.dep_context(), &key, query) {
+        if !ensure_must_run(tcx, &key, query) {
             return None;
         }
     }
