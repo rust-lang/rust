@@ -198,9 +198,16 @@ where
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.a
+        // We'll iterate one set in full, and only the remaining difference from the other.
+        // Use the smaller set for the difference in order to reduce hash lookups.
+        let (smaller, larger) = if self.a.len() <= self.b.len() {
+            (self.a, self.b)
+        } else {
+            (self.b, self.a)
+        };
+        larger
             .into_par_iter()
-            .chain(self.b.par_difference(self.a))
+            .chain(smaller.par_difference(larger))
             .drive_unindexed(consumer)
     }
 }
