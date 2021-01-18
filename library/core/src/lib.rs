@@ -123,6 +123,7 @@
 #![feature(auto_traits)]
 #![feature(or_patterns)]
 #![feature(prelude_import)]
+#![cfg_attr(not(bootstrap), feature(ptr_metadata))]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]

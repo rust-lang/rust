@@ -86,7 +86,7 @@ pub use crate::intrinsics::write_bytes;
 mod metadata;
 #[cfg(not(bootstrap))]
 #[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
-pub use metadata::{metadata, DynMetadata, Pointee, Thin};
+pub use metadata::{from_raw_parts, from_raw_parts_mut, metadata, DynMetadata, Pointee, Thin};
 
 mod non_null;
 #[stable(feature = "nonnull", since = "1.25.0")]

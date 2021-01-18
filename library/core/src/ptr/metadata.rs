@@ -36,16 +36,48 @@ pub fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
     unsafe { PtrRepr { const_ptr: ptr }.components.metadata }
 }
 
-#[repr(C)]
-union PtrRepr<T: ?Sized> {
-    const_ptr: *const T,
-    components: PtrComponents<T>,
+/// Forms a raw pointer from a data address and metadata.
+#[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+#[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+#[inline]
+pub const fn from_raw_parts<T: ?Sized>(
+    data_address: *const (),
+    metadata: <T as Pointee>::Metadata,
+) -> *const T {
+    // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
+    // and PtrComponents<T> have the same memory layouts. Only std can make this
+    // guarantee.
+    unsafe { PtrRepr { components: PtrComponents { data_address, metadata } }.const_ptr }
+}
+
+/// Performs the same functionality as [`from_raw_parts`], except that a
+/// raw `*mut` pointer is returned, as opposed to a raw `*const` pointer.
+///
+/// See the documentation of [`from_raw_parts`] for more details.
+#[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+#[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+#[inline]
+pub const fn from_raw_parts_mut<T: ?Sized>(
+    data_address: *mut (),
+    metadata: <T as Pointee>::Metadata,
+) -> *mut T {
+    // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
+    // and PtrComponents<T> have the same memory layouts. Only std can make this
+    // guarantee.
+    unsafe { PtrRepr { components: PtrComponents { data_address, metadata } }.mut_ptr }
 }
 
 #[repr(C)]
-struct PtrComponents<T: ?Sized> {
-    data_address: usize,
-    metadata: <T as Pointee>::Metadata,
+pub(crate) union PtrRepr<T: ?Sized> {
+    pub(crate) const_ptr: *const T,
+    pub(crate) mut_ptr: *mut T,
+    pub(crate) components: PtrComponents<T>,
+}
+
+#[repr(C)]
+pub(crate) struct PtrComponents<T: ?Sized> {
+    pub(crate) data_address: *const (),
+    pub(crate) metadata: <T as Pointee>::Metadata,
 }
 
 // Manual impl needed to avoid `T: Copy` bound.

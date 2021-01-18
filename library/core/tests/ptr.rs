@@ -1,5 +1,5 @@
 use core::cell::RefCell;
-use core::ptr::*;
+use core::ptr::{self, *};
 use std::fmt::{Debug, Display};
 
 #[test]
@@ -524,4 +524,31 @@ fn dyn_metadata() {
     assert_eq!(meta.layout(), std::alloc::Layout::new::<Something>());
 
     assert!(format!("{:?}", meta).starts_with("DynMetadata(0x"));
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn from_raw_parts() {
+    let mut value = 5_u32;
+    let address = &mut value as *mut _ as *mut ();
+    let trait_object: &dyn Display = &mut value;
+    let vtable = metadata(trait_object);
+    let trait_object = NonNull::from(trait_object);
+
+    assert_eq!(ptr::from_raw_parts(address, vtable), trait_object.as_ptr());
+    assert_eq!(ptr::from_raw_parts_mut(address, vtable), trait_object.as_ptr());
+    assert_eq!(NonNull::from_raw_parts(NonNull::new(address).unwrap(), vtable), trait_object);
+
+    let mut array = [5_u32, 5, 5, 5, 5];
+    let address = &mut array as *mut _ as *mut ();
+    let array_ptr = NonNull::from(&mut array);
+    let slice_ptr = NonNull::from(&mut array[..]);
+
+    assert_eq!(ptr::from_raw_parts(address, ()), array_ptr.as_ptr());
+    assert_eq!(ptr::from_raw_parts_mut(address, ()), array_ptr.as_ptr());
+    assert_eq!(NonNull::from_raw_parts(NonNull::new(address).unwrap(), ()), array_ptr);
+
+    assert_eq!(ptr::from_raw_parts(address, 5), slice_ptr.as_ptr());
+    assert_eq!(ptr::from_raw_parts_mut(address, 5), slice_ptr.as_ptr());
+    assert_eq!(NonNull::from_raw_parts(NonNull::new(address).unwrap(), 5), slice_ptr);
 }
