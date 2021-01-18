@@ -160,6 +160,12 @@ mod tests {
 
         check_assist(
             add_lifetime_to_type,
+            "struct Foo { a: &$0i32, b: usize }",
+            "struct Foo<'a> { a: &'a i32, b: usize }",
+        );
+
+        check_assist(
+            add_lifetime_to_type,
             "struct Foo<T>$0 { a: &T, b: usize }",
             "struct Foo<'a, T> { a: &'a T, b: usize }",
         );
