@@ -87,6 +87,75 @@ pub use self::on_disk_cache::OnDiskCache;
 mod profiling_support;
 pub use self::profiling_support::{IntoSelfProfilingString, QueryKeyStringBuilder};
 
+#[derive(Copy, Clone)]
+pub struct TyCtxtAt<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+    pub span: Span,
+}
+
+impl Deref for TyCtxtAt<'tcx> {
+    type Target = TyCtxt<'tcx>;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        &self.tcx
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct TyCtxtEnsure<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+}
+
+impl TyCtxt<'tcx> {
+    /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
+    /// are executed instead of just returning their results.
+    #[inline(always)]
+    pub fn ensure(self) -> TyCtxtEnsure<'tcx> {
+        TyCtxtEnsure { tcx: self }
+    }
+
+    /// Returns a transparent wrapper for `TyCtxt` which uses
+    /// `span` as the location of queries performed through it.
+    #[inline(always)]
+    pub fn at(self, span: Span) -> TyCtxtAt<'tcx> {
+        TyCtxtAt { tcx: self, span }
+    }
+}
+
+macro_rules! define_callbacks {
+    (<$tcx:tt>
+     $($(#[$attr:meta])*
+        [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+
+        impl TyCtxtEnsure<$tcx> {
+            $($(#[$attr])*
+            #[inline(always)]
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
+                self.tcx.queries.$name(self.tcx, DUMMY_SP, key.into_query_param(), QueryMode::Ensure);
+            })*
+        }
+
+        impl TyCtxt<$tcx> {
+            $($(#[$attr])*
+            #[inline(always)]
+            #[must_use]
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
+            {
+                self.at(DUMMY_SP).$name(key.into_query_param())
+            })*
+        }
+
+        impl TyCtxtAt<$tcx> {
+            $($(#[$attr])*
+            #[inline(always)]
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
+            {
+                self.tcx.queries.$name(self.tcx, self.span, key.into_query_param(), QueryMode::Get).unwrap()
+            })*
+        }
+    }
+}
+
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -100,6 +169,7 @@ pub use self::profiling_support::{IntoSelfProfilingString, QueryKeyStringBuilder
 // as they will raise an fatal error on query cycles instead.
 
 rustc_query_append! { [define_queries!][<'tcx>] }
+rustc_query_append! { [define_callbacks!][<'tcx>] }
 
 mod sealed {
     use super::{DefId, LocalDefId};
