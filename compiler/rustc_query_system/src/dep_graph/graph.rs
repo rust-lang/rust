@@ -587,7 +587,7 @@ impl<K: DepKind> DepGraph<K> {
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    pub fn try_mark_green_and_read<Ctxt: DepContext<DepKind = K>>(
+    pub fn try_mark_green_and_read<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         dep_node: &DepNode<K>,
@@ -599,7 +599,7 @@ impl<K: DepKind> DepGraph<K> {
         })
     }
 
-    pub fn try_mark_green<Ctxt: DepContext<DepKind = K>>(
+    pub fn try_mark_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         dep_node: &DepNode<K>,
@@ -627,7 +627,7 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
-    fn try_mark_previous_green<Ctxt: DepContext<DepKind = K>>(
+    fn try_mark_previous_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         data: &DepGraphData<K>,
@@ -811,7 +811,7 @@ impl<K: DepKind> DepGraph<K> {
     /// This may be called concurrently on multiple threads for the same dep node.
     #[cold]
     #[inline(never)]
-    fn emit_diagnostics<Ctxt: DepContext<DepKind = K>>(
+    fn emit_diagnostics<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         data: &DepGraphData<K>,
