@@ -5,7 +5,7 @@ use core::ops::RangeBounds;
 use core::ptr;
 
 use super::node::{marker, ForceResult::*, Handle, NodeRef};
-use super::search::{self, SearchResult};
+use super::search::SearchResult;
 use super::unwrap_unchecked;
 
 /// Finds the leaf edges delimiting a specified range in or underneath a node.
@@ -42,14 +42,14 @@ where
 
     loop {
         let front = match (min_found, range.start_bound()) {
-            (false, Included(key)) => match search::search_node(min_node, key) {
+            (false, Included(key)) => match min_node.search_node(key) {
                 SearchResult::Found(kv) => {
                     min_found = true;
                     kv.left_edge()
                 }
                 SearchResult::GoDown(edge) => edge,
             },
-            (false, Excluded(key)) => match search::search_node(min_node, key) {
+            (false, Excluded(key)) => match min_node.search_node(key) {
                 SearchResult::Found(kv) => {
                     min_found = true;
                     kv.right_edge()
@@ -62,14 +62,14 @@ where
         };
 
         let back = match (max_found, range.end_bound()) {
-            (false, Included(key)) => match search::search_node(max_node, key) {
+            (false, Included(key)) => match max_node.search_node(key) {
                 SearchResult::Found(kv) => {
                     max_found = true;
                     kv.right_edge()
                 }
                 SearchResult::GoDown(edge) => edge,
             },
-            (false, Excluded(key)) => match search::search_node(max_node, key) {
+            (false, Excluded(key)) => match max_node.search_node(key) {
                 SearchResult::Found(kv) => {
                     max_found = true;
                     kv.left_edge()

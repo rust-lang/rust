@@ -1,6 +1,6 @@
 use super::map::MIN_LEN;
 use super::node::{ForceResult::*, Root};
-use super::search::{search_node, SearchResult::*};
+use super::search::SearchResult::*;
 use core::borrow::Borrow;
 
 impl<K, V> Root<K, V> {
@@ -21,7 +21,7 @@ impl<K, V> Root<K, V> {
             let mut right_node = right_root.borrow_mut();
 
             loop {
-                let mut split_edge = match search_node(left_node, key) {
+                let mut split_edge = match left_node.search_node(key) {
                     // key is going to the right tree
                     Found(kv) => kv.left_edge(),
                     GoDown(edge) => edge,
