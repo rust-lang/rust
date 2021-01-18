@@ -14,7 +14,7 @@ use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::traits;
-use crate::ty::query::{self, OnDiskCache, Queries, TyCtxtAt};
+use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
@@ -968,7 +968,7 @@ pub struct GlobalCtxt<'tcx> {
     /// This is `None` if we are not incremental compilation mode
     pub(crate) on_disk_cache: Option<OnDiskCache<'tcx>>,
 
-    pub queries: &'tcx query::Queries<'tcx>,
+    pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
 
     maybe_unused_trait_imports: FxHashSet<LocalDefId>,
@@ -1115,7 +1115,7 @@ impl<'tcx> TyCtxt<'tcx> {
         definitions: &'tcx Definitions,
         dep_graph: DepGraph,
         on_disk_cache: Option<query::OnDiskCache<'tcx>>,
-        queries: &'tcx Queries<'tcx>,
+        queries: &'tcx dyn query::QueryEngine<'tcx>,
         crate_name: &str,
         output_filenames: &OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
