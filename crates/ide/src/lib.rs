@@ -478,6 +478,7 @@ impl Analysis {
         position: FilePosition,
         full_import_path: &str,
         imported_name: String,
+        import_for_trait_assoc_item: bool,
     ) -> Cancelable<Vec<TextEdit>> {
         Ok(self
             .with_db(|db| {
@@ -487,6 +488,7 @@ impl Analysis {
                     position,
                     full_import_path,
                     imported_name,
+                    import_for_trait_assoc_item,
                 )
             })?
             .unwrap_or_default())

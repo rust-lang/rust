@@ -1,7 +1,10 @@
 //! This module contains an import search functionality that is provided to the assists module.
 //! Later, this should be moved away to a separate crate that is accessible from the assists module.
 
-use hir::{import_map, AsAssocItem, Crate, MacroDef, ModuleDef, Semantics};
+use hir::{
+    import_map::{self, ImportKind},
+    AsAssocItem, Crate, MacroDef, ModuleDef, Semantics,
+};
 use syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
@@ -12,69 +15,84 @@ use crate::{
 use either::Either;
 use rustc_hash::FxHashSet;
 
-const QUERY_SEARCH_LIMIT: usize = 40;
+pub(crate) const DEFAULT_QUERY_SEARCH_LIMIT: usize = 40;
 
 pub fn find_exact_imports<'a>(
     sema: &Semantics<'a, RootDatabase>,
     krate: Crate,
     name_to_import: String,
-) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
+) -> Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>>> {
     let _p = profile::span("find_exact_imports");
-    find_imports(
+    Box::new(find_imports(
         sema,
         krate,
         {
             let mut local_query = symbol_index::Query::new(name_to_import.clone());
             local_query.exact();
-            local_query.limit(QUERY_SEARCH_LIMIT);
+            local_query.limit(DEFAULT_QUERY_SEARCH_LIMIT);
             local_query
         },
         import_map::Query::new(name_to_import)
-            .limit(QUERY_SEARCH_LIMIT)
+            .limit(DEFAULT_QUERY_SEARCH_LIMIT)
             .name_only()
             .search_mode(import_map::SearchMode::Equals)
             .case_sensitive(),
-    )
+    ))
+}
+
+pub enum AssocItemSearch {
+    Include,
+    Exclude,
+    AssocItemsOnly,
 }
 
 pub fn find_similar_imports<'a>(
     sema: &Semantics<'a, RootDatabase>,
     krate: Crate,
-    limit: Option<usize>,
     fuzzy_search_string: String,
-    ignore_assoc_items: bool,
-    name_only: bool,
-) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> + 'a {
+    assoc_item_search: AssocItemSearch,
+    limit: Option<usize>,
+) -> Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>> + 'a> {
     let _p = profile::span("find_similar_imports");
 
     let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
-        .search_mode(import_map::SearchMode::Fuzzy);
-    if name_only {
-        external_query = external_query.name_only();
+        .search_mode(import_map::SearchMode::Fuzzy)
+        .name_only();
+
+    match assoc_item_search {
+        AssocItemSearch::Include => {}
+        AssocItemSearch::Exclude => {
+            external_query = external_query.exclude_import_kind(ImportKind::AssociatedItem);
+        }
+        AssocItemSearch::AssocItemsOnly => {
+            external_query = external_query.assoc_items_only();
+        }
     }
 
     let mut local_query = symbol_index::Query::new(fuzzy_search_string);
 
     if let Some(limit) = limit {
-        local_query.limit(limit);
         external_query = external_query.limit(limit);
+        local_query.limit(limit);
     }
 
     let db = sema.db;
-    find_imports(sema, krate, local_query, external_query).filter(move |import_candidate| {
-        if ignore_assoc_items {
-            match import_candidate {
-                Either::Left(ModuleDef::Function(function)) => function.as_assoc_item(db).is_none(),
-                Either::Left(ModuleDef::Const(const_)) => const_.as_assoc_item(db).is_none(),
-                Either::Left(ModuleDef::TypeAlias(type_alias)) => {
-                    type_alias.as_assoc_item(db).is_none()
-                }
-                _ => true,
-            }
-        } else {
-            true
-        }
-    })
+    Box::new(find_imports(sema, krate, local_query, external_query).filter(
+        move |import_candidate| match assoc_item_search {
+            AssocItemSearch::Include => true,
+            AssocItemSearch::Exclude => !is_assoc_item(import_candidate, db),
+            AssocItemSearch::AssocItemsOnly => is_assoc_item(import_candidate, db),
+        },
+    ))
+}
+
+fn is_assoc_item(import_candidate: &Either<ModuleDef, MacroDef>, db: &RootDatabase) -> bool {
+    match import_candidate {
+        Either::Left(ModuleDef::Function(function)) => function.as_assoc_item(db).is_some(),
+        Either::Left(ModuleDef::Const(const_)) => const_.as_assoc_item(db).is_some(),
+        Either::Left(ModuleDef::TypeAlias(type_alias)) => type_alias.as_assoc_item(db).is_some(),
+        _ => false,
+    }
 }
 
 fn find_imports<'a>(

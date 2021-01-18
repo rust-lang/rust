@@ -3,7 +3,7 @@ use ide_db::helpers::{
     insert_use::{insert_use, ImportScope},
     mod_path_to_ast,
 };
-use syntax::ast;
+use syntax::{ast, AstNode, SyntaxNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 
@@ -82,25 +82,16 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let import_assets =
-        if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
-            ImportAssets::for_regular_path(path_under_caret, &ctx.sema)
-        } else if let Some(method_under_caret) =
-            ctx.find_node_at_offset_with_descend::<ast::MethodCallExpr>()
-        {
-            ImportAssets::for_method_call(method_under_caret, &ctx.sema)
-        } else {
-            None
-        }?;
-    let proposed_imports = import_assets.search_for_imports(&ctx.sema, &ctx.config.insert_use);
+    let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
+    let proposed_imports =
+        import_assets.search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind);
     if proposed_imports.is_empty() {
         return None;
     }
 
-    let range = ctx.sema.original_range(import_assets.syntax_under_caret()).range;
+    let range = ctx.sema.original_range(&syntax_under_caret).range;
     let group = import_group_message(import_assets.import_candidate());
-    let scope =
-        ImportScope::find_insert_use_container(import_assets.syntax_under_caret(), &ctx.sema)?;
+    let scope = ImportScope::find_insert_use_container(&syntax_under_caret, &ctx.sema)?;
     for (import, _) in proposed_imports {
         acc.add_group(
             &group,
@@ -117,14 +108,28 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     Some(())
 }
 
+pub(super) fn find_importable_node(ctx: &AssistContext) -> Option<(ImportAssets, SyntaxNode)> {
+    if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
+        ImportAssets::for_exact_path(&path_under_caret, &ctx.sema)
+            .zip(Some(path_under_caret.syntax().clone()))
+    } else if let Some(method_under_caret) =
+        ctx.find_node_at_offset_with_descend::<ast::MethodCallExpr>()
+    {
+        ImportAssets::for_method_call(&method_under_caret, &ctx.sema)
+            .zip(Some(method_under_caret.syntax().clone()))
+    } else {
+        None
+    }
+}
+
 fn import_group_message(import_candidate: &ImportCandidate) -> GroupLabel {
     let name = match import_candidate {
-        ImportCandidate::Path(candidate) => format!("Import {}", &candidate.name),
+        ImportCandidate::Path(candidate) => format!("Import {}", candidate.name.text()),
         ImportCandidate::TraitAssocItem(candidate) => {
-            format!("Import a trait for item {}", &candidate.name)
+            format!("Import a trait for item {}", candidate.name.text())
         }
         ImportCandidate::TraitMethod(candidate) => {
-            format!("Import a trait for method {}", &candidate.name)
+            format!("Import a trait for method {}", candidate.name.text())
         }
     };
     GroupLabel(name)

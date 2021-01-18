@@ -20,11 +20,14 @@
 //! # pub mod std { pub mod marker { pub struct PhantomData { } } }
 //! ```
 //!
+//! Also completes associated items, that require trait imports.
+//!
 //! .Fuzzy search details
 //!
 //! To avoid an excessive amount of the results returned, completion input is checked for inclusion in the names only
 //! (i.e. in `HashMap` in the `std::collections::HashMap` path).
-//! For the same reasons, avoids searching for any imports for inputs with their length less that 2 symbols.
+//! For the same reasons, avoids searching for any path imports for inputs with their length less that 2 symbols
+//! (but shows all associated items for any input length).
 //!
 //! .Import configuration
 //!
@@ -45,10 +48,12 @@
 //! Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corredponding
 //! capability enabled.
 
-use either::Either;
 use hir::{ModPath, ScopeDef};
-use ide_db::{helpers::insert_use::ImportScope, imports_locator};
-use syntax::AstNode;
+use ide_db::helpers::{
+    import_assets::{ImportAssets, ImportCandidate},
+    insert_use::ImportScope,
+};
+use syntax::{AstNode, SyntaxNode, T};
 use test_utils::mark;
 
 use crate::{
@@ -60,56 +65,106 @@ use crate::{
 use super::Completions;
 
 pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    if !ctx.config.enable_autoimport_completions {
+    if !ctx.config.enable_imports_on_the_fly {
         return None;
     }
     if ctx.attribute_under_caret.is_some() || ctx.mod_declaration_under_caret.is_some() {
         return None;
     }
-    let potential_import_name = ctx.token.to_string();
-    if potential_import_name.len() < 2 {
-        return None;
-    }
+    let potential_import_name = {
+        let token_kind = ctx.token.kind();
+        if matches!(token_kind, T![.] | T![::]) {
+            String::new()
+        } else {
+            ctx.token.to_string()
+        }
+    };
+
     let _p = profile::span("import_on_the_fly").detail(|| potential_import_name.to_string());
 
-    let current_module = ctx.scope.module()?;
-    let anchor = ctx.name_ref_syntax.as_ref()?;
-    let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
-
     let user_input_lowercased = potential_import_name.to_lowercase();
-    let mut all_mod_paths = imports_locator::find_similar_imports(
+    let import_assets = import_assets(ctx, potential_import_name)?;
+    let import_scope = ImportScope::find_insert_use_container(
+        position_for_import(ctx, Some(import_assets.import_candidate()))?,
         &ctx.sema,
-        ctx.krate?,
-        Some(40),
-        potential_import_name,
-        true,
-        true,
-    )
-    .filter_map(|import_candidate| {
-        Some(match import_candidate {
-            Either::Left(module_def) => {
-                (current_module.find_use_path(ctx.db, module_def)?, ScopeDef::ModuleDef(module_def))
-            }
-            Either::Right(macro_def) => {
-                (current_module.find_use_path(ctx.db, macro_def)?, ScopeDef::MacroDef(macro_def))
-            }
+    )?;
+    let mut all_mod_paths = import_assets
+        .search_for_relative_paths(&ctx.sema)
+        .into_iter()
+        .map(|(mod_path, item_in_ns)| {
+            let scope_item = match item_in_ns {
+                hir::ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
+                hir::ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
+                hir::ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
+            };
+            (mod_path, scope_item)
         })
-    })
-    .filter(|(mod_path, _)| mod_path.len() > 1)
-    .collect::<Vec<_>>();
-
+        .collect::<Vec<_>>();
     all_mod_paths.sort_by_cached_key(|(mod_path, _)| {
         compute_fuzzy_completion_order_key(mod_path, &user_input_lowercased)
     });
 
     acc.add_all(all_mod_paths.into_iter().filter_map(|(import_path, definition)| {
-        render_resolution_with_import(
-            RenderContext::new(ctx),
-            ImportEdit { import_path, import_scope: import_scope.clone() },
-            &definition,
-        )
+        let import_for_trait_assoc_item = match definition {
+            ScopeDef::ModuleDef(module_def) => module_def
+                .as_assoc_item(ctx.db)
+                .and_then(|assoc| assoc.containing_trait(ctx.db))
+                .is_some(),
+            _ => false,
+        };
+        let import_edit = ImportEdit {
+            import_path,
+            import_scope: import_scope.clone(),
+            import_for_trait_assoc_item,
+        };
+        render_resolution_with_import(RenderContext::new(ctx), import_edit, &definition)
     }));
     Some(())
+}
+
+pub(crate) fn position_for_import<'a>(
+    ctx: &'a CompletionContext,
+    import_candidate: Option<&ImportCandidate>,
+) -> Option<&'a SyntaxNode> {
+    Some(match import_candidate {
+        Some(ImportCandidate::Path(_)) => ctx.name_ref_syntax.as_ref()?.syntax(),
+        Some(ImportCandidate::TraitAssocItem(_)) => ctx.path_qual.as_ref()?.syntax(),
+        Some(ImportCandidate::TraitMethod(_)) => ctx.dot_receiver.as_ref()?.syntax(),
+        None => ctx
+            .name_ref_syntax
+            .as_ref()
+            .map(|name_ref| name_ref.syntax())
+            .or_else(|| ctx.path_qual.as_ref().map(|path| path.syntax()))
+            .or_else(|| ctx.dot_receiver.as_ref().map(|expr| expr.syntax()))?,
+    })
+}
+
+fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAssets> {
+    let current_module = ctx.scope.module()?;
+    if let Some(dot_receiver) = &ctx.dot_receiver {
+        ImportAssets::for_fuzzy_method_call(
+            current_module,
+            ctx.sema.type_of_expr(dot_receiver)?,
+            fuzzy_name,
+        )
+    } else {
+        let fuzzy_name_length = fuzzy_name.len();
+        let assets_for_path = ImportAssets::for_fuzzy_path(
+            current_module,
+            ctx.path_qual.clone(),
+            fuzzy_name,
+            &ctx.sema,
+        );
+
+        if matches!(assets_for_path.as_ref()?.import_candidate(), ImportCandidate::Path(_))
+            && fuzzy_name_length < 2
+        {
+            mark::hit!(ignore_short_input_for_path);
+            None
+        } else {
+            assets_for_path
+        }
+    }
 }
 
 fn compute_fuzzy_completion_order_key(
@@ -224,6 +279,30 @@ fn main() {
     }
 
     #[test]
+    fn short_paths_are_ignored() {
+        mark::check!(ignore_short_input_for_path);
+
+        check(
+            r#"
+//- /lib.rs crate:dep
+pub struct FirstStruct;
+pub mod some_module {
+    pub struct SecondStruct;
+    pub struct ThirdStruct;
+}
+
+//- /main.rs crate:main deps:dep
+use dep::{FirstStruct, some_module::SecondStruct};
+
+fn main() {
+    t$0
+}
+"#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
     fn fuzzy_completions_come_in_specific_order() {
         mark::check!(certain_fuzzy_order_test);
         check(
@@ -259,6 +338,176 @@ fn main() {
     }
 
     #[test]
+    fn trait_function_fuzzy_completion() {
+        let fixture = r#"
+        //- /lib.rs crate:dep
+        pub mod test_mod {
+            pub trait TestTrait {
+                const SPECIAL_CONST: u8;
+                type HumbleType;
+                fn weird_function();
+                fn random_method(&self);
+            }
+            pub struct TestStruct {}
+            impl TestTrait for TestStruct {
+                const SPECIAL_CONST: u8 = 42;
+                type HumbleType = ();
+                fn weird_function() {}
+                fn random_method(&self) {}
+            }
+        }
+
+        //- /main.rs crate:main deps:dep
+        fn main() {
+            dep::test_mod::TestStruct::wei$0
+        }
+        "#;
+
+        check(
+            fixture,
+            expect![[r#"
+            fn weird_function() (dep::test_mod::TestTrait) fn weird_function()
+        "#]],
+        );
+
+        check_edit(
+            "weird_function",
+            fixture,
+            r#"
+use dep::test_mod::TestTrait;
+
+fn main() {
+    dep::test_mod::TestStruct::weird_function()$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn trait_const_fuzzy_completion() {
+        let fixture = r#"
+        //- /lib.rs crate:dep
+        pub mod test_mod {
+            pub trait TestTrait {
+                const SPECIAL_CONST: u8;
+                type HumbleType;
+                fn weird_function();
+                fn random_method(&self);
+            }
+            pub struct TestStruct {}
+            impl TestTrait for TestStruct {
+                const SPECIAL_CONST: u8 = 42;
+                type HumbleType = ();
+                fn weird_function() {}
+                fn random_method(&self) {}
+            }
+        }
+
+        //- /main.rs crate:main deps:dep
+        fn main() {
+            dep::test_mod::TestStruct::spe$0
+        }
+        "#;
+
+        check(
+            fixture,
+            expect![[r#"
+            ct SPECIAL_CONST (dep::test_mod::TestTrait)
+        "#]],
+        );
+
+        check_edit(
+            "SPECIAL_CONST",
+            fixture,
+            r#"
+use dep::test_mod::TestTrait;
+
+fn main() {
+    dep::test_mod::TestStruct::SPECIAL_CONST
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn trait_method_fuzzy_completion() {
+        let fixture = r#"
+        //- /lib.rs crate:dep
+        pub mod test_mod {
+            pub trait TestTrait {
+                const SPECIAL_CONST: u8;
+                type HumbleType;
+                fn weird_function();
+                fn random_method(&self);
+            }
+            pub struct TestStruct {}
+            impl TestTrait for TestStruct {
+                const SPECIAL_CONST: u8 = 42;
+                type HumbleType = ();
+                fn weird_function() {}
+                fn random_method(&self) {}
+            }
+        }
+
+        //- /main.rs crate:main deps:dep
+        fn main() {
+            let test_struct = dep::test_mod::TestStruct {};
+            test_struct.ran$0
+        }
+        "#;
+
+        check(
+            fixture,
+            expect![[r#"
+            me random_method() (dep::test_mod::TestTrait) fn random_method(&self)
+        "#]],
+        );
+
+        check_edit(
+            "random_method",
+            fixture,
+            r#"
+use dep::test_mod::TestTrait;
+
+fn main() {
+    let test_struct = dep::test_mod::TestStruct {};
+    test_struct.random_method()$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_trait_type_fuzzy_completion() {
+        check(
+            r#"
+//- /lib.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        const SPECIAL_CONST: u8;
+        type HumbleType;
+        fn weird_function();
+        fn random_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        const SPECIAL_CONST: u8 = 42;
+        type HumbleType = ();
+        fn weird_function() {}
+        fn random_method(&self) {}
+    }
+}
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    dep::test_mod::TestStruct::hum$0
+}
+"#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
     fn does_not_propose_names_in_scope() {
         check(
             r#"
@@ -286,6 +535,131 @@ fn main() {
 }
 "#,
             expect![[r#""#]],
+        );
+    }
+
+    #[test]
+    fn does_not_propose_traits_in_scope() {
+        check(
+            r#"
+//- /lib.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        const SPECIAL_CONST: u8;
+        type HumbleType;
+        fn weird_function();
+        fn random_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        const SPECIAL_CONST: u8 = 42;
+        type HumbleType = ();
+        fn weird_function() {}
+        fn random_method(&self) {}
+    }
+}
+
+//- /main.rs crate:main deps:dep
+use dep::test_mod::{TestStruct, TestTrait};
+fn main() {
+    dep::test_mod::TestStruct::hum$0
+}
+"#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
+    fn blanket_trait_impl_import() {
+        check_edit(
+            "another_function",
+            r#"
+//- /lib.rs crate:dep
+pub mod test_mod {
+    pub struct TestStruct {}
+    pub trait TestTrait {
+        fn another_function();
+    }
+    impl<T> TestTrait for T {
+        fn another_function() {}
+    }
+}
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    dep::test_mod::TestStruct::ano$0
+}
+"#,
+            r#"
+use dep::test_mod::TestTrait;
+
+fn main() {
+    dep::test_mod::TestStruct::another_function()$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn zero_input_assoc_item_completion() {
+        check(
+            r#"
+//- /lib.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        const SPECIAL_CONST: u8;
+        type HumbleType;
+        fn weird_function();
+        fn random_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        const SPECIAL_CONST: u8 = 42;
+        type HumbleType = ();
+        fn weird_function() {}
+        fn random_method(&self) {}
+    }
+}
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    let test_struct = dep::test_mod::TestStruct {};
+    test_struct.$0
+}
+        "#,
+            expect![[r#"
+                        me random_method() (dep::test_mod::TestTrait) fn random_method(&self)
+                "#]],
+        );
+
+        check(
+            r#"
+//- /lib.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        const SPECIAL_CONST: u8;
+        type HumbleType;
+        fn weird_function();
+        fn random_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        const SPECIAL_CONST: u8 = 42;
+        type HumbleType = ();
+        fn weird_function() {}
+        fn random_method(&self) {}
+    }
+}
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    dep::test_mod::TestStruct::$0
+}
+"#,
+            expect![[r#"
+                ct SPECIAL_CONST (dep::test_mod::TestTrait)
+                fn weird_function() (dep::test_mod::TestTrait) fn weird_function()
+        "#]],
         );
     }
 }

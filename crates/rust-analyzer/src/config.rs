@@ -559,7 +559,7 @@ impl Config {
     pub fn completion(&self) -> CompletionConfig {
         CompletionConfig {
             enable_postfix_completions: self.data.completion_postfix_enable,
-            enable_autoimport_completions: self.data.completion_autoimport_enable
+            enable_imports_on_the_fly: self.data.completion_autoimport_enable
                 && completion_item_edit_resolve(&self.caps),
             add_call_parenthesis: self.data.completion_addCallParenthesis,
             add_call_argument_snippets: self.data.completion_addCallArgumentSnippets,
@@ -581,18 +581,7 @@ impl Config {
         AssistConfig {
             snippet_cap: SnippetCap::new(self.experimental("snippetTextEdit")),
             allowed: None,
-            insert_use: InsertUseConfig {
-                merge: match self.data.assist_importMergeBehavior {
-                    MergeBehaviorDef::None => None,
-                    MergeBehaviorDef::Full => Some(MergeBehavior::Full),
-                    MergeBehaviorDef::Last => Some(MergeBehavior::Last),
-                },
-                prefix_kind: match self.data.assist_importPrefix {
-                    ImportPrefixDef::Plain => PrefixKind::Plain,
-                    ImportPrefixDef::ByCrate => PrefixKind::ByCrate,
-                    ImportPrefixDef::BySelf => PrefixKind::BySelf,
-                },
-            },
+            insert_use: self.insert_use_config(),
         }
     }
     pub fn call_info_full(&self) -> bool {

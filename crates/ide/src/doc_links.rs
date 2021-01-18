@@ -438,10 +438,10 @@ fn get_symbol_fragment(db: &dyn HirDatabase, field_or_assoc: &FieldOrAssocItem) 
         FieldOrAssocItem::Field(field) => format!("#structfield.{}", field.name(db)),
         FieldOrAssocItem::AssocItem(assoc) => match assoc {
             AssocItem::Function(function) => {
-                let is_trait_method = matches!(
-                    function.as_assoc_item(db).map(|assoc| assoc.container(db)),
-                    Some(AssocItemContainer::Trait(..))
-                );
+                let is_trait_method = function
+                    .as_assoc_item(db)
+                    .and_then(|assoc| assoc.containing_trait(db))
+                    .is_some();
                 // This distinction may get more complicated when specialization is available.
                 // Rustdoc makes this decision based on whether a method 'has defaultness'.
                 // Currently this is only the case for provided trait methods.

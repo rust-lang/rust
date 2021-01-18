@@ -272,6 +272,15 @@ impl ModuleDef {
 
         hir_ty::diagnostics::validate_module_item(db, module.id.krate, id, sink)
     }
+
+    pub fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
+        match self {
+            ModuleDef::Function(f) => f.as_assoc_item(db),
+            ModuleDef::Const(c) => c.as_assoc_item(db),
+            ModuleDef::TypeAlias(t) => t.as_assoc_item(db),
+            _ => None,
+        }
+    }
 }
 
 impl Module {
@@ -1089,6 +1098,13 @@ impl AssocItem {
             AssocContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
             AssocContainerId::ImplId(id) => AssocItemContainer::Impl(id.into()),
             AssocContainerId::ContainerId(_) => panic!("invalid AssocItem"),
+        }
+    }
+
+    pub fn containing_trait(self, db: &dyn HirDatabase) -> Option<Trait> {
+        match self.container(db) {
+            AssocItemContainer::Trait(t) => Some(t),
+            _ => None,
         }
     }
 }

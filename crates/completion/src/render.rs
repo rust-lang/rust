@@ -10,7 +10,7 @@ pub(crate) mod type_alias;
 
 mod builder_ext;
 
-use hir::{Documentation, HasAttrs, HirDisplay, Mutability, ScopeDef, Type};
+use hir::{Documentation, HasAttrs, HirDisplay, ModuleDef, Mutability, ScopeDef, Type};
 use ide_db::{helpers::SnippetCap, RootDatabase};
 use syntax::TextRange;
 use test_utils::mark;
@@ -51,16 +51,16 @@ pub(crate) fn render_resolution_with_import<'a>(
     import_edit: ImportEdit,
     resolution: &ScopeDef,
 ) -> Option<CompletionItem> {
-    Render::new(ctx)
-        .render_resolution(
-            import_edit.import_path.segments.last()?.to_string(),
-            Some(import_edit),
-            resolution,
-        )
-        .map(|mut item| {
-            item.completion_kind = CompletionKind::Magic;
-            item
-        })
+    let local_name = match resolution {
+        ScopeDef::ModuleDef(ModuleDef::Function(f)) => f.name(ctx.completion.db).to_string(),
+        ScopeDef::ModuleDef(ModuleDef::Const(c)) => c.name(ctx.completion.db)?.to_string(),
+        ScopeDef::ModuleDef(ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db).to_string(),
+        _ => import_edit.import_path.segments.last()?.to_string(),
+    };
+    Render::new(ctx).render_resolution(local_name, Some(import_edit), resolution).map(|mut item| {
+        item.completion_kind = CompletionKind::Magic;
+        item
+    })
 }
 
 /// Interface for data and methods required for items rendering.

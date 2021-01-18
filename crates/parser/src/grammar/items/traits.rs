@@ -40,6 +40,10 @@ pub(super) fn impl_(p: &mut Parser) {
         type_params::opt_generic_param_list(p);
     }
 
+    // test impl_def_const
+    // impl const Send for X {}
+    p.eat(T![const]);
+
     // FIXME: never type
     // impl ! {}
 
