@@ -4,11 +4,12 @@
 can use them like any other lints by doing this:
 
 ```rust
-#![allow(missing_docs)] // allows the lint, no diagnostics will be reported
-#![warn(missing_docs)] // warn if there are missing docs
-#![deny(missing_docs)] // error if there are missing docs
-# //! Crate docs.
+#![allow(rustdoc::broken_intra_doc_links)] // allows the lint, no diagnostics will be reported
+#![warn(rustdoc::broken_intra_doc_links)] // warn if there are broken intra-doc links
+#![deny(rustdoc::broken_intra_doc_links)] // error if there are broken intra-doc links
 ```
+
+Note that, except for `missing_docs`, these lints are only available when running `rustdoc`, not `rustc`.
 
 Here is the list of the lints provided by `rustdoc`:
 
@@ -51,7 +52,7 @@ warning: `Foo` is both an enum and a function
 1 | /// [`Foo`]
   |      ^^^^^ ambiguous link
   |
-  = note: `#[warn(broken_intra_doc_links)]` on by default
+  = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
 help: to link to the enum, prefix with the item type
   |
 1 | /// [`enum@Foo`]
@@ -83,7 +84,7 @@ warning: public documentation for `public` links to private item `private`
 1 | /// [private]
   |      ^^^^^^^ this item is private
   |
-  = note: `#[warn(private_intra_doc_links)]` on by default
+  = note: `#[warn(rustdoc::private_intra_doc_links)]` on by default
   = note: this link will resolve properly if you pass `--document-private-items`
 ```
 
@@ -97,7 +98,7 @@ warning: public documentation for `public` links to private item `private`
 1 | /// [private]
   |      ^^^^^^^ this item is private
   |
-  = note: `#[warn(private_intra_doc_links)]` on by default
+  = note: `#[warn(rustdoc::private_intra_doc_links)]` on by default
   = note: this link resolves only because you passed `--document-private-items`, but will break without
 ```
 
@@ -125,13 +126,15 @@ warning: missing documentation for a function
    | ^^^^^^^^^^^^^^^^^^^^^
 ```
 
+Note that unlike other rustdoc lints, this lint is also available from `rustc` directly.
+
 ## missing_crate_level_docs
 
 This lint is **allowed by default**. It detects if there is no documentation
 at the crate root. For example:
 
 ```rust
-#![warn(missing_crate_level_docs)]
+#![warn(rustdoc::missing_crate_level_docs)]
 ```
 
 This will generate the following warning:
@@ -155,7 +158,7 @@ This lint is **allowed by default** and is **nightly-only**. It detects when a d
 is missing a code example. For example:
 
 ```rust
-#![warn(missing_doc_code_examples)]
+#![warn(rustdoc::missing_doc_code_examples)]
 
 /// There is no code example!
 pub fn no_code_example() {}
@@ -191,7 +194,7 @@ This lint is **allowed by default**. It detects documentation tests when they
 are on a private item. For example:
 
 ```rust
-#![warn(private_doc_tests)]
+#![warn(rustdoc::private_doc_tests)]
 
 mod foo {
     /// private doc test
@@ -245,7 +248,7 @@ warning: unknown attribute `should-panic`. Did you mean `should_panic`?
 5 | | /// ```
   | |_______^
   |
-  = note: `#[warn(invalid_codeblock_attributes)]` on by default
+  = note: `#[warn(rustdoc::invalid_codeblock_attributes)]` on by default
   = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
 ```
 
@@ -258,7 +261,7 @@ This lint is **allowed by default** and is **nightly-only**. It detects unclosed
 or invalid HTML tags. For example:
 
 ```rust
-#![warn(invalid_html_tags)]
+#![warn(rustdoc::invalid_html_tags)]
 
 /// <h1>
 /// </script>
@@ -275,7 +278,11 @@ warning: unopened HTML tag `script`
 2 | | /// </script>
   | |_____________^
   |
-  = note: `#[warn(invalid_html_tags)]` on by default
+  note: the lint level is defined here
+ --> foo.rs:1:9
+  |
+1 | #![warn(rustdoc::invalid_html_tags)]
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unclosed HTML tag `h1`
  --> foo.rs:1:1
@@ -310,7 +317,7 @@ warning: this URL is not a hyperlink
 1 | /// http://example.org
   |     ^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.org>`
   |
-  = note: `#[warn(non_autolinks)]` on by default
+  = note: `#[warn(rustdoc::non_autolinks)]` on by default
 
 warning: unneeded long form for URL
  --> foo.rs:2:5
