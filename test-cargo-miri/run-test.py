@@ -102,7 +102,7 @@ def test_cargo_miri_test():
     )
     test("`cargo miri test` (subcrate, no isolation)",
         cargo_miri("test") + ["-p", "subcrate"],
-        "test.subcrate.stdout.ref", "test.stderr-empty.ref",
+        "test.subcrate.stdout.ref", "test.stderr-proc-macro.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
 

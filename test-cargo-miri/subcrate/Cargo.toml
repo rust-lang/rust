@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Miri Team"]
 edition = "2018"
 
+[lib]
+proc-macro = true
+doctest = false
+
 [[bin]]
 name = "subcrate"
 path = "main.rs"
