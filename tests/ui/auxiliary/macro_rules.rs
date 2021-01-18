@@ -94,3 +94,19 @@ macro_rules! large_enum_variant {
         }
     };
 }
+
+#[macro_export]
+macro_rules! field_reassign_with_default {
+    () => {
+        #[derive(Default)]
+        struct A {
+            pub i: i32,
+            pub j: i64,
+        }
+        fn lint() {
+            let mut a: A = Default::default();
+            a.i = 42;
+            a;
+        }
+    };
+}

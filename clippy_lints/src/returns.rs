@@ -202,7 +202,7 @@ fn check_final_expr<'tcx>(
                     check_final_expr(cx, &arm.body, Some(arm.body.span), RetReplacement::Block);
                 }
             },
-            | MatchSource::IfLetDesugar {
+            MatchSource::IfLetDesugar {
                 contains_else_clause: true,
             } => {
                 if let ExprKind::Block(ref ifblock, _) = arms[0].body.kind {
@@ -217,6 +217,9 @@ fn check_final_expr<'tcx>(
 }
 
 fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, inner_span: Option<Span>, replacement: RetReplacement) {
+    if ret_span.from_expansion() {
+        return;
+    }
     match inner_span {
         Some(inner_span) => {
             if in_external_macro(cx.tcx.sess, inner_span) || inner_span.from_expansion() {

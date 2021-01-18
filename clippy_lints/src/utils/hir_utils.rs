@@ -86,7 +86,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                 lb == rb && l_mut == r_mut && self.eq_expr(le, re)
             },
             (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
-                both(&li.label, &ri.label, |l, r| l.ident.as_str() == r.ident.as_str())
+                both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
             },
             (&ExprKind::Assign(ref ll, ref lr, _), &ExprKind::Assign(ref rl, ref rr, _)) => {
                 self.allow_side_effects && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
@@ -102,7 +102,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                     })
             },
             (&ExprKind::Break(li, ref le), &ExprKind::Break(ri, ref re)) => {
-                both(&li.label, &ri.label, |l, r| l.ident.as_str() == r.ident.as_str())
+                both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
                     && both(le, re, |l, r| self.eq_expr(l, r))
             },
             (&ExprKind::Box(ref l), &ExprKind::Box(ref r)) => self.eq_expr(l, r),
@@ -124,7 +124,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             },
             (&ExprKind::Lit(ref l), &ExprKind::Lit(ref r)) => l.node == r.node,
             (&ExprKind::Loop(ref lb, ref ll, ref lls), &ExprKind::Loop(ref rb, ref rl, ref rls)) => {
-                lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.as_str() == r.ident.as_str())
+                lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.name == r.ident.name)
             },
             (&ExprKind::Match(ref le, ref la, ref ls), &ExprKind::Match(ref re, ref ra, ref rs)) => {
                 ls == rs
@@ -191,7 +191,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     pub fn eq_fieldpat(&mut self, left: &FieldPat<'_>, right: &FieldPat<'_>) -> bool {
         let (FieldPat { ident: li, pat: lp, .. }, FieldPat { ident: ri, pat: rp, .. }) = (&left, &right);
-        li.name.as_str() == ri.name.as_str() && self.eq_pat(lp, rp)
+        li.name == ri.name && self.eq_pat(lp, rp)
     }
 
     /// Checks whether two patterns are the same.
@@ -205,7 +205,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                 self.eq_qpath(lp, rp) && over(la, ra, |l, r| self.eq_pat(l, r)) && ls == rs
             },
             (&PatKind::Binding(ref lb, .., ref li, ref lp), &PatKind::Binding(ref rb, .., ref ri, ref rp)) => {
-                lb == rb && li.name.as_str() == ri.name.as_str() && both(lp, rp, |l, r| self.eq_pat(l, r))
+                lb == rb && li.name == ri.name && both(lp, rp, |l, r| self.eq_pat(l, r))
             },
             (&PatKind::Path(ref l), &PatKind::Path(ref r)) => self.eq_qpath(l, r),
             (&PatKind::Lit(ref l), &PatKind::Lit(ref r)) => self.eq_expr(l, r),
@@ -266,8 +266,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn eq_path_segment(&mut self, left: &PathSegment<'_>, right: &PathSegment<'_>) -> bool {
         // The == of idents doesn't work with different contexts,
         // we have to be explicit about hygiene
-        left.ident.as_str() == right.ident.as_str()
-            && both(&left.args, &right.args, |l, r| self.eq_path_parameters(l, r))
+        left.ident.name == right.ident.name && both(&left.args, &right.args, |l, r| self.eq_path_parameters(l, r))
     }
 
     pub fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {

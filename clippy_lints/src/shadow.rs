@@ -396,5 +396,5 @@ fn is_self_shadow(name: Symbol, expr: &Expr<'_>) -> bool {
 }
 
 fn path_eq_name(name: Symbol, path: &Path<'_>) -> bool {
-    !path.is_global() && path.segments.len() == 1 && path.segments[0].ident.as_str() == name.as_str()
+    !path.is_global() && path.segments.len() == 1 && path.segments[0].ident.name == name
 }
