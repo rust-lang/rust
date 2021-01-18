@@ -1,4 +1,3 @@
-use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
 use crate::traits::{
     EvaluationResult, OverflowError, PredicateObligation, SelectionContext, TraitQueryMode,
@@ -63,13 +62,8 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        let mut _orig_values = OriginalQueryValues::default();
-        let c_pred = self
-            .canonicalize_query(obligation.param_env.and(obligation.predicate), &mut _orig_values);
-        // Run canonical query. If overflow occurs, rerun from scratch but this time
-        // in standard trait query mode so that overflow is handled appropriately
-        // within `SelectionContext`.
-        self.tcx.evaluate_obligation(c_pred)
+        let mut selcx = SelectionContext::with_query_mode(self, TraitQueryMode::Canonical);
+        selcx.evaluate_root_obligation(&obligation)
     }
 
     // Helper function that canonicalizes and runs the query. If an

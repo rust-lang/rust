@@ -18,9 +18,9 @@ use crate::mir::interpret::{ConstValue, EvalToAllocationRawResult, EvalToConstVa
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
+    CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
+    CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal,
+    CanonicalTypeOpSubtypeGoal, NoSolution,
 };
 use crate::traits::query::{
     DropckOutlivesResult, DtorckConstraint, MethodAutoderefStepsResult, NormalizationResult,

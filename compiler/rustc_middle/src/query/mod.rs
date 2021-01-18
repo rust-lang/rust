@@ -2,9 +2,9 @@ use crate::dep_graph::SerializedDepNodeIndex;
 use crate::mir::interpret::{GlobalId, LitToConstInput};
 use crate::traits;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
+    CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
+    CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal,
+    CanonicalTypeOpSubtypeGoal,
 };
 use crate::ty::query::queries;
 use crate::ty::subst::{GenericArg, SubstsRef};
@@ -1529,14 +1529,6 @@ rustc_queries! {
             NoSolution,
         > {
             desc { "computing dropck types for `{:?}`", goal }
-        }
-
-        /// Do not call this query directly: invoke `infcx.predicate_may_hold()` or
-        /// `infcx.predicate_must_hold()` instead.
-        query evaluate_obligation(
-            goal: CanonicalPredicateGoal<'tcx>
-        ) -> Result<traits::EvaluationResult, traits::OverflowError> {
-            desc { "evaluating trait selection obligation `{}`", goal.value.value }
         }
 
         query evaluate_goal(

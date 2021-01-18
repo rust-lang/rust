@@ -14,7 +14,6 @@ extern crate rustc_middle;
 
 mod chalk;
 mod dropck_outlives;
-mod evaluate_obligation;
 mod implied_outlives_bounds;
 mod normalize_erasing_regions;
 mod normalize_projection_ty;
@@ -24,7 +23,6 @@ use rustc_middle::ty::query::Providers;
 
 pub fn provide(p: &mut Providers) {
     dropck_outlives::provide(p);
-    evaluate_obligation::provide(p);
     implied_outlives_bounds::provide(p);
     chalk::provide(p);
     normalize_projection_ty::provide(p);
