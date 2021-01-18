@@ -28,8 +28,9 @@ pub trait Pointee {
 pub trait Thin = Pointee<Metadata = ()>;
 
 /// Extract the metadata component of a pointer.
+#[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
 #[inline]
-pub fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
+pub const fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
     // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
     // and PtrComponents<T> have the same memory layouts. Only std can make this
     // guarantee.

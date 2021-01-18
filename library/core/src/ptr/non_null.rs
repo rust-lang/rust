@@ -193,6 +193,17 @@ impl<T: ?Sized> NonNull<T> {
         }
     }
 
+    /// Decompose a (possibly wide) pointer into is address and metadata components.
+    ///
+    /// The pointer can be later reconstructed with [`NonNull::from_raw_parts`].
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+    #[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+    #[inline]
+    pub const fn to_raw_parts(self) -> (NonNull<()>, <T as super::Pointee>::Metadata) {
+        (self.cast(), super::metadata(self.as_ptr()))
+    }
+
     /// Acquires the underlying `*mut` pointer.
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]

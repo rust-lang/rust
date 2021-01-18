@@ -47,6 +47,17 @@ impl<T: ?Sized> *mut T {
         self as _
     }
 
+    /// Decompose a (possibly wide) pointer into is address and metadata components.
+    ///
+    /// The pointer can be later reconstructed with [`from_raw_parts_mut`].
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+    #[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+    #[inline]
+    pub const fn to_raw_parts(self) -> (*mut (), <T as super::Pointee>::Metadata) {
+        (self.cast(), super::metadata(self))
+    }
+
     /// Returns `None` if the pointer is null, or else returns a shared reference to
     /// the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_ref`]
     /// must be used instead.
