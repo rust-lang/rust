@@ -26,7 +26,7 @@ use once_cell::race::OnceBool;
 use stdx::format_to;
 use syntax::{
     algo,
-    ast::{self, AstNode},
+    ast::{self, AstNode, NameOwner},
     SyntaxNode,
 };
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
@@ -153,7 +153,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         });
         for (node, ty) in &types {
             let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.value.clone()) {
-                (self_param.self_token().unwrap().text_range(), "self".to_string())
+                (self_param.name().unwrap().syntax().text_range(), "self".to_string())
             } else {
                 (node.value.text_range(), node.value.text().to_string().replace("\n", " "))
             };

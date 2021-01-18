@@ -400,15 +400,13 @@ impl TryToNav for hir::GenericParam {
 impl ToNav for hir::Local {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let (node, focus_range) = match &src.value {
-            Either::Left(bind_pat) => (
-                bind_pat.syntax().clone(),
-                bind_pat
-                    .name()
-                    .map(|it| src.with_value(&it.syntax().clone()).original_file_range(db).range),
-            ),
-            Either::Right(it) => (it.syntax().clone(), it.self_token().map(|it| it.text_range())),
+        let (node, name) = match &src.value {
+            Either::Left(bind_pat) => (bind_pat.syntax().clone(), bind_pat.name()),
+            Either::Right(it) => (it.syntax().clone(), it.name()),
         };
+        let focus_range =
+            name.map(|it| src.with_value(&it.syntax().clone()).original_file_range(db).range);
+
         let full_range = src.with_value(&node).original_file_range(db);
         let name = match self.name(db) {
             Some(it) => it.to_string().into(),

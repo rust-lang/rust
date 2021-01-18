@@ -1,0 +1,42 @@
+SOURCE_FILE@0..51
+  STRUCT@0..26
+    VISIBILITY@0..16
+      PUB_KW@0..3 "pub"
+      L_PAREN@3..4 "("
+      IN_KW@4..6 "in"
+      WHITESPACE@6..7 " "
+      PATH@7..15
+        PATH@7..12
+          PATH_SEGMENT@7..12
+            NAME_REF@7..12
+              SUPER_KW@7..12 "super"
+        COLON2@12..14 "::"
+        PATH_SEGMENT@14..15
+          NAME_REF@14..15
+            IDENT@14..15 "A"
+      R_PAREN@15..16 ")"
+    WHITESPACE@16..17 " "
+    STRUCT_KW@17..23 "struct"
+    WHITESPACE@23..24 " "
+    NAME@24..25
+      IDENT@24..25 "S"
+    SEMICOLON@25..26 ";"
+  WHITESPACE@26..27 "\n"
+  STRUCT@27..50
+    VISIBILITY@27..40
+      PUB_KW@27..30 "pub"
+      L_PAREN@30..31 "("
+      IN_KW@31..33 "in"
+      WHITESPACE@33..34 " "
+      PATH@34..39
+        PATH_SEGMENT@34..39
+          NAME_REF@34..39
+            CRATE_KW@34..39 "crate"
+      R_PAREN@39..40 ")"
+    WHITESPACE@40..41 " "
+    STRUCT_KW@41..47 "struct"
+    WHITESPACE@47..48 " "
+    NAME@48..49
+      IDENT@48..49 "S"
+    SEMICOLON@49..50 ";"
+  WHITESPACE@50..51 "\n"

@@ -68,7 +68,8 @@ pub(super) fn element(
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
             highlight_func_by_name_ref(sema, &name_ref).unwrap_or_else(|| {
-                match NameRefClass::classify(sema, &name_ref) {
+                let is_self = name_ref.self_token().is_some();
+                let h = match NameRefClass::classify(sema, &name_ref) {
                     Some(name_kind) => match name_kind {
                         NameRefClass::ExternCrate(_) => HlTag::Symbol(SymbolKind::Module).into(),
                         NameRefClass::Definition(def) => {
@@ -108,6 +109,11 @@ pub(super) fn element(
                         highlight_name_ref_by_syntax(name_ref, sema)
                     }
                     None => HlTag::UnresolvedReference.into(),
+                };
+                if h.tag == HlTag::Symbol(SymbolKind::Module) && is_self {
+                    HlTag::Symbol(SymbolKind::SelfParam).into()
+                } else {
+                    h
                 }
             })
         }
@@ -225,18 +231,8 @@ pub(super) fn element(
                 T![for] if !is_child_of_impl(&element) => h | HlMod::ControlFlow,
                 T![unsafe] => h | HlMod::Unsafe,
                 T![true] | T![false] => HlTag::BoolLiteral.into(),
-                T![self] => {
-                    let self_param = element.parent().and_then(ast::SelfParam::cast);
-                    if let Some(NameClass::Definition(def)) = self_param
-                        .and_then(|self_param| NameClass::classify_self_param(sema, &self_param))
-                    {
-                        highlight_def(db, def) | HlMod::Definition
-                    } else if element.ancestors().any(|it| it.kind() == USE_TREE) {
-                        HlTag::Symbol(SymbolKind::SelfParam).into()
-                    } else {
-                        return None;
-                    }
-                }
+                // self is handled as either a Name or NameRef already
+                T![self] => return None,
                 T![ref] => element
                     .parent()
                     .and_then(ast::IdentPat::cast)

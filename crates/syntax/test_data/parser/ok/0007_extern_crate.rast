@@ -28,7 +28,8 @@ SOURCE_FILE@0..69
     WHITESPACE@49..50 " "
     CRATE_KW@50..55 "crate"
     WHITESPACE@55..56 " "
-    SELF_KW@56..60 "self"
+    NAME_REF@56..60
+      SELF_KW@56..60 "self"
     WHITESPACE@60..61 " "
     RENAME@61..67
       AS_KW@61..63 "as"

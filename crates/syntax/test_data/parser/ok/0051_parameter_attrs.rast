@@ -281,7 +281,8 @@ SOURCE_FILE@0..519
                     IDENT@259..267 "must_use"
               R_BRACK@267..268 "]"
             WHITESPACE@268..269 " "
-            SELF_KW@269..273 "self"
+            NAME@269..273
+              SELF_KW@269..273 "self"
           R_PAREN@273..274 ")"
         WHITESPACE@274..275 " "
         BLOCK_EXPR@275..277
@@ -305,7 +306,8 @@ SOURCE_FILE@0..519
                     IDENT@291..295 "attr"
               R_BRACK@295..296 "]"
             WHITESPACE@296..297 " "
-            SELF_KW@297..301 "self"
+            NAME@297..301
+              SELF_KW@297..301 "self"
           R_PAREN@301..302 ")"
         WHITESPACE@302..303 " "
         BLOCK_EXPR@303..305
@@ -330,7 +332,8 @@ SOURCE_FILE@0..519
               R_BRACK@323..324 "]"
             WHITESPACE@324..325 " "
             AMP@325..326 "&"
-            SELF_KW@326..330 "self"
+            NAME@326..330
+              SELF_KW@326..330 "self"
           R_PAREN@330..331 ")"
         WHITESPACE@331..332 " "
         BLOCK_EXPR@332..334
@@ -363,7 +366,8 @@ SOURCE_FILE@0..519
             AMP@358..359 "&"
             MUT_KW@359..362 "mut"
             WHITESPACE@362..363 " "
-            SELF_KW@363..367 "self"
+            NAME@363..367
+              SELF_KW@363..367 "self"
           R_PAREN@367..368 ")"
         WHITESPACE@368..369 " "
         BLOCK_EXPR@369..371
@@ -397,7 +401,8 @@ SOURCE_FILE@0..519
             LIFETIME@396..398
               LIFETIME_IDENT@396..398 "\'a"
             WHITESPACE@398..399 " "
-            SELF_KW@399..403 "self"
+            NAME@399..403
+              SELF_KW@399..403 "self"
           R_PAREN@403..404 ")"
         WHITESPACE@404..405 " "
         BLOCK_EXPR@405..407
@@ -433,7 +438,8 @@ SOURCE_FILE@0..519
             WHITESPACE@434..435 " "
             MUT_KW@435..438 "mut"
             WHITESPACE@438..439 " "
-            SELF_KW@439..443 "self"
+            NAME@439..443
+              SELF_KW@439..443 "self"
           R_PAREN@443..444 ")"
         WHITESPACE@444..445 " "
         BLOCK_EXPR@445..447
@@ -457,7 +463,8 @@ SOURCE_FILE@0..519
                     IDENT@460..464 "attr"
               R_BRACK@464..465 "]"
             WHITESPACE@465..466 " "
-            SELF_KW@466..470 "self"
+            NAME@466..470
+              SELF_KW@466..470 "self"
             COLON@470..471 ":"
             WHITESPACE@471..472 " "
             PATH_TYPE@472..476
@@ -488,7 +495,8 @@ SOURCE_FILE@0..519
                     IDENT@493..497 "attr"
               R_BRACK@497..498 "]"
             WHITESPACE@498..499 " "
-            SELF_KW@499..503 "self"
+            NAME@499..503
+              SELF_KW@499..503 "self"
             COLON@503..504 ":"
             WHITESPACE@504..505 " "
             PATH_TYPE@505..513

@@ -1,12 +1,9 @@
 //! FIXME: write short doc here
-use std::{
-    convert::TryInto,
-    fmt::{self, Display},
-};
+use std::fmt::{self, Display};
 
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
 use ide_db::{
-    base_db::{AnchoredPathBuf, FileId, FileRange, SourceDatabaseExt},
+    base_db::{AnchoredPathBuf, FileId, FileRange},
     defs::{Definition, NameClass, NameRefClass},
     search::FileReference,
     RootDatabase,
@@ -14,14 +11,14 @@ use ide_db::{
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
-    lex_single_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken, T,
+    lex_single_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, T,
 };
 use test_utils::mark;
 use text_edit::TextEdit;
 
 use crate::{
     FilePosition, FileSystemEdit, RangeInfo, ReferenceKind, ReferenceSearchResult, SourceChange,
-    TextRange, TextSize,
+    TextRange,
 };
 
 type RenameResult<T> = Result<T, RenameError>;
@@ -52,10 +49,6 @@ pub(crate) fn prepare_rename(
     let syntax = source_file.syntax();
     if let Some(module) = find_module_at_offset(&sema, position, syntax) {
         rename_mod(&sema, position, module, "dummy")
-    } else if let Some(self_token) =
-        syntax.token_at_offset(position.offset).find(|t| t.kind() == T![self])
-    {
-        rename_self_to_param(&sema, position, self_token, "dummy")
     } else {
         let RangeInfo { range, .. } = find_all_refs(&sema, position)?;
         Ok(RangeInfo::new(range, SourceChange::default()))
@@ -82,10 +75,6 @@ pub(crate) fn rename_with_semantics(
 
     if let Some(module) = find_module_at_offset(&sema, position, syntax) {
         rename_mod(&sema, position, module, new_name)
-    } else if let Some(self_token) =
-        syntax.token_at_offset(position.offset).find(|t| t.kind() == T![self])
-    {
-        rename_self_to_param(&sema, position, self_token, new_name)
     } else {
         rename_reference(&sema, position, new_name)
     }
@@ -108,7 +97,7 @@ pub(crate) fn will_rename_file(
     Some(change)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum IdentifierKind {
     Ident,
     Lifetime,
@@ -375,53 +364,50 @@ fn text_edit_from_self_param(
 fn rename_self_to_param(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
-    self_token: SyntaxToken,
     new_name: &str,
+    ident_kind: IdentifierKind,
+    range: TextRange,
+    refs: ReferenceSearchResult,
 ) -> Result<RangeInfo<SourceChange>, RenameError> {
-    let ident_kind = check_identifier(new_name)?;
     match ident_kind {
         IdentifierKind::Lifetime => bail!("Invalid name `{}`: not an identifier", new_name),
         IdentifierKind::ToSelf => {
             // no-op
             mark::hit!(rename_self_to_self);
-            return Ok(RangeInfo::new(self_token.text_range(), SourceChange::default()));
+            return Ok(RangeInfo::new(range, SourceChange::default()));
         }
         _ => (),
     }
     let source_file = sema.parse(position.file_id);
     let syn = source_file.syntax();
 
-    let text = sema.db.file_text(position.file_id);
     let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)
         .ok_or_else(|| format_err!("No surrounding method declaration found"))?;
-    let search_range = fn_def.syntax().text_range();
 
     let mut source_change = SourceChange::default();
-
-    for (idx, _) in text.match_indices("self") {
-        let offset: TextSize = idx.try_into().unwrap();
-        if !search_range.contains_inclusive(offset) {
-            continue;
-        }
-        if let Some(ref usage) = syn.token_at_offset(offset).find(|t| t.kind() == T![self]) {
-            let edit = if let Some(ref self_param) = ast::SelfParam::cast(usage.parent()) {
-                text_edit_from_self_param(syn, self_param, new_name)
-                    .ok_or_else(|| format_err!("No target type found"))?
-            } else {
-                TextEdit::replace(usage.text_range(), String::from(new_name))
-            };
+    if let Some(self_param) = fn_def.param_list().and_then(|it| it.self_param()) {
+        if self_param
+            .syntax()
+            .text_range()
+            .contains_range(refs.declaration().nav.focus_or_full_range())
+        {
+            let edit = text_edit_from_self_param(syn, &self_param, new_name)
+                .ok_or_else(|| format_err!("No target type found"))?;
             source_change.insert_source_edit(position.file_id, edit);
+
+            source_change.extend(refs.references().iter().map(|(&file_id, references)| {
+                source_edit_from_references(sema, file_id, &references, new_name)
+            }));
+
+            if source_change.source_file_edits.len() > 1 && ident_kind == IdentifierKind::Underscore
+            {
+                bail!("Cannot rename reference to `_` as it is being referenced multiple times");
+            }
+
+            return Ok(RangeInfo::new(range, source_change));
         }
     }
-
-    if source_change.source_file_edits.len() > 1 && ident_kind == IdentifierKind::Underscore {
-        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
-    }
-
-    let range = ast::SelfParam::cast(self_token.parent())
-        .map_or(self_token.text_range(), |p| p.syntax().text_range());
-
-    Ok(RangeInfo::new(range, source_change))
+    Err(format_err!("Method has no self param"))
 }
 
 fn rename_reference(
@@ -444,8 +430,9 @@ fn rename_reference(
             mark::hit!(rename_not_an_ident_ref);
             bail!("Invalid name `{}`: not an identifier", new_name)
         }
-        (IdentifierKind::ToSelf, ReferenceKind::SelfParam) => {
-            unreachable!("rename_self_to_param should've been called instead")
+        (_, ReferenceKind::SelfParam) => {
+            mark::hit!(rename_self_to_param);
+            return rename_self_to_param(sema, position, new_name, ident_kind, range, refs);
         }
         (IdentifierKind::ToSelf, _) => {
             mark::hit!(rename_to_self);
@@ -1350,6 +1337,7 @@ impl Foo {
 
     #[test]
     fn test_owned_self_to_parameter() {
+        mark::check!(rename_self_to_param);
         check(
             "foo",
             r#"

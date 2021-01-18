@@ -110,7 +110,8 @@ SOURCE_FILE@0..686
           L_PAREN@558..559 "("
           SELF_PARAM@559..564
             AMP@559..560 "&"
-            SELF_KW@560..564 "self"
+            NAME@560..564
+              SELF_KW@560..564 "self"
           COMMA@564..565 ","
           WHITESPACE@565..566 " "
           PARAM@566..600
