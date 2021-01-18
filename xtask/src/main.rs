@@ -49,7 +49,8 @@ FLAGS:
         --client[=CLIENT] Install only VS Code plugin.
                           CLIENT is one of 'code', 'code-exploration', 'code-insiders', 'codium', or 'code-oss'
         --server          Install only the language server
-        --mimalloc        Use mimalloc for server
+        --mimalloc        Use mimalloc allocator for server
+        --jemalloc        Use jemalloc allocator for server
     -h, --help            Prints help information
         "
                 );
@@ -65,8 +66,13 @@ FLAGS:
                 return Ok(());
             }
 
-            let malloc =
-                if args.contains("--mimalloc") { Malloc::Mimalloc } else { Malloc::System };
+            let malloc = if args.contains("--mimalloc") {
+                Malloc::Mimalloc
+            } else if args.contains("--jemalloc") {
+                Malloc::Jemalloc
+            } else {
+                Malloc::System
+            };
 
             let client_opt = args.opt_value_from_str("--client")?;
 

@@ -61,8 +61,14 @@ proc_macro_srv = { path = "../proc_macro_srv", version = "0.0.0" }
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3.8"
 
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+jemallocator = { version = "0.3.2", optional = true }
+
 [dev-dependencies]
 expect-test = "1.1"
 test_utils = { path = "../test_utils" }
 mbe = { path = "../mbe" }
 tt = { path = "../tt" }
+
+[features]
+jemalloc = ["jemallocator", "profile/jemalloc"]

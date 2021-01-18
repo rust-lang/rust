@@ -24,7 +24,12 @@ impl std::ops::Sub for MemoryUsage {
 impl MemoryUsage {
     pub fn current() -> MemoryUsage {
         cfg_if! {
-            if #[cfg(all(target_os = "linux", target_env = "gnu"))] {
+            if #[cfg(all(feature = "jemalloc", not(target_env = "msvc")))] {
+                jemalloc_ctl::epoch::advance().unwrap();
+                MemoryUsage {
+                    allocated: Bytes(jemalloc_ctl::stats::allocated::read().unwrap() as isize),
+                }
+            } else if #[cfg(all(target_os = "linux", target_env = "gnu"))] {
                 // Note: This is incredibly slow.
                 let alloc = unsafe { libc::mallinfo() }.uordblks as isize;
                 MemoryUsage { allocated: Bytes(alloc) }
