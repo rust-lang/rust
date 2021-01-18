@@ -4216,11 +4216,8 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer, cache:
     let relpath = if it.is_mod() { "../" } else { "" };
     write!(
         buffer,
-        "<script>window.sidebarCurrent = {{\
-                name: \"{name}\", \
-                ty: \"{ty}\", \
-                relpath: \"{path}\"\
-            }};</script>",
+        "<div id=\"sidebar-vars\" data-name=\"{name}\" data-ty=\"{ty}\" data-relpath=\"{path}\">\
+        </div>",
         name = it.name.unwrap_or(kw::Empty),
         ty = it.type_(),
         path = relpath
