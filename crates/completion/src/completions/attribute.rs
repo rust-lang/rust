@@ -99,13 +99,14 @@ const ATTRIBUTES: &[AttrCompletion] = &[
         Some("export_name"),
         Some(r#"export_name = "${0:exported_symbol_name}""#),
     ),
+    attr(r#"doc(alias = "…")"#, Some("docalias"), Some(r#"doc(alias = "${0:docs}")"#)),
     attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
     attr("feature(…)", Some("feature"), Some("feature(${0:flag})")).prefer_inner(),
     attr("forbid(…)", Some("forbid"), Some("forbid(${0:lint})")),
     // FIXME: resolve through macro resolution?
     attr("global_allocator", None, None).prefer_inner(),
     attr(r#"ignore = "…""#, Some("ignore"), Some(r#"ignore = "${0:reason}""#)),
-    attr("inline(…)", Some("inline"), Some("inline(${0:lint})")),
+    attr("inline", Some("inline"), Some("inline")),
     attr("link", None, None),
     attr(r#"link_name = "…""#, Some("link_name"), Some(r#"link_name = "${0:symbol_name}""#)),
     attr(
@@ -468,10 +469,11 @@ struct Test {}
                 at deprecated
                 at derive(…)
                 at export_name = "…"
+                at doc(alias = "…")
                 at doc = "…"
                 at forbid(…)
                 at ignore = "…"
-                at inline(…)
+                at inline
                 at link
                 at link_name = "…"
                 at link_section = "…"
@@ -515,12 +517,13 @@ struct Test {}
                 at deprecated
                 at derive(…)
                 at export_name = "…"
+                at doc(alias = "…")
                 at doc = "…"
                 at feature(…)
                 at forbid(…)
                 at global_allocator
                 at ignore = "…"
-                at inline(…)
+                at inline
                 at link
                 at link_name = "…"
                 at link_section = "…"
