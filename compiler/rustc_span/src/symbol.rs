@@ -622,6 +622,7 @@ symbols! {
         intel,
         into_iter,
         into_result,
+        intra_doc_pointers,
         intrinsics,
         irrefutable_let_patterns,
         isa_attribute,

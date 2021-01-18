@@ -1,4 +1,5 @@
 #![deny(broken_intra_doc_links)]
+#![feature(intra_doc_pointers)]
 // These are links that could reasonably expected to work, but don't.
 
 // `[]` isn't supported because it had too many false positives.

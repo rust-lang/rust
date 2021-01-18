@@ -629,6 +629,8 @@ declare_features! (
     /// Allows references to types with interior mutability within constants
     (active, const_refs_to_cell, "1.51.0", Some(80384), None),
 
+    /// Allows using `pointer` and `reference` in intra-doc links
+    (active, intra_doc_pointers, "1.51.0", Some(80896), None),
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
