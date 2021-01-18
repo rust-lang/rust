@@ -252,6 +252,7 @@ impl<'hir> Map<'hir> {
                 GenericParamKind::Type { .. } => DefKind::TyParam,
                 GenericParamKind::Const { .. } => DefKind::ConstParam,
             },
+            Node::Crate(_) => DefKind::Mod,
             Node::Stmt(_)
             | Node::PathSegment(_)
             | Node::Ty(_)
@@ -263,8 +264,7 @@ impl<'hir> Map<'hir> {
             | Node::Arm(_)
             | Node::Lifetime(_)
             | Node::Visibility(_)
-            | Node::Block(_)
-            | Node::Crate(_) => return None,
+            | Node::Block(_) => return None,
         };
         Some(def_kind)
     }
@@ -523,9 +523,7 @@ impl<'hir> Map<'hir> {
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn find(&self, hir_id: HirId) -> Option<Node<'hir>> {
-        self.find_entry(hir_id).and_then(|entry| {
-            if let Node::Crate(..) = entry.node { None } else { Some(entry.node) }
-        })
+        self.find_entry(hir_id).map(|entry| entry.node)
     }
 
     /// Similar to `get_parent`; returns the parent HIR Id, or just `hir_id` if there
