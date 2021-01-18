@@ -63,7 +63,7 @@ pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
     new_name: &str,
-) -> RenameResult<RangeInfo<SourceChange>> {
+) -> RenameResult<SourceChange> {
     let sema = Semantics::new(db);
     rename_with_semantics(&sema, position, new_name)
 }
@@ -72,7 +72,7 @@ pub(crate) fn rename_with_semantics(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
     new_name: &str,
-) -> RenameResult<RangeInfo<SourceChange>> {
+) -> RenameResult<SourceChange> {
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
 
@@ -91,7 +91,7 @@ pub(crate) fn will_rename_file(
 ) -> Option<SourceChange> {
     let sema = Semantics::new(db);
     let module = sema.to_module_def(file_id)?;
-    let mut change = rename_mod(&sema, module, new_name_stem).ok()?.info;
+    let mut change = rename_mod(&sema, module, new_name_stem).ok()?;
     change.file_system_edits.clear();
     Some(change)
 }
@@ -243,7 +243,7 @@ fn rename_mod(
     sema: &Semantics<RootDatabase>,
     module: Module,
     new_name: &str,
-) -> RenameResult<RangeInfo<SourceChange>> {
+) -> RenameResult<SourceChange> {
     if IdentifierKind::Ident != check_identifier(new_name)? {
         bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
     }
@@ -281,13 +281,10 @@ fn rename_mod(
     });
     source_change.extend(ref_edits);
 
-    Ok(RangeInfo::new(TextRange::default(), source_change))
+    Ok(source_change)
 }
 
-fn rename_to_self(
-    sema: &Semantics<RootDatabase>,
-    local: hir::Local,
-) -> RenameResult<RangeInfo<SourceChange>> {
+fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameResult<SourceChange> {
     if assert_never!(local.is_self(sema.db)) {
         bail!("rename_to_self invoked on self");
     }
@@ -356,7 +353,7 @@ fn rename_to_self(
         TextEdit::replace(first_param_range, String::from(self_param)),
     );
 
-    Ok(RangeInfo::new(TextRange::default(), source_change))
+    Ok(source_change)
 }
 
 fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Option<TextEdit> {
@@ -387,7 +384,7 @@ fn rename_self_to_param(
     local: hir::Local,
     new_name: &str,
     identifier_kind: IdentifierKind,
-) -> RenameResult<RangeInfo<SourceChange>> {
+) -> RenameResult<SourceChange> {
     let (file_id, self_param) = match local.source(sema.db) {
         InFile { file_id, value: Either::Right(self_param) } => (file_id, self_param),
         _ => {
@@ -408,14 +405,14 @@ fn rename_self_to_param(
     source_change.extend(usages.iter().map(|(&file_id, references)| {
         source_edit_from_references(sema, file_id, &references, new_name)
     }));
-    Ok(RangeInfo::new(TextRange::default(), source_change))
+    Ok(source_change)
 }
 
 fn rename_reference(
     sema: &Semantics<RootDatabase>,
     def: Definition,
     new_name: &str,
-) -> RenameResult<RangeInfo<SourceChange>> {
+) -> RenameResult<SourceChange> {
     let ident_kind = check_identifier(new_name)?;
 
     let def_is_lbl_or_lt = matches!(def,
@@ -439,7 +436,7 @@ fn rename_reference(
         (IdentifierKind::ToSelf, Definition::Local(local)) if local.is_self(sema.db) => {
             // no-op
             mark::hit!(rename_self_to_self);
-            return Ok(RangeInfo::new(TextRange::default(), SourceChange::default()));
+            return Ok(SourceChange::default());
         }
         (ident_kind, Definition::Local(local)) if local.is_self(sema.db) => {
             mark::hit!(rename_self_to_param);
@@ -465,7 +462,7 @@ fn rename_reference(
 
     let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
     source_change.insert_source_edit(file_id, edit);
-    Ok(RangeInfo::new(TextRange::default(), source_change))
+    Ok(source_change)
 }
 
 fn source_edit_from_def(
@@ -518,7 +515,7 @@ mod tests {
             Ok(source_change) => {
                 let mut text_edit_builder = TextEdit::builder();
                 let mut file_id: Option<FileId> = None;
-                for edit in source_change.info.source_file_edits {
+                for edit in source_change.source_file_edits {
                     file_id = Some(edit.0);
                     for indel in edit.1.into_iter() {
                         text_edit_builder.replace(indel.delete, indel.insert);
@@ -917,36 +914,33 @@ mod foo$0;
 // empty
 "#,
             expect![[r#"
-                RangeInfo {
-                    range: 0..0,
-                    info: SourceChange {
-                        source_file_edits: {
-                            FileId(
-                                1,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
+                SourceChange {
+                    source_file_edits: {
+                        FileId(
+                            1,
+                        ): TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "foo2",
+                                    delete: 4..7,
+                                },
+                            ],
                         },
-                        file_system_edits: [
-                            MoveFile {
-                                src: FileId(
+                    },
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                2,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
                                     2,
                                 ),
-                                dst: AnchoredPathBuf {
-                                    anchor: FileId(
-                                        2,
-                                    ),
-                                    path: "foo2.rs",
-                                },
+                                path: "foo2.rs",
                             },
-                        ],
-                        is_snippet: false,
-                    },
+                        },
+                    ],
+                    is_snippet: false,
                 }
             "#]],
         );
@@ -969,46 +963,43 @@ pub struct FooContent;
 use crate::foo$0::FooContent;
 "#,
             expect![[r#"
-                RangeInfo {
-                    range: 0..0,
-                    info: SourceChange {
-                        source_file_edits: {
-                            FileId(
-                                0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "quux",
-                                        delete: 8..11,
-                                    },
-                                ],
-                            },
-                            FileId(
-                                2,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "quux",
-                                        delete: 11..14,
-                                    },
-                                ],
-                            },
+                SourceChange {
+                    source_file_edits: {
+                        FileId(
+                            0,
+                        ): TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "quux",
+                                    delete: 8..11,
+                                },
+                            ],
                         },
-                        file_system_edits: [
-                            MoveFile {
-                                src: FileId(
+                        FileId(
+                            2,
+                        ): TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "quux",
+                                    delete: 11..14,
+                                },
+                            ],
+                        },
+                    },
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
                                     1,
                                 ),
-                                dst: AnchoredPathBuf {
-                                    anchor: FileId(
-                                        1,
-                                    ),
-                                    path: "quux.rs",
-                                },
+                                path: "quux.rs",
                             },
-                        ],
-                        is_snippet: false,
-                    },
+                        },
+                    ],
+                    is_snippet: false,
                 }
             "#]],
         );
@@ -1025,36 +1016,33 @@ mod fo$0o;
 // empty
 "#,
             expect![[r#"
-                RangeInfo {
-                    range: 0..0,
-                    info: SourceChange {
-                        source_file_edits: {
-                            FileId(
-                                0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
+                SourceChange {
+                    source_file_edits: {
+                        FileId(
+                            0,
+                        ): TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "foo2",
+                                    delete: 4..7,
+                                },
+                            ],
                         },
-                        file_system_edits: [
-                            MoveFile {
-                                src: FileId(
+                    },
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
                                     1,
                                 ),
-                                dst: AnchoredPathBuf {
-                                    anchor: FileId(
-                                        1,
-                                    ),
-                                    path: "../foo2/mod.rs",
-                                },
+                                path: "../foo2/mod.rs",
                             },
-                        ],
-                        is_snippet: false,
-                    },
+                        },
+                    ],
+                    is_snippet: false,
                 }
             "#]],
         );
@@ -1072,36 +1060,33 @@ mod outer { mod fo$0o; }
 // empty
 "#,
             expect![[r#"
-                RangeInfo {
-                    range: 0..0,
-                    info: SourceChange {
-                        source_file_edits: {
-                            FileId(
-                                0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "bar",
-                                        delete: 16..19,
-                                    },
-                                ],
-                            },
+                SourceChange {
+                    source_file_edits: {
+                        FileId(
+                            0,
+                        ): TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "bar",
+                                    delete: 16..19,
+                                },
+                            ],
                         },
-                        file_system_edits: [
-                            MoveFile {
-                                src: FileId(
+                    },
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
                                     1,
                                 ),
-                                dst: AnchoredPathBuf {
-                                    anchor: FileId(
-                                        1,
-                                    ),
-                                    path: "bar.rs",
-                                },
+                                path: "bar.rs",
                             },
-                        ],
-                        is_snippet: false,
-                    },
+                        },
+                    ],
+                    is_snippet: false,
                 }
             "#]],
         );
@@ -1142,46 +1127,43 @@ pub mod foo$0;
 // pub fn fun() {}
 "#,
             expect![[r#"
-                RangeInfo {
-                    range: 0..0,
-                    info: SourceChange {
-                        source_file_edits: {
-                            FileId(
-                                0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 27..30,
-                                    },
-                                ],
-                            },
-                            FileId(
-                                1,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 8..11,
-                                    },
-                                ],
-                            },
+                SourceChange {
+                    source_file_edits: {
+                        FileId(
+                            0,
+                        ): TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "foo2",
+                                    delete: 27..30,
+                                },
+                            ],
                         },
-                        file_system_edits: [
-                            MoveFile {
-                                src: FileId(
+                        FileId(
+                            1,
+                        ): TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "foo2",
+                                    delete: 8..11,
+                                },
+                            ],
+                        },
+                    },
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                2,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
                                     2,
                                 ),
-                                dst: AnchoredPathBuf {
-                                    anchor: FileId(
-                                        2,
-                                    ),
-                                    path: "foo2.rs",
-                                },
+                                path: "foo2.rs",
                             },
-                        ],
-                        is_snippet: false,
-                    },
+                        },
+                    ],
+                    is_snippet: false,
                 }
             "#]],
         );

@@ -809,7 +809,7 @@ pub(crate) fn handle_rename(
 
     let change =
         snap.analysis.rename(position, &*params.new_name)?.map_err(to_proto::rename_error)?;
-    let workspace_edit = to_proto::workspace_edit(&snap, change.info)?;
+    let workspace_edit = to_proto::workspace_edit(&snap, change)?;
     Ok(Some(workspace_edit))
 }
 

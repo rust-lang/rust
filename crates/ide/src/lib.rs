@@ -520,7 +520,7 @@ impl Analysis {
         &self,
         position: FilePosition,
         new_name: &str,
-    ) -> Cancelable<Result<RangeInfo<SourceChange>, RenameError>> {
+    ) -> Cancelable<Result<SourceChange, RenameError>> {
         self.with_db(|db| references::rename::rename(db, position, new_name))
     }
 
