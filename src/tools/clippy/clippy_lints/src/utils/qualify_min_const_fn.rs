@@ -1,8 +1,8 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
-    Body, CastKind, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    AssertTerminator, Body, CallTerminator, CastKind, NullOp, Operand, Place, ProjectionElem,
+    Rvalue, Statement, StatementKind, SwitchIntTerminator, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
@@ -279,25 +279,23 @@ fn check_terminator(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, terminator: &Termin
             check_operand(tcx, value, span, body)
         },
 
-        TerminatorKind::SwitchInt {
-            discr,
-            switch_ty: _,
-            targets: _,
-        } => check_operand(tcx, discr, span, body),
+        TerminatorKind::SwitchInt(box SwitchIntTerminator { discr, switch_ty: _, targets: _ }) => {
+            check_operand(tcx, discr, span, body)
+        }
 
         TerminatorKind::Abort => Err((span, "abort is not stable in const fn".into())),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
             Err((span, "const fn generators are unstable".into()))
         },
 
-        TerminatorKind::Call {
+        TerminatorKind::Call(box CallTerminator {
             func,
             args,
             from_hir_call: _,
             destination: _,
             cleanup: _,
             fn_span: _,
-        } => {
+        }) => {
             let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
                 if !rustc_mir::const_eval::is_min_const_fn(tcx, fn_def_id) {
@@ -334,13 +332,13 @@ fn check_terminator(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, terminator: &Termin
             }
         },
 
-        TerminatorKind::Assert {
+        TerminatorKind::Assert(box AssertTerminator {
             cond,
             expected: _,
             msg: _,
             target: _,
             cleanup: _,
-        } => check_operand(tcx, cond, span, body),
+        }) => check_operand(tcx, cond, span, body),
 
         TerminatorKind::InlineAsm { .. } => Err((span, "cannot use inline assembly in const fn".into())),
     }

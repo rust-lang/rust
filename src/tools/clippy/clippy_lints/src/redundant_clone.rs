@@ -285,7 +285,7 @@ fn is_call_with_ref_arg<'tcx>(
     kind: &'tcx mir::TerminatorKind<'tcx>,
 ) -> Option<(def_id::DefId, mir::Local, Ty<'tcx>, mir::Local)> {
     if_chain! {
-        if let mir::TerminatorKind::Call { func, args, destination, .. } = kind;
+        if let mir::TerminatorKind::Call (box mir::CallTerminator{ func, args, destination, .. }) = kind;
         if args.len() == 1;
         if let mir::Operand::Move(mir::Place { local, .. }) = &args[0];
         if let ty::FnDef(def_id, _) = *func.ty(&*mir, cx.tcx).kind();
@@ -538,11 +538,11 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'_>, _loc: mir::Location) {
-        if let mir::TerminatorKind::Call {
+        if let mir::TerminatorKind::Call(box mir::CallTerminator {
             args,
             destination: Some((mir::Place { local: dest, .. }, _)),
             ..
-        } = &terminator.kind
+        }) = &terminator.kind
         {
             // If the call returns something with lifetimes,
             // let's conservatively assume the returned value contains lifetime of all the arguments.
