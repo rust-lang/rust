@@ -6,8 +6,10 @@ use syntax::{
     ast::{self, AstNode, AstToken, VisibilityOwner},
     Direction, NodeOrToken, SourceFile,
     SyntaxKind::{self, *},
-    SyntaxNode, TextRange,
+    SyntaxNode, TextRange, TextSize,
 };
+
+use lazy_static::lazy_static;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum FoldKind {
@@ -16,6 +18,7 @@ pub enum FoldKind {
     Mods,
     Block,
     ArgList,
+    Region,
 }
 
 #[derive(Debug)]
@@ -29,6 +32,8 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut visited_comments = FxHashSet::default();
     let mut visited_imports = FxHashSet::default();
     let mut visited_mods = FxHashSet::default();
+    // regions can be nested, here is a LIFO buffer
+    let mut regions_starts: Vec<TextSize> = vec![];
 
     for element in file.syntax().descendants_with_tokens() {
         // Fold items that span multiple lines
@@ -48,10 +53,32 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 // Fold groups of comments
                 if let Some(comment) = ast::Comment::cast(token) {
                     if !visited_comments.contains(&comment) {
-                        if let Some(range) =
-                            contiguous_range_for_comment(comment, &mut visited_comments)
-                        {
-                            res.push(Fold { range, kind: FoldKind::Comment })
+                        // regions are not really comments
+                        use regex::Regex;
+                        lazy_static! {
+                            static ref RE_START: Regex =
+                                Regex::new(r"^\s*//\s*#?region\b").unwrap();
+                            static ref RE_END: Regex =
+                                Regex::new(r"^\s*//\s*#?endregion\b").unwrap();
+                        }
+                        if RE_START.is_match(comment.text()) {
+                            regions_starts.push(comment.syntax().text_range().start());
+                        } else if RE_END.is_match(comment.text()) {
+                            if !regions_starts.is_empty() {
+                                res.push(Fold {
+                                    range: TextRange::new(
+                                        regions_starts.pop().unwrap(),
+                                        comment.syntax().text_range().end(),
+                                    ),
+                                    kind: FoldKind::Region,
+                                })
+                            }
+                        } else {
+                            if let Some(range) =
+                                contiguous_range_for_comment(comment, &mut visited_comments)
+                            {
+                                res.push(Fold { range, kind: FoldKind::Comment })
+                            }
                         }
                     }
                 }
@@ -175,9 +202,21 @@ fn contiguous_range_for_comment(
                 }
                 if let Some(c) = ast::Comment::cast(token) {
                     if c.kind() == group_kind {
-                        visited.insert(c.clone());
-                        last = c;
-                        continue;
+                        // regions are not really comments
+                        use regex::Regex;
+                        lazy_static! {
+                            static ref RE_START: Regex =
+                                Regex::new(r"^\s*//\s*#?region\b").unwrap();
+                            static ref RE_END: Regex =
+                                Regex::new(r"^\s*//\s*#?endregion\b").unwrap();
+                        }
+                        if RE_START.is_match(c.text()) || RE_END.is_match(c.text()) {
+                            break;
+                        } else {
+                            visited.insert(c.clone());
+                            last = c;
+                            continue;
+                        }
                     }
                 }
                 // The comment group ends because either:
@@ -224,6 +263,7 @@ mod tests {
                 FoldKind::Mods => "mods",
                 FoldKind::Block => "block",
                 FoldKind::ArgList => "arglist",
+                FoldKind::Region => "region",
             };
             assert_eq!(kind, &attr.unwrap());
         }
@@ -417,5 +457,25 @@ fn foo<fold arglist>(
 )</fold> {}
 "#,
         )
+    }
+
+    #[test]
+    fn fold_region() {
+        log_init_for_test_debug();
+        // only error level log is printed on the terminal
+        log::error!("test fold_region");
+        check(
+            r#"
+// 1. some normal comment
+<fold region>// region: test
+// 2. some normal comment
+calling_function(x,y);
+// endregion: test</fold>
+"#,
+        )
+    }
+
+    fn log_init_for_test_debug() {
+        let _ = env_logger::builder().is_test(true).try_init();
     }
 }

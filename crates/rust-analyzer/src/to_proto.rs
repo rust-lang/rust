@@ -465,7 +465,7 @@ pub(crate) fn folding_range(
     let kind = match fold.kind {
         FoldKind::Comment => Some(lsp_types::FoldingRangeKind::Comment),
         FoldKind::Imports => Some(lsp_types::FoldingRangeKind::Imports),
-        FoldKind::Mods | FoldKind::Block | FoldKind::ArgList => None,
+        FoldKind::Mods | FoldKind::Block | FoldKind::ArgList | FoldKind::Region => None,
     };
 
     let range = range(line_index, fold.range);

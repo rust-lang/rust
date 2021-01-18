@@ -31,6 +31,10 @@ assists = { path = "../assists", version = "0.0.0" }
 ssr = { path = "../ssr", version = "0.0.0" }
 completion = { path = "../completion", version = "0.0.0" }
 
+lazy_static = "1.4.0"
+regex = "1.4.3"
+env_logger = { version = "0.8.1", default-features = false }
+
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.
 hir = { path = "../hir", version = "0.0.0" }
