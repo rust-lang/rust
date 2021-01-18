@@ -844,16 +844,6 @@ impl Nonterminal {
                             return Some((*ident, *is_raw));
                         }
                     }
-
-                    if macro_name == sym::tuple_from_req
-                        && (matches_prefix("actix-web", "extract.rs")
-                            || matches_prefix("actori-web", "extract.rs"))
-                    {
-                        let snippet = source_map.span_to_snippet(orig_span);
-                        if snippet.as_deref() == Ok("$T") {
-                            return Some((*ident, *is_raw));
-                        }
-                    }
                 }
             }
         }
