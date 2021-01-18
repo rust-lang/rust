@@ -48,7 +48,7 @@ use crate::hash::{Hash, Hasher};
 /// A (possibly-wide) pointer can be put back together from its address and metadata
 /// with [`from_raw_parts`] or [`from_raw_parts_mut`].
 ///
-/// [`to_raw_parts`]: <*const _>::to_raw_parts
+/// [`to_raw_parts`]: *const::to_raw_parts
 #[lang = "pointee_trait"]
 pub trait Pointee {
     /// The type for metadata in pointers and references to `Self`.

@@ -111,6 +111,7 @@
 #![feature(extended_key_value_attributes)]
 #![feature(extern_types)]
 #![feature(fundamental)]
+#![cfg_attr(not(bootstrap), feature(intra_doc_pointers))]
 #![feature(intrinsics)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
