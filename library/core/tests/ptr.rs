@@ -555,3 +555,115 @@ fn from_raw_parts() {
     assert_eq!(ptr::from_raw_parts_mut(address, 5), slice_ptr.as_ptr());
     assert_eq!(NonNull::from_raw_parts(NonNull::new(address).unwrap(), 5), slice_ptr);
 }
+
+#[test]
+#[cfg(not(bootstrap))]
+fn thin_box() {
+    let foo = ThinBox::<dyn Display>::new(4);
+    assert_eq!(foo.to_string(), "4");
+    drop(foo);
+    let bar = ThinBox::<dyn Display>::new(7);
+    assert_eq!(bar.to_string(), "7");
+
+    // A slightly more interesting library that could be built on top of metadata APIs.
+    //
+    // * It could be generalized to any `T: ?Sized` (not just trait object)
+    //   if `{size,align}_of_for_meta<T: ?Sized>(T::Metadata)` are added.
+    // * Constructing a `ThinBox` without consuming and deallocating a `Box`
+    //   requires either the unstable `Unsize` marker trait,
+    //   or the unstable `unsized_locals` language feature,
+    //   or taking `&dyn T` and restricting to `T: Copy`.
+
+    use std::alloc::*;
+    use std::marker::PhantomData;
+
+    struct ThinBox<T>
+    where
+        T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
+    {
+        ptr: NonNull<DynMetadata<T>>,
+        phantom: PhantomData<T>,
+    }
+
+    impl<T> ThinBox<T>
+    where
+        T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
+    {
+        pub fn new<Value: std::marker::Unsize<T>>(value: Value) -> Self {
+            let unsized_: &T = &value;
+            let meta = metadata(unsized_);
+            let meta_layout = Layout::for_value(&meta);
+            let value_layout = Layout::for_value(&value);
+            let (layout, offset) = meta_layout.extend(value_layout).unwrap();
+            // `DynMetadata` is pointer-sized:
+            assert!(layout.size() > 0);
+            // If `ThinBox<T>` is generalized to any `T: ?Sized`,
+            // handle ZSTs with a dangling pointer without going through `alloc()`,
+            // like `Box<T>` does.
+            unsafe {
+                let ptr = NonNull::new(alloc(layout))
+                    .unwrap_or_else(|| handle_alloc_error(layout))
+                    .cast::<DynMetadata<T>>();
+                ptr.as_ptr().write(meta);
+                ptr.cast::<u8>().as_ptr().add(offset).cast::<Value>().write(value);
+                Self { ptr, phantom: PhantomData }
+            }
+        }
+
+        fn meta(&self) -> DynMetadata<T> {
+            unsafe { *self.ptr.as_ref() }
+        }
+
+        fn layout(&self) -> (Layout, usize) {
+            let meta = self.meta();
+            Layout::for_value(&meta).extend(meta.layout()).unwrap()
+        }
+
+        fn value_ptr(&self) -> *const T {
+            let (_, offset) = self.layout();
+            let data_ptr = unsafe { self.ptr.cast::<u8>().as_ptr().add(offset) };
+            ptr::from_raw_parts(data_ptr.cast(), self.meta())
+        }
+
+        fn value_mut_ptr(&mut self) -> *mut T {
+            let (_, offset) = self.layout();
+            // FIXME: can this line be shared with the same in `value_ptr()`
+            // without upsetting Stacked Borrows?
+            let data_ptr = unsafe { self.ptr.cast::<u8>().as_ptr().add(offset) };
+            from_raw_parts_mut(data_ptr.cast(), self.meta())
+        }
+    }
+
+    impl<T> std::ops::Deref for ThinBox<T>
+    where
+        T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
+    {
+        type Target = T;
+
+        fn deref(&self) -> &T {
+            unsafe { &*self.value_ptr() }
+        }
+    }
+
+    impl<T> std::ops::DerefMut for ThinBox<T>
+    where
+        T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
+    {
+        fn deref_mut(&mut self) -> &mut T {
+            unsafe { &mut *self.value_mut_ptr() }
+        }
+    }
+
+    impl<T> std::ops::Drop for ThinBox<T>
+    where
+        T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
+    {
+        fn drop(&mut self) {
+            let (layout, _) = self.layout();
+            unsafe {
+                drop_in_place::<T>(&mut **self);
+                dealloc(self.ptr.cast().as_ptr(), layout);
+            }
+        }
+    }
+}
