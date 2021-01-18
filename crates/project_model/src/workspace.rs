@@ -537,6 +537,7 @@ fn sysroot_to_crate_graph(
 }
 
 fn get_rustc_cfg_options(target: Option<&str>) -> Vec<CfgFlag> {
+    let _p = profile::span("get_rustc_cfg_options");
     let mut res = Vec::new();
 
     // Some nightly-only cfgs, which are required for stdlib
