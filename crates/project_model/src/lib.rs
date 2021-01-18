@@ -5,6 +5,7 @@ mod cfg_flag;
 mod project_json;
 mod sysroot;
 mod workspace;
+mod rustc_cfg;
 
 use std::{
     fs::{read_dir, ReadDir},

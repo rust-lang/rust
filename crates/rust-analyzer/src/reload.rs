@@ -135,7 +135,10 @@ impl GlobalState {
                             )
                         }
                         LinkedProject::InlineJsonProject(it) => {
-                            project_model::ProjectWorkspace::load_inline(it.clone())
+                            project_model::ProjectWorkspace::load_inline(
+                                it.clone(),
+                                cargo_config.target.as_deref(),
+                            )
                         }
                     })
                     .collect::<Vec<_>>();
@@ -253,11 +256,7 @@ impl GlobalState {
                 res
             };
             for ws in workspaces.iter() {
-                crate_graph.extend(ws.to_crate_graph(
-                    self.config.cargo().target.as_deref(),
-                    self.proc_macro_client.as_ref(),
-                    &mut load,
-                ));
+                crate_graph.extend(ws.to_crate_graph(self.proc_macro_client.as_ref(), &mut load));
             }
 
             crate_graph
@@ -289,9 +288,7 @@ impl GlobalState {
             .iter()
             .enumerate()
             .filter_map(|(id, w)| match w {
-                ProjectWorkspace::Cargo { cargo, sysroot: _, rustc: _ } => {
-                    Some((id, cargo.workspace_root()))
-                }
+                ProjectWorkspace::Cargo { cargo, .. } => Some((id, cargo.workspace_root())),
                 ProjectWorkspace::Json { project, .. } => {
                     // Enable flychecks for json projects if a custom flycheck command was supplied
                     // in the workspace configuration.
