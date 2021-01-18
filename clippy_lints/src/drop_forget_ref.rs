@@ -1,4 +1,4 @@
-use crate::utils::{is_copy, match_def_path, paths, qpath_res, span_lint_and_note};
+use crate::utils::{is_copy, match_def_path, paths, span_lint_and_note};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
             if let ExprKind::Call(ref path, ref args) = expr.kind;
             if let ExprKind::Path(ref qpath) = path.kind;
             if args.len() == 1;
-            if let Some(def_id) = qpath_res(cx, qpath, path.hir_id).opt_def_id();
+            if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
             then {
                 let lint;
                 let msg;

@@ -6,9 +6,9 @@ use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
     indent_of, is_in_panic_handler, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item,
-    last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, qpath_res, single_segment_path,
-    snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help,
-    span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
+    last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, single_segment_path, snippet,
+    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
+    span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -848,7 +848,7 @@ fn same_var<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, var: HirId) -> bool {
         if let ExprKind::Path(qpath) = &expr.kind;
         if let QPath::Resolved(None, path) = qpath;
         if path.segments.len() == 1;
-        if let Res::Local(local_id) = qpath_res(cx, qpath, expr.hir_id);
+        if let Res::Local(local_id) = cx.qpath_res(qpath, expr.hir_id);
         then {
             // our variable!
             local_id == var
@@ -1420,7 +1420,7 @@ fn detect_same_item_push<'tcx>(
                 // Make sure that the push does not involve possibly mutating values
                 match pushed_item.kind {
                     ExprKind::Path(ref qpath) => {
-                        match qpath_res(cx, qpath, pushed_item.hir_id) {
+                        match cx.qpath_res(qpath, pushed_item.hir_id) {
                             // immutable bindings that are initialized with literal or constant
                             Res::Local(hir_id) => {
                                 if_chain! {
@@ -1437,7 +1437,7 @@ fn detect_same_item_push<'tcx>(
                                             ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item),
                                             // immutable bindings that are initialized with constant
                                             ExprKind::Path(ref path) => {
-                                                if let Res::Def(DefKind::Const, ..) = qpath_res(cx, path, init.hir_id) {
+                                                if let Res::Def(DefKind::Const, ..) = cx.qpath_res(path, init.hir_id) {
                                                     emit_lint(cx, vec, pushed_item);
                                                 }
                                             }
@@ -2028,7 +2028,7 @@ fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId>
         if let ExprKind::Path(ref qpath) = bound.kind;
         if let QPath::Resolved(None, _) = *qpath;
         then {
-            let res = qpath_res(cx, qpath, bound.hir_id);
+            let res = cx.qpath_res(qpath, bound.hir_id);
             if let Res::Local(hir_id) = res {
                 let node_str = cx.tcx.hir().get(hir_id);
                 if_chain! {
@@ -2120,7 +2120,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                     if self.prefer_mutable {
                         self.indexed_mut.insert(seqvar.segments[0].ident.name);
                     }
-                    let res = qpath_res(self.cx, seqpath, seqexpr.hir_id);
+                    let res = self.cx.qpath_res(seqpath, seqexpr.hir_id);
                     match res {
                         Res::Local(hir_id) => {
                             let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
@@ -2184,7 +2184,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             if let QPath::Resolved(None, ref path) = *qpath;
             if path.segments.len() == 1;
             then {
-                if let Res::Local(local_id) = qpath_res(self.cx, qpath, expr.hir_id) {
+                if let Res::Local(local_id) = self.cx.qpath_res(qpath, expr.hir_id) {
                     if local_id == self.var {
                         self.nonindex = true;
                     } else {
@@ -2589,7 +2589,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
 fn var_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<HirId> {
     if let ExprKind::Path(ref qpath) = expr.kind {
-        let path_res = qpath_res(cx, qpath, expr.hir_id);
+        let path_res = cx.qpath_res(qpath, expr.hir_id);
         if let Res::Local(hir_id) = path_res {
             return Some(hir_id);
         }
@@ -2819,7 +2819,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
         if_chain! {
             if let ExprKind::Path(ref qpath) = ex.kind;
             if let QPath::Resolved(None, _) = *qpath;
-            let res = qpath_res(self.cx, qpath, ex.hir_id);
+            let res = self.cx.qpath_res(qpath, ex.hir_id);
             then {
                 match res {
                     Res::Local(hir_id) => {
