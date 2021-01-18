@@ -51,6 +51,7 @@ pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, Toke
     let global_offset = node.text_range().start();
     let mut c = Convertor::new(node, global_offset);
     let subtree = c.go()?;
+    c.id_alloc.map.entries.shrink_to_fit();
     Some((subtree, c.id_alloc.map))
 }
 
@@ -593,7 +594,8 @@ impl<'a> TtTreeSink<'a> {
         }
     }
 
-    fn finish(self) -> (Parse<SyntaxNode>, TokenMap) {
+    fn finish(mut self) -> (Parse<SyntaxNode>, TokenMap) {
+        self.token_map.entries.shrink_to_fit();
         (self.inner.finish(), self.token_map)
     }
 }
