@@ -18,7 +18,7 @@ use hir_def::{
     db::DefDatabase,
     item_scope::ItemScope,
     keys,
-    nameres::CrateDefMap,
+    nameres::DefMap,
     AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::{db::AstDatabase, InFile};
@@ -221,7 +221,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
 
 fn visit_module(
     db: &TestDB,
-    crate_def_map: &CrateDefMap,
+    crate_def_map: &DefMap,
     module_id: LocalModuleId,
     cb: &mut dyn FnMut(DefWithBodyId),
 ) {
@@ -249,7 +249,7 @@ fn visit_module(
 
     fn visit_scope(
         db: &TestDB,
-        crate_def_map: &CrateDefMap,
+        crate_def_map: &DefMap,
         scope: &ItemScope,
         cb: &mut dyn FnMut(DefWithBodyId),
     ) {

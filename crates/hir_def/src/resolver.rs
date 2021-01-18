@@ -16,7 +16,7 @@ use crate::{
     expr::{ExprId, PatId},
     generics::GenericParams,
     item_scope::{BuiltinShadowMode, BUILTIN_SCOPE},
-    nameres::CrateDefMap,
+    nameres::DefMap,
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
@@ -34,7 +34,7 @@ pub struct Resolver {
 // FIXME how to store these best
 #[derive(Debug, Clone)]
 struct ModuleItemMap {
-    crate_def_map: Arc<CrateDefMap>,
+    crate_def_map: Arc<DefMap>,
     module_id: LocalModuleId,
 }
 
@@ -425,7 +425,7 @@ impl Resolver {
         traits
     }
 
-    fn module_scope(&self) -> Option<(&CrateDefMap, LocalModuleId)> {
+    fn module_scope(&self) -> Option<(&DefMap, LocalModuleId)> {
         self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 
@@ -588,11 +588,7 @@ impl Resolver {
         self.push_scope(Scope::ImplDefScope(impl_def))
     }
 
-    fn push_module_scope(
-        self,
-        crate_def_map: Arc<CrateDefMap>,
-        module_id: LocalModuleId,
-    ) -> Resolver {
+    fn push_module_scope(self, crate_def_map: Arc<DefMap>, module_id: LocalModuleId) -> Resolver {
         self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
     }
 

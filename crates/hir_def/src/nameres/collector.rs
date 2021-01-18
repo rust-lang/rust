@@ -31,7 +31,7 @@ use crate::{
     },
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
-        BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
+        BuiltinShadowMode, DefMap, ModuleData, ModuleOrigin, ResolveMode,
     },
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
@@ -45,7 +45,7 @@ const GLOB_RECURSION_LIMIT: usize = 100;
 const EXPANSION_DEPTH_LIMIT: usize = 128;
 const FIXED_POINT_LIMIT: usize = 8192;
 
-pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
+pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap) -> DefMap {
     let crate_graph = db.crate_graph();
 
     // populate external prelude
@@ -210,7 +210,7 @@ struct DefData<'a> {
 /// Walks the tree of module recursively
 struct DefCollector<'a> {
     db: &'a dyn DefDatabase,
-    def_map: CrateDefMap,
+    def_map: DefMap,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
@@ -859,7 +859,7 @@ impl DefCollector<'_> {
         .collect(item_tree.top_level_items());
     }
 
-    fn finish(mut self) -> CrateDefMap {
+    fn finish(mut self) -> DefMap {
         // Emit diagnostics for all remaining unexpanded macros.
 
         for directive in &self.unexpanded_macros {
@@ -1474,7 +1474,7 @@ mod tests {
 
     use super::*;
 
-    fn do_collect_defs(db: &dyn DefDatabase, def_map: CrateDefMap) -> CrateDefMap {
+    fn do_collect_defs(db: &dyn DefDatabase, def_map: DefMap) -> DefMap {
         let mut collector = DefCollector {
             db,
             def_map,
@@ -1493,7 +1493,7 @@ mod tests {
         collector.def_map
     }
 
-    fn do_resolve(code: &str) -> CrateDefMap {
+    fn do_resolve(code: &str) -> DefMap {
         let (db, _file_id) = TestDB::with_single_file(&code);
         let krate = db.test_crate();
 
@@ -1501,7 +1501,7 @@ mod tests {
             let edition = db.crate_graph()[krate].edition;
             let mut modules: Arena<ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
-            CrateDefMap {
+            DefMap {
                 krate,
                 edition,
                 extern_prelude: FxHashMap::default(),

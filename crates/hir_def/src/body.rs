@@ -29,7 +29,7 @@ use crate::{
     expr::{Expr, ExprId, Label, LabelId, Pat, PatId},
     item_scope::BuiltinShadowMode,
     item_scope::ItemScope,
-    nameres::CrateDefMap,
+    nameres::DefMap,
     path::{ModPath, Path},
     src::HasSource,
     AsMacroCall, DefWithBodyId, HasModule, Lookup, ModuleId,
@@ -45,7 +45,7 @@ pub(crate) struct CfgExpander {
 
 pub(crate) struct Expander {
     cfg_expander: CfgExpander,
-    crate_def_map: Arc<CrateDefMap>,
+    crate_def_map: Arc<DefMap>,
     current_file_id: HirFileId,
     ast_id_map: Arc<AstIdMap>,
     module: ModuleId,

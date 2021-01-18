@@ -15,7 +15,7 @@ use crate::{
     import_map::ImportMap,
     item_tree::ItemTree,
     lang_item::{LangItemTarget, LangItems},
-    nameres::CrateDefMap,
+    nameres::DefMap,
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
     GenericDefId, ImplId, ImplLoc, LocalEnumVariantId, LocalFieldId, StaticId, StaticLoc, StructId,
     StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VariantId,
@@ -50,10 +50,10 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(crate_def_map_wait)]
     #[salsa::transparent]
-    fn crate_def_map(&self, krate: CrateId) -> Arc<CrateDefMap>;
+    fn crate_def_map(&self, krate: CrateId) -> Arc<DefMap>;
 
-    #[salsa::invoke(CrateDefMap::crate_def_map_query)]
-    fn crate_def_map_query(&self, krate: CrateId) -> Arc<CrateDefMap>;
+    #[salsa::invoke(DefMap::crate_def_map_query)]
+    fn crate_def_map_query(&self, krate: CrateId) -> Arc<DefMap>;
 
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
@@ -112,7 +112,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     fn import_map(&self, krate: CrateId) -> Arc<ImportMap>;
 }
 
-fn crate_def_map_wait(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
+fn crate_def_map_wait(db: &impl DefDatabase, krate: CrateId) -> Arc<DefMap> {
     let _p = profile::span("crate_def_map:wait");
     db.crate_def_map_query(krate)
 }
