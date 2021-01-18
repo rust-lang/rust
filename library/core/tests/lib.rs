@@ -68,7 +68,7 @@
 #![feature(option_result_unwrap_unchecked)]
 #![feature(option_unwrap_none)]
 #![feature(peekable_peek_mut)]
-#![feature(ptr_metadata)]
+#![cfg_attr(not(bootstrap), feature(ptr_metadata))]
 #![feature(once_cell)]
 #![feature(unsafe_block_in_unsafe_fn)]
 #![feature(unsized_tuple_coercion)]

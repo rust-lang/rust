@@ -1,5 +1,8 @@
 use core::cell::RefCell;
-use core::ptr::{self, *};
+#[cfg(not(bootstrap))]
+use core::ptr;
+use core::ptr::*;
+#[cfg(not(bootstrap))]
 use std::fmt::{Debug, Display};
 
 #[test]
