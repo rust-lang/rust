@@ -67,6 +67,7 @@ pub struct ServerOpt {
 pub enum Malloc {
     System,
     Mimalloc,
+    Jemalloc,
 }
 
 impl InstallCmd {
@@ -176,6 +177,7 @@ fn install_server(opts: ServerOpt) -> Result<()> {
     let features = match opts.malloc {
         Malloc::System => &[][..],
         Malloc::Mimalloc => &["--features", "mimalloc"],
+        Malloc::Jemalloc => &["--features", "jemalloc"],
     };
 
     let cmd = cmd!("cargo install --path crates/rust-analyzer --locked --force {features...}");
