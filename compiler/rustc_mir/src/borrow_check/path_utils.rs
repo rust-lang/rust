@@ -147,27 +147,25 @@ pub(crate) fn is_upvar_field_projection(
     place_ref: PlaceRef<'tcx>,
     body: &Body<'tcx>,
 ) -> Option<Field> {
-    let mut place_projection = place_ref.projection;
+    let mut place_ref = place_ref;
     let mut by_ref = false;
 
-    if let [proj_base @ .., ProjectionElem::Deref] = place_projection {
-        place_projection = proj_base;
+    if let Some((place_base, ProjectionElem::Deref)) = place_ref.last_projection() {
+        place_ref = place_base;
         by_ref = true;
     }
 
-    match place_projection {
-        [base @ .., ProjectionElem::Field(field, _ty)] => {
-            let base_ty = Place::ty_from(place_ref.local, base, body, tcx).ty;
-
+    match place_ref.last_projection() {
+        Some((place_base, ProjectionElem::Field(field, _ty))) => {
+            let base_ty = place_base.ty(body, tcx).ty;
             if (base_ty.is_closure() || base_ty.is_generator())
                 && (!by_ref || upvars[field.index()].by_ref)
             {
-                Some(*field)
+                Some(field)
             } else {
                 None
             }
         }
-
         _ => None,
     }
 }

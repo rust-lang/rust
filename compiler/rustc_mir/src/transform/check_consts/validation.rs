@@ -1007,27 +1007,26 @@ fn place_as_reborrow(
     body: &Body<'tcx>,
     place: Place<'tcx>,
 ) -> Option<&'a [PlaceElem<'tcx>]> {
-    place.projection.split_last().and_then(|(outermost, inner)| {
-        if outermost != &ProjectionElem::Deref {
-            return None;
+    match place.as_ref().last_projection() {
+        Some((place_base, ProjectionElem::Deref)) => {
+            // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
+            // that points to the allocation for the static. Don't treat these as reborrows.
+            if body.local_decls[place_base.local].is_ref_to_static() {
+                None
+            } else {
+                // Ensure the type being derefed is a reference and not a raw pointer.
+                //
+                // This is sufficient to prevent an access to a `static mut` from being marked as a
+                // reborrow, even if the check above were to disappear.
+                let inner_ty = place_base.ty(body, tcx).ty;
+                match inner_ty.kind() {
+                    ty::Ref(..) => Some(place_base.projection),
+                    _ => None,
+                }
+            }
         }
-
-        // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
-        // that points to the allocation for the static. Don't treat these as reborrows.
-        if body.local_decls[place.local].is_ref_to_static() {
-            return None;
-        }
-
-        // Ensure the type being derefed is a reference and not a raw pointer.
-        //
-        // This is sufficient to prevent an access to a `static mut` from being marked as a
-        // reborrow, even if the check above were to disappear.
-        let inner_ty = Place::ty_from(place.local, inner, body, tcx).ty;
-        match inner_ty.kind() {
-            ty::Ref(..) => Some(inner),
-            _ => None,
-        }
-    })
+        _ => None,
+    }
 }
 
 fn is_int_bool_or_char(ty: Ty<'_>) -> bool {

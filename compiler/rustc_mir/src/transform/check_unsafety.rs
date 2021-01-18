@@ -399,17 +399,13 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         place: Place<'tcx>,
         is_mut_use: bool,
     ) {
-        let mut cursor = place.projection.as_ref();
-        while let &[ref proj_base @ .., elem] = cursor {
-            cursor = proj_base;
-
+        for (place_base, elem) in place.iter_projections().rev() {
             match elem {
                 // Modifications behind a dereference don't affect the value of
                 // the pointer.
                 ProjectionElem::Deref => return,
                 ProjectionElem::Field(..) => {
-                    let ty =
-                        Place::ty_from(place.local, proj_base, &self.body.local_decls, self.tcx).ty;
+                    let ty = place_base.ty(&self.body.local_decls, self.tcx).ty;
                     if let ty::Adt(def, _) = ty.kind() {
                         if self.tcx.layout_scalar_valid_range(def.did)
                             != (Bound::Unbounded, Bound::Unbounded)
