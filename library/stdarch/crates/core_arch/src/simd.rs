@@ -245,6 +245,7 @@ simd_ty!(i64x2[i64]: i64, i64 | x0, x1);
 
 simd_ty!(f32x4[f32]: f32, f32, f32, f32 | x0, x1, x2, x3);
 simd_ty!(f64x2[f64]: f64, f64 | x0, x1);
+simd_ty!(f64x4[f64]: f64, f64, f64, f64 | x0, x1, x2, x3);
 
 simd_m_ty!(
     m8x16[i8]: i8,
