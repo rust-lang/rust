@@ -339,7 +339,12 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
 
     let flags = settings::Flags::new(flags_builder);
 
-    let mut isa_builder = cranelift_codegen::isa::lookup(target_triple).unwrap();
+    let variant = if cfg!(feature = "newbe") {
+        cranelift_codegen::isa::BackendVariant::MachInst
+    } else {
+        cranelift_codegen::isa::BackendVariant::Legacy
+    };
+    let mut isa_builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
     // Don't use "haswell", as it implies `has_lzcnt`.macOS CI is still at Ivy Bridge EP, so `lzcnt`
     // is interpreted as `bsr`.
     isa_builder.enable("nehalem").unwrap();
