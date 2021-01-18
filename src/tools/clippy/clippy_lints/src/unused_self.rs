@@ -1,7 +1,7 @@
 use if_chain::if_chain;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
-use rustc_hir::{HirId, ImplItem, ImplItemKind, ItemKind, Impl, Path};
+use rustc_hir::{HirId, Impl, ImplItem, ImplItemKind, ItemKind, Path};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};

@@ -1,6 +1,6 @@
 use crate::utils::{is_automatically_derived, span_lint_hir};
 use if_chain::if_chain;
-use rustc_hir::{Item, ItemKind, Impl};
+use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;

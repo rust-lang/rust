@@ -1,7 +1,7 @@
 use crate::utils::{match_def_path, match_trait_method, paths, qpath_res, span_lint};
 use if_chain::if_chain;
 use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, HirId, ImplItem, ImplItemKind, Item, ItemKind, Impl};
+use rustc_hir::{Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 

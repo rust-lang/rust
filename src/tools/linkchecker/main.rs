@@ -37,16 +37,7 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     // in intra-doc links (primitive impls are weird)
     // https://github.com/rust-lang/rust/issues/62834 is necessary to be
     // able to link to slices
-    (
-        "std/io/struct.IoSlice.html",
-        &[
-            "#method.as_mut_ptr",
-            "#method.sort_by_key",
-            "#method.make_ascii_uppercase",
-            "#method.make_ascii_lowercase",
-            "#method.get_unchecked_mut",
-        ],
-    ),
+    ("std/io/struct.IoSlice.html", &["#method.as_mut_ptr", "#method.sort_by_key"]),
     // These try to link to std::collections, but are defined in alloc
     // https://github.com/rust-lang/rust/issues/74481
     ("std/collections/btree_map/struct.BTreeMap.html", &["#insert-and-complex-keys"]),

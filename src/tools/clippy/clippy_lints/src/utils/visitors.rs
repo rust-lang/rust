@@ -107,7 +107,7 @@ where
                         if let Some(el) = else_opt {
                             self.visit_expr(el);
                         }
-                    }
+                    },
                     hir::ExprKind::Match(cond, arms, _) => {
                         self.inside_stmt(true).visit_expr(cond);
                         for arm in arms {

@@ -1398,12 +1398,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn lifetime_deletion_span(&self, name: Ident, generics: &hir::Generics<'_>) -> Option<Span> {
         generics.params.iter().enumerate().find_map(|(i, param)| {
             if param.name.ident() == name {
-                let mut in_band = false;
-                if let hir::GenericParamKind::Lifetime { kind } = param.kind {
-                    if let hir::LifetimeParamKind::InBand = kind {
-                        in_band = true;
-                    }
-                }
+                let in_band = matches!(
+                    param.kind,
+                    hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::InBand }
+                );
                 if in_band {
                     Some(param.span)
                 } else if generics.params.len() == 1 {
@@ -1433,12 +1431,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         lifetime: &hir::Lifetime,
     ) {
         let name = lifetime.name.ident();
-        let mut remove_decl = None;
-        if let Some(parent_def_id) = self.tcx.parent(def_id) {
-            if let Some(generics) = self.tcx.hir().get_generics(parent_def_id) {
-                remove_decl = self.lifetime_deletion_span(name, generics);
-            }
-        }
+        let remove_decl = self
+            .tcx
+            .parent(def_id)
+            .and_then(|parent_def_id| self.tcx.hir().get_generics(parent_def_id))
+            .and_then(|generics| self.lifetime_deletion_span(name, generics));
 
         let mut remove_use = None;
         let mut elide_use = None;

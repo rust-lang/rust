@@ -18,7 +18,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::Span;
-use std::convert::{TryFrom, TryInto};
 use std::hash::Hash;
 use std::intrinsics;
 use std::marker::DiscriminantKind;
@@ -81,7 +80,8 @@ where
     E: TyEncoder<'tcx>,
     M: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<T, usize>,
     T: EncodableWithShorthand<'tcx, E>,
-    <T::Variant as DiscriminantKind>::Discriminant: Ord + TryFrom<usize>,
+    // The discriminant and shorthand must have the same size.
+    T::Variant: DiscriminantKind<Discriminant = isize>,
 {
     let existing_shorthand = cache(encoder).get(value).copied();
     if let Some(shorthand) = existing_shorthand {
@@ -97,7 +97,7 @@ where
     // The shorthand encoding uses the same usize as the
     // discriminant, with an offset so they can't conflict.
     let discriminant = intrinsics::discriminant_value(variant);
-    assert!(discriminant < SHORTHAND_OFFSET.try_into().ok().unwrap());
+    assert!(SHORTHAND_OFFSET > discriminant as usize);
 
     let shorthand = start + SHORTHAND_OFFSET;
 

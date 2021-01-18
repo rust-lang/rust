@@ -22,15 +22,16 @@ pub enum CastTy<'tcx> {
     /// Various types that are represented as ints and handled mostly
     /// in the same way, merged for easier matching.
     Int(IntTy),
-    /// Floating-Point types
+    /// Floating-point types.
     Float,
-    /// Function Pointers
+    /// Function pointers.
     FnPtr,
-    /// Raw pointers
+    /// Raw pointers.
     Ptr(ty::TypeAndMut<'tcx>),
 }
 
-/// Cast Kind. See RFC 401 (or librustc_typeck/check/cast.rs)
+/// Cast Kind. See [RFC 401](https://rust-lang.github.io/rfcs/0401-coercions.html)
+/// (or librustc_typeck/check/cast.rs).
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum CastKind {
     CoercionCast,
@@ -48,7 +49,7 @@ pub enum CastKind {
 
 impl<'tcx> CastTy<'tcx> {
     /// Returns `Some` for integral/pointer casts.
-    /// casts like unsizing casts will return `None`
+    /// Casts like unsizing casts will return `None`.
     pub fn from_ty(t: Ty<'tcx>) -> Option<CastTy<'tcx>> {
         match *t.kind() {
             ty::Bool => Some(CastTy::Int(IntTy::Bool)),
