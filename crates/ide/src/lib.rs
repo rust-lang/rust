@@ -86,18 +86,15 @@ pub use completion::{
     InsertTextFormat,
 };
 pub use hir::{Documentation, Semantics};
-pub use ide_db::base_db::{
-    Canceled, Change, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,
-    SourceRootId,
-};
 pub use ide_db::{
+    base_db::{
+        Canceled, Change, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange,
+        SourceRoot, SourceRootId,
+    },
     call_info::CallInfo,
-    search::{FileReference, ReferenceAccess, ReferenceKind},
-};
-pub use ide_db::{
     label::Label,
     line_index::{LineCol, LineIndex},
-    search::SearchScope,
+    search::{FileReference, ReferenceAccess, ReferenceKind, SearchScope},
     source_change::{FileSystemEdit, SourceChange},
     symbol_index::Query,
     RootDatabase,
