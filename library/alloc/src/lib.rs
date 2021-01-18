@@ -112,7 +112,7 @@
 #![feature(or_patterns)]
 #![feature(pattern)]
 #![feature(ptr_internals)]
-#![feature(range_bounds_assert_len)]
+#![feature(range_bounds_ensure_subset_of)]
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
 #![cfg_attr(bootstrap, feature(min_const_generics))]
