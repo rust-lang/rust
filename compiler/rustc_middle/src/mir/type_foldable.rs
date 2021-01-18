@@ -31,18 +31,22 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Drop { place, target, unwind } => {
                 Drop { place: place.fold_with(folder), target, unwind }
             }
-            DropAndReplace { place, value, target, unwind } => DropAndReplace {
-                place: place.fold_with(folder),
-                value: value.fold_with(folder),
-                target,
-                unwind,
-            },
-            Yield { value, resume, resume_arg, drop } => Yield {
-                value: value.fold_with(folder),
-                resume,
-                resume_arg: resume_arg.fold_with(folder),
-                drop,
-            },
+            DropAndReplace(box DropAndReplaceTerminator { place, value, target, unwind }) => {
+                DropAndReplace(box DropAndReplaceTerminator {
+                    place: place.fold_with(folder),
+                    value: value.fold_with(folder),
+                    target,
+                    unwind,
+                })
+            }
+            Yield(box YieldTerminator { value, resume, resume_arg, drop }) => {
+                Yield(box YieldTerminator {
+                    value: value.fold_with(folder),
+                    resume,
+                    resume_arg: resume_arg.fold_with(folder),
+                    drop,
+                })
+            }
             Call(box CallTerminator {
                 func,
                 args,
@@ -117,11 +121,11 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 switch_ty.visit_with(visitor)
             }
             Drop { ref place, .. } => place.visit_with(visitor),
-            DropAndReplace { ref place, ref value, .. } => {
+            DropAndReplace(box DropAndReplaceTerminator { ref place, ref value, .. }) => {
                 place.visit_with(visitor)?;
                 value.visit_with(visitor)
             }
-            Yield { ref value, .. } => value.visit_with(visitor),
+            Yield(box YieldTerminator { ref value, .. }) => value.visit_with(visitor),
             Call(box CallTerminator { ref func, ref args, ref destination, .. }) => {
                 if let Some((ref loc, _)) = *destination {
                     loc.visit_with(visitor)?;

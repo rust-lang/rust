@@ -96,7 +96,9 @@ impl<'tcx> MockBlocks<'tcx> {
                 ..
             })
             | TerminatorKind::Drop { ref mut target, .. }
-            | TerminatorKind::DropAndReplace { ref mut target, .. }
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                ref mut target, ..
+            })
             | TerminatorKind::FalseEdge { real_target: ref mut target, .. }
             | TerminatorKind::FalseUnwind { real_target: ref mut target, .. }
             | TerminatorKind::Goto { ref mut target }
@@ -104,7 +106,9 @@ impl<'tcx> MockBlocks<'tcx> {
                 destination: Some(ref mut target),
                 ..
             })
-            | TerminatorKind::Yield { resume: ref mut target, .. } => *target = to_block,
+            | TerminatorKind::Yield(box YieldTerminator { resume: ref mut target, .. }) => {
+                *target = to_block
+            }
             ref invalid => bug!("Invalid from_block: {:?}", invalid),
         }
     }
@@ -200,7 +204,9 @@ fn debug_basic_blocks(mir_body: &Body<'tcx>) -> String {
                         ..
                     })
                     | TerminatorKind::Drop { target, .. }
-                    | TerminatorKind::DropAndReplace { target, .. }
+                    | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                        target, ..
+                    })
                     | TerminatorKind::FalseEdge { real_target: target, .. }
                     | TerminatorKind::FalseUnwind { real_target: target, .. }
                     | TerminatorKind::Goto { target }
@@ -208,7 +214,7 @@ fn debug_basic_blocks(mir_body: &Body<'tcx>) -> String {
                         destination: Some(target),
                         ..
                     })
-                    | TerminatorKind::Yield { resume: target, .. } => {
+                    | TerminatorKind::Yield(box YieldTerminator { resume: target, .. }) => {
                         format!("{}{:?}:{} -> {:?}", sp, bb, debug::term_type(kind), target)
                     }
                     TerminatorKind::SwitchInt(box SwitchIntTerminator { targets, .. }) => {

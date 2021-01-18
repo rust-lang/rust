@@ -358,7 +358,10 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::InlineAsm(..) => { /* nothing to do */ }
                 TerminatorKind::Call(box mir::CallTerminator { cleanup: unwind, .. })
                 | TerminatorKind::Assert(box mir::AssertTerminator { cleanup: unwind, .. })
-                | TerminatorKind::DropAndReplace { unwind, .. }
+                | TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
+                    unwind,
+                    ..
+                })
                 | TerminatorKind::Drop { unwind, .. } => {
                     if let Some(unwind) = unwind {
                         debug!(

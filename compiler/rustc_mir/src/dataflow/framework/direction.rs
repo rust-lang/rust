@@ -246,7 +246,9 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::Yield { resume, resume_arg, .. } if resume == bb => {
+                mir::TerminatorKind::Yield(box mir::YieldTerminator {
+                    resume, resume_arg, ..
+                }) if resume == bb => {
                     let mut tmp = exit_state.clone();
                     analysis.apply_yield_resume_effect(&mut tmp, resume, resume_arg);
                     propagate(pred, &tmp);
@@ -262,7 +264,10 @@ impl Direction for Backward {
                     ..
                 })
                 | mir::TerminatorKind::Drop { unwind: Some(unwind), .. }
-                | mir::TerminatorKind::DropAndReplace { unwind: Some(unwind), .. }
+                | mir::TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
+                    unwind: Some(unwind),
+                    ..
+                })
                 | mir::TerminatorKind::FalseUnwind { unwind: Some(unwind), .. }
                     if unwind == bb =>
                 {
@@ -441,7 +446,10 @@ impl Direction for Forward {
         A: Analysis<'tcx>,
     {
         use mir::TerminatorKind::*;
-        use mir::{AssertTerminator, CallTerminator, InlineAsmTerminator, SwitchIntTerminator};
+        use mir::{
+            AssertTerminator, CallTerminator, DropAndReplaceTerminator, InlineAsmTerminator,
+            SwitchIntTerminator, YieldTerminator,
+        };
         match bb_data.terminator().kind {
             Return | Resume | Abort | GeneratorDrop | Unreachable => {}
 
@@ -455,7 +463,7 @@ impl Direction for Forward {
                 cond: _,
             })
             | Drop { target, unwind, place: _ }
-            | DropAndReplace { target, unwind, value: _, place: _ }
+            | DropAndReplace(box DropAndReplaceTerminator { target, unwind, value: _, place: _ })
             | FalseUnwind { real_target: target, unwind } => {
                 if let Some(unwind) = unwind {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
@@ -471,7 +479,7 @@ impl Direction for Forward {
                 propagate(imaginary_target, exit_state);
             }
 
-            Yield { resume: target, drop, resume_arg, value: _ } => {
+            Yield(box YieldTerminator { resume: target, drop, resume_arg, value: _ }) => {
                 if let Some(drop) = drop {
                     propagate(drop, exit_state);
                 }

@@ -125,7 +125,12 @@ where
         // The effect of assignment to the return place in `TerminatorKind::Call` is not applied
         // here; that occurs in `apply_call_return_effect`.
 
-        if let mir::TerminatorKind::DropAndReplace { value, place, .. } = &terminator.kind {
+        if let mir::TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
+            value,
+            place,
+            ..
+        }) = &terminator.kind
+        {
             let qualif = qualifs::in_operand::<Q, _>(
                 self.ccx,
                 &mut |l| self.qualifs_per_local.contains(l),

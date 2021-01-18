@@ -302,7 +302,12 @@ impl Inliner<'tcx> {
             let mut is_drop = false;
             match term.kind {
                 TerminatorKind::Drop { ref place, target, unwind }
-                | TerminatorKind::DropAndReplace { ref place, target, unwind, .. } => {
+                | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                    ref place,
+                    target,
+                    unwind,
+                    ..
+                }) => {
                     is_drop = true;
                     work_list.push(target);
                     // If the place doesn't actually need dropping, treat it like
@@ -829,7 +834,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 }
             }
             TerminatorKind::Drop { ref mut target, ref mut unwind, .. }
-            | TerminatorKind::DropAndReplace { ref mut target, ref mut unwind, .. } => {
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                ref mut target,
+                ref mut unwind,
+                ..
+            }) => {
                 *target = self.map_block(*target);
                 if let Some(tgt) = *unwind {
                     *unwind = Some(self.map_block(tgt));

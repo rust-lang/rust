@@ -1102,7 +1102,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::DropAndReplace { place, value, target: next_target, unwind: None },
+            TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                place,
+                value,
+                target: next_target,
+                unwind: None,
+            }),
         );
         self.diverge_from(block);
 
@@ -1467,7 +1472,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for GeneratorDrop {
     }
     fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = cfg.block_data_mut(from).terminator_mut();
-        if let TerminatorKind::Yield { ref mut drop, .. } = term.kind {
+        if let TerminatorKind::Yield(box YieldTerminator { ref mut drop, .. }) = term.kind {
             *drop = Some(to);
         } else {
             span_bug!(
@@ -1489,7 +1494,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
         let term = &mut cfg.block_data_mut(from).terminator_mut();
         match &mut term.kind {
             TerminatorKind::Drop { unwind, .. }
-            | TerminatorKind::DropAndReplace { unwind, .. }
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { unwind, .. })
             | TerminatorKind::FalseUnwind { unwind, .. }
             | TerminatorKind::Call(box CallTerminator { cleanup: unwind, .. })
             | TerminatorKind::Assert(box AssertTerminator { cleanup: unwind, .. }) => {

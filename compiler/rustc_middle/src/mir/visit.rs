@@ -504,12 +504,12 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    TerminatorKind::DropAndReplace {
+                    TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                         place,
                         value,
                         target: _,
                         unwind: _,
-                    } => {
+                    }) => {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
@@ -550,12 +550,12 @@ macro_rules! make_mir_visitor {
                         self.visit_assert_message(msg, location);
                     }
 
-                    TerminatorKind::Yield {
+                    TerminatorKind::Yield(box YieldTerminator {
                         value,
                         resume: _,
                         resume_arg,
                         drop: _,
-                    } => {
+                    }) => {
                         self.visit_operand(value, location);
                         self.visit_place(
                             resume_arg,

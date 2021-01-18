@@ -1,8 +1,8 @@
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    AssertTerminator, CallTerminator, InlineAsmOperand, InlineAsmTerminator, SwitchIntTerminator,
-    Terminator, TerminatorKind,
+    AssertTerminator, CallTerminator, DropAndReplaceTerminator, InlineAsmOperand,
+    InlineAsmTerminator, SwitchIntTerminator, Terminator, TerminatorKind, YieldTerminator,
 };
 use rustc_middle::mir::{BasicBlock, Body, Location, Place, Rvalue};
 use rustc_middle::mir::{BorrowKind, Mutability, Operand};
@@ -135,12 +135,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     LocalMutationIsAllowed::Yes,
                 );
             }
-            TerminatorKind::DropAndReplace {
+            TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                 place: drop_place,
                 value: ref new_value,
                 target: _,
                 unwind: _,
-            } => {
+            }) => {
                 self.mutate_place(location, *drop_place, Deep, JustWrite);
                 self.consume_operand(location, new_value);
             }
@@ -174,7 +174,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     self.consume_operand(location, index);
                 }
             }
-            TerminatorKind::Yield { ref value, resume, resume_arg, drop: _ } => {
+            TerminatorKind::Yield(box YieldTerminator {
+                ref value,
+                resume,
+                resume_arg,
+                drop: _,
+            }) => {
                 self.consume_operand(location, value);
 
                 // Invalidate all borrows of local places

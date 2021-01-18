@@ -1552,7 +1552,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // no checks needed for these
             }
 
-            TerminatorKind::DropAndReplace { ref place, ref value, target: _, unwind: _ } => {
+            TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                ref place,
+                ref value,
+                target: _,
+                unwind: _,
+            }) => {
                 let place_ty = place.ty(body, tcx).ty;
                 let rv_ty = value.ty(body, tcx);
 
@@ -1655,7 +1660,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Yield { ref value, .. } => {
+            TerminatorKind::Yield(box YieldTerminator { ref value, .. }) => {
                 let value_ty = value.ty(body, tcx);
                 match body.yield_ty {
                     None => span_mirbug!(self, term, "yield in non-generator"),
@@ -1816,7 +1821,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, block_data, "generator_drop in cleanup block")
                 }
             }
-            TerminatorKind::Yield { resume, drop, .. } => {
+            TerminatorKind::Yield(box YieldTerminator { resume, drop, .. }) => {
                 if is_cleanup {
                     span_mirbug!(self, block_data, "yield in cleanup block")
                 }
@@ -1827,7 +1832,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. }
-            | TerminatorKind::DropAndReplace { target, unwind, .. }
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                target, unwind, ..
+            })
             | TerminatorKind::Assert(box AssertTerminator { target, cleanup: unwind, .. }) => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup);
                 if let Some(unwind) = unwind {

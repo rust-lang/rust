@@ -697,12 +697,12 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                     flow_state,
                 );
             }
-            TerminatorKind::DropAndReplace {
+            TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
                 place: drop_place,
                 value: ref new_value,
                 target: _,
                 unwind: _,
-            } => {
+            }) => {
                 self.mutate_place(loc, (drop_place, span), Deep, JustWrite, flow_state);
                 self.consume_operand(loc, (new_value, span), flow_state);
             }
@@ -737,7 +737,12 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 }
             }
 
-            TerminatorKind::Yield { ref value, resume: _, resume_arg, drop: _ } => {
+            TerminatorKind::Yield(box mir::YieldTerminator {
+                ref value,
+                resume: _,
+                resume_arg,
+                drop: _,
+            }) => {
                 self.consume_operand(loc, (value, span), flow_state);
                 self.mutate_place(loc, (resume_arg, span), Deep, JustWrite, flow_state);
             }
@@ -806,7 +811,12 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
         let span = term.source_info.span;
 
         match term.kind {
-            TerminatorKind::Yield { value: _, resume: _, resume_arg: _, drop: _ } => {
+            TerminatorKind::Yield(box mir::YieldTerminator {
+                value: _,
+                resume: _,
+                resume_arg: _,
+                drop: _,
+            }) => {
                 if self.movable_generator {
                     // Look for any active borrows to locals
                     let borrow_set = self.borrow_set.clone();

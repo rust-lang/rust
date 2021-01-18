@@ -89,7 +89,11 @@ fn find_dead_unwinds<'tcx>(
     for (bb, bb_data) in body.basic_blocks().iter_enumerated() {
         let place = match bb_data.terminator().kind {
             TerminatorKind::Drop { ref place, unwind: Some(_), .. }
-            | TerminatorKind::DropAndReplace { ref place, unwind: Some(_), .. } => place,
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                ref place,
+                unwind: Some(_),
+                ..
+            }) => place,
             _ => continue,
         };
 
@@ -298,7 +302,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let terminator = data.terminator();
             let place = match terminator.kind {
                 TerminatorKind::Drop { ref place, .. }
-                | TerminatorKind::DropAndReplace { ref place, .. } => place,
+                | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                    ref place, ..
+                }) => place,
                 _ => continue,
             };
 
@@ -373,7 +379,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         }
                     }
                 }
-                TerminatorKind::DropAndReplace { place, ref value, target, unwind } => {
+                TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                    place,
+                    ref value,
+                    target,
+                    unwind,
+                }) => {
                     assert!(!data.is_cleanup);
 
                     self.elaborate_replace(loc, place, value, target, unwind);

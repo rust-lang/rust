@@ -374,15 +374,15 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable => {}
 
-            TerminatorKind::Assert (box AssertTerminator{ ref cond, .. }) => {
+            TerminatorKind::Assert(box AssertTerminator{ ref cond, .. }) => {
                 self.gather_operand(cond);
             }
 
-            TerminatorKind::SwitchInt (box SwitchIntTerminator{ ref discr, .. }) => {
+            TerminatorKind::SwitchInt(box SwitchIntTerminator { ref discr, .. }) => {
                 self.gather_operand(discr);
             }
 
-            TerminatorKind::Yield { ref value, resume_arg: place, .. } => {
+            TerminatorKind::Yield(box YieldTerminator { ref value, resume_arg: place, .. }) => {
                 self.gather_operand(value);
                 self.create_move_path(place);
                 self.gather_init(place.as_ref(), InitKind::Deep);
@@ -391,12 +391,12 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             TerminatorKind::Drop { place, target: _, unwind: _ } => {
                 self.gather_move(place);
             }
-            TerminatorKind::DropAndReplace { place, ref value, .. } => {
+            TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { place, ref value, .. }) => {
                 self.create_move_path(place);
                 self.gather_operand(value);
                 self.gather_init(place.as_ref(), InitKind::Deep);
             }
-            TerminatorKind::Call (box CallTerminator{
+            TerminatorKind::Call(box CallTerminator {
                 ref func,
                 ref args,
                 ref destination,
@@ -413,7 +413,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }
             }
-            TerminatorKind::InlineAsm (box InlineAsmTerminator{
+            TerminatorKind::InlineAsm(box InlineAsmTerminator {
                 template: _,
                 ref operands,
                 options: _,

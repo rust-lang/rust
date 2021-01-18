@@ -111,9 +111,9 @@ use rustc_index::{
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    traversal, Body, CallTerminator, InlineAsmOperand, InlineAsmTerminator, Local, LocalKind,
-    Location, Operand, Place, PlaceElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    traversal, Body, CallTerminator, DropAndReplaceTerminator, InlineAsmOperand,
+    InlineAsmTerminator, Local, LocalKind, Location, Operand, Place, PlaceElem, Rvalue, Statement,
+    StatementKind, Terminator, TerminatorKind, YieldTerminator,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -589,12 +589,12 @@ impl Conflicts<'a> {
 
     fn record_terminator_conflicts(&mut self, term: &Terminator<'_>) {
         match &term.kind {
-            TerminatorKind::DropAndReplace {
+            TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                 place: dropped_place,
                 value,
                 target: _,
                 unwind: _,
-            } => {
+            }) => {
                 if let Some(place) = value.place() {
                     if !place.is_indirect() && !dropped_place.is_indirect() {
                         self.record_local_conflict(
@@ -605,7 +605,12 @@ impl Conflicts<'a> {
                     }
                 }
             }
-            TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
+            TerminatorKind::Yield(box YieldTerminator {
+                value,
+                resume: _,
+                resume_arg,
+                drop: _,
+            }) => {
                 if let Some(place) = value.place() {
                     if !place.is_indirect() && !resume_arg.is_indirect() {
                         self.record_local_conflict(
@@ -993,7 +998,10 @@ impl<'tcx> Visitor<'tcx> for BorrowCollector {
 
         match terminator.kind {
             TerminatorKind::Drop { place: dropped_place, .. }
-            | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                place: dropped_place,
+                ..
+            }) => {
                 self.locals.insert(dropped_place.local);
             }
 

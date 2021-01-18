@@ -349,7 +349,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::DropAndReplace { target, unwind, .. } => {
+            TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
+                target,
+                unwind,
+                ..
+            }) => {
                 if self.mir_phase > MirPhase::DropLowering {
                     self.fail(
                         location,
@@ -425,7 +429,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *cleanup, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::Yield { resume, drop, .. } => {
+            TerminatorKind::Yield(box mir::YieldTerminator { resume, drop, .. }) => {
                 if self.mir_phase > MirPhase::GeneratorLowering {
                     self.fail(location, "`Yield` should have been replaced by generator lowering");
                 }

@@ -162,6 +162,26 @@ pub struct AssertTerminator<'tcx> {
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, PartialEq)]
+pub struct DropAndReplaceTerminator<'tcx> {
+    pub place: Place<'tcx>,
+    pub value: Operand<'tcx>,
+    pub target: BasicBlock,
+    pub unwind: Option<BasicBlock>,
+}
+
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, PartialEq)]
+pub struct YieldTerminator<'tcx> {
+    /// The value to return.
+    pub value: Operand<'tcx>,
+    /// Where to resume to.
+    pub resume: BasicBlock,
+    /// The place to store the resume argument in.
+    pub resume_arg: Place<'tcx>,
+    /// Cleanup to be done if the generator is dropped at this suspend point.
+    pub drop: Option<BasicBlock>,
+}
+
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, PartialEq)]
 pub enum TerminatorKind<'tcx> {
     /// Block should have one successor in the graph; we jump there.
     Goto { target: BasicBlock },
@@ -217,12 +237,7 @@ pub enum TerminatorKind<'tcx> {
     /// ```
     ///
     /// Note that DropAndReplace is eliminated as part of the `ElaborateDrops` pass.
-    DropAndReplace {
-        place: Place<'tcx>,
-        value: Operand<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>,
-    },
+    DropAndReplace(Box<DropAndReplaceTerminator<'tcx>>),
 
     /// Block ends with a call of a function.
     Call(Box<CallTerminator<'tcx>>),
@@ -232,16 +247,7 @@ pub enum TerminatorKind<'tcx> {
     Assert(Box<AssertTerminator<'tcx>>),
 
     /// A suspend point.
-    Yield {
-        /// The value to return.
-        value: Operand<'tcx>,
-        /// Where to resume to.
-        resume: BasicBlock,
-        /// The place to store the resume argument in.
-        resume_arg: Place<'tcx>,
-        /// Cleanup to be done if the generator is dropped at this suspend point.
-        drop: Option<BasicBlock>,
-    },
+    Yield(Box<YieldTerminator<'tcx>>),
 
     /// Indicates the end of the dropping of a generator.
     GeneratorDrop,
@@ -328,8 +334,10 @@ impl<'tcx> TerminatorKind<'tcx> {
             Goto { target: ref t }
             | Call(box CallTerminator { destination: None, cleanup: Some(ref t), .. })
             | Call(box CallTerminator { destination: Some((_, ref t)), cleanup: None, .. })
-            | Yield { resume: ref t, drop: None, .. }
-            | DropAndReplace { target: ref t, unwind: None, .. }
+            | Yield(box YieldTerminator { resume: ref t, drop: None, .. })
+            | DropAndReplace(box DropAndReplaceTerminator {
+                target: ref t, unwind: None, ..
+            })
             | Drop { target: ref t, unwind: None, .. }
             | Assert(box AssertTerminator { target: ref t, cleanup: None, .. })
             | FalseUnwind { real_target: ref t, unwind: None }
@@ -341,8 +349,12 @@ impl<'tcx> TerminatorKind<'tcx> {
                 cleanup: Some(ref u),
                 ..
             })
-            | Yield { resume: ref t, drop: Some(ref u), .. }
-            | DropAndReplace { target: ref t, unwind: Some(ref u), .. }
+            | Yield(box YieldTerminator { resume: ref t, drop: Some(ref u), .. })
+            | DropAndReplace(box DropAndReplaceTerminator {
+                target: ref t,
+                unwind: Some(ref u),
+                ..
+            })
             | Drop { target: ref t, unwind: Some(ref u), .. }
             | Assert(box AssertTerminator { target: ref t, cleanup: Some(ref u), .. })
             | FalseUnwind { real_target: ref t, unwind: Some(ref u) } => {
@@ -374,8 +386,12 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Call(box CallTerminator {
                 destination: Some((_, ref mut t)), cleanup: None, ..
             })
-            | Yield { resume: ref mut t, drop: None, .. }
-            | DropAndReplace { target: ref mut t, unwind: None, .. }
+            | Yield(box YieldTerminator { resume: ref mut t, drop: None, .. })
+            | DropAndReplace(box DropAndReplaceTerminator {
+                target: ref mut t,
+                unwind: None,
+                ..
+            })
             | Drop { target: ref mut t, unwind: None, .. }
             | Assert(box AssertTerminator { target: ref mut t, cleanup: None, .. })
             | FalseUnwind { real_target: ref mut t, unwind: None }
@@ -387,8 +403,12 @@ impl<'tcx> TerminatorKind<'tcx> {
                 cleanup: Some(ref mut u),
                 ..
             })
-            | Yield { resume: ref mut t, drop: Some(ref mut u), .. }
-            | DropAndReplace { target: ref mut t, unwind: Some(ref mut u), .. }
+            | Yield(box YieldTerminator { resume: ref mut t, drop: Some(ref mut u), .. })
+            | DropAndReplace(box DropAndReplaceTerminator {
+                target: ref mut t,
+                unwind: Some(ref mut u),
+                ..
+            })
             | Drop { target: ref mut t, unwind: Some(ref mut u), .. }
             | Assert(box AssertTerminator {
                 target: ref mut t, cleanup: Some(ref mut u), ..
@@ -413,13 +433,13 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::SwitchInt(box SwitchIntTerminator { .. })
+            | TerminatorKind::Yield(..)
+            | TerminatorKind::SwitchInt(..)
             | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::InlineAsm(box InlineAsmTerminator { .. }) => None,
+            | TerminatorKind::InlineAsm(..) => None,
             TerminatorKind::Call(box CallTerminator { cleanup: ref unwind, .. })
             | TerminatorKind::Assert(box AssertTerminator { cleanup: ref unwind, .. })
-            | TerminatorKind::DropAndReplace { ref unwind, .. }
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { ref unwind, .. })
             | TerminatorKind::Drop { ref unwind, .. }
             | TerminatorKind::FalseUnwind { ref unwind, .. } => Some(unwind),
         }
@@ -433,13 +453,15 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::SwitchInt(box SwitchIntTerminator { .. })
+            | TerminatorKind::Yield(..)
+            | TerminatorKind::SwitchInt(..)
             | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::InlineAsm(box InlineAsmTerminator { .. }) => None,
+            | TerminatorKind::InlineAsm(..) => None,
             TerminatorKind::Call(box CallTerminator { cleanup: ref mut unwind, .. })
             | TerminatorKind::Assert(box AssertTerminator { cleanup: ref mut unwind, .. })
-            | TerminatorKind::DropAndReplace { ref mut unwind, .. }
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                ref mut unwind, ..
+            })
             | TerminatorKind::Drop { ref mut unwind, .. }
             | TerminatorKind::FalseUnwind { ref mut unwind, .. } => Some(unwind),
         }
@@ -487,10 +509,12 @@ impl<'tcx> TerminatorKind<'tcx> {
             GeneratorDrop => write!(fmt, "generator_drop"),
             Resume => write!(fmt, "resume"),
             Abort => write!(fmt, "abort"),
-            Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
+            Yield(box YieldTerminator { value, resume_arg, .. }) => {
+                write!(fmt, "{:?} = yield({:?})", resume_arg, value)
+            }
             Unreachable => write!(fmt, "unreachable"),
             Drop { place, .. } => write!(fmt, "drop({:?})", place),
-            DropAndReplace { place, value, .. } => {
+            DropAndReplace(box DropAndReplaceTerminator { place, value, .. }) => {
                 write!(fmt, "replace({:?} <- {:?})", place, value)
             }
             Call(box CallTerminator { func, args, destination, .. }) => {
@@ -599,12 +623,16 @@ impl<'tcx> TerminatorKind<'tcx> {
                 vec!["unwind".into()]
             }
             Call(box CallTerminator { destination: None, cleanup: None, .. }) => vec![],
-            Yield { drop: Some(_), .. } => vec!["resume".into(), "drop".into()],
-            Yield { drop: None, .. } => vec!["resume".into()],
-            DropAndReplace { unwind: None, .. } | Drop { unwind: None, .. } => {
+            Yield(box YieldTerminator { drop: Some(_), .. }) => {
+                vec!["resume".into(), "drop".into()]
+            }
+            Yield(box YieldTerminator { drop: None, .. }) => vec!["resume".into()],
+            DropAndReplace(box DropAndReplaceTerminator { unwind: None, .. })
+            | Drop { unwind: None, .. } => {
                 vec!["return".into()]
             }
-            DropAndReplace { unwind: Some(_), .. } | Drop { unwind: Some(_), .. } => {
+            DropAndReplace(box DropAndReplaceTerminator { unwind: Some(_), .. })
+            | Drop { unwind: Some(_), .. } => {
                 vec!["return".into(), "unwind".into()]
             }
             Assert(box AssertTerminator { cleanup: None, .. }) => vec!["".into()],

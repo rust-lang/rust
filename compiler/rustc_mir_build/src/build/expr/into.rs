@@ -470,7 +470,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Yield { value, resume, resume_arg: destination, drop: None },
+                    TerminatorKind::Yield(box YieldTerminator {
+                        value,
+                        resume,
+                        resume_arg: destination,
+                        drop: None,
+                    }),
                 );
                 this.generator_drop_cleanup(block);
                 schedule_drop(this);

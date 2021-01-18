@@ -333,7 +333,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 Operand::Move(Place::from(self.new_ret_local)),
                 None,
             )),
-            TerminatorKind::Yield { ref value, resume, resume_arg, drop } => {
+            TerminatorKind::Yield(box YieldTerminator { ref value, resume, resume_arg, drop }) => {
                 Some((VariantIdx::new(0), Some((resume, resume_arg)), value.clone(), drop))
             }
             _ => None,
@@ -1477,7 +1477,12 @@ impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
                 });
             }
 
-            TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
+            TerminatorKind::Yield(box YieldTerminator {
+                value,
+                resume: _,
+                resume_arg,
+                drop: _,
+            }) => {
                 self.check_assigned_place(*resume_arg, |this| this.visit_operand(value, location));
             }
 

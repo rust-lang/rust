@@ -1,6 +1,7 @@
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    CallTerminator, Local, Location, Place, Statement, StatementKind, Terminator, TerminatorKind,
+    CallTerminator, DropAndReplaceTerminator, Local, Location, Place, Statement, StatementKind,
+    Terminator, TerminatorKind,
 };
 
 use rustc_data_structures::fx::FxHashSet;
@@ -70,7 +71,7 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
             TerminatorKind::Call(box CallTerminator { destination: Some((into, _)), .. }) => {
                 self.remove_never_initialized_mut_locals(*into);
             }
-            TerminatorKind::DropAndReplace { place, .. } => {
+            TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { place, .. }) => {
                 self.remove_never_initialized_mut_locals(*place);
             }
             _ => {}

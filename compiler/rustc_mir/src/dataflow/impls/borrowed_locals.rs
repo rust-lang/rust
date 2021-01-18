@@ -187,7 +187,10 @@ where
 
         match terminator.kind {
             mir::TerminatorKind::Drop { place: dropped_place, .. }
-            | mir::TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+            | mir::TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
+                place: dropped_place,
+                ..
+            }) => {
                 // See documentation for `unsound_ignore_borrow_on_drop` for an explanation.
                 if !self.ignore_borrow_on_drop {
                     self.trans.gen(dropped_place.local);
