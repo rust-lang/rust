@@ -1,23 +1,24 @@
 //! FIXME: write short doc here
 use std::fmt::{self, Display};
 
-use hir::{Module, ModuleDef, ModuleSource, Semantics};
+use either::Either;
+use hir::{HasSource, InFile, Module, ModuleDef, ModuleSource, Semantics};
 use ide_db::{
     base_db::{AnchoredPathBuf, FileId, FileRange},
     defs::{Definition, NameClass, NameRefClass},
     search::FileReference,
     RootDatabase,
 };
+use stdx::assert_never;
 use syntax::{
-    algo::find_node_at_offset,
     ast::{self, NameOwner},
-    lex_single_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, T,
+    lex_single_syntax_kind, AstNode, SyntaxKind, SyntaxNode, T,
 };
 use test_utils::mark;
 use text_edit::TextEdit;
 
 use crate::{
-    FilePosition, FileSystemEdit, RangeInfo, ReferenceKind, ReferenceSearchResult, SourceChange,
+    display::TryToNav, FilePosition, FileSystemEdit, RangeInfo, ReferenceKind, SourceChange,
     TextRange,
 };
 
@@ -47,13 +48,15 @@ pub(crate) fn prepare_rename(
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
-    if let Some(module) = find_module_at_offset(&sema, position, syntax) {
-        rename_mod(&sema, position, module, "dummy")
-    } else {
-        let RangeInfo { range, .. } = find_all_refs(&sema, position)?;
-        Ok(RangeInfo::new(range, SourceChange::default()))
+    let range = match &find_name_like(&sema, &syntax, position)
+        .ok_or_else(|| format_err!("No references found at position"))?
+    {
+        NameLike::Name(it) => it.syntax(),
+        NameLike::NameRef(it) => it.syntax(),
+        NameLike::Lifetime(it) => it.syntax(),
     }
-    .map(|info| RangeInfo::new(info.range, ()))
+    .text_range();
+    Ok(RangeInfo::new(range, ()))
 }
 
 pub(crate) fn rename(
@@ -73,10 +76,11 @@ pub(crate) fn rename_with_semantics(
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
 
-    if let Some(module) = find_module_at_offset(&sema, position, syntax) {
-        rename_mod(&sema, position, module, new_name)
-    } else {
-        rename_reference(&sema, position, new_name)
+    let def = find_definition(sema, syntax, position)
+        .ok_or_else(|| format_err!("No references found at position"))?;
+    match def {
+        Definition::ModuleDef(ModuleDef::Module(module)) => rename_mod(&sema, module, new_name),
+        def => rename_reference(sema, def, new_name),
     }
 }
 
@@ -87,12 +91,7 @@ pub(crate) fn will_rename_file(
 ) -> Option<SourceChange> {
     let sema = Semantics::new(db);
     let module = sema.to_module_def(file_id)?;
-
-    let decl = module.declaration_source(db)?;
-    let range = decl.value.name()?.syntax().text_range();
-
-    let position = FilePosition { file_id: decl.file_id.original_file(db), offset: range.start() };
-    let mut change = rename_mod(&sema, position, module, new_name_stem).ok()?.info;
+    let mut change = rename_mod(&sema, module, new_name_stem).ok()?.info;
     change.file_system_edits.clear();
     Some(change)
 }
@@ -124,40 +123,51 @@ fn check_identifier(new_name: &str) -> RenameResult<IdentifierKind> {
     }
 }
 
-fn find_module_at_offset(
-    sema: &Semantics<RootDatabase>,
-    position: FilePosition,
-    syntax: &SyntaxNode,
-) -> Option<Module> {
-    let ident = syntax.token_at_offset(position.offset).find(|t| t.kind() == SyntaxKind::IDENT)?;
-
-    let module = match_ast! {
-        match (ident.parent()) {
-            ast::NameRef(name_ref) => {
-                match NameRefClass::classify(sema, &name_ref)? {
-                    NameRefClass::Definition(Definition::ModuleDef(ModuleDef::Module(module))) => module,
-                    _ => return None,
-                }
-            },
-            ast::Name(name) => {
-                match NameClass::classify(&sema, &name)? {
-                    NameClass::Definition(Definition::ModuleDef(ModuleDef::Module(module))) => module,
-                    _ => return None,
-                }
-            },
-            _ => return None,
-        }
-    };
-
-    Some(module)
+enum NameLike {
+    Name(ast::Name),
+    NameRef(ast::NameRef),
+    Lifetime(ast::Lifetime),
 }
 
-fn find_all_refs(
+fn find_name_like(
     sema: &Semantics<RootDatabase>,
+    syntax: &SyntaxNode,
     position: FilePosition,
-) -> RenameResult<RangeInfo<ReferenceSearchResult>> {
-    crate::references::find_all_refs(sema, position, None)
-        .ok_or_else(|| format_err!("No references found at position"))
+) -> Option<NameLike> {
+    let namelike = if let Some(name_ref) =
+        sema.find_node_at_offset_with_descend::<ast::NameRef>(syntax, position.offset)
+    {
+        NameLike::NameRef(name_ref)
+    } else if let Some(name) =
+        sema.find_node_at_offset_with_descend::<ast::Name>(syntax, position.offset)
+    {
+        NameLike::Name(name)
+    } else if let Some(lifetime) =
+        sema.find_node_at_offset_with_descend::<ast::Lifetime>(syntax, position.offset)
+    {
+        NameLike::Lifetime(lifetime)
+    } else {
+        return None;
+    };
+    Some(namelike)
+}
+
+fn find_definition(
+    sema: &Semantics<RootDatabase>,
+    syntax: &SyntaxNode,
+    position: FilePosition,
+) -> Option<Definition> {
+    let def = match find_name_like(sema, syntax, position)? {
+        NameLike::Name(name) => NameClass::classify(sema, &name)?.referenced_or_defined(sema.db),
+        NameLike::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref)?.referenced(sema.db),
+        NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
+            .map(|class| NameRefClass::referenced(class, sema.db))
+            .or_else(|| {
+                NameClass::classify_lifetime(sema, &lifetime)
+                    .map(|it| it.referenced_or_defined(sema.db))
+            })?,
+    };
+    Some(def)
 }
 
 fn source_edit_from_references(
@@ -231,7 +241,6 @@ fn edit_text_range_for_record_field_expr_or_pat(
 
 fn rename_mod(
     sema: &Semantics<RootDatabase>,
-    position: FilePosition,
     module: Module,
     new_name: &str,
 ) -> RenameResult<RangeInfo<SourceChange>> {
@@ -241,62 +250,78 @@ fn rename_mod(
 
     let mut source_change = SourceChange::default();
 
-    let src = module.definition_source(sema.db);
-    let file_id = src.file_id.original_file(sema.db);
-    match src.value {
-        ModuleSource::SourceFile(..) => {
-            // mod is defined in path/to/dir/mod.rs
-            let path = if module.is_mod_rs(sema.db) {
-                format!("../{}/mod.rs", new_name)
-            } else {
-                format!("{}.rs", new_name)
-            };
-            let dst = AnchoredPathBuf { anchor: file_id, path };
-            let move_file = FileSystemEdit::MoveFile { src: file_id, dst };
-            source_change.push_file_system_edit(move_file);
-        }
-        ModuleSource::Module(..) => {}
+    let InFile { file_id, value: def_source } = module.definition_source(sema.db);
+    let file_id = file_id.original_file(sema.db);
+    if let ModuleSource::SourceFile(..) = def_source {
+        // mod is defined in path/to/dir/mod.rs
+        let path = if module.is_mod_rs(sema.db) {
+            format!("../{}/mod.rs", new_name)
+        } else {
+            format!("{}.rs", new_name)
+        };
+        let dst = AnchoredPathBuf { anchor: file_id, path };
+        let move_file = FileSystemEdit::MoveFile { src: file_id, dst };
+        source_change.push_file_system_edit(move_file);
     }
 
-    if let Some(src) = module.declaration_source(sema.db) {
-        let file_id = src.file_id.original_file(sema.db);
-        let name = src.value.name().unwrap();
-        source_change.insert_source_edit(
-            file_id,
-            TextEdit::replace(name.syntax().text_range(), new_name.into()),
-        );
+    if let Some(InFile { file_id, value: decl_source }) = module.declaration_source(sema.db) {
+        let file_id = file_id.original_file(sema.db);
+        match decl_source.name() {
+            Some(name) => source_change.insert_source_edit(
+                file_id,
+                TextEdit::replace(name.syntax().text_range(), new_name.to_string()),
+            ),
+            _ => unreachable!(),
+        };
     }
-
-    let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
-    let ref_edits = refs.references().iter().map(|(&file_id, references)| {
+    let def = Definition::ModuleDef(ModuleDef::Module(module));
+    let usages = def.usages(sema).all();
+    let ref_edits = usages.iter().map(|(&file_id, references)| {
         source_edit_from_references(sema, file_id, references, new_name)
     });
     source_change.extend(ref_edits);
 
-    Ok(RangeInfo::new(range, source_change))
+    Ok(RangeInfo::new(TextRange::default(), source_change))
 }
 
 fn rename_to_self(
     sema: &Semantics<RootDatabase>,
-    position: FilePosition,
-) -> Result<RangeInfo<SourceChange>, RenameError> {
-    let source_file = sema.parse(position.file_id);
-    let syn = source_file.syntax();
+    local: hir::Local,
+) -> RenameResult<RangeInfo<SourceChange>> {
+    if assert_never!(local.is_self(sema.db)) {
+        bail!("rename_to_self invoked on self");
+    }
 
-    let (fn_def, fn_ast) = find_node_at_offset::<ast::Fn>(syn, position.offset)
-        .and_then(|fn_ast| sema.to_def(&fn_ast).zip(Some(fn_ast)))
-        .ok_or_else(|| format_err!("No surrounding method declaration found"))?;
-    let param_range = fn_ast
+    let fn_def = match local.parent(sema.db) {
+        hir::DefWithBody::Function(func) => func,
+        _ => bail!("Cannot rename non-param local to self"),
+    };
+
+    // FIXME: reimplement this on the hir instead
+    // as of the time of this writing params in hir don't keep their names
+    let fn_ast =
+        fn_def.source(sema.db).ok_or(format_err!("Cannot rename non-param local to self"))?.value;
+
+    let first_param_range = fn_ast
         .param_list()
         .and_then(|p| p.params().next())
         .ok_or_else(|| format_err!("Method has no parameters"))?
         .syntax()
         .text_range();
-    if !param_range.contains(position.offset) {
-        bail!("Only the first parameter can be self");
+    let InFile { file_id, value: local_source } = local.source(sema.db);
+    match local_source {
+        either::Either::Left(pat)
+            if !first_param_range.contains_range(pat.syntax().text_range()) =>
+        {
+            bail!("Only the first parameter can be self");
+        }
+        _ => (),
     }
 
-    let impl_block = find_node_at_offset::<ast::Impl>(syn, position.offset)
+    let impl_block = fn_ast
+        .syntax()
+        .ancestors()
+        .find_map(|node| ast::Impl::cast(node))
         .and_then(|def| sema.to_def(&def))
         .ok_or_else(|| format_err!("No impl block found for function"))?;
     if fn_def.self_param(sema.db).is_some() {
@@ -320,25 +345,21 @@ fn rename_to_self(
         bail!("Parameter type differs from impl block type");
     }
 
-    let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
-
+    let def = Definition::Local(local);
+    let usages = def.usages(sema).all();
     let mut source_change = SourceChange::default();
-    source_change.extend(refs.references().iter().map(|(&file_id, references)| {
+    source_change.extend(usages.iter().map(|(&file_id, references)| {
         source_edit_from_references(sema, file_id, references, "self")
     }));
     source_change.insert_source_edit(
-        position.file_id,
-        TextEdit::replace(param_range, String::from(self_param)),
+        file_id.original_file(sema.db),
+        TextEdit::replace(first_param_range, String::from(self_param)),
     );
 
-    Ok(RangeInfo::new(range, source_change))
+    Ok(RangeInfo::new(TextRange::default(), source_change))
 }
 
-fn text_edit_from_self_param(
-    syn: &SyntaxNode,
-    self_param: &ast::SelfParam,
-    new_name: &str,
-) -> Option<TextEdit> {
+fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Option<TextEdit> {
     fn target_type_name(impl_def: &ast::Impl) -> Option<String> {
         if let Some(ast::Type::PathType(p)) = impl_def.self_ty() {
             return Some(p.path()?.segment()?.name_ref()?.text().to_string());
@@ -346,7 +367,7 @@ fn text_edit_from_self_param(
         None
     }
 
-    let impl_def = find_node_at_offset::<ast::Impl>(syn, self_param.syntax().text_range().start())?;
+    let impl_def = self_param.syntax().ancestors().find_map(|it| ast::Impl::cast(it))?;
     let type_name = target_type_name(&impl_def)?;
 
     let mut replacement_text = String::from(new_name);
@@ -363,94 +384,119 @@ fn text_edit_from_self_param(
 
 fn rename_self_to_param(
     sema: &Semantics<RootDatabase>,
-    position: FilePosition,
+    local: hir::Local,
     new_name: &str,
-    ident_kind: IdentifierKind,
-    range: TextRange,
-    refs: ReferenceSearchResult,
-) -> Result<RangeInfo<SourceChange>, RenameError> {
-    match ident_kind {
-        IdentifierKind::Lifetime => bail!("Invalid name `{}`: not an identifier", new_name),
-        IdentifierKind::ToSelf => {
-            // no-op
-            mark::hit!(rename_self_to_self);
-            return Ok(RangeInfo::new(range, SourceChange::default()));
+    identifier_kind: IdentifierKind,
+) -> RenameResult<RangeInfo<SourceChange>> {
+    let (file_id, self_param) = match local.source(sema.db) {
+        InFile { file_id, value: Either::Right(self_param) } => (file_id, self_param),
+        _ => {
+            assert_never!(true, "rename_self_to_param invoked on a non-self local");
+            bail!("rename_self_to_param invoked on a non-self local");
         }
-        _ => (),
+    };
+
+    let def = Definition::Local(local);
+    let usages = def.usages(sema).all();
+    let edit = text_edit_from_self_param(&self_param, new_name)
+        .ok_or_else(|| format_err!("No target type found"))?;
+    if usages.len() > 1 && identifier_kind == IdentifierKind::Underscore {
+        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
     }
-    let source_file = sema.parse(position.file_id);
-    let syn = source_file.syntax();
-
-    let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)
-        .ok_or_else(|| format_err!("No surrounding method declaration found"))?;
-
     let mut source_change = SourceChange::default();
-    if let Some(self_param) = fn_def.param_list().and_then(|it| it.self_param()) {
-        if self_param
-            .syntax()
-            .text_range()
-            .contains_range(refs.declaration().nav.focus_or_full_range())
-        {
-            let edit = text_edit_from_self_param(syn, &self_param, new_name)
-                .ok_or_else(|| format_err!("No target type found"))?;
-            source_change.insert_source_edit(position.file_id, edit);
-
-            source_change.extend(refs.references().iter().map(|(&file_id, references)| {
-                source_edit_from_references(sema, file_id, &references, new_name)
-            }));
-
-            if source_change.source_file_edits.len() > 1 && ident_kind == IdentifierKind::Underscore
-            {
-                bail!("Cannot rename reference to `_` as it is being referenced multiple times");
-            }
-
-            return Ok(RangeInfo::new(range, source_change));
-        }
-    }
-    Err(format_err!("Method has no self param"))
+    source_change.insert_source_edit(file_id.original_file(sema.db), edit);
+    source_change.extend(usages.iter().map(|(&file_id, references)| {
+        source_edit_from_references(sema, file_id, &references, new_name)
+    }));
+    Ok(RangeInfo::new(TextRange::default(), source_change))
 }
 
 fn rename_reference(
     sema: &Semantics<RootDatabase>,
-    position: FilePosition,
+    def: Definition,
     new_name: &str,
-) -> Result<RangeInfo<SourceChange>, RenameError> {
+) -> RenameResult<RangeInfo<SourceChange>> {
     let ident_kind = check_identifier(new_name)?;
-    let RangeInfo { range, info: refs } = find_all_refs(sema, position)?;
 
-    match (ident_kind, &refs.declaration.kind) {
-        (IdentifierKind::ToSelf, ReferenceKind::Lifetime)
-        | (IdentifierKind::Underscore, ReferenceKind::Lifetime)
-        | (IdentifierKind::Ident, ReferenceKind::Lifetime) => {
+    let def_is_lbl_or_lt = matches!(def,
+        Definition::GenericParam(hir::GenericParam::LifetimeParam(_))
+        | Definition::Label(_)
+    );
+    match (ident_kind, def) {
+        (IdentifierKind::ToSelf, _)
+        | (IdentifierKind::Underscore, _)
+        | (IdentifierKind::Ident, _)
+            if def_is_lbl_or_lt =>
+        {
             mark::hit!(rename_not_a_lifetime_ident_ref);
             bail!("Invalid name `{}`: not a lifetime identifier", new_name)
         }
-        (IdentifierKind::Lifetime, ReferenceKind::Lifetime) => mark::hit!(rename_lifetime),
+        (IdentifierKind::Lifetime, _) if def_is_lbl_or_lt => mark::hit!(rename_lifetime),
         (IdentifierKind::Lifetime, _) => {
             mark::hit!(rename_not_an_ident_ref);
             bail!("Invalid name `{}`: not an identifier", new_name)
         }
-        (_, ReferenceKind::SelfParam) => {
+        (IdentifierKind::ToSelf, Definition::Local(local)) if local.is_self(sema.db) => {
+            // no-op
+            mark::hit!(rename_self_to_self);
+            return Ok(RangeInfo::new(TextRange::default(), SourceChange::default()));
+        }
+        (ident_kind, Definition::Local(local)) if local.is_self(sema.db) => {
             mark::hit!(rename_self_to_param);
-            return rename_self_to_param(sema, position, new_name, ident_kind, range, refs);
+            return rename_self_to_param(sema, local, new_name, ident_kind);
         }
-        (IdentifierKind::ToSelf, _) => {
+        (IdentifierKind::ToSelf, Definition::Local(local)) => {
             mark::hit!(rename_to_self);
-            return rename_to_self(sema, position);
+            return rename_to_self(sema, local);
         }
-        (IdentifierKind::Underscore, _) if !refs.references.is_empty() => {
-            mark::hit!(rename_underscore_multiple);
-            bail!("Cannot rename reference to `_` as it is being referenced multiple times")
-        }
+        (IdentifierKind::ToSelf, _) => bail!("Invalid name `{}`: not an identifier", new_name),
         (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => mark::hit!(rename_ident),
     }
 
+    let usages = def.usages(sema).all();
+    if !usages.is_empty() && ident_kind == IdentifierKind::Underscore {
+        mark::hit!(rename_underscore_multiple);
+        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
+    }
     let mut source_change = SourceChange::default();
-    source_change.extend(refs.into_iter().map(|(file_id, references)| {
+    source_change.extend(usages.iter().map(|(&file_id, references)| {
         source_edit_from_references(sema, file_id, &references, new_name)
     }));
 
-    Ok(RangeInfo::new(range, source_change))
+    let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
+    source_change.insert_source_edit(file_id, edit);
+    Ok(RangeInfo::new(TextRange::default(), source_change))
+}
+
+fn source_edit_from_def(
+    sema: &Semantics<RootDatabase>,
+    def: Definition,
+    new_name: &str,
+) -> RenameResult<(FileId, TextEdit)> {
+    let nav = def.try_to_nav(sema.db).unwrap();
+
+    let mut replacement_text = String::new();
+    let mut repl_range = nav.focus_or_full_range();
+    if let Definition::Local(local) = def {
+        if let Either::Left(pat) = local.source(sema.db).value {
+            if matches!(
+                pat.syntax().parent().and_then(ast::RecordPatField::cast),
+                Some(pat_field) if pat_field.name_ref().is_none()
+            ) {
+                replacement_text.push_str(": ");
+                replacement_text.push_str(new_name);
+                repl_range = TextRange::new(
+                    pat.syntax().text_range().end(),
+                    pat.syntax().text_range().end(),
+                );
+            }
+        }
+    }
+    if replacement_text.is_empty() {
+        replacement_text.push_str(new_name);
+    }
+    let edit = TextEdit::replace(repl_range, replacement_text);
+    Ok((nav.file_id, edit))
 }
 
 #[cfg(test)]
@@ -872,7 +918,7 @@ mod foo$0;
 "#,
             expect![[r#"
                 RangeInfo {
-                    range: 4..7,
+                    range: 0..0,
                     info: SourceChange {
                         source_file_edits: {
                             FileId(
@@ -924,7 +970,7 @@ use crate::foo$0::FooContent;
 "#,
             expect![[r#"
                 RangeInfo {
-                    range: 11..14,
+                    range: 0..0,
                     info: SourceChange {
                         source_file_edits: {
                             FileId(
@@ -980,7 +1026,7 @@ mod fo$0o;
 "#,
             expect![[r#"
                 RangeInfo {
-                    range: 4..7,
+                    range: 0..0,
                     info: SourceChange {
                         source_file_edits: {
                             FileId(
@@ -1027,7 +1073,7 @@ mod outer { mod fo$0o; }
 "#,
             expect![[r#"
                 RangeInfo {
-                    range: 16..19,
+                    range: 0..0,
                     info: SourceChange {
                         source_file_edits: {
                             FileId(
@@ -1097,7 +1143,7 @@ pub mod foo$0;
 "#,
             expect![[r#"
                 RangeInfo {
-                    range: 8..11,
+                    range: 0..0,
                     info: SourceChange {
                         source_file_edits: {
                             FileId(
