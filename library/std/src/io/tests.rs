@@ -1,7 +1,8 @@
-use super::{repeat, Cursor, SeekFrom};
+use super::{repeat, Cursor, ReadBuf, SeekFrom};
 use crate::cmp::{self, min};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::io::{BufRead, BufReader, Read, Seek, Write};
+use crate::mem::MaybeUninit;
 use crate::ops::Deref;
 
 #[test]
@@ -154,6 +155,28 @@ fn read_exact_slice() {
     c.read_exact(&mut buf).unwrap();
     assert_eq!(&buf, b"5678");
     assert_eq!(c, b"9");
+}
+
+#[test]
+fn read_buf_exact() {
+    let mut buf = [0; 4];
+    let mut buf = ReadBuf::new(&mut buf);
+
+    let mut c = Cursor::new(&b""[..]);
+    assert_eq!(c.read_buf_exact(&mut buf).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+
+    let mut c = Cursor::new(&b"123456789"[..]);
+    c.read_buf_exact(&mut buf).unwrap();
+    assert_eq!(buf.filled(), b"1234");
+
+    buf.clear();
+
+    c.read_buf_exact(&mut buf).unwrap();
+    assert_eq!(buf.filled(), b"5678");
+
+    buf.clear();
+
+    assert_eq!(c.read_buf_exact(&mut buf).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
 }
 
 #[test]
@@ -558,4 +581,24 @@ fn test_write_all_vectored() {
             assert_eq!(&*writer.written, &*wanted);
         }
     }
+}
+
+#[bench]
+fn bench_take_read(b: &mut test::Bencher) {
+    b.iter(|| {
+        let mut buf = [0; 64];
+
+        [255; 128].take(64).read(&mut buf).unwrap();
+    });
+}
+
+#[bench]
+fn bench_take_read_buf(b: &mut test::Bencher) {
+    b.iter(|| {
+        let mut buf = [MaybeUninit::uninit(); 64];
+
+        let mut rbuf = ReadBuf::uninit(&mut buf);
+
+        [255; 128].take(64).read_buf(&mut rbuf).unwrap();
+    });
 }
