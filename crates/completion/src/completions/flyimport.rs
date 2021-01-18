@@ -73,7 +73,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     }
     let potential_import_name = {
         let token_kind = ctx.token.kind();
-        if token_kind == T![.] || token_kind == T![::] {
+        if matches!(token_kind, T![.] | T![::]) {
             String::new()
         } else {
             ctx.token.to_string()
