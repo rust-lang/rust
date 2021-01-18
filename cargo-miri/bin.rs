@@ -2,6 +2,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
+use std::iter::TakeWhile;
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -89,29 +90,47 @@ fn has_arg_flag(name: &str) -> bool {
     args.any(|val| val == name)
 }
 
-/// Gets the value of a `--flag`.
-fn get_arg_flag_value(name: &str) -> Option<String> {
-    // Stop searching at `--`.
-    let mut args = std::env::args().take_while(|val| val != "--");
-    loop {
-        let arg = match args.next() {
-            Some(arg) => arg,
-            None => return None,
-        };
-        if !arg.starts_with(name) {
-            continue;
-        }
-        // Strip leading `name`.
-        let suffix = &arg[name.len()..];
-        if suffix.is_empty() {
-            // This argument is exactly `name`; the next one is the value.
-            return args.next();
-        } else if suffix.starts_with('=') {
-            // This argument is `name=value`; get the value.
-            // Strip leading `=`.
-            return Some(suffix[1..].to_owned());
+struct ArgFlagValueIter<'a> {
+    args: TakeWhile<env::Args, fn(&String) -> bool>,
+    name: &'a str,
+}
+
+impl<'a> ArgFlagValueIter<'a> {
+    fn new(name: &'a str) -> Self {
+        Self {
+            // Stop searching at `--`.
+            args: env::args().take_while(|val| val != "--"),
+            name,
         }
     }
+}
+
+impl Iterator for ArgFlagValueIter<'_> {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let arg = self.args.next()?;
+            if !arg.starts_with(self.name) {
+                continue;
+            }
+            // Strip leading `name`.
+            let suffix = &arg[self.name.len()..];
+            if suffix.is_empty() {
+                // This argument is exactly `name`; the next one is the value.
+                return self.args.next();
+            } else if suffix.starts_with('=') {
+                // This argument is `name=value`; get the value.
+                // Strip leading `=`.
+                return Some(suffix[1..].to_owned());
+            }
+        }
+    }
+}
+
+/// Gets the value of a `--flag`.
+fn get_arg_flag_value(name: &str) -> Option<String> {
+    ArgFlagValueIter::new(name).next()
 }
 
 /// Returns the path to the `miri` binary
