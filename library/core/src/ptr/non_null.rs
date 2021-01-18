@@ -179,6 +179,8 @@ impl<T: ?Sized> NonNull<T> {
     /// `NonNull` pointer is returned, as opposed to a raw `*const` pointer.
     ///
     /// See the documentation of [`std::ptr::from_raw_parts`] for more details.
+    ///
+    /// [`std::ptr::from_raw_parts`]: crate::ptr::from_raw_parts
     #[cfg(not(bootstrap))]
     #[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
     #[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
