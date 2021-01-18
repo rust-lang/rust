@@ -1,6 +1,8 @@
 use core::iter::TrustedLen;
 use core::ptr::{self};
 
+#[allow(unused_imports)]
+use super::SpecFromIter;
 use super::{SpecExtend, Vec};
 
 /// Another specialization trait for Vec::from_iter
