@@ -506,6 +506,7 @@ Type =
 | ForType
 | ImplTraitType
 | InferType
+| MacroCall
 | NeverType
 | ParenType
 | PathType
