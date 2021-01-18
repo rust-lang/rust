@@ -930,6 +930,26 @@ impl Foo {
         );
     }
 
+    #[test]
+    fn test_find_self_refs_decl() {
+        check(
+            r#"
+struct Foo { bar: i32 }
+
+impl Foo {
+    fn foo(self$0) {
+        self;
+    }
+}
+"#,
+            expect![[r#"
+                self SelfParam FileId(0) 47..51 47..51 SelfParam
+
+                FileId(0) 63..67 Other Read
+            "#]],
+        );
+    }
+
     fn check(ra_fixture: &str, expect: Expect) {
         check_with_scope(ra_fixture, None, expect)
     }
