@@ -87,10 +87,8 @@ impl_fn_for_zst! {
 
 /// An iterator over the escaped version of a byte slice.
 ///
-/// This `struct` is created by the [`[u8]::escape_ascii`] method. See its
-/// documentation for more.
-///
-/// [`[u8]::escape_ascii`]: slice::escape_ascii
+/// This `struct` is created by the [`[u8]::escape_ascii`](slice::escape_ascii)
+/// method. See its documentation for more.
 #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
 #[derive(Clone)]
 pub struct EscapeAscii<'a> {
