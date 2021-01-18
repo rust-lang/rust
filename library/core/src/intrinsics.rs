@@ -833,6 +833,7 @@ extern "rust-intrinsic" {
     ///
     /// This exists solely for [`mem::forget_unsized`]; normal `forget` uses
     /// `ManuallyDrop` instead.
+    #[rustc_const_unstable(feature = "const_intrinsic_forget", issue = "none")]
     pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.
