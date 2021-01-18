@@ -18,7 +18,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
 
-use crate::utils::{in_constant, qpath_res, span_lint_and_then};
+use crate::utils::{in_constant, span_lint_and_then};
 use if_chain::if_chain;
 
 // FIXME: this is a correctness problem but there's no suitable
@@ -339,7 +339,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             }
 
             // Make sure it is a const item.
-            let item_def_id = match qpath_res(cx, qpath, expr.hir_id) {
+            let item_def_id = match cx.qpath_res(qpath, expr.hir_id) {
                 Res::Def(DefKind::Const | DefKind::AssocConst, did) => did,
                 _ => return,
             };

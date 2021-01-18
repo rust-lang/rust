@@ -1,5 +1,5 @@
 use crate::utils::{
-    any_parent_is_automatically_derived, contains_name, match_def_path, paths, qpath_res, snippet_with_macro_callsite,
+    any_parent_is_automatically_derived, contains_name, match_def_path, paths, snippet_with_macro_callsite,
 };
 use crate::utils::{span_lint_and_note, span_lint_and_sugg};
 use if_chain::if_chain;
@@ -231,7 +231,7 @@ fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool
     if_chain! {
         if let ExprKind::Call(ref fn_expr, _) = &expr.kind;
         if let ExprKind::Path(qpath) = &fn_expr.kind;
-        if let Res::Def(_, def_id) = qpath_res(cx, qpath, fn_expr.hir_id);
+        if let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id);
         then {
             // right hand side of assignment is `Default::default`
             match_def_path(cx, def_id, &paths::DEFAULT_TRAIT_METHOD)
