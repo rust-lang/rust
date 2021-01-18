@@ -1,9 +1,9 @@
-pub use self::inner::*;
+pub(crate) use self::inner::{do_alloc, Allocator, Global};
 
 #[cfg(feature = "nightly")]
 mod inner {
     use crate::alloc::alloc::Layout;
-    pub use crate::alloc::alloc::{AllocError, Allocator, Global};
+    pub use crate::alloc::alloc::{Allocator, Global};
     use core::ptr::NonNull;
 
     #[allow(clippy::map_err_ignore)]

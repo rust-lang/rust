@@ -32,7 +32,7 @@ cfg_if! {
 }
 
 mod alloc;
-pub use self::alloc::{do_alloc, AllocError, Allocator, Global};
+pub(crate) use self::alloc::{do_alloc, Allocator, Global};
 
 mod bitmask;
 
@@ -367,7 +367,7 @@ impl<T> Bucket<T> {
 }
 
 /// A raw hash table with an unsafe API.
-pub struct RawTable<T, A: Allocator + Clone> {
+pub struct RawTable<T, A: Allocator + Clone = Global> {
     // Mask to get an index from a hash value. The value is one less than the
     // number of buckets in the table.
     bucket_mask: usize,
@@ -405,6 +405,19 @@ impl<T> RawTable<T, Global> {
             marker: PhantomData,
             alloc: Global,
         }
+    }
+
+    /// Attempts to allocate a new hash table with at least enough capacity
+    /// for inserting the given number of elements without reallocating.
+    #[cfg(feature = "raw")]
+    pub fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError> {
+        Self::try_with_capacity_in(capacity, Global)
+    }
+
+    /// Allocates a new hash table with at least enough capacity for inserting
+    /// the given number of elements without reallocating.
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity_in(capacity, Global)
     }
 }
 
@@ -483,16 +496,16 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         }
     }
 
-    /// Attempts to allocate a new hash table with at least enough capacity
-    /// for inserting the given number of elements without reallocating.
+    /// Attempts to allocate a new hash table using the given allocator, with at least enough
+    /// capacity for inserting the given number of elements without reallocating.
     #[cfg(feature = "raw")]
-    pub fn try_with_capacity(alloc: A, capacity: usize) -> Result<Self, TryReserveError> {
+    pub fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
         Self::fallible_with_capacity(alloc, capacity, Fallibility::Fallible)
     }
 
-    /// Allocates a new hash table with at least enough capacity for inserting
-    /// the given number of elements without reallocating.
-    pub fn with_capacity(alloc: A, capacity: usize) -> Self {
+    /// Allocates a new hash table using the given allocator, with at least enough capacity for
+    /// inserting the given number of elements without reallocating.
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
         match Self::fallible_with_capacity(alloc, capacity, Fallibility::Infallible) {
             Ok(capacity) => capacity,
@@ -748,7 +761,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         if min_buckets < self.buckets() {
             // Fast path if the table is empty
             if self.items == 0 {
-                *self = Self::with_capacity(self.alloc.clone(), min_size)
+                *self = Self::with_capacity_in(min_size, self.alloc.clone())
             } else {
                 // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
                 if self
@@ -1770,7 +1783,7 @@ impl<T> ExactSizeIterator for RawIter<T> {}
 impl<T> FusedIterator for RawIter<T> {}
 
 /// Iterator which consumes a table and returns elements.
-pub struct RawIntoIter<T, A: Allocator + Clone> {
+pub struct RawIntoIter<T, A: Allocator + Clone = Global> {
     iter: RawIter<T>,
     allocation: Option<(NonNull<u8>, Layout)>,
     marker: PhantomData<T>,
@@ -1845,7 +1858,7 @@ impl<T, A: Allocator + Clone> ExactSizeIterator for RawIntoIter<T, A> {}
 impl<T, A: Allocator + Clone> FusedIterator for RawIntoIter<T, A> {}
 
 /// Iterator which consumes elements without freeing the table storage.
-pub struct RawDrain<'a, T, A: Allocator + Clone> {
+pub struct RawDrain<'a, T, A: Allocator + Clone = Global> {
     iter: RawIter<T>,
 
     // The table is moved into the iterator for the duration of the drain. This
@@ -1915,7 +1928,7 @@ impl<T, A: Allocator + Clone> FusedIterator for RawDrain<'_, T, A> {}
 /// Iterator over occupied buckets that could match a given hash.
 ///
 /// In rare cases, the iterator may return a bucket with a different hash.
-pub struct RawIterHash<'a, T, A: Allocator + Clone> {
+pub struct RawIterHash<'a, T, A: Allocator + Clone = Global> {
     table: &'a RawTable<T, A>,
 
     // The top 7 bits of the hash.

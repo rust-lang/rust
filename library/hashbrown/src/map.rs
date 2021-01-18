@@ -405,7 +405,7 @@ impl<K, V, S> HashMap<K, V, S> {
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
         Self {
             hash_builder,
-            table: RawTable::with_capacity(Global, capacity),
+            table: RawTable::with_capacity(capacity),
         }
     }
 }
@@ -464,7 +464,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     pub fn with_capacity_and_hasher_in(capacity: usize, hash_builder: S, alloc: A) -> Self {
         Self {
             hash_builder,
-            table: RawTable::with_capacity(alloc, capacity),
+            table: RawTable::with_capacity_in(capacity, alloc),
         }
     }
 
@@ -1428,7 +1428,7 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
 ///
 /// [`keys`]: struct.HashMap.html#method.keys
 /// [`HashMap`]: struct.HashMap.html
-pub struct Keys<'a, K, V = Global> {
+pub struct Keys<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
 
@@ -1611,7 +1611,7 @@ pub struct RawEntryBuilderMut<'a, K, V, S, A: Allocator + Clone = Global> {
 /// [`Entry`]: enum.Entry.html
 /// [`raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
 /// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
-pub enum RawEntryMut<'a, K, V, S, A: Allocator + Clone> {
+pub enum RawEntryMut<'a, K, V, S, A: Allocator + Clone = Global> {
     /// An occupied entry.
     Occupied(RawOccupiedEntryMut<'a, K, V, S, A>),
     /// A vacant entry.
@@ -2186,7 +2186,7 @@ impl<K, V, S, A: Allocator + Clone> Debug for RawEntryBuilder<'_, K, V, S, A> {
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
-pub enum Entry<'a, K, V, S, A>
+pub enum Entry<'a, K, V, S, A = Global>
 where
     A: Allocator + Clone,
 {
