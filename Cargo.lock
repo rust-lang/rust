@@ -1839,9 +1839,9 @@ checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 
 [[package]]
 name = "ungrammar"
-version = "1.9.0"
+version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b137a875a3b942539dd04bd37d193649f5d67e11407186f5b9d63ae0332b1a93"
+checksum = "58a02e2041a872d56354e843e8e86e6b946fc8e7dc32982fcdc335e29eb4cc8b"
 
 [[package]]
 name = "unicase"

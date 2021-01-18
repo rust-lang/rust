@@ -1072,6 +1072,13 @@ impl InferType {
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroType {
+    pub(crate) syntax: SyntaxNode,
+}
+impl MacroType {
+    pub fn macro_call(&self) -> Option<MacroCall> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NeverType {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1300,6 +1307,7 @@ pub enum Type {
     ForType(ForType),
     ImplTraitType(ImplTraitType),
     InferType(InferType),
+    MacroType(MacroType),
     NeverType(NeverType),
     ParenType(ParenType),
     PathType(PathType),
@@ -2558,6 +2566,17 @@ impl AstNode for InferType {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for MacroType {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_TYPE }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for NeverType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NEVER_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2889,6 +2908,9 @@ impl From<ImplTraitType> for Type {
 impl From<InferType> for Type {
     fn from(node: InferType) -> Type { Type::InferType(node) }
 }
+impl From<MacroType> for Type {
+    fn from(node: MacroType) -> Type { Type::MacroType(node) }
+}
 impl From<NeverType> for Type {
     fn from(node: NeverType) -> Type { Type::NeverType(node) }
 }
@@ -2914,8 +2936,8 @@ impl AstNode for Type {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ARRAY_TYPE | DYN_TRAIT_TYPE | FN_PTR_TYPE | FOR_TYPE | IMPL_TRAIT_TYPE | INFER_TYPE
-            | NEVER_TYPE | PAREN_TYPE | PATH_TYPE | PTR_TYPE | REF_TYPE | SLICE_TYPE
-            | TUPLE_TYPE => true,
+            | MACRO_TYPE | NEVER_TYPE | PAREN_TYPE | PATH_TYPE | PTR_TYPE | REF_TYPE
+            | SLICE_TYPE | TUPLE_TYPE => true,
             _ => false,
         }
     }
@@ -2927,6 +2949,7 @@ impl AstNode for Type {
             FOR_TYPE => Type::ForType(ForType { syntax }),
             IMPL_TRAIT_TYPE => Type::ImplTraitType(ImplTraitType { syntax }),
             INFER_TYPE => Type::InferType(InferType { syntax }),
+            MACRO_TYPE => Type::MacroType(MacroType { syntax }),
             NEVER_TYPE => Type::NeverType(NeverType { syntax }),
             PAREN_TYPE => Type::ParenType(ParenType { syntax }),
             PATH_TYPE => Type::PathType(PathType { syntax }),
@@ -2946,6 +2969,7 @@ impl AstNode for Type {
             Type::ForType(it) => &it.syntax,
             Type::ImplTraitType(it) => &it.syntax,
             Type::InferType(it) => &it.syntax,
+            Type::MacroType(it) => &it.syntax,
             Type::NeverType(it) => &it.syntax,
             Type::ParenType(it) => &it.syntax,
             Type::PathType(it) => &it.syntax,
@@ -4078,6 +4102,11 @@ impl std::fmt::Display for ImplTraitType {
     }
 }
 impl std::fmt::Display for InferType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

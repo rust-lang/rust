@@ -104,6 +104,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "MACRO_DEF",
         "PAREN_TYPE",
         "TUPLE_TYPE",
+        "MACRO_TYPE",
         "NEVER_TYPE",
         "PATH_TYPE",
         "PTR_TYPE",
