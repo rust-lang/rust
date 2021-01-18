@@ -31,6 +31,7 @@ impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
     }
 }
 
+#[derive(Debug)]
 pub struct ConfirmResult<'tcx> {
     pub callee: MethodCallee<'tcx>,
     pub illegal_sized_bound: Option<Span>,
