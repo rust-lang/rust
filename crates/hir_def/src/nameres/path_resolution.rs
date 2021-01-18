@@ -19,7 +19,7 @@ use test_utils::mark;
 use crate::{
     db::DefDatabase,
     item_scope::BUILTIN_SCOPE,
-    nameres::{BuiltinShadowMode, CrateDefMap},
+    nameres::{BuiltinShadowMode, DefMap},
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
@@ -61,7 +61,7 @@ impl ResolvePathResult {
     }
 }
 
-impl CrateDefMap {
+impl DefMap {
     pub(super) fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs {
         self.extern_prelude
             .get(name)

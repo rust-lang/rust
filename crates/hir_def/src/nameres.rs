@@ -74,7 +74,7 @@ use crate::{
 
 /// Contains all top-level defs from a macro-expanded crate
 #[derive(Debug, PartialEq, Eq)]
-pub struct CrateDefMap {
+pub struct DefMap {
     pub root: LocalModuleId,
     pub modules: Arena<ModuleData>,
     pub(crate) krate: CrateId,
@@ -88,7 +88,7 @@ pub struct CrateDefMap {
     diagnostics: Vec<DefDiagnostic>,
 }
 
-impl std::ops::Index<LocalModuleId> for CrateDefMap {
+impl std::ops::Index<LocalModuleId> for DefMap {
     type Output = ModuleData;
     fn index(&self, id: LocalModuleId) -> &ModuleData {
         &self.modules[id]
@@ -169,8 +169,8 @@ pub struct ModuleData {
     pub origin: ModuleOrigin,
 }
 
-impl CrateDefMap {
-    pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
+impl DefMap {
+    pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
         let _p = profile::span("crate_def_map_query").detail(|| {
             db.crate_graph()[krate].display_name.as_deref().unwrap_or_default().to_string()
         });
@@ -178,7 +178,7 @@ impl CrateDefMap {
             let edition = db.crate_graph()[krate].edition;
             let mut modules: Arena<ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
-            CrateDefMap {
+            DefMap {
                 krate,
                 edition,
                 extern_prelude: FxHashMap::default(),
@@ -227,7 +227,7 @@ impl CrateDefMap {
         go(&mut buf, self, "crate", self.root);
         return buf;
 
-        fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: LocalModuleId) {
+        fn go(buf: &mut String, map: &DefMap, path: &str, module: LocalModuleId) {
             format_to!(buf, "{}\n", path);
 
             let mut entries: Vec<_> = map.modules[module].scope.resolutions().collect();

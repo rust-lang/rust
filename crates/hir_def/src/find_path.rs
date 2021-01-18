@@ -4,7 +4,7 @@ use hir_expand::name::{known, AsName, Name};
 use rustc_hash::FxHashSet;
 use test_utils::mark;
 
-use crate::nameres::CrateDefMap;
+use crate::nameres::DefMap;
 use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
@@ -47,7 +47,7 @@ impl ModPath {
     }
 }
 
-fn check_self_super(def_map: &CrateDefMap, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
+fn check_self_super(def_map: &DefMap, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     if item == ItemInNs::Types(from.into()) {
         // - if the item is the module we're in, use `self`
         Some(ModPath::from_segments(PathKind::Super(0), Vec::new()))

@@ -5,7 +5,7 @@ use syntax::ast;
 
 use crate::{
     db::DefDatabase,
-    nameres::CrateDefMap,
+    nameres::DefMap,
     path::{ModPath, PathKind},
     ModuleId,
 };
@@ -116,7 +116,7 @@ impl Visibility {
 
     pub(crate) fn is_visible_from_def_map(
         self,
-        def_map: &CrateDefMap,
+        def_map: &DefMap,
         from_module: crate::LocalModuleId,
     ) -> bool {
         let to_module = match self {
@@ -135,7 +135,7 @@ impl Visibility {
     ///
     /// If there is no subset relation between `self` and `other`, returns `None` (ie. they're only
     /// visible in unrelated modules).
-    pub(crate) fn max(self, other: Visibility, def_map: &CrateDefMap) -> Option<Visibility> {
+    pub(crate) fn max(self, other: Visibility, def_map: &DefMap) -> Option<Visibility> {
         match (self, other) {
             (Visibility::Module(_), Visibility::Public)
             | (Visibility::Public, Visibility::Module(_))
