@@ -418,7 +418,7 @@ RecordExprFieldList =
   '}'
 
 RecordExprField =
-  Attr* NameRef (':' Expr)?
+  Attr* (NameRef ':')? Expr
 
 CallExpr =
   Attr* Expr ArgList
