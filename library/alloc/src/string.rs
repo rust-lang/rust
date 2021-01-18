@@ -1510,7 +1510,7 @@ impl String {
         // of the vector version. The data is just plain bytes.
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
-        let Range { start, end } = range.ensure_subset_of(..self.len());
+        let Range { start, end } = Range::ensure_subset_of(range, ..self.len());
         assert!(self.is_char_boundary(start));
         assert!(self.is_char_boundary(end));
 
