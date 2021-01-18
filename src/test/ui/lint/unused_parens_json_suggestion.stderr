@@ -10,7 +10,7 @@ note: the lint level is defined here
 LL | #![deny(unused_parens)]
    |         ^^^^^^^^^^^^^
 
-","tool_metadata":null}
+"}
 {"message":"aborting due to previous error","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to previous error
 
-","tool_metadata":null}
+"}

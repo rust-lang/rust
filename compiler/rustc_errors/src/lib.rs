@@ -83,6 +83,10 @@ impl ToolMetadata {
     fn new(json: Json) -> Self {
         ToolMetadata(Some(json))
     }
+
+    fn is_set(&self) -> bool {
+        self.0.is_some()
+    }
 }
 
 impl Hash for ToolMetadata {

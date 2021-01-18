@@ -27,6 +27,7 @@ use std::sync::{Arc, Mutex};
 use std::vec;
 
 use rustc_serialize::json::{as_json, as_pretty_json};
+use rustc_serialize::{Encodable, Encoder};
 
 #[cfg(test)]
 mod tests;
@@ -169,7 +170,8 @@ impl Emitter for JsonEmitter {
 
 // The following data types are provided just for serialisation.
 
-#[derive(Encodable)]
+// NOTE: this has a manual implementation of Encodable which needs to be updated in
+// parallel.
 struct Diagnostic {
     /// The primary error message.
     message: String,
@@ -183,6 +185,36 @@ struct Diagnostic {
     rendered: Option<String>,
     /// Extra tool metadata
     tool_metadata: ToolMetadata,
+}
+
+macro_rules! encode_fields {
+    ($enc:expr, $s:expr, $idx:expr, [ $($name:ident),+$(,)? ]) => {
+        {
+            let mut idx = $idx;
+            $(
+                $enc.emit_struct_field(stringify!($name), idx, |enc| $s.$name.encode(enc))?;
+                idx += 1;
+            )+
+            idx
+        }
+    };
+}
+
+// Special-case encoder to skip tool_metadata if not set
+impl<E: Encoder> Encodable<E> for Diagnostic {
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+        s.emit_struct("diagnostic", 7, |s| {
+            let mut idx = 0;
+
+            idx = encode_fields!(s, self, idx, [message, code, level, spans, children, rendered]);
+            if self.tool_metadata.is_set() {
+                idx = encode_fields!(s, self, idx, [tool_metadata]);
+            }
+
+            let _ = idx;
+            Ok(())
+        })
+    }
 }
 
 #[derive(Encodable)]
