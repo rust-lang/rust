@@ -51,39 +51,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Raw memory accesses
-            #[rustfmt::skip]
-            | "copy"
-            | "copy_nonoverlapping"
-            => {
-                let &[src, dest, count] = check_arg_count(args)?;
-                let elem_ty = instance.substs.type_at(0);
-                let elem_layout = this.layout_of(elem_ty)?;
-                let count = this.read_scalar(count)?.to_machine_usize(this)?;
-                let elem_align = elem_layout.align.abi;
-
-                let size = elem_layout.size.checked_mul(count, this)
-                    .ok_or_else(|| err_ub_format!("overflow computing total size of `{}`", intrinsic_name))?;
-                let src = this.read_scalar(src)?.check_init()?;
-                let src = this.memory.check_ptr_access(src, size, elem_align)?;
-                let dest = this.read_scalar(dest)?.check_init()?;
-                let dest = this.memory.check_ptr_access(dest, size, elem_align)?;
-
-                if let (Some(src), Some(dest)) = (src, dest) {
-                    this.memory.copy(
-                        src,
-                        dest,
-                        size,
-                        intrinsic_name.ends_with("_nonoverlapping"),
-                    )?;
-                }
-            }
-
-            "move_val_init" => {
-                let &[place, dest] = check_arg_count(args)?;
-                let place = this.deref_operand(place)?;
-                this.copy_op(dest, place.into())?;
-            }
-
             "volatile_load" => {
                 let &[place] = check_arg_count(args)?;
                 let place = this.deref_operand(place)?;
