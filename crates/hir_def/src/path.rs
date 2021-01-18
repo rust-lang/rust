@@ -87,8 +87,8 @@ impl ModPath {
 
     /// If this path is a single identifier, like `foo`, return its name.
     pub fn as_ident(&self) -> Option<&Name> {
-        if self.kind != PathKind::Plain || self.segments.len() > 1 {
-            return None;
+        if !self.is_ident() {
+            return None
         }
         self.segments.first()
     }
