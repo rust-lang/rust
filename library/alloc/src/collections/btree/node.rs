@@ -1282,25 +1282,25 @@ impl<'a, K, V> BalancingContext<'a, K, V> {
         self.right_child
     }
 
-    /// Returns `true` if it is valid to call `.merge()` in the balancing context,
-    /// i.e., whether there is enough room in a node to hold the combination of
-    /// both adjacent child nodes, along with the key-value pair in the parent.
+    /// Returns whether merging is possible, i.e., whether there is enough room
+    /// in a node to combine the central KV with both adjacent child nodes.
     pub fn can_merge(&self) -> bool {
         self.left_child.len() + 1 + self.right_child.len() <= CAPACITY
     }
 }
 
 impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
-    /// Merges the parent's key-value pair and both adjacent child nodes into
-    /// the left node and returns an edge handle in that expanded left node.
-    /// If `track_edge_idx` is given some value, the returned edge corresponds
-    /// to where the edge in that child node ended up,
-    ///
-    /// Panics unless we `.can_merge()`.
-    pub fn merge(
+    /// Performs a merge and lets a closure decide what to return.
+    fn do_merge<
+        F: FnOnce(
+            NodeRef<marker::Mut<'a>, K, V, marker::Internal>,
+            NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
+        ) -> R,
+        R,
+    >(
         self,
-        track_edge_idx: Option<LeftOrRight<usize>>,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
+        result: F,
+    ) -> R {
         let Handle { node: mut parent_node, idx: parent_idx, _marker } = self.parent;
         let old_parent_len = parent_node.len();
         let mut left_node = self.left_child;
@@ -1310,11 +1310,6 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
         let new_left_len = old_left_len + 1 + right_len;
 
         assert!(new_left_len <= CAPACITY);
-        assert!(match track_edge_idx {
-            None => true,
-            Some(LeftOrRight::Left(idx)) => idx <= old_left_len,
-            Some(LeftOrRight::Right(idx)) => idx <= right_len,
-        });
 
         unsafe {
             *left_node.len_mut() = new_left_len as u16;
@@ -1353,14 +1348,47 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
             } else {
                 Global.deallocate(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
             }
-
-            let new_idx = match track_edge_idx {
-                None => 0,
-                Some(LeftOrRight::Left(idx)) => idx,
-                Some(LeftOrRight::Right(idx)) => old_left_len + 1 + idx,
-            };
-            Handle::new_edge(left_node, new_idx)
         }
+        result(parent_node, left_node)
+    }
+
+    /// Merges the parent's key-value pair and both adjacent child nodes into
+    /// the left child node and returns the shrunk parent node.
+    ///
+    /// Panics unless we `.can_merge()`.
+    pub fn merge_tracking_parent(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
+        self.do_merge(|parent, _child| parent)
+    }
+
+    /// Merges the parent's key-value pair and both adjacent child nodes into
+    /// the left child node and returns that child node.
+    ///
+    /// Panics unless we `.can_merge()`.
+    pub fn merge_tracking_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+        self.do_merge(|_parent, child| child)
+    }
+
+    /// Merges the parent's key-value pair and both adjacent child nodes into
+    /// the left child node and returns the edge handle in that child node
+    /// where the tracked child edge ended up,
+    ///
+    /// Panics unless we `.can_merge()`.
+    pub fn merge_tracking_child_edge(
+        self,
+        track_edge_idx: LeftOrRight<usize>,
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
+        let old_left_len = self.left_child.len();
+        let right_len = self.right_child.len();
+        assert!(match track_edge_idx {
+            LeftOrRight::Left(idx) => idx <= old_left_len,
+            LeftOrRight::Right(idx) => idx <= right_len,
+        });
+        let child = self.merge_tracking_child();
+        let new_idx = match track_edge_idx {
+            LeftOrRight::Left(idx) => idx,
+            LeftOrRight::Right(idx) => old_left_len + 1 + idx,
+        };
+        unsafe { Handle::new_edge(child, new_idx) }
     }
 
     /// Removes a key-value pair from the left child and places it in the key-value storage
