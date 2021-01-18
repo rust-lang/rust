@@ -151,6 +151,103 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     }
 }
 
+impl Range<usize> {
+    /// Performs bounds-checking of a range.
+    ///
+    /// This method is similar to [`Index::index`] for slices, but it returns a
+    /// `Range` equivalent to `range`. You can use this method to turn any range
+    /// into `start` and `end` values.
+    ///
+    /// `bounds` is the range of the slice to use for bounds-checking. It should
+    /// be a [`RangeTo`] range that ends at the length of the slice.
+    ///
+    /// The returned `Range` is safe to pass to [`slice::get_unchecked`] and
+    /// [`slice::get_unchecked_mut`] for slices with the given range.
+    ///
+    /// [`slice::get_unchecked`]: ../../std/primitive.slice.html#method.get_unchecked
+    /// [`slice::get_unchecked_mut`]: ../../std/primitive.slice.html#method.get_unchecked_mut
+    ///
+    /// # Panics
+    ///
+    /// Panics if `range` would be out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_ensure_subset_of)]
+    ///
+    /// use std::ops::Range;
+    ///
+    /// let v = [10, 40, 30];
+    /// assert_eq!(1..2, Range::ensure_subset_of(1..2, ..v.len()));
+    /// assert_eq!(0..2, Range::ensure_subset_of(..2, ..v.len()));
+    /// assert_eq!(1..3, Range::ensure_subset_of(1.., ..v.len()));
+    /// ```
+    ///
+    /// Panics when [`Index::index`] would panic:
+    ///
+    /// ```should_panic
+    /// #![feature(range_ensure_subset_of)]
+    ///
+    /// use std::ops::Range;
+    ///
+    /// Range::ensure_subset_of(2..1, ..3);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(range_ensure_subset_of)]
+    ///
+    /// use std::ops::Range;
+    ///
+    /// Range::ensure_subset_of(1..4, ..3);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(range_ensure_subset_of)]
+    ///
+    /// use std::ops::Range;
+    ///
+    /// Range::ensure_subset_of(1..=usize::MAX, ..3);
+    /// ```
+    ///
+    /// [`Index::index`]: crate::ops::Index::index
+    #[track_caller]
+    #[unstable(feature = "range_ensure_subset_of", issue = "76393")]
+    pub fn ensure_subset_of<R>(range: R, bounds: RangeTo<usize>) -> Self
+    where
+        R: RangeBounds<usize>,
+    {
+        let len = bounds.end;
+
+        let start: Bound<&usize> = range.start_bound();
+        let start = match start {
+            Bound::Included(&start) => start,
+            Bound::Excluded(start) => {
+                start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
+            }
+            Bound::Unbounded => 0,
+        };
+
+        let end: Bound<&usize> = range.end_bound();
+        let end = match end {
+            Bound::Included(end) => {
+                end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
+            }
+            Bound::Excluded(&end) => end,
+            Bound::Unbounded => len,
+        };
+
+        if start > end {
+            slice_index_order_fail(start, end);
+        }
+        if end > len {
+            slice_end_index_len_fail(end, len);
+        }
+
+        Self { start, end }
+    }
+}
+
 /// A range only bounded inclusively below (`start..`).
 ///
 /// The `RangeFrom` `start..` contains all values with `x >= start`.
@@ -763,101 +860,6 @@ pub trait RangeBounds<T: ?Sized> {
     /// ```
     #[stable(feature = "collections_range", since = "1.28.0")]
     fn end_bound(&self) -> Bound<&T>;
-
-    /// Performs bounds-checking of this range.
-    ///
-    /// This method is similar to [`Index::index`] for slices, but it returns a
-    /// [`Range`] equivalent to this range. You can use this method to turn any
-    /// range into `start` and `end` values.
-    ///
-    /// The given range is the range of the slice to use for bounds-checking. It
-    /// should be a [`RangeTo`] range that ends at the length of the slice.
-    ///
-    /// The returned [`Range`] is safe to pass to [`slice::get_unchecked`] and
-    /// [`slice::get_unchecked_mut`] for slices with the given range.
-    ///
-    /// [`slice::get_unchecked`]: ../../std/primitive.slice.html#method.get_unchecked
-    /// [`slice::get_unchecked_mut`]: ../../std/primitive.slice.html#method.get_unchecked_mut
-    ///
-    /// # Panics
-    ///
-    /// Panics if the range would be out of bounds.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(range_bounds_ensure_subset_of)]
-    ///
-    /// use std::ops::RangeBounds;
-    ///
-    /// let v = [10, 40, 30];
-    /// assert_eq!(1..2, (1..2).ensure_subset_of(..v.len()));
-    /// assert_eq!(0..2, (..2).ensure_subset_of(..v.len()));
-    /// assert_eq!(1..3, (1..).ensure_subset_of(..v.len()));
-    /// ```
-    ///
-    /// Panics when [`Index::index`] would panic:
-    ///
-    /// ```should_panic
-    /// #![feature(range_bounds_ensure_subset_of)]
-    ///
-    /// use std::ops::RangeBounds;
-    ///
-    /// (2..1).ensure_subset_of(..3);
-    /// ```
-    ///
-    /// ```should_panic
-    /// #![feature(range_bounds_ensure_subset_of)]
-    ///
-    /// use std::ops::RangeBounds;
-    ///
-    /// (1..4).ensure_subset_of(..3);
-    /// ```
-    ///
-    /// ```should_panic
-    /// #![feature(range_bounds_ensure_subset_of)]
-    ///
-    /// use std::ops::RangeBounds;
-    ///
-    /// (1..=usize::MAX).ensure_subset_of(..3);
-    /// ```
-    ///
-    /// [`Index::index`]: crate::ops::Index::index
-    #[track_caller]
-    #[unstable(feature = "range_bounds_ensure_subset_of", issue = "76393")]
-    fn ensure_subset_of(self, range: RangeTo<usize>) -> Range<usize>
-    where
-        Self: RangeBounds<usize>,
-    {
-        let len = range.end;
-
-        let start: Bound<&usize> = self.start_bound();
-        let start = match start {
-            Bound::Included(&start) => start,
-            Bound::Excluded(start) => {
-                start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
-            }
-            Bound::Unbounded => 0,
-        };
-
-        let end: Bound<&usize> = self.end_bound();
-        let end = match end {
-            Bound::Included(end) => {
-                end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
-            }
-            Bound::Excluded(&end) => end,
-            Bound::Unbounded => len,
-        };
-
-        if start > end {
-            slice_index_order_fail(start, end);
-        }
-        if end > len {
-            slice_end_index_len_fail(end, len);
-        }
-
-        Range { start, end }
-    }
 
     /// Returns `true` if `item` is contained in the range.
     ///
