@@ -405,7 +405,7 @@ impl<K, V, S> HashMap<K, V, S> {
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
         Self {
             hash_builder,
-            table: RawTable::with_capacity(Global, capacity),
+            table: RawTable::with_capacity(capacity),
         }
     }
 }
@@ -464,7 +464,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     pub fn with_capacity_and_hasher_in(capacity: usize, hash_builder: S, alloc: A) -> Self {
         Self {
             hash_builder,
-            table: RawTable::with_capacity(alloc, capacity),
+            table: RawTable::with_capacity_in(capacity, alloc),
         }
     }
 
