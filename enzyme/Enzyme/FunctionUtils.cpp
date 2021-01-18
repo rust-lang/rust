@@ -91,6 +91,9 @@
 
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+
 #include "CacheUtility.h"
 
 #define DEBUG_TYPE "enzyme"
@@ -1008,6 +1011,12 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
         }
       }
     }
+
+    PassManagerBuilder Builder;
+    Builder.OptLevel = 2;
+    legacy::FunctionPassManager PM(NewF->getParent());
+    Builder.populateFunctionPassManager(PM);
+    PM.run(*NewF);
   }
 
   {
@@ -1355,8 +1364,6 @@ Function *CloneFunctionWithReturns(
   return NewF;
 }
 
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
   {
     DominatorTree DT(*F);
