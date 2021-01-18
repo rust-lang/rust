@@ -272,15 +272,6 @@ impl ModuleDef {
 
         hir_ty::diagnostics::validate_module_item(db, module.id.krate, id, sink)
     }
-
-    pub fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
-        match self {
-            ModuleDef::Function(f) => f.as_assoc_item(db),
-            ModuleDef::Const(c) => c.as_assoc_item(db),
-            ModuleDef::TypeAlias(t) => t.as_assoc_item(db),
-            _ => None,
-        }
-    }
 }
 
 impl Module {
@@ -1058,6 +1049,16 @@ impl AsAssocItem for Const {
 impl AsAssocItem for TypeAlias {
     fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
         as_assoc_item(db, AssocItem::TypeAlias, self.id)
+    }
+}
+impl AsAssocItem for ModuleDef {
+    fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
+        match self {
+            ModuleDef::Function(it) => it.as_assoc_item(db),
+            ModuleDef::Const(it) => it.as_assoc_item(db),
+            ModuleDef::TypeAlias(it) => it.as_assoc_item(db),
+            _ => None,
+        }
     }
 }
 fn as_assoc_item<ID, DEF, CTOR, AST>(db: &dyn HirDatabase, ctor: CTOR, id: ID) -> Option<AssocItem>

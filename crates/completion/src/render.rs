@@ -10,7 +10,9 @@ pub(crate) mod type_alias;
 
 mod builder_ext;
 
-use hir::{Documentation, HasAttrs, HirDisplay, ModuleDef, Mutability, ScopeDef, Type};
+use hir::{
+    AsAssocItem, Documentation, HasAttrs, HirDisplay, ModuleDef, Mutability, ScopeDef, Type,
+};
 use ide_db::{helpers::SnippetCap, RootDatabase};
 use syntax::TextRange;
 use test_utils::mark;
@@ -89,6 +91,22 @@ impl<'a> RenderContext<'a> {
     fn is_deprecated(&self, node: impl HasAttrs) -> bool {
         let attrs = node.attrs(self.db());
         attrs.by_key("deprecated").exists() || attrs.by_key("rustc_deprecated").exists()
+    }
+
+    fn is_deprecated_assoc_item(&self, as_assoc_item: impl AsAssocItem) -> bool {
+        let db = self.db();
+        let assoc = match as_assoc_item.as_assoc_item(db) {
+            Some(assoc) => assoc,
+            None => return false,
+        };
+
+        let is_assoc_deprecated = match assoc {
+            hir::AssocItem::Function(it) => self.is_deprecated(it),
+            hir::AssocItem::Const(it) => self.is_deprecated(it),
+            hir::AssocItem::TypeAlias(it) => self.is_deprecated(it),
+        };
+        is_assoc_deprecated
+            || assoc.containing_trait(db).map(|trait_| self.is_deprecated(trait_)).unwrap_or(false)
     }
 
     fn docs(&self, node: impl HasAttrs) -> Option<Documentation> {
@@ -207,8 +225,6 @@ impl<'a> Render<'a> {
             }
         };
 
-        let docs = self.docs(resolution);
-
         let mut item =
             CompletionItem::new(completion_kind, self.ctx.source_range(), local_name.clone());
         if let ScopeDef::Local(local) = resolution {
@@ -254,13 +270,14 @@ impl<'a> Render<'a> {
             }
         }
 
-        let item = item
-            .kind(kind)
-            .add_import(import_to_add)
-            .set_documentation(docs)
-            .set_ref_match(ref_match)
-            .build();
-        Some(item)
+        Some(
+            item.kind(kind)
+                .add_import(import_to_add)
+                .set_ref_match(ref_match)
+                .set_documentation(self.docs(resolution))
+                .set_deprecated(self.is_deprecated(resolution))
+                .build(),
+        )
     }
 
     fn docs(&self, resolution: &ScopeDef) -> Option<Documentation> {
@@ -274,6 +291,16 @@ impl<'a> Render<'a> {
             ScopeDef::ModuleDef(Trait(it)) => it.docs(self.ctx.db()),
             ScopeDef::ModuleDef(TypeAlias(it)) => it.docs(self.ctx.db()),
             _ => None,
+        }
+    }
+
+    fn is_deprecated(&self, resolution: &ScopeDef) -> bool {
+        match resolution {
+            ScopeDef::ModuleDef(it) => self.ctx.is_deprecated_assoc_item(*it),
+            ScopeDef::MacroDef(it) => self.ctx.is_deprecated(*it),
+            ScopeDef::GenericParam(it) => self.ctx.is_deprecated(*it),
+            ScopeDef::AdtSelfType(it) => self.ctx.is_deprecated(*it),
+            _ => false,
         }
     }
 }

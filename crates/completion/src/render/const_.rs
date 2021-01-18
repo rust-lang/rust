@@ -38,7 +38,10 @@ impl<'a> ConstRender<'a> {
         let item = CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name)
             .kind(CompletionItemKind::Const)
             .set_documentation(self.ctx.docs(self.const_))
-            .set_deprecated(self.ctx.is_deprecated(self.const_))
+            .set_deprecated(
+                self.ctx.is_deprecated(self.const_)
+                    || self.ctx.is_deprecated_assoc_item(self.const_),
+            )
             .detail(detail)
             .build();
 

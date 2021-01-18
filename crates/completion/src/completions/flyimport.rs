@@ -48,7 +48,7 @@
 //! Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corredponding
 //! capability enabled.
 
-use hir::{ModPath, ScopeDef};
+use hir::{AsAssocItem, ModPath, ScopeDef};
 use ide_db::helpers::{
     import_assets::{ImportAssets, ImportCandidate},
     insert_use::ImportScope,
@@ -601,11 +601,12 @@ fn main() {
     }
 
     #[test]
-    fn zero_input_assoc_item_completion() {
+    fn zero_input_deprecated_assoc_item_completion() {
         check(
             r#"
 //- /lib.rs crate:dep
 pub mod test_mod {
+    #[deprecated]
     pub trait TestTrait {
         const SPECIAL_CONST: u8;
         type HumbleType;
@@ -628,7 +629,7 @@ fn main() {
 }
         "#,
             expect![[r#"
-                        me random_method() (dep::test_mod::TestTrait) fn random_method(&self)
+                        me random_method() (dep::test_mod::TestTrait) fn random_method(&self) DEPRECATED
                 "#]],
         );
 
@@ -636,6 +637,7 @@ fn main() {
             r#"
 //- /lib.rs crate:dep
 pub mod test_mod {
+    #[deprecated]
     pub trait TestTrait {
         const SPECIAL_CONST: u8;
         type HumbleType;
@@ -657,8 +659,8 @@ fn main() {
 }
 "#,
             expect![[r#"
-                ct SPECIAL_CONST (dep::test_mod::TestTrait)
-                fn weird_function() (dep::test_mod::TestTrait) fn weird_function()
+                ct SPECIAL_CONST (dep::test_mod::TestTrait) DEPRECATED
+                fn weird_function() (dep::test_mod::TestTrait) fn weird_function() DEPRECATED
         "#]],
         );
     }
