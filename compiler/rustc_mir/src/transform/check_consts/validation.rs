@@ -789,10 +789,10 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         }
     }
 
+    #[instrument(skip(self))]
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         use rustc_target::spec::abi::Abi::RustIntrinsic;
 
-        trace!("visit_terminator: terminator={:?} location={:?}", terminator, location);
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
@@ -816,8 +816,9 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                 // Attempting to call a trait method?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
+                    trace!("attempting to call a trait method");
                     if !self.tcx.features().const_trait_impl {
-                        self.check_op(ops::FnCallNonConst(callee));
+                        self.check_op(ops::FnCallNonConst);
                         return;
                     }
 
@@ -871,25 +872,26 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     return;
                 }
 
+                let is_intrinsic = tcx.fn_sig(callee).abi() == RustIntrinsic;
+
                 // HACK: This is to "unstabilize" the `transmute` intrinsic
                 // within const fns. `transmute` is allowed in all other const contexts.
                 // This won't really scale to more intrinsics or functions. Let's allow const
                 // transmutes in const fn before we add more hacks to this.
-                if tcx.fn_sig(callee).abi() == RustIntrinsic
-                    && tcx.item_name(callee) == sym::transmute
-                {
+                if is_intrinsic && tcx.item_name(callee) == sym::transmute {
                     self.check_op(ops::Transmute);
                     return;
                 }
 
                 if !tcx.is_const_fn_raw(callee) {
-                    self.check_op(ops::FnCallNonConst(callee));
+                    self.check_op(ops::FnCallNonConst);
                     return;
                 }
 
                 // If the `const fn` we are trying to call is not const-stable, ensure that we have
                 // the proper feature gate enabled.
                 if let Some(gate) = is_unstable_const_fn(tcx, callee) {
+                    trace!(?gate, "calling unstable const fn");
                     if self.span.allows_unstable(gate) {
                         return;
                     }
@@ -904,12 +906,14 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     // If this crate is not using stability attributes, or the caller is not claiming to be a
                     // stable `const fn`, that is all that is required.
                     if !self.ccx.is_const_stable_const_fn() {
+                        trace!("crate not using stability attributes or caller not stably const");
                         return;
                     }
 
                     // Otherwise, we are something const-stable calling a const-unstable fn.
 
                     if super::rustc_allow_const_fn_unstable(tcx, caller, gate) {
+                        trace!("rustc_allow_const_fn_unstable gate active");
                         return;
                     }
 
@@ -923,10 +927,16 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
                     && tcx.lookup_stability(callee).map_or(false, |s| s.level.is_unstable());
                 if callee_is_unstable_unmarked {
-                    if self.ccx.is_const_stable_const_fn() {
+                    trace!("callee_is_unstable_unmarked");
+                    // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
+                    // `extern` funtions, and these have no way to get marked `const`. So instead we
+                    // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
+                    if self.ccx.is_const_stable_const_fn() || is_intrinsic {
                         self.check_op(ops::FnCallUnstable(callee, None));
+                        return;
                     }
                 }
+                trace!("permitting call");
             }
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no
