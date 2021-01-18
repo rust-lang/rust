@@ -87,7 +87,8 @@ impl<'a> RenderContext<'a> {
     }
 
     fn is_deprecated(&self, node: impl HasAttrs) -> bool {
-        node.attrs(self.db()).by_key("deprecated").exists()
+        let attrs = node.attrs(self.db());
+        attrs.by_key("deprecated").exists() || attrs.by_key("rustc_deprecated").exists()
     }
 
     fn docs(&self, node: impl HasAttrs) -> Option<Documentation> {
@@ -485,7 +486,7 @@ fn main() { let _: m::Spam = S$0 }
             r#"
 #[deprecated]
 fn something_deprecated() {}
-#[deprecated(since = "1.0.0")]
+#[rustc_deprecated(since = "1.0.0")]
 fn something_else_deprecated() {}
 
 fn main() { som$0 }
@@ -494,8 +495,8 @@ fn main() { som$0 }
                 [
                     CompletionItem {
                         label: "main()",
-                        source_range: 121..124,
-                        delete: 121..124,
+                        source_range: 127..130,
+                        delete: 127..130,
                         insert: "main()$0",
                         kind: Function,
                         lookup: "main",
@@ -503,8 +504,8 @@ fn main() { som$0 }
                     },
                     CompletionItem {
                         label: "something_deprecated()",
-                        source_range: 121..124,
-                        delete: 121..124,
+                        source_range: 127..130,
+                        delete: 127..130,
                         insert: "something_deprecated()$0",
                         kind: Function,
                         lookup: "something_deprecated",
@@ -513,8 +514,8 @@ fn main() { som$0 }
                     },
                     CompletionItem {
                         label: "something_else_deprecated()",
-                        source_range: 121..124,
-                        delete: 121..124,
+                        source_range: 127..130,
+                        delete: 127..130,
                         insert: "something_else_deprecated()$0",
                         kind: Function,
                         lookup: "something_else_deprecated",
