@@ -1,0 +1,41 @@
+error: passing a unit value to a function
+  --> $DIR/unit_arg_expressions.rs:11:5
+   |
+LL | /     foo(if true {
+LL | |         1;
+LL | |     });
+   | |______^
+   |
+   = note: `-D clippy::unit-arg` implied by `-D warnings`
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL |     if true {
+LL |         1;
+LL |     };
+LL |     foo(());
+   |
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg_expressions.rs:14:5
+   |
+LL | /     foo(match Some(1) {
+LL | |         Some(_) => {
+LL | |             1;
+LL | |         },
+...  |
+LL | |         },
+LL | |     });
+   | |______^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL |     match Some(1) {
+LL |         Some(_) => {
+LL |             1;
+LL |         },
+LL |         None => {
+LL |             0;
+ ...
+
+error: aborting due to 2 previous errors
+
