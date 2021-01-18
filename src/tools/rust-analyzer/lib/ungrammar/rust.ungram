@@ -506,7 +506,7 @@ Type =
 | ForType
 | ImplTraitType
 | InferType
-| MacroCall
+| MacroType
 | NeverType
 | ParenType
 | PathType
@@ -520,6 +520,9 @@ ParenType =
 
 NeverType =
   '!'
+
+MacroType =
+  MacroCall
 
 PathType =
   Path
