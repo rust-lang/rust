@@ -1,9 +1,11 @@
 //! Rayon extensions for `HashMap`.
 
+use super::raw::{RawIntoParIter, RawParDrain, RawParIter};
 use crate::hash_map::HashMap;
 use crate::raw::{Allocator, Global};
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
+use core::marker::PhantomData;
 use rayon::iter::plumbing::UnindexedConsumer;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator};
 
@@ -16,13 +18,12 @@ use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelExtend, Pa
 /// [`par_iter`]: /hashbrown/struct.HashMap.html#method.par_iter
 /// [`HashMap`]: /hashbrown/struct.HashMap.html
 /// [`IntoParallelRefIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelRefIterator.html
-pub struct ParIter<'a, K, V, S, A: Allocator + Clone = Global> {
-    map: &'a HashMap<K, V, S, A>,
+pub struct ParIter<'a, K, V> {
+    inner: RawParIter<(K, V)>,
+    marker: PhantomData<(&'a K, &'a V)>,
 }
 
-impl<'a, K: Sync, V: Sync, S: Sync, A: Allocator + Clone + Sync> ParallelIterator
-    for ParIter<'a, K, V, S, A>
-{
+impl<'a, K: Sync, V: Sync> ParallelIterator for ParIter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -30,7 +31,7 @@ impl<'a, K: Sync, V: Sync, S: Sync, A: Allocator + Clone + Sync> ParallelIterato
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        unsafe { self.map.table.par_iter() }
+        self.inner
             .map(|x| unsafe {
                 let r = x.as_ref();
                 (&r.0, &r.1)
@@ -39,18 +40,23 @@ impl<'a, K: Sync, V: Sync, S: Sync, A: Allocator + Clone + Sync> ParallelIterato
     }
 }
 
-impl<K, V, S, A: Allocator + Clone> Clone for ParIter<'_, K, V, S, A> {
+impl<K, V> Clone for ParIter<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
-        ParIter { map: self.map }
+        Self {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
     }
 }
 
-impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Clone> fmt::Debug
-    for ParIter<'_, K, V, S, A>
-{
+impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug> fmt::Debug for ParIter<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.map.iter().fmt(f)
+        let iter = unsafe { self.inner.iter() }.map(|x| unsafe {
+            let r = x.as_ref();
+            (&r.0, &r.1)
+        });
+        f.debug_list().entries(iter).finish()
     }
 }
 
@@ -61,13 +67,12 @@ impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Cl
 ///
 /// [`par_keys`]: /hashbrown/struct.HashMap.html#method.par_keys
 /// [`HashMap`]: /hashbrown/struct.HashMap.html
-pub struct ParKeys<'a, K, V, S, A: Allocator + Clone> {
-    map: &'a HashMap<K, V, S, A>,
+pub struct ParKeys<'a, K, V> {
+    inner: RawParIter<(K, V)>,
+    marker: PhantomData<(&'a K, &'a V)>,
 }
 
-impl<'a, K: Sync, V: Sync, S: Sync, A: Allocator + Clone + Sync> ParallelIterator
-    for ParKeys<'a, K, V, S, A>
-{
+impl<'a, K: Sync, V: Sync> ParallelIterator for ParKeys<'a, K, V> {
     type Item = &'a K;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -75,24 +80,26 @@ impl<'a, K: Sync, V: Sync, S: Sync, A: Allocator + Clone + Sync> ParallelIterato
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        unsafe { self.map.table.par_iter() }
+        self.inner
             .map(|x| unsafe { &x.as_ref().0 })
             .drive_unindexed(consumer)
     }
 }
 
-impl<K, V, S, A: Allocator + Clone> Clone for ParKeys<'_, K, V, S, A> {
+impl<K, V> Clone for ParKeys<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
-        ParKeys { map: self.map }
+        Self {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
     }
 }
 
-impl<K: fmt::Debug + Eq + Hash, V, S: BuildHasher, A: Allocator + Clone> fmt::Debug
-    for ParKeys<'_, K, V, S, A>
-{
+impl<K: fmt::Debug + Eq + Hash, V> fmt::Debug for ParKeys<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.map.keys().fmt(f)
+        let iter = unsafe { self.inner.iter() }.map(|x| unsafe { &x.as_ref().0 });
+        f.debug_list().entries(iter).finish()
     }
 }
 
@@ -103,13 +110,12 @@ impl<K: fmt::Debug + Eq + Hash, V, S: BuildHasher, A: Allocator + Clone> fmt::De
 ///
 /// [`par_values`]: /hashbrown/struct.HashMap.html#method.par_values
 /// [`HashMap`]: /hashbrown/struct.HashMap.html
-pub struct ParValues<'a, K, V, S, A: Allocator + Clone = Global> {
-    map: &'a HashMap<K, V, S, A>,
+pub struct ParValues<'a, K, V> {
+    inner: RawParIter<(K, V)>,
+    marker: PhantomData<(&'a K, &'a V)>,
 }
 
-impl<'a, K: Sync, V: Sync, S: Sync, A: Allocator + Clone + Sync> ParallelIterator
-    for ParValues<'a, K, V, S, A>
-{
+impl<'a, K: Sync, V: Sync> ParallelIterator for ParValues<'a, K, V> {
     type Item = &'a V;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -117,24 +123,26 @@ impl<'a, K: Sync, V: Sync, S: Sync, A: Allocator + Clone + Sync> ParallelIterato
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        unsafe { self.map.table.par_iter() }
+        self.inner
             .map(|x| unsafe { &x.as_ref().1 })
             .drive_unindexed(consumer)
     }
 }
 
-impl<K, V, S, A: Allocator + Clone> Clone for ParValues<'_, K, V, S, A> {
+impl<K, V> Clone for ParValues<'_, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
-        ParValues { map: self.map }
+        Self {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
     }
 }
 
-impl<K: Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Clone> fmt::Debug
-    for ParValues<'_, K, V, S, A>
-{
+impl<K: Eq + Hash, V: fmt::Debug> fmt::Debug for ParValues<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.map.values().fmt(f)
+        let iter = unsafe { self.inner.iter() }.map(|x| unsafe { &x.as_ref().1 });
+        f.debug_list().entries(iter).finish()
     }
 }
 
@@ -147,13 +155,12 @@ impl<K: Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Clone> fmt::Deb
 /// [`par_iter_mut`]: /hashbrown/struct.HashMap.html#method.par_iter_mut
 /// [`HashMap`]: /hashbrown/struct.HashMap.html
 /// [`IntoParallelRefMutIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelRefMutIterator.html
-pub struct ParIterMut<'a, K, V, S, A: Allocator + Clone> {
-    map: &'a mut HashMap<K, V, S, A>,
+pub struct ParIterMut<'a, K, V> {
+    inner: RawParIter<(K, V)>,
+    marker: PhantomData<(&'a K, &'a mut V)>,
 }
 
-impl<'a, K: Send + Sync, V: Send, S: Send, A: Allocator + Clone + Sync> ParallelIterator
-    for ParIterMut<'a, K, V, S, A>
-{
+impl<'a, K: Sync, V: Send> ParallelIterator for ParIterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -161,7 +168,7 @@ impl<'a, K: Send + Sync, V: Send, S: Send, A: Allocator + Clone + Sync> Parallel
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        unsafe { self.map.table.par_iter() }
+        self.inner
             .map(|x| unsafe {
                 let r = x.as_mut();
                 (&r.0, &mut r.1)
@@ -170,11 +177,13 @@ impl<'a, K: Send + Sync, V: Send, S: Send, A: Allocator + Clone + Sync> Parallel
     }
 }
 
-impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Clone> fmt::Debug
-    for ParIterMut<'_, K, V, S, A>
-{
+impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug> fmt::Debug for ParIterMut<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.map.iter().fmt(f)
+        ParIter {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+        .fmt(f)
     }
 }
 
@@ -185,13 +194,12 @@ impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Cl
 ///
 /// [`par_values_mut`]: /hashbrown/struct.HashMap.html#method.par_values_mut
 /// [`HashMap`]: /hashbrown/struct.HashMap.html
-pub struct ParValuesMut<'a, K, V, S, A: Allocator + Clone = Global> {
-    map: &'a mut HashMap<K, V, S, A>,
+pub struct ParValuesMut<'a, K, V> {
+    inner: RawParIter<(K, V)>,
+    marker: PhantomData<(&'a K, &'a mut V)>,
 }
 
-impl<'a, K: Send, V: Send, S: Send, A: Allocator + Clone + Send> ParallelIterator
-    for ParValuesMut<'a, K, V, S, A>
-{
+impl<'a, K: Sync, V: Send> ParallelIterator for ParValuesMut<'a, K, V> {
     type Item = &'a mut V;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -199,17 +207,19 @@ impl<'a, K: Send, V: Send, S: Send, A: Allocator + Clone + Send> ParallelIterato
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        unsafe { self.map.table.par_iter() }
+        self.inner
             .map(|x| unsafe { &mut x.as_mut().1 })
             .drive_unindexed(consumer)
     }
 }
 
-impl<K: Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Clone> fmt::Debug
-    for ParValuesMut<'_, K, V, S, A>
-{
+impl<K: Eq + Hash, V: fmt::Debug> fmt::Debug for ParValuesMut<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.map.values().fmt(f)
+        ParValues {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+        .fmt(f)
     }
 }
 
@@ -222,13 +232,11 @@ impl<K: Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Clone> fmt::Deb
 /// [`into_par_iter`]: /hashbrown/struct.HashMap.html#method.into_par_iter
 /// [`HashMap`]: /hashbrown/struct.HashMap.html
 /// [`IntoParallelIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelIterator.html
-pub struct IntoParIter<K, V, S, A: Allocator + Clone = Global> {
-    map: HashMap<K, V, S, A>,
+pub struct IntoParIter<K, V, A: Allocator + Clone = Global> {
+    inner: RawIntoParIter<(K, V), A>,
 }
 
-impl<K: Send, V: Send, S: Send, A: Allocator + Clone + Send> ParallelIterator
-    for IntoParIter<K, V, S, A>
-{
+impl<K: Send, V: Send, A: Allocator + Clone + Send> ParallelIterator for IntoParIter<K, V, A> {
     type Item = (K, V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -236,15 +244,19 @@ impl<K: Send, V: Send, S: Send, A: Allocator + Clone + Send> ParallelIterator
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map.table.into_par_iter().drive_unindexed(consumer)
+        self.inner.drive_unindexed(consumer)
     }
 }
 
-impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Clone> fmt::Debug
-    for IntoParIter<K, V, S, A>
+impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, A: Allocator + Clone> fmt::Debug
+    for IntoParIter<K, V, A>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.map.iter().fmt(f)
+        ParIter {
+            inner: unsafe { self.inner.par_iter() },
+            marker: PhantomData,
+        }
+        .fmt(f)
     }
 }
 
@@ -255,13 +267,11 @@ impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Cl
 ///
 /// [`par_drain`]: /hashbrown/struct.HashMap.html#method.par_drain
 /// [`HashMap`]: /hashbrown/struct.HashMap.html
-pub struct ParDrain<'a, K, V, S, A: Allocator + Clone = Global> {
-    map: &'a mut HashMap<K, V, S, A>,
+pub struct ParDrain<'a, K, V, A: Allocator + Clone = Global> {
+    inner: RawParDrain<'a, (K, V), A>,
 }
 
-impl<K: Send, V: Send, S: Send, A: Allocator + Clone + Sync> ParallelIterator
-    for ParDrain<'_, K, V, S, A>
-{
+impl<K: Send, V: Send, A: Allocator + Clone + Sync> ParallelIterator for ParDrain<'_, K, V, A> {
     type Item = (K, V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -269,44 +279,59 @@ impl<K: Send, V: Send, S: Send, A: Allocator + Clone + Sync> ParallelIterator
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map.table.par_drain().drive_unindexed(consumer)
+        self.inner.drive_unindexed(consumer)
     }
 }
 
-impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher, A: Allocator + Clone> fmt::Debug
-    for ParDrain<'_, K, V, S, A>
+impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, A: Allocator + Clone> fmt::Debug
+    for ParDrain<'_, K, V, A>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.map.iter().fmt(f)
+        ParIter {
+            inner: unsafe { self.inner.par_iter() },
+            marker: PhantomData,
+        }
+        .fmt(f)
     }
 }
 
-impl<K: Sync, V: Sync, S: Sync, A: Allocator + Clone + Sync> HashMap<K, V, S, A> {
+impl<K: Sync, V: Sync, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Visits (potentially in parallel) immutably borrowed keys in an arbitrary order.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn par_keys(&self) -> ParKeys<'_, K, V, S, A> {
-        ParKeys { map: self }
+    pub fn par_keys(&self) -> ParKeys<'_, K, V> {
+        ParKeys {
+            inner: unsafe { self.table.par_iter() },
+            marker: PhantomData,
+        }
     }
 
     /// Visits (potentially in parallel) immutably borrowed values in an arbitrary order.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn par_values(&self) -> ParValues<'_, K, V, S, A> {
-        ParValues { map: self }
+    pub fn par_values(&self) -> ParValues<'_, K, V> {
+        ParValues {
+            inner: unsafe { self.table.par_iter() },
+            marker: PhantomData,
+        }
     }
 }
 
-impl<K: Send, V: Send, S: Send, A: Allocator + Clone + Sync> HashMap<K, V, S, A> {
+impl<K: Send, V: Send, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Visits (potentially in parallel) mutably borrowed values in an arbitrary order.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn par_values_mut(&mut self) -> ParValuesMut<'_, K, V, S, A> {
-        ParValuesMut { map: self }
+    pub fn par_values_mut(&mut self) -> ParValuesMut<'_, K, V> {
+        ParValuesMut {
+            inner: unsafe { self.table.par_iter() },
+            marker: PhantomData,
+        }
     }
 
     /// Consumes (potentially in parallel) all values in an arbitrary order,
     /// while preserving the map's allocated memory for reuse.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn par_drain(&mut self) -> ParDrain<'_, K, V, S, A> {
-        ParDrain { map: self }
+    pub fn par_drain(&mut self) -> ParDrain<'_, K, V, A> {
+        ParDrain {
+            inner: self.table.par_drain(),
+        }
     }
 }
 
@@ -329,39 +354,47 @@ where
     }
 }
 
-impl<K: Send, V: Send, S: Send, A: Allocator + Clone + Send> IntoParallelIterator
+impl<K: Send, V: Send, S, A: Allocator + Clone + Send> IntoParallelIterator
     for HashMap<K, V, S, A>
 {
     type Item = (K, V);
-    type Iter = IntoParIter<K, V, S, A>;
+    type Iter = IntoParIter<K, V, A>;
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
-        IntoParIter { map: self }
+        IntoParIter {
+            inner: self.table.into_par_iter(),
+        }
     }
 }
 
-impl<'a, K: Sync, V: Sync, S: Sync, A: Allocator + Clone + Sync> IntoParallelIterator
+impl<'a, K: Sync, V: Sync, S, A: Allocator + Clone> IntoParallelIterator
     for &'a HashMap<K, V, S, A>
 {
     type Item = (&'a K, &'a V);
-    type Iter = ParIter<'a, K, V, S, A>;
+    type Iter = ParIter<'a, K, V>;
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
-        ParIter { map: self }
+        ParIter {
+            inner: unsafe { self.table.par_iter() },
+            marker: PhantomData,
+        }
     }
 }
 
-impl<'a, K: Send + Sync, V: Send, S: Send, A: Allocator + Clone + Sync> IntoParallelIterator
+impl<'a, K: Sync, V: Send, S, A: Allocator + Clone> IntoParallelIterator
     for &'a mut HashMap<K, V, S, A>
 {
     type Item = (&'a K, &'a mut V);
-    type Iter = ParIterMut<'a, K, V, S, A>;
+    type Iter = ParIterMut<'a, K, V>;
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
-        ParIterMut { map: self }
+        ParIterMut {
+            inner: unsafe { self.table.par_iter() },
+            marker: PhantomData,
+        }
     }
 }
 
