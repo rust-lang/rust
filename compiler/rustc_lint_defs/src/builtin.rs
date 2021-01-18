@@ -1875,17 +1875,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `missing_crate_level_docs` lint detects if documentation is
-    /// missing at the crate root. This is a `rustdoc` only lint, see the
-    /// documentation in the [rustdoc book].
-    ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#missing_crate_level_docs
-    pub MISSING_CRATE_LEVEL_DOCS,
-    Allow,
-    "detects crates with no crate-level documentation"
-}
-
-declare_lint! {
     /// The `where_clauses_object_safety` lint detects for [object safety] of
     /// [where clauses].
     ///
@@ -2943,7 +2932,6 @@ declare_lint_pass! {
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         UNSTABLE_NAME_COLLISIONS,
         IRREFUTABLE_LET_PATTERNS,
-        MISSING_CRATE_LEVEL_DOCS,
         WHERE_CLAUSES_OBJECT_SAFETY,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,

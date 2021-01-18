@@ -105,6 +105,17 @@ declare_rustdoc_lint! {
 }
 
 declare_rustdoc_lint! {
+    /// The `missing_crate_level_docs` lint detects if documentation is
+    /// missing at the crate root. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#missing_crate_level_docs
+    MISSING_CRATE_LEVEL_DOCS,
+    Allow,
+    "detects crates with no crate-level documentation"
+}
+
+declare_rustdoc_lint! {
     /// The `missing_doc_code_examples` lint detects publicly-exported items
     /// without code samples in their documentation. This is a `rustdoc` only
     /// lint, see the documentation in the [rustdoc book].
@@ -156,6 +167,7 @@ crate static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         INVALID_CODEBLOCK_ATTRIBUTES,
         INVALID_HTML_TAGS,
         NON_AUTOLINKS,
+        MISSING_CRATE_LEVEL_DOCS,
     ]
 });
 

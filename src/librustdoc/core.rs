@@ -255,9 +255,8 @@ crate fn create_config(
     // By default, rustdoc ignores all lints.
     // Specifically unblock lints relevant to documentation or the lint machinery itself.
     let mut lints_to_show = vec![
-        // it's unclear whether these should be part of rustdoc directly
+        // it's unclear whether this should be part of rustdoc directly (#77364)
         rustc_lint::builtin::MISSING_DOCS.name.to_string(),
-        rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS.name.to_string(),
         // these are definitely not part of rustdoc, but we want to warn on them anyway.
         rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_string(),
         rustc_lint::builtin::UNKNOWN_LINTS.name.to_string(),
@@ -474,7 +473,7 @@ crate fn run_global_ctxt(
             let help = "The following guide may be of use:\n\
                 https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html";
             tcx.struct_lint_node(
-                rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS,
+                crate::lint::MISSING_CRATE_LEVEL_DOCS,
                 ctxt.as_local_hir_id(m.def_id).unwrap(),
                 |lint| {
                     let mut diag =

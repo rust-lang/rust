@@ -329,6 +329,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     const RUSTDOC_LINTS: &[&str] = &[
         "broken_intra_doc_links",
         "private_intra_doc_links",
+        "missing_crate_level_docs",
         "missing_doc_code_examples",
         "private_doc_tests",
         "invalid_codeblock_attributes",
