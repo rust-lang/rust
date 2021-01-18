@@ -207,6 +207,7 @@ impl ProjectWorkspace {
         proc_macro_client: Option<&ProcMacroClient>,
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     ) -> CrateGraph {
+        let _p = profile::span("ProjectWorkspace::to_crate_graph");
         let proc_macro_loader = |path: &Path| match proc_macro_client {
             Some(client) => client.by_dylib_path(path),
             None => Vec::new(),
@@ -299,6 +300,7 @@ fn cargo_to_crate_graph(
     sysroot: &Sysroot,
     rustc: &Option<CargoWorkspace>,
 ) -> CrateGraph {
+    let _p = profile::span("cargo_to_crate_graph");
     let mut crate_graph = CrateGraph::default();
     let (public_deps, libproc_macro) =
         sysroot_to_crate_graph(&mut crate_graph, sysroot, target, load);
@@ -493,6 +495,7 @@ fn sysroot_to_crate_graph(
     target: Option<&str>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
 ) -> (Vec<(CrateName, CrateId)>, Option<CrateId>) {
+    let _p = profile::span("sysroot_to_crate_graph");
     let mut cfg_options = CfgOptions::default();
     cfg_options.extend(get_rustc_cfg_options(target));
     let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = sysroot

@@ -274,6 +274,7 @@ impl GlobalState {
     }
 
     fn reload_flycheck(&mut self) {
+        let _p = profile::span("GlobalState::reload_flycheck");
         let config = match self.config.flycheck() {
             Some(it) => it,
             None => {

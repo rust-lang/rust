@@ -1231,6 +1231,7 @@ dependencies = [
  "log",
  "paths",
  "proc_macro_api",
+ "profile",
  "rustc-hash",
  "serde",
  "serde_json",
