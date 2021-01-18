@@ -2646,9 +2646,13 @@ impl<A: Ord> Ord for VecDeque<A> {
 impl<A: Hash> Hash for VecDeque<A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.len().hash(state);
-        let (a, b) = self.as_slices();
-        Hash::hash_slice(a, state);
-        Hash::hash_slice(b, state);
+        // It's not possible to use Hash::hash_slice on slices
+        // returned by as_slices method as their length can vary
+        // in otherwise identical deques.
+        //
+        // Hasher only guarantees equivalence for the exact same
+        // set of calls to its methods.
+        self.iter().for_each(|elem| elem.hash(state));
     }
 }
 
