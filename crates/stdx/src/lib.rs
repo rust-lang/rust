@@ -134,8 +134,10 @@ impl<'a> Iterator for LinesWithEnds<'a> {
 
 /// Returns `idx` such that:
 ///
+/// ```text
 ///     ∀ x in slice[..idx]:  pred(x)
 ///  && ∀ x in slice[idx..]: !pred(x)
+/// ```
 ///
 /// https://github.com/rust-lang/rust/issues/73831
 pub fn partition_point<T, P>(slice: &[T], mut pred: P) -> usize
