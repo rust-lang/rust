@@ -30,6 +30,7 @@ impl<T> Steal<T> {
         Steal { value: RwLock::new(Some(value)) }
     }
 
+    #[track_caller]
     pub fn borrow(&self) -> MappedReadGuard<'_, T> {
         ReadGuard::map(self.value.borrow(), |opt| match *opt {
             None => panic!("attempted to read from stolen value"),
@@ -37,10 +38,11 @@ impl<T> Steal<T> {
         })
     }
 
+    #[track_caller]
     pub fn steal(&self) -> T {
         let value_ref = &mut *self.value.try_write().expect("stealing value which is locked");
         let value = value_ref.take();
-        value.expect("attempt to read from stolen value")
+        value.expect("attempt to steal from stolen value")
     }
 }
 
