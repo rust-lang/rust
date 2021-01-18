@@ -275,12 +275,6 @@ pub enum TerminatorKind<'tcx> {
     InlineAsm(Box<InlineAsmTerminator<'tcx>>),
 }
 
-rustc_data_structures::static_assert_size!(Terminator<'static>, 72);
-rustc_data_structures::static_assert_size!(InlineAsmTerminator<'static>, 64);
-rustc_data_structures::static_assert_size!(CallTerminator<'static>, 88);
-rustc_data_structures::static_assert_size!(AssertTerminator<'static>, 96);
-rustc_data_structures::static_assert_size!(SwitchIntTerminator<'static>, 80);
-
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct Terminator<'tcx> {
     pub source_info: SourceInfo,
