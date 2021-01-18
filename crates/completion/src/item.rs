@@ -398,7 +398,9 @@ impl Builder {
     pub(crate) fn set_detail(mut self, detail: Option<impl Into<String>>) -> Builder {
         self.detail = detail.map(Into::into);
         if let Some(detail) = &self.detail {
-            assert_never!(detail.contains('\n'), "multiline detail: {}", detail);
+            if assert_never!(detail.contains('\n'), "multiline detail: {}", detail) {
+                self.detail = Some(detail.splitn(2, '\n').next().unwrap().to_string());
+            }
         }
         self
     }
