@@ -94,9 +94,23 @@ impl<T> [T] {
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     #[rustc_allow_const_fn_unstable(const_fn_union)]
     pub const fn len(&self) -> usize {
-        // SAFETY: this is safe because `&[T]` and `FatPtr<T>` have the same layout.
-        // Only `std` can make this guarantee.
-        unsafe { crate::ptr::Repr { rust: self }.raw.len }
+        #[cfg(bootstrap)]
+        {
+            // SAFETY: this is safe because `&[T]` and `FatPtr<T>` have the same layout.
+            // Only `std` can make this guarantee.
+            unsafe { crate::ptr::Repr { rust: self }.raw.len }
+        }
+        #[cfg(not(bootstrap))]
+        {
+            // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
+            // As of this writing this causes a "Const-stable functions can only call other
+            // const-stable functions" error.
+
+            // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
+            // and PtrComponents<T> have the same memory layouts. Only std can make this
+            // guarantee.
+            unsafe { crate::ptr::PtrRepr { const_ptr: self }.components.metadata }
+        }
     }
 
     /// Returns `true` if the slice has a length of 0.

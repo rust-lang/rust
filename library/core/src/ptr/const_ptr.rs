@@ -916,9 +916,14 @@ impl<T> *const [T] {
     #[unstable(feature = "slice_ptr_len", issue = "71146")]
     #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
     pub const fn len(self) -> usize {
-        // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
-        // Only `std` can make this guarantee.
-        unsafe { Repr { rust: self }.raw }.len
+        #[cfg(bootstrap)]
+        {
+            // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
+            // Only `std` can make this guarantee.
+            unsafe { Repr { rust: self }.raw }.len
+        }
+        #[cfg(not(bootstrap))]
+        metadata(self)
     }
 
     /// Returns a raw pointer to the slice's buffer.
