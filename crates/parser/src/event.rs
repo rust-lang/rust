@@ -38,14 +38,16 @@ pub(crate) enum Event {
     ///
     /// The events for it would look like this:
     ///
-    ///
+    /// ```text
     /// START(PATH) IDENT('foo') FINISH START(PATH) T![::] IDENT('bar') FINISH
     ///       |                          /\
     ///       |                          |
     ///       +------forward-parent------+
+    /// ```
     ///
     /// And the tree would look like this
     ///
+    /// ```text
     ///    +--PATH---------+
     ///    |   |           |
     ///    |   |           |
@@ -54,6 +56,7 @@ pub(crate) enum Event {
     ///   PATH
     ///    |
     ///   'foo'
+    /// ```
     ///
     /// See also `CompletedMarker::precede`.
     Start {

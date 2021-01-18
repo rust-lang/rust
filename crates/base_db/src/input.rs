@@ -178,7 +178,7 @@ pub struct CrateData {
     pub root_file_id: FileId,
     pub edition: Edition,
     /// A name used in the package's project declaration: for Cargo projects,
-    /// it's [package].name, can be different for other project types or even
+    /// its `[package].name` can be different for other project types or even
     /// absent (a dummy crate for the code snippet, for example).
     ///
     /// For purposes of analysis, crates are anonymous (only names in
