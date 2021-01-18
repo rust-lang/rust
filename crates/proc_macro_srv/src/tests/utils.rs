@@ -52,7 +52,7 @@ pub fn assert_expand(
     let fixture = parse_string(ra_fixture).unwrap();
 
     let res = expander.expand(macro_name, &fixture.subtree, None).unwrap();
-    assert_eq_text!(&format!("{:?}", res), &expect.trim());
+    assert_eq_text!(&expect.trim(), &format!("{:?}", res));
 }
 
 pub fn list(crate_name: &str, version: &str) -> Vec<String> {

@@ -38,9 +38,9 @@ fn test_derive_proc_macro_list() {
     let res = list("serde_derive", "1").join("\n");
 
     assert_eq_text!(
-        &res,
         r#"Serialize [CustomDerive]
-Deserialize [CustomDerive]"#
+Deserialize [CustomDerive]"#,
+        &res
     );
 }
 
@@ -50,9 +50,9 @@ fn list_test_macros() {
     let res = list("proc_macro_test", "0.0.0").join("\n");
 
     assert_eq_text!(
-        &res,
         r#"function_like_macro [FuncLike]
 attribute_macro [Attr]
-DummyTrait [CustomDerive]"#
+DummyTrait [CustomDerive]"#,
+        &res
     );
 }

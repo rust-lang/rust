@@ -599,7 +599,7 @@ fn check(
 
     let rewriter = insert_use(&file, path, mb);
     let result = rewriter.rewrite(file.as_syntax_node()).to_string();
-    assert_eq_text!(&result, ra_fixture_after);
+    assert_eq_text!(ra_fixture_after, &result);
 }
 
 fn check_full(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {

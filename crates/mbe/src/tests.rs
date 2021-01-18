@@ -261,7 +261,6 @@ fn test_expr_order() {
 
     let dump = format!("{:#?}", expanded);
     assert_eq_text!(
-        dump.trim(),
         r#"MACRO_ITEMS@0..15
   FN@0..15
     FN_KW@0..2 "fn"
@@ -285,6 +284,7 @@ fn test_expr_order() {
             INT_NUMBER@12..13 "2"
         SEMICOLON@13..14 ";"
       R_CURLY@14..15 "}""#,
+        dump.trim()
     );
 }
 
@@ -989,7 +989,6 @@ fn test_tt_composite2() {
 
     let res = format!("{:#?}", &node);
     assert_eq_text!(
-        res.trim(),
         r###"MACRO_ITEMS@0..10
   MACRO_CALL@0..10
     PATH@0..3
@@ -1003,7 +1002,8 @@ fn test_tt_composite2() {
       R_ANGLE@6..7 ">"
       WHITESPACE@7..8 " "
       POUND@8..9 "#"
-      R_PAREN@9..10 ")""###
+      R_PAREN@9..10 ")""###,
+        res.trim()
     );
 }
 
@@ -1742,7 +1742,7 @@ impl MacroFixture {
     fn assert_expand(&self, invocation: &str, expected: &str) {
         let expansion = self.expand_tt(invocation);
         let actual = format!("{:?}", expansion);
-        test_utils::assert_eq_text!(&actual.trim(), &expected.trim());
+        test_utils::assert_eq_text!(&expected.trim(), &actual.trim());
     }
 
     fn assert_expand_items(&self, invocation: &str, expected: &str) -> &MacroFixture {
@@ -1941,7 +1941,6 @@ fn test_no_space_after_semi_colon() {
 
     let dump = format!("{:#?}", expanded);
     assert_eq_text!(
-        dump.trim(),
         r###"MACRO_ITEMS@0..52
   MODULE@0..26
     ATTR@0..21
@@ -1981,6 +1980,7 @@ fn test_no_space_after_semi_colon() {
     NAME@50..51
       IDENT@50..51 "f"
     SEMICOLON@51..52 ";""###,
+        dump.trim()
     );
 }
 

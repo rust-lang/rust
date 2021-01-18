@@ -111,7 +111,6 @@ mod tests {
         let syn = analysis.syntax_tree(file_id, None).unwrap();
 
         assert_eq_text!(
-            syn.trim(),
             r#"
 SOURCE_FILE@0..11
   FN@0..11
@@ -127,7 +126,8 @@ SOURCE_FILE@0..11
       L_CURLY@9..10 "{"
       R_CURLY@10..11 "}"
 "#
-            .trim()
+            .trim(),
+            syn.trim()
         );
 
         let (analysis, file_id) = fixture::file(
@@ -143,7 +143,6 @@ fn test() {
         let syn = analysis.syntax_tree(file_id, None).unwrap();
 
         assert_eq_text!(
-            syn.trim(),
             r#"
 SOURCE_FILE@0..60
   FN@0..60
@@ -176,7 +175,8 @@ SOURCE_FILE@0..60
       WHITESPACE@58..59 "\n"
       R_CURLY@59..60 "}"
 "#
-            .trim()
+            .trim(),
+            syn.trim()
         );
     }
 
@@ -186,7 +186,6 @@ SOURCE_FILE@0..60
         let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
 
         assert_eq_text!(
-            syn.trim(),
             r#"
 FN@0..11
   FN_KW@0..2 "fn"
@@ -201,7 +200,8 @@ FN@0..11
     L_CURLY@9..10 "{"
     R_CURLY@10..11 "}"
 "#
-            .trim()
+            .trim(),
+            syn.trim()
         );
 
         let (analysis, range) = fixture::range(
@@ -216,7 +216,6 @@ FN@0..11
         let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
 
         assert_eq_text!(
-            syn.trim(),
             r#"
 EXPR_STMT@16..58
   MACRO_CALL@16..57
@@ -234,7 +233,8 @@ EXPR_STMT@16..58
       R_PAREN@56..57 ")"
   SEMICOLON@57..58 ";"
 "#
-            .trim()
+            .trim(),
+            syn.trim()
         );
     }
 
@@ -253,7 +253,6 @@ fn bar() {
         );
         let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
         assert_eq_text!(
-            syn.trim(),
             r#"
 SOURCE_FILE@0..12
   FN@0..12
@@ -270,7 +269,8 @@ SOURCE_FILE@0..12
       WHITESPACE@10..11 "\n"
       R_CURLY@11..12 "}"
 "#
-            .trim()
+            .trim(),
+            syn.trim()
         );
 
         // With a raw string
@@ -287,7 +287,6 @@ fn bar() {
         );
         let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
         assert_eq_text!(
-            syn.trim(),
             r#"
 SOURCE_FILE@0..12
   FN@0..12
@@ -304,7 +303,8 @@ SOURCE_FILE@0..12
       WHITESPACE@10..11 "\n"
       R_CURLY@11..12 "}"
 "#
-            .trim()
+            .trim(),
+            syn.trim()
         );
 
         // With a raw string
@@ -320,7 +320,6 @@ fn bar() {
         );
         let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
         assert_eq_text!(
-            syn.trim(),
             r#"
 SOURCE_FILE@0..25
   FN@0..12
@@ -351,7 +350,8 @@ SOURCE_FILE@0..25
       WHITESPACE@23..24 "\n"
       R_CURLY@24..25 "}"
 "#
-            .trim()
+            .trim(),
+            syn.trim()
         );
     }
 }
