@@ -13,7 +13,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** Since `&` is Copy, it's useless to have a
     /// reference on `Option<&T>`.
     ///
-    /// **Known problems:** It may be irrevelent to use this lint on
+    /// **Known problems:** It may be irrelevant to use this lint on
     /// public API code as it will make a breaking change to apply it.
     ///
     /// **Example:**

@@ -1,4 +1,6 @@
-use crate::utils::{any_parent_is_automatically_derived, contains_name, match_def_path, paths, qpath_res, snippet};
+use crate::utils::{
+    any_parent_is_automatically_derived, contains_name, match_def_path, paths, qpath_res, snippet_with_macro_callsite,
+};
 use crate::utils::{span_lint_and_note, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
@@ -6,6 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{Ident, Symbol};
@@ -118,6 +121,8 @@ impl LateLintPass<'_> for Default {
                 // only take `let ...` statements
                 if let StmtKind::Local(local) = stmt.kind;
                 if let Some(expr) = local.init;
+                if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
+                if !in_external_macro(cx.tcx.sess, expr.span);
                 // only take bindings to identifiers
                 if let PatKind::Binding(_, binding_id, ident, _) = local.pat.kind;
                 // only when assigning `... = Default::default()`
@@ -187,7 +192,7 @@ impl LateLintPass<'_> for Default {
                     .into_iter()
                     .map(|(field, rhs)| {
                         // extract and store the assigned value for help message
-                        let value_snippet = snippet(cx, rhs.span, "..");
+                        let value_snippet = snippet_with_macro_callsite(cx, rhs.span, "..");
                         format!("{}: {}", field, value_snippet)
                     })
                     .collect::<Vec<String>>()
