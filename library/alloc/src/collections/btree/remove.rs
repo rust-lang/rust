@@ -60,7 +60,9 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
             // rearrange the parent through the grandparent, thus change the
             // link to the parent inside the leaf.
             if let Ok(parent) = unsafe { pos.reborrow_mut() }.into_node().ascend() {
-                parent.into_node().handle_shrunk_node_recursively(handle_emptied_internal_root);
+                if !parent.into_node().forget_type().fix_node_and_affected_ancestors() {
+                    handle_emptied_internal_root();
+                }
             }
         }
         (old_kv, pos)
@@ -85,64 +87,5 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         let old_kv = internal.replace_kv(left_kv.0, left_kv.1);
         let pos = internal.next_leaf_edge();
         (old_kv, pos)
-    }
-}
-
-impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
-    /// Stocks up a possibly underfull internal node and its ancestors,
-    /// until it reaches an ancestor that has elements to spare or is the root.
-    fn handle_shrunk_node_recursively<F: FnOnce()>(mut self, handle_emptied_internal_root: F) {
-        loop {
-            self = match self.len() {
-                0 => {
-                    // An empty node must be the root, because length is only
-                    // reduced by one, and non-root underfull nodes are stocked up,
-                    // so non-root nodes never have fewer than MIN_LEN - 1 elements.
-                    debug_assert!(self.ascend().is_err());
-                    handle_emptied_internal_root();
-                    return;
-                }
-                1..MIN_LEN => {
-                    if let Some(parent) = self.handle_underfull_node_locally() {
-                        parent
-                    } else {
-                        return;
-                    }
-                }
-                _ => return,
-            }
-        }
-    }
-
-    /// Stocks up an underfull internal node, possibly at the cost of shrinking
-    /// its parent instead, which is then returned.
-    fn handle_underfull_node_locally(
-        self,
-    ) -> Option<NodeRef<marker::Mut<'a>, K, V, marker::Internal>> {
-        match self.forget_type().choose_parent_kv() {
-            Ok(Left(mut left_parent_kv)) => {
-                debug_assert_eq!(left_parent_kv.right_child_len(), MIN_LEN - 1);
-                if left_parent_kv.can_merge() {
-                    let parent = left_parent_kv.merge_tracking_parent();
-                    Some(parent)
-                } else {
-                    debug_assert!(left_parent_kv.left_child_len() > MIN_LEN);
-                    left_parent_kv.bulk_steal_left(1);
-                    None
-                }
-            }
-            Ok(Right(mut right_parent_kv)) => {
-                debug_assert_eq!(right_parent_kv.left_child_len(), MIN_LEN - 1);
-                if right_parent_kv.can_merge() {
-                    let parent = right_parent_kv.merge_tracking_parent();
-                    Some(parent)
-                } else {
-                    debug_assert!(right_parent_kv.right_child_len() > MIN_LEN);
-                    right_parent_kv.bulk_steal_right(1);
-                    None
-                }
-            }
-            Err(_) => None,
-        }
     }
 }
