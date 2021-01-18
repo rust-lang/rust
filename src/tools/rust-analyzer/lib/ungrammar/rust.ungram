@@ -251,7 +251,7 @@ AssocItem =
 Impl =
   Attr* Visibility?
   'default'? 'unsafe'?
-  'impl' 'const'? GenericParamList? ('!'? trait:Type 'for')? self_ty:Type WhereClause?
+  'impl' GenericParamList? ('const'? '!'? trait:Type 'for')? self_ty:Type WhereClause?
   AssocItemList
 
 ExternBlock =
@@ -418,7 +418,7 @@ RecordExprFieldList =
   '}'
 
 RecordExprField =
-  Attr* NameRef (':' Expr)?
+  Attr* (NameRef ':')? Expr
 
 CallExpr =
   Attr* Expr ArgList
