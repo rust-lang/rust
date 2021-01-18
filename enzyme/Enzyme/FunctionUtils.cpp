@@ -724,7 +724,7 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 #if LLVM_VERSION_MAJOR > 6
     PhiValues PV(*NewF);
 #endif
-    BasicAAResult AA2(NewF->getParent()->getDataLayout(),
+    BasicAAResult BAA(NewF->getParent()->getDataLayout(),
 #if LLVM_VERSION_MAJOR > 6
                       *NewF,
 #endif
@@ -734,6 +734,10 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
                       &PV
 #endif
     );
+    AAResults AA2(TLI);
+    AA2.addAAResult(BAA);
+    //TypeBasedAAResult TBAA();
+    //AA2.addAAResult(TBAA);
 
     for (auto &g : NewF->getParent()->globals()) {
       bool inF = false;
@@ -798,23 +802,14 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
             continue;
           }
 
-#if LLVM_VERSION_MAJOR >= 9
-          AAQueryInfo AAQIP;
-          if (llvm::isModOrRefSet(AA2.getModRefInfo(CI, Loc, AAQIP))) {
-            llvm::errs() << " failed to inline global: " << g << " due to "
-                         << *CI << "\n";
-            activeCall = true;
-          }
-#else
           if (llvm::isModOrRefSet(AA2.getModRefInfo(CI, Loc))) {
             llvm::errs() << " failed to inline global: " << g << " due to "
                          << *CI << "\n";
             activeCall = true;
           }
-#endif
         }
 
-        {
+        if (!activeCall) {
         std::set<Value*> seen;
         std::deque<Value*> todo = { (Value*)&g };
         while(todo.size()) {
@@ -856,25 +851,19 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
                 goto endCheck;
               }
 
-              #if LLVM_VERSION_MAJOR >= 9
-              AAQueryInfo AAQIP;
-              if (llvm::isModSet(AA2.getModRefInfo(CI, Loc, AAQIP))) {
-                hasWrite = true;
-                goto endCheck;
-              }
-              #else
               if (llvm::isModSet(AA2.getModRefInfo(CI, Loc))) {
                 hasWrite = true;
                 goto endCheck;
               }
-              #endif
             }
             
             else if (auto I = dyn_cast<Instruction>(u)) {
-              if (I->getParent()->getParent() == NewF) {
-                inF = true;
-                goto doneF;
+              if (llvm::isModSet(AA2.getModRefInfo(I, Loc))) {
+                hasWrite = true;
+                goto endCheck;
               }
+
+
             }
           }
         }
