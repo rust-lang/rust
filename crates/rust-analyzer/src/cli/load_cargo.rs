@@ -39,7 +39,7 @@ pub fn load_cargo(
         None
     };
 
-    let crate_graph = ws.to_crate_graph(None, proc_macro_client.as_ref(), &mut |path: &AbsPath| {
+    let crate_graph = ws.to_crate_graph(proc_macro_client.as_ref(), &mut |path: &AbsPath| {
         let contents = loader.load_sync(path);
         let path = vfs::VfsPath::from(path.to_path_buf());
         vfs.set_file_contents(path.clone(), contents);
