@@ -1,190 +1,122 @@
 //! Performs various peephole optimizations.
 
 use crate::transform::MirPass;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::Mutability;
-use rustc_index::vec::Idx;
-use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::{
-    BinOp, Body, Constant, Local, Location, Operand, Place, PlaceRef, ProjectionElem, Rvalue,
+    BinOp, Body, Constant, LocalDecls, Operand, Place, ProjectionElem, Rvalue, SourceInfo,
+    StatementKind,
 };
 use rustc_middle::ty::{self, TyCtxt};
-use std::mem;
 
 pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
-        // read-only so that we can do global analyses on the MIR in the process (e.g.
-        // `Place::ty()`).
-        let optimizations = {
-            let mut optimization_finder = OptimizationFinder::new(body, tcx);
-            optimization_finder.visit_body(body);
-            optimization_finder.optimizations
-        };
-
-        if !optimizations.is_empty() {
-            // Then carry out those optimizations.
-            MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
+        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+        let ctx = InstCombineContext { tcx, local_decls };
+        for block in basic_blocks.iter_mut() {
+            for statement in block.statements.iter_mut() {
+                match statement.kind {
+                    StatementKind::Assign(box (_place, ref mut rvalue)) => {
+                        ctx.combine_bool_cmp(&statement.source_info, rvalue);
+                        ctx.combine_ref_deref(&statement.source_info, rvalue);
+                        ctx.combine_len(&statement.source_info, rvalue);
+                    }
+                    _ => {}
+                }
+            }
         }
     }
 }
 
-pub struct InstCombineVisitor<'tcx> {
-    optimizations: OptimizationList<'tcx>,
+struct InstCombineContext<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
+    local_decls: &'a LocalDecls<'tcx>,
 }
 
-impl<'tcx> InstCombineVisitor<'tcx> {
-    fn should_combine(&self, rvalue: &Rvalue<'tcx>, location: Location) -> bool {
+impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
+    fn should_combine(&self, source_info: &SourceInfo, rvalue: &Rvalue<'tcx>) -> bool {
         self.tcx.consider_optimizing(|| {
-            format!("InstCombine - Rvalue: {:?} Location: {:?}", rvalue, location)
+            format!("InstCombine - Rvalue: {:?} SourceInfo: {:?}", rvalue, source_info)
         })
     }
-}
 
-impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
+    /// Transform boolean comparisons into logical operations.
+    fn combine_bool_cmp(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+        match rvalue {
+            Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), a, b) => {
+                let new = match (op, self.try_eval_bool(a), self.try_eval_bool(b)) {
+                    // Transform "Eq(a, true)" ==> "a"
+                    (BinOp::Eq, _, Some(true)) => Some(a.clone()),
 
-    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        if self.optimizations.and_stars.remove(&location) && self.should_combine(rvalue, location) {
-            debug!("replacing `&*`: {:?}", rvalue);
-            let new_place = match rvalue {
-                Rvalue::Ref(_, _, place) => {
-                    if let &[ref proj_l @ .., proj_r] = place.projection.as_ref() {
-                        place.projection = self.tcx().intern_place_elems(&[proj_r]);
+                    // Transform "Ne(a, false)" ==> "a"
+                    (BinOp::Ne, _, Some(false)) => Some(a.clone()),
 
-                        Place {
-                            // Replace with dummy
-                            local: mem::replace(&mut place.local, Local::new(0)),
-                            projection: self.tcx().intern_place_elems(proj_l),
-                        }
-                    } else {
-                        unreachable!();
+                    // Transform "Eq(true, b)" ==> "b"
+                    (BinOp::Eq, Some(true), _) => Some(b.clone()),
+
+                    // Transform "Ne(false, b)" ==> "b"
+                    (BinOp::Ne, Some(false), _) => Some(b.clone()),
+
+                    // FIXME: Consider combining remaining comparisons into logical operations:
+                    // Transform "Eq(false, b)" ==> "Not(b)"
+                    // Transform "Ne(true, b)" ==> "Not(b)"
+                    // Transform "Eq(a, false)" ==> "Not(a)"
+                    // Transform "Ne(a, true)" ==> "Not(a)"
+                    _ => None,
+                };
+
+                if let Some(new) = new {
+                    if self.should_combine(source_info, rvalue) {
+                        *rvalue = Rvalue::Use(new);
                     }
                 }
-                _ => bug!("Detected `&*` but didn't find `&*`!"),
-            };
-            *rvalue = Rvalue::Use(Operand::Copy(new_place))
-        }
-
-        if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
-            if self.should_combine(rvalue, location) {
-                debug!("replacing `Len([_; N])`: {:?}", rvalue);
-                *rvalue = Rvalue::Use(Operand::Constant(box constant));
             }
-        }
 
-        if let Some(operand) = self.optimizations.unneeded_equality_comparison.remove(&location) {
-            if self.should_combine(rvalue, location) {
-                debug!("replacing {:?} with {:?}", rvalue, operand);
-                *rvalue = Rvalue::Use(operand);
-            }
-        }
-
-        // We do not call super_rvalue as we are not interested in any other parts of the tree
-    }
-}
-
-/// Finds optimization opportunities on the MIR.
-struct OptimizationFinder<'b, 'tcx> {
-    body: &'b Body<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    optimizations: OptimizationList<'tcx>,
-}
-
-impl OptimizationFinder<'b, 'tcx> {
-    fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx>) -> OptimizationFinder<'b, 'tcx> {
-        OptimizationFinder { body, tcx, optimizations: OptimizationList::default() }
-    }
-
-    fn find_unneeded_equality_comparison(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        // find Ne(_place, false) or Ne(false, _place)
-        // or   Eq(_place, true) or Eq(true, _place)
-        if let Rvalue::BinaryOp(op, l, r) = rvalue {
-            let const_to_find = if *op == BinOp::Ne {
-                false
-            } else if *op == BinOp::Eq {
-                true
-            } else {
-                return;
-            };
-            // (const, _place)
-            if let Some(o) = self.find_operand_in_equality_comparison_pattern(l, r, const_to_find) {
-                self.optimizations.unneeded_equality_comparison.insert(location, o.clone());
-            }
-            // (_place, const)
-            else if let Some(o) =
-                self.find_operand_in_equality_comparison_pattern(r, l, const_to_find)
-            {
-                self.optimizations.unneeded_equality_comparison.insert(location, o.clone());
-            }
+            _ => {}
         }
     }
 
-    fn find_operand_in_equality_comparison_pattern(
-        &self,
-        l: &Operand<'tcx>,
-        r: &'a Operand<'tcx>,
-        const_to_find: bool,
-    ) -> Option<&'a Operand<'tcx>> {
-        let const_ = l.constant()?;
-        if const_.literal.ty == self.tcx.types.bool
-            && const_.literal.val.try_to_bool() == Some(const_to_find)
-        {
-            if r.place().is_some() {
-                return Some(r);
-            }
-        }
-
-        None
+    fn try_eval_bool(&self, a: &Operand<'_>) -> Option<bool> {
+        let a = a.constant()?;
+        if a.literal.ty.is_bool() { a.literal.val.try_to_bool() } else { None }
     }
-}
 
-impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+    /// Transform "&(*a)" ==> "a".
+    fn combine_ref_deref(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Ref(_, _, place) = rvalue {
-            if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
-                // The dereferenced place must have type `&_`.
-                let ty = place_base.ty(self.body, self.tcx).ty;
-                if let ty::Ref(_, _, Mutability::Not) = ty.kind() {
-                    self.optimizations.and_stars.insert(location);
+            if let Some((base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
+                if let ty::Ref(_, _, Mutability::Not) =
+                    base.ty(self.local_decls, self.tcx).ty.kind()
+                {
+                    // The dereferenced place must have type `&_`, so that we don't copy `&mut _`.
+                } else {
+                    return;
                 }
+
+                if !self.should_combine(source_info, rvalue) {
+                    return;
+                }
+
+                *rvalue = Rvalue::Use(Operand::Copy(Place {
+                    local: base.local,
+                    projection: self.tcx.intern_place_elems(base.projection),
+                }));
             }
         }
-
-        if let Rvalue::Len(ref place) = *rvalue {
-            let place_ty = place.ty(&self.body.local_decls, self.tcx).ty;
-            if let ty::Array(_, len) = place_ty.kind() {
-                let span = self.body.source_info(location).span;
-                let constant = Constant { span, literal: len, user_ty: None };
-                self.optimizations.arrays_lengths.insert(location, constant);
-            }
-        }
-
-        self.find_unneeded_equality_comparison(rvalue, location);
-
-        // We do not call super_rvalue as we are not interested in any other parts of the tree
     }
-}
 
-#[derive(Default)]
-struct OptimizationList<'tcx> {
-    and_stars: FxHashSet<Location>,
-    arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
-    unneeded_equality_comparison: FxHashMap<Location, Operand<'tcx>>,
-}
+    /// Transform "Len([_; N])" ==> "N".
+    fn combine_len(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+        if let Rvalue::Len(ref place) = *rvalue {
+            let place_ty = place.ty(self.local_decls, self.tcx).ty;
+            if let ty::Array(_, len) = place_ty.kind() {
+                if !self.should_combine(source_info, rvalue) {
+                    return;
+                }
 
-impl<'tcx> OptimizationList<'tcx> {
-    fn is_empty(&self) -> bool {
-        match self {
-            OptimizationList { and_stars, arrays_lengths, unneeded_equality_comparison } => {
-                and_stars.is_empty()
-                    && arrays_lengths.is_empty()
-                    && unneeded_equality_comparison.is_empty()
+                let constant = Constant { span: source_info.span, literal: len, user_ty: None };
+                *rvalue = Rvalue::Use(Operand::Constant(box constant));
             }
         }
     }

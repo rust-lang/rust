@@ -54,7 +54,7 @@ mod type_foldable;
 pub mod visit;
 
 /// Types for locals
-type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
+pub type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
 
 pub trait HasLocalDecls<'tcx> {
     fn local_decls(&self) -> &LocalDecls<'tcx>;
