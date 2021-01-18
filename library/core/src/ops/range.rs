@@ -766,8 +766,15 @@ pub trait RangeBounds<T: ?Sized> {
 
     /// Performs bounds-checking of this range.
     ///
+    /// This method is similar to [`Index::index`] for slices, but it returns a
+    /// [`Range`] equivalent to this range. You can use this method to turn any
+    /// range into `start` and `end` values.
+    ///
+    /// The given range is the range of the slice to use for bounds-checking. It
+    /// should be a [`RangeTo`] range that ends at the length of the slice.
+    ///
     /// The returned [`Range`] is safe to pass to [`slice::get_unchecked`] and
-    /// [`slice::get_unchecked_mut`] for slices of the given length.
+    /// [`slice::get_unchecked_mut`] for slices with the given range.
     ///
     /// [`slice::get_unchecked`]: ../../std/primitive.slice.html#method.get_unchecked
     /// [`slice::get_unchecked_mut`]: ../../std/primitive.slice.html#method.get_unchecked_mut
@@ -779,49 +786,51 @@ pub trait RangeBounds<T: ?Sized> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_bounds_assert_len)]
+    /// #![feature(range_bounds_ensure_subset_of)]
     ///
     /// use std::ops::RangeBounds;
     ///
     /// let v = [10, 40, 30];
-    /// assert_eq!(1..2, (1..2).assert_len(v.len()));
-    /// assert_eq!(0..2, (..2).assert_len(v.len()));
-    /// assert_eq!(1..3, (1..).assert_len(v.len()));
+    /// assert_eq!(1..2, (1..2).ensure_subset_of(..v.len()));
+    /// assert_eq!(0..2, (..2).ensure_subset_of(..v.len()));
+    /// assert_eq!(1..3, (1..).ensure_subset_of(..v.len()));
     /// ```
     ///
     /// Panics when [`Index::index`] would panic:
     ///
     /// ```should_panic
-    /// #![feature(range_bounds_assert_len)]
+    /// #![feature(range_bounds_ensure_subset_of)]
     ///
     /// use std::ops::RangeBounds;
     ///
-    /// (2..1).assert_len(3);
+    /// (2..1).ensure_subset_of(..3);
     /// ```
     ///
     /// ```should_panic
-    /// #![feature(range_bounds_assert_len)]
+    /// #![feature(range_bounds_ensure_subset_of)]
     ///
     /// use std::ops::RangeBounds;
     ///
-    /// (1..4).assert_len(3);
+    /// (1..4).ensure_subset_of(..3);
     /// ```
     ///
     /// ```should_panic
-    /// #![feature(range_bounds_assert_len)]
+    /// #![feature(range_bounds_ensure_subset_of)]
     ///
     /// use std::ops::RangeBounds;
     ///
-    /// (1..=usize::MAX).assert_len(3);
+    /// (1..=usize::MAX).ensure_subset_of(..3);
     /// ```
     ///
     /// [`Index::index`]: crate::ops::Index::index
     #[track_caller]
-    #[unstable(feature = "range_bounds_assert_len", issue = "76393")]
-    fn assert_len(self, len: usize) -> Range<usize>
+    #[unstable(feature = "range_bounds_ensure_subset_of", issue = "76393")]
+    fn ensure_subset_of(self, range: RangeTo<usize>) -> Range<usize>
     where
         Self: RangeBounds<usize>,
     {
+        let len = range.end;
+
         let start: Bound<&usize> = self.start_bound();
         let start = match start {
             Bound::Included(&start) => start,
