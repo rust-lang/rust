@@ -507,6 +507,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.tcx,
                 self.span,
                 Some(self.self_expr.span),
+                self.call_expr.span,
                 trait_def_id,
             ),
             ty::ImplContainer(..) => {}

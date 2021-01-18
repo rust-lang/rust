@@ -1,11 +1,11 @@
 error[E0040]: explicit use of destructor method
-  --> $DIR/explicit-call-to-dtor.rs:13:7
+  --> $DIR/explicit-call-to-dtor.rs:15:7
    |
 LL |     x.drop();
-   |       ^^^^
-   |       |
-   |       explicit destructor calls not allowed
-   |       help: consider using `drop` function: `drop(x)`
+   |     --^^^^--
+   |     | |
+   |     | explicit destructor calls not allowed
+   |     help: consider using `drop` function: `drop(x)`
 
 error: aborting due to previous error
 

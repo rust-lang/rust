@@ -1163,7 +1163,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
                 match container {
                     ty::TraitContainer(trait_did) => {
-                        callee::check_legal_trait_for_method_call(tcx, span, None, trait_did)
+                        callee::check_legal_trait_for_method_call(tcx, span, None, span, trait_did)
                     }
                     ty::ImplContainer(impl_def_id) => {
                         if segments.len() == 1 {

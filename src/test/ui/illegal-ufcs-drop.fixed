@@ -6,5 +6,5 @@ impl Drop for Foo {
 }
 
 fn main() {
-    Drop::drop(&mut Foo) //~ ERROR explicit use of destructor method
+    drop(&mut Foo) //~ ERROR explicit use of destructor method
 }
