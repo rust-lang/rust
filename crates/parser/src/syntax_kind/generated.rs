@@ -143,6 +143,7 @@ pub enum SyntaxKind {
     MACRO_DEF,
     PAREN_TYPE,
     TUPLE_TYPE,
+    MACRO_TYPE,
     NEVER_TYPE,
     PATH_TYPE,
     PTR_TYPE,

@@ -159,6 +159,8 @@ impl TypeRef {
             ast::Type::DynTraitType(inner) => {
                 TypeRef::DynTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
+            // FIXME: Macros in type position are not yet supported.
+            ast::Type::MacroType(_) => TypeRef::Error,
         }
     }
 
