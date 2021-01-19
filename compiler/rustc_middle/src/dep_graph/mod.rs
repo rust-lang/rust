@@ -3,6 +3,7 @@ use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 
+#[macro_use]
 mod dep_node;
 
 pub use rustc_query_system::dep_graph::{

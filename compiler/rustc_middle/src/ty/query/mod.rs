@@ -63,6 +63,7 @@ use std::sync::Arc;
 #[macro_use]
 mod plumbing;
 pub use plumbing::QueryCtxt;
+use plumbing::QueryStruct;
 pub(crate) use rustc_query_system::query::CycleError;
 use rustc_query_system::query::*;
 

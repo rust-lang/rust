@@ -76,6 +76,7 @@ pub mod query;
 
 #[macro_use]
 pub mod arena;
+#[macro_use]
 pub mod dep_graph;
 pub mod hir;
 pub mod ich;
