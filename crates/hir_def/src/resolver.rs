@@ -21,8 +21,9 @@ use crate::{
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
     AdtId, AssocContainerId, ConstId, ConstParamId, ContainerId, DefWithBodyId, EnumId,
-    EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId,
-    ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, VariantId,
+    EnumVariantId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, LifetimeParamId,
+    LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
+    TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -484,7 +485,7 @@ pub enum ScopeDef {
     PerNs(PerNs),
     ImplSelfType(ImplId),
     AdtSelfType(AdtId),
-    GenericParam(TypeParamId),
+    GenericParam(GenericParamId),
     Local(PatId),
 }
 
@@ -527,14 +528,20 @@ impl Scope {
             Scope::LocalItemsScope(body) => body.item_scope.entries().for_each(|(name, def)| {
                 f(name.clone(), ScopeDef::PerNs(def));
             }),
-            Scope::GenericParams { params, def } => {
+            &Scope::GenericParams { ref params, def: parent } => {
                 for (local_id, param) in params.types.iter() {
-                    if let Some(name) = &param.name {
-                        f(
-                            name.clone(),
-                            ScopeDef::GenericParam(TypeParamId { local_id, parent: *def }),
-                        )
+                    if let Some(ref name) = param.name {
+                        let id = TypeParamId { local_id, parent };
+                        f(name.clone(), ScopeDef::GenericParam(id.into()))
                     }
+                }
+                for (local_id, param) in params.consts.iter() {
+                    let id = ConstParamId { local_id, parent };
+                    f(param.name.clone(), ScopeDef::GenericParam(id.into()))
+                }
+                for (local_id, param) in params.lifetimes.iter() {
+                    let id = LifetimeParamId { local_id, parent };
+                    f(param.name.clone(), ScopeDef::GenericParam(id.into()))
                 }
             }
             Scope::ImplDefScope(i) => {
