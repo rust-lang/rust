@@ -568,24 +568,23 @@ fn is_enclosed(
     tcx: TyCtxt<'_>,
     used_unsafe: &FxHashSet<hir::HirId>,
     id: hir::HirId,
-) -> Option<(String, hir::HirId)> {
+    unsafe_op_in_unsafe_fn_allowed: bool,
+) -> Option<(&'static str, hir::HirId)> {
     let parent_id = tcx.hir().get_parent_node(id);
     if parent_id != id {
         if used_unsafe.contains(&parent_id) {
-            Some(("block".to_string(), parent_id))
+            Some(("block", parent_id))
         } else if let Some(Node::Item(&hir::Item {
             kind: hir::ItemKind::Fn(ref sig, _, _), ..
         })) = tcx.hir().find(parent_id)
         {
-            if sig.header.unsafety == hir::Unsafety::Unsafe
-                && !tcx.features().unsafe_block_in_unsafe_fn
-            {
-                Some(("fn".to_string(), parent_id))
+            if sig.header.unsafety == hir::Unsafety::Unsafe && unsafe_op_in_unsafe_fn_allowed {
+                Some(("fn", parent_id))
             } else {
                 None
             }
         } else {
-            is_enclosed(tcx, used_unsafe, parent_id)
+            is_enclosed(tcx, used_unsafe, parent_id, unsafe_op_in_unsafe_fn_allowed)
         }
     } else {
         None
@@ -598,7 +597,9 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, used_unsafe: &FxHashSet<hir::HirId>, id
         let msg = "unnecessary `unsafe` block";
         let mut db = lint.build(msg);
         db.span_label(span, msg);
-        if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
+        if let Some((kind, id)) =
+            is_enclosed(tcx, used_unsafe, id, unsafe_op_in_unsafe_fn_allowed(tcx, id))
+        {
             db.span_label(
                 tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
                 format!("because it's nested under this `unsafe` {}", kind),

@@ -27,43 +27,11 @@ LL |     VOID = ();
    |
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
-error: call to unsafe function is unsafe and requires unsafe block (error E0133)
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:22:5
-   |
-LL |     unsf();
-   |     ^^^^^^ call to unsafe function
-   |
-note: the lint level is defined here
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:20:8
-   |
-LL | #[deny(warnings)]
-   |        ^^^^^^^^
-   = note: `#[deny(unsafe_op_in_unsafe_fn)]` implied by `#[deny(warnings)]`
-   = note: consult the function's documentation for information on how to avoid undefined behavior
-
-error: dereference of raw pointer is unsafe and requires unsafe block (error E0133)
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:24:5
-   |
-LL |     *PTR;
-   |     ^^^^ dereference of raw pointer
-   |
-   = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
-
-error: use of mutable static is unsafe and requires unsafe block (error E0133)
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:26:5
-   |
-LL |     VOID = ();
-   |     ^^^^^^^^^ use of mutable static
-   |
-   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
-
 error: unnecessary `unsafe` block
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:40:14
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:17:5
    |
-LL |     unsafe { unsafe { unsf() } }
-   |     ------   ^^^^^^ unnecessary `unsafe` block
-   |     |
-   |     because it's nested under this `unsafe` block
+LL |     unsafe {}
+   |     ^^^^^^ unnecessary `unsafe` block
    |
 note: the lint level is defined here
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:3:9
@@ -71,20 +39,70 @@ note: the lint level is defined here
 LL | #![deny(unused_unsafe)]
    |         ^^^^^^^^^^^^^
 
-error: unnecessary `unsafe` block
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:51:5
+error: call to unsafe function is unsafe and requires unsafe block (error E0133)
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:25:5
    |
+LL |     unsf();
+   |     ^^^^^^ call to unsafe function
+   |
+note: the lint level is defined here
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:23:8
+   |
+LL | #[deny(warnings)]
+   |        ^^^^^^^^
+   = note: `#[deny(unsafe_op_in_unsafe_fn)]` implied by `#[deny(warnings)]`
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error: dereference of raw pointer is unsafe and requires unsafe block (error E0133)
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:27:5
+   |
+LL |     *PTR;
+   |     ^^^^ dereference of raw pointer
+   |
+   = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+error: use of mutable static is unsafe and requires unsafe block (error E0133)
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:29:5
+   |
+LL |     VOID = ();
+   |     ^^^^^^^^^ use of mutable static
+   |
+   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+
+error: unnecessary `unsafe` block
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:31:5
+   |
+LL |     unsafe {}
+   |     ^^^^^^ unnecessary `unsafe` block
+
+error: unnecessary `unsafe` block
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:45:14
+   |
+LL |     unsafe { unsafe { unsf() } }
+   |     ------   ^^^^^^ unnecessary `unsafe` block
+   |     |
+   |     because it's nested under this `unsafe` block
+
+error: unnecessary `unsafe` block
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:56:5
+   |
+LL | unsafe fn allow_level() {
+   | ----------------------- because it's nested under this `unsafe` fn
+...
 LL |     unsafe { unsf() }
    |     ^^^^^^ unnecessary `unsafe` block
 
 error: unnecessary `unsafe` block
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:63:9
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:68:9
    |
+LL | unsafe fn nested_allow_level() {
+   | ------------------------------ because it's nested under this `unsafe` fn
+...
 LL |         unsafe { unsf() }
    |         ^^^^^^ unnecessary `unsafe` block
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe block
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:69:5
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:74:5
    |
 LL |     unsf();
    |     ^^^^^^ call to unsafe function
@@ -92,13 +110,13 @@ LL |     unsf();
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:73:9
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:78:9
    |
 LL |         unsf();
    |         ^^^^^^ call to unsafe function
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
-error: aborting due to 11 previous errors
+error: aborting due to 13 previous errors
 
 For more information about this error, try `rustc --explain E0133`.
