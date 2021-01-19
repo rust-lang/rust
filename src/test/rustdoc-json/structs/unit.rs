@@ -1,6 +1,5 @@
-// @has unit.json "$.index.['0:3'].name" \"Unit\"
-// @has - "$.index.['0:3'].visibility" \"public\"
-// @has - "$.index.['0:3'].kind" \"struct\"
-// @has - "$.index.['0:3'].inner.struct_type" \"unit\"
-// @has - "$.index.['0:3'].inner.fields" []
+// @has unit.json "$.index[*][?(@.name=='Unit')].visibility" \"public\"
+// @has - "$.index[*][?(@.name=='Unit')].kind" \"struct\"
+// @has - "$.index[*][?(@.name=='Unit')].inner.struct_type" \"unit\"
+// @has - "$.index[*][?(@.name=='Unit')].inner.fields" []
 pub struct Unit;

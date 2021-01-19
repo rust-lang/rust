@@ -8,6 +8,7 @@ pub struct Config {
     pub template: String,
 }
 
+/// Create a Config from a vector of command-line arguments
 pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
     opts.reqopt("", "doc-dir", "Path to the documentation directory", "PATH")
@@ -15,7 +16,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("h", "help", "show this message");
 
     let (argv0, args_) = args.split_first().unwrap();
-    if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
+    if args.len() == 1 {
         let message = format!("Usage: {} <doc-dir> <template>", argv0);
         println!("{}", opts.usage(&message));
         std::process::exit(1);

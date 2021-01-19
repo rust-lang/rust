@@ -197,7 +197,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let has_tidy = Command::new("tidy")
         .arg("--version")
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
         .status()
         .map_or(false, |status| status.success());
     Config {

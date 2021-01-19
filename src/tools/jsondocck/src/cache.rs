@@ -13,6 +13,7 @@ pub struct Cache {
 }
 
 impl Cache {
+    /// Create a new cache, used to read files only once and otherwise store their contents.
     pub fn new(doc_dir: &str) -> Cache {
         Cache {
             root: Path::new(doc_dir).to_owned(),
@@ -32,9 +33,7 @@ impl Cache {
         }
     }
 
-    pub fn get_file(&mut self, path: &String) -> Result<String, io::Error> {
-        let path = self.resolve_path(path);
-
+    fn read_file(&mut self, path: PathBuf) -> Result<String, io::Error> {
         if let Some(f) = self.files.get(&path) {
             return Ok(f.clone());
         }
@@ -46,6 +45,13 @@ impl Cache {
         Ok(file)
     }
 
+    /// Get the text from a file. If called multiple times, the file will only be read once
+    pub fn get_file(&mut self, path: &String) -> Result<String, io::Error> {
+        let path = self.resolve_path(path);
+        self.read_file(path)
+    }
+
+    /// Parse the JSON from a file. If called multiple times, the file will only be read once.
     pub fn get_value(&mut self, path: &String) -> Result<Value, CkError> {
         let path = self.resolve_path(path);
 
@@ -53,9 +59,8 @@ impl Cache {
             return Ok(v.clone());
         }
 
-        let file = fs::File::open(&path)?;
-
-        let val = serde_json::from_reader::<_, Value>(file)?;
+        let content = self.read_file(path.clone())?;
+        let val = serde_json::from_str::<Value>(&content)?;
 
         self.values.insert(path, val.clone());
 

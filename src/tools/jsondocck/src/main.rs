@@ -106,6 +106,8 @@ fn print_err(msg: &str, lineno: usize) {
     eprintln!("Invalid command: {} on line {}", msg, lineno)
 }
 
+/// Get a list of commands from a file. Does the work of ensuring the commands
+/// are syntactically valid.
 fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
     let mut commands = Vec::new();
     let mut errors = false;
@@ -147,10 +149,7 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
             }
         }
 
-        let args = match cap.name("args") {
-            Some(m) => shlex::split(m.as_str()).unwrap(),
-            None => vec![],
-        };
+        let args = cap.name("args").map_or(vec![], |m| shlex::split(m.as_str()).unwrap());
 
         if !cmd.validate(&args, commands.len(), lineno) {
             errors = true;
@@ -163,15 +162,14 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
     if !errors { Ok(commands) } else { Err(()) }
 }
 
+/// Performs the actual work of ensuring a command passes. Generally assumes the command
+/// is syntactically valid.
 fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
     let result = match command.kind {
         CommandKind::Has => {
             match command.args.len() {
                 // @has <path> = file existence
-                1 => match cache.get_file(&command.args[0]) {
-                    Ok(_) => true,
-                    Err(_) => false,
-                },
+                1 => cache.get_file(&command.args[0]).is_ok(),
                 // @has <path> <jsonpath> = check path exists
                 2 => {
                     let val = cache.get_value(&command.args[0])?;
