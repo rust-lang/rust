@@ -740,7 +740,7 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
-    /// (convenience for `.wrapping_offset((count as isize).wrapping_sub())`)
+    /// (convenience for `.wrapping_offset((count as isize).wrapping_neg())`)
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.

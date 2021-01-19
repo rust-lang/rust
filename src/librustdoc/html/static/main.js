@@ -1,5 +1,5 @@
 // From rust:
-/* global ALIASES, currentCrate, rootPath */
+/* global ALIASES */
 
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
@@ -40,6 +40,21 @@ if (!DOMTokenList.prototype.remove) {
     };
 }
 
+(function () {
+    var rustdocVars = document.getElementById("rustdoc-vars");
+    if (rustdocVars) {
+        window.rootPath = rustdocVars.attributes["data-root-path"].value;
+        window.currentCrate = rustdocVars.attributes["data-current-crate"].value;
+    }
+    var sidebarVars = document.getElementById("sidebar-vars");
+    if (sidebarVars) {
+        window.sidebarCurrent = {
+            name: sidebarVars.attributes["data-name"].value,
+            ty: sidebarVars.attributes["data-ty"].value,
+            relpath: sidebarVars.attributes["data-relpath"].value,
+        };
+    }
+}());
 
 // Gets the human-readable string for the virtual-key code of the
 // given KeyboardEvent, ev.
@@ -565,7 +580,7 @@ function defocusSearchBar() {
                 var i, match,
                     url = document.location.href,
                     stripped = "",
-                    len = rootPath.match(/\.\.\//g).length + 1;
+                    len = window.rootPath.match(/\.\.\//g).length + 1;
 
                 for (i = 0; i < len; ++i) {
                     match = url.match(/\/[^\/]*$/);
@@ -1504,15 +1519,15 @@ function defocusSearchBar() {
 
             if (type === "mod") {
                 displayPath = path + "::";
-                href = rootPath + path.replace(/::/g, "/") + "/" +
+                href = window.rootPath + path.replace(/::/g, "/") + "/" +
                        name + "/index.html";
             } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
-                href = rootPath + path.replace(/::/g, "/") +
+                href = window.rootPath + path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             } else if (type === "externcrate") {
                 displayPath = "";
-                href = rootPath + name + "/index.html";
+                href = window.rootPath + name + "/index.html";
             } else if (item.parent !== undefined) {
                 var myparent = item.parent;
                 var anchor = "#" + type + "." + name;
@@ -1535,13 +1550,13 @@ function defocusSearchBar() {
                 } else {
                     displayPath = path + "::" + myparent.name + "::";
                 }
-                href = rootPath + path.replace(/::/g, "/") +
+                href = window.rootPath + path.replace(/::/g, "/") +
                        "/" + pageType +
                        "." + pageName +
                        ".html" + anchor;
             } else {
                 displayPath = item.path + "::";
-                href = rootPath + item.path.replace(/::/g, "/") +
+                href = window.rootPath + item.path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             }
             return [displayPath, href];
@@ -1649,6 +1664,21 @@ function defocusSearchBar() {
             var ret_others = addTab(results.others, query);
             var ret_in_args = addTab(results.in_args, query, false);
             var ret_returned = addTab(results.returned, query, false);
+
+            // Navigate to the relevant tab if the current tab is empty, like in case users search
+            // for "-> String". If they had selected another tab previously, they have to click on
+            // it again.
+            if ((currentTab === 0 && ret_others[1] === 0) ||
+                    (currentTab === 1 && ret_in_args[1] === 0) ||
+                    (currentTab === 2 && ret_returned[1] === 0)) {
+                if (ret_others[1] !== 0) {
+                    currentTab = 0;
+                } else if (ret_in_args[1] !== 0) {
+                    currentTab = 1;
+                } else if (ret_returned[1] !== 0) {
+                    currentTab = 2;
+                }
+            }
 
             var output = "<h1>Results for " + escape(query.query) +
                 (query.type ? " (type: " + escape(query.type) + ")" : "") + "</h1>" +
@@ -1973,7 +2003,7 @@ function defocusSearchBar() {
         startSearch();
 
         // Draw a convenient sidebar of known crates if we have a listing
-        if (rootPath === "../" || rootPath === "./") {
+        if (window.rootPath === "../" || window.rootPath === "./") {
             var sidebar = document.getElementsByClassName("sidebar-elems")[0];
             if (sidebar) {
                 var div = document.createElement("div");
@@ -1992,11 +2022,11 @@ function defocusSearchBar() {
                 crates.sort();
                 for (var i = 0; i < crates.length; ++i) {
                     var klass = "crate";
-                    if (rootPath !== "./" && crates[i] === window.currentCrate) {
+                    if (window.rootPath !== "./" && crates[i] === window.currentCrate) {
                         klass += " current";
                     }
                     var link = document.createElement("a");
-                    link.href = rootPath + crates[i] + "/index.html";
+                    link.href = window.rootPath + crates[i] + "/index.html";
                     // The summary in the search index has HTML, so we need to
                     // dynamically render it as plaintext.
                     link.title = convertHTMLToPlaintext(rawSearchIndex[crates[i]].doc);
@@ -2118,7 +2148,7 @@ function defocusSearchBar() {
 
         var libs = Object.getOwnPropertyNames(imp);
         for (var i = 0, llength = libs.length; i < llength; ++i) {
-            if (libs[i] === currentCrate) { continue; }
+            if (libs[i] === window.currentCrate) { continue; }
             var structs = imp[libs[i]];
 
             struct_loop:
@@ -2143,7 +2173,7 @@ function defocusSearchBar() {
                     var href = elem.getAttribute("href");
 
                     if (href && href.indexOf("http") !== 0) {
-                        elem.setAttribute("href", rootPath + href);
+                        elem.setAttribute("href", window.rootPath + href);
                     }
                 });
 
