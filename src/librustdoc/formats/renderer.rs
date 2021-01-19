@@ -38,10 +38,14 @@ crate trait FormatRenderer<'tcx>: Clone {
     fn mod_item_out(&mut self, item_name: &str) -> Result<(), Error>;
 
     /// Post processing hook for cleanup and dumping output to files.
-    fn after_krate(&mut self, krate: &clean::Crate, cache: &Cache) -> Result<(), Error>;
-
-    /// Called after everything else to write out errors.
-    fn after_run(&mut self, diag: &rustc_errors::Handler) -> Result<(), Error>;
+    ///
+    /// A handler is available if the renderer wants to report errors.
+    fn after_krate(
+        &mut self,
+        krate: &clean::Crate,
+        cache: &Cache,
+        diag: &rustc_errors::Handler,
+    ) -> Result<(), Error>;
 }
 
 /// Main method for rendering a crate.
@@ -104,6 +108,5 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
         }
     }
 
-    format_renderer.after_krate(&krate, &cache)?;
-    format_renderer.after_run(diag)
+    format_renderer.after_krate(&krate, &cache, diag)
 }

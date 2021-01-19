@@ -523,17 +523,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         Ok((cx, krate))
     }
 
-    fn after_run(&mut self, diag: &rustc_errors::Handler) -> Result<(), Error> {
-        Arc::get_mut(&mut self.shared).unwrap().fs.close();
-        let nb_errors = self.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
-        if nb_errors > 0 {
-            Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
-        } else {
-            Ok(())
-        }
-    }
-
-    fn after_krate(&mut self, krate: &clean::Crate, cache: &Cache) -> Result<(), Error> {
+    fn after_krate(
+        &mut self,
+        krate: &clean::Crate,
+        cache: &Cache,
+        diag: &rustc_errors::Handler,
+    ) -> Result<(), Error> {
         let final_file = self.dst.join(&*krate.name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
         let crate_name = krate.name;
@@ -596,7 +591,15 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             &style_files,
         );
         self.shared.fs.write(&settings_file, v.as_bytes())?;
-        Ok(())
+
+        // Flush pending errors.
+        Arc::get_mut(&mut self.shared).unwrap().fs.close();
+        let nb_errors = self.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
+        if nb_errors > 0 {
+            Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
+        } else {
+            Ok(())
+        }
     }
 
     fn mod_item_in(
