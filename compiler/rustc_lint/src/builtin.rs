@@ -96,18 +96,24 @@ fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
 
 impl EarlyLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if let ast::ExprKind::While(cond, ..) = &e.kind {
+        if let ast::ExprKind::While(cond, _, label) = &e.kind {
             if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind {
                 if let ast::LitKind::Bool(true) = lit.kind {
                     if !lit.span.from_expansion() {
                         let msg = "denote infinite loops with `loop { ... }`";
-                        let condition_span = cx.sess.source_map().guess_head_span(e.span);
+                        let condition_span = e.span.with_hi(cond.span.hi());
                         cx.struct_span_lint(WHILE_TRUE, condition_span, |lint| {
                             lint.build(msg)
                                 .span_suggestion_short(
                                     condition_span,
                                     "use `loop`",
-                                    "loop".to_owned(),
+                                    format!(
+                                        "{}loop",
+                                        label.map_or_else(String::new, |label| format!(
+                                            "{}: ",
+                                            label.ident,
+                                        ))
+                                    ),
                                     Applicability::MachineApplicable,
                                 )
                                 .emit();
