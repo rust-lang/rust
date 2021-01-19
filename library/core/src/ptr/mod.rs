@@ -687,7 +687,6 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
 pub const unsafe fn read<T>(src: *const T) -> T {
-    // `copy_nonoverlapping` takes care of debug_assert.
     let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     // `src` cannot overlap `tmp` because `tmp` was just allocated on
@@ -787,7 +786,6 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
-    // `copy_nonoverlapping` takes care of debug_assert.
     let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     // `src` cannot overlap `tmp` because `tmp` was just allocated on
@@ -988,7 +986,6 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
-        // `copy_nonoverlapping` takes care of debug_assert.
         copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, mem::size_of::<T>());
     }
     mem::forget(src);
