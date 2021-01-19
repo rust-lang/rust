@@ -1,6 +1,6 @@
 use std::iter;
 
-use hir::AsName;
+use hir::{AsAssocItem, AsName};
 use ide_db::helpers::{import_assets::ImportCandidate, mod_path_to_ast};
 use ide_db::RootDatabase;
 use syntax::{

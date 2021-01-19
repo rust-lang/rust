@@ -38,7 +38,10 @@ impl<'a> TypeAliasRender<'a> {
         let item = CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name)
             .kind(CompletionItemKind::TypeAlias)
             .set_documentation(self.ctx.docs(self.type_alias))
-            .set_deprecated(self.ctx.is_deprecated(self.type_alias))
+            .set_deprecated(
+                self.ctx.is_deprecated(self.type_alias)
+                    || self.ctx.is_deprecated_assoc_item(self.type_alias),
+            )
             .detail(detail)
             .build();
 

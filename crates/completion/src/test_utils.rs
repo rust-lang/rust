@@ -83,6 +83,9 @@ pub(crate) fn completion_list_with_config(
                 let width = label_width.saturating_sub(monospace_width(it.label()));
                 format_to!(buf, "{:width$} {}", "", detail, width = width);
             }
+            if it.deprecated() {
+                format_to!(buf, " DEPRECATED");
+            }
             format_to!(buf, "\n");
             buf
         })
