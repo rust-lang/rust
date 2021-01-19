@@ -112,6 +112,12 @@ mod issue6501 {
         };
         let _ = || {};
     }
+
+    struct Foo;
+    #[allow(clippy::unnecessary_lazy_evaluations)]
+    fn bar(res: Result<Foo, u8>) -> Foo {
+        res.unwrap_or_else(|_| Foo)
+    }
 }
 
 fn main() {
