@@ -3,20 +3,21 @@
 //! manage the caches, and so forth.
 
 use crate::dep_graph::{self, DepKind, DepNode, DepNodeExt, DepNodeIndex, SerializedDepNodeIndex};
-use crate::ty::query::{on_disk_cache, Queries, Query};
+use crate::ty::query::{on_disk_cache, queries, Queries, Query};
 use crate::ty::tls::{self, ImplicitCtxt};
 use crate::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
-use rustc_query_system::query::QueryContext;
 use rustc_query_system::query::{CycleError, QueryJobId, QueryJobInfo};
+use rustc_query_system::query::{QueryContext, QueryDescription};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, Handler, Level};
 use rustc_serialize::opaque;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
+use std::borrow::Cow;
 
 #[derive(Copy, Clone)]
 pub struct QueryCtxt<'tcx> {
@@ -810,3 +811,13 @@ macro_rules! define_provider_struct {
         }
     };
 }
+
+fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
+    if def_id.is_top_level_module() {
+        "top-level module".to_string()
+    } else {
+        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
+    }
+}
+
+rustc_query_description! {}

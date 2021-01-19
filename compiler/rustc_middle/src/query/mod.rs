@@ -1,29 +1,3 @@
-use crate::dep_graph::SerializedDepNodeIndex;
-use crate::mir::interpret::{GlobalId, LitToConstInput};
-use crate::traits;
-use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
-};
-use crate::ty::query::queries;
-use crate::ty::query::QueryCtxt;
-use crate::ty::subst::{GenericArg, SubstsRef};
-use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_query_system::query::QueryDescription;
-
-use rustc_span::symbol::Symbol;
-use std::borrow::Cow;
-
-fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
-    if def_id.is_top_level_module() {
-        "top-level module".to_string()
-    } else {
-        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
-    }
-}
-
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
