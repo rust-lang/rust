@@ -13,7 +13,7 @@ use std::{
 };
 
 use la_arena::{Arena, Idx};
-use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
+use syntax::{ast, match_ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
 pub struct FileAstId<N: AstNode> {
@@ -72,12 +72,20 @@ impl AstIdMap {
         // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
         // trait does not change ids of top-level items, which helps caching.
-        bdfs(node, |it| match ast::Item::cast(it) {
-            Some(module_item) => {
-                res.alloc(module_item.syntax());
-                true
+        bdfs(node, |it| {
+            match_ast! {
+                match it {
+                    ast::Item(module_item) => {
+                        res.alloc(module_item.syntax());
+                        true
+                    },
+                    ast::BlockExpr(block) => {
+                        res.alloc(block.syntax());
+                        true
+                    },
+                    _ => false,
+                }
             }
-            None => false,
         });
         res
     }
