@@ -252,7 +252,7 @@ impl<'tcx> QueryCtxt<'tcx> {
         macro_rules! encode_queries {
             ($($query:ident,)*) => {
                 $(
-                    on_disk_cache::encode_query_results::<ty::query::queries::$query<'_>>(
+                    on_disk_cache::encode_query_results::<_, ty::query::queries::$query<'_>>(
                         self,
                         encoder,
                         query_result_index

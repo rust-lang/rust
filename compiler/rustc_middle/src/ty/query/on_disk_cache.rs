@@ -3,7 +3,6 @@ use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
-use crate::ty::query::QueryCtxt;
 use crate::ty::{self, Ty};
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
@@ -15,6 +14,8 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_query_system::dep_graph::DepContext;
+use rustc_query_system::query::QueryContext;
 use rustc_serialize::{
     opaque::{self, FileEncodeResult, FileEncoder},
     Decodable, Decoder, Encodable, Encoder,
@@ -1215,18 +1216,19 @@ impl<'a> Decodable<opaque::Decoder<'a>> for IntEncodedWithFixedSize {
     }
 }
 
-pub fn encode_query_results<'a, 'tcx, Q>(
-    tcx: QueryCtxt<'tcx>,
+pub fn encode_query_results<'a, 'tcx, CTX, Q>(
+    tcx: CTX,
     encoder: &mut CacheEncoder<'a, 'tcx, FileEncoder>,
     query_result_index: &mut EncodedQueryResultIndex,
 ) -> FileEncodeResult
 where
-    Q: super::QueryDescription<QueryCtxt<'tcx>> + super::QueryAccessors<QueryCtxt<'tcx>>,
+    CTX: QueryContext + 'tcx,
+    Q: super::QueryDescription<CTX> + super::QueryAccessors<CTX>,
     Q::Value: Encodable<CacheEncoder<'a, 'tcx, FileEncoder>>,
 {
     let _timer = tcx
-        .sess
-        .prof
+        .dep_context()
+        .profiler()
         .extra_verbose_generic_activity("encode_query_results_for", std::any::type_name::<Q>());
 
     let state = Q::query_state(tcx);
