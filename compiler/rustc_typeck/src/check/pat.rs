@@ -1486,11 +1486,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns a diagnostic reporting a struct pattern which does not mention some fields.
     ///
     /// ```text
-    /// error[E0027]: pattern does not mention field `you_cant_use_this_field`
+    /// error[E0027]: pattern does not mention field `bar`
     ///   --> src/main.rs:15:9
     ///    |
     /// LL |     let foo::Foo {} = foo::Foo::new();
-    ///    |         ^^^^^^^^^^^ missing field `you_cant_use_this_field`
+    ///    |         ^^^^^^^^^^^ missing field `bar`
     /// ```
     fn error_unmentioned_fields(
         &self,
@@ -1524,14 +1524,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => return err,
             },
-            [.., field] => (
-                match pat.kind {
-                    PatKind::Struct(_, [_, ..], _) => ", ",
-                    _ => "",
-                },
-                "",
-                field.span.shrink_to_hi(),
-            ),
+            [.., field] => {
+                // if last field has a trailing comma, use the comma
+                // as the span to avoid trailing comma in ultimate
+                // suggestion (Issue #78511)
+                let tail = field.span.shrink_to_hi().until(pat.span.shrink_to_hi());
+                let tail_through_comma = self.tcx.sess.source_map().span_through_char(tail, ',');
+                let sp = if tail_through_comma == tail {
+                    field.span.shrink_to_hi()
+                } else {
+                    tail_through_comma
+                };
+                (
+                    match pat.kind {
+                        PatKind::Struct(_, [_, ..], _) => ", ",
+                        _ => "",
+                    },
+                    "",
+                    sp,
+                )
+            }
         };
         err.span_suggestion(
             sp,
