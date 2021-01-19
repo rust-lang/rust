@@ -19,7 +19,7 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::Session;
-use rustc_span::{self, BytePos, MultiSpan, Span};
+use rustc_span::{self, MultiSpan, Span};
 use rustc_span::{
     symbol::{sym, Ident},
 };
@@ -381,11 +381,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 eliminate_arg(mat, ai, arg_idx);
             };
 
-            let eliminate_satisfied = |mat: &mut Vec<Vec<bool>>, ii: &mut Vec<usize>, ai: &mut Vec<usize>| {
+            let eliminate_satisfied = |mat: &mut Vec<Vec<bool>>, ii: &mut Vec<usize>, ai: &mut Vec<usize>| -> Vec<(usize, usize)> {
                 let mut i = cmp::min(ii.len(), ai.len());
+                let mut eliminated = vec![];
                 while i > 0 {
                     let idx = i - 1;
                     if mat[idx][idx] {
+                        eliminated.push((ai[idx], ii[idx]));
                         satisfy_input(
                             mat,
                             ii,
@@ -396,14 +398,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     i -= 1;
                 }
+                return eliminated;
             };
 
             // A list of the issues we might find
             enum Issue {
+                // The given argument is the invalid type for the input
                 Invalid(usize),
+                // There is a missing input
                 Missing(usize),
+                // There's a superfluous argument
                 Extra(usize),
+                // Two arguments should be swapped
                 Swap(usize, usize),
+                // Several arguments should be reordered
                 Permutation(Vec<Option<usize>>),
             }
             // Check for the above mismatch cases
@@ -547,6 +555,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return None;
             };
 
+            // As we encounter issues, keep track of what we want to provide for the suggestion
+            let mut suggested_inputs: Vec<Option<String>> = vec![None; minimum_input_count];
+            let mut issues = vec![];
+            let source_map = self.sess().source_map();
+
             // Before we start looking for issues, eliminate any arguments that are already satisfied,
             // so that an argument which is already spoken for by the input it's in doesn't
             // spill over into another similarly typed input
@@ -556,36 +569,61 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Without this elimination, the first argument causes the second argument
             // to show up as both a missing input and extra argument, rather than
             // just an invalid type.
-            eliminate_satisfied(&mut compatibility_matrix, &mut input_indexes, &mut arg_indexes);
+            for (arg, inp) in eliminate_satisfied(&mut compatibility_matrix, &mut input_indexes, &mut arg_indexes) {
+                let arg_span = provided_args[arg].span;
+                let arg_text = source_map.span_to_snippet(arg_span).unwrap();
+                suggested_inputs[inp] = Some(arg_text);
+            }
 
-            // As we encounter issues, we'll transcribe them to their actual indices
-            let mut issues: Vec<Issue> = vec![];
             // Until we've elimineated / satisfied all arguments/inputs
             while input_indexes.len() > 0 || arg_indexes.len() > 0 {
                 // Check for the first relevant issue
                 match find_issue(&compatibility_matrix, &input_indexes, &arg_indexes) {
                     Some(Issue::Invalid(idx)) => {
-                        // Eliminate the input and the arg, while transposing to the original index
+                        // Eliminate the input and the arg, proposing a placeholder of the correct type
+                        let input_idx = input_indexes[idx];
+                        let expected_ty = expected_input_tys[input_idx];
+                        let input_ty = self.resolve_vars_if_possible(expected_ty);
+                        if input_ty.is_unit() {
+                            suggested_inputs[input_idx] = Some("()".to_string());
+                        } else {
+                            suggested_inputs[input_idx] = Some(format!("{{{}}}", input_ty));
+                        }
                         issues.push(Issue::Invalid(arg_indexes[idx]));
                         eliminate_input(&mut compatibility_matrix, &mut input_indexes, idx);
                         eliminate_arg(&mut compatibility_matrix, &mut arg_indexes, idx);
                     }
                     Some(Issue::Extra(idx)) => {
+                        // Eliminate the argument (without touching any inputs)
                         issues.push(Issue::Extra(arg_indexes[idx]));
                         eliminate_arg(&mut compatibility_matrix, &mut arg_indexes, idx);
                     }
                     Some(Issue::Missing(idx)) => {
-                        // FIXME: improve these with help from code reviewers
-                        let input_ty =
-                            self.resolve_vars_if_possible(expected_input_tys[input_indexes[idx]]);
+                        let input_idx = input_indexes[idx];
+                        let expected_ty = expected_input_tys[input_idx];
+                        let input_ty = self.resolve_vars_if_possible(expected_ty);
                         if input_ty.is_unit() {
-                            info!("~~~ Issue: Maybe use ()?"); // FIXME
+                            suggested_inputs[input_idx] = Some("()".to_string());
+                        } else {
+                            suggested_inputs[input_idx] = Some(format!("{{{}}}", input_ty));
                         }
                         issues.push(Issue::Missing(input_indexes[idx]));
                         eliminate_input(&mut compatibility_matrix, &mut input_indexes, idx);
                     }
                     Some(Issue::Swap(idx, other)) => {
-                        issues.push(Issue::Swap(arg_indexes[idx], arg_indexes[other]));
+                        let input_idx = input_indexes[idx];
+                        let other_input_idx = input_indexes[other];
+                        let arg_idx = arg_indexes[idx];
+                        let other_arg_idx = arg_indexes[other];
+                        let first_span = provided_args[arg_idx].span;
+                        let second_span = provided_args[other_arg_idx].span;
+                        let first_snippet = source_map.span_to_snippet(first_span).unwrap();
+                        let second_snippet = source_map.span_to_snippet(second_span).unwrap();
+                        suggested_inputs[input_idx] = Some(second_snippet);
+                        suggested_inputs[other_input_idx] = Some(first_snippet);
+
+                        issues.push(Issue::Swap(arg_idx, other_arg_idx));
+
                         let (min, max) = (cmp::min(idx, other), cmp::max(idx, other));
                         satisfy_input(
                             &mut compatibility_matrix,
@@ -610,11 +648,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             args.iter()
                                 .filter_map(|&a| a)
                                 .collect();
-                        // FIXME: Is there a cleaner way to do this?
-                        let mut real_idxs = vec![None; provided_args.len()];
-                        for (src, dst) in args.iter().enumerate() {
-                            real_idxs[arg_indexes[src]] = dst.map(|dst| arg_indexes[dst]);
+
+                        let mut real_idxs = vec![None; provided_arg_count];
+                        for (src, dst) in args.iter().enumerate().filter(|(_, &a)| a.is_some()) {
+                            let src_arg = arg_indexes[src];
+                            let dst_arg = arg_indexes[dst.unwrap()];
+                            let dest_input = input_indexes[dst.unwrap()];
+                            let src_span = provided_args[src_arg].span;
+                            suggested_inputs[dest_input] = Some(source_map.span_to_snippet(src_span).unwrap());
+                            real_idxs[src_arg] = Some(dst_arg);
                         }
+
                         issues.push(Issue::Permutation(real_idxs));
                         idxs.sort();
                         idxs.reverse();
@@ -631,176 +675,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None => {
                         // We didn't find any issues, so we need to push the algorithm forward
                         // First, eliminate any arguments that currently satisfy their inputs
-                        eliminate_satisfied(&mut compatibility_matrix, &mut input_indexes, &mut arg_indexes);
+                        for (arg, inp) in eliminate_satisfied(&mut compatibility_matrix, &mut input_indexes, &mut arg_indexes) {
+                            let arg_span = provided_args[arg].span;
+                            let arg_text = source_map.span_to_snippet(arg_span).unwrap();
+                            suggested_inputs[inp] = Some(arg_text);
+                        }
                     }
                 };
             }
 
             let issue_count = issues.len();
             if issue_count > 0 {
-                // This represents the kind of wording we want to use on the suggestion
-                enum SuggestionType {
-                    NoSuggestion,
-                    Remove,  // Suggest removing an argument
-                    Provide, // Suggest providing an argument of a given type
-                    Swap,    // Suggest swapping a few arguments
-                    Reorder, // Suggest an arbitrary permutation (more complicated than swaps)
-                    Changes  // Suggest a mixed bag of generic changes, which may include multiple of the above
-                }
-                use SuggestionType::*;
-
-                // We found issues, so let's construct a diagnostic that summarizes the issues we found
-                // FIXME: This might need some refining in code review
-                let mut labels = vec![];
-                let mut suggestions = vec![];
-                let mut suggestion_type = NoSuggestion;
-                let mut eliminated_args = vec![false; provided_arg_count];
-                let mut current_arg_count = provided_arg_count; // Incremented if we insert an argument
-                let source_map = self.sess().source_map();
-                for issue in issues {
-                    match issue {
-                        Issue::Invalid(arg) => {
-                            let span = provided_args[arg].span;
-                            let expected_type = expected_input_tys[arg];
-                            let found_type = final_arg_types[arg].unwrap().0;
-                            labels.push((span, format!("expected {}, found {}", expected_type, found_type)));
-                            suggestion_type = match suggestion_type {
-                                NoSuggestion | Provide => Provide,
-                                _ => Changes,
-                            };
-                            suggestions.push((span, format!("{{{}}}", expected_type)));
-                        }
-                        Issue::Extra(arg) => {
-                            let span = provided_args[arg].span;
-
-                            // We want to suggest deleting this arg,
-                            // but dealing with formatting before and after is tricky
-                            // so we mark it as deleted, so we can do a scan afterwards
-                            eliminated_args[arg] = true;
-                            let found_type = self.check_expr(&provided_args[arg]);
-                            // TODO: if someone knows the method-chain-foo to achieve this, let me know
-                            // but I didn't have the patience for it lol
-                            let fn_name = if let Some(def_id) = fn_def_id {
-                                let node = tcx.hir().get_if_local(def_id);
-                                let def_kind = tcx.def_kind(def_id);
-                                let descr = def_kind.descr(def_id);
-                                if let Some(node) = node {
-                                    if let Some(ident) = node.ident() {
-                                        format!("for {}", ident)
-                                    } else {
-                                        format!("for this {}", descr)
-                                    }
-                                } else {
-                                    format!("for this {}", descr)
-                                }
-                            } else {
-                                "here".to_string()
-                            };
-
-                            labels.push((span, format!("this parameter of type {} isn't needed {}", found_type, fn_name)));
-                            suggestion_type = match suggestion_type {
-                                NoSuggestion | Remove => Remove,
-                                _ => Changes,
-                            };
-                        }
-                        Issue::Missing(arg) => {
-                            let expected_type = expected_input_tys[arg];
-                            let (missing_span, suggested_arg) = if arg < provided_arg_count {
-                                let span = provided_args[arg].span;
-                                (
-                                    Span::new(
-                                        span.lo(),
-                                        span.lo(),
-                                        span.ctxt(),
-                                    ),
-                                    format!("{{{}}}, ", expected_type)
-                                )
-                            } else if provided_arg_count > 0 {
-                                let prev = provided_args[provided_arg_count - 1].span;
-                                (
-                                    Span::new(
-                                        prev.hi(),
-                                        prev.hi(),
-                                        prev.ctxt(),
-                                    ),
-                                    format!(", {{{}}}", expected_type)
-                                )
-                            } else {
-                                let include_comma = current_arg_count > 0;
-                                (
-                                    Span::new(
-                                        call_span.hi() - BytePos(1),
-                                        call_span.hi() - BytePos(1),
-                                        call_span.ctxt()
-                                    ),
-                                    format!("{}{{{}}}", if include_comma { ", " } else { "" }, expected_type)
-                                )
-                            };
-                            current_arg_count += 1;
-                            labels.push((missing_span, format!("missing argument of type {}", expected_type)));
-                            suggestion_type = match suggestion_type {
-                                NoSuggestion | Provide => Provide,
-                                _ => Changes,
-                            };
-                            suggestions.push((missing_span, suggested_arg));
-                        }
-                        Issue::Swap(arg, other) => {
-                            let first_span = provided_args[arg].span;
-                            let second_span = provided_args[other].span;
-                            let first_snippet = source_map.span_to_snippet(first_span).unwrap();
-                            let second_snippet = source_map.span_to_snippet(second_span).unwrap();
-                            let expected_types = (expected_input_tys[arg], expected_input_tys[other]);
-                            let found_types = (
-                                final_arg_types[arg].unwrap().1,
-                                final_arg_types[other].unwrap().1,
-                            );
-                            labels.push((first_span, format!("expected {}, found {}", expected_types.0, found_types.0)));
-                            suggestions.push((first_span, second_snippet));
-                            labels.push((second_span, format!("expected {}, found {}", expected_types.1, found_types.1)));
-                            suggestions.push((second_span, first_snippet));
-                            suggestion_type = match suggestion_type {
-                                NoSuggestion | Swap => Swap,
-                                _ => Changes,
-                            };
-                        }
-                        Issue::Permutation(args) => {
-                            for (src, &arg) in args.iter().enumerate() {
-                                if let Some(dst) = arg {
-                                    let src_span = provided_args[src].span;
-                                    let dst_span = provided_args[dst].span;
-                                    let snippet = source_map.span_to_snippet(src_span).unwrap();
-                                    let expected_type = expected_input_tys[dst];
-                                    let found_type = final_arg_types[dst].unwrap().1;
-                                    labels.push((dst_span, format!("expected {}, found {}", expected_type, found_type)));
-                                    suggestions.push((dst_span, snippet));
-                                    suggestion_type = match suggestion_type {
-                                        NoSuggestion | Reorder => Reorder,
-                                        _ => Changes,
-                                    };
-                                }
-                            }
-                        }
-                    }
-                }
 
                 // Now construct our error from the various things we've labeled
-                let highlight_sp = MultiSpan::from_spans(labels.iter().map(|s| s.0).collect());
                 let mut err = struct_span_err!(
                     tcx.sess,
-                    highlight_sp,
+                    call_span,
                     E0059, // FIXME: Choose a different code?
                     "{}arguments to this function are incorrect",
                     if issue_count > 1 { "multiple " } else { "" }
                 );
 
                 // Call out where the function is defined
+                let mut fn_name: String = "".to_string();
                 if let Some(def_id) = fn_def_id {
                     if let Some(node) = tcx.hir().get_if_local(def_id) {
-                        let mut spans: MultiSpan = node
+                        let span = node
                             .ident()
                             .map(|ident| ident.span)
-                            .unwrap_or_else(|| tcx.hir().span(node.hir_id().unwrap()))
-                            .into();
+                            .unwrap_or_else(|| tcx.hir().span(node.hir_id().unwrap()));
+                        fn_name = source_map.span_to_snippet(span).unwrap();
+                        let mut spans: MultiSpan = span.into();
 
                         if let Some(id) = node.body_id() {
                             let body = tcx.hir().body(id);
@@ -813,95 +718,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                // annotate each of the labels
-                for (span, label) in labels {
-                    err.span_label(span, label);
-                }
-                
-                // Before constructing our multipart suggestions, we need to add in all the suggestions
-                // to eliminate extra parameters
-                // We can't overlap spans in a suggestion or weird things happen
-                let mut lo = None;
-                let mut hi = None;
-                let mut in_block = false;
-                // Scan backwards over the args (scanning backwards lets us favor the commas after, rather than before)
-                for (idx, eliminated) in eliminated_args.iter().enumerate().rev() {
-                    match (in_block, eliminated, idx == 0) {
-                        (false, true, false) => {
-                            // We just encountered the start of a block of eliminated parameters
-                            hi = Some(idx);
-                            in_block = true;
-                        },
-                        (false, true, true) => {
-                            // We encountered a single eliminated arg at the end of the arg list
-                            lo = Some(idx);
-                            hi = Some(idx);
-                        }
-                        (true, false, _) => {
-                            // We encountered the end of a block, set the hi so the logic below kicks in
-                            lo = Some(idx + 1);
-                            in_block = false;
-                        },
-                        (true, true, true) => {
-                            lo = Some(idx);
-                            in_block = false;
-                        }
-                        _ => {}
-                    }
-                    if lo.is_some() && hi.is_some() {
-                        let (lo_idx, hi_idx) = (lo.unwrap(), hi.unwrap());
-                        // We've found a contiguous block, so emit the elimination
-                        // be careful abound the boundaries
-                        let ctxt = provided_args[0].span.ctxt();
-                        let (lo_bp, hi_bp) = match (lo_idx == 0, hi_idx == provided_arg_count - 1) {
-                            // If we have an arg to our right, we need to eat the comma of the last eliminated param
-                            // xx, xx, xx, a
-                            // [-----------)
-                            (_, false) => {
-                                (provided_args[lo_idx].span.lo(), provided_args[hi_idx + 1].span.lo())
-                            },
-                            // If this block extends to the last argument, and theres an arg to the left, eat its comma
-                            // a, xx, xx, xx
-                            //  [-----------)
-                            (false, true) => {
-                                (provided_args[lo_idx - 1].span.hi(), provided_args[hi_idx].span.hi())
-                            },
-                            // If every argument was eliminated, don't need to worry about commas before or after
-                            // xx, xx, xx, xx
-                            // [-------------)
-                            (true, true) => {
-                                (provided_args[lo_idx].span.lo(), provided_args[hi_idx].span.hi())
-                            },
-                        };
-                        let eliminated_span = Span::new(
-                            lo_bp,
-                            hi_bp,
-                            ctxt,
-                        );
-                        suggestions.push((eliminated_span, "".to_string()));
-                        lo = None;
-                        hi = None;
-                    }
-                }
-
                 // And add a series of suggestions
                 // FIXME: for simpler cases, this might be overkill
-                if suggestions.len() > 0 {
-                    let suggestion_text = match (&suggestion_type, issue_count) {
-                        (Remove, 1) => Some("remove this argument"),
-                        (Remove, _) => Some("remove these arguments"),
-                        (Provide, 1) => Some("provide a parameter of the correct type here"),
-                        (Provide, _) => Some("provide parameters of the correct types"),
-                        (Swap, 1) => Some("swap these two arguments"),
-                        (Swap, _) => Some("swap these arguments"),
-                        (Reorder, _) => Some("reorder these parameters"),
-                        _ => Some("make these changes"),
-                    };
+                if issues.len() > 0 {
+                    let suggestion_text = Some("make these changes");
+                    let mut suggestion = format!("{}(", fn_name).to_string();
+                    for (idx, input) in suggested_inputs.iter().enumerate() {
+                        if let Some(sug) = input {
+                            suggestion += sug;
+                        } else {
+                            suggestion += "??";
+                        }
+                        if idx < minimum_input_count - 1 {
+                            suggestion += ", ";
+                        }
+                    }
+                    suggestion += ")";
                     if let Some(suggestion_text) = suggestion_text {
-                        err.multipart_suggestion_verbose(
+                        err.span_suggestion_verbose(
+                            call_span,
                             suggestion_text,
-                            suggestions,
-                            if matches!(suggestion_type, Provide) { Applicability::HasPlaceholders } else { Applicability::MaybeIncorrect },
+                            suggestion,
+                            Applicability::HasPlaceholders,
                         );
                     }
                 }

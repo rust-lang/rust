@@ -1,42 +1,34 @@
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/permuted_arguments.rs:10:14
+  --> $DIR/permuted_arguments.rs:10:3
    |
 LL |   three_args(1.0, "", 1);
-   |              ^^^  ^^  ^ expected &str, found &str
-   |              |    |
-   |              |    expected f32, found f32
-   |              expected i32, found i32
+   |   ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: function defined here
   --> $DIR/permuted_arguments.rs:5:4
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: reorder these parameters
+help: make these changes
    |
 LL |   three_args(1, 1.0, "");
-   |              ^  ^^^  ^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/permuted_arguments.rs:12:13
+  --> $DIR/permuted_arguments.rs:12:3
    |
 LL |   many_args(X {}, Y {}, 1, 1.0, "");
-   |             ^^^^  ^^^^  ^  ^^^  ^^ expected Y, found Y
-   |             |     |     |  |
-   |             |     |     |  expected X, found X
-   |             |     |     expected &str, found &str
-   |             |     expected f32, found f32
-   |             expected i32, found i32
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: function defined here
   --> $DIR/permuted_arguments.rs:6:4
    |
 LL | fn many_args(_a: i32, _b: f32, _c: &str, _d: X, _e: Y) {}
    |    ^^^^^^^^^ -------  -------  --------  -----  -----
-help: reorder these parameters
+help: make these changes
    |
 LL |   many_args(1, 1.0, "", X {}, Y {});
-   |             ^  ^^^  ^^  ^^^^  ^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

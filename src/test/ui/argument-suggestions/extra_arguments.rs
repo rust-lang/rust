@@ -21,15 +21,15 @@ fn main() {
   // Check with weird spacing and newlines
   two_arg_same(1, 1,     ""); //~ ERROR arguments to this function are incorrect
   two_arg_diff(1, 1,     ""); //~ ERROR arguments to this function are incorrect
-  two_arg_same(
+  two_arg_same( //~ ERROR arguments to this function are incorrect
     1,
     1,
-    "" //~ ERROR arguments to this function are incorrect
+    ""
   );
   
-  two_arg_diff(
+  two_arg_diff( //~ ERROR arguments to this function are incorrect
     1,
-    1, //~ ERROR arguments to this function are incorrect
+    1,
     ""
   );
 }

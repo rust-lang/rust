@@ -1,87 +1,82 @@
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/basic.rs:20:13
+  --> $DIR/basic.rs:20:5
    |
 LL |     invalid(1.0);
-   |             ^^^ expected u32, found {float}
+   |     ^^^^^^^^^^^^
    |
 note: function defined here
   --> $DIR/basic.rs:13:4
    |
 LL | fn invalid(_i: u32) {}
    |    ^^^^^^^ -------
-help: provide a parameter of the correct type here
+help: make these changes
    |
 LL |     invalid({u32});
-   |             ^^^^^
+   |     ^^^^^^^^^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/basic.rs:21:11
+  --> $DIR/basic.rs:21:5
    |
 LL |     extra("");
-   |           ^^ this parameter of type &'static str isn't needed for extra
+   |     ^^^^^^^^^
    |
 note: function defined here
   --> $DIR/basic.rs:14:4
    |
 LL | fn extra() {}
    |    ^^^^^
-help: remove this argument
+help: make these changes
    |
 LL |     extra();
-   |          --
+   |     ^^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/basic.rs:22:13
+  --> $DIR/basic.rs:22:5
    |
 LL |     missing();
-   |             ^ missing argument of type u32
+   |     ^^^^^^^^^
    |
 note: function defined here
   --> $DIR/basic.rs:15:4
    |
 LL | fn missing(_i: u32) {}
    |    ^^^^^^^ -------
-help: provide a parameter of the correct type here
+help: make these changes
    |
 LL |     missing({u32});
-   |             ^^^^^
+   |     ^^^^^^^^^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/basic.rs:23:13
+  --> $DIR/basic.rs:23:5
    |
 LL |     swapped("", 1);
-   |             ^^  ^ expected &str, found &str
-   |             |
-   |             expected u32, found u32
+   |     ^^^^^^^^^^^^^^
    |
 note: function defined here
   --> $DIR/basic.rs:16:4
    |
 LL | fn swapped(_i: u32, _s: &str) {}
    |    ^^^^^^^ -------  --------
-help: swap these two arguments
+help: make these changes
    |
 LL |     swapped(1, "");
-   |             ^  ^^
+   |     ^^^^^^^^^^^^^^
 
 error[E0059]: arguments to this function are incorrect
-  --> $DIR/basic.rs:24:14
+  --> $DIR/basic.rs:24:5
    |
 LL |     permuted(Y {}, Z {}, X {});
-   |              ^^^^  ^^^^  ^^^^ expected Z, found Z
-   |              |     |
-   |              |     expected Y, found Y
-   |              expected X, found X
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: function defined here
   --> $DIR/basic.rs:17:4
    |
 LL | fn permuted(_x: X, _y: Y, _z: Z) {}
    |    ^^^^^^^^ -----  -----  -----
-help: reorder these parameters
+help: make these changes
    |
 LL |     permuted(X {}, Y {}, Z {});
-   |              ^^^^  ^^^^  ^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 
