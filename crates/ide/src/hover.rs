@@ -183,12 +183,7 @@ fn runnable_action(
 ) -> Option<HoverAction> {
     match def {
         Definition::ModuleDef(it) => match it {
-            ModuleDef::Module(it) => match it.definition_source(sema.db).value {
-                ModuleSource::Module(it) => {
-                    runnable_mod(&sema, it).map(|it| HoverAction::Runnable(it))
-                }
-                _ => None,
-            },
+            ModuleDef::Module(it) => runnable_mod(&sema, it).map(|it| HoverAction::Runnable(it)),
             ModuleDef::Function(func) => {
                 let src = func.source(sema.db)?;
                 if src.file_id != file_id.into() {

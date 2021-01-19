@@ -6,7 +6,7 @@ use hir::{AsAssocItem, HasAttrs, HasSource, Semantics};
 use ide_db::{defs::Definition, RootDatabase};
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, AttrsOwner, ModuleItemOwner},
+    ast::{self, AstNode, AttrsOwner},
     match_ast, SyntaxNode,
 };
 
@@ -95,27 +95,44 @@ impl Runnable {
 // |===
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
-    let source_file = sema.parse(file_id);
-    source_file
-        .syntax()
-        .descendants()
-        .filter_map(|item| {
-            let runnable = match_ast! {
-                match item {
-                    ast::Fn(func) => {
-                        let def = sema.to_def(&func)?;
-                        runnable_fn(&sema, def)
-                    },
-                    ast::Module(it) => runnable_mod(&sema, it),
-                    _ => None,
-                }
-            };
-            runnable.or_else(|| match doc_owner_to_def(&sema, item)? {
-                Definition::ModuleDef(def) => module_def_doctest(&sema, def),
+    let module = match sema.to_module_def(file_id) {
+        None => return vec![],
+        Some(it) => it,
+    };
+
+    runnables_mod(&sema, module)
+}
+
+fn runnables_mod(sema: &Semantics<RootDatabase>, module: hir::Module) -> Vec<Runnable> {
+    let mut res: Vec<Runnable> = module
+        .declarations(sema.db)
+        .into_iter()
+        .filter_map(|def| {
+            let runnable = match def {
+                hir::ModuleDef::Module(it) => runnable_mod(&sema, it),
+                hir::ModuleDef::Function(it) => runnable_fn(&sema, it),
                 _ => None,
-            })
+            };
+            runnable.or_else(|| module_def_doctest(&sema, def))
         })
-        .collect()
+        .collect();
+
+    res.extend(module.impl_defs(sema.db).into_iter().flat_map(|it| it.items(sema.db)).filter_map(
+        |def| match def {
+            hir::AssocItem::Function(it) => {
+                runnable_fn(&sema, it).or_else(|| module_def_doctest(&sema, it.into()))
+            }
+            hir::AssocItem::Const(it) => module_def_doctest(&sema, it.into()),
+            hir::AssocItem::TypeAlias(it) => module_def_doctest(&sema, it.into()),
+        },
+    ));
+
+    res.extend(module.declarations(sema.db).into_iter().flat_map(|def| match def {
+        hir::ModuleDef::Module(it) => runnables_mod(sema, it),
+        _ => vec![],
+    }));
+
+    res
 }
 
 pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) -> Option<Runnable> {
@@ -150,26 +167,16 @@ pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) ->
     Some(Runnable { nav, kind, cfg })
 }
 
-pub(crate) fn runnable_mod(
-    sema: &Semantics<RootDatabase>,
-    module: ast::Module,
-) -> Option<Runnable> {
-    if !has_test_function_or_multiple_test_submodules(&module) {
+pub(crate) fn runnable_mod(sema: &Semantics<RootDatabase>, def: hir::Module) -> Option<Runnable> {
+    if !has_test_function_or_multiple_test_submodules(sema, &def) {
         return None;
     }
-    let module_def = sema.to_def(&module)?;
+    let path =
+        def.path_to_root(sema.db).into_iter().rev().filter_map(|it| it.name(sema.db)).join("::");
 
-    let path = module_def
-        .path_to_root(sema.db)
-        .into_iter()
-        .rev()
-        .filter_map(|it| it.name(sema.db))
-        .join("::");
-
-    let def = sema.to_def(&module)?;
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
-    let nav = module_def.to_nav(sema.db);
+    let nav = def.to_nav(sema.db);
     Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg })
 }
 
@@ -289,30 +296,31 @@ fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
 
 // We could create runnables for modules with number_of_test_submodules > 0,
 // but that bloats the runnables for no real benefit, since all tests can be run by the submodule already
-fn has_test_function_or_multiple_test_submodules(module: &ast::Module) -> bool {
-    if let Some(item_list) = module.item_list() {
-        let mut number_of_test_submodules = 0;
+fn has_test_function_or_multiple_test_submodules(
+    sema: &Semantics<RootDatabase>,
+    module: &hir::Module,
+) -> bool {
+    let mut number_of_test_submodules = 0;
 
-        for item in item_list.items() {
-            match item {
-                ast::Item::Fn(f) => {
-                    if test_related_attribute(&f).is_some() {
+    for item in module.declarations(sema.db) {
+        match item {
+            hir::ModuleDef::Function(f) => {
+                if let Some(it) = f.source(sema.db) {
+                    if test_related_attribute(&it.value).is_some() {
                         return true;
                     }
                 }
-                ast::Item::Module(submodule) => {
-                    if has_test_function_or_multiple_test_submodules(&submodule) {
-                        number_of_test_submodules += 1;
-                    }
-                }
-                _ => (),
             }
+            hir::ModuleDef::Module(submodule) => {
+                if has_test_function_or_multiple_test_submodules(sema, &submodule) {
+                    number_of_test_submodules += 1;
+                }
+            }
+            _ => (),
         }
-
-        number_of_test_submodules > 1
-    } else {
-        false
     }
+
+    number_of_test_submodules > 1
 }
 
 #[cfg(test)]
@@ -753,6 +761,21 @@ mod root_tests {
                             file_id: FileId(
                                 0,
                             ),
+                            full_range: 202..286,
+                            focus_range: 206..220,
+                            name: "nested_tests_2",
+                            kind: Module,
+                        },
+                        kind: TestMod {
+                            path: "root_tests::nested_tests_0::nested_tests_2",
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
                             full_range: 84..126,
                             focus_range: 107..121,
                             name: "nested_test_11",
@@ -785,21 +808,6 @@ mod root_tests {
                             attr: TestAttr {
                                 ignore: false,
                             },
-                        },
-                        cfg: None,
-                    },
-                    Runnable {
-                        nav: NavigationTarget {
-                            file_id: FileId(
-                                0,
-                            ),
-                            full_range: 202..286,
-                            focus_range: 206..220,
-                            name: "nested_tests_2",
-                            kind: Module,
-                        },
-                        kind: TestMod {
-                            path: "root_tests::nested_tests_0::nested_tests_2",
                         },
                         cfg: None,
                     },
@@ -975,6 +983,66 @@ impl Foo {
                             test_id: Path(
                                 "foo::Foo::foo",
                             ),
+                        },
+                        cfg: None,
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_runnables_in_macro() {
+        check(
+            r#"
+//- /lib.rs
+$0
+macro_rules! gen {
+    () => {
+        #[test]
+        fn foo_test() {
+        }
+    }
+}
+mod tests {
+    gen!();
+}
+"#,
+            &[&TEST, &TEST],
+            expect![[r#"
+                [
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 90..115,
+                            focus_range: 94..99,
+                            name: "tests",
+                            kind: Module,
+                        },
+                        kind: TestMod {
+                            path: "tests",
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 106..113,
+                            focus_range: 106..113,
+                            name: "foo_test",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "tests::foo_test",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
                         },
                         cfg: None,
                     },
