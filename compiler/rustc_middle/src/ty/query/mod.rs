@@ -128,10 +128,43 @@ impl TyCtxt<'tcx> {
     }
 }
 
+macro_rules! query_helper_param_ty {
+    (DefId) => { impl IntoQueryParam<DefId> };
+    ($K:ty) => { $K };
+}
+
 macro_rules! define_callbacks {
     (<$tcx:tt>
      $($(#[$attr:meta])*
         [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+
+        // HACK(eddyb) this is like the `impl QueryConfig for queries::$name`
+        // below, but using type aliases instead of associated types, to bypass
+        // the limitations around normalizing under HRTB - for example, this:
+        // `for<'tcx> fn(...) -> <queries::$name<'tcx> as QueryConfig<TyCtxt<'tcx>>>::Value`
+        // doesn't currently normalize to `for<'tcx> fn(...) -> query_values::$name<'tcx>`.
+        // This is primarily used by the `provide!` macro in `rustc_metadata`.
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_keys {
+            use super::*;
+
+            $(pub type $name<$tcx> = $($K)*;)*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_values {
+            use super::*;
+
+            $(pub type $name<$tcx> = $V;)*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_stored {
+            use super::*;
+
+            $(pub type $name<$tcx> = <
+                query_storage!([$($modifiers)*][$($K)*, $V])
+                as QueryStorage
+            >::Stored;)*
+        }
 
         impl TyCtxtEnsure<$tcx> {
             $($(#[$attr])*
@@ -159,7 +192,30 @@ macro_rules! define_callbacks {
                 self.tcx.queries.$name(self.tcx, self.span, key.into_query_param(), QueryMode::Get).unwrap()
             })*
         }
-    }
+
+        pub struct Providers {
+            $(pub $name: for<'tcx> fn(
+                TyCtxt<'tcx>,
+                query_keys::$name<'tcx>,
+            ) -> query_values::$name<'tcx>,)*
+        }
+
+        impl Default for Providers {
+            fn default() -> Self {
+                Providers {
+                    $($name: |_, key| bug!(
+                        "`tcx.{}({:?})` unsupported by its crate",
+                         stringify!($name), key
+                    ),)*
+                }
+            }
+        }
+
+        impl Copy for Providers {}
+        impl Clone for Providers {
+            fn clone(&self) -> Self { *self }
+        }
+    };
 }
 
 // Each of these queries corresponds to a function pointer field in the
