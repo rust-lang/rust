@@ -16,16 +16,18 @@ use crate::ExpandError;
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TokenTextRange {
     Token(TextRange),
-    Delimiter(TextRange, TextRange),
+    Delimiter(TextRange),
 }
 
 impl TokenTextRange {
     pub fn by_kind(self, kind: SyntaxKind) -> Option<TextRange> {
         match self {
             TokenTextRange::Token(it) => Some(it),
-            TokenTextRange::Delimiter(open, close) => match kind {
-                T!['{'] | T!['('] | T!['['] => Some(open),
-                T!['}'] | T![')'] | T![']'] => Some(close),
+            TokenTextRange::Delimiter(it) => match kind {
+                T!['{'] | T!['('] | T!['['] => Some(TextRange::at(it.start(), 1.into())),
+                T!['}'] | T![')'] | T![']'] => {
+                    Some(TextRange::at(it.end() - TextSize::of('}'), 1.into()))
+                }
                 _ => None,
             },
         }
@@ -114,8 +116,10 @@ impl TokenMap {
     pub fn token_by_range(&self, relative_range: TextRange) -> Option<tt::TokenId> {
         let &(token_id, _) = self.entries.iter().find(|(_, range)| match range {
             TokenTextRange::Token(it) => *it == relative_range,
-            TokenTextRange::Delimiter(open, close) => {
-                *open == relative_range || *close == relative_range
+            TokenTextRange::Delimiter(it) => {
+                let open = TextRange::at(it.start(), 1.into());
+                let close = TextRange::at(it.end() - TextSize::of('}'), 1.into());
+                open == relative_range || close == relative_range
             }
         })?;
         Some(token_id)
@@ -137,15 +141,17 @@ impl TokenMap {
         close_relative_range: TextRange,
     ) -> usize {
         let res = self.entries.len();
-        self.entries
-            .push((token_id, TokenTextRange::Delimiter(open_relative_range, close_relative_range)));
+        let cover = open_relative_range.cover(close_relative_range);
+
+        self.entries.push((token_id, TokenTextRange::Delimiter(cover)));
         res
     }
 
     fn update_close_delim(&mut self, idx: usize, close_relative_range: TextRange) {
         let (_, token_text_range) = &mut self.entries[idx];
-        if let TokenTextRange::Delimiter(dim, _) = token_text_range {
-            *token_text_range = TokenTextRange::Delimiter(*dim, close_relative_range);
+        if let TokenTextRange::Delimiter(dim) = token_text_range {
+            let cover = dim.cover(close_relative_range);
+            *token_text_range = TokenTextRange::Delimiter(cover);
         }
     }
 
