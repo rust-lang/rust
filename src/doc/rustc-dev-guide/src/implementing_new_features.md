@@ -138,7 +138,8 @@ a new unstable feature:
 
     If the feature gate is not set, you should either maintain
     the pre-feature behavior or raise an error, depending on
-    what makes sense.
+    what makes sense. Errors should generally use [`rustc_session::parse::feature_err`].
+    For an example of adding an error, see [#81015].
 
    For features introducing new syntax, pre-expansion gating should be used instead.
    To do so, extend the [`GatedSpans`] struct, add spans to it during parsing,
@@ -160,6 +161,8 @@ a new unstable feature:
    implemented a feature in Rust!
 
 [`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.GatedSpans.html
+[#81015]: https://github.com/rust-lang/rust/pull/81015
+[`rustc_session::parse::feature_err`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/fn.feature_err.html
 [`rustc_ast_passes::feature_gate::check_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_passes/feature_gate/fn.check_crate.html
 [value the stability of Rust]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 [stability in code]: #stability-in-code
