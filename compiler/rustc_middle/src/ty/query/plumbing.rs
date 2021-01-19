@@ -68,7 +68,7 @@ impl QueryContext for QueryCtxt<'tcx> {
         self.queries.try_collect_active_jobs()
     }
 
-    fn try_load_from_on_disk_cache(&self, dep_node: &dep_graph::DepNode) {
+    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode) {
         (dep_node.kind.try_load_from_on_disk_cache)(*self, dep_node)
     }
 
@@ -126,7 +126,7 @@ impl QueryContext for QueryCtxt<'tcx> {
             "calling force_from_dep_node() on DepKind::codegen_unit"
         );
 
-        (dep_node.kind.force_from_dep_node)(**self, dep_node)
+        (dep_node.kind.force_from_dep_node)(*self, dep_node)
     }
 
     fn has_errors_or_delayed_span_bugs(&self) -> bool {
