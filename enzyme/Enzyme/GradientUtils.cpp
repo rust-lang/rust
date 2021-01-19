@@ -1930,8 +1930,9 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     }
   }
 
-  // llvm::errs() << "forcing cache of " << *inst << "lrc: " << lrc << " src: "
-  // << src << "\n";
+  // if (scopeMap.find(inst) == scopeMap.end())
+  //  llvm::errs() << "forcing cache of " << *inst << "lrc: " << lrc << " src: "
+  //  << src << "\n";
   if (auto origInst = isOriginal(inst))
     if (auto li = dyn_cast<LoadInst>(inst)) {
 #if LLVM_VERSION_MAJOR >= 12

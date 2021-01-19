@@ -65,6 +65,21 @@ void EmitFailure(llvm::StringRef RemarkName,
            << str);
 }
 
+template <typename... Args>
+void EmitWarning(llvm::StringRef RemarkName,
+                 const llvm::DiagnosticLocation &Loc,
+                 const llvm::Instruction *CodeRegion, Args &...args) {
+
+  llvm::OptimizationRemarkEmitter ORE(CodeRegion->getParent()->getParent());
+  std::string str;
+  llvm::raw_string_ostream ss(str);
+  (ss << ... << args);
+  ORE.emit(llvm::OptimizationRemark("enzyme", RemarkName, Loc,
+                                                   CodeRegion->getParent())
+           << str);
+}
+
+
 class EnzymeFailure : public llvm::DiagnosticInfoIROptimization {
 public:
   EnzymeFailure(llvm::StringRef RemarkName, const llvm::DiagnosticLocation &Loc,
