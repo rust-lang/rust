@@ -1,7 +1,7 @@
 //! This module contains the LLVM intrinsics bindings that provide the functionality for this
 //! crate.
 //!
-//! The LLVM assembly language is documented here: https://llvm.org/docs/LangRef.html
+//! The LLVM assembly language is documented here: <https://llvm.org/docs/LangRef.html>
 
 /// These intrinsics aren't linked directly from LLVM and are mostly undocumented, however they are
 /// simply lowered to the matching LLVM instructions by the compiler.  The associated instruction
@@ -45,4 +45,11 @@ extern "platform-intrinsic" {
 
     // ceil
     pub(crate) fn simd_ceil<T>(x: T) -> T;
+
+    pub(crate) fn simd_eq<T, U>(x: T, y: T) -> U;
+    pub(crate) fn simd_ne<T, U>(x: T, y: T) -> U;
+    pub(crate) fn simd_lt<T, U>(x: T, y: T) -> U;
+    pub(crate) fn simd_le<T, U>(x: T, y: T) -> U;
+    pub(crate) fn simd_gt<T, U>(x: T, y: T) -> U;
+    pub(crate) fn simd_ge<T, U>(x: T, y: T) -> U;
 }

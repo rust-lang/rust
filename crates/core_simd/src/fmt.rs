@@ -30,10 +30,10 @@ debug_wrapper! {
 }
 
 macro_rules! impl_fmt_trait {
-    { $($type:ty => $(($trait:ident, $format:ident)),*;)* } => {
+    { $($type:ident => $(($trait:ident, $format:ident)),*;)* } => {
         $( // repeat type
             $( // repeat trait
-                impl core::fmt::$trait for $type {
+                impl<const LANES: usize> core::fmt::$trait for crate::$type<LANES> {
                     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                         $format(self.as_ref(), f)
                     }
@@ -41,7 +41,7 @@ macro_rules! impl_fmt_trait {
             )*
         )*
     };
-    { integers: $($type:ty,)* } => {
+    { integers: $($type:ident,)* } => {
         impl_fmt_trait! {
             $($type =>
               (Debug, format),
@@ -54,7 +54,7 @@ macro_rules! impl_fmt_trait {
             )*
         }
     };
-    { floats: $($type:ty,)* } => {
+    { floats: $($type:ident,)* } => {
         impl_fmt_trait! {
             $($type =>
               (Debug, format),
@@ -63,7 +63,7 @@ macro_rules! impl_fmt_trait {
             )*
         }
     };
-    { masks: $($type:ty,)* } => {
+    { masks: $($type:ident,)* } => {
         impl_fmt_trait! {
             $($type =>
               (Debug, format);
@@ -74,32 +74,12 @@ macro_rules! impl_fmt_trait {
 
 impl_fmt_trait! {
     integers:
-        crate::u8x8,    crate::u8x16,    crate::u8x32,    crate::u8x64,
-        crate::i8x8,    crate::i8x16,    crate::i8x32,    crate::i8x64,
-        crate::u16x4,   crate::u16x8,   crate::u16x16,   crate::u16x32,
-        crate::i16x4,   crate::i16x8,   crate::i16x16,   crate::i16x32,
-        crate::u32x2,   crate::u32x4,   crate::u32x8,   crate::u32x16,
-        crate::i32x2,   crate::i32x4,   crate::i32x8,   crate::i32x16,
-        crate::u64x2,   crate::u64x4,   crate::u64x8,
-        crate::i64x2,   crate::i64x4,   crate::i64x8,
-        crate::u128x2,  crate::u128x4,
-        crate::i128x2,  crate::i128x4,
-        crate::usizex2, crate::usizex4, crate::usizex8,
-        crate::isizex2, crate::isizex4, crate::isizex8,
+        SimdU8, SimdU16, SimdU32, SimdU64, SimdU128,
+        SimdI8, SimdI16, SimdI32, SimdI64, SimdI128,
+        SimdUsize, SimdIsize,
 }
 
 impl_fmt_trait! {
     floats:
-        crate::f32x2, crate::f32x4, crate::f32x8, crate::f32x16,
-        crate::f64x2, crate::f64x4, crate::f64x8,
-}
-
-impl_fmt_trait! {
-    masks:
-        crate::mask8x8,    crate::mask8x16,    crate::mask8x32,    crate::mask8x64,
-        crate::mask16x4,   crate::mask16x8,   crate::mask16x16,   crate::mask16x32,
-        crate::mask32x2,   crate::mask32x4,   crate::mask32x8,   crate::mask32x16,
-        crate::mask64x2,   crate::mask64x4,   crate::mask64x8,
-        crate::mask128x2,  crate::mask128x4,
-        crate::masksizex2, crate::masksizex4, crate::masksizex8,
+        SimdF32, SimdF64,
 }

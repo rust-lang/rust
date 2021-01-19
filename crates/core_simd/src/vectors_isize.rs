@@ -1,17 +1,19 @@
-define_integer_vector! {
-    /// Vector of two `isize` values
-    struct isizex2([isize; 2]);
-}
+#![allow(non_camel_case_types)]
 
-define_integer_vector! {
-    /// Vector of four `isize` values
-    struct isizex4([isize; 4]);
-}
+/// A SIMD vector of containing `LANES` `isize` values.
+#[repr(simd)]
+pub struct SimdIsize<const LANES: usize>([isize; LANES]);
 
-define_integer_vector! {
-    /// Vector of eight `isize` values
-    struct isizex8([isize; 8]);
-}
+impl_integer_vector! { SimdIsize, isize }
+
+/// Vector of two `isize` values
+pub type isizex2 = SimdIsize<2>;
+
+/// Vector of four `isize` values
+pub type isizex4 = SimdIsize<4>;
+
+/// Vector of eight `isize` values
+pub type isizex8 = SimdIsize<8>;
 
 #[cfg(target_pointer_width = "32")]
 from_transmute_x86! { unsafe isizex4 => __m128i }
