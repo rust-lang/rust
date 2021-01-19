@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![feature(stmt_expr_attributes)]
-#![allow(unused_variables)]
+#![allow(unused_variables, dead_code)]
 
 struct Outer {
     inner: u32,
@@ -11,4 +11,13 @@ struct Outer {
 fn main() {
     let outer = Outer { inner: 0 };
     let inner = outer.inner;
+}
+
+struct Apple;
+impl Apple {
+    fn hello(&self) {}
+}
+struct Package(pub *const Apple);
+fn foobar(package: *const Package) {
+    unsafe { &*(*package).0 }.hello();
 }
