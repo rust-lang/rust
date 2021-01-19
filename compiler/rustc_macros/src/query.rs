@@ -344,7 +344,6 @@ fn add_query_description_impl(
     impls: &mut proc_macro2::TokenStream,
 ) {
     let name = &query.name;
-    let arg = &query.arg;
     let key = &query.key.0;
 
     // Find out if we should cache the query on disk
@@ -414,7 +413,7 @@ fn add_query_description_impl(
 
     let desc = quote! {
         #[allow(unused_variables)]
-        fn describe(tcx: QueryCtxt<'tcx>, key: #arg) -> String {
+        fn describe(tcx: QueryCtxt<'tcx>, key: Self::Key) -> String {
             let (#tcx, #key) = (*tcx, key);
             ::rustc_middle::ty::print::with_no_trimmed_paths(|| format!(#desc).into())
         }
@@ -520,7 +519,8 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 $($macro)*(#cached_queries);
             }
         }
-
-        #query_description_stream
+        macro_rules! rustc_query_description {
+            () => { #query_description_stream }
+        }
     })
 }
