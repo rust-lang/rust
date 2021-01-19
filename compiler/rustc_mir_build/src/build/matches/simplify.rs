@@ -55,7 +55,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // * the bindings from the previous iteration of the loop is prepended to the bindings from
         // the current iteration (in the implementation this is done by mem::swap and extend)
         // * after all iterations, these new bindings are then appended to the bindings that were
-        // prexisting (i.e. `candidate.binding` when the function was called).
+        // preexisting (i.e. `candidate.binding` when the function was called).
         //
         // example:
         // candidate.bindings = [1, 2, 3]
