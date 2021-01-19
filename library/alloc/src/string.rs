@@ -1553,18 +1553,25 @@ impl String {
         // Replace_range does not have the memory safety issues of a vector Splice.
         // of the vector version. The data is just plain bytes.
 
-        match range.start_bound() {
+        // WARNING: Inlining this variable would be unsound (#81138)
+        let start = range.start_bound();
+        match start {
             Included(&n) => assert!(self.is_char_boundary(n)),
             Excluded(&n) => assert!(self.is_char_boundary(n + 1)),
             Unbounded => {}
         };
-        match range.end_bound() {
+        // WARNING: Inlining this variable would be unsound (#81138)
+        let end = range.end_bound();
+        match end {
             Included(&n) => assert!(self.is_char_boundary(n + 1)),
             Excluded(&n) => assert!(self.is_char_boundary(n)),
             Unbounded => {}
         };
 
-        unsafe { self.as_mut_vec() }.splice(range, replace_with.bytes());
+        // Using `range` again would be unsound (#81138)
+        // We assume the bounds reported by `range` remain the same, but
+        // an adversarial implementation could change between calls
+        unsafe { self.as_mut_vec() }.splice((start, end), replace_with.bytes());
     }
 
     /// Converts this `String` into a [`Box`]`<`[`str`]`>`.

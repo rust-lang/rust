@@ -25,7 +25,12 @@ where
     K: Borrow<Q>,
     R: RangeBounds<Q>,
 {
-    match (range.start_bound(), range.end_bound()) {
+    // WARNING: Inlining these variables would be unsound (#81138)
+    // We assume the bounds reported by `range` remain the same, but
+    // an adversarial implementation could change between calls
+    let start = range.start_bound();
+    let end = range.end_bound();
+    match (start, end) {
         (Excluded(s), Excluded(e)) if s == e => {
             panic!("range start and end are equal and excluded in BTreeMap")
         }
@@ -41,7 +46,8 @@ where
     let mut max_found = false;
 
     loop {
-        let front = match (min_found, range.start_bound()) {
+        // Using `range` again would be unsound (#81138)
+        let front = match (min_found, start) {
             (false, Included(key)) => match min_node.search_node(key) {
                 SearchResult::Found(kv) => {
                     min_found = true;
@@ -61,7 +67,8 @@ where
             (_, Unbounded) => min_node.first_edge(),
         };
 
-        let back = match (max_found, range.end_bound()) {
+        // Using `range` again would be unsound (#81138)
+        let back = match (max_found, end) {
             (false, Included(key)) => match max_node.search_node(key) {
                 SearchResult::Found(kv) => {
                     max_found = true;
