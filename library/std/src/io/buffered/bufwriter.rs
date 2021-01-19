@@ -1,7 +1,9 @@
+use crate::error;
 use crate::fmt;
 use crate::io::{
     self, Error, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
 };
+use crate::mem;
 
 /// Wraps a writer and buffers its output.
 ///
@@ -286,6 +288,103 @@ impl<W: Write> BufWriter<W> {
             Err(e) => Err(IntoInnerError::new(self, e)),
             Ok(()) => Ok(self.inner.take().unwrap()),
         }
+    }
+
+    /// Disassembles this `BufWriter<W>`, returning the underlying writer, and any buffered but
+    /// unwritten data.
+    ///
+    /// If the underlying writer panicked, it is not known what portion of the data was written.
+    /// In this case, we return `WriterPanicked` for the buffered data (from which the buffer
+    /// contents can still be recovered).
+    ///
+    /// `into_raw_parts` makes no attempt to flush data and cannot fail.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bufwriter_into_raw_parts)]
+    /// use std::io::{BufWriter, Write};
+    ///
+    /// let mut buffer = [0u8; 10];
+    /// let mut stream = BufWriter::new(buffer.as_mut());
+    /// write!(stream, "too much data").unwrap();
+    /// stream.flush().expect_err("it doesn't fit");
+    /// let (recovered_writer, buffered_data) = stream.into_raw_parts();
+    /// assert_eq!(recovered_writer.len(), 0);
+    /// assert_eq!(&buffered_data.unwrap(), b"ata");
+    /// ```
+    #[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
+    pub fn into_raw_parts(mut self) -> (W, Result<Vec<u8>, WriterPanicked>) {
+        let buf = mem::take(&mut self.buf);
+        let buf = if !self.panicked { Ok(buf) } else { Err(WriterPanicked { buf }) };
+        (self.inner.take().unwrap(), buf)
+    }
+}
+
+#[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
+/// Error returned for the buffered data from `BufWriter::into_raw_parts`, when the underlying
+/// writer has previously panicked.  Contains the (possibly partly written) buffered data.
+///
+/// # Example
+///
+/// ```
+/// #![feature(bufwriter_into_raw_parts)]
+/// use std::io::{self, BufWriter, Write};
+/// use std::panic::{catch_unwind, AssertUnwindSafe};
+///
+/// struct PanickingWriter;
+/// impl Write for PanickingWriter {
+///   fn write(&mut self, buf: &[u8]) -> io::Result<usize> { panic!() }
+///   fn flush(&mut self) -> io::Result<()> { panic!() }
+/// }
+///
+/// let mut stream = BufWriter::new(PanickingWriter);
+/// write!(stream, "some data").unwrap();
+/// let result = catch_unwind(AssertUnwindSafe(|| {
+///     stream.flush().unwrap()
+/// }));
+/// assert!(result.is_err());
+/// let (recovered_writer, buffered_data) = stream.into_raw_parts();
+/// assert!(matches!(recovered_writer, PanickingWriter));
+/// assert_eq!(buffered_data.unwrap_err().into_inner(), b"some data");
+/// ```
+pub struct WriterPanicked {
+    buf: Vec<u8>,
+}
+
+impl WriterPanicked {
+    /// Returns the perhaps-unwritten data.  Some of this data may have been written by the
+    /// panicking call(s) to the underlying writer, so simply writing it again is not a good idea.
+    #[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
+    pub fn into_inner(self) -> Vec<u8> {
+        self.buf
+    }
+
+    const DESCRIPTION: &'static str =
+        "BufWriter inner writer panicked, what data remains unwritten is not known";
+}
+
+#[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
+impl error::Error for WriterPanicked {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+}
+
+#[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
+impl fmt::Display for WriterPanicked {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", Self::DESCRIPTION)
+    }
+}
+
+#[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
+impl fmt::Debug for WriterPanicked {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WriterPanicked")
+            .field("buffer", &format_args!("{}/{}", self.buf.len(), self.buf.capacity()))
+            .finish()
     }
 }
 
