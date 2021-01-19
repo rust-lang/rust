@@ -325,7 +325,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
-    // `register_renamed` explicitly.
+    // `register_removed` explicitly.
     const RUSTDOC_LINTS: &[&str] = &[
         "broken_intra_doc_links",
         "private_intra_doc_links",
@@ -337,7 +337,6 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         "non_autolinks",
     ];
     for rustdoc_lint in RUSTDOC_LINTS {
-        // FIXME: maybe we could get `register_renamed` to work for tool lints?
         store.register_removed(rustdoc_lint, &format!("use `rustdoc::{}` instead", rustdoc_lint));
     }
     store.register_removed(
