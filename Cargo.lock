@@ -323,7 +323,7 @@ dependencies = [
  "const_fn",
  "crossbeam-utils 0.8.1",
  "lazy_static",
- "memoffset 0.6.1",
+ "memoffset",
  "scopeguard",
 ]
 
@@ -942,15 +942,6 @@ dependencies = [
 
 [[package]]
 name = "memoffset"
-version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "043175f069eda7b85febe4a74abbaeff828d9f8b448515d3151a14a3542811aa"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
-name = "memoffset"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "157b4208e3059a8f9e78d559edc658e13df41410cb3ae03979c83130067fdd87"
@@ -1384,15 +1375,15 @@ checksum = "b5eb417147ba9860a96cfe72a0b93bf88fee1744b5636ec99ab20c1aa9376581"
 
 [[package]]
 name = "rowan"
-version = "0.10.6"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a0734142c18710f7214dc21908e2f054e973b908dbb1a602a3e6691615aaaae"
+checksum = "b3ae0ae5091cf38acfb834dbb6adcd45bb0d6b6a72ca5798e134195d2fa33574"
 dependencies = [
  "hashbrown",
+ "memoffset",
  "rustc-hash",
  "smol_str",
  "text-size",
- "triomphe",
 ]
 
 [[package]]
@@ -1639,12 +1630,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stable_deref_trait"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
 name = "stdx"
 version = "0.0.0"
 dependencies = [
@@ -1869,17 +1854,6 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "triomphe"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e9d872053cf9e5a833d8c1dd772cdc38ab66a908129d6f73c049c986161d07c"
-dependencies = [
- "memoffset 0.5.6",
- "serde",
- "stable_deref_trait",
 ]
 
 [[package]]

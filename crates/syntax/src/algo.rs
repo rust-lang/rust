@@ -4,6 +4,7 @@ use std::{
     fmt,
     hash::BuildHasherDefault,
     ops::{self, RangeInclusive},
+    ptr,
 };
 
 use indexmap::IndexMap;
@@ -171,7 +172,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
             && lhs.text_range().len() == rhs.text_range().len()
             && match (&lhs, &rhs) {
                 (NodeOrToken::Node(lhs), NodeOrToken::Node(rhs)) => {
-                    lhs.green() == rhs.green() || lhs.text() == rhs.text()
+                    ptr::eq(lhs.green(), rhs.green()) || lhs.text() == rhs.text()
                 }
                 (NodeOrToken::Token(lhs), NodeOrToken::Token(rhs)) => lhs.text() == rhs.text(),
                 _ => false,
@@ -566,7 +567,7 @@ impl<'a> SyntaxRewriter<'a> {
 
 fn element_to_green(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
     match element {
-        NodeOrToken::Node(it) => NodeOrToken::Node(it.green().clone()),
+        NodeOrToken::Node(it) => NodeOrToken::Node(it.green().to_owned()),
         NodeOrToken::Token(it) => NodeOrToken::Token(it.green().clone()),
     }
 }
@@ -624,7 +625,7 @@ fn position_of_child(parent: &SyntaxNode, child: SyntaxElement) -> usize {
 
 fn to_green_element(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
     match element {
-        NodeOrToken::Node(it) => it.green().clone().into(),
+        NodeOrToken::Node(it) => it.green().to_owned().into(),
         NodeOrToken::Token(it) => it.green().clone().into(),
     }
 }
