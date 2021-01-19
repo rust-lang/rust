@@ -1,5 +1,5 @@
-use crate::ty::query::QueryCtxt;
-use crate::ty::{self, AdtSizedConstraint, Ty, TyS};
+use super::QueryCtxt;
+use rustc_middle::ty::{self, AdtSizedConstraint, Ty, TyS};
 
 pub(super) trait Value<'tcx>: Sized {
     fn from_cycle_error(tcx: QueryCtxt<'tcx>) -> Self;

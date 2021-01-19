@@ -1,10 +1,9 @@
-use crate::ty::context::TyCtxt;
-use crate::ty::WithOptConstParam;
 use measureme::{StringComponent, StringId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
+use rustc_middle::ty::{TyCtxt, WithOptConstParam};
 use rustc_query_system::query::{QueryCache, QueryCacheStore};
 use std::fmt::Debug;
 use std::io::Write;

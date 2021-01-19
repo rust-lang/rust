@@ -2,10 +2,11 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepKind, DepNode, DepNodeExt, DepNodeIndex, SerializedDepNodeIndex};
-use crate::ty::query::{on_disk_cache, queries, Query};
-use crate::ty::tls::{self, ImplicitCtxt};
-use crate::ty::{self, TyCtxt};
+use super::{queries, Query};
+use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeExt, DepNodeIndex, SerializedDepNodeIndex};
+use rustc_middle::ty::query::on_disk_cache;
+use rustc_middle::ty::tls::{self, ImplicitCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
 use rustc_query_system::query::{CycleError, QueryJobId, QueryJobInfo};
 use rustc_query_system::query::{QueryContext, QueryDescription};
@@ -33,8 +34,8 @@ impl<'tcx> std::ops::Deref for QueryCtxt<'tcx> {
 }
 
 impl HasDepContext for QueryCtxt<'tcx> {
-    type DepKind = crate::dep_graph::DepKind;
-    type StableHashingContext = crate::ich::StableHashingContext<'tcx>;
+    type DepKind = rustc_middle::dep_graph::DepKind;
+    type StableHashingContext = rustc_middle::ich::StableHashingContext<'tcx>;
     type DepContext = TyCtxt<'tcx>;
 
     #[inline]
@@ -251,7 +252,7 @@ impl<'tcx> QueryCtxt<'tcx> {
         macro_rules! encode_queries {
             ($($query:ident,)*) => {
                 $(
-                    on_disk_cache::encode_query_results::<_, ty::query::queries::$query<'_>>(
+                    on_disk_cache::encode_query_results::<_, super::queries::$query<'_>>(
                         self,
                         encoder,
                         query_result_index
@@ -363,18 +364,6 @@ macro_rules! is_eval_always {
     };
 }
 
-macro_rules! query_storage {
-    ([][$K:ty, $V:ty]) => {
-        <DefaultCacheSelector as CacheSelector<$K, $V>>::Cache
-    };
-    ([storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
-        <$ty as CacheSelector<$K, $V>>::Cache
-    };
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
-        query_storage!([$($($modifiers)*)*][$($args)*])
-    };
-}
-
 macro_rules! hash_result {
     ([][$hcx:expr, $result:expr]) => {{
         dep_graph::hash_result($hcx, &$result)
@@ -392,13 +381,6 @@ macro_rules! define_queries {
      $($(#[$attr:meta])*
         [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
 
-        use std::mem;
-        use crate::{
-            rustc_data_structures::stable_hasher::HashStable,
-            rustc_data_structures::stable_hasher::StableHasher,
-            ich::StableHashingContext
-        };
-
         define_queries_struct! {
             tcx: $tcx,
             input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
@@ -407,7 +389,7 @@ macro_rules! define_queries {
         #[allow(nonstandard_style)]
         #[derive(Clone, Debug)]
         pub enum Query<$tcx> {
-            $($(#[$attr])* $name($($K)*)),*
+            $($(#[$attr])* $name(query_keys::$name<$tcx>)),*
         }
 
         impl<$tcx> Query<$tcx> {
@@ -465,8 +447,8 @@ macro_rules! define_queries {
         }
 
         $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
-            type Key = $($K)*;
-            type Value = $V;
+            type Key = query_keys::$name<$tcx>;
+            type Value = query_values::$name<$tcx>;
             type Stored = query_stored::$name<$tcx>;
             const NAME: &'static str = stringify!($name);
         }
@@ -520,8 +502,8 @@ macro_rules! define_queries {
         #[allow(non_upper_case_globals)]
         pub mod query_callbacks {
             use super::*;
-            use crate::dep_graph::DepNode;
-            use crate::ty::query::{queries, query_keys};
+            use rustc_middle::dep_graph::DepNode;
+            use rustc_middle::ty::query::query_keys;
             use rustc_query_system::dep_graph::DepNodeParams;
             use rustc_query_system::query::{force_query, QueryDescription};
 

@@ -21,7 +21,6 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
-use rustc_middle::ty::query;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
@@ -29,6 +28,7 @@ use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
+use rustc_query_impl::Queries as TcxQueries;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode};
 use rustc_session::lint;
@@ -762,7 +762,7 @@ pub fn create_global_ctxt<'tcx>(
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
-    queries: &'tcx OnceCell<query::Queries<'tcx>>,
+    queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
@@ -791,7 +791,7 @@ pub fn create_global_ctxt<'tcx>(
         let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
-        queries.get_or_init(|| query::Queries::new(providers, extern_providers))
+        queries.get_or_init(|| TcxQueries::new(providers, extern_providers))
     };
 
     let gcx = sess.time("setup_global_ctxt", || {
@@ -805,7 +805,7 @@ pub fn create_global_ctxt<'tcx>(
                 defs,
                 dep_graph,
                 query_result_on_disk_cache,
-                queries,
+                queries.as_dyn(),
                 &crate_name,
                 &outputs,
             )

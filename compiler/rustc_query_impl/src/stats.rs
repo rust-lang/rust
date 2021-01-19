@@ -1,6 +1,6 @@
-use crate::ty::query::query_storage;
-use crate::ty::TyCtxt;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::ty::query::query_storage;
+use rustc_middle::ty::TyCtxt;
 use rustc_query_system::query::{QueryCache, QueryCacheStore};
 
 use std::any::type_name;

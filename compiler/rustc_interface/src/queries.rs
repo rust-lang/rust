@@ -13,8 +13,8 @@ use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::query;
 use rustc_middle::ty::{GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_query_impl::Queries as TcxQueries;
 use rustc_serialize::json;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::{output::find_crate_name, Session};
@@ -72,7 +72,7 @@ impl<T> Default for Query<T> {
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
     gcx: OnceCell<GlobalCtxt<'tcx>>,
-    queries: OnceCell<query::Queries<'tcx>>,
+    queries: OnceCell<TcxQueries<'tcx>>,
 
     arena: WorkerLocal<Arena<'tcx>>,
     hir_arena: WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
@@ -429,11 +429,11 @@ impl Compiler {
             {
                 let _prof_timer =
                     queries.session().prof.generic_activity("self_profile_alloc_query_strings");
-                gcx.enter(query::alloc_self_profile_query_strings);
+                gcx.enter(rustc_query_impl::alloc_self_profile_query_strings);
             }
 
             if self.session().opts.debugging_opts.query_stats {
-                gcx.enter(query::print_stats);
+                gcx.enter(rustc_query_impl::print_stats);
             }
         }
 

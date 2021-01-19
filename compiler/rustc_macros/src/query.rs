@@ -495,6 +495,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     }
 
     TokenStream::from(quote! {
+        #[macro_export]
         macro_rules! rustc_query_append {
             ([$($macro:tt)*][$($other:tt)*]) => {
                 $($macro)* {
@@ -514,11 +515,13 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 );
             }
         }
+        #[macro_export]
         macro_rules! rustc_cached_queries {
             ($($macro:tt)*) => {
                 $($macro)*(#cached_queries);
             }
         }
+        #[macro_export]
         macro_rules! rustc_query_description {
             () => { #query_description_stream }
         }
