@@ -33,7 +33,7 @@ pub use core::panic::{Location, PanicInfo};
 /// See the [`panic!`] macro for more information about panicking.
 #[stable(feature = "panic_any", since = "1.51.0")]
 #[inline]
-pub fn panic_any<M: Any + Send>(msg: M) -> ! {
+pub fn panic_any<M: 'static + Any + Send>(msg: M) -> ! {
     crate::panicking::begin_panic(msg);
 }
 
