@@ -85,7 +85,7 @@ fn test4_type_contains_drop_need_migration() {
 // Note we need migration here only because the non-copy (because Drop type) is captured,
 // otherwise we won't need to, since we can get away with just by ref capture in that case.
 fn test5_drop_non_drop_aggregate_need_migration() {
-    let t = (Foo(0), 0i32);
+    let t = (Foo(0), Foo(0), 0i32);
 
     let c = || {
     //~^ERROR: drop order affected for closure because of `capture_disjoint_fields`

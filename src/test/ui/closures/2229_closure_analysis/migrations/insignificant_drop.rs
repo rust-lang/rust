@@ -108,7 +108,7 @@ fn test6_move_closures_non_copy_types_might_need_migration() {
 // Note we need migration here only because the non-copy (because Drop type) is captured,
 // otherwise we won't need to, since we can get away with just by ref capture in that case.
 fn test7_drop_non_drop_aggregate_need_migration() {
-    let t = (String::new(), 0i32);
+    let t = (String::new(), String::new(), 0i32);
 
     let c = || {
     //~^ERROR: drop order affected for closure because of `capture_disjoint_fields`

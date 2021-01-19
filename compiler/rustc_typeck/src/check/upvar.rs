@@ -162,34 +162,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
         if should_do_migration_analysis(self.tcx, closure_hir_id) {
-            let need_migrations = self.compute_2229_migrations_first_pass(
-                closure_def_id,
-                span,
-                capture_clause,
-                body,
-                self.typeck_results.borrow().closure_min_captures.get(&closure_def_id),
-            );
-
-            if !need_migrations.is_empty() {
-                let need_migrations_hir_id =
-                    need_migrations.iter().map(|m| m.0).collect::<Vec<_>>();
-
-                let migrations_text =
-                    migration_suggestion_for_2229(self.tcx, &need_migrations_hir_id);
-
-                self.tcx.struct_span_lint_hir(
-                    lint::builtin::DISJOINT_CAPTURE_DROP_REORDER,
-                    closure_hir_id,
-                    span,
-                    |lint| {
-                        let mut diagnostics_builder = lint.build(
-                            "drop order affected for closure because of `capture_disjoint_fields`",
-                        );
-                        diagnostics_builder.note(&migrations_text);
-                        diagnostics_builder.emit();
-                    },
-                );
-            }
+            self.perform_2229_migration_anaysis(closure_def_id, capture_clause, span, body);
         }
 
         // We now fake capture information for all variables that are mentioned within the closure
@@ -555,6 +528,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         typeck_results.closure_min_captures.insert(closure_def_id, root_var_min_capture_list);
     }
 
+    /// Perform the migration analysis for RFC 2229, and emit lint
+    /// `disjoint_capture_drop_reorder` if needed.
+    fn perform_2229_migration_anaysis(
+        &self,
+        closure_def_id: DefId,
+        capture_clause: hir::CaptureBy,
+        span: Span,
+        body: &'tcx hir::Body<'tcx>,
+    ) {
+        let need_migrations = self.compute_2229_migrations_first_pass(
+            closure_def_id,
+            span,
+            capture_clause,
+            body,
+            self.typeck_results.borrow().closure_min_captures.get(&closure_def_id),
+        );
+
+        if !need_migrations.is_empty() {
+            let need_migrations_hir_id = need_migrations.iter().map(|m| m.0).collect::<Vec<_>>();
+
+            let migrations_text = migration_suggestion_for_2229(self.tcx, &need_migrations_hir_id);
+
+            let local_def_id = closure_def_id.expect_local();
+            let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
+            self.tcx.struct_span_lint_hir(
+                lint::builtin::DISJOINT_CAPTURE_DROP_REORDER,
+                closure_hir_id,
+                span,
+                |lint| {
+                    let mut diagnostics_builder = lint.build(
+                        "drop order affected for closure because of `capture_disjoint_fields`",
+                    );
+                    diagnostics_builder.note(&migrations_text);
+                    diagnostics_builder.emit();
+                },
+            );
+        }
+    }
+
     /// Figures out the list of root variables (and their types) that aren't completely
     /// captured by the closure when `capture_disjoint_fields` is enabled and drop order of
     /// some path starting at that root variable **might** be affected.
@@ -617,17 +629,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let is_moved = root_var_min_capture_list
                 .iter()
-                .find(|capture| matches!(capture.info.capture_kind, ty::UpvarCapture::ByValue(_)))
-                .is_some();
+                .any(|capture| matches!(capture.info.capture_kind, ty::UpvarCapture::ByValue(_)));
 
-            // 1. If we capture more than one path starting at the root variabe then the root variable
-            //    isn't being captured in its entirety
-            // 2. If we only capture one path starting at the root variable, it's still possible
-            //    that it isn't the root variable completely.
-            if is_moved
-                && ((root_var_min_capture_list.len() > 1)
-                    || (root_var_min_capture_list[0].place.projections.len() > 0))
-            {
+            let is_not_completely_captured =
+                root_var_min_capture_list.iter().any(|capture| capture.place.projections.len() > 0);
+
+            if is_moved && is_not_completely_captured {
                 need_migrations.push((var_hir_id, ty));
             }
         }
