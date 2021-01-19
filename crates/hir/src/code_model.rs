@@ -2045,7 +2045,7 @@ impl Callable {
 pub enum ScopeDef {
     ModuleDef(ModuleDef),
     MacroDef(MacroDef),
-    GenericParam(TypeParam),
+    GenericParam(GenericParam),
     ImplSelfType(Impl),
     AdtSelfType(Adt),
     Local(Local),

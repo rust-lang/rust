@@ -29,6 +29,10 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     }
 
     ctx.scope.process_all_names(&mut |name, res| {
+        if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) = res {
+            mark::hit!(skip_lifetime_completion);
+            return;
+        }
         if ctx.use_item_syntax.is_some() {
             if let (ScopeDef::Unknown, Some(name_ref)) = (&res, &ctx.name_ref_syntax) {
                 if name_ref.syntax().text() == name.to_string().as_str() {
@@ -37,7 +41,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
                 }
             }
         }
-        acc.add_resolution(ctx, name.to_string(), &res)
+        acc.add_resolution(ctx, name.to_string(), &res);
     });
 }
 
@@ -232,6 +236,24 @@ fn main() {
             expect![[r#"
                 tp T
                 fn quux() fn quux<T>()
+            "#]],
+        );
+        check(
+            r#"fn quux<const C: usize>() { $0 }"#,
+            expect![[r#"
+                tp C
+                fn quux() fn quux<const C: usize>()
+            "#]],
+        );
+    }
+
+    #[test]
+    fn does_not_complete_lifetimes() {
+        mark::check!(skip_lifetime_completion);
+        check(
+            r#"fn quux<'a>() { $0 }"#,
+            expect![[r#"
+                fn quux() fn quux<'a>()
             "#]],
         );
     }
