@@ -1490,7 +1490,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             format!(
                                 "{}{}{} {}{}",
                                 if sp.is_desugaring(DesugaringKind::Async) {
-                                    "checked the output of this `async fn`, "
+                                    "checked the return type of this `async fn`, "
                                 } else if count == 1 {
                                     "the "
                                 } else {
