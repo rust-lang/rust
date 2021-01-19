@@ -54,6 +54,7 @@ use crate::dataflow::impls::{
 };
 use crate::dataflow::{self, Analysis};
 use crate::transform::no_landing_pads::no_landing_pads;
+use crate::transform::remove_noop_landing_pads::remove_noop_landing_pads;
 use crate::transform::simplify;
 use crate::transform::MirPass;
 use crate::util::dump_mir;
@@ -960,6 +961,8 @@ fn create_generator_drop_shim<'tcx>(
     }
 
     no_landing_pads(tcx, &mut body);
+    remove_noop_landing_pads(tcx, &mut body);
+    simplify::SimplifyLocals {}.run_pass(tcx, &mut body);
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
@@ -1133,6 +1136,8 @@ fn create_generator_resume_function<'tcx>(
     make_generator_state_argument_pinned(tcx, body);
 
     no_landing_pads(tcx, body);
+    remove_noop_landing_pads(tcx, body);
+    simplify::SimplifyLocals {}.run_pass(tcx, body);
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
