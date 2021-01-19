@@ -31,14 +31,18 @@ use self::Ordering::*;
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
 /// so floating point types implement `PartialEq` but not [`trait@Eq`].
 ///
-/// Formally, the equality must be (for all `a`, `b` and `c`):
+/// Formally, the equality must be (for all `a`, `b`, `c` of type `A`, `B`,
+/// `C`):
 ///
-/// - symmetric: `a == b` implies `b == a`; and
-/// - transitive: `a == b` and `b == c` implies `a == c`.
+/// - **Symmetric**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b`
+///   implies `b == a`**; and
 ///
-/// Note that these requirements mean that the trait itself must be implemented
-/// symmetrically and transitively: if `T: PartialEq<U>` and `U: PartialEq<V>`
-/// then `U: PartialEq<T>` and `T: PartialEq<V>`.
+/// - **Transitive**: if `A: PartialEq<B>` and `B: PartialEq<C>` and `A:
+///   PartialEq<C>`, then **`a == b` and `b == c` implies `a == c`**.
+///
+/// Note that the `B: PartialEq<A>` (symmetric) and `A: PartialEq<C>`
+/// (transitive) impls are not forced to exist, but these requirements apply
+/// whenever they do exist.
 ///
 /// ## Derivable
 ///
