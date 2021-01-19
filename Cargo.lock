@@ -3843,6 +3843,7 @@ dependencies = [
  "rustc_passes",
  "rustc_plugin_impl",
  "rustc_privacy",
+ "rustc_query_impl",
  "rustc_resolve",
  "rustc_serialize",
  "rustc_session",
@@ -4104,6 +4105,29 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_typeck",
+ "tracing",
+]
+
+[[package]]
+name = "rustc_query_impl"
+version = "0.0.0"
+dependencies = [
+ "measureme",
+ "rustc-rayon-core",
+ "rustc_ast",
+ "rustc_attr",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_feature",
+ "rustc_hir",
+ "rustc_index",
+ "rustc_macros",
+ "rustc_middle",
+ "rustc_query_system",
+ "rustc_serialize",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
  "tracing",
 ]
 

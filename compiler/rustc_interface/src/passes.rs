@@ -21,7 +21,6 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
-use rustc_middle::ty::query;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
@@ -29,6 +28,7 @@ use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
+use rustc_query_impl::{print_stats, Queries as TcxQueries, QueryCtxt};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode};
 use rustc_session::lint;
@@ -735,7 +735,7 @@ pub static DEFAULT_EXTERN_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|
 
 pub struct QueryContext<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
-    queries: &'tcx query::Queries<'tcx>,
+    queries: &'tcx TcxQueries<'tcx>,
 }
 
 impl<'tcx> QueryContext<'tcx> {
@@ -750,8 +750,8 @@ impl<'tcx> QueryContext<'tcx> {
     pub fn print_stats(&mut self) {
         let icx = ty::tls::ImplicitCtxt::new(self.gcx);
         ty::tls::enter_context(&icx, |_| {
-            let qcx = query::QueryCtxt { tcx: icx.tcx, queries: self.queries };
-            ty::query::print_stats(qcx)
+            let qcx = QueryCtxt { tcx: icx.tcx, queries: self.queries };
+            print_stats(qcx)
         })
     }
 }
@@ -764,7 +764,7 @@ pub fn create_global_ctxt<'tcx>(
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
-    queries: &'tcx OnceCell<query::Queries<'tcx>>,
+    queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
@@ -793,7 +793,7 @@ pub fn create_global_ctxt<'tcx>(
         let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
-        queries.get_or_init(|| query::Queries::new(providers, extern_providers))
+        queries.get_or_init(|| TcxQueries::new(providers, extern_providers))
     };
 
     let gcx = sess.time("setup_global_ctxt", || {
@@ -807,7 +807,7 @@ pub fn create_global_ctxt<'tcx>(
                 defs,
                 dep_graph,
                 query_result_on_disk_cache,
-                queries,
+                queries.as_dyn(),
                 &crate_name,
                 &outputs,
             )
@@ -1014,7 +1014,7 @@ fn encode_and_write_metadata(
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-    queries: &'tcx query::Queries<'tcx>,
+    queries: &'tcx TcxQueries<'tcx>,
     outputs: &OutputFilenames,
 ) -> Box<dyn Any> {
     info!("Pre-codegen\n{:?}", tcx.debug_stats());

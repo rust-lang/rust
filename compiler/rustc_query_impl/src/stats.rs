@@ -1,4 +1,4 @@
-use crate::ty::query::{queries, Query, QueryCtxt};
+use super::{queries, Query, QueryCtxt};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_query_system::query::{QueryAccessors, QueryCache, QueryState};
 

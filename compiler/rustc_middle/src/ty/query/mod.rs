@@ -31,13 +31,12 @@ use crate::traits::{self, ImplSource};
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Diagnostic, ErrorReported, Handler, Level};
+use rustc_errors::{ErrorReported, Handler};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -54,39 +53,16 @@ use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-#[macro_use]
-mod plumbing;
-pub use plumbing::QueryCtxt;
-use plumbing::QueryStruct;
-pub(crate) use rustc_query_system::query::CycleError;
+pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 
-mod stats;
-pub use self::stats::print_stats;
-
-pub use rustc_query_system::query::{QueryInfo, QueryJob, QueryJobId};
-
-mod keys;
-use self::keys::Key;
-
-mod values;
-use self::values::Value;
-
-use rustc_query_system::query::QueryAccessors;
-pub use rustc_query_system::query::QueryConfig;
-pub(crate) use rustc_query_system::query::QueryDescription;
-
-mod on_disk_cache;
+pub mod on_disk_cache;
 pub use self::on_disk_cache::OnDiskCache;
-
-mod profiling_support;
-pub use self::profiling_support::{IntoSelfProfilingString, QueryKeyStringBuilder};
 
 #[derive(Copy, Clone)]
 pub struct TyCtxtAt<'tcx> {
@@ -277,7 +253,6 @@ macro_rules! define_callbacks {
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 
-rustc_query_append! { [define_queries!][<'tcx>] }
 rustc_query_append! { [define_callbacks!][<'tcx>] }
 
 mod sealed {
@@ -306,4 +281,4 @@ mod sealed {
     }
 }
 
-use sealed::IntoQueryParam;
+pub use sealed::IntoQueryParam;

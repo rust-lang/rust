@@ -1,11 +1,11 @@
 //! Defines the set of legal keys that can be used in queries.
 
-use crate::infer::canonical::Canonical;
-use crate::mir;
-use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::subst::{GenericArg, SubstsRef};
-use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_middle::infer::canonical::Canonical;
+use rustc_middle::mir;
+use rustc_middle::ty::fast_reject::SimplifiedType;
+use rustc_middle::ty::subst::{GenericArg, SubstsRef};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 
