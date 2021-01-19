@@ -132,7 +132,7 @@ pub struct DepKindStruct {
     /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
     /// add it to the "We don't have enough information to reconstruct..." group in
     /// the match below.
-    pub(crate) force_from_dep_node: fn(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool,
+    pub(crate) force_from_dep_node: fn(tcx: QueryCtxt<'_>, dep_node: &DepNode) -> bool,
 
     /// Invoke a query to put the on-disk cached value in memory.
     pub(crate) try_load_from_on_disk_cache: fn(QueryCtxt<'_>, &DepNode),
@@ -248,7 +248,7 @@ pub mod dep_kind {
                     <query_keys::$variant<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node)
                 }
 
-                fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
+                fn force_from_dep_node(tcx: QueryCtxt<'_>, dep_node: &DepNode) -> bool {
                     if is_anon {
                         return false;
                     }
@@ -257,13 +257,8 @@ pub mod dep_kind {
                         return false;
                     }
 
-                    if let Some(key) = recover(tcx, dep_node) {
-                        force_query::<queries::$variant<'_>, _>(
-                            QueryCtxt { tcx, queries: tcx.queries },
-                            key,
-                            DUMMY_SP,
-                            *dep_node
-                        );
+                    if let Some(key) = recover(*tcx, dep_node) {
+                        force_query::<queries::$variant<'_>, _>(tcx, key, DUMMY_SP, *dep_node);
                         return true;
                     }
 
