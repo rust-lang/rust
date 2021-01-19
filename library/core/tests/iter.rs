@@ -3577,6 +3577,18 @@ fn test_intersperse_fold() {
         acc
     });
     assert_eq!(v.as_slice(), [9, 2, 9, 3]);
+
+    struct NoneAtStart(i32); // Produces: None, Some(2), Some(3), None, ...
+    impl Iterator for NoneAtStart {
+        type Item = i32;
+        fn next(&mut self) -> Option<i32> {
+            self.0 += 1;
+            Some(self.0).filter(|i| i % 3 != 1)
+        }
+    }
+
+    let v = NoneAtStart(0).intersperse(1000).fold(0, |a, b| a + b);
+    assert_eq!(v, 0);
 }
 
 #[test]

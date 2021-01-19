@@ -176,6 +176,8 @@ where
     if !needs_sep {
         if let Some(x) = iter.next() {
             accum = f(accum, x);
+        } else {
+            return accum;
         }
     }
 
