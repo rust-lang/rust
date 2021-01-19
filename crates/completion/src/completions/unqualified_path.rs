@@ -241,7 +241,7 @@ fn main() {
         check(
             r#"fn quux<const C: usize>() { $0 }"#,
             expect![[r#"
-                tp C
+                cp C
                 fn quux() fn quux<const C: usize>()
             "#]],
         );

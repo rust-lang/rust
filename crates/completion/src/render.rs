@@ -208,7 +208,11 @@ impl<'a> Render<'a> {
             ScopeDef::ModuleDef(Trait(..)) => CompletionItemKind::Trait,
             ScopeDef::ModuleDef(TypeAlias(..)) => CompletionItemKind::TypeAlias,
             ScopeDef::ModuleDef(BuiltinType(..)) => CompletionItemKind::BuiltinType,
-            ScopeDef::GenericParam(..) => CompletionItemKind::TypeParam,
+            ScopeDef::GenericParam(param) => match param {
+                hir::GenericParam::TypeParam(_) => CompletionItemKind::TypeParam,
+                hir::GenericParam::LifetimeParam(_) => CompletionItemKind::LifetimeParam,
+                hir::GenericParam::ConstParam(_) => CompletionItemKind::ConstParam,
+            },
             ScopeDef::Local(..) => CompletionItemKind::Binding,
             // (does this need its own kind?)
             ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => CompletionItemKind::TypeParam,
