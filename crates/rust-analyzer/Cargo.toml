@@ -24,7 +24,7 @@ jod-thread = "0.1.0"
 log = "0.4.8"
 lsp-types = { version = "0.86.0", features = ["proposed"] }
 parking_lot = "0.11.0"
-pico-args = "0.3.1"
+pico-args = "0.4.0"
 oorandom = "11.1.2"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.106", features = ["derive"] }

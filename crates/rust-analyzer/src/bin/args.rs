@@ -109,7 +109,7 @@ impl Args {
         let mut matches = Arguments::from_env();
 
         if matches.contains("--version") {
-            matches.finish()?;
+            finish_args(matches)?;
             return Ok(Args {
                 verbosity: Verbosity::Normal,
                 log_file: None,
@@ -143,7 +143,7 @@ impl Args {
         let subcommand = match matches.subcommand()? {
             Some(it) => it,
             None => {
-                matches.finish()?;
+                finish_args(matches)?;
                 return Ok(Args { verbosity, log_file, command: Command::RunServer });
             }
         };
@@ -160,7 +160,7 @@ impl Args {
                 load_output_dirs: matches.contains("--load-output-dirs"),
                 with_proc_macro: matches.contains("--with-proc-macro"),
                 path: matches
-                    .free_from_str()?
+                    .opt_free_from_str()?
                     .ok_or_else(|| format_err!("expected positional argument"))?,
             }),
             "analysis-bench" => Command::Bench(BenchCmd {
@@ -187,21 +187,21 @@ impl Args {
                 load_output_dirs: matches.contains("--load-output-dirs"),
                 with_proc_macro: matches.contains("--with-proc-macro"),
                 path: matches
-                    .free_from_str()?
+                    .opt_free_from_str()?
                     .ok_or_else(|| format_err!("expected positional argument"))?,
             }),
             "diagnostics" => Command::Diagnostics {
                 load_output_dirs: matches.contains("--load-output-dirs"),
                 with_proc_macro: matches.contains("--with-proc-macro"),
                 path: matches
-                    .free_from_str()?
+                    .opt_free_from_str()?
                     .ok_or_else(|| format_err!("expected positional argument"))?,
             },
             "proc-macro" => Command::ProcMacro,
             "ssr" => Command::Ssr {
                 rules: {
                     let mut acc = Vec::new();
-                    while let Some(rule) = matches.free_from_str()? {
+                    while let Some(rule) = matches.opt_free_from_str()? {
                         acc.push(rule);
                     }
                     acc
@@ -211,7 +211,7 @@ impl Args {
                 debug_snippet: matches.opt_value_from_str("--debug")?,
                 patterns: {
                     let mut acc = Vec::new();
-                    while let Some(rule) = matches.free_from_str()? {
+                    while let Some(rule) = matches.opt_free_from_str()? {
                         acc.push(rule);
                     }
                     acc
@@ -222,7 +222,14 @@ impl Args {
                 return Ok(Args { verbosity, log_file: None, command: Command::Help });
             }
         };
-        matches.finish()?;
+        finish_args(matches)?;
         Ok(Args { verbosity, log_file, command })
     }
+}
+
+fn finish_args(args: Arguments) -> Result<()> {
+    if !args.finish().is_empty() {
+        bail!("Unused arguments.");
+    }
+    Ok(())
 }
