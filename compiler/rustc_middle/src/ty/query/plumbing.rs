@@ -343,13 +343,16 @@ macro_rules! define_queries {
             $(pub type $name<$tcx> = $V;)*
         }
         #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_storage {
+            use super::*;
+
+            $(pub type $name<$tcx> = query_storage!([$($modifiers)*][$($K)*, $V]);)*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_stored {
             use super::*;
 
-            $(pub type $name<$tcx> = <
-                query_storage!([$($modifiers)*][$($K)*, $V])
-                as QueryStorage
-            >::Stored;)*
+            $(pub type $name<$tcx> = <query_storage::$name<$tcx> as QueryStorage>::Stored;)*
         }
 
         $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
@@ -364,7 +367,7 @@ macro_rules! define_queries {
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
             const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$name;
 
-            type Cache = query_storage!([$($modifiers)*][$($K)*, $V]);
+            type Cache = query_storage::$name<$tcx>;
 
             #[inline(always)]
             fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, <TyCtxt<$tcx> as QueryContext>::Query, Self::Cache> {
@@ -523,7 +526,7 @@ macro_rules! define_queries_struct {
             $($(#[$attr])*  $name: QueryState<
                 crate::dep_graph::DepKind,
                 <TyCtxt<$tcx> as QueryContext>::Query,
-                <queries::$name<$tcx> as QueryAccessors<TyCtxt<'tcx>>>::Cache,
+                query_storage::$name<$tcx>,
             >,)*
         }
 
