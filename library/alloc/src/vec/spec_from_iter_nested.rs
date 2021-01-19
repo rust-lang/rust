@@ -1,13 +1,11 @@
 use core::iter::TrustedLen;
 use core::ptr::{self};
 
-#[allow(unused_imports)]
-use super::SpecFromIter;
 use super::{SpecExtend, Vec};
 
 /// Another specialization trait for Vec::from_iter
 /// necessary to manually prioritize overlapping specializations
-/// see [`SpecFromIter`] for details.
+/// see [`SpecFromIter`](super::SpecFromIter) for details.
 pub(super) trait SpecFromIterNested<T, I> {
     fn from_iter(iter: I) -> Self;
 }
