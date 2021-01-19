@@ -221,14 +221,31 @@ fn rewrite_intra_doc_link(
     }?;
     let krate = resolved.module(db)?.krate();
     let canonical_path = resolved.canonical_path(db)?;
-    let new_target = get_doc_url(db, &krate)?
+    let mut new_url = get_doc_url(db, &krate)?
         .join(&format!("{}/", krate.display_name(db)?))
         .ok()?
         .join(&canonical_path.replace("::", "/"))
         .ok()?
         .join(&get_symbol_filename(db, &resolved)?)
-        .ok()?
-        .into_string();
+        .ok()?;
+
+    if let ModuleDef::Trait(t) = resolved {
+        let items = t.items(db);
+        if let Some(field_or_assoc_item) = items.iter().find_map(|assoc_item| {
+            if let Some(name) = assoc_item.name(db) {
+                if link.to_string() == format!("{}::{}", canonical_path, name) {
+                    return Some(FieldOrAssocItem::AssocItem(*assoc_item));
+                }
+            }
+            None
+        }) {
+            if let Some(fragment) = get_symbol_fragment(db, &field_or_assoc_item) {
+                new_url = new_url.join(&fragment).ok()?;
+            }
+        };
+    }
+
+    let new_target = new_url.into_string();
     let new_title = strip_prefixes_suffixes(title);
     Some((new_target, new_title.to_string()))
 }

@@ -1826,6 +1826,35 @@ pub struct B$0ar
             "#]],
         );
     }
+    #[test]
+    fn test_hover_intra_link_reference_to_trait_method() {
+        check(
+            r#"
+pub trait Foo {
+    fn buzz() -> usize;
+}
+/// [Foo][buzz]
+///
+/// [buzz]: Foo::buzz
+pub struct B$0ar
+"#,
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [Foo](https://docs.rs/test/*/test/trait.Foo.html#tymethod.buzz)
+            "#]],
+        );
+    }
 
     #[test]
     fn test_hover_external_url() {

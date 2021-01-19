@@ -146,6 +146,19 @@ impl Resolver {
         self.resolve_module_path(db, path, BuiltinShadowMode::Module)
     }
 
+    pub fn resolve_module_path_in_trait_items(
+        &self,
+        db: &dyn DefDatabase,
+        path: &ModPath,
+    ) -> Option<TraitId> {
+        let (item_map, module) = self.module_scope()?;
+        let (module_res, ..) = item_map.resolve_path(db, module, &path, BuiltinShadowMode::Module);
+        match module_res.take_types()? {
+            ModuleDefId::TraitId(it) => Some(it),
+            _ => None,
+        }
+    }
+
     pub fn resolve_path_in_type_ns(
         &self,
         db: &dyn DefDatabase,
