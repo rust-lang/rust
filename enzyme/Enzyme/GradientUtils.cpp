@@ -155,6 +155,72 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       newi->copyIRFlags(op);
     assert(val->getType() == toreturn->getType());
     return toreturn;
+  } else if (auto op = dyn_cast<InsertValueInst>(val)) {
+    auto op0 = getOp(op->getAggregateOperand());
+    if (op0 == nullptr)
+      goto endCheck;
+    auto op1 = getOp(op->getInsertedValueOperand());
+    if (op1 == nullptr)
+      goto endCheck;
+    auto toreturn = BuilderM.CreateInsertValue(op0, op1, op->getIndices(),
+                                                op->getName() + "_unwrap");
+    unwrap_cache[cidx] = toreturn;
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto op = dyn_cast<ExtractElementInst>(val)) {
+    auto op0 = getOp(op->getOperand(0));
+    if (op0 == nullptr)
+      goto endCheck;
+    auto op1 = getOp(op->getOperand(1));
+    if (op1 == nullptr)
+      goto endCheck;
+    auto toreturn = BuilderM.CreateExtractElement(op0, op1,
+                                                op->getName() + "_unwrap");
+    unwrap_cache[cidx] = toreturn;
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto op = dyn_cast<InsertElementInst>(val)) {
+    auto op0 = getOp(op->getOperand(0));
+    if (op0 == nullptr)
+      goto endCheck;
+    auto op1 = getOp(op->getOperand(1));
+    if (op1 == nullptr)
+      goto endCheck;
+    auto op2 = getOp(op->getOperand(2));
+    if (op2 == nullptr)
+      goto endCheck;
+    auto toreturn = BuilderM.CreateInsertElement(op0, op1, op2,
+                                                op->getName() + "_unwrap");
+    unwrap_cache[cidx] = toreturn;
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+  } else if (auto op = dyn_cast<ShuffleVectorInst>(val)) {
+    auto op0 = getOp(op->getOperand(0));
+    if (op0 == nullptr)
+      goto endCheck;
+    auto op1 = getOp(op->getOperand(1));
+    if (op1 == nullptr)
+      goto endCheck;
+#if LLVM_VERSION_MAJOR >= 11
+    auto toreturn = BuilderM.CreateShuffleVector(
+        op0, op1,
+        op->getShuffleMaskForBitcode(), op->getName() + "'_unwrap");
+#else
+    auto toreturn =
+        BuilderM.CreateShuffleVector(op0, op1,
+                               op->getOperand(2), op->getName() + "'_unwrap");
+#endif
+    unwrap_cache[cidx] = toreturn;
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
   } else if (auto op = dyn_cast<BinaryOperator>(val)) {
     auto op0 = getOp(op->getOperand(0));
     if (op0 == nullptr)
@@ -1043,7 +1109,7 @@ bool GradientUtils::shouldRecompute(const Value *val,
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
           n == "__lgammal_r_finite" || n == "tanh" || n == "tanhf" ||
-          n == "__pow_finite" || isMemFreeLibMFunction(n)) {
+          n == "__pow_finite" || n == "__fd_sincos_1" || isMemFreeLibMFunction(n)) {
         return true;
       }
     }
