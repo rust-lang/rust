@@ -430,11 +430,6 @@ macro_rules! hash_result {
     };
 }
 
-macro_rules! query_helper_param_ty {
-    (DefId) => { impl IntoQueryParam<DefId> };
-    ($K:ty) => { $K };
-}
-
 macro_rules! define_queries {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -510,42 +505,6 @@ macro_rules! define_queries {
             $(pub struct $name<$tcx> {
                 data: PhantomData<&$tcx ()>
             })*
-        }
-
-        // HACK(eddyb) this is like the `impl QueryConfig for queries::$name`
-        // below, but using type aliases instead of associated types, to bypass
-        // the limitations around normalizing under HRTB - for example, this:
-        // `for<'tcx> fn(...) -> <queries::$name<'tcx> as QueryConfig<TyCtxt<'tcx>>>::Value`
-        // doesn't currently normalize to `for<'tcx> fn(...) -> query_values::$name<'tcx>`.
-        // This is primarily used by the `provide!` macro in `rustc_metadata`.
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_keys {
-            use super::*;
-
-            $(pub type $name<$tcx> = $($K)*;)*
-        }
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_values {
-            use super::*;
-
-            $(pub type $name<$tcx> = $V;)*
-        }
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_storage {
-            use super::*;
-
-            $(pub type $name<$tcx> = query_storage!([$($modifiers)*][$($K)*, $V]);)*
-        }
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_stored {
-            use super::*;
-
-            $(pub type $name<$tcx> = <query_storage::$name<$tcx> as QueryStorage>::Stored;)*
-        }
-
-        #[derive(Default)]
-        pub struct QueryCaches<$tcx> {
-            $($(#[$attr])* $name: QueryCacheStore<query_storage::$name<$tcx>>,)*
         }
 
         $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
@@ -683,11 +642,6 @@ macro_rules! define_queries {
         }
 
         static QUERY_CALLBACKS: &[QueryStruct] = &make_dep_kind_array!(query_callbacks);
-
-        define_provider_struct! {
-            tcx: $tcx,
-            input: ($(([$($modifiers)*] [$name] [$($K)*] [$V]))*)
-        }
     }
 }
 
@@ -770,30 +724,6 @@ macro_rules! define_queries_struct {
                 let qcx = QueryCtxt { tcx, queries: self };
                 get_query::<queries::$name<$tcx>, _>(qcx, span, key, lookup, mode)
             })*
-        }
-    };
-}
-
-macro_rules! define_provider_struct {
-    (tcx: $tcx:tt,
-     input: ($(([$($modifiers:tt)*] [$name:ident] [$K:ty] [$R:ty]))*)) => {
-        pub struct Providers {
-            $(pub $name: for<$tcx> fn(TyCtxt<$tcx>, $K) -> $R,)*
-        }
-
-        impl Default for Providers {
-            fn default() -> Self {
-                $(fn $name<$tcx>(_: TyCtxt<$tcx>, key: $K) -> $R {
-                    bug!("`tcx.{}({:?})` unsupported by its crate",
-                         stringify!($name), key);
-                })*
-                Providers { $($name),* }
-            }
-        }
-
-        impl Copy for Providers {}
-        impl Clone for Providers {
-            fn clone(&self) -> Self { *self }
         }
     };
 }
