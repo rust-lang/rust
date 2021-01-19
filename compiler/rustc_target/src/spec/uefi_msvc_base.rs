@@ -43,7 +43,9 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".efi".to_string(),
         allows_weak_linkage: false,
         panic_strategy: PanicStrategy::Abort,
-        stack_probes: StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) },
+        // LLVM does not emit inline assembly because the LLVM target does not get considered as…
+        // "Windows".
+        stack_probes: StackProbeType::Call,
         singlethread: true,
         linker: Some("rust-lld".to_string()),
         ..base
