@@ -21,10 +21,6 @@ mod visitor;
 
 type FileModMap<'ast> = BTreeMap<FileName, Module<'ast>>;
 
-lazy_static! {
-    static ref CFG_IF: Symbol = Symbol::intern("cfg_if");
-}
-
 /// Represents module with its inner attributes.
 #[derive(Debug, Clone)]
 pub(crate) struct Module<'a> {
@@ -480,7 +476,7 @@ fn is_cfg_if(item: &ast::Item) -> bool {
     match item.kind {
         ast::ItemKind::MacCall(ref mac) => {
             if let Some(first_segment) = mac.path.segments.first() {
-                if first_segment.ident.name == *CFG_IF {
+                if first_segment.ident.name == Symbol::intern("cfg_if") {
                     return true;
                 }
             }

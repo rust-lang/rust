@@ -3,6 +3,7 @@
 
 #[macro_use]
 extern crate derive_new;
+#[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
