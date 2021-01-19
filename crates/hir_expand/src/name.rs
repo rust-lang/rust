@@ -38,7 +38,7 @@ impl Name {
     }
 
     pub fn new_lifetime(lt: &ast::Lifetime) -> Name {
-        Self::new_text(lt.text().clone())
+        Self::new_text(lt.text().into())
     }
 
     /// Shortcut to create inline plain text name
@@ -47,12 +47,12 @@ impl Name {
     }
 
     /// Resolve a name from the text of token.
-    fn resolve(raw_text: &SmolStr) -> Name {
+    fn resolve(raw_text: &str) -> Name {
         let raw_start = "r#";
-        if raw_text.as_str().starts_with(raw_start) {
+        if raw_text.starts_with(raw_start) {
             Name::new_text(SmolStr::new(&raw_text[raw_start.len()..]))
         } else {
-            Name::new_text(raw_text.clone())
+            Name::new_text(raw_text.into())
         }
     }
 

@@ -59,7 +59,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextS
         // The node is either the first or the last in the file
         let suff = &token.text()[TextRange::new(
             offset - token.text_range().start() + TextSize::of('\n'),
-            TextSize::of(token.text().as_str()),
+            TextSize::of(token.text()),
         )];
         let spaces = suff.bytes().take_while(|&b| b == b' ').count();
 

@@ -41,7 +41,7 @@ impl ast::Comment {
         match kind {
             CommentKind { shape, doc: Some(_) } => {
                 let prefix = kind.prefix();
-                let text = &self.text().as_str()[prefix.len()..];
+                let text = &self.text()[prefix.len()..];
                 let ws = text.chars().next().filter(|c| c.is_whitespace());
                 let text = ws.map_or(text, |ws| &text[ws.len_utf8()..]);
                 match shape {
@@ -156,13 +156,13 @@ impl ast::String {
 
     pub fn value(&self) -> Option<Cow<'_, str>> {
         if self.is_raw() {
-            let text = self.text().as_str();
+            let text = self.text();
             let text =
                 &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
             return Some(Cow::Borrowed(text));
         }
 
-        let text = self.text().as_str();
+        let text = self.text();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
         let mut buf = String::new();
@@ -190,7 +190,7 @@ impl ast::String {
     }
 
     pub fn quote_offsets(&self) -> Option<QuoteOffsets> {
-        let text = self.text().as_str();
+        let text = self.text();
         let offsets = QuoteOffsets::new(text)?;
         let o = self.syntax().text_range().start();
         let offsets = QuoteOffsets {
@@ -560,7 +560,7 @@ impl HasFormatSpecifier for ast::String {
     fn char_ranges(
         &self,
     ) -> Option<Vec<(TextRange, Result<char, rustc_lexer::unescape::EscapeError>)>> {
-        let text = self.text().as_str();
+        let text = self.text();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
         let offset = self.text_range_between_quotes()?.start() - self.syntax().text_range().start();
 
@@ -590,7 +590,7 @@ impl ast::IntNumber {
     pub fn value(&self) -> Option<u128> {
         let token = self.syntax();
 
-        let mut text = token.text().as_str();
+        let mut text = token.text();
         if let Some(suffix) = self.suffix() {
             text = &text[..text.len() - suffix.len()]
         }

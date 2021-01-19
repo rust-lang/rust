@@ -138,7 +138,7 @@ pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
         return None;
     }
 
-    let text = token.text().as_str();
+    let text = token.text();
     if !text.starts_with("r#") && text.ends_with('#') {
         return None;
     }

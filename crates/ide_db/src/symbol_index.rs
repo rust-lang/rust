@@ -209,7 +209,7 @@ pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<Fil
     query.search(&buf)
 }
 
-pub fn index_resolve(db: &RootDatabase, name: &SmolStr) -> Vec<FileSymbol> {
+pub fn index_resolve(db: &RootDatabase, name: &str) -> Vec<FileSymbol> {
     let mut query = Query::new(name.to_string());
     query.exact();
     query.limit(4);
@@ -409,7 +409,7 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
     fn decl<N: NameOwner>(node: N) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
         let name = node.name()?;
         let name_range = name.syntax().text_range();
-        let name = name.text().clone();
+        let name = name.text().into();
         let ptr = SyntaxNodePtr::new(node.syntax());
 
         Some((name, ptr, name_range))

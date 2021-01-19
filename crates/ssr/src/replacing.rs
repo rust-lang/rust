@@ -173,7 +173,7 @@ impl ReplacementRenderer<'_> {
                 );
             }
         } else {
-            self.out.push_str(token.text().as_str());
+            self.out.push_str(token.text());
         }
     }
 

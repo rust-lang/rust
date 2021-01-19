@@ -507,7 +507,7 @@ impl SrcToken for SynToken {
         }
     }
     fn to_text(&self) -> SmolStr {
-        self.token().text().clone()
+        self.token().text().into()
     }
 }
 

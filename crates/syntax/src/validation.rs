@@ -116,7 +116,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
     }
 
     let token = literal.token();
-    let text = token.text().as_str();
+    let text = token.text();
 
     // FIXME: lift this lambda refactor to `fn` (https://github.com/rust-analyzer/rust-analyzer/pull/2834#discussion_r366199205)
     let mut push_err = |prefix_len, (off, err): (usize, unescape::EscapeError)| {

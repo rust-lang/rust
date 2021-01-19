@@ -1,6 +1,9 @@
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::ast::{self, AstNode, AttrsOwner, GenericParamsOwner, NameOwner};
+use syntax::{
+    ast::{self, AstNode, AttrsOwner, GenericParamsOwner, NameOwner},
+    SmolStr,
+};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -49,16 +52,16 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()
                 format_to!(buf, "{}", type_params.syntax());
             }
             buf.push_str(" ");
-            buf.push_str(name.text().as_str());
+            buf.push_str(name.text());
             if let Some(type_params) = type_params {
                 let lifetime_params = type_params
                     .lifetime_params()
                     .filter_map(|it| it.lifetime())
-                    .map(|it| it.text().clone());
+                    .map(|it| SmolStr::from(it.text()));
                 let type_params = type_params
                     .type_params()
                     .filter_map(|it| it.name())
-                    .map(|it| it.text().clone());
+                    .map(|it| SmolStr::from(it.text()));
 
                 let generic_params = lifetime_params.chain(type_params).format(", ");
                 format_to!(buf, "<{}>", generic_params)

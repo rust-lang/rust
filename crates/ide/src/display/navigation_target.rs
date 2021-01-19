@@ -153,8 +153,7 @@ impl NavigationTarget {
         node: InFile<&dyn ast::NameOwner>,
         kind: SymbolKind,
     ) -> NavigationTarget {
-        let name =
-            node.value.name().map(|it| it.text().clone()).unwrap_or_else(|| SmolStr::new("_"));
+        let name = node.value.name().map(|it| it.text().into()).unwrap_or_else(|| "_".into());
         let focus_range =
             node.value.name().map(|it| node.with_value(it.syntax()).original_file_range(db).range);
         let frange = node.map(|it| it.syntax()).original_file_range(db);
