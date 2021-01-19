@@ -592,17 +592,6 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
             self.val_area_mut(idx).write(val);
         }
     }
-
-    /// Adds a key-value pair to the beginning of the node.
-    fn push_front(&mut self, key: K, val: V) {
-        let new_len = self.len() + 1;
-        assert!(new_len <= CAPACITY);
-        unsafe {
-            slice_insert(self.key_area_mut(..new_len), 0, key);
-            slice_insert(self.val_area_mut(..new_len), 0, val);
-            *self.len_mut() = new_len as u16;
-        }
-    }
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
@@ -636,88 +625,6 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
             self.val_area_mut(idx).write(val);
             self.edge_area_mut(idx + 1).write(edge.node);
             Handle::new_edge(self.reborrow_mut(), idx + 1).correct_parent_link();
-        }
-    }
-
-    /// Adds a key-value pair, and an edge to go to the left of that pair,
-    /// to the beginning of the node.
-    fn push_front(&mut self, key: K, val: V, edge: Root<K, V>) {
-        let new_len = self.len() + 1;
-        assert!(edge.height == self.height - 1);
-        assert!(new_len <= CAPACITY);
-
-        unsafe {
-            slice_insert(self.key_area_mut(..new_len), 0, key);
-            slice_insert(self.val_area_mut(..new_len), 0, val);
-            slice_insert(self.edge_area_mut(..new_len + 1), 0, edge.node);
-            *self.len_mut() = new_len as u16;
-        }
-
-        self.correct_all_childrens_parent_links();
-    }
-}
-
-impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
-    /// Removes a key-value pair from the end of the node and returns the pair.
-    /// Also removes the edge that was to the right of that pair and, if the node
-    /// is internal, returns the orphaned subtree that this edge owned.
-    ///
-    /// # Safety
-    /// The node must not be empty.
-    unsafe fn pop(&mut self) -> (K, V, Option<Root<K, V>>) {
-        debug_assert!(self.len() > 0);
-
-        let idx = self.len() - 1;
-
-        unsafe {
-            let key = self.key_area_mut(idx).assume_init_read();
-            let val = self.val_area_mut(idx).assume_init_read();
-            let edge = match self.reborrow_mut().force() {
-                ForceResult::Leaf(_) => None,
-                ForceResult::Internal(mut internal) => {
-                    let node = internal.edge_area_mut(idx + 1).assume_init_read();
-                    let mut edge = Root { node, height: internal.height - 1, _marker: PhantomData };
-                    // Currently, clearing the parent link is superfluous, because we will
-                    // insert the node elsewhere and set its parent link again.
-                    edge.clear_parent_link();
-                    Some(edge)
-                }
-            };
-
-            *self.len_mut() -= 1;
-            (key, val, edge)
-        }
-    }
-
-    /// Removes a key-value pair from the beginning of the node and returns the pair.
-    /// Also removes the edge that was to the left of that pair and, if the node is
-    /// internal, returns the orphaned subtree that this edge owned.
-    fn pop_front(&mut self) -> (K, V, Option<Root<K, V>>) {
-        debug_assert!(self.len() > 0);
-
-        let old_len = self.len();
-
-        unsafe {
-            let key = slice_remove(self.key_area_mut(..old_len), 0);
-            let val = slice_remove(self.val_area_mut(..old_len), 0);
-            let edge = match self.reborrow_mut().force() {
-                ForceResult::Leaf(_) => None,
-                ForceResult::Internal(mut internal) => {
-                    let node = slice_remove(internal.edge_area_mut(..old_len + 1), 0);
-                    let mut edge = Root { node, height: internal.height - 1, _marker: PhantomData };
-                    // Currently, clearing the parent link is superfluous, because we will
-                    // insert the node elsewhere and set its parent link again.
-                    edge.clear_parent_link();
-
-                    internal.correct_childrens_parent_links(0..old_len);
-
-                    Some(edge)
-                }
-            };
-
-            *self.len_mut() -= 1;
-
-            (key, val, edge)
         }
     }
 }
@@ -1399,18 +1306,8 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
         mut self,
         track_right_edge_idx: usize,
     ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
-        unsafe {
-            let (k, v, edge) = self.left_child.pop();
-
-            let (k, v) = self.parent.replace_kv(k, v);
-
-            match self.right_child.reborrow_mut().force() {
-                ForceResult::Leaf(mut leaf) => leaf.push_front(k, v),
-                ForceResult::Internal(mut internal) => internal.push_front(k, v, edge.unwrap()),
-            }
-
-            Handle::new_edge(self.right_child, 1 + track_right_edge_idx)
-        }
+        self.bulk_steal_left(1);
+        unsafe { Handle::new_edge(self.right_child, 1 + track_right_edge_idx) }
     }
 
     /// Removes a key-value pair from the right child and places it in the key-value storage
@@ -1421,18 +1318,8 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
         mut self,
         track_left_edge_idx: usize,
     ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
-        unsafe {
-            let (k, v, edge) = self.right_child.pop_front();
-
-            let (k, v) = self.parent.replace_kv(k, v);
-
-            match self.left_child.reborrow_mut().force() {
-                ForceResult::Leaf(mut leaf) => leaf.push(k, v),
-                ForceResult::Internal(mut internal) => internal.push(k, v, edge.unwrap()),
-            }
-
-            Handle::new_edge(self.left_child, track_left_edge_idx)
-        }
+        self.bulk_steal_right(1);
+        unsafe { Handle::new_edge(self.left_child, track_left_edge_idx) }
     }
 
     /// This does stealing similar to `steal_left` but steals multiple elements at once.

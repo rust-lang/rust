@@ -121,25 +121,25 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         self,
     ) -> Option<NodeRef<marker::Mut<'a>, K, V, marker::Internal>> {
         match self.forget_type().choose_parent_kv() {
-            Ok(Left(left_parent_kv)) => {
+            Ok(Left(mut left_parent_kv)) => {
                 debug_assert_eq!(left_parent_kv.right_child_len(), MIN_LEN - 1);
                 if left_parent_kv.can_merge() {
                     let parent = left_parent_kv.merge_tracking_parent();
                     Some(parent)
                 } else {
                     debug_assert!(left_parent_kv.left_child_len() > MIN_LEN);
-                    left_parent_kv.steal_left(0);
+                    left_parent_kv.bulk_steal_left(1);
                     None
                 }
             }
-            Ok(Right(right_parent_kv)) => {
+            Ok(Right(mut right_parent_kv)) => {
                 debug_assert_eq!(right_parent_kv.left_child_len(), MIN_LEN - 1);
                 if right_parent_kv.can_merge() {
                     let parent = right_parent_kv.merge_tracking_parent();
                     Some(parent)
                 } else {
                     debug_assert!(right_parent_kv.right_child_len() > MIN_LEN);
-                    right_parent_kv.steal_right(0);
+                    right_parent_kv.bulk_steal_right(1);
                     None
                 }
             }
