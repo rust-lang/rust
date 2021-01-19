@@ -407,18 +407,6 @@ macro_rules! is_eval_always {
     };
 }
 
-macro_rules! query_storage {
-    ([][$K:ty, $V:ty]) => {
-        <DefaultCacheSelector as CacheSelector<$K, $V>>::Cache
-    };
-    ([storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
-        <$ty as CacheSelector<$K, $V>>::Cache
-    };
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
-        query_storage!([$($($modifiers)*)*][$($args)*])
-    };
-}
-
 macro_rules! hash_result {
     ([][$hcx:expr, $result:expr]) => {{
         dep_graph::hash_result($hcx, &$result)
@@ -520,7 +508,7 @@ macro_rules! define_queries {
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
             const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$name;
 
-            type Cache = query_storage!([$($modifiers)*][$($K)*, $V]);
+            type Cache = query_storage::$name<$tcx>;
 
             #[inline(always)]
             fn query_state<'a>(tcx: QueryCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, Query<$tcx>, Self::Cache> {

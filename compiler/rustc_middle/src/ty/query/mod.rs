@@ -133,6 +133,18 @@ macro_rules! query_helper_param_ty {
     ($K:ty) => { $K };
 }
 
+macro_rules! query_storage {
+    ([][$K:ty, $V:ty]) => {
+        <DefaultCacheSelector as CacheSelector<$K, $V>>::Cache
+    };
+    ([storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
+        <$ty as CacheSelector<$K, $V>>::Cache
+    };
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+        query_storage!([$($($modifiers)*)*][$($args)*])
+    };
+}
+
 macro_rules! define_callbacks {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -157,13 +169,16 @@ macro_rules! define_callbacks {
             $(pub type $name<$tcx> = $V;)*
         }
         #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_storage {
+            use super::*;
+
+            $(pub type $name<$tcx> = query_storage!([$($modifiers)*][$($K)*, $V]);)*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_stored {
             use super::*;
 
-            $(pub type $name<$tcx> = <
-                query_storage!([$($modifiers)*][$($K)*, $V])
-                as QueryStorage
-            >::Stored;)*
+            $(pub type $name<$tcx> = <query_storage::$name<$tcx> as QueryStorage>::Stored;)*
         }
 
         impl TyCtxtEnsure<$tcx> {
