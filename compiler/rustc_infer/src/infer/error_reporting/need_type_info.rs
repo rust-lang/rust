@@ -429,6 +429,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         body_id: Option<hir::BodyId>,
         span: Span,
         arg: GenericArg<'tcx>,
+        impl_candidates: Vec<ty::TraitRef<'tcx>>,
         error_code: TypeAnnotationNeeded,
     ) -> DiagnosticBuilder<'tcx> {
         let arg = self.resolve_vars_if_possible(arg);
@@ -653,7 +654,44 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
             err.span_label(pattern.span, msg);
         } else if let Some(e) = local_visitor.found_method_call {
-            if let ExprKind::MethodCall(segment, ..) = &e.kind {
+            if let ExprKind::MethodCall(segment, _, exprs, _) = &e.kind {
+                // Suggest impl candidates:
+                //
+                // error[E0283]: type annotations needed
+                //   --> $DIR/E0283.rs:35:24
+                //    |
+                // LL |     let bar = foo_impl.into() * 1u32;
+                //    |               ---------^^^^--
+                //    |               |        |
+                //    |               |        cannot infer type for type parameter `T` declared on the trait `Into`
+                //    |               this method call resolves to `T`
+                //    |               help: specify type like: `<Impl as Into<u32>>::into(foo_impl)`
+                //    |
+                //    = note: cannot satisfy `Impl: Into<_>`
+                if !impl_candidates.is_empty() && e.span.contains(span) {
+                    if let Some(expr) = exprs.first() {
+                        if let ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind {
+                            if let [path_segment] = &path.segments[..] {
+                                let candidate_len = impl_candidates.len();
+                                let suggestions = impl_candidates.iter().map(|candidate| {
+                                    format!(
+                                        "{}::{}({})",
+                                        candidate, segment.ident, path_segment.ident
+                                    )
+                                });
+                                err.span_suggestions(
+                                    e.span,
+                                    &format!(
+                                        "use the fully qualified path for the potential candidate{}",
+                                        pluralize!(candidate_len),
+                                    ),
+                                    suggestions,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
+                    };
+                }
                 // Suggest specifying type params or point out the return type of the call:
                 //
                 // error[E0282]: type annotations needed

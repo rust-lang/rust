@@ -1498,11 +1498,18 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
-                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0282).emit();
+                    self.emit_inference_failure_err(body_id, span, subst, vec![], ErrorCode::E0282)
+                        .emit();
                     return;
                 }
-                let mut err =
-                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0283);
+                let impl_candidates = self.find_similar_impl_candidates(trait_ref);
+                let mut err = self.emit_inference_failure_err(
+                    body_id,
+                    span,
+                    subst,
+                    impl_candidates,
+                    ErrorCode::E0283,
+                );
                 err.note(&format!("cannot satisfy `{}`", predicate));
                 if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
@@ -1566,7 +1573,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                self.emit_inference_failure_err(body_id, span, arg, ErrorCode::E0282)
+                self.emit_inference_failure_err(body_id, span, arg, vec![], ErrorCode::E0282)
             }
 
             ty::PredicateKind::Subtype(data) => {
@@ -1577,7 +1584,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282)
+                self.emit_inference_failure_err(body_id, span, a.into(), vec![], ErrorCode::E0282)
             }
             ty::PredicateKind::Projection(data) => {
                 let trait_ref = bound_predicate.rebind(data).to_poly_trait_ref(self.tcx);
@@ -1592,6 +1599,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                         body_id,
                         span,
                         self_ty.into(),
+                        vec![],
                         ErrorCode::E0284,
                     );
                     err.note(&format!("cannot satisfy `{}`", predicate));
