@@ -2490,7 +2490,7 @@ impl<'test> TestCx<'test> {
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
         let res = self.cmd2procres(
-            Command::new(&self.config.jsondocck_path)
+            Command::new(self.config.jsondocck_path.as_ref().unwrap())
                 .arg("--doc-dir")
                 .arg(root.join(&out_dir))
                 .arg("--template")
