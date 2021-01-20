@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use crate::externalfiles::ExternalHtml;
 use crate::html::escape::Escape;
 use crate::html::format::{Buffer, Print};
-use crate::html::render::{ensure_trailing_slash, StylePath};
+use crate::html::render::StylePath;
 
 #[derive(Clone)]
 crate struct Layout {
@@ -134,22 +134,20 @@ crate fn render<T: Print, S: Print>(
         root_path = page.root_path,
         css_class = page.css_class,
         logo = {
-            let p = format!("{}{}", page.root_path, layout.krate);
-            let p = ensure_trailing_slash(&p);
             if layout.logo.is_empty() {
                 format!(
-                    "<a href='{path}index.html'>\
+                    "<a href='{path}logo-redirect.html'>\
                      <div class='logo-container rust-logo'>\
                      <img src='{static_root_path}rust-logo{suffix}.png' alt='logo'></div></a>",
-                    path = p,
+                    path = page.root_path,
                     static_root_path = static_root_path,
                     suffix = page.resource_suffix
                 )
             } else {
                 format!(
-                    "<a href='{}index.html'>\
+                    "<a href='{}logo-redirect.html'>\
                      <div class='logo-container'><img src='{}' alt='logo'></div></a>",
-                    p, layout.logo
+                    page.root_path, layout.logo
                 )
             }
         },

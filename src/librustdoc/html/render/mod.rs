@@ -596,6 +596,21 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             &style_files,
         );
         self.shared.fs.write(&settings_file, v.as_bytes())?;
+
+        // HACK(ThePuzzlemaker, #81031): As suggested by jynelson, we create a
+        // redirect page in the parent directory (below the specific crate dir,
+        // i.e. target/doc or similar) redirecting to that crate's index. This
+        // way, the last crate compiled will be the one redirected to. Assuming
+        // you never document examples, and that if you document a binary, you
+        // want it to take precedence over a library present there, this works
+        // to have the logo redirect to the "main crate" (the one that would be
+        // opened by cargo doc --open), without having to add a new rustdoc
+        // flag and cargo integration.
+
+        let v =
+            layout::redirect(Path::new(&*krate.name.as_str()).join("index.html").to_str().unwrap());
+        self.shared.fs.write(&self.dst.join("logo-redirect.html"), v.as_bytes())?;
+
         Ok(())
     }
 
