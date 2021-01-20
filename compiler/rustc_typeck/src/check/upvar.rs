@@ -176,17 +176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype(span, inferred_kind.to_ty(self.tcx), closure_kind_ty);
 
             // If we have an origin, store it.
-            if let Some(origin) = delegate.current_origin.clone() {
-                let origin = if self.tcx.features().capture_disjoint_fields {
-                    origin
-                } else {
-                    // FIXME(project-rfc-2229#26): Once rust-lang#80092 is merged, we should restrict the
-                    // precision of origin as well. Otherwise, this will cause issues when project-rfc-2229#26
-                    // is fixed as we might see Index projections in the origin, which we can't print because
-                    // we don't store enough information.
-                    (origin.0, Place { projections: vec![], ..origin.1 })
-                };
-
+            if let Some(origin) = delegate.current_origin {
                 self.typeck_results
                     .borrow_mut()
                     .closure_kind_origins_mut()
@@ -573,7 +563,7 @@ struct InferBorrowKind<'a, 'tcx> {
 
     // If we modified `current_closure_kind`, this field contains a `Some()` with the
     // variable access that caused us to do so.
-    current_origin: Option<(Span, Place<'tcx>)>,
+    current_origin: Option<(Span, Symbol)>,
 
     /// For each Place that is captured by the closure, we track the minimal kind of
     /// access we need (ref, ref mut, move, etc) and the expression that resulted in such access.
@@ -638,7 +628,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             upvar_id.closure_expr_id,
             ty::ClosureKind::FnOnce,
             usage_span,
-            place_with_id.place.clone(),
+            var_name(tcx, upvar_id.var_path.hir_id),
         );
 
         let capture_info = ty::CaptureInfo {
@@ -730,7 +720,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
                 upvar_id.closure_expr_id,
                 ty::ClosureKind::FnMut,
                 tcx.hir().span(diag_expr_id),
-                place_with_id.place.clone(),
+                var_name(tcx, upvar_id.var_path.hir_id),
             );
         }
     }
@@ -775,11 +765,11 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         closure_id: LocalDefId,
         new_kind: ty::ClosureKind,
         upvar_span: Span,
-        place: Place<'tcx>,
+        var_name: Symbol,
     ) {
         debug!(
-            "adjust_closure_kind(closure_id={:?}, new_kind={:?}, upvar_span={:?}, place={:?})",
-            closure_id, new_kind, upvar_span, place
+            "adjust_closure_kind(closure_id={:?}, new_kind={:?}, upvar_span={:?}, var_name={})",
+            closure_id, new_kind, upvar_span, var_name
         );
 
         // Is this the closure whose kind is currently being inferred?
@@ -807,7 +797,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             | (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
                 // new kind is stronger than the old kind
                 self.current_closure_kind = new_kind;
-                self.current_origin = Some((upvar_span, place));
+                self.current_origin = Some((upvar_span, var_name));
             }
         }
     }

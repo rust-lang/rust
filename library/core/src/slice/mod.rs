@@ -60,7 +60,7 @@ pub use iter::ArrayWindows;
 #[unstable(feature = "slice_group_by", issue = "80552")]
 pub use iter::{GroupBy, GroupByMut};
 
-#[stable(feature = "split_inclusive", since = "1.51.0")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -889,46 +889,6 @@ impl<T> [T] {
     }
 
     /// Splits the slice into a slice of `N`-element arrays,
-    /// assuming that there's no remainder.
-    ///
-    /// # Safety
-    ///
-    /// This may only be called when
-    /// - The slice splits exactly into `N`-element chunks (aka `self.len() % N == 0`).
-    /// - `N != 0`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(slice_as_chunks)]
-    /// let slice: &[char] = &['l', 'o', 'r', 'e', 'm', '!'];
-    /// let chunks: &[[char; 1]] =
-    ///     // SAFETY: 1-element chunks never have remainder
-    ///     unsafe { slice.as_chunks_unchecked() };
-    /// assert_eq!(chunks, &[['l'], ['o'], ['r'], ['e'], ['m'], ['!']]);
-    /// let chunks: &[[char; 3]] =
-    ///     // SAFETY: The slice length (6) is a multiple of 3
-    ///     unsafe { slice.as_chunks_unchecked() };
-    /// assert_eq!(chunks, &[['l', 'o', 'r'], ['e', 'm', '!']]);
-    ///
-    /// // These would be unsound:
-    /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked() // The slice length is not a multiple of 5
-    /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked() // Zero-length chunks are never allowed
-    /// ```
-    #[unstable(feature = "slice_as_chunks", issue = "74985")]
-    #[inline]
-    pub unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
-        debug_assert_ne!(N, 0);
-        debug_assert_eq!(self.len() % N, 0);
-        let new_len =
-            // SAFETY: Our precondition is exactly what's needed to call this
-            unsafe { crate::intrinsics::exact_div(self.len(), N) };
-        // SAFETY: We cast a slice of `new_len * N` elements into
-        // a slice of `new_len` many `N` elements chunks.
-        unsafe { from_raw_parts(self.as_ptr().cast(), new_len) }
-    }
-
-    /// Splits the slice into a slice of `N`-element arrays,
     /// starting at the beginning of the slice,
     /// and a remainder slice with length strictly less than `N`.
     ///
@@ -952,40 +912,10 @@ impl<T> [T] {
         assert_ne!(N, 0);
         let len = self.len() / N;
         let (multiple_of_n, remainder) = self.split_at(len * N);
-        // SAFETY: We already panicked for zero, and ensured by construction
-        // that the length of the subslice is a multiple of N.
-        let array_slice = unsafe { multiple_of_n.as_chunks_unchecked() };
+        // SAFETY: We cast a slice of `len * N` elements into
+        // a slice of `len` many `N` elements chunks.
+        let array_slice: &[[T; N]] = unsafe { from_raw_parts(multiple_of_n.as_ptr().cast(), len) };
         (array_slice, remainder)
-    }
-
-    /// Splits the slice into a slice of `N`-element arrays,
-    /// starting at the end of the slice,
-    /// and a remainder slice with length strictly less than `N`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(slice_as_chunks)]
-    /// let slice = ['l', 'o', 'r', 'e', 'm'];
-    /// let (remainder, chunks) = slice.as_rchunks();
-    /// assert_eq!(remainder, &['l']);
-    /// assert_eq!(chunks, &[['o', 'r'], ['e', 'm']]);
-    /// ```
-    #[unstable(feature = "slice_as_chunks", issue = "74985")]
-    #[inline]
-    pub fn as_rchunks<const N: usize>(&self) -> (&[T], &[[T; N]]) {
-        assert_ne!(N, 0);
-        let len = self.len() / N;
-        let (remainder, multiple_of_n) = self.split_at(self.len() - len * N);
-        // SAFETY: We already panicked for zero, and ensured by construction
-        // that the length of the subslice is a multiple of N.
-        let array_slice = unsafe { multiple_of_n.as_chunks_unchecked() };
-        (remainder, array_slice)
     }
 
     /// Returns an iterator over `N` elements of the slice at a time, starting at the
@@ -1023,48 +953,6 @@ impl<T> [T] {
     }
 
     /// Splits the slice into a slice of `N`-element arrays,
-    /// assuming that there's no remainder.
-    ///
-    /// # Safety
-    ///
-    /// This may only be called when
-    /// - The slice splits exactly into `N`-element chunks (aka `self.len() % N == 0`).
-    /// - `N != 0`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(slice_as_chunks)]
-    /// let slice: &mut [char] = &mut ['l', 'o', 'r', 'e', 'm', '!'];
-    /// let chunks: &mut [[char; 1]] =
-    ///     // SAFETY: 1-element chunks never have remainder
-    ///     unsafe { slice.as_chunks_unchecked_mut() };
-    /// chunks[0] = ['L'];
-    /// assert_eq!(chunks, &[['L'], ['o'], ['r'], ['e'], ['m'], ['!']]);
-    /// let chunks: &mut [[char; 3]] =
-    ///     // SAFETY: The slice length (6) is a multiple of 3
-    ///     unsafe { slice.as_chunks_unchecked_mut() };
-    /// chunks[1] = ['a', 'x', '?'];
-    /// assert_eq!(slice, &['L', 'o', 'r', 'a', 'x', '?']);
-    ///
-    /// // These would be unsound:
-    /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked_mut() // The slice length is not a multiple of 5
-    /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked_mut() // Zero-length chunks are never allowed
-    /// ```
-    #[unstable(feature = "slice_as_chunks", issue = "74985")]
-    #[inline]
-    pub unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
-        debug_assert_ne!(N, 0);
-        debug_assert_eq!(self.len() % N, 0);
-        let new_len =
-            // SAFETY: Our precondition is exactly what's needed to call this
-            unsafe { crate::intrinsics::exact_div(self.len(), N) };
-        // SAFETY: We cast a slice of `new_len * N` elements into
-        // a slice of `new_len` many `N` elements chunks.
-        unsafe { from_raw_parts_mut(self.as_mut_ptr().cast(), new_len) }
-    }
-
-    /// Splits the slice into a slice of `N`-element arrays,
     /// starting at the beginning of the slice,
     /// and a remainder slice with length strictly less than `N`.
     ///
@@ -1094,46 +982,11 @@ impl<T> [T] {
         assert_ne!(N, 0);
         let len = self.len() / N;
         let (multiple_of_n, remainder) = self.split_at_mut(len * N);
-        // SAFETY: We already panicked for zero, and ensured by construction
-        // that the length of the subslice is a multiple of N.
-        let array_slice = unsafe { multiple_of_n.as_chunks_unchecked_mut() };
+        let array_slice: &mut [[T; N]] =
+            // SAFETY: We cast a slice of `len * N` elements into
+            // a slice of `len` many `N` elements chunks.
+            unsafe { from_raw_parts_mut(multiple_of_n.as_mut_ptr().cast(), len) };
         (array_slice, remainder)
-    }
-
-    /// Splits the slice into a slice of `N`-element arrays,
-    /// starting at the end of the slice,
-    /// and a remainder slice with length strictly less than `N`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(slice_as_chunks)]
-    /// let v = &mut [0, 0, 0, 0, 0];
-    /// let mut count = 1;
-    ///
-    /// let (remainder, chunks) = v.as_rchunks_mut();
-    /// remainder[0] = 9;
-    /// for chunk in chunks {
-    ///     *chunk = [count; 2];
-    ///     count += 1;
-    /// }
-    /// assert_eq!(v, &[9, 1, 1, 2, 2]);
-    /// ```
-    #[unstable(feature = "slice_as_chunks", issue = "74985")]
-    #[inline]
-    pub fn as_rchunks_mut<const N: usize>(&mut self) -> (&mut [T], &mut [[T; N]]) {
-        assert_ne!(N, 0);
-        let len = self.len() / N;
-        let (remainder, multiple_of_n) = self.split_at_mut(self.len() - len * N);
-        // SAFETY: We already panicked for zero, and ensured by construction
-        // that the length of the subslice is a multiple of N.
-        let array_slice = unsafe { multiple_of_n.as_chunks_unchecked_mut() };
-        (remainder, array_slice)
     }
 
     /// Returns an iterator over `N` elements of the slice at a time, starting at the
@@ -1693,6 +1546,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(split_inclusive)]
     /// let slice = [10, 40, 33, 20];
     /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
     ///
@@ -1706,6 +1560,7 @@ impl<T> [T] {
     /// That slice will be the last item returned by the iterator.
     ///
     /// ```
+    /// #![feature(split_inclusive)]
     /// let slice = [3, 10, 40, 33];
     /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
     ///
@@ -1713,7 +1568,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next().unwrap(), &[10, 40, 33]);
     /// assert!(iter.next().is_none());
     /// ```
-    #[stable(feature = "split_inclusive", since = "1.51.0")]
+    #[unstable(feature = "split_inclusive", issue = "72360")]
     #[inline]
     pub fn split_inclusive<F>(&self, pred: F) -> SplitInclusive<'_, T, F>
     where
@@ -1729,6 +1584,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(split_inclusive)]
     /// let mut v = [10, 40, 30, 20, 60, 50];
     ///
     /// for group in v.split_inclusive_mut(|num| *num % 3 == 0) {
@@ -1737,7 +1593,7 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, [10, 40, 1, 20, 1, 1]);
     /// ```
-    #[stable(feature = "split_inclusive", since = "1.51.0")]
+    #[unstable(feature = "split_inclusive", issue = "72360")]
     #[inline]
     pub fn split_inclusive_mut<F>(&mut self, pred: F) -> SplitInclusiveMut<'_, T, F>
     where
@@ -2024,7 +1880,7 @@ impl<T> [T] {
     ///            Some(b"llo".as_ref()));
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[stable(feature = "slice_strip", since = "1.51.0")]
+    #[stable(feature = "slice_strip", since = "1.50.0")]
     pub fn strip_prefix<P: SlicePattern<Item = T> + ?Sized>(&self, prefix: &P) -> Option<&[T]>
     where
         T: PartialEq,
@@ -2058,7 +1914,7 @@ impl<T> [T] {
     /// assert_eq!(v.strip_suffix(&[50, 30]), None);
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[stable(feature = "slice_strip", since = "1.51.0")]
+    #[stable(feature = "slice_strip", since = "1.50.0")]
     pub fn strip_suffix<P: SlicePattern<Item = T> + ?Sized>(&self, suffix: &P) -> Option<&[T]>
     where
         T: PartialEq,
@@ -3470,7 +3326,7 @@ pub trait SlicePattern {
     fn as_slice(&self) -> &[Self::Item];
 }
 
-#[stable(feature = "slice_strip", since = "1.51.0")]
+#[stable(feature = "slice_strip", since = "1.50.0")]
 impl<T> SlicePattern for [T] {
     type Item = T;
 
@@ -3480,7 +3336,7 @@ impl<T> SlicePattern for [T] {
     }
 }
 
-#[stable(feature = "slice_strip", since = "1.51.0")]
+#[stable(feature = "slice_strip", since = "1.50.0")]
 impl<T, const N: usize> SlicePattern for [T; N] {
     type Item = T;
 

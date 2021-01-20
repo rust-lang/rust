@@ -10,7 +10,7 @@ use core::ptr;
 
 use super::borrow::DormantMutRef;
 use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
-use super::search::SearchResult::*;
+use super::search::{self, SearchResult::*};
 use super::unwrap_unchecked;
 
 mod entry;
@@ -51,9 +51,6 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// It is a logic error for a key to be modified in such a way that the key's ordering relative to
 /// any other key, as determined by the [`Ord`] trait, changes while it is in the map. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
-/// The behavior resulting from such a logic error is not specified, but will not result in
-/// undefined behavior. This could include panics, incorrect results, aborts, memory leaks, and
-/// non-termination.
 ///
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
@@ -230,7 +227,7 @@ where
 
     fn get(&self, key: &Q) -> Option<&K> {
         let root_node = self.root.as_ref()?.reborrow();
-        match root_node.search_tree(key) {
+        match search::search_tree(root_node, key) {
             Found(handle) => Some(handle.into_kv().0),
             GoDown(_) => None,
         }
@@ -239,7 +236,7 @@ where
     fn take(&mut self, key: &Q) -> Option<K> {
         let (map, dormant_map) = DormantMutRef::new(self);
         let root_node = map.root.as_mut()?.borrow_mut();
-        match root_node.search_tree(key) {
+        match search::search_tree(root_node, key) {
             Found(handle) => {
                 Some(OccupiedEntry { handle, dormant_map, _marker: PhantomData }.remove_kv().0)
             }
@@ -250,7 +247,7 @@ where
     fn replace(&mut self, key: K) -> Option<K> {
         let (map, dormant_map) = DormantMutRef::new(self);
         let root_node = Self::ensure_is_owned(&mut map.root).borrow_mut();
-        match root_node.search_tree::<K>(&key) {
+        match search::search_tree::<marker::Mut<'_>, K, (), K>(root_node, &key) {
             Found(mut kv) => Some(mem::replace(kv.key_mut(), key)),
             GoDown(handle) => {
                 VacantEntry { key, handle, dormant_map, _marker: PhantomData }.insert(());
@@ -526,7 +523,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         Q: Ord,
     {
         let root_node = self.root.as_ref()?.reborrow();
-        match root_node.search_tree(key) {
+        match search::search_tree(root_node, key) {
             Found(handle) => Some(handle.into_kv().1),
             GoDown(_) => None,
         }
@@ -554,7 +551,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         Q: Ord,
     {
         let root_node = self.root.as_ref()?.reborrow();
-        match root_node.search_tree(k) {
+        match search::search_tree(root_node, k) {
             Found(handle) => Some(handle.into_kv()),
             GoDown(_) => None,
         }
@@ -762,7 +759,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         Q: Ord,
     {
         let root_node = self.root.as_mut()?.borrow_mut();
-        match root_node.search_tree(key) {
+        match search::search_tree(root_node, key) {
             Found(handle) => Some(handle.into_val_mut()),
             GoDown(_) => None,
         }
@@ -858,7 +855,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     {
         let (map, dormant_map) = DormantMutRef::new(self);
         let root_node = map.root.as_mut()?.borrow_mut();
-        match root_node.search_tree(key) {
+        match search::search_tree(root_node, key) {
             Found(handle) => {
                 Some(OccupiedEntry { handle, dormant_map, _marker: PhantomData }.remove_entry())
             }
@@ -1051,7 +1048,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         // FIXME(@porglezomp) Avoid allocating if we don't insert
         let (map, dormant_map) = DormantMutRef::new(self);
         let root_node = Self::ensure_is_owned(&mut map.root).borrow_mut();
-        match root_node.search_tree(&key) {
+        match search::search_tree(root_node, &key) {
             Found(handle) => Occupied(OccupiedEntry { handle, dormant_map, _marker: PhantomData }),
             GoDown(handle) => {
                 Vacant(VacantEntry { key, handle, dormant_map, _marker: PhantomData })

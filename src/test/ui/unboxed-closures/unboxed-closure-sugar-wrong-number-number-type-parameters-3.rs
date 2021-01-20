@@ -3,7 +3,7 @@
 trait Three<A,B,C> { fn dummy(&self) -> (A,B,C); }
 
 fn foo(_: &dyn Three())
-//~^ ERROR this trait takes 3 type arguments but only 1 type argument was supplied
+//~^ ERROR wrong number of type arguments
 //~| ERROR associated type `Output` not found
 {}
 

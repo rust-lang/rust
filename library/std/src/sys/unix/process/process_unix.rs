@@ -314,20 +314,10 @@ impl Command {
             ) -> libc::c_int
         }
         let addchdir = match self.get_cwd() {
-            Some(cwd) => {
-                if cfg!(target_os = "macos") {
-                    // There is a bug in macOS where a relative executable
-                    // path like "../myprogram" will cause `posix_spawn` to
-                    // successfully launch the program, but erroneously return
-                    // ENOENT when used with posix_spawn_file_actions_addchdir_np
-                    // which was introduced in macOS 10.15.
-                    return Ok(None);
-                }
-                match posix_spawn_file_actions_addchdir_np.get() {
-                    Some(f) => Some((f, cwd)),
-                    None => return Ok(None),
-                }
-            }
+            Some(cwd) => match posix_spawn_file_actions_addchdir_np.get() {
+                Some(f) => Some((f, cwd)),
+                None => return Ok(None),
+            },
             None => None,
         };
 
@@ -489,23 +479,7 @@ impl ExitStatus {
     }
 
     pub fn signal(&self) -> Option<i32> {
-        if libc::WIFSIGNALED(self.0) { Some(libc::WTERMSIG(self.0)) } else { None }
-    }
-
-    pub fn core_dumped(&self) -> bool {
-        libc::WIFSIGNALED(self.0) && libc::WCOREDUMP(self.0)
-    }
-
-    pub fn stopped_signal(&self) -> Option<i32> {
-        if libc::WIFSTOPPED(self.0) { Some(libc::WSTOPSIG(self.0)) } else { None }
-    }
-
-    pub fn continued(&self) -> bool {
-        libc::WIFCONTINUED(self.0)
-    }
-
-    pub fn into_raw(&self) -> c_int {
-        self.0
+        if !self.exited() { Some(libc::WTERMSIG(self.0)) } else { None }
     }
 }
 

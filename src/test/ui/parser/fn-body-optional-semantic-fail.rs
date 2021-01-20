@@ -20,7 +20,7 @@ fn main() {
         fn f4() {} // OK.
     }
 
-    extern "C" {
+    extern {
         fn f5(); // OK.
         fn f6() {} //~ ERROR incorrect function inside `extern` block
     }

@@ -45,6 +45,6 @@ macro_rules! some_macro {
     () => {};
 }
 
-extern "C" {
+extern {
     pub type ExternType;
 }

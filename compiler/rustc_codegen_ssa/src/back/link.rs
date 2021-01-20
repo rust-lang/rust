@@ -74,7 +74,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             }
         });
 
-        if outputs.outputs.should_link() {
+        if outputs.outputs.should_codegen() {
             let tmpdir = TempFileBuilder::new()
                 .prefix("rustc")
                 .tempdir()
@@ -123,7 +123,9 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                 }
             };
 
-            if sess.opts.output_types.should_link() && !preserve_objects_for_their_debuginfo(sess) {
+            if sess.opts.output_types.should_codegen()
+                && !preserve_objects_for_their_debuginfo(sess)
+            {
                 for module in &codegen_results.modules {
                     remove_temps_from_module(module);
                 }
@@ -164,7 +166,7 @@ fn get_linker(
         _ => match flavor {
             LinkerFlavor::Lld(f) => Command::lld(linker, f),
             LinkerFlavor::Msvc if sess.opts.cg.linker.is_none() && sess.target.linker.is_none() => {
-                Command::new(msvc_tool.as_ref().map_or(linker, |t| t.path()))
+                Command::new(msvc_tool.as_ref().map(|t| t.path()).unwrap_or(linker))
             }
             _ => Command::new(linker),
         },

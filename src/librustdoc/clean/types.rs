@@ -82,7 +82,7 @@ crate struct Item {
     crate source: Span,
     /// Not everything has a name. E.g., impls
     crate name: Option<Symbol>,
-    crate attrs: Box<Attributes>,
+    crate attrs: Attributes,
     crate visibility: Visibility,
     crate kind: Box<ItemKind>,
     crate def_id: DefId,
@@ -90,7 +90,7 @@ crate struct Item {
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Item, 48);
+rustc_data_structures::static_assert_size!(Item, 136);
 
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -159,7 +159,7 @@ impl Item {
             kind: box kind,
             name,
             source: source.clean(cx),
-            attrs: box cx.tcx.get_attrs(def_id).clean(cx),
+            attrs: cx.tcx.get_attrs(def_id).clean(cx),
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }
     }
@@ -237,7 +237,9 @@ impl Item {
         match *self.kind {
             StructItem(ref _struct) => Some(_struct.fields_stripped),
             UnionItem(ref union) => Some(union.fields_stripped),
-            VariantItem(Variant::Struct(ref vstruct)) => Some(vstruct.fields_stripped),
+            VariantItem(Variant { kind: VariantKind::Struct(ref vstruct) }) => {
+                Some(vstruct.fields_stripped)
+            }
             _ => None,
         }
     }
@@ -351,7 +353,7 @@ impl ItemKind {
         match self {
             StructItem(s) => s.fields.iter(),
             UnionItem(u) => u.fields.iter(),
-            VariantItem(Variant::Struct(v)) => v.fields.iter(),
+            VariantItem(Variant { kind: VariantKind::Struct(v) }) => v.fields.iter(),
             EnumItem(e) => e.variants.iter(),
             TraitItem(t) => t.items.iter(),
             ImplItem(i) => i.items.iter(),
@@ -1717,7 +1719,12 @@ crate struct Enum {
 }
 
 #[derive(Clone, Debug)]
-crate enum Variant {
+crate struct Variant {
+    crate kind: VariantKind,
+}
+
+#[derive(Clone, Debug)]
+crate enum VariantKind {
     CLike,
     Tuple(Vec<Type>),
     Struct(VariantStruct),

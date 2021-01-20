@@ -1,6 +1,6 @@
 use crate::astconv::{
     AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
-    GenericArgCountResult, IsMethodCall, PathSeg,
+    GenericArgCountResult, PathSeg,
 };
 use crate::check::callee::{self, DeferredCallResolution};
 use crate::check::method::{self, MethodCallee, SelfSource};
@@ -542,7 +542,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_predicate(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::PredicateKind::WellFormed(arg).to_predicate(self.tcx),
+            ty::PredicateAtom::WellFormed(arg).to_predicate(self.tcx),
         ));
     }
 
@@ -764,21 +764,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .pending_obligations()
             .into_iter()
             .filter_map(move |obligation| {
-                let bound_predicate = obligation.predicate.kind();
+                let bound_predicate = obligation.predicate.bound_atom();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Projection(data) => {
+                    ty::PredicateAtom::Projection(data) => {
                         Some((bound_predicate.rebind(data).to_poly_trait_ref(self.tcx), obligation))
                     }
-                    ty::PredicateKind::Trait(data, _) => {
+                    ty::PredicateAtom::Trait(data, _) => {
                         Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
                     }
-                    ty::PredicateKind::Subtype(..) => None,
-                    ty::PredicateKind::RegionOutlives(..) => None,
-                    ty::PredicateKind::TypeOutlives(..) => None,
-                    ty::PredicateKind::WellFormed(..) => None,
-                    ty::PredicateKind::ObjectSafe(..) => None,
-                    ty::PredicateKind::ConstEvaluatable(..) => None,
-                    ty::PredicateKind::ConstEquate(..) => None,
+                    ty::PredicateAtom::Subtype(..) => None,
+                    ty::PredicateAtom::RegionOutlives(..) => None,
+                    ty::PredicateAtom::TypeOutlives(..) => None,
+                    ty::PredicateAtom::WellFormed(..) => None,
+                    ty::PredicateAtom::ObjectSafe(..) => None,
+                    ty::PredicateAtom::ConstEvaluatable(..) => None,
+                    ty::PredicateAtom::ConstEquate(..) => None,
                     // N.B., this predicate is created by breaking down a
                     // `ClosureType: FnFoo()` predicate, where
                     // `ClosureType` represents some `Closure`. It can't
@@ -787,8 +787,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // this closure yet; this is exactly why the other
                     // code is looking for a self type of a unresolved
                     // inference variable.
-                    ty::PredicateKind::ClosureKind(..) => None,
-                    ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+                    ty::PredicateAtom::ClosureKind(..) => None,
+                    ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
                 }
             })
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))
@@ -904,7 +904,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // Return directly on cache hit. This is useful to avoid doubly reporting
             // errors with default match binding modes. See #44614.
-            let def = cached_result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id));
+            let def =
+                cached_result.map(|(kind, def_id)| Res::Def(kind, def_id)).unwrap_or(Res::Err);
             return (def, Some(ty), slice::from_ref(&**item_segment));
         }
         let item_name = item_segment.ident;
@@ -931,7 +932,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Write back the new resolution.
         self.write_resolution(hir_id, result);
         (
-            result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
+            result.map(|(kind, def_id)| Res::Def(kind, def_id)).unwrap_or(Res::Err),
             Some(ty),
             slice::from_ref(&**item_segment),
         )
@@ -1163,7 +1164,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
                 match container {
                     ty::TraitContainer(trait_did) => {
-                        callee::check_legal_trait_for_method_call(tcx, span, None, span, trait_did)
+                        callee::check_legal_trait_for_method_call(tcx, span, None, trait_did)
                     }
                     ty::ImplContainer(impl_def_id) => {
                         if segments.len() == 1 {
@@ -1218,25 +1219,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // a problem.
 
         let mut infer_args_for_err = FxHashSet::default();
-
         for &PathSeg(def_id, index) in &path_segs {
             let seg = &segments[index];
             let generics = tcx.generics_of(def_id);
-
             // Argument-position `impl Trait` is treated as a normal generic
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
             if let GenericArgCountResult {
-                correct: Err(GenericArgCountMismatch { reported: Some(_), .. }),
+                correct: Err(GenericArgCountMismatch { reported: Some(ErrorReported), .. }),
                 ..
             } = AstConv::check_generic_arg_count_for_call(
-                tcx,
-                span,
-                def_id,
-                &generics,
-                seg,
-                IsMethodCall::No,
+                tcx, span, &generics, &seg, false, // `is_method_call`
             ) {
                 infer_args_for_err.insert(index);
                 self.set_tainted_by_errors(); // See issue #53251.
@@ -1479,7 +1473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                self.emit_inference_failure_err((**self).body_id, sp, ty.into(), vec![], E0282)
+                self.emit_inference_failure_err((**self).body_id, sp, ty.into(), E0282)
                     .note("type must be known at this point")
                     .emit();
             }

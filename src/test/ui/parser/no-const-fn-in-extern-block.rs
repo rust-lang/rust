@@ -1,4 +1,4 @@
-extern "C" {
+extern {
     const fn foo();
     //~^ ERROR functions in `extern` blocks cannot have qualifiers
     const unsafe fn bar();

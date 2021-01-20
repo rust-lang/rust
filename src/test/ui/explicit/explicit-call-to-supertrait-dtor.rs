@@ -1,10 +1,8 @@
-// run-rustfix
 struct Foo {
     x: isize
 }
 
-#[allow(drop_bounds)]
-trait Bar: Drop {
+trait Bar : Drop {
     fn blah(&self);
 }
 
@@ -22,5 +20,4 @@ impl Bar for Foo {
 
 fn main() {
     let x = Foo { x: 3 };
-    println!("{}", x.x);
 }

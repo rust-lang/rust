@@ -1,4 +1,4 @@
-pub extern "C" fn bar() {
+pub extern fn bar() {
 }
 
 pub const foopy: &'static str = "hi there";

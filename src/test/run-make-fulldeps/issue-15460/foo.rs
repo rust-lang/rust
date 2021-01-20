@@ -1,6 +1,6 @@
 #![crate_type = "dylib"]
 
 #[link(name = "foo", kind = "static")]
-extern "C" {
+extern {
     pub fn foo();
 }

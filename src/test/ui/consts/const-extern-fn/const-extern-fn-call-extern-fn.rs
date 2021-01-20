@@ -4,16 +4,16 @@ extern "C" {
     fn regular_in_block();
 }
 
-const extern "C" fn bar() {
+const extern fn bar() {
     unsafe {
         regular_in_block();
         //~^ ERROR: calls in constant functions
     }
 }
 
-extern "C" fn regular() {}
+extern fn regular() {}
 
-const extern "C" fn foo() {
+const extern fn foo() {
     unsafe {
         regular();
         //~^ ERROR: calls in constant functions

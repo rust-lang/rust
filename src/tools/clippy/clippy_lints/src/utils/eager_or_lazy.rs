@@ -62,7 +62,6 @@ fn identify_some_pure_patterns(expr: &Expr<'_>) -> bool {
         | ExprKind::Type(..)
         | ExprKind::DropTemps(..)
         | ExprKind::Loop(..)
-        | ExprKind::If(..)
         | ExprKind::Match(..)
         | ExprKind::Closure(..)
         | ExprKind::Block(..)

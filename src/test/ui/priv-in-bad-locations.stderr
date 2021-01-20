@@ -1,0 +1,31 @@
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/priv-in-bad-locations.rs:1:1
+   |
+LL | pub extern {
+   | ^^^ `pub` not permitted here because it's implied
+   |
+   = note: place qualifiers on individual foreign items instead
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/priv-in-bad-locations.rs:11:1
+   |
+LL | pub impl B {}
+   | ^^^ `pub` not permitted here because it's implied
+   |
+   = note: place qualifiers on individual impl items instead
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/priv-in-bad-locations.rs:13:1
+   |
+LL | pub impl A for B {
+   | ^^^ `pub` not permitted here because it's implied
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/priv-in-bad-locations.rs:14:5
+   |
+LL |     pub fn foo(&self) {}
+   |     ^^^ `pub` not permitted here because it's implied
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0449`.

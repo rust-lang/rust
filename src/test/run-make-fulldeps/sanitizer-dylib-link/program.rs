@@ -1,4 +1,4 @@
-extern "C" {
+extern {
     fn overflow();
 }
 

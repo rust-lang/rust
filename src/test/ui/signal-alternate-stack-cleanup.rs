@@ -13,11 +13,11 @@ extern crate libc;
 
 use libc::*;
 
-unsafe extern "C" fn signal_handler(signum: c_int, _: *mut siginfo_t, _: *mut c_void) {
+unsafe extern fn signal_handler(signum: c_int, _: *mut siginfo_t, _: *mut c_void) {
     assert_eq!(signum, SIGWINCH);
 }
 
-extern "C" fn send_signal() {
+extern fn send_signal() {
     unsafe {
         raise(SIGWINCH);
     }

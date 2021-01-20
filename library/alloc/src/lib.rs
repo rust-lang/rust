@@ -120,7 +120,6 @@
 #![feature(receiver_trait)]
 #![cfg_attr(bootstrap, feature(min_const_generics))]
 #![feature(min_specialization)]
-#![feature(set_ptr_value)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
 #![feature(staged_api)]
@@ -140,7 +139,6 @@
 #![feature(type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
 #![feature(slice_group_by)]
-#![feature(decl_macro)]
 // Allow testing this library
 
 #[cfg(test)]
@@ -185,15 +183,13 @@ pub mod task;
 mod tests;
 pub mod vec;
 
+#[cfg(not(test))]
+mod std {
+    pub use core::ops; // RangeFull
+}
+
 #[doc(hidden)]
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
 pub mod __export {
     pub use core::format_args;
-
-    /// Force AST node to an expression to improve diagnostics in pattern position.
-    #[rustc_macro_transparency = "semitransparent"]
-    #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
-    pub macro force_expr($e:expr) {
-        $e
-    }
 }

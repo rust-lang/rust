@@ -1,7 +1,7 @@
 error[E0454]: `#[link(name = "")]` given with empty name
   --> $DIR/E0454.rs:1:1
    |
-LL | #[link(name = "")] extern "C" {}
+LL | #[link(name = "")] extern {}
    | ^^^^^^^^^^^^^^^^^^ empty name given
 
 error: aborting due to previous error

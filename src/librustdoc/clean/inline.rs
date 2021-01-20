@@ -121,7 +121,7 @@ crate fn try_inline(
     };
 
     let target_attrs = load_attrs(cx, did);
-    let attrs = box merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
+    let attrs = merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
 
     cx.renderinfo.borrow_mut().inlined.insert(did);
     let what_rustc_thinks = clean::Item::from_def_id_and_parts(did, Some(name), kind, cx);
@@ -358,16 +358,18 @@ crate fn build_impl(
     let impl_item = match did.as_local() {
         Some(did) => {
             let hir_id = tcx.hir().local_def_id_to_hir_id(did);
-            match &tcx.hir().expect_item(hir_id).kind {
-                hir::ItemKind::Impl(impl_) => Some(impl_),
+            match tcx.hir().expect_item(hir_id).kind {
+                hir::ItemKind::Impl { self_ty, ref generics, ref items, .. } => {
+                    Some((self_ty, generics, items))
+                }
                 _ => panic!("`DefID` passed to `build_impl` is not an `impl"),
             }
         }
         None => None,
     };
 
-    let for_ = match &impl_item {
-        Some(impl_) => impl_.self_ty.clean(cx),
+    let for_ = match impl_item {
+        Some((self_ty, _, _)) => self_ty.clean(cx),
         None => tcx.type_of(did).clean(cx),
     };
 
@@ -389,13 +391,9 @@ crate fn build_impl(
 
     let predicates = tcx.explicit_predicates_of(did);
     let (trait_items, generics) = match impl_item {
-        Some(impl_) => (
-            impl_
-                .items
-                .iter()
-                .map(|item| tcx.hir().impl_item(item.id).clean(cx))
-                .collect::<Vec<_>>(),
-            impl_.generics.clean(cx),
+        Some((_, generics, items)) => (
+            items.iter().map(|item| tcx.hir().impl_item(item.id).clean(cx)).collect::<Vec<_>>(),
+            generics.clean(cx),
         ),
         None => (
             tcx.associated_items(did)
@@ -446,7 +444,7 @@ crate fn build_impl(
         }),
         cx,
     );
-    item.attrs = box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
+    item.attrs = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
     debug!("merged_attrs={:?}", item.attrs);
     ret.push(item);
 }
@@ -468,7 +466,7 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                 // Primitive types can't be inlined so generate an import instead.
                 items.push(clean::Item {
                     name: None,
-                    attrs: box clean::Attributes::default(),
+                    attrs: clean::Attributes::default(),
                     source: clean::Span::dummy(),
                     def_id: DefId::local(CRATE_DEF_INDEX),
                     visibility: clean::Public,

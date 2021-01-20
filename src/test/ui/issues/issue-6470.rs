@@ -1,6 +1,7 @@
 // build-pass
 #![allow(dead_code)]
 #![allow(improper_ctypes)]
+
 // pretty-expanded FIXME #23616
 #![allow(non_snake_case)]
 
@@ -9,9 +10,9 @@ pub mod Bar {
         v: isize,
     }
 
-    extern "C" {
+    extern {
         pub fn foo(v: *const Foo) -> Foo;
     }
 }
 
-pub fn main() {}
+pub fn main() { }

@@ -263,9 +263,7 @@ use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
-use crate::alloc::{
-    box_free, handle_alloc_error, AllocError, Allocator, Global, Layout, WriteCloneIntoRaw,
-};
+use crate::alloc::{box_free, handle_alloc_error, AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::string::String;
 use crate::vec::Vec;
@@ -353,26 +351,6 @@ impl<T> Rc<T> {
     /// to upgrade the weak reference before this function returns will result
     /// in a `None` value. However, the weak reference may be cloned freely and
     /// stored for use at a later time.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(arc_new_cyclic)]
-    /// #![allow(dead_code)]
-    /// use std::rc::{Rc, Weak};
-    ///
-    /// struct Gadget {
-    ///     self_weak: Weak<Self>,
-    ///     // ... more fields
-    /// }
-    /// impl Gadget {
-    ///     pub fn new() -> Rc<Self> {
-    ///         Rc::new_cyclic(|self_weak| {
-    ///             Gadget { self_weak: self_weak.clone(), /* ... */ }
-    ///         })
-    ///     }
-    /// }
-    /// ```
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
         // Construct the inner in the "uninitialized" state with a single
@@ -849,8 +827,8 @@ impl<T: ?Sized> Rc<T> {
         let offset = unsafe { data_offset(ptr) };
 
         // Reverse the offset to find the original RcBox.
-        let rc_ptr =
-            unsafe { (ptr as *mut RcBox<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) };
+        let fake_ptr = ptr as *mut RcBox<T>;
+        let rc_ptr = unsafe { set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset)) };
 
         unsafe { Self::from_ptr(rc_ptr) }
     }
@@ -870,7 +848,7 @@ impl<T: ?Sized> Rc<T> {
     pub fn downgrade(this: &Self) -> Weak<T> {
         this.inner().inc_weak();
         // Make sure we do not create a dangling Weak
-        debug_assert!(!is_dangling(this.ptr.as_ptr()));
+        debug_assert!(!is_dangling(this.ptr));
         Weak { ptr: this.ptr }
     }
 
@@ -1059,26 +1037,18 @@ impl<T: Clone> Rc<T> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
         if Rc::strong_count(this) != 1 {
-            // Gotta clone the data, there are other Rcs.
-            // Pre-allocate memory to allow writing the cloned value directly.
-            let mut rc = Self::new_uninit();
-            unsafe {
-                let data = Rc::get_mut_unchecked(&mut rc);
-                (**this).write_clone_into_raw(data.as_mut_ptr());
-                *this = rc.assume_init();
-            }
+            // Gotta clone the data, there are other Rcs
+            *this = Rc::new((**this).clone())
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
-            let mut rc = Self::new_uninit();
             unsafe {
-                let data = Rc::get_mut_unchecked(&mut rc);
-                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
-
-                this.inner().dec_strong();
+                let mut swap = Rc::new(ptr::read(&this.ptr.as_ref().value));
+                mem::swap(this, &mut swap);
+                swap.inner().dec_strong();
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
-                this.inner().dec_weak();
-                ptr::write(this, rc.assume_init());
+                swap.inner().dec_weak();
+                forget(swap);
             }
         }
         // This unsafety is ok because we're guaranteed that the pointer
@@ -1184,7 +1154,7 @@ impl<T: ?Sized> Rc<T> {
             Self::allocate_for_layout(
                 Layout::for_value(&*ptr),
                 |layout| Global.allocate(layout),
-                |mem| (ptr as *mut RcBox<T>).set_ptr_value(mem),
+                |mem| set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>,
             )
         }
     }
@@ -1223,7 +1193,20 @@ impl<T> Rc<[T]> {
             )
         }
     }
+}
 
+/// Sets the data pointer of a `?Sized` raw pointer.
+///
+/// For a slice/trait object, this sets the `data` field and leaves the rest
+/// unchanged. For a sized raw pointer, this simply sets the pointer.
+unsafe fn set_data_ptr<T: ?Sized, U>(mut ptr: *mut T, data: *mut U) -> *mut T {
+    unsafe {
+        ptr::write(&mut ptr as *mut _ as *mut *mut u8, data as *mut u8);
+    }
+    ptr
+}
+
+impl<T> Rc<[T]> {
     /// Copy elements from slice into newly allocated Rc<\[T\]>
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`
@@ -1867,8 +1850,8 @@ impl<T> Weak<T> {
     }
 }
 
-pub(crate) fn is_dangling<T: ?Sized>(ptr: *mut T) -> bool {
-    let address = ptr as *mut () as usize;
+pub(crate) fn is_dangling<T: ?Sized>(ptr: NonNull<T>) -> bool {
+    let address = ptr.as_ptr() as *mut () as usize;
     address == usize::MAX
 }
 
@@ -1879,7 +1862,7 @@ struct WeakInner<'a> {
     strong: &'a Cell<usize>,
 }
 
-impl<T: ?Sized> Weak<T> {
+impl<T> Weak<T> {
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -1909,15 +1892,15 @@ impl<T: ?Sized> Weak<T> {
     pub fn as_ptr(&self) -> *const T {
         let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);
 
-        if is_dangling(ptr) {
-            // If the pointer is dangling, we return the sentinel directly. This cannot be
-            // a valid payload address, as the payload is at least as aligned as RcBox (usize).
-            ptr as *const T
-        } else {
-            // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
-            // The payload may be dropped at this point, and we have to maintain provenance,
-            // so use raw pointer manipulation.
-            unsafe { &raw const (*ptr).value }
+        // SAFETY: we must offset the pointer manually, and said pointer may be
+        // a dangling weak (usize::MAX) if T is sized. data_offset is safe to call,
+        // because we know that a pointer to unsized T was derived from a real
+        // unsized T, as dangling weaks are only created for sized T. wrapping_offset
+        // is used so that we can use the same code path for the non-dangling
+        // unsized case and the potentially dangling sized case.
+        unsafe {
+            let offset = data_offset(ptr as *mut T);
+            set_data_ptr(ptr as *mut T, (ptr as *mut u8).wrapping_offset(offset))
         }
     }
 
@@ -1999,24 +1982,22 @@ impl<T: ?Sized> Weak<T> {
     /// [`new`]: Weak::new
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
+        // SAFETY: data_offset is safe to call, because this pointer originates from a Weak.
         // See Weak::as_ptr for context on how the input pointer is derived.
+        let offset = unsafe { data_offset(ptr) };
 
-        let ptr = if is_dangling(ptr as *mut T) {
-            // This is a dangling Weak.
-            ptr as *mut RcBox<T>
-        } else {
-            // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
-            // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
-            let offset = unsafe { data_offset(ptr) };
-            // Thus, we reverse the offset to get the whole RcBox.
-            // SAFETY: the pointer originated from a Weak, so this offset is safe.
-            unsafe { (ptr as *mut RcBox<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) }
+        // Reverse the offset to find the original RcBox.
+        // SAFETY: we use wrapping_offset here because the pointer may be dangling (but only if T: Sized).
+        let ptr = unsafe {
+            set_data_ptr(ptr as *mut RcBox<T>, (ptr as *mut u8).wrapping_offset(-offset))
         };
 
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
         Weak { ptr: unsafe { NonNull::new_unchecked(ptr) } }
     }
+}
 
+impl<T: ?Sized> Weak<T> {
     /// Attempts to upgrade the `Weak` pointer to an [`Rc`], delaying
     /// dropping of the inner value if successful.
     ///
@@ -2079,7 +2060,7 @@ impl<T: ?Sized> Weak<T> {
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
     fn inner(&self) -> Option<WeakInner<'_>> {
-        if is_dangling(self.ptr.as_ptr()) {
+        if is_dangling(self.ptr) {
             None
         } else {
             // We are careful to *not* create a reference covering the "data" field, as
@@ -2334,19 +2315,21 @@ impl<T: ?Sized> AsRef<T> for Rc<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Rc<T> {}
 
-/// Get the offset within an `RcBox` for the payload behind a pointer.
+/// Get the offset within an `RcBox` for
+/// a payload of type described by a pointer.
 ///
 /// # Safety
 ///
-/// The pointer must point to (and have valid metadata for) a previously
-/// valid instance of T, but the T is allowed to be dropped.
+/// This has the same safety requirements as `align_of_val_raw`. In effect:
+///
+/// - This function is safe for any argument if `T` is sized, and
+/// - if `T` is unsized, the pointer must have appropriate pointer metadata
+///   acquired from the real instance that you are getting this offset for.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
-    // Align the unsized value to the end of the RcBox.
-    // Because RcBox is repr(C), it will always be the last field in memory.
-    // SAFETY: since the only unsized types possible are slices, trait objects,
-    // and extern types, the input safety requirement is currently enough to
-    // satisfy the requirements of align_of_val_raw; this is an implementation
-    // detail of the language that may not be relied upon outside of std.
+    // Align the unsized value to the end of the `RcBox`.
+    // Because it is ?Sized, it will always be the last field in memory.
+    // Note: This is a detail of the current implementation of the compiler,
+    // and is not a guaranteed language detail. Do not rely on it outside of std.
     unsafe { data_offset_align(align_of_val_raw(ptr)) }
 }
 

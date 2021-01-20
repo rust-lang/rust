@@ -3,11 +3,11 @@
 extern crate bar;
 
 #[no_mangle]
-pub extern "C" fn foo() {
+pub extern fn foo() {
     bar::bar();
 }
 
 #[no_mangle]
-pub extern "C" fn bar(a: u32, b: u32) -> u32 {
+pub extern fn bar(a: u32, b: u32) -> u32 {
     a + b
 }

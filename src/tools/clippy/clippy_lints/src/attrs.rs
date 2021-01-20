@@ -10,10 +10,11 @@ use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
 };
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_lint::{CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, SymbolStr};
@@ -156,6 +157,33 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for `allow`/`warn`/`deny`/`forbid` attributes with scoped clippy
+    /// lints and if those lints exist in clippy. If there is an uppercase letter in the lint name
+    /// (not the tool name) and a lowercase version of this lint exists, it will suggest to lowercase
+    /// the lint name.
+    ///
+    /// **Why is this bad?** A lint attribute with a mistyped lint name won't have an effect.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust
+    /// #![warn(if_not_els)]
+    /// #![deny(clippy::All)]
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// #![warn(if_not_else)]
+    /// #![deny(clippy::all)]
+    /// ```
+    pub UNKNOWN_CLIPPY_LINTS,
+    style,
+    "unknown_lints for scoped Clippy lints"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for `warn`/`deny`/`forbid` attributes targeting the whole clippy::restriction category.
     ///
     /// **Why is this bad?** Restriction lints sometimes are in contrast with other lints or even go against idiomatic rust.
@@ -244,6 +272,7 @@ declare_lint_pass!(Attributes => [
     INLINE_ALWAYS,
     DEPRECATED_SEMVER,
     USELESS_ATTRIBUTE,
+    UNKNOWN_CLIPPY_LINTS,
     BLANKET_CLIPPY_RESTRICTION_LINTS,
 ]);
 
@@ -370,7 +399,7 @@ fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
         if let Some(meta_item) = lint.meta_item();
         if meta_item.path.segments.len() > 1;
         if let tool_name = meta_item.path.segments[0].ident;
-        if tool_name.name == sym::clippy;
+        if tool_name.as_str() == "clippy";
         let lint_name = meta_item.path.segments.last().unwrap().ident.name;
         then {
             return Some(lint_name.as_str());
@@ -380,9 +409,48 @@ fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
 }
 
 fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMetaItem]) {
+    let lint_store = cx.lints();
     for lint in items {
         if let Some(lint_name) = extract_clippy_lint(lint) {
-            if lint_name == "restriction" && ident != "allow" {
+            if let CheckLintNameResult::Tool(Err((None, _))) = lint_store.check_lint_name(&lint_name, Some(sym::clippy))
+            {
+                span_lint_and_then(
+                    cx,
+                    UNKNOWN_CLIPPY_LINTS,
+                    lint.span(),
+                    &format!("unknown clippy lint: clippy::{}", lint_name),
+                    |diag| {
+                        let name_lower = lint_name.to_lowercase();
+                        let symbols = lint_store
+                            .get_lints()
+                            .iter()
+                            .map(|l| Symbol::intern(&l.name_lower()))
+                            .collect::<Vec<_>>();
+                        let sugg = find_best_match_for_name(
+                            &symbols,
+                            Symbol::intern(&format!("clippy::{}", name_lower)),
+                            None,
+                        );
+                        if lint_name.chars().any(char::is_uppercase)
+                            && lint_store.find_lints(&format!("clippy::{}", name_lower)).is_ok()
+                        {
+                            diag.span_suggestion(
+                                lint.span(),
+                                "lowercase the lint name",
+                                format!("clippy::{}", name_lower),
+                                Applicability::MachineApplicable,
+                            );
+                        } else if let Some(sugg) = sugg {
+                            diag.span_suggestion(
+                                lint.span(),
+                                "did you mean",
+                                sugg.to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                    },
+                );
+            } else if lint_name == "restriction" && ident != "allow" {
                 span_lint_and_help(
                     cx,
                     BLANKET_CLIPPY_RESTRICTION_LINTS,

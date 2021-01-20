@@ -28,17 +28,16 @@ impl Trait<isize> for S2 {
 
 fn foo<'a>() {
     let _ = S::new::<isize,f64>(1, 1.0);
-    //~^ ERROR this associated function takes 1 type argument but 2 type arguments were supplied
+    //~^ ERROR wrong number of type arguments
 
     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
-    //~^ ERROR this struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+    //~^ ERROR wrong number of lifetime arguments
 
     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
-    //~^ ERROR this associated function takes 1 type argument but 2 type arguments were supplied
+    //~^ ERROR wrong number of type arguments
 
-    let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
-    //~^ ERROR this trait takes 0 lifetime arguments but 1 lifetime argument was supplied
-    //~| ERROR this associated function takes 1 type argument but 2 type arguments were supplied
+    let _: S2 = Trait::<'a,isize>::new::<f64>(1, 1.0);
+    //~^ ERROR wrong number of lifetime arguments
 }
 
 fn main() {}

@@ -6,7 +6,7 @@
 use std::mem::transmute;
 
 mod a {
-    extern "C" {
+    extern {
         pub fn free(x: *const u8);
     }
 }

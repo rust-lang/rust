@@ -72,7 +72,7 @@ impl NonConstOp for FnCallIndirect {
 
 /// A function call where the callee is not marked as `const`.
 #[derive(Debug)]
-pub struct FnCallNonConst;
+pub struct FnCallNonConst(pub DefId);
 impl NonConstOp for FnCallNonConst {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         struct_span_err!(

@@ -1,66 +1,26 @@
-error[E0107]: this struct takes 2 lifetime arguments but only 1 lifetime argument was supplied
+error[E0107]: wrong number of lifetime arguments: expected 2, found 1
   --> $DIR/constructor-lifetime-args.rs:17:5
    |
 LL |     S::<'static>(&0, &0);
-   |     ^   ------- supplied 1 lifetime argument
-   |     |
-   |     expected 2 lifetime arguments
-   |
-note: struct defined here, with 2 lifetime parameters: `'a`, `'b`
-  --> $DIR/constructor-lifetime-args.rs:9:8
-   |
-LL | struct S<'a, 'b>(&'a u8, &'b u8);
-   |        ^ --  --
-help: add missing lifetime argument
-   |
-LL |     S::<'static, 'b>(&0, &0);
-   |                ^^^^
+   |     ^^^^^^^^^^^^ expected 2 lifetime arguments
 
-error[E0107]: this struct takes 2 lifetime arguments but 3 lifetime arguments were supplied
-  --> $DIR/constructor-lifetime-args.rs:19:5
+error[E0107]: wrong number of lifetime arguments: expected 2, found 3
+  --> $DIR/constructor-lifetime-args.rs:19:27
    |
 LL |     S::<'static, 'static, 'static>(&0, &0);
-   |     ^                   --------- help: remove this lifetime argument
-   |     |
-   |     expected 2 lifetime arguments
-   |
-note: struct defined here, with 2 lifetime parameters: `'a`, `'b`
-  --> $DIR/constructor-lifetime-args.rs:9:8
-   |
-LL | struct S<'a, 'b>(&'a u8, &'b u8);
-   |        ^ --  --
+   |                           ^^^^^^^ unexpected lifetime argument
 
-error[E0107]: this enum takes 2 lifetime arguments but only 1 lifetime argument was supplied
-  --> $DIR/constructor-lifetime-args.rs:22:8
+error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+  --> $DIR/constructor-lifetime-args.rs:22:5
    |
 LL |     E::V::<'static>(&0);
-   |        ^   ------- supplied 1 lifetime argument
-   |        |
-   |        expected 2 lifetime arguments
-   |
-note: enum defined here, with 2 lifetime parameters: `'a`, `'b`
-  --> $DIR/constructor-lifetime-args.rs:10:6
-   |
-LL | enum E<'a, 'b> {
-   |      ^ --  --
-help: add missing lifetime argument
-   |
-LL |     E::V::<'static, 'b>(&0);
-   |                   ^^^^
+   |     ^^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
-error[E0107]: this enum takes 2 lifetime arguments but 3 lifetime arguments were supplied
-  --> $DIR/constructor-lifetime-args.rs:24:8
+error[E0107]: wrong number of lifetime arguments: expected 2, found 3
+  --> $DIR/constructor-lifetime-args.rs:24:30
    |
 LL |     E::V::<'static, 'static, 'static>(&0);
-   |        ^                   --------- help: remove this lifetime argument
-   |        |
-   |        expected 2 lifetime arguments
-   |
-note: enum defined here, with 2 lifetime parameters: `'a`, `'b`
-  --> $DIR/constructor-lifetime-args.rs:10:6
-   |
-LL | enum E<'a, 'b> {
-   |      ^ --  --
+   |                              ^^^^^^^ unexpected lifetime argument
 
 error: aborting due to 4 previous errors
 

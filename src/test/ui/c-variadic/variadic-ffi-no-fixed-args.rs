@@ -1,6 +1,6 @@
-extern "C" {
+extern {
     fn foo(...);
-//~^ ERROR C-variadic function must be declared with at least one named argument
+    //~^ ERROR C-variadic function must be declared with at least one named argument
 }
 
 fn main() {}

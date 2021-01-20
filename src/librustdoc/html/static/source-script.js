@@ -8,7 +8,7 @@ function getCurrentFilePath() {
     var parts = window.location.pathname.split("/");
     var rootPathParts = window.rootPath.split("/");
 
-    for (var i = 0, len = rootPathParts.length; i < len; ++i) {
+    for (var i = 0; i < rootPathParts.length; ++i) {
         if (rootPathParts[i] === "..") {
             parts.pop();
         }
@@ -35,14 +35,12 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     };
     name.innerText = elem["name"];
 
-    var i, len;
-
     var children = document.createElement("div");
     children.className = "children";
     var folders = document.createElement("div");
     folders.className = "folders";
     if (elem.dirs) {
-        for (i = 0, len = elem.dirs.length; i < len; ++i) {
+        for (var i = 0; i < elem.dirs.length; ++i) {
             if (createDirEntry(elem.dirs[i], folders, fullPath, currentFile,
                                hasFoundFile) === true) {
                 addClass(name, "expand");
@@ -55,7 +53,7 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     var files = document.createElement("div");
     files.className = "files";
     if (elem.files) {
-        for (i = 0, len = elem.files.length; i < len; ++i) {
+        for (i = 0; i < elem.files.length; ++i) {
             var file = document.createElement("a");
             file.innerText = elem.files[i];
             file.href = window.rootPath + "src/" + fullPath + elem.files[i] + ".html";

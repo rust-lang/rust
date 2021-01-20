@@ -526,7 +526,7 @@ impl MetaItemKind {
     fn list_from_tokens(tokens: TokenStream) -> Option<MetaItemKind> {
         let mut tokens = tokens.into_trees().peekable();
         let mut result = Vec::new();
-        while tokens.peek().is_some() {
+        while let Some(..) = tokens.peek() {
             let item = NestedMetaItem::from_tokens(&mut tokens)?;
             result.push(item);
             match tokens.next() {

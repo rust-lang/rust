@@ -63,7 +63,7 @@ impl MissingDoc {
             if let Some(meta) = list.get(0);
             if let Some(name) = meta.ident();
             then {
-                name.name == sym::include
+                name.as_str() == "include"
             } else {
                 false
             }

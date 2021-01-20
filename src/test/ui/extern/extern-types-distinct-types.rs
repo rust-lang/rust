@@ -1,6 +1,6 @@
 #![feature(extern_types)]
 
-extern "C" {
+extern {
     type A;
     type B;
 }
@@ -9,4 +9,4 @@ fn foo(r: &A) -> &B {
     r //~ ERROR mismatched types
 }
 
-fn main() {}
+fn main() { }

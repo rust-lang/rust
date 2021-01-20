@@ -139,11 +139,6 @@ crate enum ExprKind<'tcx> {
     Box {
         value: ExprRef<'tcx>,
     },
-    If {
-        cond: ExprRef<'tcx>,
-        then: ExprRef<'tcx>,
-        else_opt: Option<ExprRef<'tcx>>,
-    },
     Call {
         ty: Ty<'tcx>,
         fun: ExprRef<'tcx>,

@@ -61,7 +61,7 @@ mod bar {
         pub fn bar() {}
     }
 
-    extern "C" {
+    extern {
         fn epriv();
         pub fn epub();
     }

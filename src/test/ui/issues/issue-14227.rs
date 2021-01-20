@@ -1,4 +1,4 @@
-extern "C" {
+extern {
     pub static symbol: u32;
 }
 static CRASH: u32 = symbol;

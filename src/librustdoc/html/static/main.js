@@ -1,5 +1,5 @@
 // From rust:
-/* global ALIASES */
+/* global ALIASES, currentCrate, rootPath */
 
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
@@ -40,21 +40,6 @@ if (!DOMTokenList.prototype.remove) {
     };
 }
 
-(function () {
-    var rustdocVars = document.getElementById("rustdoc-vars");
-    if (rustdocVars) {
-        window.rootPath = rustdocVars.attributes["data-root-path"].value;
-        window.currentCrate = rustdocVars.attributes["data-current-crate"].value;
-    }
-    var sidebarVars = document.getElementById("sidebar-vars");
-    if (sidebarVars) {
-        window.sidebarCurrent = {
-            name: sidebarVars.attributes["data-name"].value,
-            ty: sidebarVars.attributes["data-ty"].value,
-            relpath: sidebarVars.attributes["data-relpath"].value,
-        };
-    }
-}());
 
 // Gets the human-readable string for the virtual-key code of the
 // given KeyboardEvent, ev.
@@ -580,7 +565,7 @@ function defocusSearchBar() {
                 var i, match,
                     url = document.location.href,
                     stripped = "",
-                    len = window.rootPath.match(/\.\.\//g).length + 1;
+                    len = rootPath.match(/\.\.\//g).length + 1;
 
                 for (i = 0; i < len; ++i) {
                     match = url.match(/\/[^\/]*$/);
@@ -663,7 +648,8 @@ function defocusSearchBar() {
          */
         function execQuery(query, searchWords, filterCrates) {
             function itemTypeFromName(typename) {
-                for (var i = 0, len = itemTypes.length; i < len; ++i) {
+                var length = itemTypes.length;
+                for (var i = 0; i < length; ++i) {
                     if (itemTypes[i] === typename) {
                         return i;
                     }
@@ -681,7 +667,8 @@ function defocusSearchBar() {
 
             function transformResults(results, isType) {
                 var out = [];
-                for (var i = 0, len = results.length; i < len; ++i) {
+                var length = results.length;
+                for (var i = 0; i < length; ++i) {
                     if (results[i].id > -1) {
                         var obj = searchIndex[results[i].id];
                         obj.lev = results[i].lev;
@@ -710,11 +697,11 @@ function defocusSearchBar() {
                     }
                 }
                 results = ar;
-                var i, len, result;
-                for (i = 0, len = results.length; i < len; ++i) {
-                    result = results[i];
-                    result.word = searchWords[result.id];
-                    result.item = searchIndex[result.id] || {};
+                var i;
+                var nresults = results.length;
+                for (i = 0; i < nresults; ++i) {
+                    results[i].word = searchWords[results[i].id];
+                    results[i].item = searchIndex[results[i].id] || {};
                 }
                 // if there are no results then return to default and fail
                 if (results.length === 0) {
@@ -788,7 +775,8 @@ function defocusSearchBar() {
                     return 0;
                 });
 
-                for (i = 0, len = results.length; i < len; ++i) {
+                var length = results.length;
+                for (i = 0; i < length; ++i) {
                     var result = results[i];
 
                     // this validation does not make sense when searching by types
@@ -845,10 +833,11 @@ function defocusSearchBar() {
                         var vlength = val.generics.length;
                         for (var y = 0; y < vlength; ++y) {
                             var lev = { pos: -1, lev: MAX_LEV_DISTANCE + 1};
+                            var elength = elems.length;
                             var firstGeneric = getObjectFromId(val.generics[y]).name;
-                            for (var x = 0, elength = elems.length; x < elength; ++x) {
+                            for (var x = 0; x < elength; ++x) {
                                 var tmp_lev = levenshtein(getObjectFromId(elems[x]).name,
-                                                                          firstGeneric);
+                                                          firstGeneric);
                                 if (tmp_lev < lev.lev) {
                                     lev.lev = tmp_lev;
                                     lev.pos = x;
@@ -872,7 +861,7 @@ function defocusSearchBar() {
             // Check for type name and type generics (if any).
             function checkType(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
-                var len, x, y, e_len, firstGeneric;
+                var x;
                 if (obj[NAME] === val.name) {
                     if (literalSearch === true) {
                         if (val.generics && val.generics.length !== 0) {
@@ -881,12 +870,10 @@ function defocusSearchBar() {
                                 var elems = obj[GENERICS_DATA].slice(0);
                                 var allFound = true;
 
-                                len = val.generics.length;
-                                for (y = 0; allFound === true && y < len; ++y) {
+                                for (var y = 0; allFound === true && y < val.generics.length; ++y) {
                                     allFound = false;
-                                    firstGeneric = getObjectFromId(val.generics[y]).name;
-                                    e_len = elems.length;
-                                    for (x = 0; allFound === false && x < e_len; ++x) {
+                                    var firstGeneric = getObjectFromId(val.generics[y]).name;
+                                    for (x = 0; allFound === false && x < elems.length; ++x) {
                                         allFound = getObjectFromId(elems[x]).name === firstGeneric;
                                     }
                                     if (allFound === true) {
@@ -916,10 +903,12 @@ function defocusSearchBar() {
                 // Names didn't match so let's check if one of the generic types could.
                 if (literalSearch === true) {
                      if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
-                        return obj[GENERICS_DATA].some(
-                            function(name) {
-                                return name === val.name;
-                            });
+                        var length = obj[GENERICS_DATA].length;
+                        for (x = 0; x < length; ++x) {
+                            if (obj[GENERICS_DATA][x] === val.name) {
+                                return true;
+                            }
+                        }
                     }
                     return false;
                 }
@@ -976,7 +965,7 @@ function defocusSearchBar() {
                     if (typeof ret[0] === "string") {
                         ret = [ret];
                     }
-                    for (var x = 0, len = ret.length; x < len; ++x) {
+                    for (var x = 0; x < ret.length; ++x) {
                         var tmp = ret[x];
                         if (typePassesFilter(typeFilter, tmp[1]) === false) {
                             continue;
@@ -1083,22 +1072,23 @@ function defocusSearchBar() {
                 // aliases to be before the others in the displayed results.
                 var aliases = [];
                 var crateAliases = [];
+                var i;
                 if (filterCrates !== undefined) {
                     if (ALIASES[filterCrates] && ALIASES[filterCrates][query.search]) {
-                        var query_aliases = ALIASES[filterCrates][query.search];
-                        var len = query_aliases.length;
-                        for (var i = 0; i < len; ++i) {
-                            aliases.push(createAliasFromItem(searchIndex[query_aliases[i]]));
+                        for (i = 0; i < ALIASES[filterCrates][query.search].length; ++i) {
+                            aliases.push(
+                                createAliasFromItem(
+                                    searchIndex[ALIASES[filterCrates][query.search][i]]));
                         }
                     }
                 } else {
                     Object.keys(ALIASES).forEach(function(crate) {
                         if (ALIASES[crate][query.search]) {
                             var pushTo = crate === window.currentCrate ? crateAliases : aliases;
-                            var query_aliases = ALIASES[crate][query.search];
-                            var len = query_aliases.length;
-                            for (var i = 0; i < len; ++i) {
-                                pushTo.push(createAliasFromItem(searchIndex[query_aliases[i]]));
+                            for (i = 0; i < ALIASES[crate][query.search].length; ++i) {
+                                pushTo.push(
+                                    createAliasFromItem(
+                                        searchIndex[ALIASES[crate][query.search][i]]));
                             }
                         }
                     });
@@ -1133,12 +1123,11 @@ function defocusSearchBar() {
 
             // quoted values mean literal search
             var nSearchWords = searchWords.length;
-            var i, it;
+            var i;
             var ty;
             var fullId;
             var returned;
             var in_args;
-            var len;
             if ((val.charAt(0) === "\"" || val.charAt(0) === "'") &&
                 val.charAt(val.length - 1) === val.charAt(0))
             {
@@ -1186,7 +1175,7 @@ function defocusSearchBar() {
                 var input = parts[0];
                 // sort inputs so that order does not matter
                 var inputs = input.split(",").map(trimmer).sort();
-                for (i = 0, len = inputs.length; i < len; ++i) {
+                for (i = 0; i < inputs.length; ++i) {
                     inputs[i] = extractGenerics(inputs[i]);
                 }
                 var output = extractGenerics(parts[1]);
@@ -1211,7 +1200,7 @@ function defocusSearchBar() {
                             is_module = true;
                         } else {
                             var allFound = true;
-                            for (it = 0, len = inputs.length; allFound === true && it < len; it++) {
+                            for (var it = 0; allFound === true && it < inputs.length; it++) {
                                 allFound = checkType(type, inputs[it], true);
                             }
                             in_args = allFound;
@@ -1254,7 +1243,7 @@ function defocusSearchBar() {
 
                 var paths = valLower.split("::");
                 var j;
-                for (j = 0, len = paths.length; j < len; ++j) {
+                for (j = 0; j < paths.length; ++j) {
                     if (paths[j] === "") {
                         paths.splice(j, 1);
                         j -= 1;
@@ -1376,7 +1365,7 @@ function defocusSearchBar() {
          * @return {[boolean]}       [Whether the result is valid or not]
          */
         function validateResult(name, path, keys, parent) {
-            for (var i = 0, len = keys.length; i < len; ++i) {
+            for (var i = 0; i < keys.length; ++i) {
                 // each check is for validation so we negate the conditions and invalidate
                 if (!(
                     // check for an exact name match
@@ -1519,15 +1508,15 @@ function defocusSearchBar() {
 
             if (type === "mod") {
                 displayPath = path + "::";
-                href = window.rootPath + path.replace(/::/g, "/") + "/" +
+                href = rootPath + path.replace(/::/g, "/") + "/" +
                        name + "/index.html";
             } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
-                href = window.rootPath + path.replace(/::/g, "/") +
+                href = rootPath + path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             } else if (type === "externcrate") {
                 displayPath = "";
-                href = window.rootPath + name + "/index.html";
+                href = rootPath + name + "/index.html";
             } else if (item.parent !== undefined) {
                 var myparent = item.parent;
                 var anchor = "#" + type + "." + name;
@@ -1550,13 +1539,13 @@ function defocusSearchBar() {
                 } else {
                     displayPath = path + "::" + myparent.name + "::";
                 }
-                href = window.rootPath + path.replace(/::/g, "/") +
+                href = rootPath + path.replace(/::/g, "/") +
                        "/" + pageType +
                        "." + pageName +
                        ".html" + anchor;
             } else {
                 displayPath = item.path + "::";
-                href = window.rootPath + item.path.replace(/::/g, "/") +
+                href = rootPath + item.path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             }
             return [displayPath, href];
@@ -1665,21 +1654,6 @@ function defocusSearchBar() {
             var ret_in_args = addTab(results.in_args, query, false);
             var ret_returned = addTab(results.returned, query, false);
 
-            // Navigate to the relevant tab if the current tab is empty, like in case users search
-            // for "-> String". If they had selected another tab previously, they have to click on
-            // it again.
-            if ((currentTab === 0 && ret_others[1] === 0) ||
-                    (currentTab === 1 && ret_in_args[1] === 0) ||
-                    (currentTab === 2 && ret_returned[1] === 0)) {
-                if (ret_others[1] !== 0) {
-                    currentTab = 0;
-                } else if (ret_in_args[1] !== 0) {
-                    currentTab = 1;
-                } else if (ret_returned[1] !== 0) {
-                    currentTab = 2;
-                }
-            }
-
             var output = "<h1>Results for " + escape(query.query) +
                 (query.type ? " (type: " + escape(query.type) + ")" : "") + "</h1>" +
                 "<div id=\"titles\">" +
@@ -1712,7 +1686,7 @@ function defocusSearchBar() {
             function getSmallest(arrays, positions, notDuplicates) {
                 var start = null;
 
-                for (var it = 0, len = positions.length; it < len; ++it) {
+                for (var it = 0; it < positions.length; ++it) {
                     if (arrays[it].length > positions[it] &&
                         (start === null || start > arrays[it][positions[it]].lev) &&
                         !notDuplicates[arrays[it][positions[it]].fullPath]) {
@@ -1727,7 +1701,7 @@ function defocusSearchBar() {
                 var positions = [];
                 var notDuplicates = {};
 
-                for (var x = 0, arrays_len = arrays.length; x < arrays_len; ++x) {
+                for (var x = 0; x < arrays.length; ++x) {
                     positions.push(0);
                 }
                 while (ret.length < MAX_RESULTS) {
@@ -1736,7 +1710,7 @@ function defocusSearchBar() {
                     if (smallest === null) {
                         break;
                     }
-                    for (x = 0; x < arrays_len && ret.length < MAX_RESULTS; ++x) {
+                    for (x = 0; x < arrays.length && ret.length < MAX_RESULTS; ++x) {
                         if (arrays[x].length > positions[x] &&
                                 arrays[x][positions[x]].lev === smallest &&
                                 !notDuplicates[arrays[x][positions[x]].fullPath]) {
@@ -1756,7 +1730,7 @@ function defocusSearchBar() {
                 "others": [],
             };
 
-            for (var i = 0, len = queries.length; i < len; ++i) {
+            for (var i = 0; i < queries.length; ++i) {
                 query = queries[i].trim();
                 if (query.length !== 0) {
                     var tmp = execQuery(getQuery(query), searchWords, filterCrates);
@@ -1910,7 +1884,7 @@ function defocusSearchBar() {
                             ALIASES[crate][alias_name] = [];
                         }
                         local_aliases = aliases[alias_name];
-                        for (j = 0, len = local_aliases.length; j < len; ++j) {
+                        for (j = 0; j < local_aliases.length; ++j) {
                             ALIASES[crate][alias_name].push(local_aliases[j] + currentIndex);
                         }
                     }
@@ -2003,7 +1977,7 @@ function defocusSearchBar() {
         startSearch();
 
         // Draw a convenient sidebar of known crates if we have a listing
-        if (window.rootPath === "../" || window.rootPath === "./") {
+        if (rootPath === "../" || rootPath === "./") {
             var sidebar = document.getElementsByClassName("sidebar-elems")[0];
             if (sidebar) {
                 var div = document.createElement("div");
@@ -2022,11 +1996,11 @@ function defocusSearchBar() {
                 crates.sort();
                 for (var i = 0; i < crates.length; ++i) {
                     var klass = "crate";
-                    if (window.rootPath !== "./" && crates[i] === window.currentCrate) {
+                    if (rootPath !== "./" && crates[i] === window.currentCrate) {
                         klass += " current";
                     }
                     var link = document.createElement("a");
-                    link.href = window.rootPath + crates[i] + "/index.html";
+                    link.href = rootPath + crates[i] + "/index.html";
                     // The summary in the search index has HTML, so we need to
                     // dynamically render it as plaintext.
                     link.title = convertHTMLToPlaintext(rawSearchIndex[crates[i]].doc);
@@ -2078,7 +2052,8 @@ function defocusSearchBar() {
             div.appendChild(h3);
             var ul = document.createElement("ul");
 
-            for (var i = 0, len = filtered.length; i < len; ++i) {
+            var length = filtered.length;
+            for (var i = 0; i < length; ++i) {
                 var item = filtered[i];
                 var name = item[0];
                 var desc = item[1]; // can be null
@@ -2147,18 +2122,21 @@ function defocusSearchBar() {
         }
 
         var libs = Object.getOwnPropertyNames(imp);
-        for (var i = 0, llength = libs.length; i < llength; ++i) {
-            if (libs[i] === window.currentCrate) { continue; }
+        var llength = libs.length;
+        for (var i = 0; i < llength; ++i) {
+            if (libs[i] === currentCrate) { continue; }
             var structs = imp[libs[i]];
 
+            var slength = structs.length;
             struct_loop:
-            for (var j = 0, slength = structs.length; j < slength; ++j) {
+            for (var j = 0; j < slength; ++j) {
                 var struct = structs[j];
 
                 var list = struct.synthetic ? synthetic_implementors : implementors;
 
                 if (struct.synthetic) {
-                    for (var k = 0, stlength = struct.types.length; k < stlength; k++) {
+                    var stlength = struct.types.length;
+                    for (var k = 0; k < stlength; k++) {
                         if (inlined_types.has(struct.types[k])) {
                             continue struct_loop;
                         }
@@ -2173,7 +2151,7 @@ function defocusSearchBar() {
                     var href = elem.getAttribute("href");
 
                     if (href && href.indexOf("http") !== 0) {
-                        elem.setAttribute("href", window.rootPath + href);
+                        elem.setAttribute("href", rootPath + href);
                     }
                 });
 
@@ -2875,7 +2853,7 @@ function defocusSearchBar() {
             return 0;
         });
         var savedCrate = getSettingValue("saved-filter-crate");
-        for (var i = 0, len = crates_text.length; i < len; ++i) {
+        for (var i = 0; i < crates_text.length; ++i) {
             var option = document.createElement("option");
             option.value = crates_text[i];
             option.innerText = crates_text[i];

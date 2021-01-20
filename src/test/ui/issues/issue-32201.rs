@@ -1,4 +1,4 @@
-extern "C" {
+extern {
     fn foo(a: i32, ...);
 }
 

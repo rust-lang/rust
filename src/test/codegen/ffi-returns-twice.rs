@@ -4,7 +4,7 @@
 
 pub fn bar() { unsafe { foo() } }
 
-extern "C" {
+extern {
     // CHECK-LABEL: declare void @foo()
     // CHECK-SAME: [[ATTRS:#[0-9]+]]
     // CHECK-DAG: attributes [[ATTRS]] = { {{.*}}returns_twice{{.*}} }

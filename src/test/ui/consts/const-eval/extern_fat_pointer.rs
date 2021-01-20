@@ -2,7 +2,7 @@
 
 #![feature(extern_types)]
 
-extern "C" {
+extern {
     type Opaque;
 }
 

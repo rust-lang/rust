@@ -1,6 +1,6 @@
 fn main() {}
 
-extern "C" {
+extern {
     /// hi
     //~^ ERROR found a documentation comment that doesn't document anything
 }

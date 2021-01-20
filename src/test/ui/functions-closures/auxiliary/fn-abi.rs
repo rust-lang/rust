@@ -1,2 +1,2 @@
 #[no_mangle]
-pub extern "C" fn foo() {}
+pub extern fn foo() {}

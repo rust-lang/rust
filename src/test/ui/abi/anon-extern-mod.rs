@@ -7,7 +7,7 @@
 extern crate libc;
 
 #[link(name = "rust_test_helpers", kind = "static")]
-extern "C" {
+extern {
     fn rust_get_test_int() -> libc::intptr_t;
 }
 

@@ -5,7 +5,6 @@ use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::Symbol;
 
 use std::array::IntoIter;
 use std::fmt::Debug;
@@ -35,7 +34,7 @@ pub enum CtorKind {
 #[derive(HashStable_Generic)]
 pub enum NonMacroAttrKind {
     /// Single-segment attribute defined by the language (`#[inline]`)
-    Builtin(Symbol),
+    Builtin,
     /// Multi-segment custom attribute living in a "tool module" (`#[rustfmt::skip]`).
     Tool,
     /// Single-segment custom attribute registered by a derive macro (`#[serde(default)]`).
@@ -372,7 +371,7 @@ impl CtorKind {
 impl NonMacroAttrKind {
     pub fn descr(self) -> &'static str {
         match self {
-            NonMacroAttrKind::Builtin(..) => "built-in attribute",
+            NonMacroAttrKind::Builtin => "built-in attribute",
             NonMacroAttrKind::Tool => "tool attribute",
             NonMacroAttrKind::DeriveHelper | NonMacroAttrKind::DeriveHelperCompat => {
                 "derive helper attribute"
@@ -394,7 +393,7 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::Tool
             | NonMacroAttrKind::DeriveHelper
             | NonMacroAttrKind::DeriveHelperCompat => true,
-            NonMacroAttrKind::Builtin(..) | NonMacroAttrKind::Registered => false,
+            NonMacroAttrKind::Builtin | NonMacroAttrKind::Registered => false,
         }
     }
 }

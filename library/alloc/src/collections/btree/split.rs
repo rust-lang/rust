@@ -1,6 +1,6 @@
 use super::map::MIN_LEN;
 use super::node::{ForceResult::*, Root};
-use super::search::SearchResult::*;
+use super::search::{search_node, SearchResult::*};
 use core::borrow::Borrow;
 
 impl<K, V> Root<K, V> {
@@ -21,7 +21,7 @@ impl<K, V> Root<K, V> {
             let mut right_node = right_root.borrow_mut();
 
             loop {
-                let mut split_edge = match left_node.search_node(key) {
+                let mut split_edge = match search_node(left_node, key) {
                     // key is going to the right tree
                     Found(kv) => kv.left_edge(),
                     GoDown(edge) => edge,
@@ -66,7 +66,7 @@ impl<K, V> Root<K, V> {
                 let mut last_kv = node.last_kv().consider_for_balancing();
 
                 if last_kv.can_merge() {
-                    cur_node = last_kv.merge_tracking_child();
+                    cur_node = last_kv.merge(None).into_node();
                 } else {
                     let right_len = last_kv.right_child_len();
                     // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
@@ -93,7 +93,7 @@ impl<K, V> Root<K, V> {
                 let mut first_kv = node.first_kv().consider_for_balancing();
 
                 if first_kv.can_merge() {
-                    cur_node = first_kv.merge_tracking_child();
+                    cur_node = first_kv.merge(None).into_node();
                 } else {
                     let left_len = first_kv.left_child_len();
                     // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.

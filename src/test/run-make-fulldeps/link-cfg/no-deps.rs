@@ -2,7 +2,7 @@
 
 #[link(name = "return1", cfg(foo))]
 #[link(name = "return2", cfg(bar))]
-extern "C" {
+extern {
     fn my_function() -> i32;
 }
 

@@ -2,9 +2,10 @@
 #![allow(dead_code)]
 // Test that pointers to extern types can be cast from/to usize,
 // despite being !Sized.
+
 #![feature(extern_types)]
 
-extern "C" {
+extern {
     type A;
 }
 

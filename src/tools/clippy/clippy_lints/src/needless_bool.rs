@@ -3,7 +3,9 @@
 //! This lint is **warn** by default
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{is_expn_of, parent_node_is_if_expr, snippet_with_applicability, span_lint, span_lint_and_sugg};
+use crate::utils::{
+    higher, is_expn_of, parent_node_is_if_expr, snippet_with_applicability, span_lint, span_lint_and_sugg,
+};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
@@ -69,7 +71,7 @@ declare_lint_pass!(NeedlessBool => [NEEDLESS_BOOL]);
 impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use self::Expression::{Bool, RetBool};
-        if let ExprKind::If(ref pred, ref then_block, Some(ref else_expr)) = e.kind {
+        if let Some((ref pred, ref then_block, Some(ref else_expr))) = higher::if_block(&e) {
             let reduce = |ret, not| {
                 let mut applicability = Applicability::MachineApplicable;
                 let snip = Sugg::hir_with_applicability(cx, pred, "<predicate>", &mut applicability);

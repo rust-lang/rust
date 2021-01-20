@@ -1,6 +1,6 @@
 // Check that the visibility modifier is included in the span of foreign items.
 
-extern "C" {
+extern {
   fn foo();
 
   pub //~ ERROR the name `foo` is defined multiple times

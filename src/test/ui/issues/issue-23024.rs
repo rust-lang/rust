@@ -8,6 +8,6 @@ fn main()
     vfnfer.push(box h);
     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
     //~^ ERROR the precise format of `Fn`-family traits'
-    //~| ERROR missing generics for trait `Fn`
+    //~| ERROR wrong number of type arguments: expected 1, found 0 [E0107]
     //~| ERROR the value of the associated type `Output` (from trait `FnOnce`)
 }

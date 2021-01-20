@@ -692,17 +692,11 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             check_enum(tcx, it.span, &enum_definition.variants, it.hir_id);
         }
         hir::ItemKind::Fn(..) => {} // entirely within check_item_body
-        hir::ItemKind::Impl(ref impl_) => {
+        hir::ItemKind::Impl { ref items, .. } => {
             debug!("ItemKind::Impl {} with id {}", it.ident, it.hir_id);
             let impl_def_id = tcx.hir().local_def_id(it.hir_id);
             if let Some(impl_trait_ref) = tcx.impl_trait_ref(impl_def_id) {
-                check_impl_items_against_trait(
-                    tcx,
-                    it.span,
-                    impl_def_id,
-                    impl_trait_ref,
-                    &impl_.items,
-                );
+                check_impl_items_against_trait(tcx, it.span, impl_def_id, impl_trait_ref, items);
                 let trait_def_id = impl_trait_ref.def_id;
                 check_on_unimplemented(tcx, trait_def_id, it);
             }
@@ -1259,8 +1253,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: &'tcx ty
         let layout = tcx.layout_of(param_env.and(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
-        let zst = layout.map_or(false, |layout| layout.is_zst());
-        let align1 = layout.map_or(false, |layout| layout.align.abi.bytes() == 1);
+        let zst = layout.map(|layout| layout.is_zst()).unwrap_or(false);
+        let align1 = layout.map(|layout| layout.align.abi.bytes() == 1).unwrap_or(false);
         (span, zst, align1)
     });
 

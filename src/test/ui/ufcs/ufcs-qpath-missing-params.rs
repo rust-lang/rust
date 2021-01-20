@@ -12,9 +12,5 @@ impl<'a> IntoCow<'a, str> for String {
 
 fn main() {
     <String as IntoCow>::into_cow("foo".to_string());
-    //~^ ERROR missing generics for trait `IntoCow`
-
-    <String as IntoCow>::into_cow::<str>("foo".to_string());
-    //~^ ERROR missing generics for trait `IntoCow`
-    //~| ERROR this associated function takes 0 type arguments but 1 type argument was supplied
+    //~^ ERROR wrong number of type arguments: expected 1, found 0
 }

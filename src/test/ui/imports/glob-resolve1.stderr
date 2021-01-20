@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `fpriv` in this scope
-  --> $DIR/glob-resolve1.rs:26:5
+  --> $DIR/glob-resolve1.rs:22:5
    |
 LL |     fpriv();
    |     ^^^^^ not found in this scope
@@ -10,7 +10,7 @@ LL | use bar::fpriv;
    |
 
 error[E0425]: cannot find function `epriv` in this scope
-  --> $DIR/glob-resolve1.rs:27:5
+  --> $DIR/glob-resolve1.rs:23:5
    |
 LL |     epriv();
    |     ^^^^^ not found in this scope
@@ -21,25 +21,23 @@ LL | use bar::epriv;
    |
 
 error[E0423]: expected value, found enum `B`
-  --> $DIR/glob-resolve1.rs:28:5
+  --> $DIR/glob-resolve1.rs:24:5
    |
 LL |     B;
    |     ^
    |
 note: the enum is defined here
-  --> $DIR/glob-resolve1.rs:14:5
+  --> $DIR/glob-resolve1.rs:12:5
    |
-LL | /     pub enum B {
-LL | |         B1,
-LL | |     }
-   | |_____^
+LL |     pub enum B { B1 }
+   |     ^^^^^^^^^^^^^^^^^
 help: you might have meant to use the following enum variant
    |
 LL |     B::B1;
    |     ^^^^^
 
 error[E0425]: cannot find value `C` in this scope
-  --> $DIR/glob-resolve1.rs:29:5
+  --> $DIR/glob-resolve1.rs:25:5
    |
 LL |     C;
    |     ^ not found in this scope
@@ -50,7 +48,7 @@ LL | use bar::C;
    |
 
 error[E0425]: cannot find function `import` in this scope
-  --> $DIR/glob-resolve1.rs:30:5
+  --> $DIR/glob-resolve1.rs:26:5
    |
 LL |     import();
    |     ^^^^^^ not found in this scope
@@ -61,9 +59,9 @@ LL | use other::import;
    |
 
 error[E0412]: cannot find type `A` in this scope
-  --> $DIR/glob-resolve1.rs:32:11
+  --> $DIR/glob-resolve1.rs:28:11
    |
-LL |     pub enum B {
+LL |     pub enum B { B1 }
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<A>();
@@ -79,9 +77,9 @@ LL | use bar::A;
    |
 
 error[E0412]: cannot find type `C` in this scope
-  --> $DIR/glob-resolve1.rs:33:11
+  --> $DIR/glob-resolve1.rs:29:11
    |
-LL |     pub enum B {
+LL |     pub enum B { B1 }
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<C>();
@@ -97,9 +95,9 @@ LL | use bar::C;
    |
 
 error[E0412]: cannot find type `D` in this scope
-  --> $DIR/glob-resolve1.rs:34:11
+  --> $DIR/glob-resolve1.rs:30:11
    |
-LL |     pub enum B {
+LL |     pub enum B { B1 }
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<D>();

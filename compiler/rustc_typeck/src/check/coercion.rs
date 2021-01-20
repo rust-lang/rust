@@ -583,9 +583,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         while !queue.is_empty() {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
-            let bound_predicate = obligation.predicate.kind();
+            let bound_predicate = obligation.predicate.bound_atom();
             let trait_pred = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(trait_pred, _)
+                ty::PredicateAtom::Trait(trait_pred, _)
                     if traits.contains(&trait_pred.def_id()) =>
                 {
                     if unsize_did == trait_pred.def_id() {
@@ -1443,14 +1443,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 &mut err, expr, expected, found, cause.span, blk_id,
             );
             let parent = fcx.tcx.hir().get(parent_id);
-            if let (Some(cond_expr), true, false) = (
-                fcx.tcx.hir().get_if_cause(expr.hir_id),
+            if let (Some(match_expr), true, false) = (
+                fcx.tcx.hir().get_match_if_cause(expr.hir_id),
                 expected.is_unit(),
                 pointing_at_return_type,
             ) {
-                if cond_expr.span.desugaring_kind().is_none() {
-                    err.span_label(cond_expr.span, "expected this to be `()`");
-                    fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                if match_expr.span.desugaring_kind().is_none() {
+                    err.span_label(match_expr.span, "expected this to be `()`");
+                    fcx.suggest_semicolon_at_end(match_expr.span, &mut err);
                 }
             }
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))

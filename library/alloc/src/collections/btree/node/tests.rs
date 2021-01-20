@@ -79,8 +79,10 @@ fn test_splitpoint() {
 #[test]
 fn test_partial_cmp_eq() {
     let mut root1 = NodeRef::new_leaf();
-    root1.borrow_mut().push(1, ());
-    let mut root1 = NodeRef::new_internal(root1.forget_type()).forget_type();
+    let mut leaf1 = root1.borrow_mut();
+    leaf1.push(1, ());
+    let mut root1 = root1.forget_type();
+    root1.push_internal_level();
     let root2 = Root::new();
     root1.reborrow().assert_back_pointers();
     root2.reborrow().assert_back_pointers();

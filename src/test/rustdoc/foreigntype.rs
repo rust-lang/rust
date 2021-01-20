@@ -1,6 +1,6 @@
 #![feature(extern_types)]
 
-extern "C" {
+extern {
     // @has foreigntype/foreigntype.ExtType.html
     pub type ExtType;
 }

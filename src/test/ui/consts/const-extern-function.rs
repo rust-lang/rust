@@ -1,7 +1,7 @@
 // run-pass
 #![allow(non_upper_case_globals)]
 
-extern "C" fn foopy() {}
+extern fn foopy() {}
 
 static f: extern "C" fn() = foopy;
 static s: S = S { f: foopy };

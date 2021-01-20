@@ -223,6 +223,13 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
         // Check for raw pointer `Deref`.
         for (base, proj) in place.iter_projections() {
             if proj == ProjectionElem::Deref {
+                let source_info = self.source_info; // Backup source_info so we can restore it later.
+                if base.projection.is_empty() && decl.internal {
+                    // Internal locals are used in the `move_val_init` desugaring.
+                    // We want to check unsafety against the source info of the
+                    // desugaring, rather than the source info of the RHS.
+                    self.source_info = self.body.local_decls[place.local].source_info;
+                }
                 let base_ty = base.ty(self.body, self.tcx).ty;
                 if base_ty.is_unsafe_ptr() {
                     self.require_unsafe(
@@ -230,6 +237,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         UnsafetyViolationDetails::DerefOfRawPointer,
                     )
                 }
+                self.source_info = source_info; // Restore backed-up source_info.
             }
         }
 
@@ -399,13 +407,17 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         place: Place<'tcx>,
         is_mut_use: bool,
     ) {
-        for (place_base, elem) in place.iter_projections().rev() {
+        let mut cursor = place.projection.as_ref();
+        while let &[ref proj_base @ .., elem] = cursor {
+            cursor = proj_base;
+
             match elem {
                 // Modifications behind a dereference don't affect the value of
                 // the pointer.
                 ProjectionElem::Deref => return,
                 ProjectionElem::Field(..) => {
-                    let ty = place_base.ty(&self.body.local_decls, self.tcx).ty;
+                    let ty =
+                        Place::ty_from(place.local, proj_base, &self.body.local_decls, self.tcx).ty;
                     if let ty::Adt(def, _) = ty.kind() {
                         if self.tcx.layout_scalar_valid_range(def.did)
                             != (Bound::Unbounded, Bound::Unbounded)
@@ -568,23 +580,24 @@ fn is_enclosed(
     tcx: TyCtxt<'_>,
     used_unsafe: &FxHashSet<hir::HirId>,
     id: hir::HirId,
-    unsafe_op_in_unsafe_fn_allowed: bool,
-) -> Option<(&'static str, hir::HirId)> {
+) -> Option<(String, hir::HirId)> {
     let parent_id = tcx.hir().get_parent_node(id);
     if parent_id != id {
         if used_unsafe.contains(&parent_id) {
-            Some(("block", parent_id))
+            Some(("block".to_string(), parent_id))
         } else if let Some(Node::Item(&hir::Item {
             kind: hir::ItemKind::Fn(ref sig, _, _), ..
         })) = tcx.hir().find(parent_id)
         {
-            if sig.header.unsafety == hir::Unsafety::Unsafe && unsafe_op_in_unsafe_fn_allowed {
-                Some(("fn", parent_id))
+            if sig.header.unsafety == hir::Unsafety::Unsafe
+                && !tcx.features().unsafe_block_in_unsafe_fn
+            {
+                Some(("fn".to_string(), parent_id))
             } else {
                 None
             }
         } else {
-            is_enclosed(tcx, used_unsafe, parent_id, unsafe_op_in_unsafe_fn_allowed)
+            is_enclosed(tcx, used_unsafe, parent_id)
         }
     } else {
         None
@@ -597,9 +610,7 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, used_unsafe: &FxHashSet<hir::HirId>, id
         let msg = "unnecessary `unsafe` block";
         let mut db = lint.build(msg);
         db.span_label(span, msg);
-        if let Some((kind, id)) =
-            is_enclosed(tcx, used_unsafe, id, unsafe_op_in_unsafe_fn_allowed(tcx, id))
-        {
+        if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
             db.span_label(
                 tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
                 format!("because it's nested under this `unsafe` {}", kind),

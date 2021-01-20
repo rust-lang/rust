@@ -1,0 +1,196 @@
+{
+  "crate_version": null,
+  "external_crates": {},
+  "format_version": 1,
+  "includes_private": false,
+  "index": {
+    "0:0": {
+      "attrs": [],
+      "crate_id": 0,
+      "deprecation": null,
+      "docs": "",
+      "id": "0:0",
+      "inner": {
+        "is_crate": true,
+        "items": [
+          "0:3"
+        ]
+      },
+      "kind": "module",
+      "links": {},
+      "name": "nested",
+      "source": {
+        "begin": [
+          2,
+          0
+        ],
+        "end": [
+          7,
+          1
+        ],
+        "filename": "$TEST_BASE_DIR/nested.rs"
+      },
+      "visibility": "public"
+    },
+    "0:3": {
+      "attrs": [],
+      "crate_id": 0,
+      "deprecation": null,
+      "docs": "",
+      "id": "0:3",
+      "inner": {
+        "is_crate": false,
+        "items": [
+          "0:7",
+          "0:4"
+        ]
+      },
+      "kind": "module",
+      "links": {},
+      "name": "l1",
+      "source": {
+        "begin": [
+          2,
+          0
+        ],
+        "end": [
+          7,
+          1
+        ],
+        "filename": "$TEST_BASE_DIR/nested.rs"
+      },
+      "visibility": "public"
+    },
+    "0:4": {
+      "attrs": [],
+      "crate_id": 0,
+      "deprecation": null,
+      "docs": "",
+      "id": "0:4",
+      "inner": {
+        "is_crate": false,
+        "items": [
+          "0:5"
+        ]
+      },
+      "kind": "module",
+      "links": {},
+      "name": "l3",
+      "source": {
+        "begin": [
+          3,
+          4
+        ],
+        "end": [
+          5,
+          5
+        ],
+        "filename": "$TEST_BASE_DIR/nested.rs"
+      },
+      "visibility": "public"
+    },
+    "0:5": {
+      "attrs": [],
+      "crate_id": 0,
+      "deprecation": null,
+      "docs": "",
+      "id": "0:5",
+      "inner": {
+        "fields": [],
+        "fields_stripped": false,
+        "generics": {
+          "params": [],
+          "where_predicates": []
+        },
+        "impls": [
+          "0:10",
+          "0:11",
+          "0:12",
+          "0:14",
+          "0:15"
+        ],
+        "struct_type": "unit"
+      },
+      "kind": "struct",
+      "links": {},
+      "name": "L4",
+      "source": {
+        "begin": [
+          4,
+          8
+        ],
+        "end": [
+          4,
+          22
+        ],
+        "filename": "$TEST_BASE_DIR/nested.rs"
+      },
+      "visibility": "public"
+    },
+    "0:7": {
+      "attrs": [],
+      "crate_id": 0,
+      "deprecation": null,
+      "docs": "",
+      "id": "0:7",
+      "inner": {
+        "glob": false,
+        "id": "0:5",
+        "name": "L4",
+        "span": "l3::L4"
+      },
+      "kind": "import",
+      "links": {},
+      "name": null,
+      "source": {
+        "begin": [
+          6,
+          4
+        ],
+        "end": [
+          6,
+          19
+        ],
+        "filename": "$TEST_BASE_DIR/nested.rs"
+      },
+      "visibility": "public"
+    }
+  },
+  "paths": {
+    "0:0": {
+      "crate_id": 0,
+      "kind": "module",
+      "path": [
+        "nested"
+      ]
+    },
+    "0:3": {
+      "crate_id": 0,
+      "kind": "module",
+      "path": [
+        "nested",
+        "l1"
+      ]
+    },
+    "0:4": {
+      "crate_id": 0,
+      "kind": "module",
+      "path": [
+        "nested",
+        "l1",
+        "l3"
+      ]
+    },
+    "0:5": {
+      "crate_id": 0,
+      "kind": "struct",
+      "path": [
+        "nested",
+        "l1",
+        "l3",
+        "L4"
+      ]
+    }
+  },
+  "root": "0:0"
+}

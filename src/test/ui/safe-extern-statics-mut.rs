@@ -3,7 +3,7 @@
 extern crate extern_statics;
 use extern_statics::*;
 
-extern "C" {
+extern {
     static mut B: u8;
 }
 

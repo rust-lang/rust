@@ -414,9 +414,9 @@ impl AutoTraitFinder<'tcx> {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
             if let (
-                ty::PredicateKind::Trait(new_trait, _),
-                ty::PredicateKind::Trait(old_trait, _),
-            ) = (new_pred.kind().skip_binder(), old_pred.kind().skip_binder())
+                ty::PredicateAtom::Trait(new_trait, _),
+                ty::PredicateAtom::Trait(old_trait, _),
+            ) = (new_pred.skip_binders(), old_pred.skip_binders())
             {
                 if new_trait.def_id() == old_trait.def_id() {
                     let new_substs = new_trait.trait_ref.substs;
@@ -633,16 +633,18 @@ impl AutoTraitFinder<'tcx> {
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
 
-            let bound_predicate = predicate.kind();
+            let bound_predicate = predicate.bound_atom();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(p, _) => {
-                    // Add this to `predicates` so that we end up calling `select`
-                    // with it. If this predicate ends up being unimplemented,
-                    // then `evaluate_predicates` will handle adding it the `ParamEnv`
-                    // if possible.
+                ty::PredicateAtom::Trait(p, _) => {
+                    if self.is_param_no_infer(p.trait_ref.substs)
+                        && !only_projections
+                        && is_new_pred
+                    {
+                        self.add_user_pred(computed_preds, predicate);
+                    }
                     predicates.push_back(bound_predicate.rebind(p));
                 }
-                ty::PredicateKind::Projection(p) => {
+                ty::PredicateAtom::Projection(p) => {
                     let p = bound_predicate.rebind(p);
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
@@ -772,13 +774,13 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::RegionOutlives(binder) => {
+                ty::PredicateAtom::RegionOutlives(binder) => {
                     let binder = bound_predicate.rebind(binder);
                     if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
                         return false;
                     }
                 }
-                ty::PredicateKind::TypeOutlives(binder) => {
+                ty::PredicateAtom::TypeOutlives(binder) => {
                     let binder = bound_predicate.rebind(binder);
                     match (
                         binder.no_bound_vars(),
@@ -801,7 +803,7 @@ impl AutoTraitFinder<'tcx> {
                         _ => {}
                     };
                 }
-                ty::PredicateKind::ConstEquate(c1, c2) => {
+                ty::PredicateAtom::ConstEquate(c1, c2) => {
                     let evaluate = |c: &'tcx ty::Const<'tcx>| {
                         if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
                             match select.infcx().const_eval_resolve(

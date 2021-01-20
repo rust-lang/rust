@@ -312,7 +312,7 @@ trait TraitAddExternModifier {
 trait TraitAddExternModifier {
     #[rustc_dirty(label="hir_owner", cfg="cfail2")]
     #[rustc_clean(label="hir_owner", cfg="cfail3")]
-    extern "C" fn method();
+    extern fn method();
 }
 
 

@@ -35,7 +35,7 @@ fn c() {
 }
 
 #[recollect_attr]
-extern "C" fn bar() {
+extern fn bar() {
     0 //~ ERROR mismatched types
 }
 

@@ -33,7 +33,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
                 Ok(Left(left_parent_kv)) => {
                     debug_assert!(left_parent_kv.right_child_len() == MIN_LEN - 1);
                     if left_parent_kv.can_merge() {
-                        left_parent_kv.merge_tracking_child_edge(Right(idx))
+                        left_parent_kv.merge(Some(Right(idx)))
                     } else {
                         debug_assert!(left_parent_kv.left_child_len() > MIN_LEN);
                         left_parent_kv.steal_left(idx)
@@ -42,7 +42,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
                 Ok(Right(right_parent_kv)) => {
                     debug_assert!(right_parent_kv.left_child_len() == MIN_LEN - 1);
                     if right_parent_kv.can_merge() {
-                        right_parent_kv.merge_tracking_child_edge(Left(idx))
+                        right_parent_kv.merge(Some(Left(idx)))
                     } else {
                         debug_assert!(right_parent_kv.right_child_len() > MIN_LEN);
                         right_parent_kv.steal_right(idx)
@@ -121,25 +121,27 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         self,
     ) -> Option<NodeRef<marker::Mut<'a>, K, V, marker::Internal>> {
         match self.forget_type().choose_parent_kv() {
-            Ok(Left(mut left_parent_kv)) => {
+            Ok(Left(left_parent_kv)) => {
                 debug_assert_eq!(left_parent_kv.right_child_len(), MIN_LEN - 1);
                 if left_parent_kv.can_merge() {
-                    let parent = left_parent_kv.merge_tracking_parent();
-                    Some(parent)
+                    let pos = left_parent_kv.merge(None);
+                    let parent_edge = unsafe { unwrap_unchecked(pos.into_node().ascend().ok()) };
+                    Some(parent_edge.into_node())
                 } else {
                     debug_assert!(left_parent_kv.left_child_len() > MIN_LEN);
-                    left_parent_kv.bulk_steal_left(1);
+                    left_parent_kv.steal_left(0);
                     None
                 }
             }
-            Ok(Right(mut right_parent_kv)) => {
+            Ok(Right(right_parent_kv)) => {
                 debug_assert_eq!(right_parent_kv.left_child_len(), MIN_LEN - 1);
                 if right_parent_kv.can_merge() {
-                    let parent = right_parent_kv.merge_tracking_parent();
-                    Some(parent)
+                    let pos = right_parent_kv.merge(None);
+                    let parent_edge = unsafe { unwrap_unchecked(pos.into_node().ascend().ok()) };
+                    Some(parent_edge.into_node())
                 } else {
                     debug_assert!(right_parent_kv.right_child_len() > MIN_LEN);
-                    right_parent_kv.bulk_steal_right(1);
+                    right_parent_kv.steal_right(0);
                     None
                 }
             }

@@ -45,7 +45,6 @@ fn config() -> Config {
         "--rustc-path=",
         "--lldb-python=",
         "--docck-python=",
-        "--jsondocck-path=",
         "--src-base=",
         "--build-base=",
         "--stage-id=stage2",

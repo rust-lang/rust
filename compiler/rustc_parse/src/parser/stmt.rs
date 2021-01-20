@@ -89,7 +89,15 @@ impl<'a> Parser<'a> {
         };
 
         let stmt = if has_attrs {
-            self.collect_tokens(parse_stmt_inner)?
+            let (mut stmt, tokens) = self.collect_tokens(parse_stmt_inner)?;
+            if let Some(stmt) = &mut stmt {
+                // If we already have tokens (e.g. due to encounting an `NtStmt`),
+                // use those instead.
+                if stmt.tokens().is_none() {
+                    stmt.set_tokens(tokens);
+                }
+            }
+            stmt
         } else {
             parse_stmt_inner(self)?
         };

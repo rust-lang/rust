@@ -505,7 +505,7 @@ impl<'hir> Map<'hir> {
                     | ItemKind::Union(_, generics)
                     | ItemKind::Trait(_, _, generics, ..)
                     | ItemKind::TraitAlias(generics, _)
-                    | ItemKind::Impl(Impl { generics, .. }),
+                    | ItemKind::Impl { generics, .. },
                 ..
             }) => Some(generics),
             _ => None,
@@ -658,12 +658,12 @@ impl<'hir> Map<'hir> {
         CRATE_HIR_ID
     }
 
-    /// When on an if expression, a match arm tail expression or a match arm, give back
-    /// the enclosing `if` or `match` expression.
+    /// When on a match arm tail expression or on a match arm, give back the enclosing `match`
+    /// expression.
     ///
-    /// Used by error reporting when there's a type error in an if or match arm caused by the
+    /// Used by error reporting when there's a type error in a match arm caused by the `match`
     /// expression needing to be unit.
-    pub fn get_if_cause(&self, hir_id: HirId) -> Option<&'hir Expr<'hir>> {
+    pub fn get_match_if_cause(&self, hir_id: HirId) -> Option<&'hir Expr<'hir>> {
         for (_, node) in self.parent_iter(hir_id) {
             match node {
                 Node::Item(_)
@@ -671,9 +671,7 @@ impl<'hir> Map<'hir> {
                 | Node::TraitItem(_)
                 | Node::ImplItem(_)
                 | Node::Stmt(Stmt { kind: StmtKind::Local(_), .. }) => break,
-                Node::Expr(expr @ Expr { kind: ExprKind::If(..) | ExprKind::Match(..), .. }) => {
-                    return Some(expr);
-                }
+                Node::Expr(expr @ Expr { kind: ExprKind::Match(..), .. }) => return Some(expr),
                 _ => {}
             }
         }
@@ -815,7 +813,7 @@ impl<'hir> Map<'hir> {
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
-        self.find_entry(id).map_or(&[], |entry| match entry.node {
+        let attrs = self.find_entry(id).map(|entry| match entry.node {
             Node::Param(a) => &a.attrs[..],
             Node::Local(l) => &l.attrs[..],
             Node::Item(i) => &i.attrs[..],
@@ -842,7 +840,8 @@ impl<'hir> Map<'hir> {
             | Node::Block(..)
             | Node::Lifetime(..)
             | Node::Visibility(..) => &[],
-        })
+        });
+        attrs.unwrap_or(&[])
     }
 
     /// Gets the span of the definition of the specified HIR node.

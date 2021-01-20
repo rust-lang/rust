@@ -15,6 +15,7 @@
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(type_ascription)]
+#![feature(split_inclusive)]
 #![feature(str_split_once)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
@@ -411,7 +412,11 @@ fn opts() -> Vec<RustcOptGroup> {
             )
         }),
         unstable("test-builder", |o| {
-            o.optopt("", "test-builder", "The rustc-like binary to use as the test builder", "PATH")
+            o.optflag(
+                "",
+                "test-builder",
+                "specified the rustc-like binary to use as the test builder",
+            )
         }),
         unstable("check", |o| o.optflag("", "check", "Run rustdoc checks")),
     ]

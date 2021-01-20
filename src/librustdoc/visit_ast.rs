@@ -316,7 +316,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     }
                 }
 
-                om.items.push((item, renamed))
+                om.imports.push(Import {
+                    name,
+                    id: item.hir_id,
+                    vis: &item.vis,
+                    attrs: &item.attrs,
+                    path,
+                    glob: is_glob,
+                    span: item.span,
+                });
             }
             hir::ItemKind::Mod(ref m) => {
                 om.mods.push(self.visit_mod_contents(
@@ -344,10 +352,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     om.items.push((item, renamed));
                 }
             }
-            hir::ItemKind::Impl(ref impl_) => {
+            hir::ItemKind::Impl { ref of_trait, .. } => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
-                if !self.inlining && impl_.of_trait.is_none() {
+                if !self.inlining && of_trait.is_none() {
                     om.items.push((item, None));
                 }
             }

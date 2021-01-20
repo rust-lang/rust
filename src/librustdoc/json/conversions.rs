@@ -482,8 +482,8 @@ impl From<clean::VariantStruct> for Struct {
 
 impl From<clean::Variant> for Variant {
     fn from(variant: clean::Variant) -> Self {
-        use clean::Variant::*;
-        match variant {
+        use clean::VariantKind::*;
+        match variant.kind {
             CLike => Variant::Plain,
             Tuple(t) => Variant::Tuple(t.into_iter().map(Into::into).collect()),
             Struct(s) => Variant::Struct(ids(s.fields)),

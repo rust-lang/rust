@@ -103,7 +103,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let did = did.expect_local();
                         let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
 
-                        if let Some((span, hir_place)) =
+                        if let Some((span, name)) =
                             self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
                         {
                             diag.span_note(
@@ -111,7 +111,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 &format!(
                                     "closure cannot be invoked more than once because it moves the \
                                     variable `{}` out of its environment",
-                                    ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
+                                    name,
                                 ),
                             );
                             return;
@@ -127,7 +127,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let did = did.expect_local();
                 let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
 
-                if let Some((span, hir_place)) =
+                if let Some((span, name)) =
                     self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
                 {
                     diag.span_note(
@@ -135,7 +135,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         &format!(
                             "closure cannot be moved more than once as it is not `Copy` due to \
                              moving the variable `{}` out of its environment",
-                            ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
+                            name
                         ),
                     );
                 }
@@ -338,7 +338,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     self.describe_field(PlaceRef { local, projection: proj_base }, field)
                 }
                 ProjectionElem::Downcast(_, variant_index) => {
-                    let base_ty = place.ty(self.body, self.infcx.tcx).ty;
+                    let base_ty =
+                        Place::ty_from(place.local, place.projection, self.body, self.infcx.tcx).ty;
                     self.describe_field_from_ty(&base_ty, field, Some(*variant_index))
                 }
                 ProjectionElem::Field(_, field_type) => {
@@ -472,7 +473,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // If we didn't find an overloaded deref or index, then assume it's a
         // built in deref and check the type of the base.
-        let base_ty = deref_base.ty(self.body, tcx).ty;
+        let base_ty = Place::ty_from(deref_base.local, deref_base.projection, self.body, tcx).ty;
         if base_ty.is_unsafe_ptr() {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {

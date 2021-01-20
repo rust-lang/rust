@@ -1626,7 +1626,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let self_ty = cx.tcx.type_of(def_id);
 
         // if this impl block implements a trait, lint in trait definition instead
-        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
+        if let hir::ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
             return;
         }
 
@@ -1697,7 +1697,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if let ty::Opaque(def_id, _) = *ret_ty.kind() {
                 // one of the associated types must be Self
                 for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
-                    if let ty::PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
+                    if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
                         // walk the associated type and check for Self
                         if contains_ty(projection_predicate.ty, self_ty) {
                             return;
@@ -2048,7 +2048,6 @@ fn lint_expect_fun_call(
             hir::ExprKind::Call(..)
             | hir::ExprKind::MethodCall(..)
             // These variants are debatable or require further examination
-            | hir::ExprKind::If(..)
             | hir::ExprKind::Match(..)
             | hir::ExprKind::Block{ .. } => true,
             _ => false,
@@ -3096,7 +3095,7 @@ fn lint_flat_map_identity<'tcx>(
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.kind;
 
             if path.segments.len() == 1;
-            if path.segments[0].ident.name == binding_ident.name;
+            if path.segments[0].ident.as_str() == binding_ident.as_str();
 
             then {
                 apply_lint("called `flat_map(|x| x)` on an `Iterator`");

@@ -5,7 +5,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{
-    self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
+    self, Binder, Predicate, PredicateAtom, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
 };
 use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
@@ -129,8 +129,8 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
     let parent_def_id = tcx.hir().local_def_id(parent_id);
     let parent_item = tcx.hir().expect_item(parent_id);
     match parent_item.kind {
-        hir::ItemKind::Impl(ref impl_) => {
-            if let Some(impl_item_ref) = impl_.items.iter().find(|i| i.id.hir_id == id) {
+        hir::ItemKind::Impl { ref items, .. } => {
+            if let Some(impl_item_ref) = items.iter().find(|i| i.id.hir_id == id) {
                 let assoc_item =
                     associated_item_from_impl_item_ref(tcx, parent_def_id, impl_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
@@ -160,8 +160,8 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
 fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let item = tcx.hir().expect_item(hir_id);
-    if let hir::ItemKind::Impl(impl_) = &item.kind {
-        impl_.defaultness
+    if let hir::ItemKind::Impl { defaultness, .. } = item.kind {
+        defaultness
     } else {
         bug!("`impl_defaultness` called on {:?}", item);
     }
@@ -201,9 +201,8 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
                 .map(|trait_item_ref| trait_item_ref.id)
                 .map(|id| tcx.hir().local_def_id(id.hir_id).to_def_id()),
         ),
-        hir::ItemKind::Impl(ref impl_) => tcx.arena.alloc_from_iter(
-            impl_
-                .items
+        hir::ItemKind::Impl { ref items, .. } => tcx.arena.alloc_from_iter(
+            items
                 .iter()
                 .map(|impl_item_ref| impl_item_ref.id)
                 .map(|id| tcx.hir().local_def_id(id.hir_id).to_def_id()),
@@ -220,10 +219,6 @@ fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssociatedItems<'_> {
 
 fn def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
     tcx.hir().span_if_local(def_id).unwrap()
-}
-
-fn def_ident_span(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Span> {
-    tcx.hir().get_if_local(def_id).and_then(|node| node.ident()).map(|ident| ident.span)
 }
 
 /// If the given `DefId` describes an item belonging to a trait,
@@ -328,8 +323,8 @@ fn well_formed_types_in_env<'tcx>(
         },
 
         Node::Item(item) => match item.kind {
-            ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => NodeKind::TraitImpl,
-            ItemKind::Impl(hir::Impl { of_trait: None, .. }) => NodeKind::InherentImpl,
+            ItemKind::Impl { of_trait: Some(_), .. } => NodeKind::TraitImpl,
+            ItemKind::Impl { of_trait: None, .. } => NodeKind::InherentImpl,
             ItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         },
@@ -378,8 +373,8 @@ fn well_formed_types_in_env<'tcx>(
     let input_clauses = inputs.into_iter().filter_map(|arg| {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
-                let binder = Binder::dummy(PredicateKind::TypeWellFormedFromEnv(ty));
-                Some(tcx.mk_predicate(binder))
+                let binder = Binder::dummy(PredicateAtom::TypeWellFormedFromEnv(ty));
+                Some(tcx.mk_predicate(PredicateKind::ForAll(binder)))
             }
 
             // FIXME(eddyb) no WF conditions from lifetimes?
@@ -496,7 +491,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         associated_items,
         adt_sized_constraint,
         def_span,
-        def_ident_span,
         param_env,
         param_env_reveal_all_normalized,
         trait_of_item,

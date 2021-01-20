@@ -1,7 +1,7 @@
 #![crate_type = "dylib"]
 
 #[link(name = "cfoo")]
-extern "C" {
+extern {
     fn foo();
 }
 

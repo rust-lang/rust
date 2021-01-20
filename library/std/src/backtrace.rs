@@ -95,12 +95,11 @@ mod tests;
 // a backtrace or actually symbolizing it.
 
 use crate::backtrace_rs::{self, BytesOrWideString};
-use crate::cell::UnsafeCell;
 use crate::env;
 use crate::ffi::c_void;
 use crate::fmt;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-use crate::sync::Once;
+use crate::sync::Mutex;
 use crate::sys_common::backtrace::{lock, output_filename};
 use crate::vec::Vec;
 
@@ -133,7 +132,7 @@ pub enum BacktraceStatus {
 enum Inner {
     Unsupported,
     Disabled,
-    Captured(LazilyResolvedCapture),
+    Captured(Mutex<Capture>),
 }
 
 struct Capture {
@@ -172,11 +171,12 @@ enum BytesOrWide {
 
 impl fmt::Debug for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let capture = match &self.inner {
+        let mut capture = match &self.inner {
             Inner::Unsupported => return fmt.write_str("<unsupported>"),
             Inner::Disabled => return fmt.write_str("<disabled>"),
-            Inner::Captured(c) => c.force(),
+            Inner::Captured(c) => c.lock().unwrap(),
         };
+        capture.resolve();
 
         let frames = &capture.frames[capture.actual_start..];
 
@@ -331,7 +331,7 @@ impl Backtrace {
         let inner = if frames.is_empty() {
             Inner::Unsupported
         } else {
-            Inner::Captured(LazilyResolvedCapture::new(Capture {
+            Inner::Captured(Mutex::new(Capture {
                 actual_start: actual_start.unwrap_or(0),
                 frames,
                 resolved: false,
@@ -355,11 +355,12 @@ impl Backtrace {
 
 impl fmt::Display for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let capture = match &self.inner {
+        let mut capture = match &self.inner {
             Inner::Unsupported => return fmt.write_str("unsupported backtrace"),
             Inner::Disabled => return fmt.write_str("disabled backtrace"),
-            Inner::Captured(c) => c.force(),
+            Inner::Captured(c) => c.lock().unwrap(),
         };
+        capture.resolve();
 
         let full = fmt.alternate();
         let (frames, style) = if full {
@@ -402,33 +403,6 @@ impl fmt::Display for Backtrace {
         Ok(())
     }
 }
-
-struct LazilyResolvedCapture {
-    sync: Once,
-    capture: UnsafeCell<Capture>,
-}
-
-impl LazilyResolvedCapture {
-    fn new(capture: Capture) -> Self {
-        LazilyResolvedCapture { sync: Once::new(), capture: UnsafeCell::new(capture) }
-    }
-
-    fn force(&self) -> &Capture {
-        self.sync.call_once(|| {
-            // SAFETY: This exclusive reference can't overlap with any others
-            // `Once` guarantees callers will block until this closure returns
-            // `Once` also guarantees only a single caller will enter this closure
-            unsafe { &mut *self.capture.get() }.resolve();
-        });
-
-        // SAFETY: This shared reference can't overlap with the exclusive reference above
-        unsafe { &*self.capture.get() }
-    }
-}
-
-// SAFETY: Access to the inner value is synchronized using a thread-safe `Once`
-// So long as `Capture` is `Sync`, `LazilyResolvedCapture` is too
-unsafe impl Sync for LazilyResolvedCapture where Capture: Sync {}
 
 impl Capture {
     fn resolve(&mut self) {

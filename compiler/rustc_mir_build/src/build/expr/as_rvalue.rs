@@ -251,7 +251,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::StaticRef { .. }
             | ExprKind::Block { .. }
             | ExprKind::Match { .. }
-            | ExprKind::If { .. }
             | ExprKind::NeverToAny { .. }
             | ExprKind::Use { .. }
             | ExprKind::Borrow { .. }

@@ -614,10 +614,14 @@ Arguments:
         };
 
         if let Subcommand::Check { .. } = &cmd {
+            if matches.opt_str("stage").is_some() {
+                println!("--stage not supported for x.py check, always treated as stage 0");
+                process::exit(1);
+            }
             if matches.opt_str("keep-stage").is_some()
                 || matches.opt_str("keep-stage-std").is_some()
             {
-                println!("--keep-stage not yet supported for x.py check");
+                println!("--keep-stage not supported for x.py check, only one stage available");
                 process::exit(1);
             }
         }

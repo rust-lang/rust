@@ -9,7 +9,7 @@ use std::path::PathBuf;
 fn switch_stdout_to(file: File) {
     use std::os::unix::prelude::*;
 
-    extern "C" {
+    extern {
         fn dup2(old: i32, new: i32) -> i32;
     }
 
@@ -29,7 +29,8 @@ fn switch_stdout_to(file: File) {
     const STD_OUTPUT_HANDLE: u32 = (-11i32) as u32;
 
     unsafe {
-        let rc = SetStdHandle(STD_OUTPUT_HANDLE, file.into_raw_handle() as *mut _);
+        let rc = SetStdHandle(STD_OUTPUT_HANDLE,
+                              file.into_raw_handle() as *mut _);
         assert!(rc != 0);
     }
 }

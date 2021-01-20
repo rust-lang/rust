@@ -401,7 +401,7 @@ macro_rules! write {
 /// For more information, see [`write!`]. For information on the format string syntax, see
 /// [`std::fmt`].
 ///
-/// [`std::fmt`]: ../std/fmt/index.html
+/// [`std::fmt`]: crate::fmt
 ///
 /// # Examples
 ///
@@ -730,7 +730,7 @@ pub(crate) mod builtin {
     /// [`Display`]: crate::fmt::Display
     /// [`Debug`]: crate::fmt::Debug
     /// [`fmt::Arguments`]: crate::fmt::Arguments
-    /// [`std::fmt`]: ../std/fmt/index.html
+    /// [`std::fmt`]: crate::fmt
     /// [`format!`]: ../std/macro.format.html
     /// [`println!`]: ../std/macro.println.html
     ///
@@ -1194,7 +1194,7 @@ pub(crate) mod builtin {
     /// be provided with or without arguments for formatting. See [`std::fmt`]
     /// for syntax for this form.
     ///
-    /// [`std::fmt`]: ../std/fmt/index.html
+    /// [`std::fmt`]: crate::fmt
     ///
     /// # Examples
     ///

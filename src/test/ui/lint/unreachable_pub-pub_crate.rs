@@ -41,7 +41,7 @@ mod private_mod {
     }
     define_empty_struct_with_visibility!(pub, Fluorine);
 
-    extern "C" {
+    extern {
         pub fn catalyze() -> bool; //~ WARNING unreachable_pub
     }
 

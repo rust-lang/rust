@@ -798,7 +798,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(util::commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(util::release_str()));
-        if cfg!(feature = "llvm") {
+        if cfg!(llvm) {
             get_builtin_codegen_backend("llvm")().print_version();
         }
     }
@@ -1087,7 +1087,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
-        if cfg!(feature = "llvm") {
+        if cfg!(llvm) {
             get_builtin_codegen_backend("llvm")().print_passes();
         }
         return None;
@@ -1236,7 +1236,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     }
 
     // If backtraces are enabled, also print the query stack
-    let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
+    let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
 
     let num_frames = if backtrace { None } else { Some(2) };
 

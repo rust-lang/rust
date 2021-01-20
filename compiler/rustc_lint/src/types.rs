@@ -647,7 +647,8 @@ pub fn transparent_newtype_field<'a, 'tcx>(
     let param_env = tcx.param_env(variant.def_id);
     for field in &variant.fields {
         let field_ty = tcx.type_of(field.did);
-        let is_zst = tcx.layout_of(param_env.and(field_ty)).map_or(false, |layout| layout.is_zst());
+        let is_zst =
+            tcx.layout_of(param_env.and(field_ty)).map(|layout| layout.is_zst()).unwrap_or(false);
 
         if !is_zst {
             return Some(field);

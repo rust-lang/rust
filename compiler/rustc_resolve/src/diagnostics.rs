@@ -683,7 +683,7 @@ impl<'a> Resolver<'a> {
                     ));
                 }
                 Scope::BuiltinAttrs => {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(kw::Empty));
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin);
                     if filter_fn(res) {
                         suggestions.extend(
                             BUILTIN_ATTRIBUTES

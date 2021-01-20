@@ -5,7 +5,7 @@ use core::ops::RangeBounds;
 use core::ptr;
 
 use super::node::{marker, ForceResult::*, Handle, NodeRef};
-use super::search::SearchResult;
+use super::search::{self, SearchResult};
 use super::unwrap_unchecked;
 
 /// Finds the leaf edges delimiting a specified range in or underneath a node.
@@ -25,12 +25,7 @@ where
     K: Borrow<Q>,
     R: RangeBounds<Q>,
 {
-    // WARNING: Inlining these variables would be unsound (#81138)
-    // We assume the bounds reported by `range` remain the same, but
-    // an adversarial implementation could change between calls
-    let start = range.start_bound();
-    let end = range.end_bound();
-    match (start, end) {
+    match (range.start_bound(), range.end_bound()) {
         (Excluded(s), Excluded(e)) if s == e => {
             panic!("range start and end are equal and excluded in BTreeMap")
         }
@@ -46,16 +41,15 @@ where
     let mut max_found = false;
 
     loop {
-        // Using `range` again would be unsound (#81138)
-        let front = match (min_found, start) {
-            (false, Included(key)) => match min_node.search_node(key) {
+        let front = match (min_found, range.start_bound()) {
+            (false, Included(key)) => match search::search_node(min_node, key) {
                 SearchResult::Found(kv) => {
                     min_found = true;
                     kv.left_edge()
                 }
                 SearchResult::GoDown(edge) => edge,
             },
-            (false, Excluded(key)) => match min_node.search_node(key) {
+            (false, Excluded(key)) => match search::search_node(min_node, key) {
                 SearchResult::Found(kv) => {
                     min_found = true;
                     kv.right_edge()
@@ -67,16 +61,15 @@ where
             (_, Unbounded) => min_node.first_edge(),
         };
 
-        // Using `range` again would be unsound (#81138)
-        let back = match (max_found, end) {
-            (false, Included(key)) => match max_node.search_node(key) {
+        let back = match (max_found, range.end_bound()) {
+            (false, Included(key)) => match search::search_node(max_node, key) {
                 SearchResult::Found(kv) => {
                     max_found = true;
                     kv.right_edge()
                 }
                 SearchResult::GoDown(edge) => edge,
             },
-            (false, Excluded(key)) => match max_node.search_node(key) {
+            (false, Excluded(key)) => match search::search_node(max_node, key) {
                 SearchResult::Found(kv) => {
                     max_found = true;
                     kv.left_edge()

@@ -411,24 +411,24 @@ impl Validator<'mir, 'tcx> {
         loop {
             let predicates = tcx.predicates_of(current);
             for (predicate, _) in predicates.predicates {
-                match predicate.kind().skip_binder() {
-                    ty::PredicateKind::RegionOutlives(_)
-                    | ty::PredicateKind::TypeOutlives(_)
-                    | ty::PredicateKind::WellFormed(_)
-                    | ty::PredicateKind::Projection(_)
-                    | ty::PredicateKind::ConstEvaluatable(..)
-                    | ty::PredicateKind::ConstEquate(..)
-                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                    ty::PredicateKind::ObjectSafe(_) => {
+                match predicate.skip_binders() {
+                    ty::PredicateAtom::RegionOutlives(_)
+                    | ty::PredicateAtom::TypeOutlives(_)
+                    | ty::PredicateAtom::WellFormed(_)
+                    | ty::PredicateAtom::Projection(_)
+                    | ty::PredicateAtom::ConstEvaluatable(..)
+                    | ty::PredicateAtom::ConstEquate(..)
+                    | ty::PredicateAtom::TypeWellFormedFromEnv(..) => continue,
+                    ty::PredicateAtom::ObjectSafe(_) => {
                         bug!("object safe predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::ClosureKind(..) => {
+                    ty::PredicateAtom::ClosureKind(..) => {
                         bug!("closure kind predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::Subtype(_) => {
+                    ty::PredicateAtom::Subtype(_) => {
                         bug!("subtype predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::Trait(pred, constness) => {
+                    ty::PredicateAtom::Trait(pred, constness) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }
@@ -789,10 +789,10 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         }
     }
 
-    #[instrument(skip(self))]
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         use rustc_target::spec::abi::Abi::RustIntrinsic;
 
+        trace!("visit_terminator: terminator={:?} location={:?}", terminator, location);
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
@@ -816,9 +816,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                 // Attempting to call a trait method?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
-                    trace!("attempting to call a trait method");
                     if !self.tcx.features().const_trait_impl {
-                        self.check_op(ops::FnCallNonConst);
+                        self.check_op(ops::FnCallNonConst(callee));
                         return;
                     }
 
@@ -872,26 +871,25 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     return;
                 }
 
-                let is_intrinsic = tcx.fn_sig(callee).abi() == RustIntrinsic;
-
                 // HACK: This is to "unstabilize" the `transmute` intrinsic
                 // within const fns. `transmute` is allowed in all other const contexts.
                 // This won't really scale to more intrinsics or functions. Let's allow const
                 // transmutes in const fn before we add more hacks to this.
-                if is_intrinsic && tcx.item_name(callee) == sym::transmute {
+                if tcx.fn_sig(callee).abi() == RustIntrinsic
+                    && tcx.item_name(callee) == sym::transmute
+                {
                     self.check_op(ops::Transmute);
                     return;
                 }
 
                 if !tcx.is_const_fn_raw(callee) {
-                    self.check_op(ops::FnCallNonConst);
+                    self.check_op(ops::FnCallNonConst(callee));
                     return;
                 }
 
                 // If the `const fn` we are trying to call is not const-stable, ensure that we have
                 // the proper feature gate enabled.
                 if let Some(gate) = is_unstable_const_fn(tcx, callee) {
-                    trace!(?gate, "calling unstable const fn");
                     if self.span.allows_unstable(gate) {
                         return;
                     }
@@ -906,14 +904,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     // If this crate is not using stability attributes, or the caller is not claiming to be a
                     // stable `const fn`, that is all that is required.
                     if !self.ccx.is_const_stable_const_fn() {
-                        trace!("crate not using stability attributes or caller not stably const");
                         return;
                     }
 
                     // Otherwise, we are something const-stable calling a const-unstable fn.
 
                     if super::rustc_allow_const_fn_unstable(tcx, caller, gate) {
-                        trace!("rustc_allow_const_fn_unstable gate active");
                         return;
                     }
 
@@ -927,16 +923,10 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
                     && tcx.lookup_stability(callee).map_or(false, |s| s.level.is_unstable());
                 if callee_is_unstable_unmarked {
-                    trace!("callee_is_unstable_unmarked");
-                    // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
-                    // `extern` funtions, and these have no way to get marked `const`. So instead we
-                    // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
-                    if self.ccx.is_const_stable_const_fn() || is_intrinsic {
+                    if self.ccx.is_const_stable_const_fn() {
                         self.check_op(ops::FnCallUnstable(callee, None));
-                        return;
                     }
                 }
-                trace!("permitting call");
             }
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no
@@ -1017,26 +1007,27 @@ fn place_as_reborrow(
     body: &Body<'tcx>,
     place: Place<'tcx>,
 ) -> Option<&'a [PlaceElem<'tcx>]> {
-    match place.as_ref().last_projection() {
-        Some((place_base, ProjectionElem::Deref)) => {
-            // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
-            // that points to the allocation for the static. Don't treat these as reborrows.
-            if body.local_decls[place_base.local].is_ref_to_static() {
-                None
-            } else {
-                // Ensure the type being derefed is a reference and not a raw pointer.
-                //
-                // This is sufficient to prevent an access to a `static mut` from being marked as a
-                // reborrow, even if the check above were to disappear.
-                let inner_ty = place_base.ty(body, tcx).ty;
-                match inner_ty.kind() {
-                    ty::Ref(..) => Some(place_base.projection),
-                    _ => None,
-                }
-            }
+    place.projection.split_last().and_then(|(outermost, inner)| {
+        if outermost != &ProjectionElem::Deref {
+            return None;
         }
-        _ => None,
-    }
+
+        // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
+        // that points to the allocation for the static. Don't treat these as reborrows.
+        if body.local_decls[place.local].is_ref_to_static() {
+            return None;
+        }
+
+        // Ensure the type being derefed is a reference and not a raw pointer.
+        //
+        // This is sufficient to prevent an access to a `static mut` from being marked as a
+        // reborrow, even if the check above were to disappear.
+        let inner_ty = Place::ty_from(place.local, inner, body, tcx).ty;
+        match inner_ty.kind() {
+            ty::Ref(..) => Some(inner),
+            _ => None,
+        }
+    })
 }
 
 fn is_int_bool_or_char(ty: Ty<'_>) -> bool {

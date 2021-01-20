@@ -1,5 +1,5 @@
 #[link(name = "library")]
-extern "C" {
+extern {
     fn overflow();
 }
 

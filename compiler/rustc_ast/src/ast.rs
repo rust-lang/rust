@@ -242,20 +242,11 @@ impl Into<Option<P<GenericArgs>>> for ParenthesizedArgs {
 /// A path like `Foo(A, B) -> C`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct ParenthesizedArgs {
-    /// ```text
-    /// Foo(A, B) -> C
-    /// ^^^^^^^^^^^^^^
-    /// ```
+    /// Overall span
     pub span: Span,
 
     /// `(A, B)`
     pub inputs: Vec<P<Ty>>,
-
-    /// ```text
-    /// Foo(A, B) -> C
-    ///    ^^^^^^
-    /// ```
-    pub inputs_span: Span,
 
     /// `C`
     pub output: FnRetTy,
@@ -922,6 +913,16 @@ impl Stmt {
             StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => expr.tokens.as_mut(),
             StmtKind::Empty => None,
             StmtKind::MacCall(ref mut mac) => mac.tokens.as_mut(),
+        }
+    }
+
+    pub fn set_tokens(&mut self, tokens: Option<LazyTokenStream>) {
+        match self.kind {
+            StmtKind::Local(ref mut local) => local.tokens = tokens,
+            StmtKind::Item(ref mut item) => item.tokens = tokens,
+            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => expr.tokens = tokens,
+            StmtKind::Empty => {}
+            StmtKind::MacCall(ref mut mac) => mac.tokens = tokens,
         }
     }
 
@@ -2880,69 +2881,3 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 }
 
 pub type ForeignItem = Item<ForeignItemKind>;
-
-pub trait HasTokens {
-    /// Called by `Parser::collect_tokens` to store the collected
-    /// tokens inside an AST node
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream);
-}
-
-impl<T: HasTokens + 'static> HasTokens for P<T> {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        (**self).finalize_tokens(tokens);
-    }
-}
-
-impl<T: HasTokens> HasTokens for Option<T> {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        if let Some(inner) = self {
-            inner.finalize_tokens(tokens);
-        }
-    }
-}
-
-impl HasTokens for Attribute {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        match &mut self.kind {
-            AttrKind::Normal(_, attr_tokens) => {
-                if attr_tokens.is_none() {
-                    *attr_tokens = Some(tokens);
-                }
-            }
-            AttrKind::DocComment(..) => {
-                panic!("Called finalize_tokens on doc comment attr {:?}", self)
-            }
-        }
-    }
-}
-
-impl HasTokens for Stmt {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        let stmt_tokens = match self.kind {
-            StmtKind::Local(ref mut local) => &mut local.tokens,
-            StmtKind::Item(ref mut item) => &mut item.tokens,
-            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => &mut expr.tokens,
-            StmtKind::Empty => return,
-            StmtKind::MacCall(ref mut mac) => &mut mac.tokens,
-        };
-        if stmt_tokens.is_none() {
-            *stmt_tokens = Some(tokens);
-        }
-    }
-}
-
-macro_rules! derive_has_tokens {
-    ($($ty:path),*) => { $(
-        impl HasTokens for $ty {
-            fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-                if self.tokens.is_none() {
-                    self.tokens = Some(tokens);
-                }
-            }
-        }
-    )* }
-}
-
-derive_has_tokens! {
-    Item, Expr, Ty, AttrItem, Visibility, Path, Block, Pat
-}

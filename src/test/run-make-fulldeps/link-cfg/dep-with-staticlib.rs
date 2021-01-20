@@ -3,6 +3,6 @@
 
 #[link(name = "return1", cfg(foo))]
 #[link(name = "return3", kind = "static", cfg(bar))]
-extern "C" {
+extern {
     pub fn my_function() -> i32;
 }

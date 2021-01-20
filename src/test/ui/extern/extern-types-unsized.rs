@@ -2,7 +2,7 @@
 
 #![feature(extern_types)]
 
-extern "C" {
+extern {
     type A;
 }
 
@@ -16,7 +16,7 @@ struct Bar<T: ?Sized> {
     tail: T,
 }
 
-fn assert_sized<T>() {}
+fn assert_sized<T>() { }
 
 fn main() {
     assert_sized::<A>();

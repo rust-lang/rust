@@ -161,10 +161,7 @@ use super::SpecExtend;
 /// It is a logic error for an item to be modified in such a way that the
 /// item's ordering relative to any other item, as determined by the `Ord`
 /// trait, changes while it is in the heap. This is normally only possible
-/// through `Cell`, `RefCell`, global state, I/O, or unsafe code. The
-/// behavior resulting from such a logic error is not specified, but will
-/// not result in undefined behavior. This could include panics, incorrect
-/// results, aborts, memory leaks, and non-termination.
+/// through `Cell`, `RefCell`, global state, I/O, or unsafe code.
 ///
 /// # Examples
 ///
@@ -633,16 +630,10 @@ impl<T: Ord> BinaryHeap<T> {
         // and about 2 * (len1 + len2) comparisons in the worst case
         // while `extend` takes O(len2 * log(len1)) operations
         // and about 1 * len2 * log_2(len1) comparisons in the worst case,
-        // assuming len1 >= len2. For larger heaps, the crossover point
-        // no longer follows this reasoning and was determined empirically.
+        // assuming len1 >= len2.
         #[inline]
         fn better_to_rebuild(len1: usize, len2: usize) -> bool {
-            let tot_len = len1 + len2;
-            if tot_len <= 2048 {
-                2 * tot_len < len2 * log2_fast(len1)
-            } else {
-                2 * tot_len < len2 * 11
-            }
+            2 * (len1 + len2) < len2 * log2_fast(len1)
         }
 
         if better_to_rebuild(self.len(), other.len()) {

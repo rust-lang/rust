@@ -18,7 +18,7 @@ fn free() {
 }
 
 #[cfg(FALSE)]
-extern "C" {
+extern {
     fn f(self);
     fn f(mut self);
     fn f(&self);

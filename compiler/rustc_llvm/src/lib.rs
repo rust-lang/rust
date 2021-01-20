@@ -38,7 +38,7 @@ pub fn initialize_available_targets() {
         ($cfg:meta, $($method:ident),*) => { {
             #[cfg($cfg)]
             fn init() {
-                extern "C" {
+                extern {
                     $(fn $method();)*
                 }
                 unsafe {

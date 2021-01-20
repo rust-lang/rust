@@ -13,8 +13,7 @@ pub use rustc_query_system::dep_graph::{
     WorkProduct, WorkProductId,
 };
 
-crate use dep_node::make_compile_codegen_unit;
-pub use dep_node::{label_strs, DepKind, DepNode, DepNodeExt};
+pub use dep_node::{dep_constructor, label_strs, DepKind, DepNode, DepNodeExt};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
@@ -116,9 +115,20 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         // be removed. https://github.com/rust-lang/rust/issues/62649 is one such
         // bug that must be fixed before removing this.
         match dep_node.kind {
-            DepKind::hir_owner | DepKind::hir_owner_nodes => {
+            DepKind::hir_owner | DepKind::hir_owner_nodes | DepKind::CrateMetadata => {
                 if let Some(def_id) = dep_node.extract_def_id(*self) {
-                    if !def_id_corresponds_to_hir_dep_node(*self, def_id.expect_local()) {
+                    if def_id_corresponds_to_hir_dep_node(*self, def_id.expect_local()) {
+                        if dep_node.kind == DepKind::CrateMetadata {
+                            // The `DefPath` has corresponding node,
+                            // and that node should have been marked
+                            // either red or green in `data.colors`.
+                            bug!(
+                                "DepNode {:?} should have been \
+                             pre-marked as red or green but wasn't.",
+                                dep_node
+                            );
+                        }
+                    } else {
                         // This `DefPath` does not have a
                         // corresponding `DepNode` (e.g. a
                         // struct field), and the ` DefPath`

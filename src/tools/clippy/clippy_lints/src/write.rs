@@ -10,8 +10,7 @@ use rustc_lexer::unescape::{self, EscapeError};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_parse::parser;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::kw;
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, BytePos, Span, Symbol};
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `println!("")` to
@@ -302,7 +301,7 @@ impl EarlyLintPass for Write {
             }
         } else if mac.path == sym!(writeln) {
             if let (Some(fmt_str), expr) = self.check_tts(cx, mac.args.inner_tokens(), true) {
-                if fmt_str.symbol == kw::Empty {
+                if fmt_str.symbol == Symbol::intern("") {
                     let mut applicability = Applicability::MachineApplicable;
                     // FIXME: remove this `#[allow(...)]` once the issue #5822 gets fixed
                     #[allow(clippy::option_if_let_else)]
@@ -485,7 +484,7 @@ impl Write {
 
     fn lint_println_empty_string(&self, cx: &EarlyContext<'_>, mac: &MacCall) {
         if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
-            if fmt_str.symbol == kw::Empty {
+            if fmt_str.symbol == Symbol::intern("") {
                 let name = mac.path.segments[0].ident.name;
                 span_lint_and_sugg(
                     cx,

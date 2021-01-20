@@ -4,7 +4,7 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use crate::{declare_lint, declare_lint_pass};
+use crate::{declare_lint, declare_lint_pass, declare_tool_lint};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
 
@@ -2825,29 +2825,8 @@ declare_lint! {
     };
 }
 
-declare_lint! {
-    /// The `ineffective_unstable_trait_impl` lint detects `#[unstable]` attributes which are not used.
-    ///
-    /// ### Example
-    ///
-    /// ```compile_fail
-    /// #![feature(staged_api)]
-    ///
-    /// #[derive(Clone)]
-    /// #[stable(feature = "x", since = "1")]
-    /// struct S {}
-    ///
-    /// #[unstable(feature = "y", issue = "none")]
-    /// impl Copy for S {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// `staged_api` does not currently support using a stability attribute on `impl` blocks.
-    /// `impl`s are always stable if both the type and trait are stable, and always unstable otherwise.
-    pub INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+declare_tool_lint! {
+    pub rustc::INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
     Deny,
     "detects `#[unstable]` on stable trait implementations for stable types"
 }
@@ -2938,7 +2917,6 @@ declare_lint_pass! {
         FUNCTION_ITEM_REFERENCES,
         USELESS_DEPRECATED,
         UNSUPPORTED_NAKED_FUNCTIONS,
-        MISSING_ABI,
     ]
 }
 
@@ -2966,28 +2944,3 @@ declare_lint! {
 }
 
 declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
-
-declare_lint! {
-    /// The `missing_abi` lint detects cases where the ABI is omitted from
-    /// extern declarations.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(missing_abi)]
-    ///
-    /// extern fn foo() {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Historically, Rust implicitly selected C as the ABI for extern
-    /// declarations. We expect to add new ABIs, like `C-unwind`, in the future,
-    /// though this has not yet happened, and especially with their addition
-    /// seeing the ABI easily will make code review easier.
-    pub MISSING_ABI,
-    Allow,
-    "No declared ABI for extern declaration"
-}

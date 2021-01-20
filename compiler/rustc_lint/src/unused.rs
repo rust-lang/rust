@@ -202,8 +202,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     let mut has_emitted = false;
                     for &(predicate, _) in cx.tcx.explicit_item_bounds(def) {
                         // We only look at the `DefId`, so it is safe to skip the binder here.
-                        if let ty::PredicateKind::Trait(ref poly_trait_predicate, _) =
-                            predicate.kind().skip_binder()
+                        if let ty::PredicateAtom::Trait(ref poly_trait_predicate, _) =
+                            predicate.skip_binders()
                         {
                             let def_id = poly_trait_predicate.trait_ref.def_id;
                             let descr_pre =
@@ -529,8 +529,8 @@ trait UnusedDelimLint {
             pprust::expr_to_string(value)
         };
         let keep_space = (
-            left_pos.map_or(false, |s| s >= value.span.lo()),
-            right_pos.map_or(false, |s| s <= value.span.hi()),
+            left_pos.map(|s| s >= value.span.lo()).unwrap_or(false),
+            right_pos.map(|s| s <= value.span.hi()).unwrap_or(false),
         );
         self.emit_unused_delims(cx, value.span, &expr_text, ctx.into(), keep_space);
     }

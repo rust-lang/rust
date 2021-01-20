@@ -3,7 +3,7 @@
 extern crate lib1;
 
 #[link(name = "bar", kind = "static")]
-extern "C" {
+extern {
     fn foo() -> i32;
 }
 

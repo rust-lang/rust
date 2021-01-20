@@ -1,6 +1,6 @@
 #![crate_type = "rlib"]
 
 #[link(name = "a", kind = "static")]
-extern "C" {
+extern {
     pub fn a();
 }

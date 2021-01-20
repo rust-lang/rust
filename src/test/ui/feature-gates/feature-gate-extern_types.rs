@@ -1,4 +1,4 @@
-extern "C" {
+extern {
     type T; //~ ERROR extern types are experimental
 }
 

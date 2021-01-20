@@ -500,12 +500,6 @@ crate fn make_test(
                 }
             }
 
-            // Reset errors so that they won't be reported as compiler bugs when dropping the
-            // handler. Any errors in the tests will be reported when the test file is compiled,
-            // Note that we still need to cancel the errors above otherwise `DiagnosticBuilder`
-            // will panic on drop.
-            sess.span_diagnostic.reset_err_count();
-
             (found_main, found_extern_crate, found_macro)
         })
     });
@@ -1032,8 +1026,8 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
-        let name = if let hir::ItemKind::Impl(impl_) = &item.kind {
-            rustc_hir_pretty::id_to_string(&self.map, impl_.self_ty.hir_id)
+        let name = if let hir::ItemKind::Impl { ref self_ty, .. } = item.kind {
+            rustc_hir_pretty::id_to_string(&self.map, self_ty.hir_id)
         } else {
             item.ident.to_string()
         };

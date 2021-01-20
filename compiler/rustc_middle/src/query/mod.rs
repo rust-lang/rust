@@ -881,7 +881,6 @@ rustc_queries! {
         query def_kind(def_id: DefId) -> DefKind {
             desc { |tcx| "looking up definition kind of `{}`", tcx.def_path_str(def_id) }
         }
-
         query def_span(def_id: DefId) -> Span {
             desc { |tcx| "looking up span for `{}`", tcx.def_path_str(def_id) }
             // FIXME(mw): DefSpans are not really inputs since they are derived from
@@ -891,23 +890,15 @@ rustc_queries! {
             // regardless of HIR hashing.
             eval_always
         }
-
-        query def_ident_span(def_id: DefId) -> Option<Span> {
-            desc { |tcx| "looking up span for `{}`'s identifier", tcx.def_path_str(def_id) }
-        }
-
         query lookup_stability(def_id: DefId) -> Option<&'tcx attr::Stability> {
             desc { |tcx| "looking up stability of `{}`", tcx.def_path_str(def_id) }
         }
-
         query lookup_const_stability(def_id: DefId) -> Option<&'tcx attr::ConstStability> {
             desc { |tcx| "looking up const stability of `{}`", tcx.def_path_str(def_id) }
         }
-
         query lookup_deprecation_entry(def_id: DefId) -> Option<DeprecationEntry> {
             desc { |tcx| "checking whether `{}` is deprecated", tcx.def_path_str(def_id) }
         }
-
         query item_attrs(def_id: DefId) -> &'tcx [ast::Attribute] {
             desc { |tcx| "collecting attributes of `{}`", tcx.def_path_str(def_id) }
         }
@@ -1240,8 +1231,6 @@ rustc_queries! {
             eval_always
             desc { "looking up the disambiguator a crate" }
         }
-        // The macro which defines `rustc_metadata::provide_extern` depends on this query's name.
-        // Changing the name should cause a compiler error, but in case that changes, be aware.
         query crate_hash(_: CrateNum) -> Svh {
             eval_always
             desc { "looking up the hash a crate" }
@@ -1281,6 +1270,11 @@ rustc_queries! {
     }
 
     Other {
+        query dllimport_foreign_items(_: CrateNum)
+            -> FxHashSet<DefId> {
+            storage(ArenaCacheSelector<'tcx>)
+            desc { "dllimport_foreign_items" }
+        }
         query is_dllimport_foreign_item(def_id: DefId) -> bool {
             desc { |tcx| "is_dllimport_foreign_item({})", tcx.def_path_str(def_id) }
         }
@@ -1311,7 +1305,7 @@ rustc_queries! {
             desc { "looking up a named region" }
         }
         query is_late_bound_map(_: LocalDefId) ->
-            Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
+            Option<&'tcx FxHashSet<ItemLocalId>> {
             desc { "testing if a region is late bound" }
         }
         query object_lifetime_defaults_map(_: LocalDefId)

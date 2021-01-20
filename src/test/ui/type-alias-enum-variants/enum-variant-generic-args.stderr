@@ -166,33 +166,17 @@ error[E0109]: type arguments are not allowed for this type
 LL |     AliasFixed::TSVariant::<()>(());
    |                             ^^ type argument not allowed
 
-error[E0107]: this type alias takes 0 type arguments but 1 type argument was supplied
-  --> $DIR/enum-variant-generic-args.rs:64:5
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:64:18
    |
 LL |     AliasFixed::<()>::TSVariant(());
-   |     ^^^^^^^^^^------ help: remove these generics
-   |     |
-   |     expected 0 type arguments
-   |
-note: type alias defined here, with 0 type parameters
-  --> $DIR/enum-variant-generic-args.rs:9:6
-   |
-LL | type AliasFixed = Enum<()>;
-   |      ^^^^^^^^^^
+   |                  ^^ unexpected type argument
 
-error[E0107]: this type alias takes 0 type arguments but 1 type argument was supplied
-  --> $DIR/enum-variant-generic-args.rs:66:5
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:66:18
    |
 LL |     AliasFixed::<()>::TSVariant::<()>(());
-   |     ^^^^^^^^^^------ help: remove these generics
-   |     |
-   |     expected 0 type arguments
-   |
-note: type alias defined here, with 0 type parameters
-  --> $DIR/enum-variant-generic-args.rs:9:6
-   |
-LL | type AliasFixed = Enum<()>;
-   |      ^^^^^^^^^^
+   |                  ^^ unexpected type argument
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:66:35
@@ -224,33 +208,17 @@ error[E0109]: type arguments are not allowed for this type
 LL |     AliasFixed::SVariant::<()> { v: () };
    |                            ^^ type argument not allowed
 
-error[E0107]: this type alias takes 0 type arguments but 1 type argument was supplied
-  --> $DIR/enum-variant-generic-args.rs:82:5
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:82:18
    |
 LL |     AliasFixed::<()>::SVariant { v: () };
-   |     ^^^^^^^^^^------ help: remove these generics
-   |     |
-   |     expected 0 type arguments
-   |
-note: type alias defined here, with 0 type parameters
-  --> $DIR/enum-variant-generic-args.rs:9:6
-   |
-LL | type AliasFixed = Enum<()>;
-   |      ^^^^^^^^^^
+   |                  ^^ unexpected type argument
 
-error[E0107]: this type alias takes 0 type arguments but 1 type argument was supplied
-  --> $DIR/enum-variant-generic-args.rs:84:5
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:84:18
    |
 LL |     AliasFixed::<()>::SVariant::<()> { v: () };
-   |     ^^^^^^^^^^------ help: remove these generics
-   |     |
-   |     expected 0 type arguments
-   |
-note: type alias defined here, with 0 type parameters
-  --> $DIR/enum-variant-generic-args.rs:9:6
-   |
-LL | type AliasFixed = Enum<()>;
-   |      ^^^^^^^^^^
+   |                  ^^ unexpected type argument
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:84:34
@@ -282,33 +250,17 @@ error[E0109]: type arguments are not allowed for this type
 LL |     AliasFixed::UVariant::<()>;
    |                            ^^ type argument not allowed
 
-error[E0107]: this type alias takes 0 type arguments but 1 type argument was supplied
-  --> $DIR/enum-variant-generic-args.rs:100:5
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:100:18
    |
 LL |     AliasFixed::<()>::UVariant;
-   |     ^^^^^^^^^^------ help: remove these generics
-   |     |
-   |     expected 0 type arguments
-   |
-note: type alias defined here, with 0 type parameters
-  --> $DIR/enum-variant-generic-args.rs:9:6
-   |
-LL | type AliasFixed = Enum<()>;
-   |      ^^^^^^^^^^
+   |                  ^^ unexpected type argument
 
-error[E0107]: this type alias takes 0 type arguments but 1 type argument was supplied
-  --> $DIR/enum-variant-generic-args.rs:102:5
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/enum-variant-generic-args.rs:102:18
    |
 LL |     AliasFixed::<()>::UVariant::<()>;
-   |     ^^^^^^^^^^------ help: remove these generics
-   |     |
-   |     expected 0 type arguments
-   |
-note: type alias defined here, with 0 type parameters
-  --> $DIR/enum-variant-generic-args.rs:9:6
-   |
-LL | type AliasFixed = Enum<()>;
-   |      ^^^^^^^^^^
+   |                  ^^ unexpected type argument
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:102:34

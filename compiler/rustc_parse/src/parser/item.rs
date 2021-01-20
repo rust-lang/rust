@@ -125,7 +125,19 @@ impl<'a> Parser<'a> {
             item
         };
 
-        let item = if needs_tokens { self.collect_tokens(parse_item) } else { parse_item(self) }?;
+        let (mut item, tokens) = if needs_tokens {
+            let (item, tokens) = self.collect_tokens(parse_item)?;
+            (item, tokens)
+        } else {
+            (parse_item(self)?, None)
+        };
+        if let Some(item) = &mut item {
+            // If we captured tokens during parsing (due to encountering an `NtItem`),
+            // use those instead
+            if item.tokens.is_none() {
+                item.tokens = tokens;
+            }
+        }
 
         self.unclosed_delims.append(&mut unclosed_delims);
         Ok(item)

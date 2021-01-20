@@ -15,12 +15,12 @@ enum E<'a, 'b> {
 fn main() {
     S(&0, &0); // OK
     S::<'static>(&0, &0);
-    //~^ ERROR this struct takes 2 lifetime arguments but only 1 lifetime argument was supplied
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
     S::<'static, 'static, 'static>(&0, &0);
-    //~^ ERROR this struct takes 2 lifetime arguments but 3 lifetime arguments were supplied
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 3
     E::V(&0); // OK
     E::V::<'static>(&0);
-    //~^ ERROR this enum takes 2 lifetime arguments but only 1 lifetime argument was supplied
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
     E::V::<'static, 'static, 'static>(&0);
-    //~^ ERROR this enum takes 2 lifetime arguments but 3 lifetime arguments were supplied
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 3
 }

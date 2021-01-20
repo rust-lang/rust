@@ -7,6 +7,6 @@
 #[lang = "sized"]
 trait Sized {}
 
-extern "C" {
+extern {
     pub static A: u32;
 }

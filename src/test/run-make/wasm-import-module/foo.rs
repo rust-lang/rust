@@ -2,6 +2,6 @@
 #![deny(warnings)]
 
 #[link(wasm_import_module = "./dep")]
-extern "C" {
+extern {
     pub fn dep();
 }

@@ -3,8 +3,6 @@
 
 #[rustfmt::skip]
 #[warn(clippy::collapsible_if)]
-#[warn(clippy::collapsible_else_if)]
-
 fn main() {
     let x = "hello";
     let y = "world";

@@ -7,14 +7,6 @@ use crate::process;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
-mod private {
-    /// This trait being unreachable from outside the crate
-    /// prevents other implementations of the `ExitStatusExt` trait,
-    /// which allows potentially adding more trait methods in the future.
-    #[stable(feature = "none", since = "1.51.0")]
-    pub trait Sealed {}
-}
-
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
     unsafe fn from_raw_handle(handle: RawHandle) -> process::Stdio {
@@ -81,11 +73,8 @@ impl IntoRawHandle for process::ChildStderr {
 }
 
 /// Windows-specific extensions to [`process::ExitStatus`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "exit_status_from", since = "1.12.0")]
-pub trait ExitStatusExt: private::Sealed {
+pub trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `u32` return value of
     /// a process.
     #[stable(feature = "exit_status_from", since = "1.12.0")]
@@ -98,9 +87,6 @@ impl ExitStatusExt for process::ExitStatus {
         process::ExitStatus::from_inner(From::from(raw))
     }
 }
-
-#[stable(feature = "none", since = "1.51.0")]
-impl private::Sealed for process::ExitStatus {}
 
 /// Windows-specific extensions to the [`process::Command`] builder.
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]

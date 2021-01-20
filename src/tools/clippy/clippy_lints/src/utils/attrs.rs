@@ -1,7 +1,6 @@
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_session::Session;
-use rustc_span::sym;
 use std::str::FromStr;
 
 /// Deprecation status of attributes known by Clippy.
@@ -65,11 +64,11 @@ pub fn get_attr<'a>(
             return false;
         };
         let attr_segments = &attr.path.segments;
-        if attr_segments.len() == 2 && attr_segments[0].ident.name == sym::clippy {
+        if attr_segments.len() == 2 && attr_segments[0].ident.to_string() == "clippy" {
             BUILTIN_ATTRIBUTES
                 .iter()
-                .find_map(|&(builtin_name, ref deprecation_status)| {
-                    if attr_segments[1].ident.name.as_str() == builtin_name {
+                .find_map(|(builtin_name, deprecation_status)| {
+                    if *builtin_name == attr_segments[1].ident.to_string() {
                         Some(deprecation_status)
                     } else {
                         None
@@ -100,7 +99,7 @@ pub fn get_attr<'a>(
                             },
                             DeprecationStatus::None => {
                                 diag.cancel();
-                                attr_segments[1].ident.name.as_str() == name
+                                attr_segments[1].ident.to_string() == name
                             },
                         }
                     },

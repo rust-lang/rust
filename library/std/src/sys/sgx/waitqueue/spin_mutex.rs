@@ -2,9 +2,8 @@
 mod tests;
 
 use crate::cell::UnsafeCell;
-use crate::hint;
 use crate::ops::{Deref, DerefMut};
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{spin_loop_hint, AtomicBool, Ordering};
 
 #[derive(Default)]
 pub struct SpinMutex<T> {
@@ -33,7 +32,7 @@ impl<T> SpinMutex<T> {
             match self.try_lock() {
                 None => {
                     while self.lock.load(Ordering::Relaxed) {
-                        hint::spin_loop()
+                        spin_loop_hint()
                     }
                 }
                 Some(guard) => return guard,

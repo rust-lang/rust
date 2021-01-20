@@ -1,6 +1,6 @@
 // run-pass
-// pretty-expanded FIXME #23616
 #![allow(dead_code)]
+// pretty-expanded FIXME #23616
 
 unsafe extern fn foo() {}
 unsafe extern "C" fn bar() {}

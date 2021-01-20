@@ -1,3 +1,3 @@
-extern "C" {
+extern {
     fn bar();
 }

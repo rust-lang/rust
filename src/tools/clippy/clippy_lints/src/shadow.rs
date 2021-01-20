@@ -333,13 +333,6 @@ fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, bindings: &mut
                 check_expr(cx, e, bindings)
             }
         },
-        ExprKind::If(ref cond, ref then, ref otherwise) => {
-            check_expr(cx, cond, bindings);
-            check_expr(cx, &**then, bindings);
-            if let Some(ref o) = *otherwise {
-                check_expr(cx, o, bindings);
-            }
-        },
         ExprKind::Match(ref init, arms, _) => {
             check_expr(cx, init, bindings);
             let len = bindings.len();
@@ -396,5 +389,5 @@ fn is_self_shadow(name: Symbol, expr: &Expr<'_>) -> bool {
 }
 
 fn path_eq_name(name: Symbol, path: &Path<'_>) -> bool {
-    !path.is_global() && path.segments.len() == 1 && path.segments[0].ident.name == name
+    !path.is_global() && path.segments.len() == 1 && path.segments[0].ident.as_str() == name.as_str()
 }

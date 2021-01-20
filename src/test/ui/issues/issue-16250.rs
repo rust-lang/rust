@@ -2,8 +2,9 @@
 
 pub struct Foo;
 
-extern "C" {
+extern {
     pub fn foo(x: (Foo)); //~ ERROR `extern` block uses type `Foo`
 }
 
-fn main() {}
+fn main() {
+}

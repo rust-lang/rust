@@ -1,10 +1,9 @@
 use crate::cell::UnsafeCell;
 use crate::collections::VecDeque;
 use crate::ffi::c_void;
-use crate::hint;
 use crate::ops::{Deref, DerefMut, Drop};
 use crate::ptr;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{spin_loop_hint, AtomicUsize, Ordering};
 use crate::sys::hermit::abi;
 
 /// This type provides a lock based on busy waiting to realize mutual exclusion
@@ -47,7 +46,7 @@ impl<T> Spinlock<T> {
     fn obtain_lock(&self) {
         let ticket = self.queue.fetch_add(1, Ordering::SeqCst) + 1;
         while self.dequeue.load(Ordering::SeqCst) != ticket {
-            hint::spin_loop();
+            spin_loop_hint();
         }
     }
 

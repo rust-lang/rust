@@ -18,7 +18,7 @@ fn main() {
     }
 }
 
-extern "C" {
+extern {
     fn giraffe();
     fn turtle();
 }

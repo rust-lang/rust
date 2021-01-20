@@ -590,8 +590,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                     let mut found = false;
                     for (bound, _) in bounds {
-                        if let ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_, r)) =
-                            bound.kind().skip_binder()
+                        if let ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(_, r)) =
+                            bound.skip_binders()
                         {
                             let r = r.subst(self.infcx.tcx, substs);
                             if let ty::RegionKind::ReStatic = r {

@@ -1,3 +1,3 @@
-extern "C" {
+extern {
     pub fn extern_c_fn();
 }

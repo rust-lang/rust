@@ -5,15 +5,11 @@ use bar::*;
 mod bar {
     use self::fpriv as import;
     fn fpriv() {}
-    extern "C" {
+    extern {
         fn epriv();
     }
-    enum A {
-        A1,
-    }
-    pub enum B {
-        B1,
-    }
+    enum A { A1 }
+    pub enum B { B1 }
 
     struct C;
 

@@ -47,7 +47,8 @@ where
                         let index = index
                             .try_into()
                             .expect("more generic parameters than can fit into a `u32`");
-                        let is_used = unused_params.contains(index).map_or(true, |unused| !unused);
+                        let is_used =
+                            unused_params.contains(index).map(|unused| !unused).unwrap_or(true);
                         // Only recurse when generic parameters in fns, closures and generators
                         // are used and require substitution.
                         match (is_used, subst.needs_subst()) {

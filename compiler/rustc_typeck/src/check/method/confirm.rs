@@ -1,6 +1,6 @@
 use super::{probe, MethodCallee};
 
-use crate::astconv::{AstConv, CreateSubstsForGenericArgsCtxt, IsMethodCall};
+use crate::astconv::{AstConv, CreateSubstsForGenericArgsCtxt};
 use crate::check::{callee, FnCtxt};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
@@ -31,7 +31,6 @@ impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
     }
 }
 
-#[derive(Debug)]
 pub struct ConfirmResult<'tcx> {
     pub callee: MethodCallee<'tcx>,
     pub illegal_sized_bound: Option<Span>,
@@ -299,14 +298,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let generics = self.tcx.generics_of(pick.item.def_id);
-
         let arg_count_correct = AstConv::check_generic_arg_count_for_call(
-            self.tcx,
-            self.span,
-            pick.item.def_id,
-            &generics,
-            seg,
-            IsMethodCall::Yes,
+            self.tcx, self.span, &generics, &seg, true, // `is_method_call`
         );
 
         // Create subst for early-bound lifetime parameters, combining
@@ -479,8 +472,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
             // We don't care about regions here.
-            .filter_map(|obligation| match obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
+            .filter_map(|obligation| match obligation.predicate.skip_binders() {
+                ty::PredicateAtom::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
                     let span = predicates
                         .predicates
                         .iter()
@@ -508,7 +501,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.tcx,
                 self.span,
                 Some(self.self_expr.span),
-                self.call_expr.span,
                 trait_def_id,
             ),
             ty::ImplContainer(..) => {}

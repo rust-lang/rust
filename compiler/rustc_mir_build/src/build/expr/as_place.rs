@@ -531,7 +531,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Borrow { .. }
             | ExprKind::AddressOf { .. }
             | ExprKind::Match { .. }
-            | ExprKind::If { .. }
             | ExprKind::Loop { .. }
             | ExprKind::Block { .. }
             | ExprKind::Assign { .. }

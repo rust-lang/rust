@@ -3,12 +3,10 @@
 extern crate foo;
 
 #[link(name = "bar", kind = "static")]
-extern "C" {
+extern {
     fn bar();
 }
 
 pub fn doit() {
-    unsafe {
-        bar();
-    }
+    unsafe { bar(); }
 }

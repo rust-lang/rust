@@ -66,7 +66,7 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 /// Returns true iff the given expression is the result of calling `Result::ok`
 fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
     if let ExprKind::MethodCall(ref path, _, &[ref receiver], _) = &expr.kind {
-        path.ident.name.as_str() == "ok"
+        path.ident.name.to_ident_string() == "ok"
             && is_type_diagnostic_item(cx, &cx.typeck_results().expr_ty(&receiver), sym::result_type)
     } else {
         false
@@ -109,30 +109,25 @@ fn extract_body_from_arm<'a>(arm: &'a Arm<'a>) -> Option<&'a Expr<'a>> {
 /// it in curly braces. Otherwise, we don't.
 fn should_wrap_in_braces(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     utils::get_enclosing_block(cx, expr.hir_id).map_or(false, |parent| {
-        let mut should_wrap = false;
-
         if let Some(Expr {
             kind:
                 ExprKind::Match(
                     _,
                     arms,
-                    MatchSource::IfLetDesugar {
+                    MatchSource::IfDesugar {
+                        contains_else_clause: true,
+                    }
+                    | MatchSource::IfLetDesugar {
                         contains_else_clause: true,
                     },
                 ),
             ..
         }) = parent.expr
         {
-            should_wrap = expr.hir_id == arms[1].body.hir_id;
-        } else if let Some(Expr {
-            kind: ExprKind::If(_, _, Some(else_clause)),
-            ..
-        }) = parent.expr
-        {
-            should_wrap = expr.hir_id == else_clause.hir_id;
+            expr.hir_id == arms[1].body.hir_id
+        } else {
+            false
         }
-
-        should_wrap
     })
 }
 

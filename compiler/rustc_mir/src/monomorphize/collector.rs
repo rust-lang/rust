@@ -823,7 +823,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
     }
 
     if !tcx.is_mir_available(def_id) {
-        bug!("no MIR available for {:?}", def_id);
+        bug!("cannot create local mono-item for {:?}", def_id)
     }
 
     true
@@ -1146,8 +1146,8 @@ fn create_mono_items_for_default_impls<'tcx>(
     output: &mut Vec<Spanned<MonoItem<'tcx>>>,
 ) {
     match item.kind {
-        hir::ItemKind::Impl(ref impl_) => {
-            for param in impl_.generics.params {
+        hir::ItemKind::Impl { ref generics, ref items, .. } => {
+            for param in generics.params {
                 match param.kind {
                     hir::GenericParamKind::Lifetime { .. } => {}
                     hir::GenericParamKind::Type { .. } | hir::GenericParamKind::Const { .. } => {
@@ -1167,7 +1167,7 @@ fn create_mono_items_for_default_impls<'tcx>(
                 let param_env = ty::ParamEnv::reveal_all();
                 let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
                 let overridden_methods: FxHashSet<_> =
-                    impl_.items.iter().map(|iiref| iiref.ident.normalize_to_macros_2_0()).collect();
+                    items.iter().map(|iiref| iiref.ident.normalize_to_macros_2_0()).collect();
                 for method in tcx.provided_trait_methods(trait_ref.def_id) {
                     if overridden_methods.contains(&method.ident.normalize_to_macros_2_0()) {
                         continue;

@@ -2,7 +2,7 @@
 
 fn main() {}
 
-extern "C" {
+extern {
     static X: u8 = 0; //~ ERROR incorrect `static` inside `extern` block
     static mut Y: u8 = 0; //~ ERROR incorrect `static` inside `extern` block
 }

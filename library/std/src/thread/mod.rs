@@ -1186,37 +1186,32 @@ impl fmt::Debug for Thread {
 /// the [`Error`](crate::error::Error) trait.
 ///
 /// Thus, a sensible way to handle a thread panic is to either:
-///
-/// 1. propagate the panic with [`std::panic::resume_unwind`]
+/// 1. `unwrap` the `Result<T>`, propagating the panic
 /// 2. or in case the thread is intended to be a subsystem boundary
 /// that is supposed to isolate system-level failures,
-/// match on the `Err` variant and handle the panic in an appropriate way
+/// match on the `Err` variant and handle the panic in an appropriate way.
 ///
 /// A thread that completes without panicking is considered to exit successfully.
 ///
 /// # Examples
 ///
-/// Matching on the result of a joined thread:
-///
 /// ```no_run
-/// use std::{fs, thread, panic};
+/// use std::thread;
+/// use std::fs;
 ///
 /// fn copy_in_thread() -> thread::Result<()> {
-///     thread::spawn(|| {
-///         fs::copy("foo.txt", "bar.txt").unwrap();
-///     }).join()
+///     thread::spawn(move || { fs::copy("foo.txt", "bar.txt").unwrap(); }).join()
 /// }
 ///
 /// fn main() {
 ///     match copy_in_thread() {
-///         Ok(_) => println!("copy succeeded"),
-///         Err(e) => panic::resume_unwind(e),
+///         Ok(_) => println!("this is fine"),
+///         Err(_) => println!("thread panicked"),
 ///     }
 /// }
 /// ```
 ///
 /// [`Result`]: crate::result::Result
-/// [`std::panic::resume_unwind`]: crate::panic::resume_unwind
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 

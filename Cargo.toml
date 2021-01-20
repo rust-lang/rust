@@ -31,7 +31,6 @@ members = [
   "src/tools/rustdoc-themes",
   "src/tools/unicode-table-generator",
   "src/tools/expand-yaml-anchors",
-  "src/tools/jsondocck",
 ]
 
 exclude = [

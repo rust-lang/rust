@@ -347,7 +347,7 @@ impl<'a> Parser<'a> {
         let mut pos = pos;
         // This handles the raw string case, the raw argument is the number of #
         // in r###"..."### (we need to add one because of the `r`).
-        let raw = self.style.map_or(0, |raw| raw + 1);
+        let raw = self.style.map(|raw| raw + 1).unwrap_or(0);
         for skip in &self.skips {
             if pos > *skip {
                 pos += 1;
@@ -736,7 +736,7 @@ fn find_skips_from_snippet(
 
     fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
         let mut eat_ws = false;
-        let mut s = snippet.char_indices().peekable();
+        let mut s = snippet.chars().enumerate().peekable();
         let mut skips = vec![];
         while let Some((pos, c)) = s.next() {
             match (c, s.peek()) {
@@ -814,7 +814,7 @@ fn find_skips_from_snippet(
         skips
     }
 
-    let r_start = str_style.map_or(0, |r| r + 1);
+    let r_start = str_style.map(|r| r + 1).unwrap_or(0);
     let r_end = str_style.unwrap_or(0);
     let s = &snippet[r_start + 1..snippet.len() - r_end - 1];
     (find_skips(s, str_style.is_some()), true)

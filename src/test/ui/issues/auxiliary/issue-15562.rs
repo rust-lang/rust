@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
 
-extern "C" {
+extern {
     pub fn transmute();
 }

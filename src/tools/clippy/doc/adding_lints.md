@@ -147,14 +147,10 @@ add `// edition:2018` at the top of the test file (note that it's space-sensitiv
 
 Manually testing against an example file can be useful if you have added some
 `println!`s and the test suite output becomes unreadable. To try Clippy with
-your local modifications, run
+your local modifications, run `env CLIPPY_TESTS=true cargo run --bin
+clippy-driver -- -L ./target/debug input.rs` from the working copy root.
 
-```
-env __CLIPPY_INTERNAL_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs
-```
-
-from the working copy root. With tests in place, let's have a look at
-implementing our lint now.
+With tests in place, let's have a look at implementing our lint now.
 
 ## Lint declaration
 

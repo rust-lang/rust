@@ -9,6 +9,5 @@
 #[warn(clippy::drop_bounds)]
 #[warn(clippy::temporary_cstring_as_ptr)]
 #[warn(clippy::panic_params)]
-#[warn(clippy::unknown_clippy_lints)]
 
 fn main() {}

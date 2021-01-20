@@ -89,9 +89,9 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
                 if let [obj, _] = args;
                 if cx.typeck_results().expr_ty(obj).is_floating_point() || match_trait_method(cx, expr, &paths::ORD);
                 then {
-                    if path.ident.name == sym!(max) {
+                    if path.ident.as_str() == sym!(max).as_str() {
                         fetch_const(cx, args, MinMax::Max)
-                    } else if path.ident.name == sym!(min) {
+                    } else if path.ident.as_str() == sym!(min).as_str() {
                         fetch_const(cx, args, MinMax::Min)
                     } else {
                         None

@@ -1,6 +1,6 @@
 mod Y {
     pub type X = usize;
-    extern "C" {
+    extern {
         pub static x: *const usize;
     }
     pub fn foo(value: *const X) -> *const X {

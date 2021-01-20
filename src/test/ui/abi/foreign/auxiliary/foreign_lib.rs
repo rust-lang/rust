@@ -1,11 +1,12 @@
-#![crate_name = "foreign_lib"]
+#![crate_name="foreign_lib"]
+
 #![feature(rustc_private)]
 
 pub mod rustrt {
     extern crate libc;
 
     #[link(name = "rust_test_helpers", kind = "static")]
-    extern "C" {
+    extern {
         pub fn rust_get_test_int() -> libc::intptr_t;
     }
 }
@@ -13,7 +14,7 @@ pub mod rustrt {
 pub mod rustrt2 {
     extern crate libc;
 
-    extern "C" {
+    extern {
         pub fn rust_get_test_int() -> libc::intptr_t;
     }
 }
@@ -23,7 +24,7 @@ pub mod rustrt3 {
     // Ensures that we don't ICE or trigger LLVM asserts when
     // importing the same symbol under different types.
     // See https://github.com/rust-lang/rust/issues/32740.
-    extern "C" {
+    extern {
         pub fn rust_get_test_int() -> *const u8;
     }
 }

@@ -7,7 +7,7 @@ struct TestStruct {
 
 unsafe impl Sync for TestStruct {}
 
-extern "C" fn foo() {}
+extern fn foo() {}
 const x: extern "C" fn() = foo;
 static y: TestStruct = TestStruct { x: x as *const u8 };
 

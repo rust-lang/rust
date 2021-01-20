@@ -1,4 +1,4 @@
-extern "C" {
+extern {
     f(); //~ ERROR expected one of `!` or `::`, found `(`
 }
 

@@ -26,7 +26,7 @@ impl Trait for () {
     type U = impl Trait; //~ ERROR could not find defining uses
 }
 
-extern "C" {
+extern {
     #[inline] //~ ERROR attribute should be applied to function or closure
     static X: u32;
 

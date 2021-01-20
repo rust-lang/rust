@@ -384,11 +384,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        for (id, origin) in fcx_typeck_results.closure_kind_origins().iter() {
-            let hir_id = hir::HirId { owner: common_hir_owner, local_id: *id };
-            let place_span = origin.0;
-            let place = self.resolve(origin.1.clone(), &place_span);
-            self.typeck_results.closure_kind_origins_mut().insert(hir_id, (place_span, place));
+        for (&id, &origin) in fcx_typeck_results.closure_kind_origins().iter() {
+            let hir_id = hir::HirId { owner: common_hir_owner, local_id: id };
+            self.typeck_results.closure_kind_origins_mut().insert(hir_id, origin);
         }
     }
 
@@ -694,7 +692,6 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     Some(self.body.id()),
                     self.span.to_span(self.tcx),
                     t.into(),
-                    vec![],
                     E0282,
                 )
                 .emit();
@@ -708,7 +705,6 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     Some(self.body.id()),
                     self.span.to_span(self.tcx),
                     c.into(),
-                    vec![],
                     E0282,
                 )
                 .emit();

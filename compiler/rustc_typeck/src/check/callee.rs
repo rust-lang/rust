@@ -25,24 +25,24 @@ pub fn check_legal_trait_for_method_call(
     tcx: TyCtxt<'_>,
     span: Span,
     receiver: Option<Span>,
-    expr_span: Span,
     trait_id: DefId,
 ) {
     if tcx.lang_items().drop_trait() == Some(trait_id) {
         let mut err = struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method");
         err.span_label(span, "explicit destructor calls not allowed");
 
-        let (sp, suggestion) = receiver
+        let snippet = receiver
             .and_then(|s| tcx.sess.source_map().span_to_snippet(s).ok())
-            .filter(|snippet| !snippet.is_empty())
-            .map(|snippet| (expr_span, format!("drop({})", snippet)))
-            .unwrap_or_else(|| (span, "drop".to_string()));
+            .unwrap_or_default();
+
+        let suggestion =
+            if snippet.is_empty() { "drop".to_string() } else { format!("drop({})", snippet) };
 
         err.span_suggestion(
-            sp,
-            "consider using `drop` function",
-            suggestion,
-            Applicability::MaybeIncorrect,
+            span,
+            &format!("consider using `drop` function: `{}`", suggestion),
+            String::new(),
+            Applicability::Unspecified,
         );
 
         err.emit();
