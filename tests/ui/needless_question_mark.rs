@@ -1,7 +1,13 @@
 // run-rustfix
 
 #![warn(clippy::needless_question_mark)]
-#![allow(clippy::needless_return, clippy::unnecessary_unwrap, dead_code, unused_must_use)]
+#![allow(
+    clippy::needless_return,
+    clippy::unnecessary_unwrap,
+    clippy::upper_case_acronyms,
+    dead_code,
+    unused_must_use
+)]
 #![feature(custom_inner_attributes)]
 
 struct TO {
