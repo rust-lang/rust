@@ -2485,8 +2485,14 @@ impl<'a> Resolver<'a> {
                             (format!("use of undeclared crate or module `{}`", ident), None)
                         }
                     } else {
-                        let mut msg =
-                            format!("could not find `{}` in `{}`", ident, path[i - 1].ident);
+                        let parent = path[i - 1].ident.name;
+                        let parent = if parent == kw::PathRoot {
+                            "crate root".to_owned()
+                        } else {
+                            format!("`{}`", parent)
+                        };
+
+                        let mut msg = format!("could not find `{}` in {}", ident, parent);
                         if ns == TypeNS || ns == ValueNS {
                             let ns_to_try = if ns == TypeNS { ValueNS } else { TypeNS };
                             if let FindBindingResult::Binding(Ok(binding)) =
@@ -2494,11 +2500,11 @@ impl<'a> Resolver<'a> {
                             {
                                 let mut found = |what| {
                                     msg = format!(
-                                        "expected {}, found {} `{}` in `{}`",
+                                        "expected {}, found {} `{}` in {}",
                                         ns.descr(),
                                         what,
                                         ident,
-                                        path[i - 1].ident
+                                        parent
                                     )
                                 };
                                 if binding.module().is_some() {
