@@ -421,11 +421,43 @@ fn frobnicate(s: &str) {
 **Rationale:** reveals the costs.
 It is also more efficient when the caller already owns the allocation.
 
-## Collection types
+## Collection Types
 
 Prefer `rustc_hash::FxHashMap` and `rustc_hash::FxHashSet` instead of the ones in `std::collections`.
 
 **Rationale:** they use a hasher that's significantly faster and using them consistently will reduce code size by some small amount.
+
+## Avoid Intermediate Collections
+
+When writing a recursive function to compute a sets of things, use an accumulator parameter instead of returning a fresh collection.
+Accumulator goes first in the list of arguments.
+
+```rust
+// GOOD
+pub fn reachable_nodes(node: Node) -> FxHashSet<Node> {
+    let mut res = FxHashSet::default();
+    go(&mut res, node);
+    res
+}
+fn go(acc: &mut FxHashSet<Node>, node: Node) {
+    acc.insert(node);
+    for n in node.neighbors() {
+        go(acc, n);
+    }
+}
+
+// BAD
+pub fn reachable_nodes(node: Node) -> FxHashSet<Node> {
+    let mut res = FxHashSet::default();
+    res.insert(node);
+    for n in node.neighbors() {
+        res.extend(reachable_nodes(n));
+    }
+    res
+}
+```
+
+**Rational:** re-use allocations, accumulator style is more concise for complex cases.
 
 # Style
 
