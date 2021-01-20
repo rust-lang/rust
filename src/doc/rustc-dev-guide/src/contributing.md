@@ -64,7 +64,8 @@ Pull requests (or PRs for short) are the primary mechanism we use to change Rust
 GitHub itself has some [great documentation][about-pull-requests] on using the
 Pull Request feature. We use the "fork and pull" model [described here][development-models],
 where contributors push changes to their personal fork and create pull requests to
-bring those changes into the source repository.
+bring those changes into the source repository. We have more info about how to use git
+when contributing to Rust under [the git section](./git.md).
 
 [about-pull-requests]: https://help.github.com/articles/about-pull-requests/
 [development-models]: https://help.github.com/articles/about-collaborative-development-models/

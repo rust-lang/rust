@@ -46,6 +46,10 @@ git remote add upstream git@github.com:rust-lang/rust.git
 
 if you're using SSH.
 
+**NOTE:** This page is dedicated to workflows for `rust-lang/rust`, but will likely be
+useful when contributing to other repositories in the Rust project.
+
+
 ## Standard Process
 
 Below is the normal procedure that you're likely to use for most minor changes
@@ -53,7 +57,8 @@ and PRs:
 
  1. Ensure that you're making your changes on top of master:
  `git checkout master`.
- 2. Get the latest changes from the Rust repo: `git pull upstream master`.
+ 2. Get the latest changes from the Rust repo: `git pull upstream master --ff-only`.
+ (see [No-Merge Policy](#keeping-things-up-to-date) for more info about this).
  3. Make a new branch for your change: `git checkout -b issue-12345-fix`.
  4. Make some changes to the repo and test them.
  5. Stage your changes via `git add src/changed/file.rs src/another/change.rs`
@@ -62,8 +67,13 @@ and PRs:
  unintentionally commit changes that should not be committed, such as submodule
  updates. You can use `git status` to check if there are any files you forgot
  to stage.
- 6. Push your changes to your fork: `git push --set-upstream origin issue-12345-fix`.
- 7. [Open a PR][ghpullrequest] from your fork to rust-lang/rust's master branch.
+ 6. Push your changes to your fork: `git push --set-upstream origin issue-12345-fix`
+ (After adding commits, you can use `git push` and after rebasing or
+pulling-and-rebasing, you can use `git push --force-with-lease`).
+ 7. If you end up needing to rebase and are hitting conflicts, see [Rebasing](#rebasing).
+ 8. If you want to track upstream while working on long-running feature/issue, see
+ [Keeping things up to date](#keeping-things-up-to-date).
+ 9. [Open a PR][ghpullrequest] from your fork to `rust-lang/rust`'s master branch.
 
 [ghpullrequest]: https://guides.github.com/activities/forking/#making-a-pull-request
 
@@ -160,7 +170,7 @@ it's not anything you did wrong. There is a workaround at [#77620].
 
 [#77620]: https://github.com/rust-lang/rust/issues/77620#issuecomment-705228229
 
-## Conflicts
+## Rebasing and Conflicts
 
 When you edit your code locally, you are making changes to the version of
 rust-lang/rust that existed when you created your feature branch. As such, when
@@ -235,6 +245,34 @@ The advice this gives is incorrect! Because of Rust's
 ["no-merge" policy](#no-merge-policy) the merge commit created by `git pull`
 will not be allowed in the final PR, in addition to defeating the point of the
 rebase! Use `git push --force-with-lease` instead.
+
+### Keeping things up to date
+
+The above section on [Rebasing](#rebasing) is a specific
+guide on rebasing work and dealing with merge conflicts.
+Here is some general advice about how to keep your local repo
+up-to-date with upstream changes:
+
+Using `git pull upstream master` while on your local master branch regularly
+will keep it up-to-date. You will also want to rebase your feature branches
+up-to-date as well. After pulling, you can checkout the feature branches
+and rebase them:
+
+```
+git checkout master
+git pull upstream master --ff-only # to make certain there are no merge commits
+git checkout feature_branch
+git rebase master
+git push --force-with-lease (set origin to be the same as local)
+```
+
+To avoid merges as per the [No-Merge Policy][#no-merge-policy], you may want to use
+`git config pull.ff only` (this will apply the config to the local repo).
+to avoid merge conflicts while pulling, without needing
+`--ff-only` or `--rebase` while `git pull`ing
+
+You can also `git push --force-with-lease` from master to keep your origin's master in sync with
+upstream.
 
 ## Advanced Rebasing
 
@@ -330,6 +368,7 @@ that merge commits in PRs are not accepted. As a result, if you are running
 course, this is not always true; if your merge will just be a fast-forward,
 like the merges that `git pull` usually performs, then no merge commit is
 created and you have nothing to worry about. Running `git config merge.ff only`
+(this will apply the config to the local repo).
 once will ensure that all the merges you perform are of this type, so that you
 cannot make a mistake.
 

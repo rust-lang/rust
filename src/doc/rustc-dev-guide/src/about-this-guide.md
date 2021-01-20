@@ -10,8 +10,8 @@ There are six parts to this guide:
    useful no matter how you are contributing, about building, debugging,
    profiling, etc.
 2. [Contributing to `rustc`][p1-5]: Contains information that should be useful
-   no matter how you are contributing, about procedures for contribution,
-   stabilizing features, etc.
+   no matter how you are contributing, about procedures for contribution, using git
+   and Github, stabilizing features, etc.
 2. [High-Level Compiler Architecture][p2]: Discusses the high-level
    architecture of the compiler and stages of the compile process.
 3. [Source Code Representation][p3]: Describes the process of taking raw source code from the user and
