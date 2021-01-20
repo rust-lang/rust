@@ -46,7 +46,7 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)] // unaligned load
     pub unsafe fn load(ptr: *const u8) -> Self {
-        Group(x86::_mm_loadu_si128(ptr as *const _))
+        Group(x86::_mm_loadu_si128(ptr.cast()))
     }
 
     /// Loads a group of bytes starting at the given address, which must be
@@ -56,7 +56,7 @@ impl Group {
     pub unsafe fn load_aligned(ptr: *const u8) -> Self {
         // FIXME: use align_offset once it stabilizes
         debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
-        Group(x86::_mm_load_si128(ptr as *const _))
+        Group(x86::_mm_load_si128(ptr.cast()))
     }
 
     /// Stores the group of bytes to the given address, which must be
@@ -66,7 +66,7 @@ impl Group {
     pub unsafe fn store_aligned(self, ptr: *mut u8) {
         // FIXME: use align_offset once it stabilizes
         debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
-        x86::_mm_store_si128(ptr as *mut _, self.0);
+        x86::_mm_store_si128(ptr.cast(), self.0);
     }
 
     /// Returns a `BitMask` indicating all bytes in the group which have
