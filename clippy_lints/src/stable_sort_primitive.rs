@@ -1,4 +1,4 @@
-use crate::utils::{is_slice_of_primitives, span_lint_and_sugg, sugg::Sugg};
+use crate::utils::{is_slice_of_primitives, span_lint_and_then, sugg::Sugg};
 
 use if_chain::if_chain;
 
@@ -107,25 +107,32 @@ fn detect_stable_sort_primitive(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option
 impl LateLintPass<'_> for StableSortPrimitive {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let Some(detection) = detect_stable_sort_primitive(cx, expr) {
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 STABLE_SORT_PRIMITIVE,
                 expr.span,
                 format!(
-                    "used {} instead of {} to sort primitive type `{}`",
+                    "used `{}` on primitive type `{}`",
                     detection.method.stable_name(),
-                    detection.method.unstable_name(),
                     detection.slice_type,
                 )
                 .as_str(),
-                "try",
-                format!(
-                    "{}.{}({})",
-                    detection.slice_name,
-                    detection.method.unstable_name(),
-                    detection.method_args
-                ),
-                Applicability::MachineApplicable,
+                |diag| {
+                    diag.span_suggestion(
+                        expr.span,
+                        "try",
+                        format!(
+                            "{}.{}({})",
+                            detection.slice_name,
+                            detection.method.unstable_name(),
+                            detection.method_args,
+                        ),
+                        Applicability::MachineApplicable,
+                    );
+                    diag.note(
+                        "an unstable sort would perform faster without any observable difference for this data type",
+                    );
+                },
             );
         }
     }
