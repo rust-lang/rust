@@ -92,9 +92,6 @@ impl ExitStatusExt for process::ExitStatus {
     }
 }
 
-#[unstable(feature = "sealed", issue = "none")]
-impl Sealed for process::ExitStatus {}
-
 /// Windows-specific extensions to the [`process::Command`] builder.
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
 pub trait CommandExt {

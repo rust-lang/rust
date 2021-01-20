@@ -203,9 +203,6 @@ pub trait ExitStatusExt: Sealed {
     fn into_raw(self) -> i32;
 }
 
-#[unstable(feature = "sealed", issue = "none")]
-impl Sealed for process::ExitStatus {}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ExitStatusExt for process::ExitStatus {
     fn from_raw(raw: i32) -> Self {

@@ -1375,6 +1375,10 @@ impl From<fs::File> for Stdio {
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for ExitStatus {}
+
 impl ExitStatus {
     /// Was termination successful? Signal termination is not considered a
     /// success, and success is defined as a zero exit status.
