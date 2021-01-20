@@ -6,7 +6,6 @@
 #![feature(concat_idents)]
 #![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
-#![feature(split_inclusive)]
 #![feature(in_band_lifetimes)]
 #![feature(once_cell)]
 #![feature(or_patterns)]
