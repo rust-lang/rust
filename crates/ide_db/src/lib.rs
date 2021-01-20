@@ -134,3 +134,27 @@ fn line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
     Arc::new(LineIndex::new(&*text))
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum SymbolKind {
+    Module,
+    Impl,
+    Field,
+    TypeParam,
+    ConstParam,
+    LifetimeParam,
+    ValueParam,
+    SelfParam,
+    Local,
+    Label,
+    Function,
+    Const,
+    Static,
+    Struct,
+    Enum,
+    Variant,
+    Union,
+    TypeAlias,
+    Trait,
+    Macro,
+}

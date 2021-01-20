@@ -13,7 +13,7 @@ mod html;
 mod tests;
 
 use hir::{Name, Semantics};
-use ide_db::RootDatabase;
+use ide_db::{RootDatabase, SymbolKind};
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, HasFormatSpecifier},
@@ -27,7 +27,7 @@ use crate::{
         format::highlight_format_string, highlights::Highlights,
         macro_rules::MacroRulesHighlighter, tags::Highlight,
     },
-    FileId, HlMod, HlTag, SymbolKind,
+    FileId, HlMod, HlTag,
 };
 
 pub(crate) use html::highlight_as_html;

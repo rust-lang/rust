@@ -7,6 +7,7 @@ use hir::{AssocItem, Documentation, FieldSource, HasAttrs, HasSource, InFile, Mo
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabase},
     symbol_index::FileSymbolKind,
+    SymbolKind,
 };
 use ide_db::{defs::Definition, RootDatabase};
 use syntax::{
@@ -17,30 +18,6 @@ use syntax::{
 use crate::FileSymbol;
 
 use super::short_label::ShortLabel;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum SymbolKind {
-    Module,
-    Impl,
-    Field,
-    TypeParam,
-    ConstParam,
-    LifetimeParam,
-    ValueParam,
-    SelfParam,
-    Local,
-    Label,
-    Function,
-    Const,
-    Static,
-    Struct,
-    Enum,
-    Variant,
-    Union,
-    TypeAlias,
-    Trait,
-    Macro,
-}
 
 /// `NavigationTarget` represents and element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.

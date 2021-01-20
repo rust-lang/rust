@@ -3,7 +3,7 @@ use std::fmt;
 use assists::utils::test_related_attribute;
 use cfg::CfgExpr;
 use hir::{AsAssocItem, HasAttrs, HasSource, Semantics};
-use ide_db::{defs::Definition, RootDatabase};
+use ide_db::{defs::Definition, RootDatabase, SymbolKind};
 use itertools::Itertools;
 use syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -12,7 +12,7 @@ use syntax::{
 
 use crate::{
     display::{ToNav, TryToNav},
-    FileId, NavigationTarget, SymbolKind,
+    FileId, NavigationTarget,
 };
 
 #[derive(Debug, Clone)]

@@ -8,8 +8,9 @@ use ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
     FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlPunct, HlRange, HlTag, Indel,
     InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget, ReferenceAccess,
-    RenameError, Runnable, Severity, SourceChange, SymbolKind, TextEdit, TextRange, TextSize,
+    RenameError, Runnable, Severity, SourceChange, TextEdit, TextRange, TextSize,
 };
+use ide_db::SymbolKind;
 use itertools::Itertools;
 
 use crate::{

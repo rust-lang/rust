@@ -65,7 +65,7 @@ use crate::display::ToNav;
 pub use crate::{
     call_hierarchy::CallItem,
     diagnostics::{Diagnostic, DiagnosticsConfig, Fix, Severity},
-    display::navigation_target::{NavigationTarget, SymbolKind},
+    display::navigation_target::NavigationTarget,
     expand_macro::ExpandedMacro,
     file_structure::StructureNode,
     folding_ranges::{Fold, FoldKind},

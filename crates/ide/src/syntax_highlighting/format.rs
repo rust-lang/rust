@@ -1,10 +1,11 @@
 //! Syntax highlighting for format macro strings.
+use ide_db::SymbolKind;
 use syntax::{
     ast::{self, FormatSpecifier, HasFormatSpecifier},
     AstNode, AstToken, TextRange,
 };
 
-use crate::{syntax_highlighting::highlights::Highlights, HlRange, HlTag, SymbolKind};
+use crate::{syntax_highlighting::highlights::Highlights, HlRange, HlTag};
 
 pub(super) fn highlight_format_string(
     stack: &mut Highlights,

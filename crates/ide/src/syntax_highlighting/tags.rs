@@ -3,7 +3,7 @@
 
 use std::{fmt, ops};
 
-use crate::SymbolKind;
+use ide_db::SymbolKind;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Highlight {
