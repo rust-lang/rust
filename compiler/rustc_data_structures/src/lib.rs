@@ -31,7 +31,6 @@
 #![feature(once_cell)]
 #![feature(maybe_uninit_uninit_array)]
 #![allow(rustc::default_hash_types)]
-#![deny(unaligned_references)]
 
 #[macro_use]
 extern crate tracing;

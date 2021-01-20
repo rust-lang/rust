@@ -44,7 +44,7 @@
 
 use super::{DepContext, DepKind};
 
-use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 use std::fmt;
@@ -65,7 +65,7 @@ pub struct DepNode<K> {
     //
     // FIXME: Enforce this by preventing manual construction of `DefNode`
     // (e.g. add a `_priv: ()` field)
-    pub hash: PackedFingerprint,
+    pub hash: Fingerprint,
 }
 
 impl<K: DepKind> DepNode<K> {
@@ -74,7 +74,7 @@ impl<K: DepKind> DepNode<K> {
     /// does not require any parameters.
     pub fn new_no_params(kind: K) -> DepNode<K> {
         debug_assert!(!kind.has_params());
-        DepNode { kind, hash: Fingerprint::ZERO.into() }
+        DepNode { kind, hash: Fingerprint::ZERO }
     }
 
     pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
@@ -83,7 +83,7 @@ impl<K: DepKind> DepNode<K> {
         Key: DepNodeParams<Ctxt>,
     {
         let hash = arg.to_fingerprint(tcx);
-        let dep_node = DepNode { kind, hash: hash.into() };
+        let dep_node = DepNode { kind, hash: hash };
 
         #[cfg(debug_assertions)]
         {

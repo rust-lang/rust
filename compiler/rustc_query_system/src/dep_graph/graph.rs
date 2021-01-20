@@ -390,7 +390,7 @@ impl<K: DepKind> DepGraph<K> {
                 // Fingerprint::combine() is faster than sending Fingerprint
                 // through the StableHasher (at least as long as StableHasher
                 // is so slow).
-                hash: data.current.anon_id_seed.combine(hasher.finish()).into(),
+                hash: data.current.anon_id_seed.combine(hasher.finish()),
             };
 
             let dep_node_index = data.current.intern_new_node(
