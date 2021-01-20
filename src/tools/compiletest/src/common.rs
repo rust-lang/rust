@@ -198,6 +198,9 @@ pub struct Config {
     /// The Python executable to use for htmldocck.
     pub docck_python: String,
 
+    /// The jsondocck executable.
+    pub jsondocck_path: Option<String>,
+
     /// The LLVM `FileCheck` binary path.
     pub llvm_filecheck: Option<PathBuf>,
 
