@@ -1610,9 +1610,9 @@ impl fmt::Display for Ipv6Addr {
                 /// Write a colon-separated part of the address
                 #[inline]
                 fn fmt_subslice(f: &mut fmt::Formatter<'_>, chunk: &[u16]) -> fmt::Result {
-                    if let Some(first) = chunk.first() {
+                    if let Some((first, tail)) = chunk.split_first() {
                         fmt::LowerHex::fmt(first, f)?;
-                        for segment in &chunk[1..] {
+                        for segment in tail {
                             f.write_char(':')?;
                             fmt::LowerHex::fmt(segment, f)?;
                         }
