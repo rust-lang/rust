@@ -519,6 +519,7 @@ public:
 
         if (Fn && Fn->getName() == "__enzyme_float") {
           Fn->addFnAttr(Attribute::ReadNone);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadNone);
@@ -528,6 +529,7 @@ public:
         }
         if (Fn && Fn->getName() == "__enzyme_integer") {
           Fn->addFnAttr(Attribute::ReadNone);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadNone);
@@ -537,6 +539,7 @@ public:
         }
         if (Fn && Fn->getName() == "__enzyme_double") {
           Fn->addFnAttr(Attribute::ReadNone);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadNone);
@@ -546,6 +549,7 @@ public:
         }
         if (Fn && Fn->getName() == "__enzyme_pointer") {
           Fn->addFnAttr(Attribute::ReadNone);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadNone);
@@ -555,14 +559,17 @@ public:
         }
         if (Fn && Fn->getName() == "__fd_sincos_1") {
           Fn->addFnAttr(Attribute::ReadNone);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
         }
         if (Fn && Fn->getName() == "f90io_fmtw_end") {
           Fn->addFnAttr(Attribute::InaccessibleMemOnly);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::InaccessibleMemOnly);
         }
         if (Fn && (Fn->getName() == "f90io_sc_d_fmt_write" ||
                    Fn->getName() == "f90io_sc_i_fmt_write" ||
                    Fn->getName() == "ftnio_fmt_write64")) {
-          Fn->addFnAttr(Attribute::InaccessibleMemOnly);
+          Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::InaccessibleMemOrArgMemOnly);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadOnly);
@@ -572,7 +579,8 @@ public:
         }
         if (Fn && (Fn->getName() == "f90io_fmtw_inita" ||
                    Fn->getName() == "f90io_src_info03a")) {
-          // Fn->addFnAttr(Attribute::InaccessibleOrArgMemOnly);
+          Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::InaccessibleMemOrArgMemOnly);
         }
 
         if (Fn && (Fn->getName() == "__enzyme_autodiff" ||
