@@ -207,6 +207,7 @@ impl Attrs {
                         mod_data.definition_source(db).as_ref().map(|src| match src {
                             ModuleSource::SourceFile(file) => file as &dyn AttrsOwner,
                             ModuleSource::Module(module) => module as &dyn AttrsOwner,
+                            ModuleSource::BlockExpr(block) => block as &dyn AttrsOwner,
                         }),
                     ),
                 }

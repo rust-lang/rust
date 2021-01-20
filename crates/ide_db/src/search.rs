@@ -228,6 +228,15 @@ impl Definition {
                             // so do nothing.
                         }
                     }
+                    ModuleSource::BlockExpr(b) => {
+                        if is_first {
+                            let range = Some(b.syntax().text_range());
+                            res.insert(file_id, range);
+                        } else {
+                            // We have already added the enclosing file to the search scope,
+                            // so do nothing.
+                        }
+                    }
                     ModuleSource::SourceFile(_) => {
                         res.insert(file_id, None);
                     }
@@ -257,6 +266,7 @@ impl Definition {
         let mut res = FxHashMap::default();
         let range = match module_src.value {
             ModuleSource::Module(m) => Some(m.syntax().text_range()),
+            ModuleSource::BlockExpr(b) => Some(b.syntax().text_range()),
             ModuleSource::SourceFile(_) => None,
         };
         res.insert(file_id, range);

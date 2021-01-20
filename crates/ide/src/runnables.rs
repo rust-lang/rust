@@ -131,6 +131,7 @@ fn runnables_mod(sema: &Semantics<RootDatabase>, acc: &mut Vec<Runnable>, module
             match submodule.definition_source(sema.db).value {
                 hir::ModuleSource::Module(_) => runnables_mod(sema, acc, submodule),
                 hir::ModuleSource::SourceFile(_) => mark::hit!(dont_recurse_in_outline_submodules),
+                hir::ModuleSource::BlockExpr(_) => {} // inner items aren't runnable
             }
         }
     }

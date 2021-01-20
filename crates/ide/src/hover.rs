@@ -321,6 +321,7 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
                 match it.definition_source(db).value {
                     ModuleSource::Module(it) => it.short_label(),
                     ModuleSource::SourceFile(it) => it.short_label(),
+                    ModuleSource::BlockExpr(it) => it.short_label(),
                 },
                 mod_path,
             ),

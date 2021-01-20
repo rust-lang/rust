@@ -294,6 +294,7 @@ impl ToNav for hir::Module {
             ModuleSource::Module(node) => {
                 (node.syntax(), node.name().map(|it| it.syntax().text_range()))
             }
+            ModuleSource::BlockExpr(node) => (node.syntax(), None),
         };
         let frange = src.with_value(syntax).original_file_range(db);
         NavigationTarget::from_syntax(frange.file_id, name, focus, frange.range, SymbolKind::Module)
