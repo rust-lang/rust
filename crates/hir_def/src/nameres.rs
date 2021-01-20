@@ -77,12 +77,12 @@ use crate::{
 pub struct DefMap {
     root: LocalModuleId,
     modules: Arena<ModuleData>,
-    pub(crate) krate: CrateId,
+    krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
     /// a dependency (`std` or `core`).
-    pub(crate) prelude: Option<ModuleId>,
-    pub(crate) extern_prelude: FxHashMap<Name, ModuleDefId>,
+    prelude: Option<ModuleId>,
+    extern_prelude: FxHashMap<Name, ModuleDefId>,
 
     edition: Edition,
     diagnostics: Vec<DefDiagnostic>,
@@ -214,6 +214,18 @@ impl DefMap {
 
     pub fn root(&self) -> LocalModuleId {
         self.root
+    }
+
+    pub(crate) fn krate(&self) -> CrateId {
+        self.krate
+    }
+
+    pub(crate) fn prelude(&self) -> Option<ModuleId> {
+        self.prelude
+    }
+
+    pub(crate) fn extern_prelude(&self) -> impl Iterator<Item = (&Name, &ModuleDefId)> + '_ {
+        self.extern_prelude.iter()
     }
 
     pub(crate) fn resolve_path(

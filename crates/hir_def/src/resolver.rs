@@ -416,7 +416,7 @@ impl Resolver {
         let mut traits = FxHashSet::default();
         for scope in &self.scopes {
             if let Scope::ModuleScope(m) = scope {
-                if let Some(prelude) = m.crate_def_map.prelude {
+                if let Some(prelude) = m.crate_def_map.prelude() {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
                     traits.extend(prelude_def_map[prelude.local_id].scope.traits());
                 }
@@ -446,11 +446,11 @@ impl Resolver {
 
     pub fn module(&self) -> Option<ModuleId> {
         let (def_map, local_id) = self.module_scope()?;
-        Some(ModuleId { krate: def_map.krate, local_id })
+        Some(ModuleId { krate: def_map.krate(), local_id })
     }
 
     pub fn krate(&self) -> Option<CrateId> {
-        self.module_scope().map(|t| t.0.krate)
+        self.module_scope().map(|t| t.0.krate())
     }
 
     pub fn where_predicates_in_scope<'a>(
@@ -509,13 +509,13 @@ impl Scope {
                     seen.insert((name.clone(), scope));
                     f(name.clone(), ScopeDef::PerNs(scope));
                 });
-                m.crate_def_map.extern_prelude.iter().for_each(|(name, &def)| {
+                m.crate_def_map.extern_prelude().for_each(|(name, &def)| {
                     f(name.clone(), ScopeDef::PerNs(PerNs::types(def, Visibility::Public)));
                 });
                 BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
                     f(name.clone(), ScopeDef::PerNs(def));
                 });
-                if let Some(prelude) = m.crate_def_map.prelude {
+                if let Some(prelude) = m.crate_def_map.prelude() {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
                     prelude_def_map[prelude.local_id].scope.entries().for_each(|(name, def)| {
                         let seen_tuple = (name.clone(), def);

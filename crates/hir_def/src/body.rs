@@ -122,7 +122,7 @@ impl Expander {
 
         let mut err = None;
         let call_id =
-            macro_call.as_call_id_with_errors(db, self.crate_def_map.krate, resolver, &mut |e| {
+            macro_call.as_call_id_with_errors(db, self.crate_def_map.krate(), resolver, &mut |e| {
                 err.get_or_insert(e);
             });
         let call_id = match call_id {
