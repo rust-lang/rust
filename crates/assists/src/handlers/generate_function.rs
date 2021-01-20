@@ -158,11 +158,11 @@ impl FunctionBuilder {
                 it.text_range().end()
             }
             GeneratedFunctionTarget::InEmptyItemList(it) => {
-                let indent = IndentLevel::from_node(it.syntax());
+                let indent = IndentLevel::from_node(&it);
                 leading_ws = format!("\n{}", indent + 1);
                 fn_def = fn_def.indent(indent + 1);
                 trailing_ws = format!("\n{}", indent);
-                it.syntax().text_range().start() + TextSize::of('{')
+                it.text_range().start() + TextSize::of('{')
             }
         };
 
@@ -179,14 +179,14 @@ impl FunctionBuilder {
 
 enum GeneratedFunctionTarget {
     BehindItem(SyntaxNode),
-    InEmptyItemList(ast::ItemList),
+    InEmptyItemList(SyntaxNode),
 }
 
 impl GeneratedFunctionTarget {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             GeneratedFunctionTarget::BehindItem(it) => it,
-            GeneratedFunctionTarget::InEmptyItemList(it) => it.syntax(),
+            GeneratedFunctionTarget::InEmptyItemList(it) => it,
         }
     }
 }
@@ -323,7 +323,16 @@ fn next_space_for_fn_in_module(
             if let Some(last_item) = it.item_list().and_then(|it| it.items().last()) {
                 GeneratedFunctionTarget::BehindItem(last_item.syntax().clone())
             } else {
-                GeneratedFunctionTarget::InEmptyItemList(it.item_list()?)
+                GeneratedFunctionTarget::InEmptyItemList(it.item_list()?.syntax().clone())
+            }
+        }
+        hir::ModuleSource::BlockExpr(it) => {
+            if let Some(last_item) =
+                it.statements().take_while(|stmt| matches!(stmt, ast::Stmt::Item(_))).last()
+            {
+                GeneratedFunctionTarget::BehindItem(last_item.syntax().clone())
+            } else {
+                GeneratedFunctionTarget::InEmptyItemList(it.syntax().clone())
             }
         }
     };

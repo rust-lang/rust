@@ -109,6 +109,10 @@ pub enum ModuleOrigin {
     Inline {
         definition: AstId<ast::Module>,
     },
+    /// Pseudo-module introduced by a block scope (contains only inner items).
+    BlockExpr {
+        block: AstId<ast::BlockExpr>,
+    },
 }
 
 impl Default for ModuleOrigin {
@@ -122,7 +126,7 @@ impl ModuleOrigin {
         match self {
             ModuleOrigin::File { declaration: module, .. }
             | ModuleOrigin::Inline { definition: module, .. } => Some(*module),
-            ModuleOrigin::CrateRoot { .. } => None,
+            ModuleOrigin::CrateRoot { .. } | ModuleOrigin::BlockExpr { .. } => None,
         }
     }
 
@@ -137,7 +141,7 @@ impl ModuleOrigin {
 
     pub fn is_inline(&self) -> bool {
         match self {
-            ModuleOrigin::Inline { .. } => true,
+            ModuleOrigin::Inline { .. } | ModuleOrigin::BlockExpr { .. } => true,
             ModuleOrigin::CrateRoot { .. } | ModuleOrigin::File { .. } => false,
         }
     }
@@ -155,6 +159,9 @@ impl ModuleOrigin {
                 definition.file_id,
                 ModuleSource::Module(definition.to_node(db.upcast())),
             ),
+            ModuleOrigin::BlockExpr { block } => {
+                InFile::new(block.file_id, ModuleSource::BlockExpr(block.to_node(db.upcast())))
+            }
         }
     }
 }
@@ -300,6 +307,7 @@ impl ModuleData {
 pub enum ModuleSource {
     SourceFile(ast::SourceFile),
     Module(ast::Module),
+    BlockExpr(ast::BlockExpr),
 }
 
 mod diagnostics {
