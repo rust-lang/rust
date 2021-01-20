@@ -3,11 +3,14 @@
 use std::fmt;
 
 use hir::{Documentation, ModPath, Mutability};
-use ide_db::helpers::{
-    insert_use::{self, ImportScope, MergeBehavior},
-    mod_path_to_ast, SnippetCap,
+use ide_db::{
+    helpers::{
+        insert_use::{self, ImportScope, MergeBehavior},
+        mod_path_to_ast, SnippetCap,
+    },
+    SymbolKind,
 };
-use stdx::assert_never;
+use stdx::{assert_never, impl_from};
 use syntax::{algo, TextRange};
 use text_edit::TextEdit;
 
@@ -117,53 +120,50 @@ pub enum CompletionScore {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompletionItemKind {
+    SymbolKind(SymbolKind),
+    BuiltinType,
     Attribute,
     Binding,
-    BuiltinType,
-    Const,
-    ConstParam,
-    Enum,
-    EnumVariant,
-    Field,
-    Function,
     Keyword,
-    LifetimeParam,
-    Macro,
     Method,
-    Module,
     Snippet,
-    Static,
-    Struct,
-    Trait,
-    TypeAlias,
-    TypeParam,
     UnresolvedReference,
 }
+
+impl_from!(SymbolKind for CompletionItemKind);
 
 impl CompletionItemKind {
     #[cfg(test)]
     pub(crate) fn tag(&self) -> &'static str {
         match self {
+            CompletionItemKind::SymbolKind(kind) => match kind {
+                SymbolKind::Const => "ct",
+                SymbolKind::ConstParam => "cp",
+                SymbolKind::Enum => "en",
+                SymbolKind::Field => "fd",
+                SymbolKind::Function => "fn",
+                SymbolKind::Impl => "im",
+                SymbolKind::Label => "lb",
+                SymbolKind::LifetimeParam => "lt",
+                SymbolKind::Local => "lc",
+                SymbolKind::Macro => "ma",
+                SymbolKind::Module => "md",
+                SymbolKind::SelfParam => "sp",
+                SymbolKind::Static => "sc",
+                SymbolKind::Struct => "st",
+                SymbolKind::Trait => "tt",
+                SymbolKind::TypeAlias => "ta",
+                SymbolKind::TypeParam => "tp",
+                SymbolKind::Union => "un",
+                SymbolKind::ValueParam => "vp",
+                SymbolKind::Variant => "ev",
+            },
             CompletionItemKind::Attribute => "at",
             CompletionItemKind::Binding => "bn",
             CompletionItemKind::BuiltinType => "bt",
-            CompletionItemKind::Const => "ct",
-            CompletionItemKind::ConstParam => "cp",
-            CompletionItemKind::Enum => "en",
-            CompletionItemKind::EnumVariant => "ev",
-            CompletionItemKind::Field => "fd",
-            CompletionItemKind::Function => "fn",
             CompletionItemKind::Keyword => "kw",
-            CompletionItemKind::LifetimeParam => "lt",
-            CompletionItemKind::Macro => "ma",
             CompletionItemKind::Method => "me",
-            CompletionItemKind::Module => "md",
             CompletionItemKind::Snippet => "sn",
-            CompletionItemKind::Static => "sc",
-            CompletionItemKind::Struct => "st",
-            CompletionItemKind::Trait => "tt",
-            CompletionItemKind::TypeAlias => "ta",
-            CompletionItemKind::TypeParam => "tp",
             CompletionItemKind::UnresolvedReference => "??",
         }
     }
@@ -386,8 +386,8 @@ impl Builder {
         self.insert_text_format = InsertTextFormat::Snippet;
         self.insert_text(snippet)
     }
-    pub(crate) fn kind(mut self, kind: CompletionItemKind) -> Builder {
-        self.kind = Some(kind);
+    pub(crate) fn kind(mut self, kind: impl Into<CompletionItemKind>) -> Builder {
+        self.kind = Some(kind.into());
         self
     }
     pub(crate) fn text_edit(mut self, edit: TextEdit) -> Builder {

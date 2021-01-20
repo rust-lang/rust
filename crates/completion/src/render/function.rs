@@ -1,6 +1,7 @@
 //! Renderer for function calls.
 
 use hir::{HasSource, Type};
+use ide_db::SymbolKind;
 use syntax::{ast::Fn, display::function_declaration};
 use test_utils::mark;
 
@@ -105,7 +106,7 @@ impl<'a> FunctionRender<'a> {
         if self.func.self_param(self.ctx.db()).is_some() {
             CompletionItemKind::Method
         } else {
-            CompletionItemKind::Function
+            SymbolKind::Function.into()
         }
     }
 }

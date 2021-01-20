@@ -32,7 +32,7 @@
 //! ```
 
 use hir::{self, HasAttrs, HasSource};
-use ide_db::traits::get_missing_assoc_items;
+use ide_db::{traits::get_missing_assoc_items, SymbolKind};
 use syntax::{
     ast::{self, edit, Impl},
     display::function_declaration,
@@ -152,7 +152,7 @@ fn add_function_impl(
     let completion_kind = if func.self_param(ctx.db).is_some() {
         CompletionItemKind::Method
     } else {
-        CompletionItemKind::Function
+        CompletionItemKind::SymbolKind(SymbolKind::Function)
     };
     let range = TextRange::new(fn_def_node.text_range().start(), ctx.source_range().end());
 
@@ -188,7 +188,7 @@ fn add_type_alias_impl(
     CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
         .text_edit(TextEdit::replace(range, snippet))
         .lookup_by(alias_name)
-        .kind(CompletionItemKind::TypeAlias)
+        .kind(SymbolKind::TypeAlias)
         .set_documentation(type_alias.docs(ctx.db))
         .add_to(acc);
 }
@@ -211,7 +211,7 @@ fn add_const_impl(
             CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
                 .text_edit(TextEdit::replace(range, snippet))
                 .lookup_by(const_name)
-                .kind(CompletionItemKind::Const)
+                .kind(SymbolKind::Const)
                 .set_documentation(const_.docs(ctx.db))
                 .add_to(acc);
         }

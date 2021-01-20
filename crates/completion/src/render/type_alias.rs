@@ -1,13 +1,14 @@
 //! Renderer for type aliases.
 
 use hir::HasSource;
+use ide_db::SymbolKind;
 use syntax::{
     ast::{NameOwner, TypeAlias},
     display::type_label,
 };
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind},
+    item::{CompletionItem, CompletionKind},
     render::RenderContext,
 };
 
@@ -36,7 +37,7 @@ impl<'a> TypeAliasRender<'a> {
         let detail = self.detail();
 
         let item = CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name)
-            .kind(CompletionItemKind::TypeAlias)
+            .kind(SymbolKind::TypeAlias)
             .set_documentation(self.ctx.docs(self.type_alias))
             .set_deprecated(
                 self.ctx.is_deprecated(self.type_alias)

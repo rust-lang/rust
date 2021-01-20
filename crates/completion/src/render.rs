@@ -13,7 +13,7 @@ mod builder_ext;
 use hir::{
     AsAssocItem, Documentation, HasAttrs, HirDisplay, ModuleDef, Mutability, ScopeDef, Type,
 };
-use ide_db::{helpers::SnippetCap, RootDatabase};
+use ide_db::{helpers::SnippetCap, RootDatabase, SymbolKind};
 use syntax::TextRange;
 use test_utils::mark;
 
@@ -146,7 +146,7 @@ impl<'a> Render<'a> {
             self.ctx.source_range(),
             name.to_string(),
         )
-        .kind(CompletionItemKind::Field)
+        .kind(SymbolKind::Field)
         .detail(ty.display(self.ctx.db()).to_string())
         .set_documentation(field.docs(self.ctx.db()))
         .set_deprecated(is_deprecated);
@@ -160,7 +160,7 @@ impl<'a> Render<'a> {
 
     fn add_tuple_field(&mut self, field: usize, ty: &Type) -> CompletionItem {
         CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), field.to_string())
-            .kind(CompletionItemKind::Field)
+            .kind(SymbolKind::Field)
             .detail(ty.display(self.ctx.db()).to_string())
             .build()
     }
@@ -187,7 +187,7 @@ impl<'a> Render<'a> {
                 if self.ctx.completion.is_pat_binding_or_const
                     | self.ctx.completion.is_irrefutable_pat_binding =>
             {
-                CompletionItemKind::EnumVariant
+                CompletionItemKind::SymbolKind(SymbolKind::Variant)
             }
             ScopeDef::ModuleDef(Variant(var)) => {
                 let item = render_variant(self.ctx, import_to_add, Some(local_name), *var, None);
@@ -198,24 +198,29 @@ impl<'a> Render<'a> {
                 return item;
             }
 
-            ScopeDef::ModuleDef(Module(..)) => CompletionItemKind::Module,
-            ScopeDef::ModuleDef(Adt(hir::Adt::Struct(_))) => CompletionItemKind::Struct,
-            // FIXME: add CompletionItemKind::Union
-            ScopeDef::ModuleDef(Adt(hir::Adt::Union(_))) => CompletionItemKind::Struct,
-            ScopeDef::ModuleDef(Adt(hir::Adt::Enum(_))) => CompletionItemKind::Enum,
-            ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::Const,
-            ScopeDef::ModuleDef(Static(..)) => CompletionItemKind::Static,
-            ScopeDef::ModuleDef(Trait(..)) => CompletionItemKind::Trait,
-            ScopeDef::ModuleDef(TypeAlias(..)) => CompletionItemKind::TypeAlias,
+            ScopeDef::ModuleDef(Module(..)) => CompletionItemKind::SymbolKind(SymbolKind::Module),
+            ScopeDef::ModuleDef(Adt(adt)) => CompletionItemKind::SymbolKind(match adt {
+                hir::Adt::Struct(_) => SymbolKind::Struct,
+                // FIXME: add CompletionItemKind::Union
+                hir::Adt::Union(_) => SymbolKind::Struct,
+                hir::Adt::Enum(_) => SymbolKind::Enum,
+            }),
+            ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::SymbolKind(SymbolKind::Const),
+            ScopeDef::ModuleDef(Static(..)) => CompletionItemKind::SymbolKind(SymbolKind::Static),
+            ScopeDef::ModuleDef(Trait(..)) => CompletionItemKind::SymbolKind(SymbolKind::Trait),
+            ScopeDef::ModuleDef(TypeAlias(..)) => {
+                CompletionItemKind::SymbolKind(SymbolKind::TypeAlias)
+            }
             ScopeDef::ModuleDef(BuiltinType(..)) => CompletionItemKind::BuiltinType,
-            ScopeDef::GenericParam(param) => match param {
-                hir::GenericParam::TypeParam(_) => CompletionItemKind::TypeParam,
-                hir::GenericParam::LifetimeParam(_) => CompletionItemKind::LifetimeParam,
-                hir::GenericParam::ConstParam(_) => CompletionItemKind::ConstParam,
-            },
-            ScopeDef::Local(..) => CompletionItemKind::Binding,
-            // (does this need its own kind?)
-            ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => CompletionItemKind::TypeParam,
+            ScopeDef::GenericParam(param) => CompletionItemKind::SymbolKind(match param {
+                hir::GenericParam::TypeParam(_) => SymbolKind::TypeParam,
+                hir::GenericParam::LifetimeParam(_) => SymbolKind::LifetimeParam,
+                hir::GenericParam::ConstParam(_) => SymbolKind::ConstParam,
+            }),
+            ScopeDef::Local(..) => CompletionItemKind::SymbolKind(SymbolKind::Local),
+            ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => {
+                CompletionItemKind::SymbolKind(SymbolKind::SelfParam)
+            }
             ScopeDef::Unknown => {
                 let item = CompletionItem::new(
                     CompletionKind::Reference,

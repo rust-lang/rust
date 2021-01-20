@@ -1,10 +1,8 @@
 //! Complete fields in record literals and patterns.
-use ide_db::helpers::FamousDefs;
+use ide_db::{helpers::FamousDefs, SymbolKind};
 use syntax::ast::Expr;
 
-use crate::{
-    item::CompletionKind, CompletionContext, CompletionItem, CompletionItemKind, Completions,
-};
+use crate::{item::CompletionKind, CompletionContext, CompletionItem, Completions};
 
 pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let missing_fields = match (ctx.record_pat_syntax.as_ref(), ctx.record_lit_syntax.as_ref()) {
@@ -31,7 +29,7 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
                         "..Default::default()",
                     )
                     .insert_text(completion_text)
-                    .kind(CompletionItemKind::Field)
+                    .kind(SymbolKind::Field)
                     .build(),
                 );
             }

@@ -6,7 +6,7 @@ use syntax::{
     match_ast, AstNode,
 };
 
-use crate::{CompletionContext, CompletionItem, CompletionKind, Completions};
+use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions};
 
 /// Complete repeated parameters, both name and type. For example, if all
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with
@@ -58,7 +58,7 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         })
         .for_each(|(label, lookup)| {
             CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label)
-                .kind(crate::CompletionItemKind::Binding)
+                .kind(CompletionItemKind::Binding)
                 .lookup_by(lookup)
                 .add_to(acc)
         });

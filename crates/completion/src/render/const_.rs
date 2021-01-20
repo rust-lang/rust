@@ -1,13 +1,14 @@
 //! Renderer for `const` fields.
 
 use hir::HasSource;
+use ide_db::SymbolKind;
 use syntax::{
     ast::{Const, NameOwner},
     display::const_label,
 };
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind},
+    item::{CompletionItem, CompletionKind},
     render::RenderContext,
 };
 
@@ -36,7 +37,7 @@ impl<'a> ConstRender<'a> {
         let detail = self.detail();
 
         let item = CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name)
-            .kind(CompletionItemKind::Const)
+            .kind(SymbolKind::Const)
             .set_documentation(self.ctx.docs(self.const_))
             .set_deprecated(
                 self.ctx.is_deprecated(self.const_)
