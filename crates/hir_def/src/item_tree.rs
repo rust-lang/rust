@@ -69,13 +69,12 @@ impl GenericParamsId {
 pub struct ItemTree {
     top_level: SmallVec<[ModItem; 1]>,
     attrs: FxHashMap<AttrOwner, RawAttrs>,
-    inner_items: FxHashMap<FileAstId<ast::Item>, SmallVec<[ModItem; 1]>>,
 
     data: Option<Box<ItemTreeData>>,
 }
 
 impl ItemTree {
-    pub fn item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
+    pub(crate) fn item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
         let _p = profile::span("item_tree_query").detail(|| format!("{:?}", file_id));
         let syntax = if let Some(node) = db.parse_or_expand(file_id) {
             node
@@ -117,12 +116,7 @@ impl ItemTree {
     }
 
     fn empty() -> Self {
-        Self {
-            top_level: Default::default(),
-            attrs: Default::default(),
-            inner_items: Default::default(),
-            data: Default::default(),
-        }
+        Self { top_level: Default::default(), attrs: Default::default(), data: Default::default() }
     }
 
     fn shrink_to_fit(&mut self) {
@@ -147,6 +141,7 @@ impl ItemTree {
                 macro_defs,
                 vis,
                 generics,
+                inner_items,
             } = &mut **data;
 
             imports.shrink_to_fit();
@@ -169,6 +164,8 @@ impl ItemTree {
 
             vis.arena.shrink_to_fit();
             generics.arena.shrink_to_fit();
+
+            inner_items.shrink_to_fit();
         }
     }
 
@@ -191,16 +188,11 @@ impl ItemTree {
         self.raw_attrs(of).clone().filter(db, krate)
     }
 
-    /// Returns the lowered inner items that `ast` corresponds to.
-    ///
-    /// Most AST items are lowered to a single `ModItem`, but some (eg. `use` items) may be lowered
-    /// to multiple items in the `ItemTree`.
-    pub fn inner_items(&self, ast: FileAstId<ast::Item>) -> &[ModItem] {
-        &self.inner_items[&ast]
-    }
-
     pub fn all_inner_items(&self) -> impl Iterator<Item = ModItem> + '_ {
-        self.inner_items.values().flatten().copied()
+        match &self.data {
+            Some(data) => Some(data.inner_items.values().flatten().copied()).into_iter().flatten(),
+            None => None.into_iter().flatten(),
+        }
     }
 
     pub fn source<S: ItemTreeNode>(&self, db: &dyn DefDatabase, of: ItemTreeId<S>) -> S::Source {
@@ -297,6 +289,8 @@ struct ItemTreeData {
 
     vis: ItemVisibilities,
     generics: GenericParamsStorage,
+
+    inner_items: FxHashMap<FileAstId<ast::BlockExpr>, SmallVec<[ModItem; 1]>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
