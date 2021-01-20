@@ -15,7 +15,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_target::spec::abi::Abi;
 
-use crate::clean::{self, PrimitiveType};
+use crate::clean::{self, utils::find_nearest_parent_module, PrimitiveType};
 use crate::formats::cache::cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
@@ -1085,32 +1085,54 @@ impl Function<'_> {
 }
 
 impl clean::Visibility {
-    crate fn print_with_space<'tcx>(self, tcx: TyCtxt<'tcx>) -> impl fmt::Display + 'tcx {
+    crate fn print_with_space<'tcx>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        item_did: DefId,
+    ) -> impl fmt::Display + 'tcx {
         use rustc_span::symbol::kw;
 
         display_fn(move |f| match self {
             clean::Public => f.write_str("pub "),
             clean::Inherited => Ok(()),
-            clean::Visibility::Restricted(did) if did.index == CRATE_DEF_INDEX => {
-                write!(f, "pub(crate) ")
-            }
-            clean::Visibility::Restricted(did) => {
-                f.write_str("pub(")?;
-                let path = tcx.def_path(did);
-                debug!("path={:?}", path);
-                let first_name =
-                    path.data[0].data.get_opt_name().expect("modules are always named");
-                if path.data.len() != 1 || (first_name != kw::SelfLower && first_name != kw::Super)
+
+            clean::Visibility::Restricted(vis_did) => {
+                // FIXME(camelid): This may not work correctly if `item_did` is a module.
+                //                 However, rustdoc currently never displays a module's
+                //                 visibility, so it shouldn't matter.
+                let parent_module = find_nearest_parent_module(tcx, item_did);
+
+                if vis_did.index == CRATE_DEF_INDEX {
+                    write!(f, "pub(crate) ")
+                } else if parent_module == Some(vis_did) {
+                    // `pub(in foo)` where `foo` is the parent module
+                    // is the same as no visibility modifier
+                    Ok(())
+                } else if parent_module
+                    .map(|parent| find_nearest_parent_module(tcx, parent))
+                    .flatten()
+                    == Some(vis_did)
                 {
-                    f.write_str("in ")?;
+                    write!(f, "pub(super) ")
+                } else {
+                    f.write_str("pub(")?;
+                    let path = tcx.def_path(vis_did);
+                    debug!("path={:?}", path);
+                    let first_name =
+                        path.data[0].data.get_opt_name().expect("modules are always named");
+                    if path.data.len() != 1
+                        || (first_name != kw::SelfLower && first_name != kw::Super)
+                    {
+                        f.write_str("in ")?;
+                    }
+                    // modified from `resolved_path()` to work with `DefPathData`
+                    let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                    for seg in &path.data[..path.data.len() - 1] {
+                        write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
+                    }
+                    let path = anchor(vis_did, &last_name.as_str()).to_string();
+                    write!(f, "{}) ", path)
                 }
-                // modified from `resolved_path()` to work with `DefPathData`
-                let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                for seg in &path.data[..path.data.len() - 1] {
-                    write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
-                }
-                let path = anchor(did, &last_name.as_str()).to_string();
-                write!(f, "{}) ", path)
             }
         })
     }
