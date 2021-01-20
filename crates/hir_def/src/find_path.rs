@@ -136,7 +136,7 @@ fn find_path_inner(
     }
 
     // - if the item is the crate root of a dependency crate, return the name from the extern prelude
-    for (name, def_id) in &def_map.extern_prelude {
+    for (name, def_id) in def_map.extern_prelude() {
         if item == ItemInNs::Types(*def_id) {
             let name = scope_name.unwrap_or_else(|| name.clone());
             return Some(ModPath::from_segments(PathKind::Plain, vec![name]));
@@ -144,7 +144,7 @@ fn find_path_inner(
     }
 
     // - if the item is in the prelude, return the name from there
-    if let Some(prelude_module) = def_map.prelude {
+    if let Some(prelude_module) = def_map.prelude() {
         let prelude_def_map = db.crate_def_map(prelude_module.krate);
         let prelude_scope: &crate::item_scope::ItemScope =
             &prelude_def_map[prelude_module.local_id].scope;
