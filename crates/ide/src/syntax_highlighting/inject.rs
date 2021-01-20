@@ -116,7 +116,7 @@ pub(super) fn doc_comment(hl: &mut Highlights, node: &SyntaxNode) {
             None => (),
         }
 
-        let line: &str = comment.text().as_str();
+        let line: &str = comment.text();
         let range = comment.syntax().text_range();
 
         let mut pos = TextSize::of(comment.prefix());

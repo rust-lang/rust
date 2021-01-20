@@ -213,8 +213,8 @@ fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextSize) -> TextRange 
     let ws_text = ws.text();
     let suffix = TextRange::new(offset, ws.text_range().end()) - ws.text_range().start();
     let prefix = TextRange::new(ws.text_range().start(), offset) - ws.text_range().start();
-    let ws_suffix = &ws_text.as_str()[suffix];
-    let ws_prefix = &ws_text.as_str()[prefix];
+    let ws_suffix = &ws_text[suffix];
+    let ws_prefix = &ws_text[prefix];
     if ws_text.contains('\n') && !ws_suffix.contains('\n') {
         if let Some(node) = ws.next_sibling_or_token() {
             let start = match ws_prefix.rfind('\n') {

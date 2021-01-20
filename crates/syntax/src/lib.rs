@@ -56,9 +56,9 @@ pub use crate::{
 };
 pub use parser::{SyntaxKind, T};
 pub use rowan::{
-    Direction, GreenNode, NodeOrToken, SmolStr, SyntaxText, TextRange, TextSize, TokenAtOffset,
-    WalkEvent,
+    Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
 };
+pub use smol_str::SmolStr;
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.

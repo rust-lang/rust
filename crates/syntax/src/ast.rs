@@ -12,7 +12,7 @@ use std::marker::PhantomData;
 
 use crate::{
     syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
-    SmolStr, SyntaxKind,
+    SyntaxKind,
 };
 
 pub use self::{
@@ -54,7 +54,7 @@ pub trait AstToken {
 
     fn syntax(&self) -> &SyntaxToken;
 
-    fn text(&self) -> &SmolStr {
+    fn text(&self) -> &str {
         self.syntax().text()
     }
 }

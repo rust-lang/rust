@@ -102,7 +102,7 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, mbe::ExpandError> {
         debug!("name token not found");
         mbe::ExpandError::ConversionError
     })?;
-    let name_token = tt::Ident { id: name_token_id, text: name.text().clone() };
+    let name_token = tt::Ident { id: name_token_id, text: name.text().into() };
     let type_params = params.map_or(0, |type_param_list| type_param_list.type_params().count());
     Ok(BasicAdtInfo { name: name_token, type_params })
 }

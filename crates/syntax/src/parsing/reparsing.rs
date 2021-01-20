@@ -73,8 +73,7 @@ fn reparse_token<'node>(
                 new_text.pop();
             }
 
-            let new_token =
-                GreenToken::new(rowan::SyntaxKind(prev_token_kind.into()), new_text.into());
+            let new_token = GreenToken::new(rowan::SyntaxKind(prev_token_kind.into()), &new_text);
             Some((
                 prev_token.replace_with(new_token),
                 new_err.into_iter().collect(),

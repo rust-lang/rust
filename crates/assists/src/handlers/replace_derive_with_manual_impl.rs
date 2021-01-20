@@ -3,7 +3,7 @@ use ide_db::imports_locator;
 use itertools::Itertools;
 use syntax::{
     ast::{self, make, AstNode},
-    Direction, SmolStr,
+    Direction,
     SyntaxKind::{IDENT, WHITESPACE},
     TextSize,
 };
@@ -43,17 +43,18 @@ pub(crate) fn replace_derive_with_manual_impl(
 ) -> Option<()> {
     let attr = ctx.find_node_at_offset::<ast::Attr>()?;
 
-    let attr_name = attr
+    let has_derive = attr
         .syntax()
         .descendants_with_tokens()
         .filter(|t| t.kind() == IDENT)
         .find_map(syntax::NodeOrToken::into_token)
-        .filter(|t| t.text() == "derive")?
-        .text()
-        .clone();
+        .filter(|t| t.text() == "derive")
+        .is_some();
+    if !has_derive {
+        return None;
+    }
 
-    let trait_token =
-        ctx.token_at_offset().find(|t| t.kind() == IDENT && *t.text() != attr_name)?;
+    let trait_token = ctx.token_at_offset().find(|t| t.kind() == IDENT && t.text() != "derive")?;
     let trait_path = make::path_unqualified(make::path_segment(make::name_ref(trait_token.text())));
 
     let annotated_name = attr.syntax().siblings(Direction::Next).find_map(ast::Name::cast)?;
@@ -176,9 +177,9 @@ fn update_attribute(
         .syntax()
         .descendants_with_tokens()
         .filter(|t| t.kind() == IDENT)
-        .filter_map(|t| t.into_token().map(|t| t.text().clone()))
+        .filter_map(|t| t.into_token().map(|t| t.text().to_string()))
         .filter(|t| t != trait_name.text())
-        .collect::<Vec<SmolStr>>();
+        .collect::<Vec<_>>();
     let has_more_derives = !new_attr_input.is_empty();
 
     if has_more_derives {

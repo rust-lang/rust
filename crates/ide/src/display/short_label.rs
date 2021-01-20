@@ -90,7 +90,7 @@ impl ShortLabel for ast::Variant {
 impl ShortLabel for ast::ConstParam {
     fn short_label(&self) -> Option<String> {
         let mut buf = "const ".to_owned();
-        buf.push_str(self.name()?.text().as_str());
+        buf.push_str(self.name()?.text());
         if let Some(type_ref) = self.ty() {
             format_to!(buf, ": {}", type_ref.syntax());
         }
@@ -117,6 +117,6 @@ where
 {
     let mut buf = node.visibility().map(|v| format!("{} ", v.syntax())).unwrap_or_default();
     buf.push_str(label);
-    buf.push_str(node.name()?.text().as_str());
+    buf.push_str(node.name()?.text());
     Some(buf)
 }

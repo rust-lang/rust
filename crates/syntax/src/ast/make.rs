@@ -495,7 +495,7 @@ pub mod tokens {
             .syntax()
             .descendants_with_tokens()
             .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == WHITESPACE && it.text().as_str() == " ")
+            .find(|it| it.kind() == WHITESPACE && it.text() == " ")
             .unwrap()
     }
 
@@ -523,7 +523,7 @@ pub mod tokens {
             .syntax()
             .descendants_with_tokens()
             .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == WHITESPACE && it.text().as_str() == "\n")
+            .find(|it| it.kind() == WHITESPACE && it.text() == "\n")
             .unwrap()
     }
 
@@ -533,7 +533,7 @@ pub mod tokens {
             .syntax()
             .descendants_with_tokens()
             .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == WHITESPACE && it.text().as_str() == "\n\n")
+            .find(|it| it.kind() == WHITESPACE && it.text() == "\n\n")
             .unwrap()
     }
 
