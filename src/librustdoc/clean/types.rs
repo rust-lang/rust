@@ -16,7 +16,7 @@ use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{CtorKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
@@ -1682,19 +1682,9 @@ impl Visibility {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-crate enum StructType {
-    /// A braced struct
-    Plain,
-    /// A tuple struct
-    Tuple,
-    /// A unit struct
-    Unit,
-}
-
 #[derive(Clone, Debug)]
 crate struct Struct {
-    crate struct_type: StructType,
+    crate struct_type: CtorKind,
     crate generics: Generics,
     crate fields: Vec<Item>,
     crate fields_stripped: bool,
@@ -1712,7 +1702,7 @@ crate struct Union {
 /// only as a variant in an enum.
 #[derive(Clone, Debug)]
 crate struct VariantStruct {
-    crate struct_type: StructType,
+    crate struct_type: CtorKind,
     crate fields: Vec<Item>,
     crate fields_stripped: bool,
 }

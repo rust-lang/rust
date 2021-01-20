@@ -5,6 +5,7 @@
 use std::convert::From;
 
 use rustc_ast::ast;
+use rustc_hir::def::CtorKind;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_span::Pos;
 
@@ -220,13 +221,12 @@ impl From<clean::Union> for Struct {
     }
 }
 
-impl From<clean::StructType> for StructType {
-    fn from(struct_type: clean::StructType) -> Self {
-        use clean::StructType::*;
+impl From<CtorKind> for StructType {
+    fn from(struct_type: CtorKind) -> Self {
         match struct_type {
-            Plain => StructType::Plain,
-            Tuple => StructType::Tuple,
-            Unit => StructType::Unit,
+            CtorKind::Fictive => StructType::Plain,
+            CtorKind::Fn => StructType::Tuple,
+            CtorKind::Const => StructType::Unit,
         }
     }
 }
