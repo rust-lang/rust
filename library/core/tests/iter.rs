@@ -3563,6 +3563,47 @@ fn test_intersperse_size_hint() {
 }
 
 #[test]
+fn test_intersperse_fold() {
+    let v = (1..4).intersperse(9).fold(Vec::new(), |mut acc, x| {
+        acc.push(x);
+        acc
+    });
+    assert_eq!(v.as_slice(), [1, 9, 2, 9, 3]);
+
+    let mut iter = (1..4).intersperse(9);
+    assert_eq!(iter.next(), Some(1));
+    let v = iter.fold(Vec::new(), |mut acc, x| {
+        acc.push(x);
+        acc
+    });
+    assert_eq!(v.as_slice(), [9, 2, 9, 3]);
+
+    struct NoneAtStart(i32); // Produces: None, Some(2), Some(3), None, ...
+    impl Iterator for NoneAtStart {
+        type Item = i32;
+        fn next(&mut self) -> Option<i32> {
+            self.0 += 1;
+            Some(self.0).filter(|i| i % 3 != 1)
+        }
+    }
+
+    let v = NoneAtStart(0).intersperse(1000).fold(0, |a, b| a + b);
+    assert_eq!(v, 0);
+}
+
+#[test]
+fn test_intersperse_collect_string() {
+    let contents = vec![1, 2, 3];
+
+    let contents_string = contents
+        .into_iter()
+        .map(|id| id.to_string())
+        .intersperse(", ".to_owned())
+        .collect::<String>();
+    assert_eq!(contents_string, "1, 2, 3");
+}
+
+#[test]
 fn test_fold_specialization_intersperse() {
     let mut iter = (1..2).intersperse(0);
     iter.clone().for_each(|x| assert_eq!(Some(x), iter.next()));

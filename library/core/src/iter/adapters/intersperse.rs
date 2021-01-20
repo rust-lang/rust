@@ -160,7 +160,7 @@ where
 }
 
 fn intersperse_fold<I, B, F, G>(
-    mut iter: Peekable<I>,
+    mut iter: I,
     init: B,
     mut f: F,
     mut separator: G,
@@ -173,10 +173,11 @@ where
 {
     let mut accum = init;
 
-    // Use `peek()` first to avoid calling `next()` on an empty iterator.
-    if !needs_sep || iter.peek().is_some() {
+    if !needs_sep {
         if let Some(x) = iter.next() {
             accum = f(accum, x);
+        } else {
+            return accum;
         }
     }
 
