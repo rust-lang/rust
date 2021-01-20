@@ -12,7 +12,7 @@ doctest = false
 [dependencies]
 anyhow = "1.0.26"
 flate2 = "1.0"
-pico-args = "0.3.1"
+pico-args = "0.4.0"
 proc-macro2 = "1.0.8"
 quote = "1.0.2"
 ungrammar = "1.9"

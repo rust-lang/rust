@@ -10,6 +10,7 @@
 
 use std::env;
 
+use anyhow::bail;
 use codegen::CodegenCmd;
 use pico_args::Arguments;
 use xshell::{cmd, cp, pushd};
@@ -76,7 +77,7 @@ FLAGS:
 
             let client_opt = args.opt_value_from_str("--client")?;
 
-            args.finish()?;
+            finish_args(args)?;
 
             InstallCmd {
                 client: if server { None } else { Some(client_opt.unwrap_or_default()) },
@@ -86,53 +87,53 @@ FLAGS:
         }
         "codegen" => {
             let features = args.contains("--features");
-            args.finish()?;
+            finish_args(args)?;
             CodegenCmd { features }.run()
         }
         "format" => {
-            args.finish()?;
+            finish_args(args)?;
             run_rustfmt(Mode::Overwrite)
         }
         "install-pre-commit-hook" => {
-            args.finish()?;
+            finish_args(args)?;
             pre_commit::install_hook()
         }
         "lint" => {
-            args.finish()?;
+            finish_args(args)?;
             run_clippy()
         }
         "fuzz-tests" => {
-            args.finish()?;
+            finish_args(args)?;
             run_fuzzer()
         }
         "pre-cache" => {
-            args.finish()?;
+            finish_args(args)?;
             PreCacheCmd.run()
         }
         "release" => {
             let dry_run = args.contains("--dry-run");
-            args.finish()?;
+            finish_args(args)?;
             ReleaseCmd { dry_run }.run()
         }
         "promote" => {
             let dry_run = args.contains("--dry-run");
-            args.finish()?;
+            finish_args(args)?;
             PromoteCmd { dry_run }.run()
         }
         "dist" => {
             let nightly = args.contains("--nightly");
             let client_version: Option<String> = args.opt_value_from_str("--client")?;
-            args.finish()?;
+            finish_args(args)?;
             DistCmd { nightly, client_version }.run()
         }
         "metrics" => {
             let dry_run = args.contains("--dry-run");
-            args.finish()?;
+            finish_args(args)?;
             MetricsCmd { dry_run }.run()
         }
         "bb" => {
-            let suffix: String = args.free_from_str()?.unwrap();
-            args.finish()?;
+            let suffix: String = args.free_from_str()?;
+            finish_args(args)?;
             cmd!("cargo build --release").run()?;
             cp("./target/release/rust-analyzer", format!("./target/rust-analyzer-{}", suffix))?;
             Ok(())
@@ -160,4 +161,11 @@ SUBCOMMANDS:
             Ok(())
         }
     }
+}
+
+fn finish_args(args: Arguments) -> Result<()> {
+    if !args.finish().is_empty() {
+        bail!("Unused arguments.");
+    }
+    Ok(())
 }
