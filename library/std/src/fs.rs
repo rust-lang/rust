@@ -92,6 +92,10 @@ pub struct File {
     inner: fs_imp::File,
 }
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for File {}
+
 /// Metadata information about a file.
 ///
 /// This structure is returned from the [`metadata`] or
@@ -101,6 +105,10 @@ pub struct File {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Metadata(fs_imp::FileAttr);
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for Metadata {}
 
 /// Iterator over the entries in a directory.
 ///
@@ -127,6 +135,10 @@ pub struct ReadDir(fs_imp::ReadDir);
 /// path or possibly other metadata through per-platform extension traits.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct DirEntry(fs_imp::DirEntry);
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for DirEntry {}
 
 /// Options and flags which can be used to configure how a file is opened.
 ///
@@ -167,6 +179,10 @@ pub struct DirEntry(fs_imp::DirEntry);
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OpenOptions(fs_imp::OpenOptions);
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for OpenOptions {}
+
 /// Representation of the various permissions on a file.
 ///
 /// This module only currently provides one bit of information,
@@ -179,11 +195,19 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for Permissions {}
+
 /// A structure representing a type of file with accessors for each file type.
 /// It is returned by [`Metadata::file_type`] method.
 #[stable(feature = "file_type", since = "1.1.0")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType(fs_imp::FileType);
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for FileType {}
 
 /// A builder used to create directories in various manners.
 ///
@@ -194,6 +218,10 @@ pub struct DirBuilder {
     inner: fs_imp::DirBuilder,
     recursive: bool,
 }
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for DirBuilder {}
 
 /// Indicates how large a buffer to pre-allocate before reading the entire file.
 fn initial_buffer_size(file: &File) -> usize {

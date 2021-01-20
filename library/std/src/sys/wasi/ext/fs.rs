@@ -6,11 +6,12 @@
 use crate::fs::{self, File, Metadata, OpenOptions};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::path::{Path, PathBuf};
+use crate::sealed::Sealed;
 use crate::sys::fs::osstr2str;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 
 /// WASI-specific extensions to [`File`].
-pub trait FileExt {
+pub trait FileExt: Sealed {
     /// Reads a number of bytes starting from a given offset.
     ///
     /// Returns the number of bytes read.
@@ -275,7 +276,7 @@ impl FileExt for fs::File {
 }
 
 /// WASI-specific extensions to [`fs::OpenOptions`].
-pub trait OpenOptionsExt {
+pub trait OpenOptionsExt: Sealed {
     /// Pass custom `dirflags` argument to `path_open`.
     ///
     /// This option configures the `dirflags` argument to the
@@ -390,7 +391,7 @@ impl OpenOptionsExt for OpenOptions {
 }
 
 /// WASI-specific extensions to [`fs::Metadata`].
-pub trait MetadataExt {
+pub trait MetadataExt: Sealed {
     /// Returns the `st_dev` field of the internal `filestat_t`
     fn dev(&self) -> u64;
     /// Returns the `st_ino` field of the internal `filestat_t`
@@ -430,7 +431,7 @@ impl MetadataExt for fs::Metadata {
 ///
 /// Adds support for special WASI file types such as block/character devices,
 /// pipes, and sockets.
-pub trait FileTypeExt {
+pub trait FileTypeExt: Sealed {
     /// Returns `true` if this file type is a block device.
     fn is_block_device(&self) -> bool;
     /// Returns `true` if this file type is a character device.
@@ -457,7 +458,7 @@ impl FileTypeExt for fs::FileType {
 }
 
 /// WASI-specific extension methods for [`fs::DirEntry`].
-pub trait DirEntryExt {
+pub trait DirEntryExt: Sealed {
     /// Returns the underlying `d_ino` field of the `dirent_t`
     fn ino(&self) -> u64;
 }

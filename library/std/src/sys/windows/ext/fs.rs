@@ -5,12 +5,13 @@
 use crate::fs::{self, Metadata, OpenOptions};
 use crate::io;
 use crate::path::Path;
+use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut};
 
 /// Windows-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
-pub trait FileExt {
+pub trait FileExt: Sealed {
     /// Seeks to a given position and reads a number of bytes.
     ///
     /// Returns the number of bytes read.
@@ -93,7 +94,7 @@ impl FileExt for fs::File {
 
 /// Windows-specific extensions to [`fs::OpenOptions`].
 #[stable(feature = "open_options_ext", since = "1.10.0")]
-pub trait OpenOptionsExt {
+pub trait OpenOptionsExt: Sealed {
     /// Overrides the `dwDesiredAccess` argument to the call to [`CreateFile`]
     /// with the specified value.
     ///
@@ -294,7 +295,7 @@ impl OpenOptionsExt for OpenOptions {
 /// [`BY_HANDLE_FILE_INFORMATION`]:
 ///     https://docs.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information
 #[stable(feature = "metadata_ext", since = "1.1.0")]
-pub trait MetadataExt {
+pub trait MetadataExt: Sealed {
     /// Returns the value of the `dwFileAttributes` field of this metadata.
     ///
     /// This field contains the file system attribute information for a file
@@ -498,7 +499,7 @@ impl MetadataExt for Metadata {
 ///
 /// On Windows, a symbolic link knows whether it is a file or directory.
 #[unstable(feature = "windows_file_type_ext", issue = "none")]
-pub trait FileTypeExt {
+pub trait FileTypeExt: Sealed {
     /// Returns `true` if this file type is a symbolic link that is also a directory.
     #[unstable(feature = "windows_file_type_ext", issue = "none")]
     fn is_symlink_dir(&self) -> bool;

@@ -5,6 +5,7 @@
 use crate::fs::{self, OpenOptions, Permissions};
 use crate::io;
 use crate::path::Path;
+use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys::platform::fs::MetadataExt as UnixMetadataExt;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
@@ -14,7 +15,7 @@ use io::{Read, Write};
 
 /// Unix-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
-pub trait FileExt {
+pub trait FileExt: Sealed {
     /// Reads a number of bytes starting from a given offset.
     ///
     /// Returns the number of bytes read.
@@ -220,7 +221,7 @@ impl FileExt for fs::File {
 
 /// Unix-specific extensions to [`fs::Permissions`].
 #[stable(feature = "fs_ext", since = "1.1.0")]
-pub trait PermissionsExt {
+pub trait PermissionsExt: Sealed {
     /// Returns the underlying raw `st_mode` bits that contain the standard
     /// Unix permissions for this file.
     ///
@@ -297,7 +298,7 @@ impl PermissionsExt for Permissions {
 
 /// Unix-specific extensions to [`fs::OpenOptions`].
 #[stable(feature = "fs_ext", since = "1.1.0")]
-pub trait OpenOptionsExt {
+pub trait OpenOptionsExt: Sealed {
     /// Sets the mode bits that a new file will be created with.
     ///
     /// If a new file is created as part of an `OpenOptions::open` call then this
@@ -365,7 +366,7 @@ impl OpenOptionsExt for OpenOptions {
 
 /// Unix-specific extensions to [`fs::Metadata`].
 #[stable(feature = "metadata_ext", since = "1.1.0")]
-pub trait MetadataExt {
+pub trait MetadataExt: Sealed {
     /// Returns the ID of the device containing the file.
     ///
     /// # Examples
@@ -716,7 +717,7 @@ impl MetadataExt for fs::Metadata {
 /// Adds support for special Unix file types such as block/character devices,
 /// pipes, and sockets.
 #[stable(feature = "file_type_ext", since = "1.5.0")]
-pub trait FileTypeExt {
+pub trait FileTypeExt: Sealed {
     /// Returns `true` if this file type is a block device.
     ///
     /// # Examples
@@ -809,7 +810,7 @@ impl FileTypeExt for fs::FileType {
 
 /// Unix-specific extension methods for [`fs::DirEntry`].
 #[stable(feature = "dir_entry_ext", since = "1.1.0")]
-pub trait DirEntryExt {
+pub trait DirEntryExt: Sealed {
     /// Returns the underlying `d_ino` field in the contained `dirent`
     /// structure.
     ///
@@ -860,7 +861,7 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Resu
 
 /// Unix-specific extensions to [`fs::DirBuilder`].
 #[stable(feature = "dir_builder", since = "1.6.0")]
-pub trait DirBuilderExt {
+pub trait DirBuilderExt: Sealed {
     /// Sets the mode to create new directories with. This option defaults to
     /// 0o777.
     ///
