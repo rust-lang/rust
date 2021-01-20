@@ -282,21 +282,22 @@
 //! `%`. The actual grammar for the formatting syntax is:
 //!
 //! ```text
-//! format_string := <text> [ maybe-format <text> ] *
-//! maybe-format := '{' '{' | '}' '}' | <format>
+//! format_string := text [ maybe_format text ] *
+//! maybe_format := '{' '{' | '}' '}' | format
 //! format := '{' [ argument ] [ ':' format_spec ] '}'
 //! argument := integer | identifier
 //!
-//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision][type]
+//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision]type
 //! fill := character
 //! align := '<' | '^' | '>'
 //! sign := '+' | '-'
 //! width := count
 //! precision := count | '*'
-//! type := identifier | '?' | ''
+//! type := '' | '?' | 'x?' | 'X?' | identifier
 //! count := parameter | integer
 //! parameter := argument '$'
 //! ```
+//! In the above grammar, `text` may not contain any `'{'` or `'}'` characters.
 //!
 //! # Formatting traits
 //!
