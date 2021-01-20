@@ -567,7 +567,8 @@ public:
         }
         if (Fn && (Fn->getName() == "f90io_sc_d_fmt_write" ||
                    Fn->getName() == "f90io_sc_i_fmt_write" ||
-                   Fn->getName() == "ftnio_fmt_write64")) {
+                   Fn->getName() == "ftnio_fmt_write64" ||
+                   Fn->getName() == "f90io_fmt_write64_aa")) {
           Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::InaccessibleMemOrArgMemOnly);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
@@ -578,7 +579,8 @@ public:
           }
         }
         if (Fn && (Fn->getName() == "f90io_fmtw_inita" ||
-                   Fn->getName() == "f90io_src_info03a")) {
+                   Fn->getName() == "f90io_src_info03a" ||
+                   Fn->getName() == "f90_pausea")) {
           Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::InaccessibleMemOrArgMemOnly);
         }
