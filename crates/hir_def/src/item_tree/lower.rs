@@ -6,7 +6,7 @@ use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, name::known, HirFileId}
 use smallvec::SmallVec;
 use syntax::{
     ast::{self, ModuleItemOwner},
-    SyntaxNode,
+    SyntaxNode, WalkEvent,
 };
 
 use crate::{
@@ -150,14 +150,29 @@ impl Ctx {
 
     fn collect_inner_items(&mut self, container: &SyntaxNode) {
         let forced_vis = self.forced_visibility.take();
-        let mut inner_items = mem::take(&mut self.tree.inner_items);
-        inner_items.extend(container.descendants().skip(1).filter_map(ast::Item::cast).filter_map(
-            |item| {
-                let ast_id = self.source_ast_id_map.ast_id(&item);
-                Some((ast_id, self.lower_mod_item(&item, true)?.0))
-            },
-        ));
-        self.tree.inner_items = inner_items;
+
+        let mut current_block = None;
+        for event in container.preorder().skip(1) {
+            if let WalkEvent::Enter(node) = event {
+                match_ast! {
+                    match node {
+                        ast::BlockExpr(block) => {
+                            current_block = Some(self.source_ast_id_map.ast_id(&block));
+                        },
+                        ast::Item(item) => {
+                            let mod_items = self.lower_mod_item(&item, true);
+                            if let (Some(mod_items), Some(block)) = (mod_items, current_block) {
+                                if !mod_items.0.is_empty() {
+                                    self.data().inner_items.entry(block).or_default().extend(mod_items.0.iter().copied());
+                                }
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+            }
+        }
+
         self.forced_visibility = forced_vis;
     }
 
