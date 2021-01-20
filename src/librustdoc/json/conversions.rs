@@ -27,7 +27,7 @@ impl JsonRenderer<'_> {
                 name: name.map(|sym| sym.to_string()),
                 source: self.convert_span(source),
                 visibility: self.convert_visibility(visibility),
-                docs: attrs.collapsed_doc_value().unwrap_or_default(),
+                docs: attrs.collapsed_doc_value(),
                 links: attrs
                     .links
                     .into_iter()
