@@ -1,5 +1,7 @@
 # The compiler testing framework
 
+<!-- toc -->
+
 The Rust project runs a wide variety of different tests, orchestrated by
 the build system (`x.py test`).  The main test harness for testing the
 compiler itself is a tool called compiletest (located in the

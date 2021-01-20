@@ -1,5 +1,7 @@
 # Adding new tests
 
+<!-- toc -->
+
 **In general, we expect every PR that fixes a bug in rustc to come
 accompanied by a regression test of some kind.** This test should fail
 in master but pass after the PR. These tests are really useful for

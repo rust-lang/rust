@@ -1,5 +1,7 @@
 # Type inference
 
+<!-- toc -->
+
 Type inference is the process of automatic detection of the type of an
 expression.
 

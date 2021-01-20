@@ -1,4 +1,7 @@
-### The `#[test]` attribute
+# The `#[test]` attribute
+
+<!-- toc -->
+
 Today, rust programmers rely on a built in attribute called `#[test]`. All
 you have to do is mark a function as a test and include some asserts like so:
 
@@ -35,7 +38,7 @@ What exactly is `rustc --test` doing?
 [`rustc_ast` crate][rustc_ast]. Essentially, it's a fancy macro, that
 rewrites the crate in 3 steps:
 
-#### Step 1: Re-Exporting
+## Step 1: Re-Exporting
 
 As mentioned earlier, tests can exist inside private modules, so we need a
 way of exposing them to the main function, without breaking any existing
@@ -77,7 +80,8 @@ hand-written one, it will not share a Symbol. This technique prevents name
 collision during code generation and is the foundation of Rust's macro
 hygiene.
 
-#### Step 2: Harness Generation
+## Step 2: Harness Generation
+
 Now that our tests are accessible from the root of our crate, we need to do
 something with them. `rustc_ast` generates a module like so:
 
@@ -99,7 +103,8 @@ called [`test`][test] that is part of Rust core, that implements all of the
 runtime for testing. `test`'s interface is unstable, so the only stable way
 to interact with it is through the `#[test]` macro.
 
-#### Step 3: Test Object Generation
+## Step 3: Test Object Generation
+
 If you've written tests in Rust before, you may be familiar with some of the
 optional attributes available on test functions. For example, a test can be
 annotated with `#[should_panic]` if we expect the test to cause a panic. It
@@ -137,7 +142,8 @@ self::test::TestDescAndFn{
 Once we've constructed an array of these test objects, they're passed to the
 test runner via the harness generated in step 2.
 
-### Inspecting the generated code
+## Inspecting the generated code
+
 On nightly rust, there's an unstable flag called `unpretty` that you can use
 to print out the module source after macro expansion:
 

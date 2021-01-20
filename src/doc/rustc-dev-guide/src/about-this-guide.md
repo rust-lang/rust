@@ -47,7 +47,7 @@ a correction!
 If you do contribute to the guide, please see the corresponding
 [subsection on writing documentation in this guide].
 
-[subsection on writing documentation in this guide]: contributing.md#contributing-to-rustc-dev-guide.
+[subsection on writing documentation in this guide]: contributing.md#contributing-to-rustc-dev-guide
 
 > “‘All conditioned things are impermanent’ — when one sees this with wisdom, one turns away from
 > suffering.” _The Dhammapada, verse 277_

@@ -1,5 +1,7 @@
 # Move paths
 
+<!-- toc -->
+
 In reality, it's not enough to track initialization at the granularity
 of local variables. Rust also allows us to do moves and initialization
 at the field granularity:
@@ -7,11 +9,11 @@ at the field granularity:
 ```rust,ignore
 fn foo() {
     let a: (Vec<u32>, Vec<u32>) = (vec![22], vec![44]);
-    
+
     // a.0 and a.1 are both initialized
-    
+
     let b = a.0; // moves a.0
-    
+
     // a.0 is not initialized, but a.1 still is
 
     let c = a.0; // ERROR
@@ -73,7 +75,7 @@ there is no need for a [`MovePathIndex`]. Some examples:
   there would be no move-path for `foo[1]`.
 - You cannot move from inside of a borrowed reference, so if we have e.g. `foo: &String`,
   there would be no move-path for `*foo`.
-  
+
 These rules are enforced by the [`move_path_for`] function, which
 converts a [`Place`] into a [`MovePathIndex`] -- in error cases like
 those just discussed, the function returns an `Err`. This in turn
@@ -102,7 +104,7 @@ of [`MoveData`]. There are two different methods:
   [`LookupResult`] indicating the closest path it was able to find
   that exists (e.g., for `foo[1]`, it might return just the path for
   `foo`).
-  
+
 [`find`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePathLookup.html#method.find
 [`find_local`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePathLookup.html#method.find_local
 [`mir::Local`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html
@@ -120,7 +122,7 @@ just over the paths that are **actually referenced** in the source,
 not all **possible** paths that could have been referenced). These
 references are used for example in the
 [`find_in_move_path_or_its_descendants`] function, which determines
-whether a move-path (e.g., `a.b`) or any child of that move-path 
+whether a move-path (e.g., `a.b`) or any child of that move-path
 (e.g.,`a.b.c`) matches a given predicate.
 
 [`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Place.html

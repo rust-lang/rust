@@ -1,5 +1,7 @@
 # Variance of type and lifetime parameters
 
+<!-- toc -->
+
 For a more general background on variance, see the [background] appendix.
 
 [background]: ./appendix/background.html

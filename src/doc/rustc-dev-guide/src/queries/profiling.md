@@ -1,4 +1,7 @@
 # Profiling Queries
+
+<!-- toc -->
+
 In an effort to support _incremental compilation_, the latest design of the Rust
 compiler consists of a _query-based_ model.
 

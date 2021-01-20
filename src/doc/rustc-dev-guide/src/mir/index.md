@@ -1,5 +1,7 @@
 # The MIR (Mid-level IR)
 
+<!-- toc -->
+
 MIR is Rust's _Mid-level Intermediate Representation_. It is
 constructed from [HIR](../hir.html). MIR was introduced in
 [RFC 1211]. It is a radically simplified form of Rust that is used for
@@ -228,7 +230,7 @@ but [you can read about those below](#promoted)).
 - **Statements** are represented by the type [`Statement`].
 - **Terminators** are represented by the [`Terminator`].
 - **Locals** are represented by a [newtype'd] index type [`Local`].
-  The data for a local variable is found in the 
+  The data for a local variable is found in the
   [`Body::local_decls`][localdecls] vector). There is also a special constant
   [`RETURN_PLACE`] identifying the special "local" representing the return value.
 - **Places** are identified by the enum [`Place`]. There are a few

@@ -1,5 +1,7 @@
 # The HIR
 
+<!-- toc -->
+
 The HIR – "High-Level Intermediate Representation" – is the primary IR used
 in most of rustc. It is a compiler-friendly representation of the abstract
 syntax tree (AST) that is generated after parsing, macro expansion, and name
@@ -18,7 +20,7 @@ You can view the HIR representation of your code by passing the
 cargo rustc -- -Z unpretty=hir-tree
 ```
 
-### Out-of-band storage and the `Crate` type
+## Out-of-band storage and the `Crate` type
 
 The top-level data-structure in the HIR is the [`Crate`], which stores
 the contents of the crate currently being compiled (we only ever
@@ -66,7 +68,7 @@ the compiler a chance to observe that you accessed the data for
 
 <a name="hir-id"></a>
 
-### Identifiers in the HIR
+## Identifiers in the HIR
 
 There are a bunch of different identifiers to refer to other nodes or definitions
 in the HIR. In short:
@@ -81,7 +83,7 @@ For more detailed information, check out the [chapter on identifiers][ids].
 [`HirId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir_id/struct.HirId.html
 [ids]: ./identifiers.md#in-the-hir
 
-### The HIR Map
+## The HIR Map
 
 Most of the time when you are working with the HIR, you will do so via
 the **HIR Map**, accessible in the tcx via [`tcx.hir()`] (and defined in
@@ -124,7 +126,7 @@ calls like [`tcx.hir().get_parent_node(n)`][get_parent_node].
 
 [get_parent_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.get_parent_node
 
-### HIR Bodies
+## HIR Bodies
 
 A [`rustc_hir::Body`] represents some kind of executable code, such as the body
 of a function/closure or the definition of a constant. Bodies are

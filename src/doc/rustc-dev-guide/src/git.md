@@ -1,5 +1,7 @@
 # Using Git
 
+<!-- toc -->
+
 The Rust project uses [Git] to manage its source code. In order to
 contribute, you'll need some familiarity with its features so that your changes
 can be incorporated into the compiler.

@@ -1,5 +1,7 @@
 # Trait resolution (old-style)
 
+<!-- toc -->
+
 This chapter describes the general process of _trait resolution_ and points out
 some non-obvious things.
 

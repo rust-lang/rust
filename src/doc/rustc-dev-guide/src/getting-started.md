@@ -1,5 +1,7 @@
 # Getting Started
 
+<!-- toc -->
+
 This documentation is _not_ intended to be comprehensive; it is meant to be a
 quick guide for the most useful things. For more information, [see this
 chapter on how to build and run the compiler](./building/how-to-build-and-run.md).

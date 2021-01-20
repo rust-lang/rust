@@ -1,5 +1,7 @@
 # The `ty` module: representing types
 
+<!-- toc -->
+
 The `ty` module defines how the Rust compiler represents types internally. It also defines the
 *typing context* (`tcx` or `TyCtxt`), which is the central data structure in the compiler.
 
@@ -189,7 +191,7 @@ There are many variants on the `TyKind` enum, which you can see by looking at it
 - [**Array**][kindarray] Corresponds to `[T; n]`.
 - [**RawPtr**][kindrawptr] Corresponds to `*mut T` or `*const T`.
 - [**Ref**][kindref] `Ref` stands for safe references, `&'a mut T` or `&'a T`. `Ref` has some
-  associated parts, like `Ty<'tcx>` which is the type that the reference references. 
+  associated parts, like `Ty<'tcx>` which is the type that the reference references.
   `Region<'tcx>` is the lifetime or region of the reference and `Mutability` if the reference
   is mutable or not.
 - [**Param**][kindparam] Represents a type parameter (e.g. the `T` in `Vec<T>`).

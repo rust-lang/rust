@@ -1,5 +1,7 @@
 # Running tests
 
+<!-- toc -->
+
 You can run the tests using `x.py`. The most basic command – which
 you will almost never want to use! – is as follows:
 

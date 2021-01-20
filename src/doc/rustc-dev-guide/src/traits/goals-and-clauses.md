@@ -1,5 +1,7 @@
 # Goals and clauses
 
+<!-- toc -->
+
 In logic programming terms, a **goal** is something that you must
 prove and a **clause** is something that you know is true. As
 described in the [lowering to logic](./lowering-to-logic.html)
@@ -196,7 +198,7 @@ it is okay to assume `FromEnv(T: Clone)` in the `loud_clone` example is that we
 _also_ verify `WellFormed(T: Clone)` for each call site of `loud_clone`.
 Similarly, it is okay to assume `FromEnv(HashSet<K>)` in the `loud_insert`
 example because we will verify `WellFormed(HashSet<K>)` for each call site of
-`loud_insert`. 
+`loud_insert`.
 
 #### Outlives(Type: Region), Outlives(Region: Region)
 e.g. `Outlives(&'a str: 'b)`, `Outlives('a: 'static)`

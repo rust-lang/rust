@@ -1,5 +1,7 @@
 # Overview of the Compiler
 
+<!-- toc -->
+
 This chapter is about the overall process of compiling a program -- how
 everything fits together.
 

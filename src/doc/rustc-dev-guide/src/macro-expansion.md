@@ -1,5 +1,7 @@
 # Macro expansion
 
+<!-- toc -->
+
 > `rustc_ast`, `rustc_expand`, and `rustc_builtin_macros` are all undergoing
 > refactoring, so some of the links in this chapter may be broken.
 

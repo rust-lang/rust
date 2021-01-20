@@ -1,5 +1,7 @@
 # Updating LLVM
 
+<!-- toc -->
+
 The Rust compiler uses LLVM as its primary codegen backend today, and naturally
 we want to at least occasionally update this dependency! Currently we do not
 have a strict policy about when to update LLVM or what it can be updated to, but

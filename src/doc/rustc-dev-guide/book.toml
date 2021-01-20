@@ -6,6 +6,10 @@ description = "A guide to developing rustc"
 [build]
 create-missing = false
 
+[preprocessor.toc]
+command = "mdbook-toc"
+renderer = ["html"]
+
 [output.html]
 git-repository-url = "https://github.com/rust-lang/rustc-dev-guide"
 

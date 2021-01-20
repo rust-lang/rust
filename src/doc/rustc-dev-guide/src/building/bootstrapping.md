@@ -1,5 +1,7 @@
 # Bootstrapping the Compiler
 
+<!-- toc -->
+
 This subchapter is about the bootstrapping process.
 
 ## What is bootstrapping? How does it work?

@@ -1,5 +1,7 @@
 # Incremental Compilation In Detail
 
+<!-- toc -->
+
 The incremental compilation scheme is, in essence, a surprisingly
 simple extension to the overall query system. It relies on the fact that:
 

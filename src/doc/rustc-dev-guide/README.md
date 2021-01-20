@@ -40,7 +40,7 @@ rustdocs][rustdocs].
 To build a local static HTML site, install [`mdbook`](https://github.com/rust-lang/mdBook) with:
 
 ```
-> cargo install mdbook mdbook-linkcheck
+> cargo install mdbook mdbook-linkcheck mdbook-toc
 ```
 
 and execute the following command in the root of the repository:
@@ -55,6 +55,11 @@ The build files are found in the `book` directory.
 
 We use `mdbook-linkcheck` to validate URLs included in our documentation.
 `linkcheck` will be run automatically when you build with the instructions in the section above.
+
+### Table of Contents
+
+We use `mdbook-toc` to auto-generate TOCs for long sections. You can invoke the preprocessor by
+including the `<!-- toc -->` marker at the place where you want the TOC.
 
 ### Pre-commit script
 
@@ -95,7 +100,7 @@ but we leave these instructions for when we do it again in the future.
 
 7. Click on the log and Ctrl-f to get a search box in the log
 
-8. Search for rustc-dev-guide. This gets you to the place where the links are checked. It is usually ~11K lines into the log
+8. Search for rustc-dev-guide. This gets you to the place where the links are checked. It is usually ~11K lines into the log.
 
 9. Look at the links in the log near that point in the log
 

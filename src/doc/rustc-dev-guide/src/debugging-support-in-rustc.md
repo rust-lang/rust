@@ -1,5 +1,7 @@
 # Debugging support in the Rust compiler
 
+<!-- toc -->
+
 This document explains the state of debugging tools support in the Rust compiler (rustc).
 The document gives an overview of debugging tools like GDB, LLDB etc. and infrastructure
 around Rust compiler to debug Rust code. If you want to learn how to debug the Rust compiler

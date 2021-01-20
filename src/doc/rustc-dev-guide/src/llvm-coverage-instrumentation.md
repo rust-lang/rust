@@ -1,5 +1,7 @@
 # LLVM Source-Based Code Coverage
 
+<!-- toc -->
+
 `rustc` supports detailed source-based code and test coverage analysis
 with a command line option (`-Z instrument-coverage`) that instruments Rust
 libraries and binaries with additional instructions and data, at compile time.
@@ -32,7 +34,7 @@ Detailed instructions and examples are documented in the
 [Coverage Map]: https://llvm.org/docs/CoverageMappingFormat.html
 [unstable-book-sbcc]: https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/source-based-code-coverage.html
 
-### Rust symbol mangling
+## Rust symbol mangling
 
 `-Z instrument-coverage` automatically enables Rust symbol mangling `v0` (as
 if the user specified `-Z symbol-mangling-version=v0` option when invoking

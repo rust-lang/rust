@@ -1,13 +1,15 @@
-### Panicking in rust ###
+# Panicking in rust
 
-#### Step 1: Invocation of the `panic!` macro.
+<!-- toc -->
+
+## Step 1: Invocation of the `panic!` macro.
 
 There are actually two panic macros - one defined in `core`, and one defined in `std`.
 This is due to the fact that code in `core` can panic. `core` is built before `std`,
 but we want panics to use the same machinery at runtime, whether they originate in `core`
 or `std`.
 
-##### core definition of panic!
+### core definition of panic!
 
 The `core` `panic!` macro eventually makes the following call (in `library/core/src/panicking.rs`):
 
@@ -57,7 +59,7 @@ Rust source).
 Thus, control flow will pass from core to std at runtime. This allows panics from `core`
 to go through the same infrastructure that other panics use (panic hooks, unwinding, etc)
 
-##### std implementation of panic!
+### std implementation of panic!
 
 This is where the actual panic-related logic begins. In `library/std/src/panicking.rs`,
 control passes to `rust_panic_with_hook`. This method is responsible
@@ -83,7 +85,7 @@ is suitable for passing across an FFI boundary.
 
 Finally, we call `__rust_start_panic` with this `usize`. We have now entered the panic runtime.
 
-#### Step 2: The panic runtime
+## Step 2: The panic runtime
 
 Rust provides two panic runtimes: `panic_abort` and `panic_unwind`. The user chooses
 between them at build time via their `Cargo.toml`
@@ -91,7 +93,7 @@ between them at build time via their `Cargo.toml`
 `panic_abort` is extremely simple: its implementation of `__rust_start_panic` just aborts,
 as you would expect.
 
-`panic_unwind` is the more interesting case. 
+`panic_unwind` is the more interesting case.
 
 In its implementation of `__rust_start_panic`, we take the `usize`, convert
 it back to a `*mut &mut dyn BoxMeUp`, dereference it, and call `box_me_up`

@@ -1,5 +1,7 @@
 # THIR and MIR construction
 
+<!-- toc -->
+
 The lowering of [HIR] to [MIR] occurs for the following (probably incomplete)
 list of items:
 

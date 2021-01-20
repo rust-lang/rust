@@ -13,6 +13,7 @@ install:
 - source ~/.cargo/env || true
 - cargo install mdbook --version '^0.4.5'
 - cargo install mdbook-linkcheck --version '^0.7.2'
+- cargo install mdbook-toc --version '^0.6.1'
 script:
 - git checkout -b ci
 - git rebase origin/master

@@ -1,5 +1,7 @@
 # Monomorphization
 
+<!-- toc -->
+
 As you probably know, rust has a very expressive type system that has extensive
 support for generic types. But of course, assembly is not generic, so we need
 to figure out the concrete types of all the generics before the code can
@@ -57,12 +59,12 @@ units](../appendix/glossary.md#codegen-unit).
 
 ## Codegen Unit (CGU) partitioning
 
-For better incremental build times, the CGU partitioner creates two CGU for each source level 
-modules. One is for "stable" i.e. non-generic code and the other is more volatile code i.e. 
+For better incremental build times, the CGU partitioner creates two CGU for each source level
+modules. One is for "stable" i.e. non-generic code and the other is more volatile code i.e.
 monoporphized/specialized instances.
 
 For depenencies, consider Crate A and Crate B, such that Crate B depends on Crate A.
-The following table lists different scenarios for a function in Crate A that might be used by one 
+The following table lists different scenarios for a function in Crate A that might be used by one
 or more modules in Crate B.
 
 | Crate A function | Behavior |

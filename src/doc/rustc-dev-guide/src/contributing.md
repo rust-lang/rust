@@ -3,14 +3,7 @@
 Thank you for your interest in contributing to Rust! There are many ways to
 contribute, and we appreciate all of them.
 
-* [Feature Requests](#feature-requests)
-* [Bug Reports](#bug-reports)
-* [The Build System](./building/how-to-build-and-run.md)
-* [Pull Requests](#pull-requests)
-* [Writing Documentation](#writing-documentation)
-* [Issue Triage](#issue-triage)
-* [Out-of-tree Contributions](#out-of-tree-contributions)
-* [Helpful Links and Information](#helpful-links-and-information)
+<!-- toc -->
 
 If you have questions, please make a post on [internals.rust-lang.org][internals] or
 hop on the [Rust Discord server][rust-discord] or [Rust Zulip server][rust-zulip].
@@ -423,6 +416,9 @@ Just a few things to keep in mind:
   - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide
     further explanation for the change process or a way to verify that the information is not
     outdated.
+- If a text grows rather long (more than a few page scrolls) or complicated (more than four
+  subsections) it might benefit from having a Table of Contents at the beginning, which you can
+  auto-generate by including the `<!-- toc -->` marker.
 
 [rdg]: https://rustc-dev-guide.rust-lang.org/
 [rdgrepo]: https://github.com/rust-lang/rustc-dev-guide

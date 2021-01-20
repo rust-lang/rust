@@ -1,5 +1,7 @@
 # Stability attributes
 
+<!-- toc -->
+
 This section is about the stability attributes and schemes that allow stable
 APIs to use unstable APIs internally in the rustc standard library.
 

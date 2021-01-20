@@ -1,5 +1,7 @@
 # Miri
 
+<!-- toc -->
+
 Miri (**MIR** **I**nterpreter) is a virtual machine for executing MIR without
 compiling to machine code. It is usually invoked via `tcx.const_eval_*` functions.
 

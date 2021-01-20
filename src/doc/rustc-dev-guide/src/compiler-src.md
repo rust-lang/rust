@@ -1,11 +1,13 @@
 # High-level overview of the compiler source
 
+<!-- toc -->
+
 > **NOTE**: The structure of the repository is going through a lot of
 > transitions. In particular, we want to get to a point eventually where the
 > top-level directory has separate directories for the compiler, build-system,
 > std libs, etc, rather than one huge `src/` directory.
 >
-> As of this writing, the std libs have been moved to `library/` and the crates
+> As of January 2021, the std libs have been moved to `library/` and the crates
 > that make up the `rustc` compiler itself have been moved to `compiler/`
 
 Now that we have [seen what the compiler does](./overview.md), let's take a

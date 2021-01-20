@@ -1,5 +1,7 @@
 # Dataflow Analysis
 
+<!-- toc -->
+
 If you work on the MIR, you will frequently come across various flavors of
 [dataflow analysis][wiki]. `rustc` uses dataflow to find uninitialized
 variables, determine what variables are live across a generator `yield`

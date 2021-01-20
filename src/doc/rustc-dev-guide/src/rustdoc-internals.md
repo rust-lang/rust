@@ -1,5 +1,7 @@
 # Rustdoc internals
 
+<!-- toc -->
+
 This page describes rustdoc's passes and modes. For an overview of rustdoc,
 see [`rustdoc`](./rustdoc.md).
 

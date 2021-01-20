@@ -1,5 +1,7 @@
 # Name resolution
 
+<!-- toc -->
+
 In the previous chapters, we saw how the AST is built with all macros expanded.
 We saw how doing that requires doing some name resolution to resolve imports
 and macro names. In this chapter, we show how this is actually done and more.

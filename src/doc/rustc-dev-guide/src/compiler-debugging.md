@@ -1,6 +1,8 @@
 # Debugging the compiler
 [debugging]: #debugging
 
+<!-- toc -->
+
 This chapter contains a few tips to debug the compiler. These tips aim to be
 useful no matter what you are working on.  Some of the other chapters have
 advice about specific parts of the compiler (e.g. the [Queries Debugging and
@@ -9,14 +11,14 @@ chapter](./backend/debugging.md)).
 
 ## Configuring the compiler
 
-By default, rustc is built without most debug information. To enable debug info, 
-set `debug = true` in your config.toml. 
+By default, rustc is built without most debug information. To enable debug info,
+set `debug = true` in your config.toml.
 
-Setting `debug = true` turns on many different debug options (e.g., `debug-assertions`, 
-`debug-logging`, etc.) which can be individually tweaked if you want to, but many people 
+Setting `debug = true` turns on many different debug options (e.g., `debug-assertions`,
+`debug-logging`, etc.) which can be individually tweaked if you want to, but many people
 simply set `debug = true`. Check out the comments in config.toml.example for more info.
 
-You will need to rebuild the compiler once you've changed any configuration options. 
+You will need to rebuild the compiler once you've changed any configuration options.
 
 ## `-Z` flags
 
@@ -36,7 +38,7 @@ normal Rust programs.  IIRC backtraces **don't work** on MinGW,
 sorry. If you have trouble or the backtraces are full of `unknown`,
 you might want to find some way to use Linux, Mac, or MSVC on Windows.
 
-In the default configuration (without `debug` set to `true`), you don't have line numbers 
+In the default configuration (without `debug` set to `true`), you don't have line numbers
 enabled, so the backtrace looks like this:
 
 ```text
@@ -56,7 +58,7 @@ stack backtrace:
   37: rustc_driver::run_compiler
 ```
 
-If you set `debug = true`, you will get line numbers for the stack trace. 
+If you set `debug = true`, you will get line numbers for the stack trace.
 Then the backtrace will look like this:
 
 ```text
