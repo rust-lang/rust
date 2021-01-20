@@ -557,18 +557,20 @@ public:
             }
           }
         }
-        if (Fn && Fn->getName() == "__fd_sincos_1") {
+        if (Fn && (Fn->getName() == "__fd_sincos_1" || Fn->getName() == "__fd_cos_1")) {
           Fn->addFnAttr(Attribute::ReadNone);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
         }
-        if (Fn && Fn->getName() == "f90io_fmtw_end") {
+        if (Fn && (Fn->getName() == "f90io_fmtw_end" || Fn->getName() == "f90io_unf_end")) {
           Fn->addFnAttr(Attribute::InaccessibleMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::InaccessibleMemOnly);
         }
         if (Fn && (Fn->getName() == "f90io_sc_d_fmt_write" ||
                    Fn->getName() == "f90io_sc_i_fmt_write" ||
                    Fn->getName() == "ftnio_fmt_write64" ||
-                   Fn->getName() == "f90io_fmt_write64_aa")) {
+                   Fn->getName() == "f90io_fmt_write64_aa" ||
+                   Fn->getName() == "f90io_fmt_writea" ||
+                   Fn->getName() == "f90io_unf_writea")) {
           Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::InaccessibleMemOrArgMemOnly);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
