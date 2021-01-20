@@ -682,10 +682,8 @@ impl<'a> TreeSink for TtTreeSink<'a> {
             self.text_pos += TextSize::of(text);
         }
 
-        let text = SmolStr::new(self.buf.as_str());
+        self.inner.token(kind, self.buf.as_str());
         self.buf.clear();
-        self.inner.token(kind, text);
-
         // Add whitespace between adjoint puncts
         let next = last.bump();
         if let (

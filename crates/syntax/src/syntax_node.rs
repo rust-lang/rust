@@ -8,7 +8,7 @@
 
 use rowan::{GreenNodeBuilder, Language};
 
-use crate::{Parse, SmolStr, SyntaxError, SyntaxKind, TextSize};
+use crate::{Parse, SyntaxError, SyntaxKind, TextSize};
 
 pub(crate) use rowan::{GreenNode, GreenToken, NodeOrToken};
 
@@ -53,7 +53,7 @@ impl SyntaxTreeBuilder {
         Parse::new(green, errors)
     }
 
-    pub fn token(&mut self, kind: SyntaxKind, text: SmolStr) {
+    pub fn token(&mut self, kind: SyntaxKind, text: &str) {
         let kind = RustLanguage::kind_to_raw(kind);
         self.inner.token(kind, text)
     }
