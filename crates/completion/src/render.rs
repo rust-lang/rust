@@ -409,7 +409,9 @@ fn main() { Foo::Fo$0 }
                         source_range: 54..56,
                         delete: 54..56,
                         insert: "Foo",
-                        kind: EnumVariant,
+                        kind: SymbolKind(
+                            Variant,
+                        ),
                         detail: "{ x: i32, y: i32 }",
                     },
                 ]
@@ -432,7 +434,9 @@ fn main() { Foo::Fo$0 }
                         source_range: 46..48,
                         delete: 46..48,
                         insert: "Foo($0)",
-                        kind: EnumVariant,
+                        kind: SymbolKind(
+                            Variant,
+                        ),
                         lookup: "Foo",
                         detail: "(i32, i32)",
                         trigger_call_info: true,
@@ -457,7 +461,9 @@ fn main() { Foo::Fo$0 }
                         source_range: 35..37,
                         delete: 35..37,
                         insert: "Foo",
-                        kind: EnumVariant,
+                        kind: SymbolKind(
+                            Variant,
+                        ),
                         detail: "()",
                     },
                 ]
@@ -481,7 +487,9 @@ fn main() { let _: m::Spam = S$0 }
                         source_range: 75..76,
                         delete: 75..76,
                         insert: "Spam::Bar($0)",
-                        kind: EnumVariant,
+                        kind: SymbolKind(
+                            Variant,
+                        ),
                         lookup: "Spam::Bar",
                         detail: "(i32)",
                         trigger_call_info: true,
@@ -491,14 +499,18 @@ fn main() { let _: m::Spam = S$0 }
                         source_range: 75..76,
                         delete: 75..76,
                         insert: "m",
-                        kind: Module,
+                        kind: SymbolKind(
+                            Module,
+                        ),
                     },
                     CompletionItem {
                         label: "m::Spam::Foo",
                         source_range: 75..76,
                         delete: 75..76,
                         insert: "m::Spam::Foo",
-                        kind: EnumVariant,
+                        kind: SymbolKind(
+                            Variant,
+                        ),
                         lookup: "Spam::Foo",
                         detail: "()",
                     },
@@ -507,7 +519,9 @@ fn main() { let _: m::Spam = S$0 }
                         source_range: 75..76,
                         delete: 75..76,
                         insert: "main()$0",
-                        kind: Function,
+                        kind: SymbolKind(
+                            Function,
+                        ),
                         lookup: "main",
                         detail: "fn main()",
                     },
@@ -534,7 +548,9 @@ fn main() { som$0 }
                         source_range: 127..130,
                         delete: 127..130,
                         insert: "main()$0",
-                        kind: Function,
+                        kind: SymbolKind(
+                            Function,
+                        ),
                         lookup: "main",
                         detail: "fn main()",
                     },
@@ -543,7 +559,9 @@ fn main() { som$0 }
                         source_range: 127..130,
                         delete: 127..130,
                         insert: "something_deprecated()$0",
-                        kind: Function,
+                        kind: SymbolKind(
+                            Function,
+                        ),
                         lookup: "something_deprecated",
                         detail: "fn something_deprecated()",
                         deprecated: true,
@@ -553,7 +571,9 @@ fn main() { som$0 }
                         source_range: 127..130,
                         delete: 127..130,
                         insert: "something_else_deprecated()$0",
-                        kind: Function,
+                        kind: SymbolKind(
+                            Function,
+                        ),
                         lookup: "something_else_deprecated",
                         detail: "fn something_else_deprecated()",
                         deprecated: true,
@@ -574,7 +594,9 @@ fn foo() { A { the$0 } }
                         source_range: 57..60,
                         delete: 57..60,
                         insert: "the_field",
-                        kind: Field,
+                        kind: SymbolKind(
+                            Field,
+                        ),
                         detail: "u32",
                         deprecated: true,
                     },
@@ -614,7 +636,9 @@ impl S {
                         source_range: 94..94,
                         delete: 94..94,
                         insert: "foo",
-                        kind: Field,
+                        kind: SymbolKind(
+                            Field,
+                        ),
                         detail: "{unknown}",
                         documentation: Documentation(
                             "Field docs",
@@ -645,7 +669,9 @@ use self::E::*;
                         source_range: 10..12,
                         delete: 10..12,
                         insert: "E",
-                        kind: Enum,
+                        kind: SymbolKind(
+                            Enum,
+                        ),
                         documentation: Documentation(
                             "enum docs",
                         ),
@@ -655,7 +681,9 @@ use self::E::*;
                         source_range: 10..12,
                         delete: 10..12,
                         insert: "V",
-                        kind: EnumVariant,
+                        kind: SymbolKind(
+                            Variant,
+                        ),
                         detail: "()",
                         documentation: Documentation(
                             "variant docs",
@@ -666,7 +694,9 @@ use self::E::*;
                         source_range: 10..12,
                         delete: 10..12,
                         insert: "my",
-                        kind: Module,
+                        kind: SymbolKind(
+                            Module,
+                        ),
                         documentation: Documentation(
                             "mod docs",
                         ),
@@ -892,7 +922,7 @@ struct WorldSnapshot { _f: () };
 fn go(world: &WorldSnapshot) { go(w$0) }
 "#,
             expect![[r#"
-                bn world [type+name]
+                lc world [type+name]
                 st WorldSnapshot []
                 fn go(…) []
             "#]],
@@ -909,7 +939,7 @@ fn f(foo: &Foo) { f(foo, w$0) }
             expect![[r#"
                 st Foo []
                 fn f(…) []
-                bn foo []
+                lc foo []
             "#]],
         );
     }

@@ -165,8 +165,8 @@ fn quux(x: i32) {
 }
 "#,
             expect![[r#"
-                bn y       i32
-                bn x       i32
+                lc y       i32
+                lc x       i32
                 fn quux(…) fn quux(x: i32)
             "#]],
         );
@@ -187,8 +187,8 @@ fn quux() {
 }
 "#,
             expect![[r#"
-                bn b      i32
-                bn a
+                lc b      i32
+                lc a
                 fn quux() fn quux()
             "#]],
         );
@@ -203,7 +203,7 @@ fn quux() {
 }
 "#,
             expect![[r#"
-                bn x
+                lc x
                 fn quux() fn quux()
             "#]],
         );
@@ -263,7 +263,7 @@ fn main() {
         check(
             r#"struct S<T> { x: $0}"#,
             expect![[r#"
-                tp Self
+                sp Self
                 tp T
                 st S<…>
             "#]],
@@ -275,7 +275,7 @@ fn main() {
         check(
             r#"enum X { Y($0) }"#,
             expect![[r#"
-                tp Self
+                sp Self
                 en X
             "#]],
         );
@@ -378,8 +378,8 @@ fn foo() {
 "#,
             // FIXME: should be only one bar here
             expect![[r#"
-                bn bar   i32
-                bn bar   i32
+                lc bar   i32
+                lc bar   i32
                 fn foo() fn foo()
             "#]],
         );
@@ -390,8 +390,8 @@ fn foo() {
         check(
             r#"impl S { fn foo(&self) { $0 } }"#,
             expect![[r#"
-                bn self &{unknown}
-                tp Self
+                lc self &{unknown}
+                sp Self
             "#]],
         );
     }
@@ -575,8 +575,8 @@ fn quux(x: i32) {
 }
 "#,
             expect![[r#"
-                bn y       i32
-                bn x       i32
+                lc y       i32
+                lc x       i32
                 fn quux(…) fn quux(x: i32)
                 ma m!(…)   macro_rules! m
             "#]],
@@ -594,8 +594,8 @@ fn quux(x: i32) {
 }
 ",
             expect![[r#"
-                bn y       i32
-                bn x       i32
+                lc y       i32
+                lc x       i32
                 fn quux(…) fn quux(x: i32)
                 ma m!(…)   macro_rules! m
             "#]],
@@ -613,8 +613,8 @@ fn quux(x: i32) {
 }
 "#,
             expect![[r#"
-                bn y       i32
-                bn x       i32
+                lc y       i32
+                lc x       i32
                 fn quux(…) fn quux(x: i32)
                 ma m!(…)   macro_rules! m
             "#]],
@@ -750,7 +750,7 @@ struct MyStruct {}
 impl My$0
 "#,
             expect![[r#"
-                tp Self
+                sp Self
                 tt MyTrait
                 st MyStruct
             "#]],

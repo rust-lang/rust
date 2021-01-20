@@ -121,9 +121,9 @@ pub enum CompletionScore {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompletionItemKind {
     SymbolKind(SymbolKind),
-    BuiltinType,
     Attribute,
     Binding,
+    BuiltinType,
     Keyword,
     Method,
     Snippet,
