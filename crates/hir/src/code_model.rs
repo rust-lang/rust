@@ -90,7 +90,7 @@ impl Crate {
     }
 
     pub fn root_module(self, db: &dyn HirDatabase) -> Module {
-        let module_id = db.crate_def_map(self.id).root;
+        let module_id = db.crate_def_map(self.id).root();
         Module::new(self, module_id)
     }
 
@@ -302,7 +302,7 @@ impl Module {
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &dyn HirDatabase) -> Module {
         let def_map = db.crate_def_map(self.id.krate);
-        self.with_module_id(def_map.root)
+        self.with_module_id(def_map.root())
     }
 
     /// Iterates over all child modules.
@@ -1000,7 +1000,7 @@ impl MacroDef {
     /// early, in `hir_expand`, where modules simply do not exist yet.
     pub fn module(self, db: &dyn HirDatabase) -> Option<Module> {
         let krate = self.id.krate;
-        let module_id = db.crate_def_map(krate).root;
+        let module_id = db.crate_def_map(krate).root();
         Some(Module::new(Crate { id: krate }, module_id))
     }
 

@@ -191,7 +191,7 @@ pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<Fil
 
     let def_map = db.crate_def_map(krate);
     let mut files = Vec::new();
-    let mut modules = vec![def_map.root];
+    let mut modules = vec![def_map.root()];
     while let Some(module) = modules.pop() {
         let data = &def_map[module];
         files.extend(data.origin.file_id());

@@ -75,7 +75,7 @@ impl TestDB {
     pub(crate) fn module_for_file(&self, file_id: FileId) -> crate::ModuleId {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
-            for (local_id, data) in crate_def_map.modules.iter() {
+            for (local_id, data) in crate_def_map.modules() {
                 if data.origin.file_id() == Some(file_id) {
                     return crate::ModuleId { krate, local_id };
                 }
@@ -110,7 +110,7 @@ impl TestDB {
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {
             let crate_def_map = self.crate_def_map(krate);
-            for (module_id, _) in crate_def_map.modules.iter() {
+            for (module_id, _) in crate_def_map.modules() {
                 let file_id = crate_def_map[module_id].origin.file_id();
                 files.extend(file_id)
             }
@@ -135,7 +135,7 @@ impl TestDB {
             let crate_def_map = self.crate_def_map(krate);
 
             let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
-            for (module_id, module) in crate_def_map.modules.iter() {
+            for (module_id, module) in crate_def_map.modules() {
                 crate_def_map.add_diagnostics(self, module_id, &mut sink);
 
                 for decl in module.scope.declarations() {

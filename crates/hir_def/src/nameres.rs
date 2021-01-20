@@ -75,8 +75,8 @@ use crate::{
 /// Contains all top-level defs from a macro-expanded crate
 #[derive(Debug, PartialEq, Eq)]
 pub struct DefMap {
-    pub root: LocalModuleId,
-    pub modules: Arena<ModuleData>,
+    root: LocalModuleId,
+    modules: Arena<ModuleData>,
     pub(crate) krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
@@ -206,6 +206,14 @@ impl DefMap {
             .iter()
             .filter(move |(_id, data)| data.origin.file_id() == Some(file_id))
             .map(|(id, _data)| id)
+    }
+
+    pub fn modules(&self) -> impl Iterator<Item = (LocalModuleId, &ModuleData)> + '_ {
+        self.modules.iter()
+    }
+
+    pub fn root(&self) -> LocalModuleId {
+        self.root
     }
 
     pub(crate) fn resolve_path(

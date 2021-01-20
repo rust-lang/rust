@@ -409,7 +409,7 @@ mod tests {
                 let crate_def_map = self.crate_def_map(krate);
 
                 let mut fns = Vec::new();
-                for (module_id, _) in crate_def_map.modules.iter() {
+                for (module_id, _) in crate_def_map.modules() {
                     for decl in crate_def_map[module_id].scope.declarations() {
                         let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
                         validate_module_item(self, krate, decl, &mut sink);
