@@ -1,32 +1,32 @@
-warning: lint `private_no_mangle_fns` has been removed: `no longer a warning, `#[no_mangle]` functions always exported`
+warning: lint `private_no_mangle_fns` has been removed: no longer a warning, `#[no_mangle]` functions always exported
    |
    = note: requested on the command line with `-F private_no_mangle_fns`
 
-warning: lint `private_no_mangle_statics` has been removed: `no longer a warning, `#[no_mangle]` statics always exported`
+warning: lint `private_no_mangle_statics` has been removed: no longer a warning, `#[no_mangle]` statics always exported
    |
    = note: requested on the command line with `-F private_no_mangle_statics`
 
-warning: lint `private_no_mangle_fns` has been removed: `no longer a warning, `#[no_mangle]` functions always exported`
+warning: lint `private_no_mangle_fns` has been removed: no longer a warning, `#[no_mangle]` functions always exported
    |
    = note: requested on the command line with `-F private_no_mangle_fns`
 
-warning: lint `private_no_mangle_statics` has been removed: `no longer a warning, `#[no_mangle]` statics always exported`
+warning: lint `private_no_mangle_statics` has been removed: no longer a warning, `#[no_mangle]` statics always exported
    |
    = note: requested on the command line with `-F private_no_mangle_statics`
 
-warning: lint `private_no_mangle_fns` has been removed: `no longer a warning, `#[no_mangle]` functions always exported`
+warning: lint `private_no_mangle_fns` has been removed: no longer a warning, `#[no_mangle]` functions always exported
    |
    = note: requested on the command line with `-F private_no_mangle_fns`
 
-warning: lint `private_no_mangle_statics` has been removed: `no longer a warning, `#[no_mangle]` statics always exported`
+warning: lint `private_no_mangle_statics` has been removed: no longer a warning, `#[no_mangle]` statics always exported
    |
    = note: requested on the command line with `-F private_no_mangle_statics`
 
-warning: lint `private_no_mangle_fns` has been removed: `no longer a warning, `#[no_mangle]` functions always exported`
+warning: lint `private_no_mangle_fns` has been removed: no longer a warning, `#[no_mangle]` functions always exported
    |
    = note: requested on the command line with `-F private_no_mangle_fns`
 
-warning: lint `private_no_mangle_statics` has been removed: `no longer a warning, `#[no_mangle]` statics always exported`
+warning: lint `private_no_mangle_statics` has been removed: no longer a warning, `#[no_mangle]` statics always exported
    |
    = note: requested on the command line with `-F private_no_mangle_statics`
 
