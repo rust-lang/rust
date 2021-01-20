@@ -1824,10 +1824,19 @@ impl Clean<Visibility> for ty::Visibility {
     }
 }
 
+crate fn struct_type_from_def(vdata: &hir::VariantData<'_>) -> StructType {
+    use StructType::*;
+    match *vdata {
+        hir::VariantData::Struct(..) => Plain,
+        hir::VariantData::Tuple(..) => Tuple,
+        hir::VariantData::Unit(..) => Unit,
+    }
+}
+
 impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> VariantStruct {
         VariantStruct {
-            struct_type: doctree::struct_type_from_def(self),
+            struct_type: struct_type_from_def(self),
             fields: self.fields().iter().map(|x| x.clean(cx)).collect(),
             fields_stripped: false,
         }
@@ -1842,7 +1851,7 @@ impl Clean<Item> for ty::VariantDef {
                 self.fields.iter().map(|f| cx.tcx.type_of(f.did).clean(cx)).collect(),
             ),
             CtorKind::Fictive => Variant::Struct(VariantStruct {
-                struct_type: doctree::Plain,
+                struct_type: StructType::Plain,
                 fields_stripped: false,
                 fields: self
                     .fields
@@ -1996,13 +2005,12 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                     bounds: bounds.clean(cx),
                 }),
                 ItemKind::Union(ref variant_data, ref generics) => UnionItem(Union {
-                    struct_type: doctree::struct_type_from_def(&variant_data),
                     generics: generics.clean(cx),
                     fields: variant_data.fields().clean(cx),
                     fields_stripped: false,
                 }),
                 ItemKind::Struct(ref variant_data, ref generics) => StructItem(Struct {
-                    struct_type: doctree::struct_type_from_def(&variant_data),
+                    struct_type: struct_type_from_def(&variant_data),
                     generics: generics.clean(cx),
                     fields: variant_data.fields().clean(cx),
                     fields_stripped: false,

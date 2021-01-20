@@ -37,7 +37,6 @@ use crate::clean::inline;
 use crate::clean::types::Type::{QPath, ResolvedPath};
 use crate::clean::Clean;
 use crate::core::DocContext;
-use crate::doctree;
 use crate::formats::cache::cache;
 use crate::formats::item_type::ItemType;
 use crate::html::render::cache::ExternalLocation;
@@ -1683,9 +1682,19 @@ impl Visibility {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+crate enum StructType {
+    /// A braced struct
+    Plain,
+    /// A tuple struct
+    Tuple,
+    /// A unit struct
+    Unit,
+}
+
 #[derive(Clone, Debug)]
 crate struct Struct {
-    crate struct_type: doctree::StructType,
+    crate struct_type: StructType,
     crate generics: Generics,
     crate fields: Vec<Item>,
     crate fields_stripped: bool,
@@ -1693,7 +1702,6 @@ crate struct Struct {
 
 #[derive(Clone, Debug)]
 crate struct Union {
-    crate struct_type: doctree::StructType,
     crate generics: Generics,
     crate fields: Vec<Item>,
     crate fields_stripped: bool,
@@ -1704,7 +1712,7 @@ crate struct Union {
 /// only as a variant in an enum.
 #[derive(Clone, Debug)]
 crate struct VariantStruct {
-    crate struct_type: doctree::StructType,
+    crate struct_type: StructType,
     crate fields: Vec<Item>,
     crate fields_stripped: bool,
 }

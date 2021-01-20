@@ -15,9 +15,8 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use crate::clean::{self, Attributes, GetDefId, ToSource, TypeKind};
+use crate::clean::{self, Attributes, GetDefId, ToSource, TypeKind, StructType};
 use crate::core::DocContext;
-use crate::doctree;
 
 use super::Clean;
 
@@ -247,9 +246,9 @@ fn build_struct(cx: &DocContext<'_>, did: DefId) -> clean::Struct {
 
     clean::Struct {
         struct_type: match variant.ctor_kind {
-            CtorKind::Fictive => doctree::Plain,
-            CtorKind::Fn => doctree::Tuple,
-            CtorKind::Const => doctree::Unit,
+            CtorKind::Fictive => StructType::Plain,
+            CtorKind::Fn => StructType::Tuple,
+            CtorKind::Const => StructType::Unit,
         },
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
         fields: variant.fields.clean(cx),
@@ -262,7 +261,6 @@ fn build_union(cx: &DocContext<'_>, did: DefId) -> clean::Union {
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Union {
-        struct_type: doctree::Plain,
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
         fields: variant.fields.clean(cx),
         fields_stripped: false,

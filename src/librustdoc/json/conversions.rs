@@ -9,7 +9,6 @@ use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_span::Pos;
 
 use crate::clean;
-use crate::doctree;
 use crate::formats::item_type::ItemType;
 use crate::json::types::*;
 use crate::json::JsonRenderer;
@@ -210,9 +209,9 @@ impl From<clean::Struct> for Struct {
 
 impl From<clean::Union> for Struct {
     fn from(struct_: clean::Union) -> Self {
-        let clean::Union { struct_type, generics, fields, fields_stripped } = struct_;
+        let clean::Union { generics, fields, fields_stripped } = struct_;
         Struct {
-            struct_type: struct_type.into(),
+            struct_type: StructType::Union,
             generics: generics.into(),
             fields_stripped,
             fields: ids(fields),
@@ -221,9 +220,9 @@ impl From<clean::Union> for Struct {
     }
 }
 
-impl From<doctree::StructType> for StructType {
-    fn from(struct_type: doctree::StructType) -> Self {
-        use doctree::StructType::*;
+impl From<clean::StructType> for StructType {
+    fn from(struct_type: clean::StructType) -> Self {
+        use clean::StructType::*;
         match struct_type {
             Plain => StructType::Plain,
             Tuple => StructType::Tuple,
