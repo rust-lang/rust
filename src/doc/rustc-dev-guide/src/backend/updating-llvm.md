@@ -102,6 +102,15 @@ through each in detail.
    LLVM bindings. Note that you should use `#ifdef` and such to ensure that the
    bindings still compile on older LLVM versions.
 
+   Note that `profile = "compiler"` and other defaults set by `x.py setup`
+   download LLVM from CI instead of building it from source. You should
+   disable this temporarily to make sure your changes are being used, by setting
+   ```toml
+   [llvm]
+   download-ci-llvm = false
+   ```
+   in config.toml
+
 4. Test for regressions across other platforms. LLVM often has at least one bug
    for non-tier-1 architectures, so it's good to do some more testing before
    sending this to bors! If you're low on resources you can send the PR as-is

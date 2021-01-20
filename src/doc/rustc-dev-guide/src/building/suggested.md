@@ -201,37 +201,3 @@ git worktree add -b my-feature ../rust2 master
 
 You can then use that rust2 folder as a separate workspace for modifying
 and building `rustc`!
-
-## Skipping LLVM Build
-
-By default, LLVM is built from source, and that takes significant amount of
-time. One way to avoid that is to add this to `config.toml`:
-
-```toml
-[llvm]
-download-ci-llvm = true
-```
-
-Downloading LLVM from CI is still experimental though, and might not be
-available on all platforms. Otherwise, we'd make it a default!
-
-Another alternative is to use LLVM already installed on your computer. This is
-specified in the `target` section of `config.toml`:
-
-```toml
-[target.x86_64-unknown-linux-gnu]
-llvm-config = "/path/to/llvm/llvm-7.0.1/bin/llvm-config"
-```
-
-We have observed the following paths before, which may be different from your system:
-
-- `/usr/bin/llvm-config-8`
-- `/usr/lib/llvm-8/bin/llvm-config`
-
-Note that you need to have the LLVM `FileCheck` tool installed, which is used
-for codegen tests. This tool is normally built with LLVM, but if you use your
-own preinstalled LLVM, you will need to provide `FileCheck` in some other way.
-On Debian-based systems, you can install the `llvm-N-tools` package (where `N`
-is the LLVM version number, e.g. `llvm-8-tools`). Alternately, you can specify
-the path to `FileCheck` with the `llvm-filecheck` config item in `config.toml`
-or you can disable codegen test with the `codegen-tests` item in `config.toml`.
