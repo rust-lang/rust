@@ -6,16 +6,9 @@ use crate::ffi::OsStr;
 use crate::io;
 use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::process;
+use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-
-mod private {
-    /// This trait being unreachable from outside the crate
-    /// prevents other implementations of the `ExitStatusExt` trait,
-    /// which allows potentially adding more trait methods in the future.
-    #[stable(feature = "none", since = "1.51.0")]
-    pub trait Sealed {}
-}
 
 /// Unix-specific extensions to the [`process::Command`] builder.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -175,7 +168,7 @@ impl CommandExt for process::Command {
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait ExitStatusExt: private::Sealed {
+pub trait ExitStatusExt: Sealed {
     /// Creates a new `ExitStatus` from the raw underlying `i32` return value of
     /// a process.
     #[stable(feature = "exit_status_from", since = "1.12.0")]
@@ -210,8 +203,8 @@ pub trait ExitStatusExt: private::Sealed {
     fn into_raw(self) -> i32;
 }
 
-#[stable(feature = "none", since = "1.51.0")]
-impl private::Sealed for process::ExitStatus {}
+#[unstable(feature = "sealed", issue = "none")]
+impl Sealed for process::ExitStatus {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ExitStatusExt for process::ExitStatus {
