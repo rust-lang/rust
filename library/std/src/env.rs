@@ -561,6 +561,13 @@ pub fn home_dir() -> Option<PathBuf> {
 
 /// Returns the path of a temporary directory.
 ///
+/// The temporary directory may be shared among users, or between processes
+/// with different privileges; thus, the creation of any files or directories
+/// in the temporary directory must use a secure method to create a uniquely
+/// named file. Creating a file or directory with a fixed or predictable name
+/// may result in "insecure temporary file" security vulnerabilities. Consider
+/// using a crate that securely creates temporary files or directories.
+///
 /// # Unix
 ///
 /// Returns the value of the `TMPDIR` environment variable if it is
@@ -580,14 +587,10 @@ pub fn home_dir() -> Option<PathBuf> {
 ///
 /// ```no_run
 /// use std::env;
-/// use std::fs::File;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() {
 ///     let mut dir = env::temp_dir();
-///     dir.push("foo.txt");
-///
-///     let f = File::create(dir)?;
-///     Ok(())
+///     println!("Temporary directory: {}", dir.display());
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
