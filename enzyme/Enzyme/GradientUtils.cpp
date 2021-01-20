@@ -238,6 +238,12 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto op1 = getOp(op->getOperand(1));
     if (op1 == nullptr)
       goto endCheck;
+    if (op0->getType() != op1->getType()) {
+      llvm::errs() << " op: " << *op << " op0: " << *op0 << " op1: " << *op1
+                   << " p0: " << *op->getOperand(0)
+                   << "  p1: " << *op->getOperand(1) << "\n";
+    }
+    assert(op0->getType() == op1->getType());
     auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1,
                                          op->getName() + "_unwrap");
     if (auto newi = dyn_cast<Instruction>(toreturn))
@@ -1029,7 +1035,8 @@ bool GradientUtils::shouldRecompute(const Value *val,
   const Instruction *inst = cast<Instruction>(val);
 
   if (EnzymeNewCache) {
-    // if this has operands that need to be loaded and haven't already been loaded
+    // if this has operands that need to be loaded and haven't already been
+    // loaded
     // TODO, just cache this
     for (auto &op : inst->operands()) {
       if (!legalRecompute(op, available)) {
@@ -1056,7 +1063,8 @@ bool GradientUtils::shouldRecompute(const Value *val,
 
         // If a placeholder phi for inversion (and we know from above not
         // recomputable)
-        if (!isa<PHINode>(op) && dyn_cast_or_null<LoadInst>(hasUninverted(op))) {
+        if (!isa<PHINode>(op) &&
+            dyn_cast_or_null<LoadInst>(hasUninverted(op))) {
           goto forceCache;
         }
 
@@ -1094,8 +1102,9 @@ bool GradientUtils::shouldRecompute(const Value *val,
         }
       forceCache:;
         if (EnzymePrintPerf) {
-          EmitWarning("ChosenCache", inst->getDebugLoc(), oldFunc, inst->getParent(),
-                      "Choosing to cache use ", *inst, " due to ", *op);
+          EmitWarning("ChosenCache", inst->getDebugLoc(), oldFunc,
+                      inst->getParent(), "Choosing to cache use ", *inst,
+                      " due to ", *op);
         }
         return false;
       }
@@ -1589,7 +1598,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
 
     val0 = invertPointerM(arg->getOperand(0), bb);
     val1 = invertPointerM(arg->getOperand(1), bb);
-
+    assert(val0->getType() == val1->getType());
     auto li = bb.CreateBinOp(arg->getOpcode(), val0, val1, arg->getName());
     if (auto BI = dyn_cast<BinaryOperator>(li))
       BI->copyIRFlags(arg);
@@ -1875,6 +1884,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   assert(inst->getName() != "<badref>");
   val = fixLCSSA(inst, BuilderM.GetInsertBlock());
   inst = cast<Instruction>(val);
+  assert(prelcssaInst->getType() == inst->getType());
 
   assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()));
 
