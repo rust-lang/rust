@@ -51,7 +51,7 @@ fn check_self_super(def_map: &DefMap, item: ItemInNs, from: ModuleId) -> Option<
     if item == ItemInNs::Types(from.into()) {
         // - if the item is the module we're in, use `self`
         Some(ModPath::from_segments(PathKind::Super(0), Vec::new()))
-    } else if let Some(parent_id) = def_map.modules[from.local_id].parent {
+    } else if let Some(parent_id) = def_map[from.local_id].parent {
         // - if the item is the parent module, use `super` (this is not used recursively, since `super::super` is ugly)
         if item
             == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId {
@@ -111,7 +111,7 @@ fn find_path_inner(
 
     // - if the item is already in scope, return the name under which it is
     let def_map = db.crate_def_map(from.krate);
-    let from_scope: &crate::item_scope::ItemScope = &def_map.modules[from.local_id].scope;
+    let from_scope: &crate::item_scope::ItemScope = &def_map[from.local_id].scope;
     let scope_name =
         if let Some((name, _)) = from_scope.name_of(item) { Some(name.clone()) } else { None };
     if prefixed.is_none() && scope_name.is_some() {
@@ -123,7 +123,7 @@ fn find_path_inner(
     if item
         == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId {
             krate: from.krate,
-            local_id: def_map.root,
+            local_id: def_map.root(),
         }))
     {
         return Some(ModPath::from_segments(PathKind::Crate, Vec::new()));
@@ -147,7 +147,7 @@ fn find_path_inner(
     if let Some(prelude_module) = def_map.prelude {
         let prelude_def_map = db.crate_def_map(prelude_module.krate);
         let prelude_scope: &crate::item_scope::ItemScope =
-            &prelude_def_map.modules[prelude_module.local_id].scope;
+            &prelude_def_map[prelude_module.local_id].scope;
         if let Some((name, vis)) = prelude_scope.name_of(item) {
             if vis.is_visible_from(db, from) {
                 return Some(ModPath::from_segments(PathKind::Plain, vec![name.clone()]));
@@ -175,7 +175,7 @@ fn find_path_inner(
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
 
-    let crate_root = ModuleId { local_id: def_map.root, krate: from.krate };
+    let crate_root = ModuleId { local_id: def_map.root(), krate: from.krate };
     let crate_attrs = db.attrs(crate_root.into());
     let prefer_no_std = crate_attrs.by_key("no_std").exists();
     let mut best_path = None;
@@ -287,7 +287,7 @@ fn find_local_import_locations(
 
     // Compute the initial worklist. We start with all direct child modules of `from` as well as all
     // of its (recursive) parent modules.
-    let data = &def_map.modules[from.local_id];
+    let data = &def_map[from.local_id];
     let mut worklist = data
         .children
         .values()
@@ -296,7 +296,7 @@ fn find_local_import_locations(
     let mut parent = data.parent;
     while let Some(p) = parent {
         worklist.push(ModuleId { krate: from.krate, local_id: p });
-        parent = def_map.modules[p].parent;
+        parent = def_map[p].parent;
     }
 
     let mut seen: FxHashSet<_> = FxHashSet::default();

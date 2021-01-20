@@ -112,7 +112,7 @@ impl TraitImpls {
         let mut impls = Self { map: FxHashMap::default() };
 
         let crate_def_map = db.crate_def_map(krate);
-        for (_module_id, module_data) in crate_def_map.modules.iter() {
+        for (_module_id, module_data) in crate_def_map.modules() {
             for impl_id in module_data.scope.impls() {
                 let target_trait = match db.impl_trait(impl_id) {
                     Some(tr) => tr.value.trait_,
@@ -198,7 +198,7 @@ impl InherentImpls {
         let mut map: FxHashMap<_, Vec<_>> = FxHashMap::default();
 
         let crate_def_map = db.crate_def_map(krate);
-        for (_module_id, module_data) in crate_def_map.modules.iter() {
+        for (_module_id, module_data) in crate_def_map.modules() {
             for impl_id in module_data.scope.impls() {
                 let data = db.impl_data(impl_id);
                 if data.target_trait.is_some() {

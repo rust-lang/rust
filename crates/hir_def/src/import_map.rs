@@ -75,7 +75,7 @@ impl ImportMap {
 
         // We look only into modules that are public(ly reexported), starting with the crate root.
         let empty = ImportPath { segments: vec![] };
-        let root = ModuleId { krate, local_id: def_map.root };
+        let root = ModuleId { krate, local_id: def_map.root() };
         let mut worklist = vec![(root, empty)];
         while let Some((module, mod_path)) = worklist.pop() {
             let ext_def_map;

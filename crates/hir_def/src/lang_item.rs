@@ -84,7 +84,7 @@ impl LangItems {
 
         let crate_def_map = db.crate_def_map(krate);
 
-        for (_, module_data) in crate_def_map.modules.iter() {
+        for (_, module_data) in crate_def_map.modules() {
             for impl_def in module_data.scope.impls() {
                 lang_items.collect_lang_item(db, impl_def, LangItemTarget::ImplDefId)
             }
