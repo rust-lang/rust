@@ -43,19 +43,4 @@ fn main() {
     y.as_mut_ptr().wrapping_add(size_of::<u8>());
     unsafe { y.as_ptr().offset(size_of::<u8>() as isize) };
     y.as_mut_ptr().wrapping_offset(size_of::<u8>() as isize);
-
-    // Count expression involving multiplication of size_of (Should trigger the lint)
-    unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE) };
-
-    // Count expression involving nested multiplications of size_of (Should trigger the lint)
-    unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), HALF_SIZE * size_of_val(&x[0]) * 2) };
-
-    // Count expression involving divisions of size_of (Should trigger the lint)
-    unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE * size_of::<u8>() / 2) };
-
-    // No size_of calls (Should not trigger the lint)
-    unsafe { copy(x.as_ptr(), y.as_mut_ptr(), SIZE) };
-
-    // Different types for pointee and size_of (Should not trigger the lint)
-    unsafe { y.as_mut_ptr().write_bytes(0u8, size_of::<u16>() / 2 * SIZE) };
 }

@@ -35,10 +35,11 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SizeOfInElementCount => [SIZE_OF_IN_ELEMENT_COUNT]);
 
-fn get_size_of_ty(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Ty<'tcx>> {
+fn get_size_of_ty(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: bool) -> Option<Ty<'tcx>> {
     match expr.kind {
         ExprKind::Call(count_func, _func_args) => {
             if_chain! {
+                if !inverted;
                 if let ExprKind::Path(ref count_func_qpath) = count_func.kind;
                 if let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id();
                 if match_def_path(cx, def_id, &paths::MEM_SIZE_OF)
@@ -50,10 +51,13 @@ fn get_size_of_ty(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Ty<'tc
                 }
             }
         },
-        ExprKind::Binary(op, left, right) if BinOpKind::Mul == op.node || BinOpKind::Div == op.node => {
-            get_size_of_ty(cx, left).or_else(|| get_size_of_ty(cx, right))
+        ExprKind::Binary(op, left, right) if BinOpKind::Mul == op.node => {
+            get_size_of_ty(cx, left, inverted).or_else(|| get_size_of_ty(cx, right, inverted))
         },
-        ExprKind::Cast(expr, _) => get_size_of_ty(cx, expr),
+        ExprKind::Binary(op, left, right) if BinOpKind::Div == op.node => {
+            get_size_of_ty(cx, left, inverted).or_else(|| get_size_of_ty(cx, right, !inverted))
+        },
+        ExprKind::Cast(expr, _) => get_size_of_ty(cx, expr, inverted),
         _ => None,
     }
 }
@@ -128,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
 
             // Find a size_of call in the count parameter expression and
             // check that it's the same type
-            if let Some(ty_used_for_size_of) = get_size_of_ty(cx, count_expr);
+            if let Some(ty_used_for_size_of) = get_size_of_ty(cx, count_expr, false);
             if TyS::same_type(pointee_ty, ty_used_for_size_of);
             then {
                 span_lint_and_help(
