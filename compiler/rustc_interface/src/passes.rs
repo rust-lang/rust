@@ -828,7 +828,6 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                     tcx.ensure().check_mod_loops(local_def_id);
                     tcx.ensure().check_mod_attrs(local_def_id);
                     tcx.ensure().check_mod_naked_functions(local_def_id);
-                    tcx.ensure().check_mod_unstable_api_usage(local_def_id);
                     tcx.ensure().check_mod_const_bodies(local_def_id);
                 });
             }
@@ -840,6 +839,12 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
 
     sess.time("misc_checking_2", || {
         parallel!(
+            {
+                par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                    let local_def_id = tcx.hir().local_def_id(module);
+                    tcx.ensure().check_mod_unstable_api_usage(local_def_id);
+                });
+            },
             {
                 sess.time("match_checking", || {
                     tcx.par_body_owners(|def_id| {
