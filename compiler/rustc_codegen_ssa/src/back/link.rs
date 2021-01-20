@@ -74,7 +74,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             }
         });
 
-        if outputs.outputs.should_codegen() {
+        if outputs.outputs.should_link() {
             let tmpdir = TempFileBuilder::new()
                 .prefix("rustc")
                 .tempdir()
@@ -123,9 +123,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                 }
             };
 
-            if sess.opts.output_types.should_codegen()
-                && !preserve_objects_for_their_debuginfo(sess)
-            {
+            if sess.opts.output_types.should_link() && !preserve_objects_for_their_debuginfo(sess) {
                 for module in &codegen_results.modules {
                     remove_temps_from_module(module);
                 }

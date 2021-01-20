@@ -403,6 +403,20 @@ impl OutputTypes {
             OutputType::Metadata | OutputType::DepInfo => false,
         })
     }
+
+    // Returns `true` if any of the output types require linking.
+    pub fn should_link(&self) -> bool {
+        self.0.keys().any(|k| match *k {
+            OutputType::Bitcode
+            | OutputType::Assembly
+            | OutputType::LlvmAssembly
+            | OutputType::Mir
+            | OutputType::Metadata
+            | OutputType::Object
+            | OutputType::DepInfo => false,
+            OutputType::Exe => true,
+        })
+    }
 }
 
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
