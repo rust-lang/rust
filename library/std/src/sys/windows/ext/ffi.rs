@@ -53,6 +53,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ffi::{OsStr, OsString};
+use crate::sealed::Sealed;
 use crate::sys::os_str::Buf;
 use crate::sys_common::wtf8::Wtf8Buf;
 use crate::sys_common::{AsInner, FromInner};
@@ -62,7 +63,7 @@ pub use crate::sys_common::wtf8::EncodeWide;
 
 /// Windows-specific extensions to [`OsString`].
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStringExt {
+pub trait OsStringExt: Sealed {
     /// Creates an `OsString` from a potentially ill-formed UTF-16 slice of
     /// 16-bit code units.
     ///
@@ -93,7 +94,7 @@ impl OsStringExt for OsString {
 
 /// Windows-specific extensions to [`OsStr`].
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStrExt {
+pub trait OsStrExt: Sealed {
     /// Re-encodes an `OsStr` as a wide character sequence, i.e., potentially
     /// ill-formed UTF-16.
     ///
