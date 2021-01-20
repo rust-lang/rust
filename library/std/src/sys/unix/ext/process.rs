@@ -12,7 +12,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 /// Unix-specific extensions to the [`process::Command`] builder.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait CommandExt {
+pub trait CommandExt: Sealed {
     /// Sets the child process's user ID. This translates to a
     /// `setuid` call in the child process. Failure in the `setuid`
     /// call will cause the spawn to fail.

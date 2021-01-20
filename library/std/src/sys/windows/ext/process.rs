@@ -94,7 +94,7 @@ impl ExitStatusExt for process::ExitStatus {
 
 /// Windows-specific extensions to the [`process::Command`] builder.
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
-pub trait CommandExt {
+pub trait CommandExt: Sealed {
     /// Sets the [process creation flags][1] to be passed to `CreateProcess`.
     ///
     /// These will always be ORed with `CREATE_UNICODE_ENVIRONMENT`.
