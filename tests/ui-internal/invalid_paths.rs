@@ -18,6 +18,9 @@ mod paths {
 
     // Path with bad module
     pub const BAD_MOD_PATH: [&str; 2] = ["std", "xxx"];
+
+    // Path to method on an enum inherent impl
+    pub const OPTION_IS_SOME: [&str; 4] = ["core", "option", "Option", "is_some"];
 }
 
 fn main() {}
