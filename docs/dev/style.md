@@ -280,6 +280,9 @@ Prefer `Default` even it has to be implemented manually.
 
 **Rationale:** less typing in the common case, uniformity.
 
+Use `Vec::new` rather than `vec![]`. **Rationale:** uniformity, strength
+reduction.
+
 ## Functions Over Objects
 
 Avoid creating "doer" objects.
