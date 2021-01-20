@@ -218,25 +218,19 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     cmd.args(args);
     cmd.envs(env);
 
+    // On windows, libraries are just searched in the executable directory,
+    // system directories, PWD, and PATH, in that order. PATH is the only one
+    // we can change for this.
+    let library_path = if cfg!(windows) { "PATH" } else { "LD_LIBRARY_PATH" };
+
     // Support libraries were uploaded to `work` earlier, so make sure that's
     // in `LD_LIBRARY_PATH`. Also include our own current dir which may have
     // had some libs uploaded.
-    if cfg!(windows) {
-        // On windows, libraries are just searched in the executable directory,
-        // system directories, PWD, and PATH, in that order. PATH is the only one
-        // we can change for this.
-        cmd.env(
-            "PATH",
-            env::join_paths(
-                std::iter::once(work.to_owned())
-                    .chain(std::iter::once(path.clone()))
-                    .chain(env::split_paths(&env::var_os("PATH").unwrap())),
-            )
-            .unwrap(),
-        );
-    } else {
-        cmd.env("LD_LIBRARY_PATH", format!("{}:{}", work.display(), path.display()));
+    let mut paths = vec![work.to_owned(), path.clone()];
+    if let Some(library_path) = env::var_os(library_path) {
+        paths.extend(env::split_paths(&library_path));
     }
+    cmd.env(library_path, env::join_paths(paths).unwrap());
 
     // Some tests assume RUST_TEST_TMPDIR exists
     cmd.env("RUST_TEST_TMPDIR", tmp.to_owned());
