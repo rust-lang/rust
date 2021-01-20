@@ -1,74 +1,78 @@
 error[E0425]: cannot find value `LOOP` in this scope
   --> $DIR/label_misspelled.rs:3:9
    |
+LL |     'LOOP: loop {
+   |     ----- a label with a similar name exists
 LL |         LOOP;
-   |         ^^^^
-   |         |
-   |         not found in this scope
-   |         help: a label with a similar name exists: `'LOOP`
+   |         ^^^^ not found in this scope
 
 error[E0425]: cannot find value `while_loop` in this scope
   --> $DIR/label_misspelled.rs:7:9
    |
+LL |     'while_loop: while true {
+   |     ----------- a label with a similar name exists
 LL |         while_loop;
-   |         ^^^^^^^^^^
-   |         |
-   |         not found in this scope
-   |         help: a label with a similar name exists: `'while_loop`
+   |         ^^^^^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `while_let` in this scope
   --> $DIR/label_misspelled.rs:11:9
    |
+LL |     'while_let: while let Some(_) = Some(()) {
+   |     ---------- a label with a similar name exists
 LL |         while_let;
-   |         ^^^^^^^^^
-   |         |
-   |         not found in this scope
-   |         help: a label with a similar name exists: `'while_let`
+   |         ^^^^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `for_loop` in this scope
   --> $DIR/label_misspelled.rs:15:9
    |
+LL |     'for_loop: for _ in 0..3 {
+   |     --------- a label with a similar name exists
 LL |         for_loop;
-   |         ^^^^^^^^
-   |         |
-   |         not found in this scope
-   |         help: a label with a similar name exists: `'for_loop`
+   |         ^^^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `LOOP` in this scope
   --> $DIR/label_misspelled.rs:22:15
    |
+LL |     'LOOP: loop {
+   |     ----- a label with a similar name exists
 LL |         break LOOP;
    |               ^^^^
    |               |
    |               not found in this scope
-   |               help: a label with a similar name exists: `'LOOP`
+   |               help: use the similarly named label: `'LOOP`
 
 error[E0425]: cannot find value `while_loop` in this scope
   --> $DIR/label_misspelled.rs:26:15
    |
+LL |     'while_loop: while true {
+   |     ----------- a label with a similar name exists
 LL |         break while_loop;
    |               ^^^^^^^^^^
    |               |
    |               not found in this scope
-   |               help: a label with a similar name exists: `'while_loop`
+   |               help: use the similarly named label: `'while_loop`
 
 error[E0425]: cannot find value `while_let` in this scope
   --> $DIR/label_misspelled.rs:31:15
    |
+LL |     'while_let: while let Some(_) = Some(()) {
+   |     ---------- a label with a similar name exists
 LL |         break while_let;
    |               ^^^^^^^^^
    |               |
    |               not found in this scope
-   |               help: a label with a similar name exists: `'while_let`
+   |               help: use the similarly named label: `'while_let`
 
 error[E0425]: cannot find value `for_loop` in this scope
   --> $DIR/label_misspelled.rs:36:15
    |
+LL |     'for_loop: for _ in 0..3 {
+   |     --------- a label with a similar name exists
 LL |         break for_loop;
    |               ^^^^^^^^
    |               |
    |               not found in this scope
-   |               help: a label with a similar name exists: `'for_loop`
+   |               help: use the similarly named label: `'for_loop`
 
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/label_misspelled.rs:6:5

@@ -1,11 +1,13 @@
 error[E0425]: cannot find value `LOOP` in this scope
   --> $DIR/loop-break-value.rs:95:15
    |
+LL |     'LOOP: for _ in 0 .. 9 {
+   |     ----- a label with a similar name exists
 LL |         break LOOP;
    |               ^^^^
    |               |
    |               not found in this scope
-   |               help: a label with a similar name exists: `'LOOP`
+   |               help: use the similarly named label: `'LOOP`
 
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/loop-break-value.rs:26:5
