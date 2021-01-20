@@ -26,37 +26,77 @@ error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
 LL |     baz(f);
-   |     ^^^ one type is more general than the other
+   |     ^^^ lifetime mismatch
    |
    = note: expected type `for<'r> Fn<(*mut &'r u32,)>`
               found type `Fn<(*mut &'a u32,)>`
+note: the required lifetime does not necessarily outlive the lifetime `'a` as defined on the function body at 9:10
+  --> $DIR/closure-arg-type-mismatch.rs:9:10
+   |
+LL | fn _test<'a>(f: fn(*mut &'a u32)) {
+   |          ^^
+note: the lifetime requirement is introduced here
+  --> $DIR/closure-arg-type-mismatch.rs:8:11
+   |
+LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
+   |           ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
 LL |     baz(f);
-   |     ^^^ one type is more general than the other
+   |     ^^^ lifetime mismatch
    |
    = note: expected type `FnOnce<(*mut &u32,)>`
               found type `FnOnce<(*mut &'a u32,)>`
+note: the required lifetime does not necessarily outlive the lifetime `'a` as defined on the function body at 9:10
+  --> $DIR/closure-arg-type-mismatch.rs:9:10
+   |
+LL | fn _test<'a>(f: fn(*mut &'a u32)) {
+   |          ^^
+note: the lifetime requirement is introduced here
+  --> $DIR/closure-arg-type-mismatch.rs:8:11
+   |
+LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
+   |           ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
 LL |     baz(f);
-   |     ^^^ one type is more general than the other
+   |     ^^^ lifetime mismatch
    |
    = note: expected type `for<'r> Fn<(*mut &'r u32,)>`
               found type `Fn<(*mut &'a u32,)>`
+note: the lifetime `'a` as defined on the function body at 9:10 doesn't meet the lifetime requirements
+  --> $DIR/closure-arg-type-mismatch.rs:9:10
+   |
+LL | fn _test<'a>(f: fn(*mut &'a u32)) {
+   |          ^^
+note: the lifetime requirement is introduced here
+  --> $DIR/closure-arg-type-mismatch.rs:8:11
+   |
+LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
+   |           ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
 LL |     baz(f);
-   |     ^^^ one type is more general than the other
+   |     ^^^ lifetime mismatch
    |
    = note: expected type `FnOnce<(*mut &u32,)>`
               found type `FnOnce<(*mut &'a u32,)>`
+note: the lifetime `'a` as defined on the function body at 9:10 doesn't meet the lifetime requirements
+  --> $DIR/closure-arg-type-mismatch.rs:9:10
+   |
+LL | fn _test<'a>(f: fn(*mut &'a u32)) {
+   |          ^^
+note: the lifetime requirement is introduced here
+  --> $DIR/closure-arg-type-mismatch.rs:8:11
+   |
+LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
+   |           ^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

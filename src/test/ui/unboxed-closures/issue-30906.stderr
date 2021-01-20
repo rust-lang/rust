@@ -2,10 +2,15 @@ error[E0308]: mismatched types
   --> $DIR/issue-30906.rs:15:5
    |
 LL |     test(Compose(f, |_| {}));
-   |     ^^^^ one type is more general than the other
+   |     ^^^^ lifetime mismatch
    |
    = note: expected type `FnOnce<(&'x str,)>`
               found type `FnOnce<(&str,)>`
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-30906.rs:3:12
+   |
+LL | fn test<F: for<'x> FnOnce<(&'x str,)>>(_: F) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
