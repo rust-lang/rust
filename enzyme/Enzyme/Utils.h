@@ -75,10 +75,9 @@ void EmitWarning(llvm::StringRef RemarkName,
   llvm::raw_string_ostream ss(str);
   (ss << ... << args);
   ORE.emit(llvm::OptimizationRemark("enzyme", RemarkName, Loc,
-                                                   CodeRegion->getParent())
+                                    CodeRegion->getParent())
            << str);
 }
-
 
 class EnzymeFailure : public llvm::DiagnosticInfoIROptimization {
 public:

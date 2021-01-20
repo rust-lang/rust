@@ -120,15 +120,17 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         mode == UnwrapMode::AttemptFullUnwrap ||                               \
         mode == UnwrapMode::AttemptFullUnwrapWithLookup) {                     \
       ___res = unwrapM(v, BuilderM, available, mode);                          \
-      if (___res) assert(___res->getType() == v->getType() && "uw");                     \
+      if (___res)                                                              \
+        assert(___res->getType() == v->getType() && "uw");                     \
     } else {                                                                   \
       assert(mode == UnwrapMode::AttemptSingleUnwrap);                         \
       ___res = lookupM(v, BuilderM, available);                                \
-      if (___res && ___res->getType( )!= v->getType()) {                       \
+      if (___res && ___res->getType() != v->getType()) {                       \
         llvm::errs() << *newFunc << "\n";                                      \
         llvm::errs() << " v = " << *v << " res = " << *___res << "\n";         \
-      }                                                                       \
-      if (___res) assert(___res->getType() == v->getType() && "lu");                     \
+      }                                                                        \
+      if (___res)                                                              \
+        assert(___res->getType() == v->getType() && "lu");                     \
     }                                                                          \
     ___res;                                                                    \
   })
@@ -169,7 +171,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (op1 == nullptr)
       goto endCheck;
     auto toreturn = BuilderM.CreateInsertValue(op0, op1, op->getIndices(),
-                                                op->getName() + "_unwrap");
+                                               op->getName() + "_unwrap");
     unwrap_cache[cidx] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
@@ -182,8 +184,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto op1 = getOp(op->getOperand(1));
     if (op1 == nullptr)
       goto endCheck;
-    auto toreturn = BuilderM.CreateExtractElement(op0, op1,
-                                                op->getName() + "_unwrap");
+    auto toreturn =
+        BuilderM.CreateExtractElement(op0, op1, op->getName() + "_unwrap");
     unwrap_cache[cidx] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
@@ -199,8 +201,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto op2 = getOp(op->getOperand(2));
     if (op2 == nullptr)
       goto endCheck;
-    auto toreturn = BuilderM.CreateInsertElement(op0, op1, op2,
-                                                op->getName() + "_unwrap");
+    auto toreturn =
+        BuilderM.CreateInsertElement(op0, op1, op2, op->getName() + "_unwrap");
     unwrap_cache[cidx] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
@@ -215,12 +217,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       goto endCheck;
 #if LLVM_VERSION_MAJOR >= 11
     auto toreturn = BuilderM.CreateShuffleVector(
-        op0, op1,
-        op->getShuffleMaskForBitcode(), op->getName() + "'_unwrap");
+        op0, op1, op->getShuffleMaskForBitcode(), op->getName() + "'_unwrap");
 #else
-    auto toreturn =
-        BuilderM.CreateShuffleVector(op0, op1,
-                               op->getOperand(2), op->getName() + "'_unwrap");
+    auto toreturn = BuilderM.CreateShuffleVector(op0, op1, op->getOperand(2),
+                                                 op->getName() + "'_unwrap");
 #endif
     unwrap_cache[cidx] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn))
@@ -1115,7 +1115,8 @@ bool GradientUtils::shouldRecompute(const Value *val,
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
           n == "__lgammal_r_finite" || n == "tanh" || n == "tanhf" ||
-          n == "__pow_finite" || n == "__fd_sincos_1" || isMemFreeLibMFunction(n)) {
+          n == "__pow_finite" || n == "__fd_sincos_1" ||
+          isMemFreeLibMFunction(n)) {
         return true;
       }
     }

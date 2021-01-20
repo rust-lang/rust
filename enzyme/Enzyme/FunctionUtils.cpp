@@ -106,6 +106,10 @@ static cl::opt<bool>
 static cl::opt<bool> EnzymeInline("enzyme-inline", cl::init(false), cl::Hidden,
                                   cl::desc("Force inlining of autodiff"));
 
+static cl::opt<bool> EnzymeNoAlias("enzyme-noalias", cl::init(false),
+                                   cl::Hidden,
+                                   cl::desc("Force noalias of autodiff"));
+
 static cl::opt<bool> EnzymeLowerGlobals(
     "enzyme-lower-globals", cl::init(false), cl::Hidden,
     cl::desc("Lower globals to locals assuming the global values are not "
@@ -685,19 +689,25 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   for (auto i = F->arg_begin(), j = NewF->arg_begin(); i != F->arg_end();) {
     VMap[i] = j;
     j->setName(i->getName());
+    if (EnzymeNoAlias && j->getType()->isPointerTy()) {
+      j->addAttr(Attribute::NoAlias);
+    }
     ++i;
     ++j;
   }
 
   SmallVector<ReturnInst *, 4> Returns;
-  // if (auto SP = F->getSubProgram()) {
-  //  VMap[SP] = DISubprogram::get(SP);
-  //}
 
   CloneFunctionInto(NewF, F, VMap,
                     /*ModuleLevelChanges*/ F->getSubprogram() != nullptr,
                     Returns, "", nullptr);
   NewF->setAttributes(F->getAttributes());
+  if (EnzymeNoAlias)
+    for (auto j = NewF->arg_begin(); j != NewF->arg_end(); j++) {
+      if (j->getType()->isPointerTy()) {
+        j->addAttr(Attribute::NoAlias);
+      }
+    }
 
   if (EnzymePreopt) {
     if (EnzymeInline) {
