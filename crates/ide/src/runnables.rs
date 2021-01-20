@@ -9,6 +9,7 @@ use syntax::{
     ast::{self, AstNode, AttrsOwner},
     match_ast, SyntaxNode,
 };
+use test_utils::mark;
 
 use crate::{
     display::{ToNav, TryToNav},
@@ -96,28 +97,26 @@ impl Runnable {
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
     let module = match sema.to_module_def(file_id) {
-        None => return vec![],
+        None => return Vec::new(),
         Some(it) => it,
     };
 
-    runnables_mod(&sema, module)
+    let mut res = Vec::new();
+    runnables_mod(&sema, &mut res, module);
+    res
 }
 
-fn runnables_mod(sema: &Semantics<RootDatabase>, module: hir::Module) -> Vec<Runnable> {
-    let mut res: Vec<Runnable> = module
-        .declarations(sema.db)
-        .into_iter()
-        .filter_map(|def| {
-            let runnable = match def {
-                hir::ModuleDef::Module(it) => runnable_mod(&sema, it),
-                hir::ModuleDef::Function(it) => runnable_fn(&sema, it),
-                _ => None,
-            };
-            runnable.or_else(|| module_def_doctest(&sema, def))
-        })
-        .collect();
+fn runnables_mod(sema: &Semantics<RootDatabase>, acc: &mut Vec<Runnable>, module: hir::Module) {
+    acc.extend(module.declarations(sema.db).into_iter().filter_map(|def| {
+        let runnable = match def {
+            hir::ModuleDef::Module(it) => runnable_mod(&sema, it),
+            hir::ModuleDef::Function(it) => runnable_fn(&sema, it),
+            _ => None,
+        };
+        runnable.or_else(|| module_def_doctest(&sema, def))
+    }));
 
-    res.extend(module.impl_defs(sema.db).into_iter().flat_map(|it| it.items(sema.db)).filter_map(
+    acc.extend(module.impl_defs(sema.db).into_iter().flat_map(|it| it.items(sema.db)).filter_map(
         |def| match def {
             hir::AssocItem::Function(it) => {
                 runnable_fn(&sema, it).or_else(|| module_def_doctest(&sema, it.into()))
@@ -127,12 +126,14 @@ fn runnables_mod(sema: &Semantics<RootDatabase>, module: hir::Module) -> Vec<Run
         },
     ));
 
-    res.extend(module.declarations(sema.db).into_iter().flat_map(|def| match def {
-        hir::ModuleDef::Module(it) => runnables_mod(sema, it),
-        _ => vec![],
-    }));
-
-    res
+    for def in module.declarations(sema.db) {
+        if let hir::ModuleDef::Module(submodule) = def {
+            match submodule.definition_source(sema.db).value {
+                hir::ModuleSource::Module(_) => runnables_mod(sema, acc, submodule),
+                hir::ModuleSource::SourceFile(_) => mark::hit!(dont_recurse_in_outline_submodules),
+            }
+        }
+    }
 }
 
 pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) -> Option<Runnable> {
@@ -326,6 +327,7 @@ fn has_test_function_or_multiple_test_submodules(
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
+    use test_utils::mark;
 
     use crate::fixture;
 
@@ -1047,6 +1049,27 @@ mod tests {
                         cfg: None,
                     },
                 ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn dont_recurse_in_outline_submodules() {
+        mark::check!(dont_recurse_in_outline_submodules);
+        check(
+            r#"
+//- /lib.rs
+$0
+mod m;
+//- /m.rs
+mod tests {
+    #[test]
+    fn t() {}
+}
+"#,
+            &[],
+            expect![[r#"
+                []
             "#]],
         );
     }
