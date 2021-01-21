@@ -1,4 +1,5 @@
 // run-pass
+// ignore-windows - this is a unix-specific test
 // ignore-cloudabi
 // ignore-emscripten
 // ignore-sgx
