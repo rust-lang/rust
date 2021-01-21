@@ -10,5 +10,13 @@ note: the lint level is defined here
 LL | #[deny(clippy::ref_in_deref)]
    |        ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: creating a reference that is immediately dereferenced
+  --> $DIR/unnecessary_ref.rs:22:16
+   |
+LL |     unsafe { &*(&*package).0 }.hello();
+   |                ^^^^^^^^^^^ help: try this: `(*package)`
+   |
+   = note: `-D clippy::ref-in-deref` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
 
