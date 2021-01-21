@@ -881,17 +881,12 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
-    // We are calling the intrinsics directly to avoid function calls in the generated code
-    // as `intrinsics::copy_nonoverlapping` is a wrapper function.
-    extern "rust-intrinsic" {
-        fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-    }
-
     // SAFETY: the caller must guarantee that `dst` is valid for writes.
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
         copy_nonoverlapping(&src as *const T, dst, 1);
+        // We are calling the intrinsic directly to avoid function calls in the generated code.
         intrinsics::forget(src);
     }
 }
