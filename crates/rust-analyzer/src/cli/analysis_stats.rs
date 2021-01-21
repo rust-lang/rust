@@ -2,6 +2,7 @@
 //! errors.
 
 use std::{
+    env,
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -293,6 +294,10 @@ impl AnalysisStatsCmd {
         }
         if let Some(memory) = total_span.memory {
             report_metric("total memory", memory.allocated.megabytes() as u64, "MB");
+        }
+
+        if env::var("RA_COUNT").is_ok() {
+            eprintln!("{}", profile::countme::get_all());
         }
 
         if self.memory_usage && verbosity.is_verbose() {

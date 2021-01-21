@@ -38,6 +38,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     format_to!(buf, "{}\n", syntax_tree_stats(db));
     format_to!(buf, "{} (macros)\n", macro_syntax_tree_stats(db));
     format_to!(buf, "{} total\n", memory_usage());
+    format_to!(buf, "\ncounts:\n{}", profile::countme::get_all());
 
     if let Some(file_id) = file_id {
         format_to!(buf, "\nfile info:\n");
@@ -60,6 +61,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
             None => format_to!(buf, "does not belong to any crate"),
         }
     }
+
     buf
 }
 

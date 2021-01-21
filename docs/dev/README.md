@@ -251,6 +251,9 @@ RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more tha
 
 In particular, I have `export RA_PROFILE='*>10'` in my shell profile.
 
+We also have a "counting" profiler which counts number of instances of popular structs.
+It is enabled by `RA_COUNT=1`.
+
 To measure time for from-scratch analysis, use something like this:
 
 ```

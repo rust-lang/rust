@@ -274,6 +274,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28b9d6de7f49e22cf97ad17fc4036ece69300032f45f78f30b4a4482cdc3f4a6"
 
 [[package]]
+name = "countme"
+version = "2.0.0-pre.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5716604cba7c02a846ecad3f4a3fd2d2b641faccc2a24a51efb21aff0d01f35"
+dependencies = [
+ "dashmap",
+ "once_cell",
+ "rustc-hash",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -347,6 +358,16 @@ dependencies = [
  "autocfg",
  "cfg-if 1.0.0",
  "lazy_static",
+]
+
+[[package]]
+name = "dashmap"
+version = "4.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e77a43b28d0668df09411cb0bc9a8c2adc40f9a048afe863e05fd43251e8e39c"
+dependencies = [
+ "cfg-if 1.0.0",
+ "num_cpus",
 ]
 
 [[package]]
@@ -1260,6 +1281,7 @@ name = "profile"
 version = "0.0.0"
 dependencies = [
  "cfg-if 1.0.0",
+ "countme",
  "jemalloc-ctl",
  "la-arena",
  "libc",
@@ -1375,10 +1397,11 @@ checksum = "b5eb417147ba9860a96cfe72a0b93bf88fee1744b5636ec99ab20c1aa9376581"
 
 [[package]]
 name = "rowan"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bea4527c692099becd37ec777cfd6949d0534348528d2fc84ee420d2d5fac83d"
+checksum = "24c2d78254049413f9d73495f883e7fa0b7a7d4b88468cd72a3bbbd0ad585cd1"
 dependencies = [
+ "countme",
  "hashbrown",
  "memoffset",
  "rustc-hash",
