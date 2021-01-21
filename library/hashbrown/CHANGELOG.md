@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## Changed
+- The minimum Rust version has been bumped to 1.49.0. (#230)
+
 ## [v0.10.0] - 2021-01-16
 
 ## Changed

@@ -530,7 +530,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// Returns pointer to one past last element of data table.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn data_end(&self) -> NonNull<T> {
-        NonNull::new_unchecked(self.ctrl.as_ptr() as *mut T)
+        NonNull::new_unchecked(self.ctrl.as_ptr().cast())
     }
 
     /// Returns pointer to start of data table.
