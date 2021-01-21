@@ -783,6 +783,11 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
 
 /// Whether we should encode MIR.
 ///
+/// Computing, optimizing and encoding the MIR is a relatively expensive operation.
+/// We want to avoid this work when not required. Therefore:
+/// - we only compute `mir_for_ctfe` on items with const-eval semantics;
+/// - we skip `optimized_mir` for check runs.
+///
 /// Return a pair, resp. for CTFE and for LLVM.
 fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
     match tcx.def_kind(def_id) {
