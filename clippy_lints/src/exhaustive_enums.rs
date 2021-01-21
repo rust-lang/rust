@@ -1,8 +1,8 @@
 use crate::utils::{snippet_opt, span_lint_and_help, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc_ast::ast::{Item, ItemKind};
+use rustc_hir::{Item, ItemKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
@@ -36,8 +36,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ExhaustiveEnums => [EXHAUSTIVE_ENUMS]);
 
-impl EarlyLintPass for ExhaustiveEnums {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
+impl LateLintPass<'_> for ExhaustiveEnums {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if_chain! {
             if let ItemKind::Enum(..) = item.kind;
             if !item.attrs.iter().any(|a| a.has_name(sym::non_exhaustive));
