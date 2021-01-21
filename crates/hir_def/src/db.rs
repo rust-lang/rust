@@ -2,9 +2,9 @@
 use std::sync::Arc;
 
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
-use hir_expand::{db::AstDatabase, HirFileId};
+use hir_expand::{db::AstDatabase, AstId, HirFileId};
 use la_arena::ArenaMap;
-use syntax::SmolStr;
+use syntax::{ast, SmolStr};
 
 use crate::{
     adt::{EnumData, StructData},
@@ -54,6 +54,9 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(DefMap::crate_def_map_query)]
     fn crate_def_map_query(&self, krate: CrateId) -> Arc<DefMap>;
+
+    #[salsa::invoke(DefMap::block_def_map_query)]
+    fn block_def_map(&self, krate: CrateId, block: AstId<ast::BlockExpr>) -> Arc<DefMap>;
 
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;

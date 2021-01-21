@@ -195,6 +195,13 @@ impl ItemTree {
         }
     }
 
+    pub fn inner_items_of_block(&self, block: FileAstId<ast::BlockExpr>) -> &[ModItem] {
+        match &self.data {
+            Some(data) => data.inner_items.get(&block).map(|it| &**it).unwrap_or(&[]),
+            None => &[],
+        }
+    }
+
     pub fn source<S: ItemTreeNode>(&self, db: &dyn DefDatabase, of: ItemTreeId<S>) -> S::Source {
         // This unwrap cannot fail, since it has either succeeded above, or resulted in an empty
         // ItemTree (in which case there is no valid `FileItemTreeId` to call this method with).

@@ -61,7 +61,7 @@ use hir_expand::{diagnostics::DiagnosticSink, name::Name, InFile};
 use la_arena::Arena;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
-use syntax::ast;
+use syntax::{ast, AstNode};
 
 use crate::{
     db::DefDatabase,
@@ -75,6 +75,7 @@ use crate::{
 /// Contains all top-level defs from a macro-expanded crate
 #[derive(Debug, PartialEq, Eq)]
 pub struct DefMap {
+    parent: Option<Arc<DefMap>>,
     root: LocalModuleId,
     modules: Arena<ModuleData>,
     krate: CrateId,
@@ -181,22 +182,48 @@ impl DefMap {
         let _p = profile::span("crate_def_map_query").detail(|| {
             db.crate_graph()[krate].display_name.as_deref().unwrap_or_default().to_string()
         });
-        let def_map = {
-            let edition = db.crate_graph()[krate].edition;
-            let mut modules: Arena<ModuleData> = Arena::default();
-            let root = modules.alloc(ModuleData::default());
-            DefMap {
-                krate,
-                edition,
-                extern_prelude: FxHashMap::default(),
-                prelude: None,
-                root,
-                modules,
-                diagnostics: Vec::new(),
-            }
-        };
-        let def_map = collector::collect_defs(db, def_map);
+        let edition = db.crate_graph()[krate].edition;
+        let def_map = DefMap::empty(krate, edition);
+        let def_map = collector::collect_defs(db, def_map, None);
         Arc::new(def_map)
+    }
+
+    pub(crate) fn block_def_map_query(
+        db: &dyn DefDatabase,
+        krate: CrateId,
+        block: AstId<ast::BlockExpr>,
+    ) -> Arc<DefMap> {
+        let item_tree = db.item_tree(block.file_id);
+        let block_items = item_tree.inner_items_of_block(block.value);
+
+        let parent = parent_def_map(db, krate, block);
+
+        if block_items.is_empty() {
+            // If there are no inner items, nothing new is brought into scope, so we can just return
+            // the parent DefMap. This keeps DefMap parent chains short.
+            return parent;
+        }
+
+        let mut def_map = DefMap::empty(krate, parent.edition);
+        def_map.parent = Some(parent);
+
+        let def_map = collector::collect_defs(db, def_map, Some(block.value));
+        Arc::new(def_map)
+    }
+
+    fn empty(krate: CrateId, edition: Edition) -> DefMap {
+        let mut modules: Arena<ModuleData> = Arena::default();
+        let root = modules.alloc(ModuleData::default());
+        DefMap {
+            parent: None,
+            krate,
+            edition,
+            extern_prelude: FxHashMap::default(),
+            prelude: None,
+            root,
+            modules,
+            diagnostics: Vec::new(),
+        }
     }
 
     pub fn add_diagnostics(
@@ -251,7 +278,12 @@ impl DefMap {
     // even), as this should be a great debugging aid.
     pub fn dump(&self) -> String {
         let mut buf = String::new();
-        go(&mut buf, self, "crate", self.root);
+        let mut current_map = self;
+        while let Some(parent) = &current_map.parent {
+            go(&mut buf, current_map, "block scope", current_map.root);
+            current_map = &**parent;
+        }
+        go(&mut buf, current_map, "crate", current_map.root);
         return buf;
 
         fn go(buf: &mut String, map: &DefMap, path: &str, module: LocalModuleId) {
@@ -301,6 +333,35 @@ impl ModuleData {
         let value = decl.to_node(db.upcast());
         Some(InFile { file_id: decl.file_id, value })
     }
+}
+
+fn parent_def_map(
+    db: &dyn DefDatabase,
+    krate: CrateId,
+    block: AstId<ast::BlockExpr>,
+) -> Arc<DefMap> {
+    // FIXME: store this info in the item tree instead of reparsing here
+    let ast_id_map = db.ast_id_map(block.file_id);
+    let block_ptr = ast_id_map.get(block.value);
+    let root = match db.parse_or_expand(block.file_id) {
+        Some(it) => it,
+        None => {
+            return Arc::new(DefMap::empty(krate, Edition::Edition2018));
+        }
+    };
+    let ast = block_ptr.to_node(&root);
+
+    for ancestor in ast.syntax().ancestors().skip(1) {
+        if let Some(block_expr) = ast::BlockExpr::cast(ancestor) {
+            let ancestor_id = ast_id_map.ast_id(&block_expr);
+            let ast_id = InFile::new(block.file_id, ancestor_id);
+            let parent_map = db.block_def_map(krate, ast_id);
+            return parent_map;
+        }
+    }
+
+    // No enclosing block scope, so the parent is the crate-level DefMap.
+    db.crate_def_map(krate)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
