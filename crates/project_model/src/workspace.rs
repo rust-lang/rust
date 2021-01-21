@@ -481,7 +481,7 @@ fn add_target_crate_root(
     let edition = pkg.edition;
     let cfg_options = {
         let mut opts = cfg_options.clone();
-        for feature in pkg.features.iter() {
+        for feature in pkg.active_features.iter() {
             opts.insert_key_value("feature".into(), feature.into());
         }
         opts.extend(pkg.cfgs.iter().cloned());
