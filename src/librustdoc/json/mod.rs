@@ -199,7 +199,12 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         Ok(())
     }
 
-    fn after_krate(&mut self, krate: &clean::Crate, cache: &Cache) -> Result<(), Error> {
+    fn after_krate(
+        &mut self,
+        krate: &clean::Crate,
+        cache: &Cache,
+        _diag: &rustc_errors::Handler,
+    ) -> Result<(), Error> {
         debug!("Done with crate");
         let mut index = (*self.index).clone().into_inner();
         index.extend(self.get_trait_items(cache));
@@ -243,10 +248,6 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         p.set_extension("json");
         let file = File::create(&p).map_err(|error| Error { error: error.to_string(), file: p })?;
         serde_json::ser::to_writer(&file, &output).unwrap();
-        Ok(())
-    }
-
-    fn after_run(&mut self, _diag: &rustc_errors::Handler) -> Result<(), Error> {
         Ok(())
     }
 }
