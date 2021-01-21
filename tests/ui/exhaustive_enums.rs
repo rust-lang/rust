@@ -7,15 +7,33 @@ fn main() {
     // nop
 }
 
-enum Exhaustive {
+pub enum Exhaustive {
     Foo,
     Bar,
     Baz,
     Quux(String),
 }
 
+// no warning, already non_exhaustive
 #[non_exhaustive]
-enum NonExhaustive {
+pub enum NonExhaustive {
+    Foo,
+    Bar,
+    Baz,
+    Quux(String),
+}
+
+// no warning, private
+enum ExhaustivePrivate {
+    Foo,
+    Bar,
+    Baz,
+    Quux(String),
+}
+
+// no warning, private
+#[non_exhaustive]
+enum NonExhaustivePrivate {
     Foo,
     Bar,
     Baz,

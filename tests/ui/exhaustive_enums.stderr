@@ -1,7 +1,7 @@
 error: enums should not be exhaustive
   --> $DIR/exhaustive_enums.rs:10:1
    |
-LL | / enum Exhaustive {
+LL | / pub enum Exhaustive {
 LL | |     Foo,
 LL | |     Bar,
 LL | |     Baz,
@@ -17,7 +17,7 @@ LL | #![deny(clippy::exhaustive_enums)]
 help: try adding #[non_exhaustive]
    |
 LL | #[non_exhaustive]
-LL | enum Exhaustive {
+LL | pub enum Exhaustive {
 LL |     Foo,
 LL |     Bar,
 LL |     Baz,
