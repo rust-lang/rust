@@ -10,9 +10,9 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_session::parse::feature_err;
-use rustc_span::hygiene::ForLoopLoc;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::{hygiene::ForLoopLoc, DUMMY_SP};
 use rustc_target::asm;
 use std::collections::hash_map::Entry;
 use std::fmt::Write;
@@ -102,6 +102,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         this.lower_block(body, false),
                         opt_label,
                         hir::LoopSource::Loop,
+                        DUMMY_SP,
                     )
                 }),
                 ExprKind::TryBlock(ref body) => self.lower_expr_try_block(body),
@@ -453,7 +454,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.expr_match(span, scrutinee, arena_vec![self; then_arm, else_arm], desugar);
 
         // `[opt_ident]: loop { ... }`
-        hir::ExprKind::Loop(self.block_expr(self.arena.alloc(match_expr)), opt_label, source)
+        hir::ExprKind::Loop(
+            self.block_expr(self.arena.alloc(match_expr)),
+            opt_label,
+            source,
+            span.with_hi(cond.span.hi()),
+        )
     }
 
     /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_ok(<expr>) }`,
@@ -748,7 +754,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // loop { .. }
         let loop_expr = self.arena.alloc(hir::Expr {
             hir_id: loop_hir_id,
-            kind: hir::ExprKind::Loop(loop_block, None, hir::LoopSource::Loop),
+            kind: hir::ExprKind::Loop(loop_block, None, hir::LoopSource::Loop, span),
             span,
             attrs: ThinVec::new(),
         });
@@ -1709,7 +1715,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         // `[opt_ident]: loop { ... }`
-        let kind = hir::ExprKind::Loop(loop_block, opt_label, hir::LoopSource::ForLoop);
+        let kind = hir::ExprKind::Loop(
+            loop_block,
+            opt_label,
+            hir::LoopSource::ForLoop,
+            e.span.with_hi(orig_head_span.hi()),
+        );
         let loop_expr = self.arena.alloc(hir::Expr {
             hir_id: self.lower_node_id(e.id),
             kind,

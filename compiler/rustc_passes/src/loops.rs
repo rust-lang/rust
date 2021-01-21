@@ -53,7 +53,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
     fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
         match e.kind {
-            hir::ExprKind::Loop(ref b, _, source) => {
+            hir::ExprKind::Loop(ref b, _, source, _) => {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
             }
             hir::ExprKind::Closure(_, ref function_decl, b, span, movability) => {
@@ -89,8 +89,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     Err(hir::LoopIdError::UnresolvedLabel) => None,
                 };
 
-                if let Some(loop_id) = loop_id {
-                    if let Node::Block(_) = self.hir_map.find(loop_id).unwrap() {
+                if let Some(Node::Block(_)) = loop_id.and_then(|id| self.hir_map.find(id)) {
                         return;
                     }
                 }

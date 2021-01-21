@@ -1617,7 +1617,9 @@ pub enum ExprKind<'hir> {
     /// A conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// I.e., `'label: loop { <block> }`.
-    Loop(&'hir Block<'hir>, Option<Label>, LoopSource),
+    ///
+    /// The `Span` is the loop header (`for x in y`/`while let pat = expr`).
+    Loop(&'hir Block<'hir>, Option<Label>, LoopSource, Span),
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
     Match(&'hir Expr<'hir>, &'hir [Arm<'hir>], MatchSource),
