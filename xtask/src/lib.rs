@@ -34,7 +34,11 @@ pub fn project_root() -> PathBuf {
     .to_path_buf()
 }
 
-pub fn rust_files(path: &Path) -> impl Iterator<Item = PathBuf> {
+pub fn rust_files() -> impl Iterator<Item = PathBuf> {
+    rust_files_in(&project_root().join("crates"))
+}
+
+pub fn rust_files_in(path: &Path) -> impl Iterator<Item = PathBuf> {
     let iter = WalkDir::new(path);
     return iter
         .into_iter()

@@ -82,7 +82,7 @@ Please adjust docs/dev/lsp-extensions.md.
 #[test]
 fn rust_files_are_tidy() {
     let mut tidy_docs = TidyDocs::default();
-    for path in rust_files(&project_root().join("crates")) {
+    for path in rust_files() {
         let text = read_file(&path).unwrap();
         check_todo(&path, &text);
         check_dbg(&path, &text);
