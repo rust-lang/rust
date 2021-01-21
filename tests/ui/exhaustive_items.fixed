@@ -9,7 +9,7 @@ fn main() {
 
 pub mod enums {
     #[non_exhaustive]
-pub enum Exhaustive {
+    pub enum Exhaustive {
         Foo,
         Bar,
         Baz,
@@ -45,7 +45,7 @@ pub enum Exhaustive {
 
 pub mod structs {
     #[non_exhaustive]
-pub struct Exhaustive {
+    pub struct Exhaustive {
         foo: u8,
         bar: String,
     }

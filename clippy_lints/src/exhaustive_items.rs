@@ -1,4 +1,4 @@
-use crate::utils::{snippet_opt, span_lint_and_help, span_lint_and_sugg};
+use crate::utils::{indent_of, snippet_opt, span_lint_and_help, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
@@ -82,13 +82,14 @@ impl LateLintPass<'_> for ExhaustiveItems {
                 };
 
                 if let Some(snippet) = snippet_opt(cx, item.span) {
+                    let indent = " ".repeat(indent_of(cx, item.span).unwrap_or(0));
                     span_lint_and_sugg(
                         cx,
                         lint,
                         item.span,
                         "enums should not be exhaustive",
                         "try adding #[non_exhaustive]",
-                        format!("#[non_exhaustive]\n{}", snippet),
+                        format!("#[non_exhaustive]\n{}{}", indent, snippet),
                         Applicability::MaybeIncorrect,
                     );
                 } else {
