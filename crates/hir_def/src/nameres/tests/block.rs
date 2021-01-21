@@ -45,3 +45,28 @@ fn outer() {
         "#]],
     );
 }
+
+#[test]
+fn merge_namespaces() {
+    check_at(
+        r#"
+//- /lib.rs
+struct name {}
+fn outer() {
+    fn name() {}
+
+    use name as imported; // should import both `name`s
+
+    $0
+}
+"#,
+        expect![[r#"
+            block scope
+            imported: t v
+            name: v
+            crate
+            name: t
+            outer: v
+        "#]],
+    );
+}
