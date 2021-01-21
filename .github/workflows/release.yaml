@@ -94,6 +94,7 @@ jobs:
         toolchain: stable
         profile: minimal
         override: true
+        components: rust-src
 
     - name: Install Nodejs
       uses: actions/setup-node@v1
@@ -108,9 +109,11 @@ jobs:
       if: github.ref != 'refs/heads/release'
       run: cargo xtask dist --nightly --client 0.3.$GITHUB_RUN_NUMBER-nightly
 
-    - name: Nightly analysis-stats check
-      if: github.ref != 'refs/heads/release'
+    - name: Run analysis-stats on rust-analyzer
       run: target/${{ env.RA_TARGET }}/release/rust-analyzer analysis-stats .
+
+    - name: Run analysis-stats on rust std library
+      run: target/${{ env.RA_TARGET }}/release/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
