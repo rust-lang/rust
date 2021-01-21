@@ -200,6 +200,7 @@ mod escape;
 mod eta_reduction;
 mod eval_order_dependence;
 mod excessive_bools;
+mod exhaustive_enums;
 mod exit;
 mod explicit_write;
 mod fallible_impl_from;
@@ -611,6 +612,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &eval_order_dependence::EVAL_ORDER_DEPENDENCE,
         &excessive_bools::FN_PARAMS_EXCESSIVE_BOOLS,
         &excessive_bools::STRUCT_EXCESSIVE_BOOLS,
+        &exhaustive_enums::EXHAUSTIVE_ENUMS,
         &exit::EXIT,
         &explicit_write::EXPLICIT_WRITE,
         &fallible_impl_from::FALLIBLE_IMPL_FROM,
@@ -1096,6 +1098,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box eval_order_dependence::EvalOrderDependence);
     store.register_late_pass(|| box missing_doc::MissingDoc::new());
     store.register_late_pass(|| box missing_inline::MissingInline);
+    store.register_early_pass(move || box exhaustive_enums::ExhaustiveEnums);
     store.register_late_pass(|| box if_let_some_result::OkIfLet);
     store.register_late_pass(|| box partialeq_ne_impl::PartialEqNeImpl);
     store.register_late_pass(|| box unused_io_amount::UnusedIoAmount);
@@ -1246,6 +1249,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&create_dir::CREATE_DIR),
         LintId::of(&dbg_macro::DBG_MACRO),
         LintId::of(&else_if_without_else::ELSE_IF_WITHOUT_ELSE),
+        LintId::of(&exhaustive_enums::EXHAUSTIVE_ENUMS),
         LintId::of(&exit::EXIT),
         LintId::of(&float_literal::LOSSY_FLOAT_LITERAL),
         LintId::of(&implicit_return::IMPLICIT_RETURN),
