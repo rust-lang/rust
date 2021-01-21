@@ -55,15 +55,6 @@ pub fn options() -> TargetOptions {
     // to do so.
     arg("--no-demangle");
 
-    // The symbol visibility story is a bit in flux right now with LLD.
-    // It's... not entirely clear to me what's going on, but this looks to
-    // make everything work when `export_symbols` isn't otherwise called for
-    // things like executables.
-    //
-    // This is really only here to get things working. If it can be removed and
-    // basic tests still work, then sounds like it should be removed!
-    arg("--export-dynamic");
-
     let mut pre_link_args = BTreeMap::new();
     pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Wasm), lld_args);
     pre_link_args.insert(LinkerFlavor::Gcc, clang_args);
