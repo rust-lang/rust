@@ -4,11 +4,13 @@ mod macros;
 mod mod_resolution;
 mod diagnostics;
 mod primitives;
+mod block;
 
 use std::sync::Arc;
 
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::{expect, Expect};
+use hir_expand::db::AstDatabase;
 use test_utils::mark;
 
 use crate::{db::DefDatabase, nameres::*, test_db::TestDB};
@@ -19,8 +21,26 @@ fn compute_crate_def_map(ra_fixture: &str) -> Arc<DefMap> {
     db.crate_def_map(krate)
 }
 
+fn compute_block_def_map(ra_fixture: &str) -> Arc<DefMap> {
+    let (db, position) = TestDB::with_position(ra_fixture);
+    let module = db.module_for_file(position.file_id);
+    let ast_map = db.ast_id_map(position.file_id.into());
+    let ast = db.parse(position.file_id);
+    let block: ast::BlockExpr =
+        syntax::algo::find_node_at_offset(&ast.syntax_node(), position.offset).unwrap();
+    let block_id = ast_map.ast_id(&block);
+
+    db.block_def_map(module.krate, InFile::new(position.file_id.into(), block_id))
+}
+
 fn check(ra_fixture: &str, expect: Expect) {
     let def_map = compute_crate_def_map(ra_fixture);
+    let actual = def_map.dump();
+    expect.assert_eq(&actual);
+}
+
+fn check_at(ra_fixture: &str, expect: Expect) {
+    let def_map = compute_block_def_map(ra_fixture);
     let actual = def_map.dump();
     expect.assert_eq(&actual);
 }

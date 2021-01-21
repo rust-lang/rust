@@ -1,13 +1,13 @@
 //! FIXME: write short doc here
 
 pub use hir_def::db::{
-    AttrsQuery, BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQueryQuery,
-    CrateLangItemsQuery, DefDatabase, DefDatabaseStorage, EnumDataQuery, ExprScopesQuery,
-    FunctionDataQuery, GenericParamsQuery, ImplDataQuery, ImportMapQuery, InternConstQuery,
-    InternDatabase, InternDatabaseStorage, InternEnumQuery, InternFunctionQuery, InternImplQuery,
-    InternStaticQuery, InternStructQuery, InternTraitQuery, InternTypeAliasQuery, InternUnionQuery,
-    ItemTreeQuery, LangItemQuery, StaticDataQuery, StructDataQuery, TraitDataQuery,
-    TypeAliasDataQuery, UnionDataQuery,
+    AttrsQuery, BlockDefMapQuery, BodyQuery, BodyWithSourceMapQuery, ConstDataQuery,
+    CrateDefMapQueryQuery, CrateLangItemsQuery, DefDatabase, DefDatabaseStorage, EnumDataQuery,
+    ExprScopesQuery, FunctionDataQuery, GenericParamsQuery, ImplDataQuery, ImportMapQuery,
+    InternConstQuery, InternDatabase, InternDatabaseStorage, InternEnumQuery, InternFunctionQuery,
+    InternImplQuery, InternStaticQuery, InternStructQuery, InternTraitQuery, InternTypeAliasQuery,
+    InternUnionQuery, ItemTreeQuery, LangItemQuery, StaticDataQuery, StructDataQuery,
+    TraitDataQuery, TypeAliasDataQuery, UnionDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, HygieneFrameQuery, InternEagerExpansionQuery,

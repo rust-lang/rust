@@ -149,6 +149,7 @@ impl RootDatabase {
 
             // DefDatabase
             hir::db::ItemTreeQuery
+            hir::db::BlockDefMapQuery
             hir::db::CrateDefMapQueryQuery
             hir::db::StructDataQuery
             hir::db::UnionDataQuery

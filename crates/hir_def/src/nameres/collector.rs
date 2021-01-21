@@ -45,7 +45,11 @@ const GLOB_RECURSION_LIMIT: usize = 100;
 const EXPANSION_DEPTH_LIMIT: usize = 128;
 const FIXED_POINT_LIMIT: usize = 8192;
 
-pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap) -> DefMap {
+pub(super) fn collect_defs(
+    db: &dyn DefDatabase,
+    mut def_map: DefMap,
+    block: Option<FileAstId<ast::BlockExpr>>,
+) -> DefMap {
     let crate_graph = db.crate_graph();
 
     // populate external prelude
@@ -93,6 +97,14 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap) -> DefMap 
         exports_proc_macros: false,
         from_glob_import: Default::default(),
     };
+    match block {
+        Some(block) => {
+            collector.seed_with_inner(block);
+        }
+        None => {
+            collector.seed_with_top_level();
+        }
+    }
     collector.collect();
     collector.finish()
 }
@@ -228,7 +240,7 @@ struct DefCollector<'a> {
 }
 
 impl DefCollector<'_> {
-    fn collect(&mut self) {
+    fn seed_with_top_level(&mut self) {
         let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
         let item_tree = self.db.item_tree(file_id.into());
         let module_id = self.def_map.root;
@@ -248,7 +260,31 @@ impl DefCollector<'_> {
             }
             .collect(item_tree.top_level_items());
         }
+    }
 
+    fn seed_with_inner(&mut self, block: FileAstId<ast::BlockExpr>) {
+        let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
+        let item_tree = self.db.item_tree(file_id.into());
+        let module_id = self.def_map.root;
+        self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
+        if item_tree
+            .top_level_attrs(self.db, self.def_map.krate)
+            .cfg()
+            .map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false))
+        {
+            ModCollector {
+                def_collector: &mut *self,
+                macro_depth: 0,
+                module_id,
+                file_id: file_id.into(),
+                item_tree: &item_tree,
+                mod_dir: ModDir::root(),
+            }
+            .collect(item_tree.inner_items_of_block(block));
+        }
+    }
+
+    fn collect(&mut self) {
         // main name resolution fixed-point loop.
         let mut i = 0;
         loop {
@@ -1470,7 +1506,6 @@ impl ModCollector<'_, '_> {
 mod tests {
     use crate::{db::DefDatabase, test_db::TestDB};
     use base_db::{fixture::WithFixture, SourceDatabase};
-    use la_arena::Arena;
 
     use super::*;
 
@@ -1489,6 +1524,7 @@ mod tests {
             exports_proc_macros: false,
             from_glob_import: Default::default(),
         };
+        collector.seed_with_top_level();
         collector.collect();
         collector.def_map
     }
@@ -1497,20 +1533,8 @@ mod tests {
         let (db, _file_id) = TestDB::with_single_file(&code);
         let krate = db.test_crate();
 
-        let def_map = {
-            let edition = db.crate_graph()[krate].edition;
-            let mut modules: Arena<ModuleData> = Arena::default();
-            let root = modules.alloc(ModuleData::default());
-            DefMap {
-                krate,
-                edition,
-                extern_prelude: FxHashMap::default(),
-                prelude: None,
-                root,
-                modules,
-                diagnostics: Vec::new(),
-            }
-        };
+        let edition = db.crate_graph()[krate].edition;
+        let def_map = DefMap::empty(krate, edition);
         do_collect_defs(&db, def_map)
     }
 
