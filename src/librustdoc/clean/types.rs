@@ -1410,34 +1410,30 @@ impl Type {
 
 impl Type {
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
-        fn inner<T: GetDefId>(t: &T, cache: Option<&Cache>) -> Option<DefId> {
-            match cache {
-                Some(c) => t.def_id_full(c),
-                None => t.def_id(),
-            }
-        }
-
-        match *self {
-            ResolvedPath { did, .. } => Some(did),
-            Primitive(p) => cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
-            BorrowedRef { type_: box Generic(..), .. } => {
-                inner(&Primitive(PrimitiveType::Reference), cache)
-            }
-            BorrowedRef { ref type_, .. } => inner(&**type_, cache),
+        let t: &dyn GetDefId = match *self {
+            ResolvedPath { did, .. } => return Some(did),
+            Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
+            BorrowedRef { type_: box Generic(..), .. } => &Primitive(PrimitiveType::Reference),
+            BorrowedRef { ref type_, .. } => return type_.inner_def_id(cache),
             Tuple(ref tys) => {
                 if tys.is_empty() {
-                    inner(&Primitive(PrimitiveType::Unit), cache)
+                    &Primitive(PrimitiveType::Unit)
                 } else {
-                    inner(&Primitive(PrimitiveType::Tuple), cache)
+                    &Primitive(PrimitiveType::Tuple)
                 }
             }
-            BareFunction(..) => inner(&Primitive(PrimitiveType::Fn), cache),
-            Never => inner(&Primitive(PrimitiveType::Never), cache),
-            Slice(..) => inner(&Primitive(PrimitiveType::Slice), cache),
-            Array(..) => inner(&Primitive(PrimitiveType::Array), cache),
-            RawPointer(..) => inner(&Primitive(PrimitiveType::RawPointer), cache),
-            QPath { ref self_type, .. } => inner(&**self_type, cache),
-            _ => None,
+            BareFunction(..) => &Primitive(PrimitiveType::Fn),
+            Never => &Primitive(PrimitiveType::Never),
+            Slice(..) => &Primitive(PrimitiveType::Slice),
+            Array(..) => &Primitive(PrimitiveType::Array),
+            RawPointer(..) => &Primitive(PrimitiveType::RawPointer),
+            QPath { ref self_type, .. } => return self_type.inner_def_id(cache),
+            // FIXME: remove this wildcard
+            _ => return None,
+        };
+        match cache {
+            Some(c) => t.def_id_full(c),
+            None => t.def_id(),
         }
     }
 }
