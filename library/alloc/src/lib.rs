@@ -189,11 +189,4 @@ pub mod vec;
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
 pub mod __export {
     pub use core::format_args;
-
-    /// Force AST node to an expression to improve diagnostics in pattern position.
-    #[rustc_macro_transparency = "semitransparent"]
-    #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
-    pub macro force_expr($e:expr) {
-        $e
-    }
 }
