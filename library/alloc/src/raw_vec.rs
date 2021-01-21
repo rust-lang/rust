@@ -114,6 +114,19 @@ impl<T> RawVec<T, Global> {
 }
 
 impl<T, A: Allocator> RawVec<T, A> {
+    // Tiny Vecs are dumb. Skip to:
+    // - 8 if the element size is 1, because any heap allocators is likely
+    //   to round up a request of less than 8 bytes to at least 8 bytes.
+    // - 4 if elements are moderate-sized (<= 1 KiB).
+    // - 1 otherwise, to avoid wasting too much space for very short Vecs.
+    const MIN_NON_ZERO_CAP: usize = if mem::size_of::<T>() == 1 {
+        8
+    } else if mem::size_of::<T>() <= 1024 {
+        4
+    } else {
+        1
+    };
+
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
     #[rustc_allow_const_fn_unstable(const_fn)]
@@ -399,22 +412,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         // This guarantees exponential growth. The doubling cannot overflow
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
         let cap = cmp::max(self.cap * 2, required_cap);
-
-        // Tiny Vecs are dumb. Skip to:
-        // - 8 if the element size is 1, because any heap allocators is likely
-        //   to round up a request of less than 8 bytes to at least 8 bytes.
-        // - 4 if elements are moderate-sized (<= 1 KiB).
-        // - 1 otherwise, to avoid wasting too much space for very short Vecs.
-        // Note that `min_non_zero_cap` is computed statically.
-        let elem_size = mem::size_of::<T>();
-        let min_non_zero_cap = if elem_size == 1 {
-            8
-        } else if elem_size <= 1024 {
-            4
-        } else {
-            1
-        };
-        let cap = cmp::max(min_non_zero_cap, cap);
+        let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
 
         let new_layout = Layout::array::<T>(cap);
 
