@@ -494,22 +494,26 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             // FIXME(jseyfried): Refactor out the following logic
             let fragment_kind = invoc.fragment_kind;
             let (expanded_fragment, new_invocations) = match res {
-                InvocationRes::Single(ext) => match self.expand_invoc(invoc, &ext.kind) {
-                    ExpandResult::Ready(fragment) => self.collect_invocations(fragment, &[]),
-                    ExpandResult::Retry(invoc) => {
-                        if force {
-                            self.cx.span_bug(
-                                invoc.span(),
-                                "expansion entered force mode but is still stuck",
-                            );
-                        } else {
-                            // Cannot expand, will retry this invocation later.
-                            undetermined_invocations
-                                .push((invoc, Some(InvocationRes::Single(ext))));
-                            continue;
+                InvocationRes::Single(ext) => {
+                    let expand_res =
+                        self.cx.sess.time("expand_invoc", || self.expand_invoc(invoc, &ext.kind));
+                    match expand_res {
+                        ExpandResult::Ready(fragment) => self.collect_invocations(fragment, &[]),
+                        ExpandResult::Retry(invoc) => {
+                            if force {
+                                self.cx.span_bug(
+                                    invoc.span(),
+                                    "expansion entered force mode but is still stuck",
+                                );
+                            } else {
+                                // Cannot expand, will retry this invocation later.
+                                undetermined_invocations
+                                    .push((invoc, Some(InvocationRes::Single(ext))));
+                                continue;
+                            }
                         }
                     }
-                },
+                }
                 InvocationRes::DeriveContainer(_exts) => {
                     // FIXME: Consider using the derive resolutions (`_exts`) immediately,
                     // instead of enqueuing the derives to be resolved again later.
@@ -584,15 +588,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.current_expansion = orig_expansion_data;
         self.cx.force_mode = orig_force_mode;
 
-        // Finally incorporate all the expanded macros into the input AST fragment.
-        let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
-        while let Some(expanded_fragments) = expanded_fragments.pop() {
-            for (expn_id, expanded_fragment) in expanded_fragments.into_iter().rev() {
-                placeholder_expander
-                    .add(NodeId::placeholder_from_expn_id(expn_id), expanded_fragment);
+        self.cx.sess.time("expand_placeholders", || {
+            // Finally incorporate all the expanded macros into the input AST fragment.
+            let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
+            while let Some(expanded_fragments) = expanded_fragments.pop() {
+                for (expn_id, expanded_fragment) in expanded_fragments.into_iter().rev() {
+                    placeholder_expander
+                        .add(NodeId::placeholder_from_expn_id(expn_id), expanded_fragment);
+                }
             }
-        }
-        fragment_with_placeholders.mut_visit_with(&mut placeholder_expander);
+            fragment_with_placeholders.mut_visit_with(&mut placeholder_expander);
+        });
         fragment_with_placeholders
     }
 
@@ -890,7 +896,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         span: Span,
     ) -> AstFragment {
         let mut parser = self.cx.new_parser_from_tts(toks);
-        match parse_ast_fragment(&mut parser, kind) {
+        self.cx.sess.time("parse_ast_fragment", || match parse_ast_fragment(&mut parser, kind) {
             Ok(fragment) => {
                 ensure_complete_parse(&mut parser, path, kind.name(), span);
                 fragment
@@ -902,7 +908,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
             }
-        }
+        })
     }
 }
 
