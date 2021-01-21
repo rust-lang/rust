@@ -1,0 +1,22 @@
+error: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/dyn-2021-edition-error.rs:2:17
+   |
+LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
+   |                 ^^^^^^^^^ help: use `dyn`: `dyn SomeTrait`
+   |
+   = note: `#[deny(bare_trait_objects)]` on by default
+
+error: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/dyn-2021-edition-error.rs:2:35
+   |
+LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
+   |                                   ^^^^^^^^^ help: use `dyn`: `dyn SomeTrait`
+
+error: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/dyn-2021-edition-error.rs:5:14
+   |
+LL |     let _x: &SomeTrait = todo!();
+   |              ^^^^^^^^^ help: use `dyn`: `dyn SomeTrait`
+
+error: aborting due to 3 previous errors
+

@@ -426,6 +426,7 @@ macro_rules! declare_lint {
             edition_lint_opts: Some(($lint_edition, $crate::Level::$edition_level)),
             report_in_external_macro: false,
             is_plugin: false,
+            ..$crate::Lint::default_fields_for_macro()
         };
     );
 }
