@@ -1,0 +1,42 @@
+error[E0599]: no function or associated item named `new` found for struct `Inline<dyn Debug>` in the current scope
+  --> $DIR/issue-80742.rs:31:36
+   |
+LL | / struct Inline<T>
+LL | | where
+LL | |     [u8; size_of::<T>() + 1]: ,
+LL | | {
+LL | |     _phantom: PhantomData<T>,
+LL | |     buf: [u8; size_of::<T>() + 1],
+LL | | }
+   | |_- function or associated item `new` not found for this
+...
+LL |       let dst = Inline::<dyn Debug>::new(0);
+   |                                      ^^^ function or associated item not found in `Inline<dyn Debug>`
+   | 
+  ::: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+   |
+LL |   pub trait Debug {
+   |   --------------- doesn't satisfy `dyn Debug: Sized`
+   |
+   = note: the method `new` exists but the following trait bounds were not satisfied:
+           `dyn Debug: Sized`
+
+error[E0277]: the size for values of type `dyn Debug` cannot be known at compilation time
+  --> $DIR/issue-80742.rs:31:15
+   |
+LL | struct Inline<T>
+   |               - required by this bound in `Inline`
+...
+LL |     let dst = Inline::<dyn Debug>::new(0);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Debug`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | struct Inline<T: ?Sized>
+   |                ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

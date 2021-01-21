@@ -32,7 +32,7 @@ impl CoverageCounters {
     }
 
     /// Activate the `DebugCounters` data structures, to provide additional debug formatting
-    /// features when formating `CoverageKind` (counter) values.
+    /// features when formatting `CoverageKind` (counter) values.
     pub fn enable_debug(&mut self) {
         self.debug_counters.enable();
     }

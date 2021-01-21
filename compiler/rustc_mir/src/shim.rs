@@ -81,7 +81,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         MirPhase::Const,
         &[&[
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
-            &no_landing_pads::NoLandingPads::new(tcx),
+            &no_landing_pads::NoLandingPads,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
             &simplify::SimplifyCfg::new("make_shim"),
             &add_call_guards::CriticalCallEdges,

@@ -285,6 +285,27 @@ mod spec_extend;
 /// you would see if you coerced it to a slice), followed by [`capacity`]` -
 /// `[`len`] logically uninitialized, contiguous elements.
 ///
+/// A vector containing the elements `'a'` and `'b'` with capacity 4 can be
+/// visualized as below. The top part is the `Vec` struct, it contains a
+/// pointer to the head of the allocation in the heap, length and capacity.
+/// The bottom part is the allocation on the heap, a contiguous memory block.
+///
+/// ```text
+///             ptr      len  capacity
+///        +--------+--------+--------+
+///        | 0x0123 |      2 |      4 |
+///        +--------+--------+--------+
+///             |
+///             v
+/// Heap   +--------+--------+--------+--------+
+///        |    'a' |    'b' | uninit | uninit |
+///        +--------+--------+--------+--------+
+/// ```
+///
+/// - **uninit** represents memory that is not initialized, see [`MaybeUninit`].
+/// - Note: the ABI is not stable and `Vec` makes no guarantees about its memory
+///   layout (including the order of fields).
+///
 /// `Vec` will never perform a "small optimization" where elements are actually
 /// stored on the stack for two reasons:
 ///
@@ -345,6 +366,7 @@ mod spec_extend;
 /// [`push`]: Vec::push
 /// [`insert`]: Vec::insert
 /// [`reserve`]: Vec::reserve
+/// [`MaybeUninit`]: core::mem::MaybeUninit
 /// [owned slice]: Box
 /// [slice]: ../../std/primitive.slice.html
 /// [`&`]: ../../std/primitive.reference.html
