@@ -53,6 +53,6 @@ if [[ $(uname) == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
 
-export LD_LIBRARY_PATH="$(rustc --print sysroot)/lib"
+export LD_LIBRARY_PATH="$(rustc --print sysroot)/lib:"$dir"/lib"
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH
 

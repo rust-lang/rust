@@ -57,4 +57,5 @@ if [[ "$build_sysroot" == "1" ]]; then
     dir=$(pwd)
     cd "$target_dir"
     time "$dir/build_sysroot/build_sysroot.sh"
+    cp lib/rustlib/*/lib/libstd-* lib/
 fi

@@ -25,6 +25,7 @@ export CARGO_TARGET_DIR=target
 
 # Build libs
 export RUSTFLAGS="$RUSTFLAGS -Zforce-unstable-if-unmarked -Cpanic=abort"
+export __CARGO_DEFAULT_LIB_METADATA="cg_clif"
 if [[ "$1" != "--debug" ]]; then
     sysroot_channel='release'
     # FIXME Enable incremental again once rust-lang/rust#74946 is fixed
