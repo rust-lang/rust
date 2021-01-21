@@ -109,7 +109,7 @@ through each in detail.
    [llvm]
    download-ci-llvm = false
    ```
-   in config.toml
+   in config.toml.
 
 4. Test for regressions across other platforms. LLVM often has at least one bug
    for non-tier-1 architectures, so it's good to do some more testing before
