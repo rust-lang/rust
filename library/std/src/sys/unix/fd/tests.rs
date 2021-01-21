@@ -4,12 +4,8 @@ use core::mem::ManuallyDrop;
 #[test]
 fn limit_vector_count() {
     let stdout = ManuallyDrop::new(
-        #[cfg(not(target_os = "fuchsia"))]
-        {
-            unsafe { FileDesc { fd: 1 } }
-        },
-        #[cfg(target_os = "fuchsia")]
-        {
+        #[cfg_attr(target_os = "fuchsia", allow(unused_unsafe))]
+        unsafe {
             FileDesc { fd: 1 }
         },
     );
