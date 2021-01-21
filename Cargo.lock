@@ -1438,9 +1438,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "697.0.0"
+version = "700.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67adbe260a0a11910624d6d28c0304fcf7b063e666682111005c83b09f73429d"
+checksum = "5ed36784376b69c941d7aa36e960a52ac712e2663960357121a4d9f2cc58e225"
 dependencies = [
  "unicode-xid",
 ]
