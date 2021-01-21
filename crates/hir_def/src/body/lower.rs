@@ -1,7 +1,7 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
-use std::{any::type_name, sync::Arc};
+use std::{any::type_name, mem, sync::Arc};
 
 use either::Either;
 use hir_expand::{
@@ -559,7 +559,7 @@ impl ExprCollector<'_> {
         let outer_file = self.expander.current_file_id;
 
         let macro_call = self.expander.to_source(AstPtr::new(&e));
-        let res = self.expander.enter_expand(self.db, Some(&self.body.item_scope), e);
+        let res = self.expander.enter_expand(self.db, e);
 
         match &res.err {
             Some(ExpandError::UnresolvedProcMacro) => {
@@ -696,11 +696,19 @@ impl ExprCollector<'_> {
 
     fn collect_block(&mut self, block: ast::BlockExpr) -> ExprId {
         let syntax_node_ptr = AstPtr::new(&block.clone().into());
+        let ast_id = self.expander.ast_id(&block);
+        let def_map = self.db.block_def_map(self.expander.module.krate, ast_id);
+        let prev_def_map = mem::replace(&mut self.expander.def_map, def_map);
+
         self.collect_stmts_items(block.statements());
         let statements =
             block.statements().filter_map(|s| self.collect_stmt(s)).flatten().collect();
         let tail = block.tail_expr().map(|e| self.collect_expr(e));
-        self.alloc_expr(Expr::Block { statements, tail, label: None }, syntax_node_ptr)
+        let expr_id =
+            self.alloc_expr(Expr::Block { statements, tail, label: None }, syntax_node_ptr);
+
+        self.expander.def_map = prev_def_map;
+        expr_id
     }
 
     fn collect_stmts_items(&mut self, stmts: ast::AstChildren<ast::Stmt>) {
@@ -830,7 +838,7 @@ impl ExprCollector<'_> {
                 if annotation == BindingAnnotation::Unannotated && subpat.is_none() {
                     // This could also be a single-segment path pattern. To
                     // decide that, we need to try resolving the name.
-                    let (resolved, _) = self.expander.crate_def_map.resolve_path(
+                    let (resolved, _) = self.expander.def_map.resolve_path(
                         self.db,
                         self.expander.module.local_id,
                         &name.clone().into(),

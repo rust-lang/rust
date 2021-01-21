@@ -45,7 +45,7 @@ pub(crate) struct CfgExpander {
 
 pub(crate) struct Expander {
     cfg_expander: CfgExpander,
-    crate_def_map: Arc<DefMap>,
+    def_map: Arc<DefMap>,
     current_file_id: HirFileId,
     ast_id_map: Arc<AstIdMap>,
     module: ModuleId,
@@ -90,7 +90,7 @@ impl Expander {
         let ast_id_map = db.ast_id_map(current_file_id);
         Expander {
             cfg_expander,
-            crate_def_map,
+            def_map: crate_def_map,
             current_file_id,
             ast_id_map,
             module,
@@ -101,7 +101,6 @@ impl Expander {
     pub(crate) fn enter_expand<T: ast::AstNode>(
         &mut self,
         db: &dyn DefDatabase,
-        local_scope: Option<&ItemScope>,
         macro_call: ast::MacroCall,
     ) -> ExpandResult<Option<(Mark, T)>> {
         if self.recursion_limit + 1 > EXPANSION_RECURSION_LIMIT {
@@ -111,18 +110,12 @@ impl Expander {
 
         let macro_call = InFile::new(self.current_file_id, &macro_call);
 
-        let resolver = |path: ModPath| -> Option<MacroDefId> {
-            if let Some(local_scope) = local_scope {
-                if let Some(def) = path.as_ident().and_then(|n| local_scope.get_legacy_macro(n)) {
-                    return Some(def);
-                }
-            }
-            self.resolve_path_as_macro(db, &path)
-        };
+        let resolver =
+            |path: ModPath| -> Option<MacroDefId> { self.resolve_path_as_macro(db, &path) };
 
         let mut err = None;
         let call_id =
-            macro_call.as_call_id_with_errors(db, self.crate_def_map.krate(), resolver, &mut |e| {
+            macro_call.as_call_id_with_errors(db, self.def_map.krate(), resolver, &mut |e| {
                 err.get_or_insert(e);
             });
         let call_id = match call_id {
@@ -203,7 +196,7 @@ impl Expander {
     }
 
     fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroDefId> {
-        self.crate_def_map
+        self.def_map
             .resolve_path(db, self.module.local_id, path, BuiltinShadowMode::Other)
             .0
             .take_macros()
