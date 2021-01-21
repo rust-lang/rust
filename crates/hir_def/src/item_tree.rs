@@ -21,6 +21,7 @@ use hir_expand::{
     HirFileId, InFile,
 };
 use la_arena::{Arena, Idx, RawIdx};
+use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use syntax::{ast, match_ast};
@@ -67,6 +68,8 @@ impl GenericParamsId {
 /// The item tree of a source file.
 #[derive(Debug, Eq, PartialEq)]
 pub struct ItemTree {
+    _c: Count<Self>,
+
     top_level: SmallVec<[ModItem; 1]>,
     attrs: FxHashMap<AttrOwner, RawAttrs>,
 
@@ -116,7 +119,12 @@ impl ItemTree {
     }
 
     fn empty() -> Self {
-        Self { top_level: Default::default(), attrs: Default::default(), data: Default::default() }
+        Self {
+            _c: Count::new(),
+            top_level: Default::default(),
+            attrs: Default::default(),
+            data: Default::default(),
+        }
     }
 
     fn shrink_to_fit(&mut self) {

@@ -3,6 +3,7 @@ use once_cell::sync::Lazy;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashSet},
+    env,
     io::{stderr, Write},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -18,7 +19,8 @@ use crate::tree::{Idx, Tree};
 /// env RA_PROFILE=foo|bar|baz   // enabled only selected entries
 /// env RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10 ms
 pub fn init() {
-    let spec = std::env::var("RA_PROFILE").unwrap_or_default();
+    countme::enable(env::var("RA_COUNT").is_ok());
+    let spec = env::var("RA_PROFILE").unwrap_or_default();
     init_from(&spec);
 }
 

@@ -59,6 +59,7 @@ use std::sync::Arc;
 use base_db::{CrateId, Edition, FileId};
 use hir_expand::{diagnostics::DiagnosticSink, name::Name, InFile};
 use la_arena::Arena;
+use profile::Count;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
 use syntax::{ast, AstNode};
@@ -75,6 +76,7 @@ use crate::{
 /// Contains all top-level defs from a macro-expanded crate
 #[derive(Debug, PartialEq, Eq)]
 pub struct DefMap {
+    _c: Count<Self>,
     parent: Option<Arc<DefMap>>,
     root: LocalModuleId,
     modules: Arena<ModuleData>,
@@ -215,6 +217,7 @@ impl DefMap {
         let mut modules: Arena<ModuleData> = Arena::default();
         let root = modules.alloc(ModuleData::default());
         DefMap {
+            _c: Count::new(),
             parent: None,
             krate,
             edition,
