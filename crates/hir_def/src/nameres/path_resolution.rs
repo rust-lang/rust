@@ -104,6 +104,43 @@ impl DefMap {
         path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
+        let mut result = ResolvePathResult::empty(ReachedFixedPoint::No);
+        result.segment_index = Some(usize::max_value());
+
+        let mut current_map = self;
+        loop {
+            let new = current_map.resolve_path_fp_with_macro_single(
+                db,
+                mode,
+                original_module,
+                path,
+                shadow,
+            );
+
+            // Merge `new` into `result`.
+            result.resolved_def = result.resolved_def.or(new.resolved_def);
+            if result.reached_fixedpoint == ReachedFixedPoint::No {
+                result.reached_fixedpoint = new.reached_fixedpoint;
+            }
+            // FIXME: this doesn't seem right; what if the different namespace resolutions come from different crates?
+            result.krate = result.krate.or(new.krate);
+            result.segment_index = result.segment_index.min(new.segment_index);
+
+            match &current_map.parent {
+                Some(map) => current_map = map,
+                None => return result,
+            }
+        }
+    }
+
+    pub(super) fn resolve_path_fp_with_macro_single(
+        &self,
+        db: &dyn DefDatabase,
+        mode: ResolveMode,
+        original_module: LocalModuleId,
+        path: &ModPath,
+        shadow: BuiltinShadowMode,
+    ) -> ResolvePathResult {
         let mut segments = path.segments.iter().enumerate();
         let mut curr_per_ns: PerNs = match path.kind {
             PathKind::DollarCrate(krate) => {
