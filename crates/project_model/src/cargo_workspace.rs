@@ -99,8 +99,10 @@ pub struct PackageData {
     pub dependencies: Vec<PackageDependency>,
     /// Rust edition for this package
     pub edition: Edition,
-    /// List of features to activate
-    pub features: Vec<String>,
+    /// Features provided by the crate, mapped to the features required by that feature.
+    pub features: FxHashMap<String, Vec<String>>,
+    /// List of features enabled on this package
+    pub active_features: Vec<String>,
     /// List of config flags defined by this package's build script
     pub cfgs: Vec<CfgFlag>,
     /// List of cargo-related environment variables with their value
@@ -281,7 +283,8 @@ impl CargoWorkspace {
                 is_member,
                 edition,
                 dependencies: Vec::new(),
-                features: Vec::new(),
+                features: meta_pkg.features.into_iter().collect(),
+                active_features: Vec::new(),
                 cfgs: cfgs.get(&id).cloned().unwrap_or_default(),
                 envs: envs.get(&id).cloned().unwrap_or_default(),
                 out_dir: out_dir_by_id.get(&id).cloned(),
@@ -328,7 +331,7 @@ impl CargoWorkspace {
                 let dep = PackageDependency { name: dep_node.name, pkg };
                 packages[source].dependencies.push(dep);
             }
-            packages[source].features.extend(node.features);
+            packages[source].active_features.extend(node.features);
         }
 
         let workspace_root = AbsPathBuf::assert(meta.workspace_root);
