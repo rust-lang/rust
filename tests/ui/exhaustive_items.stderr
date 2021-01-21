@@ -1,5 +1,5 @@
 error: enums should not be exhaustive
-  --> $DIR/exhaustive_enums.rs:10:1
+  --> $DIR/exhaustive_items.rs:10:1
    |
 LL | / pub enum Exhaustive {
 LL | |     Foo,
@@ -10,7 +10,7 @@ LL | | }
    | |_^
    |
 note: the lint level is defined here
-  --> $DIR/exhaustive_enums.rs:3:9
+  --> $DIR/exhaustive_items.rs:3:9
    |
 LL | #![deny(clippy::exhaustive_enums)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^

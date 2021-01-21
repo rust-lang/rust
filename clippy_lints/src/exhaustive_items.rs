@@ -34,9 +34,9 @@ declare_clippy_lint! {
     "default lint description"
 }
 
-declare_lint_pass!(ExhaustiveEnums => [EXHAUSTIVE_ENUMS]);
+declare_lint_pass!(ExhaustiveItems => [EXHAUSTIVE_ENUMS]);
 
-impl LateLintPass<'_> for ExhaustiveEnums {
+impl LateLintPass<'_> for ExhaustiveItems {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if_chain! {
             if let ItemKind::Enum(..) = item.kind;
