@@ -37,7 +37,6 @@ pub(super) struct Ctx {
     file: HirFileId,
     source_ast_id_map: Arc<AstIdMap>,
     body_ctx: crate::body::LowerCtx,
-    inner_items: Vec<ModItem>,
     forced_visibility: Option<RawVisibilityId>,
 }
 
@@ -49,7 +48,6 @@ impl Ctx {
             file,
             source_ast_id_map: db.ast_id_map(file),
             body_ctx: crate::body::LowerCtx::new(db, file),
-            inner_items: Vec::new(),
             forced_visibility: None,
         }
     }
@@ -73,8 +71,6 @@ impl Ctx {
     }
 
     fn lower_mod_item(&mut self, item: &ast::Item, inner: bool) -> Option<ModItems> {
-        assert!(inner || self.inner_items.is_empty());
-
         // Collect inner items for 1-to-1-lowered items.
         match item {
             ast::Item::Struct(_)
