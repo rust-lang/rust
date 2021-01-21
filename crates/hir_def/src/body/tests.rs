@@ -6,18 +6,24 @@ use crate::{test_db::TestDB, ModuleDefId};
 use super::*;
 
 fn lower(ra_fixture: &str) -> Arc<Body> {
-    let (db, file_id) = crate::test_db::TestDB::with_single_file(ra_fixture);
+    let db = crate::test_db::TestDB::with_files(ra_fixture);
 
     let krate = db.crate_graph().iter().next().unwrap();
     let def_map = db.crate_def_map(krate);
-    let module = def_map.modules_for_file(file_id).next().unwrap();
-    let module = &def_map[module];
-    let fn_def = match module.scope.declarations().next().unwrap() {
-        ModuleDefId::FunctionId(it) => it,
-        _ => panic!(),
-    };
+    let mut fn_def = None;
+    'outer: for (_, module) in def_map.modules() {
+        for decl in module.scope.declarations() {
+            match decl {
+                ModuleDefId::FunctionId(it) => {
+                    fn_def = Some(it);
+                    break 'outer;
+                }
+                _ => {}
+            }
+        }
+    }
 
-    db.body(fn_def.into())
+    db.body(fn_def.unwrap().into())
 }
 
 fn check_diagnostics(ra_fixture: &str) {
@@ -38,6 +44,25 @@ macro_rules! n_nuple {
 }
 fn main() { n_nuple!(1,2,3); }
 ",
+    );
+}
+
+#[test]
+fn macro_resolve() {
+    // Regression test for a path resolution bug introduced with inner item handling.
+    lower(
+        r"
+macro_rules! vec {
+    () => { () };
+    ($elem:expr; $n:expr) => { () };
+    ($($x:expr),+ $(,)?) => { () };
+}
+mod m {
+    fn outer() {
+        let _ = vec![FileSet::default(); self.len()];
+    }
+}
+      ",
     );
 }
 
