@@ -41,6 +41,16 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// *Note*: this method might be deprecated in the future,
     /// after [`IntoIterator` is implemented for arrays][array-into-iter].
     ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::array;
+    ///
+    /// for value in array::IntoIter::new([1, 2, 3, 4, 5]) {
+    ///     // The type of `value` is a `i32` here, instead of `&i32`
+    ///     let _: i32 = value;
+    /// }
+    /// ```
     /// [array-into-iter]: https://github.com/rust-lang/rust/pull/65819
     #[stable(feature = "array_value_iter", since = "1.51.0")]
     pub fn new(array: [T; N]) -> Self {
