@@ -1805,10 +1805,8 @@ macro_rules! uint_impl {
             unsafe { mem::transmute(bytes) }
         }
 
-        /// **This method is soft-deprecated.**
-        ///
-        /// Although using it won’t cause compilation warning, new code should use
-        #[doc = concat!("[`", stringify!($SelfT), "::MIN", "`](#associatedconstant.MIN)")]
+        /// New code should prefer to use
+        #[doc = concat!("[`", stringify!($SelfT), "::MIN", "`](#associatedconstant.MIN).")]
         /// instead.
         ///
         /// Returns the smallest value that can be represented by this integer type.
@@ -1816,12 +1814,11 @@ macro_rules! uint_impl {
         #[rustc_promotable]
         #[inline(always)]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
+        #[rustc_deprecated(since = "TBD", reason = "replaced by the `MIN` associated constant on this type")]
         pub const fn min_value() -> Self { Self::MIN }
 
-        /// **This method is soft-deprecated.**
-        ///
-        /// Although using it won’t cause compilation warning, new code should use
-        #[doc = concat!("[`", stringify!($SelfT), "::MAX", "`](#associatedconstant.MAX)")]
+        /// New code should prefer to use
+        #[doc = concat!("[`", stringify!($SelfT), "::MAX", "`](#associatedconstant.MAX).")]
         /// instead.
         ///
         /// Returns the largest value that can be represented by this integer type.
@@ -1829,6 +1826,7 @@ macro_rules! uint_impl {
         #[rustc_promotable]
         #[inline(always)]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
+        #[rustc_deprecated(since = "TBD", reason = "replaced by the `MAX` associated constant on this type")]
         pub const fn max_value() -> Self { Self::MAX }
     }
 }

@@ -33,8 +33,6 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 ///
 /// This trait must only be implemented when the contract is upheld. Consumers
 /// of this trait must inspect [`Iterator::size_hint()`]’s upper bound.
-///
-/// [`usize::MAX`]: crate::usize::MAX
 #[unstable(feature = "trusted_len", issue = "37572")]
 #[rustc_unsafe_specialization_marker]
 pub unsafe trait TrustedLen: Iterator {}

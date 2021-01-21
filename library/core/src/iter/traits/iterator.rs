@@ -225,8 +225,6 @@ pub trait Iterator {
     /// This function might panic if the iterator has more than [`usize::MAX`]
     /// elements.
     ///
-    /// [`usize::MAX`]: crate::usize::MAX
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -871,7 +869,6 @@ pub trait Iterator {
     /// overflow a [`usize`].
     ///
     /// [`usize`]: type@usize
-    /// [`usize::MAX`]: crate::usize::MAX
     /// [`zip`]: Iterator::zip
     ///
     /// # Examples
@@ -2383,7 +2380,6 @@ pub trait Iterator {
     /// non-matching elements.
     ///
     /// [`Some(index)`]: Some
-    /// [`usize::MAX`]: crate::usize::MAX
     ///
     /// # Examples
     ///

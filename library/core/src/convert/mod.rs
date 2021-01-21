@@ -460,7 +460,6 @@ pub trait TryInto<T>: Sized {
 /// assert!(try_successful_smaller_number.is_ok());
 /// ```
 ///
-/// [`i32::MAX`]: crate::i32::MAX
 /// [`try_from`]: TryFrom::try_from
 /// [`!`]: ../../std/primitive.never.html
 #[stable(feature = "try_from", since = "1.34.0")]

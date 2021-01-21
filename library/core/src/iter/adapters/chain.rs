@@ -1,5 +1,5 @@
 use crate::iter::{DoubleEndedIterator, FusedIterator, Iterator, TrustedLen};
-use crate::{ops::Try, usize};
+use crate::ops::Try;
 
 /// An iterator that links two iterators together, in a chain.
 ///
