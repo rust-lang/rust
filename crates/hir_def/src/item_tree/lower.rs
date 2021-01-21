@@ -151,23 +151,31 @@ impl Ctx {
     fn collect_inner_items(&mut self, container: &SyntaxNode) {
         let forced_vis = self.forced_visibility.take();
 
-        let mut current_block = None;
+        let mut block_stack = Vec::new();
         for event in container.preorder().skip(1) {
-            if let WalkEvent::Enter(node) = event {
-                match_ast! {
-                    match node {
-                        ast::BlockExpr(block) => {
-                            current_block = Some(self.source_ast_id_map.ast_id(&block));
-                        },
-                        ast::Item(item) => {
-                            let mod_items = self.lower_mod_item(&item, true);
-                            if let (Some(mod_items), Some(block)) = (mod_items, current_block) {
-                                if !mod_items.0.is_empty() {
-                                    self.data().inner_items.entry(block).or_default().extend(mod_items.0.iter().copied());
+            match event {
+                WalkEvent::Enter(node) => {
+                    match_ast! {
+                        match node {
+                            ast::BlockExpr(block) => {
+                                block_stack.push(self.source_ast_id_map.ast_id(&block));
+                            },
+                            ast::Item(item) => {
+                                let mod_items = self.lower_mod_item(&item, true);
+                                let current_block = block_stack.last();
+                                if let (Some(mod_items), Some(block)) = (mod_items, current_block) {
+                                    if !mod_items.0.is_empty() {
+                                        self.data().inner_items.entry(*block).or_default().extend(mod_items.0.iter().copied());
+                                    }
                                 }
-                            }
-                        },
-                        _ => {}
+                            },
+                            _ => {}
+                        }
+                    }
+                }
+                WalkEvent::Leave(node) => {
+                    if ast::BlockExpr::cast(node).is_some() {
+                        block_stack.pop();
                     }
                 }
             }
