@@ -650,7 +650,7 @@ pub trait Iterator {
     ///
     /// let src = ["Hello", "to", "all", "people", "!!"].iter().copied();
     ///
-    /// // The closure mutably borrows it's context to generate an item.
+    /// // The closure mutably borrows its context to generate an item.
     /// let mut happy_emojis = [" ❤️ ", " 😀 "].iter().copied();
     /// let separator = || happy_emojis.next().unwrap_or(" 🦀 ");
     ///
