@@ -5,7 +5,6 @@ fn main() {
         break 'a;
     }
     'b: for _ in 0..1 {
-        //~^ WARN unused label
         break b; //~ ERROR cannot find value `b` in this scope
     }
     c: for _ in 0..1 { //~ ERROR expected identifier, found keyword `for`

@@ -545,7 +545,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if let Some(err_code) = &err.code {
             if err_code == &rustc_errors::error_code!(E0425) {
                 for label_rib in &self.label_ribs {
-                    for (label_ident, _) in &label_rib.bindings {
+                    for (label_ident, node_id) in &label_rib.bindings {
                         if format!("'{}", ident) == label_ident.to_string() {
                             err.span_label(label_ident.span, "a label with a similar name exists");
                             if let PathSource::Expr(Some(Expr {
@@ -559,6 +559,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                     label_ident.name.to_string(),
                                     Applicability::MaybeIncorrect,
                                 );
+                                // Do not lint against unused label when we suggest them.
+                                self.diagnostic_metadata.unused_labels.remove(node_id);
                             }
                         }
                     }

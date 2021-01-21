@@ -35,11 +35,10 @@ LL |         LOOP;
    |         ^^^^ not found in this scope
 
 error[E0425]: cannot find value `LOOP` in this scope
-  --> $DIR/label_misspelled.rs:29:15
+  --> $DIR/label_misspelled.rs:28:15
    |
 LL |     'LOOP: loop {
    |     ----- a label with a similar name exists
-LL |
 LL |         break LOOP;
    |               ^^^^
    |               |
@@ -47,11 +46,10 @@ LL |         break LOOP;
    |               help: use the similarly named label: `'LOOP`
 
 error[E0425]: cannot find value `while_loop` in this scope
-  --> $DIR/label_misspelled.rs:34:15
+  --> $DIR/label_misspelled.rs:32:15
    |
 LL |     'while_loop: while true {
    |     ----------- a label with a similar name exists
-LL |
 LL |         break while_loop;
    |               ^^^^^^^^^^
    |               |
@@ -59,11 +57,10 @@ LL |         break while_loop;
    |               help: use the similarly named label: `'while_loop`
 
 error[E0425]: cannot find value `while_let` in this scope
-  --> $DIR/label_misspelled.rs:39:15
+  --> $DIR/label_misspelled.rs:36:15
    |
 LL |     'while_let: while let Some(_) = Some(()) {
    |     ---------- a label with a similar name exists
-LL |
 LL |         break while_let;
    |               ^^^^^^^^^
    |               |
@@ -71,11 +68,10 @@ LL |         break while_let;
    |               help: use the similarly named label: `'while_let`
 
 error[E0425]: cannot find value `for_loop` in this scope
-  --> $DIR/label_misspelled.rs:44:15
+  --> $DIR/label_misspelled.rs:40:15
    |
 LL |     'for_loop: for _ in 0..3 {
    |     --------- a label with a similar name exists
-LL |
 LL |         break for_loop;
    |               ^^^^^^^^
    |               |
@@ -120,62 +116,38 @@ warning: unused label
 LL |     'LOOP: loop {
    |     ^^^^^
 
-warning: unused label
-  --> $DIR/label_misspelled.rs:27:5
-   |
-LL |     'LOOP: loop {
-   |     ^^^^^
-
-warning: unused label
-  --> $DIR/label_misspelled.rs:32:5
-   |
-LL |     'while_loop: while true {
-   |     ^^^^^^^^^^^
-
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/label_misspelled.rs:32:5
+  --> $DIR/label_misspelled.rs:31:5
    |
 LL |     'while_loop: while true {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
 
 warning: unused label
-  --> $DIR/label_misspelled.rs:37:5
-   |
-LL |     'while_let: while let Some(_) = Some(()) {
-   |     ^^^^^^^^^^
-
-warning: unused label
-  --> $DIR/label_misspelled.rs:42:5
-   |
-LL |     'for_loop: for _ in 0..3 {
-   |     ^^^^^^^^^
-
-warning: unused label
-  --> $DIR/label_misspelled.rs:51:5
+  --> $DIR/label_misspelled.rs:47:5
    |
 LL |     'while_loop: while true {
    |     ^^^^^^^^^^^
 
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/label_misspelled.rs:51:5
+  --> $DIR/label_misspelled.rs:47:5
    |
 LL |     'while_loop: while true {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
 
 warning: unused label
-  --> $DIR/label_misspelled.rs:56:5
+  --> $DIR/label_misspelled.rs:52:5
    |
 LL |     'while_let: while let Some(_) = Some(()) {
    |     ^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/label_misspelled.rs:61:5
+  --> $DIR/label_misspelled.rs:57:5
    |
 LL |     'for_loop: for _ in 0..3 {
    |     ^^^^^^^^^
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/label_misspelled.rs:53:9
+  --> $DIR/label_misspelled.rs:49:9
    |
 LL |     'while_loop: while true {
    |     ----------------------- you can't `break` with a value in a `while` loop
@@ -193,7 +165,7 @@ LL |         break 'while_loop;
    |               ^^^^^^^^^^^
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/label_misspelled.rs:58:9
+  --> $DIR/label_misspelled.rs:54:9
    |
 LL |     'while_let: while let Some(_) = Some(()) {
    |     ---------------------------------------- you can't `break` with a value in a `while` loop
@@ -211,7 +183,7 @@ LL |         break 'while_let;
    |               ^^^^^^^^^^
 
 error[E0571]: `break` with value from a `for` loop
-  --> $DIR/label_misspelled.rs:63:9
+  --> $DIR/label_misspelled.rs:59:9
    |
 LL |     'for_loop: for _ in 0..3 {
    |     ------------------------ you can't `break` with a value in a `for` loop
@@ -228,7 +200,7 @@ help: alternatively, you might have meant to use the available loop label
 LL |         break 'for_loop;
    |               ^^^^^^^^^
 
-error: aborting due to 11 previous errors; 14 warnings emitted
+error: aborting due to 11 previous errors; 10 warnings emitted
 
 Some errors have detailed explanations: E0425, E0571.
 For more information about an error, try `rustc --explain E0425`.
