@@ -26,7 +26,7 @@ struct Feature {
 impl Feature {
     fn collect() -> Result<Vec<Feature>> {
         let mut res = Vec::new();
-        for path in rust_files(&project_root()) {
+        for path in rust_files() {
             collect_file(&mut res, path)?;
         }
         res.sort_by(|lhs, rhs| lhs.id.cmp(&rhs.id));
