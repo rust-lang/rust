@@ -858,6 +858,23 @@ pub(crate) fn handle_formatting(
         RustfmtConfig::Rustfmt { extra_args } => {
             let mut cmd = process::Command::new(toolchain::rustfmt());
             cmd.args(extra_args);
+            // try to chdir to the file so we can respect `rustfmt.toml`
+            // FIXME: use `rustfmt --config-path` once
+            // https://github.com/rust-lang/rustfmt/issues/4660 gets fixed
+            match params.text_document.uri.to_file_path() {
+                Ok(mut path) => {
+                    // pop off file name
+                    if path.pop() && path.is_dir() {
+                        cmd.current_dir(path);
+                    }
+                }
+                Err(_) => {
+                    log::error!(
+                        "Unable to get file path for {}, rustfmt.toml might be ignored",
+                        params.text_document.uri
+                    );
+                }
+            }
             if let Some(&crate_id) = crate_ids.first() {
                 // Assume all crates are in the same edition
                 let edition = snap.analysis.crate_edition(crate_id)?;
