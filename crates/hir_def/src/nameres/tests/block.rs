@@ -4,7 +4,6 @@ use super::*;
 fn inner_item_smoke() {
     check_at(
         r#"
-//- /lib.rs
 struct inner {}
 fn outer() {
     $0
@@ -25,7 +24,6 @@ fn outer() {
 fn use_from_crate() {
     check_at(
         r#"
-//- /lib.rs
 struct Struct;
 fn outer() {
     use Struct;
@@ -50,7 +48,6 @@ fn outer() {
 fn merge_namespaces() {
     check_at(
         r#"
-//- /lib.rs
 struct name {}
 fn outer() {
     fn name() {}
@@ -75,7 +72,6 @@ fn outer() {
 fn nested_blocks() {
     check_at(
         r#"
-//- /lib.rs
 fn outer() {
     struct inner1 {}
     fn inner() {
