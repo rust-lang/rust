@@ -1,19 +1,14 @@
-error: expected identifier, found keyword `for`
-  --> $DIR/label_misspelled_2.rs:10:8
+error: malformed loop label
+  --> $DIR/label_misspelled_2.rs:10:5
    |
 LL |     c: for _ in 0..1 {
-   |        ^^^ expected identifier, found keyword
+   |     ^ help: use the correct loop label format: `'c`
 
-error: expected `<`, found reserved identifier `_`
-  --> $DIR/label_misspelled_2.rs:10:12
+error: malformed loop label
+  --> $DIR/label_misspelled_2.rs:13:5
    |
-LL |     c: for _ in 0..1 {
-   |      -     ^ expected `<`
-   |      |
-   |      tried to parse a type due to this type ascription
-   |
-   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
+LL |     d: for _ in 0..1 {
+   |     ^ help: use the correct loop label format: `'d`
 
 error[E0425]: cannot find value `b` in this scope
   --> $DIR/label_misspelled_2.rs:8:15
@@ -26,6 +21,17 @@ LL |         break b;
    |               not found in this scope
    |               help: use the similarly named label: `'b`
 
-error: aborting due to 3 previous errors
+error[E0425]: cannot find value `d` in this scope
+  --> $DIR/label_misspelled_2.rs:14:15
+   |
+LL |     d: for _ in 0..1 {
+   |     - a label with a similar name exists
+LL |         break d;
+   |               ^
+   |               |
+   |               not found in this scope
+   |               help: use the similarly named label: `'d`
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

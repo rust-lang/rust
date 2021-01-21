@@ -7,11 +7,10 @@ fn main() {
     'b: for _ in 0..1 {
         break b; //~ ERROR cannot find value `b` in this scope
     }
-    c: for _ in 0..1 { //~ ERROR expected identifier, found keyword `for`
-        //~^ ERROR expected `<`, found reserved identifier `_`
+    c: for _ in 0..1 { //~ ERROR malformed loop label
         break 'c;
     }
-    d: for _ in 0..1 {
-        break ;
+    d: for _ in 0..1 { //~ ERROR malformed loop label
+        break d; //~ ERROR cannot find value `d` in this scope
     }
 }
