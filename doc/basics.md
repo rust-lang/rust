@@ -94,3 +94,22 @@ cargo dev ra_setup
 
 We follow a rustc no merge-commit policy.
 See <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
+
+## Common Abbreviations
+
+| Abbreviation | Meaning                                |
+| ------------ | -------------------------------------- |
+| UB           | Undefined Behavior                     |
+| FP           | False Positive                         |
+| FN           | False Negative                         |
+| ICE          | Internal Compiler Error                |
+| AST          | Abstract Syntax Tree                   |
+| MIR          | Mid-Level Intermediate Representation  |
+| HIR          | High-Level Intermediate Representation |
+| TCX          | Type context                           |
+
+This is a concise list of abbreviations that can come up during clippy development. An extensive
+genal list can be found in the [rustc-dev-guide glossary][glossary]. Always feel free to ask if
+an abbreviation or meaning is unclear to you.
+
+[glossary]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html
