@@ -127,6 +127,8 @@ pub enum InvalidProgramInfo<'tcx> {
     Layout(layout::LayoutError<'tcx>),
     /// An invalid transmute happened.
     TransmuteSizeDiff(Ty<'tcx>, Ty<'tcx>),
+    /// SizeOf of unsized type was requested.
+    SizeOfUnsizedType(Ty<'tcx>),
 }
 
 impl fmt::Display for InvalidProgramInfo<'_> {
@@ -144,6 +146,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
                 "transmuting `{}` to `{}` is not possible, because these types do not have the same size",
                 from_ty, to_ty
             ),
+            SizeOfUnsizedType(ty) => write!(f, "size_of called on unsized type `{}`", ty),
         }
     }
 }

@@ -270,6 +270,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         self.frame().current_span(),
                         &format!("SizeOf nullary MIR operator called for unsized type {}", ty),
                     );
+                    throw_inval!(SizeOfUnsizedType(ty));
                 }
                 self.write_scalar(Scalar::from_machine_usize(layout.size.bytes(), self), dest)?;
             }
