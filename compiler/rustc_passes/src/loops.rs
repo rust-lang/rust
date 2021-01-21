@@ -90,47 +90,83 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 };
 
                 if let Some(Node::Block(_)) = loop_id.and_then(|id| self.hir_map.find(id)) {
-                        return;
-                    }
+                    return;
                 }
 
-                if opt_expr.is_some() {
-                    let loop_kind = if let Some(loop_id) = loop_id {
-                        Some(match self.hir_map.expect_expr(loop_id).kind {
-                            hir::ExprKind::Loop(_, _, source) => source,
+                if let Some(break_expr) = opt_expr {
+                    let (head, label, loop_kind) = if let Some(loop_id) = loop_id {
+                        match self.hir_map.expect_expr(loop_id).kind {
+                            hir::ExprKind::Loop(_, label, source, sp) => {
+                                (Some(sp), label, Some(source))
+                            }
                             ref r => {
                                 span_bug!(e.span, "break label resolved to a non-loop: {:?}", r)
                             }
-                        })
+                        }
                     } else {
-                        None
+                        (None, None, None)
                     };
                     match loop_kind {
                         None | Some(hir::LoopSource::Loop) => (),
                         Some(kind) => {
-                            struct_span_err!(
+                            let mut err = struct_span_err!(
                                 self.sess,
                                 e.span,
                                 E0571,
                                 "`break` with value from a `{}` loop",
                                 kind.name()
-                            )
-                            .span_label(
+                            );
+                            err.span_label(
                                 e.span,
-                                "can only break with a value inside \
-                                            `loop` or breakable block",
-                            )
-                            .span_suggestion(
+                                "can only break with a value inside `loop` or breakable block",
+                            );
+                            if let Some(head) = head {
+                                err.span_label(
+                                    head,
+                                    &format!(
+                                        "you can't `break` with a value in a `{}` loop",
+                                        kind.name()
+                                    ),
+                                );
+                            }
+                            err.span_suggestion(
                                 e.span,
                                 &format!(
-                                    "instead, use `break` on its own \
-                                        without a value inside this `{}` loop",
-                                    kind.name()
+                                    "use `break` on its own without a value inside this `{}` loop",
+                                    kind.name(),
                                 ),
                                 "break".to_string(),
                                 Applicability::MaybeIncorrect,
-                            )
-                            .emit();
+                            );
+                            if let Some(label) = label {
+                                match break_expr.kind {
+                                    hir::ExprKind::Path(hir::QPath::Resolved(
+                                        None,
+                                        hir::Path {
+                                            segments: [segment],
+                                            res: hir::def::Res::Err,
+                                            ..
+                                        },
+                                    )) if label.ident.to_string()
+                                        == format!("'{}", segment.ident) =>
+                                    {
+                                        // This error is redundant, we will have already emitted a
+                                        // suggestion to use the label when `segment` wasn't found
+                                        // (hence the `Res::Err` check).
+                                        err.delay_as_bug();
+                                    }
+                                    _ => {
+                                        err.span_suggestion(
+                                            break_expr.span,
+                                            "alternatively, you might have meant to use the \
+                                             available loop label",
+                                            label.ident.to_string(),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    }
+                                }
+                            }
+                            err.emit();
                         }
                     }
                 }
