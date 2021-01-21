@@ -121,7 +121,9 @@
                       console.log(err);
                     return;
                   }
-                  this.version = latest.name;
+                  if (versionParam == null) {
+                    this.version = latest.name;
+                  }
                 },
                 async outputHtml() {
                   if (this.version !== this.oldVersion) {
