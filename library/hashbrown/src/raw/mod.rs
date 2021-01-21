@@ -1013,6 +1013,31 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         }
     }
 
+    /// Attempts to insert a new element without growing the table and return its raw bucket.
+    ///
+    /// Returns an `Err` containing the given element if inserting it would require growing the
+    /// table.
+    ///
+    /// This does not check if the given element already exists in the table.
+    #[cfg(feature = "raw")]
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn try_insert_no_grow(&mut self, hash: u64, value: T) -> Result<Bucket<T>, T> {
+        unsafe {
+            let index = self.find_insert_slot(hash);
+            let old_ctrl = *self.ctrl(index);
+            if unlikely(self.growth_left == 0 && special_is_empty(old_ctrl)) {
+                Err(value)
+            } else {
+                let bucket = self.bucket(index);
+                self.growth_left -= special_is_empty(old_ctrl) as usize;
+                self.set_ctrl(index, h2(hash));
+                bucket.write(value);
+                self.items += 1;
+                Ok(bucket)
+            }
+        }
+    }
+
     /// Inserts a new element into the table, and returns a mutable reference to it.
     ///
     /// This does not check if the given element already exists in the table.
