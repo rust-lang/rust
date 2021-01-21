@@ -40,13 +40,13 @@
 #[allow_internal_unstable(box_syntax, liballoc_internals)]
 macro_rules! vec {
     () => (
-        $crate::force_expr!($crate::vec::Vec::new())
+        $crate::__rust_force_expr!($crate::vec::Vec::new())
     );
     ($elem:expr; $n:expr) => (
-        $crate::force_expr!($crate::vec::from_elem($elem, $n))
+        $crate::__rust_force_expr!($crate::vec::from_elem($elem, $n))
     );
     ($($x:expr),+ $(,)?) => (
-        $crate::force_expr!(<[_]>::into_vec(box [$($x),+]))
+        $crate::__rust_force_expr!(<[_]>::into_vec(box [$($x),+]))
     );
 }
 
@@ -116,7 +116,7 @@ macro_rules! format {
 #[doc(hidden)]
 #[macro_export]
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
-macro_rules! force_expr {
+macro_rules! __rust_force_expr {
     ($e:expr) => {
         $e
     };
