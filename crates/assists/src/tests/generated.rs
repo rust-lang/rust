@@ -108,8 +108,8 @@ fn doctest_add_lifetime_to_type() {
     check_doc_test(
         "add_lifetime_to_type",
         r#####"
-struct Point$0 {
-    x: &u32,
+struct Point {
+    x: &$0u32,
     y: u32,
 }
 "#####,
