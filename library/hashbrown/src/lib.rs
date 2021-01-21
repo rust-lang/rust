@@ -19,7 +19,8 @@
         min_specialization,
         extend_one,
         allocator_api,
-        slice_ptr_get
+        slice_ptr_get,
+        nonnull_slice_from_raw_parts
     )
 )]
 #![allow(
@@ -124,3 +125,12 @@ pub enum TryReserveError {
         layout: alloc::alloc::Layout,
     },
 }
+
+/// Wrapper around `Bump` which allows it to be used as an allocator for
+/// `HashMap`, `HashSet` and `RawTable`.
+///
+/// `Bump` can be used directly without this wrapper on nightly if you enable
+/// the `allocator-api` feature of the `bumpalo` crate.
+#[cfg(feature = "bumpalo")]
+#[derive(Clone, Copy, Debug)]
+pub struct BumpWrapper<'a>(&'a bumpalo::Bump);
