@@ -2201,7 +2201,7 @@ public:
       if (called) {
         subdata = &CreateAugmentedPrimal(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
-            TR.analysis, gutils->AA, /*return is used*/ false, nextTypeInfo,
+            TR.analysis, gutils->OrigAA, /*return is used*/ false, nextTypeInfo,
             uncacheable_args, false, /*AtomicAdd*/ true, /*PostOpt*/ false,
             /*OpenMP*/ true);
         if (Mode == DerivativeMode::Forward) {
@@ -2366,7 +2366,7 @@ public:
 
         newcalled = CreatePrimalAndGradient(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
-            TR.analysis, gutils->AA, /*returnValue*/ false,
+            TR.analysis, gutils->OrigAA, /*returnValue*/ false,
             /*subdretptr*/ false, /*topLevel*/ false,
             tape ? PointerType::getUnqual(tape->getType()) : nullptr,
             nextTypeInfo, uncacheable_args, subdata, /*AtomicAdd*/ true,
@@ -3530,7 +3530,7 @@ public:
         if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
           subdata = &CreateAugmentedPrimal(
               cast<Function>(called), subretType, argsInverted, gutils->TLI,
-              TR.analysis, gutils->AA, /*return is used*/ subretused,
+              TR.analysis, gutils->OrigAA, /*return is used*/ subretused,
               nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd,
               /*PostOpt*/ false);
           if (Mode == DerivativeMode::Forward) {
@@ -3822,7 +3822,7 @@ public:
     if (called) {
       newcalled = CreatePrimalAndGradient(
           cast<Function>(called), subretType, argsInverted, gutils->TLI,
-          TR.analysis, gutils->AA, /*returnValue*/ retUsed,
+          TR.analysis, gutils->OrigAA, /*returnValue*/ retUsed,
           /*subdretptr*/ subdretptr, /*topLevel*/ subtopLevel,
           tape ? tape->getType() : nullptr, nextTypeInfo, uncacheable_args,
           subdata, gutils->AtomicAdd); //, LI, DT);

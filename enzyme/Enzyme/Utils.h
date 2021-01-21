@@ -67,16 +67,14 @@ void EmitFailure(llvm::StringRef RemarkName,
 
 template <typename... Args>
 void EmitWarning(llvm::StringRef RemarkName,
-                 const llvm::DiagnosticLocation &Loc,
-                 const llvm::Function *F, const llvm::BasicBlock* BB, Args &...args) {
+                 const llvm::DiagnosticLocation &Loc, const llvm::Function *F,
+                 const llvm::BasicBlock *BB, const Args &...args) {
 
   llvm::OptimizationRemarkEmitter ORE(F);
   std::string str;
   llvm::raw_string_ostream ss(str);
   (ss << ... << args);
-  ORE.emit(llvm::OptimizationRemark("enzyme", RemarkName, Loc,
-                                    BB)
-           << str);
+  ORE.emit(llvm::OptimizationRemark("enzyme", RemarkName, Loc, BB) << str);
 }
 
 class EnzymeFailure : public llvm::DiagnosticInfoIROptimization {

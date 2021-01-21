@@ -131,7 +131,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %2 = load double, double* %"arrayidx5'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx5'ipg_unwrap", align 8
 ; CHECK-NEXT:   %arrayidx_unwrap = getelementptr inbounds double, double* %in, i64 %"iv'ac.0"
-; CHECK-NEXT:   %_unwrap = load double, double* %arrayidx_unwrap, align 8, !tbaa !2, !invariant.group !6, !enzyme_unwrapped !7
+; CHECK-NEXT:   %_unwrap = load double, double* %arrayidx_unwrap, align 8, !tbaa !2, !invariant.group !6
 ; CHECK-NEXT:   %cmp1_unwrap = fcmp fast ogt double %_unwrap, 1.000000e+00
 ; CHECK-NEXT:   %cmp8_unwrap = fcmp fast ogt double %_unwrap, 0.000000e+00
 ; CHECK-NEXT:   %anot1_ = xor i1 %cmp1_unwrap, true

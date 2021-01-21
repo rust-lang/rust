@@ -331,10 +331,17 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (mode != UnwrapMode::LegalFullUnwrap) {
       // TODO actually consider whether this is legal to move to the new
       // location, rather than recomputable anywhere
-      legalMove = legalRecompute(load, available);
+      legalMove = legalRecompute(load, available, &BuilderM);
     }
-    if (!legalMove)
+    if (!legalMove) {
+      if (EnzymePrintPerf) {
+        EmitWarning("UncacheableUnwrap", load->getDebugLoc(),
+                    load->getParent()->getParent(), load->getParent(),
+                    "Load cannot be unwrapped ", *load, " in ",
+                    BuilderM.GetInsertBlock()->getName());
+      }
       return nullptr;
+    }
 
     Value *idx = getOp(load->getOperand(0));
     if (idx == nullptr)
@@ -360,8 +367,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     toreturn->setDebugLoc(getNewFromOriginal(load->getDebugLoc()));
     toreturn->setMetadata(LLVMContext::MD_tbaa,
                           load->getMetadata(LLVMContext::MD_tbaa));
-    toreturn->setMetadata("enzyme_unwrapped",
-                          MDNode::get(toreturn->getContext(), {}));
+    unwrappedLoads[toreturn] = load;
     // toreturn->setMetadata(LLVMContext::MD_invariant,
     // load->getMetadata(LLVMContext::MD_invariant));
     toreturn->setMetadata(LLVMContext::MD_invariant_group,
@@ -374,9 +380,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
     bool legalMove = mode == UnwrapMode::LegalFullUnwrap;
     if (mode != UnwrapMode::LegalFullUnwrap) {
-      // TODO actually consider whether this is legal to move to the new
-      // location, rather than recomputable anywhere
-      legalMove = legalRecompute(op, available);
+      legalMove = legalRecompute(op, available, &BuilderM);
     }
     if (!legalMove)
       return nullptr;
@@ -916,7 +920,8 @@ void GradientUtils::forceContexts() {
 }
 
 bool GradientUtils::legalRecompute(const Value *val,
-                                   const ValueToValueMapTy &available) const {
+                                   const ValueToValueMapTy &available,
+                                   IRBuilder<> *BuilderM) const {
   if (available.count(val)) {
     return true;
   }
@@ -924,8 +929,9 @@ bool GradientUtils::legalRecompute(const Value *val,
   if (isa<PHINode>(val)) {
     if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(val))) {
       return legalRecompute(
-          dli, available); // TODO ADD && !TR.intType(getOriginal(dli),
-                           // /*mustfind*/false).isPossibleFloat();
+          dli, available,
+          BuilderM); // TODO ADD && !TR.intType(getOriginal(dli),
+                     // /*mustfind*/false).isPossibleFloat();
     }
     // if (SE.isSCEVable(phi->getType())) {
     // auto scev =
@@ -950,8 +956,9 @@ bool GradientUtils::legalRecompute(const Value *val,
   if (auto li = dyn_cast<LoadInst>(val)) {
 
     // If this is an already unwrapped value, legal to recompute again.
-    if (li->getMetadata("enzyme_unwrapped"))
-      return true;
+    if (unwrappedLoads.find(li) != unwrappedLoads.end())
+      return legalRecompute(unwrappedLoads.find(li)->second, available,
+                            BuilderM);
 
     const Instruction *orig = nullptr;
     if (li->getParent()->getParent() == oldFunc) {
@@ -975,10 +982,46 @@ bool GradientUtils::legalRecompute(const Value *val,
                      << " in fn: " << orig->getParent()->getParent()->getName();
       }
       assert(found != can_modref_map->end());
-      return !found->second;
+      if (!found->second)
+        return true;
+      // if insertion block of this function:
+      if (mode == DerivativeMode::Both && BuilderM &&
+          reverseBlocks.find(BuilderM->GetInsertBlock()) !=
+              reverseBlocks.end()) {
+        Instruction *origEnd = const_cast<Instruction *>(
+            (const Instruction *)reverseBlocks.find(BuilderM->GetInsertBlock())
+                ->second->getTerminator());
+        if (OrigDT.dominates(const_cast<Instruction *>(orig), origEnd)) {
+          bool failed = false;
+
+          allInstructionsBetween(
+              const_cast<GradientUtils *>(this)->LI,
+              const_cast<Instruction *>(orig), origEnd,
+              [&](Instruction *I) -> bool {
+                if (I->mayWriteToMemory() &&
+                    writesToMemoryReadBy(
+                        OrigAA, /*maybeReader*/ const_cast<Instruction *>(orig),
+                        /*maybeWriter*/ I)) {
+                  failed = true;
+                  if (EnzymePrintPerf) {
+                    EmitWarning("UncacheableLoad", orig->getDebugLoc(), oldFunc,
+                                orig->getParent(), "Load must be recomputed ",
+                                *orig, " in reverse_",
+                                BuilderM->GetInsertBlock()->getName(),
+                                " due to ", *I);
+                  }
+                  return /*earlyBreak*/ true;
+                }
+                return /*earlyBreak*/ false;
+              });
+          if (!failed)
+            return true;
+        }
+      }
+      return false;
     } else {
       if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(li))) {
-        return legalRecompute(dli, available);
+        return legalRecompute(dli, available, BuilderM);
       }
 
       // TODO mark all the explicitly legal nodes (caches, etc)
@@ -1014,7 +1057,8 @@ bool GradientUtils::legalRecompute(const Value *val,
 //! Given the option to recompute a value or re-use an old one, return true if
 //! it is faster to recompute this value from scratch
 bool GradientUtils::shouldRecompute(const Value *val,
-                                    const ValueToValueMapTy &available) {
+                                    const ValueToValueMapTy &available,
+                                    IRBuilder<> *BuilderM) {
   if (available.count(val))
     return true;
   // TODO: remake such that this returns whether a load to a cache is more
@@ -1039,7 +1083,7 @@ bool GradientUtils::shouldRecompute(const Value *val,
     // loaded
     // TODO, just cache this
     for (auto &op : inst->operands()) {
-      if (!legalRecompute(op, available)) {
+      if (!legalRecompute(op, available, BuilderM)) {
 
         // If this is a load from cache already, dont force a cache of this
         if (isa<LoadInst>(op) && CacheLookups.count(cast<LoadInst>(op)))
@@ -1303,7 +1347,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
                       F->getName() == "__fd_sincos_1")) {
               continue;
             }
-            if (llvm::isModOrRefSet(AA.getModRefInfo(CI, Loc))) {
+            if (llvm::isModOrRefSet(OrigAA.getModRefInfo(CI, Loc))) {
               seen = true;
               llvm::errs() << " cannot handle global " << *oval << " due to "
                            << *CI << "\n";
@@ -1457,13 +1501,13 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     // TODO re atomic add consider forcing it to be atomic always as fallback if
     // used in a parallel context
     auto &augdata = CreateAugmentedPrimal(
-        fn, retType, /*constant_args*/ types, TLI, TA, AA,
+        fn, retType, /*constant_args*/ types, TLI, TA, OrigAA,
         /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
             !fn->getReturnType()->isVoidTy(),
         type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd,
         /*PostOpt*/ false);
     Constant *newf = CreatePrimalAndGradient(
-        fn, retType, /*constant_args*/ types, TLI, TA, AA,
+        fn, retType, /*constant_args*/ types, TLI, TA, OrigAA,
         /*returnValue*/ false, /*dretPtr*/ false, /*topLevel*/ false,
         /*additionalArg*/ Type::getInt8PtrTy(fn->getContext()), type_args,
         uncacheable_args,
@@ -1933,8 +1977,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   // TODO consider call as part of
   bool lrc = false, src = false;
   if (tryLegalRecomputeCheck &&
-      (lrc = legalRecompute(prelcssaInst, available))) {
-    if ((src = shouldRecompute(prelcssaInst, available))) {
+      (lrc = legalRecompute(prelcssaInst, available, &BuilderM))) {
+    if ((src = shouldRecompute(prelcssaInst, available, &BuilderM))) {
       auto op = unwrapM(prelcssaInst, BuilderM, available,
                         UnwrapMode::AttemptSingleUnwrap);
       if (op) {
@@ -2003,7 +2047,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               allInstructionsBetween(
                   OrigLI, orig2, origInst, [&](Instruction *I) -> bool {
                     if (I->mayWriteToMemory() &&
-                        writesToMemoryReadBy(AA, /*maybeReader*/ origInst,
+                        writesToMemoryReadBy(OrigAA, /*maybeReader*/ origInst,
                                              /*maybeWriter*/ I)) {
                       failed = true;
                       // llvm::errs() << "FAILED: " << *I << "\n";
@@ -2146,7 +2190,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                     // llvm::errs() << "examining instruction: " << *I << "
                     // between: " << *li2 << " and " << *li << "\n";
                     if (I->mayWriteToMemory() &&
-                        writesToMemoryReadBy(AA, /*maybeReader*/ origInst,
+                        writesToMemoryReadBy(OrigAA, /*maybeReader*/ origInst,
                                              /*maybeWriter*/ I)) {
                       failed = true;
                       llvm::errs() << "memcpy FAILED: " << *I << "\n";

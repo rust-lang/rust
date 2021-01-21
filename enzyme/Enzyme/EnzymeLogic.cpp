@@ -209,8 +209,9 @@ bool is_load_uncacheable(
       if (llvm::isModSet(AA.getModRefInfo(inst2, MemoryLocation::get(&li)))) {
         can_modref = true;
         if (EnzymePrintPerf) {
-          EmitWarning("Uncacheable", li.getDebugLoc(), gutils->oldFunc, li.getParent(),
-          "Load may need caching ", li, " due to ", *inst2);
+          EmitWarning("Uncacheable", li.getDebugLoc(), gutils->oldFunc,
+                      li.getParent(), "Load may need caching ", li, " due to ",
+                      *inst2);
         }
         // Early exit
         return true;
@@ -519,7 +520,7 @@ void calculateUnusedValuesInFunction(
                     return /*earlyBreak*/ false;
 
                   if (writesToMemoryReadBy(
-                          gutils->AA,
+                          gutils->OrigAA,
                           /*maybeReader*/ const_cast<MemTransferInst *>(mti),
                           /*maybeWriter*/ I)) {
                     foundStore = true;
@@ -583,7 +584,7 @@ void calculateUnusedStoresInFunction(
 
               // if (I == &MTI) return;
               if (writesToMemoryReadBy(
-                      gutils->AA,
+                      gutils->OrigAA,
                       /*maybeReader*/ const_cast<MemTransferInst *>(mti),
                       /*maybeWriter*/ I)) {
                 foundStore = true;
@@ -934,7 +935,7 @@ bool legalCombinedForwardReverse(
       auto consider = [&](Instruction *user) {
         if (!user->mayReadFromMemory())
           return false;
-        if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/ user,
+        if (writesToMemoryReadBy(gutils->OrigAA, /*maybeReader*/ user,
                                  /*maybeWriter*/ inst)) {
           propagate(user);
           // Fast return if not legal
@@ -964,7 +965,7 @@ bool legalCombinedForwardReverse(
         return false;
       if (!post->mayWriteToMemory())
         return false;
-      if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/ inst,
+      if (writesToMemoryReadBy(gutils->OrigAA, /*maybeReader*/ inst,
                                /*maybeWriter*/ post)) {
         if (EnzymePrintPerf) {
           if (called)
@@ -1223,7 +1224,7 @@ const AugmentedReturn &CreateAugmentedPrimal(
   }
   TypeResults TR = TA.analyzeFunction(typeInfo);
   assert(TR.info.Function == gutils->oldFunc);
-  gutils->forceActiveDetection(AA, TR);
+  gutils->forceActiveDetection(TR);
 
   gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
 
@@ -1418,6 +1419,7 @@ const AugmentedReturn &CreateAugmentedPrimal(
   }
 
   gutils->eraseFictiousPHIs();
+
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
     llvm::errs() << *gutils->oldFunc << "\n";
     llvm::errs() << *gutils->newFunc << "\n";
@@ -2333,7 +2335,7 @@ Function *CreatePrimalAndGradient(
   TypeResults TR = TA.analyzeFunction(typeInfo);
   assert(TR.info.Function == gutils->oldFunc);
 
-  gutils->forceActiveDetection(AA, TR);
+  gutils->forceActiveDetection(TR);
   gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
 
   std::map<std::pair<Instruction *, CacheType>, int> mapping;
