@@ -70,3 +70,32 @@ fn outer() {
         "#]],
     );
 }
+
+#[test]
+fn nested_blocks() {
+    check_at(
+        r#"
+//- /lib.rs
+fn outer() {
+    struct inner1 {}
+    fn inner() {
+        use inner1;
+        use outer;
+        fn inner2() {}
+        $0
+    }
+}
+"#,
+        expect![[r#"
+            block scope
+            inner1: t
+            inner2: v
+            outer: v
+            block scope
+            inner: v
+            inner1: t
+            crate
+            outer: v
+        "#]],
+    );
+}
