@@ -410,9 +410,13 @@ Just a few things to keep in mind:
   Aim to provide a reasonable amount of context, possibly including but not limited to:
   - A reason for why the data may be out of date other than "change", as change is a constant across
     the project.
-  - A date the comment was added, e.g. instead of writing _"Currently, ..."_ consider writing
+  - The date the comment was added, e.g. instead of writing _"Currently, ..."_
+    or _"As of now, ..."_, consider writing
     _"As of January 2021, ..."_.
     Try to format the date as `<MONTH> <YEAR>` to ease search.
+  - Additionally, include a machine-readable comment of the form `<!-- date:
+    2021-01 -->` (if the current month is January 2021). We have an automated
+    tool that uses these (in `ci/date-check`).
   - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide
     further explanation for the change process or a way to verify that the information is not
     outdated.

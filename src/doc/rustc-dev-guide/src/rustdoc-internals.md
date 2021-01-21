@@ -66,7 +66,7 @@ these passes, please let us know!)
 
 [44136]: https://github.com/rust-lang/rust/issues/44136
 
-Here is current (as of this writing) list of passes:
+Here is the list of passes as of March 2018 <!-- date: 2018-03 -->:
 
 - `propagate-doc-cfg` - propagates `#[doc(cfg(...))]` to child items.
 - `collapse-docs` concatenates all document attributes into one document

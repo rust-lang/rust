@@ -333,17 +333,17 @@ The error levels that you can have are:
 1. `ERROR`
 2. `WARNING`
 3. `NOTE`
-4. `HELP` and `SUGGESTION`*
+4. `HELP` and `SUGGESTION`[^sugg-placement]
 
-\* **Note**: `SUGGESTION` must follow immediately after `HELP`.
+[^sugg-placement]: **Note**: `SUGGESTION` must follow immediately after `HELP`.
 
 ## Revisions
 
-Certain classes of tests support "revisions" (as of the time of this
-writing, this includes compile-fail, run-fail, and
-incremental, though incremental tests are somewhat
-different). Revisions allow a single test file to be used for multiple
-tests. This is done by adding a special header at the top of the file:
+Certain classes of tests support "revisions" (as of February 2018 <!-- date:
+2018-02 -->, this includes compile-fail, run-fail, and incremental, though
+incremental tests are somewhat different). Revisions allow a single test file to
+be used for multiple tests. This is done by adding a special header at the top
+of the file:
 
 ```rust
 // revisions: foo bar baz

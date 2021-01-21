@@ -1,16 +1,15 @@
 # Queries: demand-driven compilation
 
-As described in [the high-level overview of the compiler][hl], the
-Rust compiler is still (as of January 2021) transitioning from a traditional "pass-based"
-setup to a "demand-driven" system. **The Compiler Query System is the
-key to our new demand-driven organization.** The idea is pretty
-simple. You have various queries that compute things about the input
-– for example, there is a query called `type_of(def_id)` that, given
-the [def-id] of some item, will compute the type of that item and return
-it to you.
+As described in [the high-level overview of the compiler][hl], the Rust compiler
+is still (as of January 2021 <!-- date: 2021-01 -->) transitioning from a
+traditional "pass-based" setup to a "demand-driven" system. **The Compiler Query
+System is the key to our new demand-driven organization.** The idea is pretty
+simple. You have various queries that compute things about the input – for
+example, there is a query called `type_of(def_id)` that, given the [def-id] of
+some item, will compute the type of that item and return it to you.
 
 [def-id]: appendix/glossary.md#def-id
-[hl]: compiler-src.html
+[hl]: ./compiler-src.md
 
 Query execution is **memoized** – so the first time you invoke a
 query, it will go do the computation, but the next time, the result is

@@ -124,13 +124,13 @@ launch a build that will run all tests on some configurations
 (x86_64-gnu-llvm-8 linux. x86_64-gnu-tools linux, mingw-check linux). In
 essence, it runs `./x.py test` after building for each of them.
 
-The integration bot [bors] is used for coordinating merges to the master
-branch. When a PR is approved, it goes into a [queue] where merges are tested
-one at a time on a wide set of platforms using GitHub Actions (as of January 2021 over
-50 different configurations). Due to the limit on the number of parallel jobs,
-we run CI under the [rust-lang-ci] organization except for PRs.
-Most platforms only run the build steps, some run a restricted set of tests,
-only a subset run the full suite of tests (see Rust's [platform tiers]).
+The integration bot [bors] is used for coordinating merges to the master branch.
+When a PR is approved, it goes into a [queue] where merges are tested one at a
+time on a wide set of platforms using GitHub Actions (as of January 2021 <!--
+date: 2021-01 -->, over 50 different configurations). Due to the limit on the
+number of parallel jobs, we run CI under the [rust-lang-ci] organization except
+for PRs. Most platforms only run the build steps, some run a restricted set of
+tests, only a subset run the full suite of tests (see Rust's [platform tiers]).
 
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [rust-lang-ci]: https://github.com/rust-lang-ci/rust/actions

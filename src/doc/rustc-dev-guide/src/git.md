@@ -144,12 +144,12 @@ Changes not staged for commit:
 no changes added to commit (use "git add" and/or "git commit -a")
 ```
 
-These changes are not changes to files: they are changes to submodules
-(more on this [later](#git-submodules)). To get rid of those, run `git submodule update` (or run any
-`x.py` command, which will automatically update the submodules).
-Note that there is (as of January 2021) a bug if you use worktrees, submodules, and x.py in a commit
-hook.
-If you run into an error like:
+These changes are not changes to files: they are changes to submodules (more on
+this [later](#git-submodules)). To get rid of those, run `git submodule update`
+(or run any `x.py` command, which will automatically update the submodules).
+Note that there is (as of January 2021 <!-- date: 2021-01 -->) a bug if you use
+worktrees, submodules, and x.py in a commit hook.  If you run into an error
+like:
 
 ```
 error: failed to read `/home/joshua/rustc-worktree/src/tools/miri/cargo-miri/Cargo.toml`

@@ -3,8 +3,9 @@
 Most of the compiler is not parallel. This represents an opportunity for
 improving compiler performance.
 
-As of January 2021, work on explicitly parallelizing the compiler has stalled.
-There is a lot of design and correctness work that needs to be done.
+As of January 2021 <!-- date: 2021-01 -->, work on explicitly parallelizing the
+compiler has stalled. There is a lot of design and correctness work that needs
+to be done.
 
 One can try out the current parallel compiler work by enabling it in the
 `config.toml`.
@@ -21,9 +22,9 @@ There are a few basic ideas in this effort:
 
 [`rayon`]: https://crates.io/crates/rayon
 
-As of this writing, much of this effort is on hold due to lack of manpower. We
-have a working prototype with promising performance gains in many cases.
-However, there are two blockers:
+As of May 2020 <!-- date: 2020-05 -->, much of this effort is on hold due to
+lack of manpower. We have a working prototype with promising performance gains
+in many cases. However, there are two blockers:
 
 - It's not clear what invariants need to be upheld that might not hold in the
   face of concurrency. An auditing effort was underway, but seems to have

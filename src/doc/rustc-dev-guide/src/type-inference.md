@@ -71,8 +71,8 @@ inference works, or perhaps this blog post on
 
 [Unification in the Chalk project]: http://smallcultfollowing.com/babysteps/blog/2017/03/25/unification-in-chalk-part-1/
 
-All told, the inference context stores four kinds of inference variables as of
-this writing:
+All told, the inference context stores four kinds of inference variables (as of
+January 2018 <!-- date: 2018-01 -->):
 
 - Type variables, which come in three varieties:
   - General type variables (the most common). These can be unified with any

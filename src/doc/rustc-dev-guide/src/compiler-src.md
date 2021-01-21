@@ -7,8 +7,9 @@
 > top-level directory has separate directories for the compiler, build-system,
 > std libs, etc, rather than one huge `src/` directory.
 >
-> As of January 2021, the std libs have been moved to `library/` and the crates
-> that make up the `rustc` compiler itself have been moved to `compiler/`
+> As of January 2021 <!-- date: 2021-01 -->, the standard libraries have been
+> moved to `library/` and the crates that make up the `rustc` compiler itself
+> have been moved to `compiler/`.
 
 Now that we have [seen what the compiler does](./overview.md), let's take a
 look at the structure of the contents of the rust-lang/rust repo.
@@ -20,9 +21,9 @@ containing the compiler, the standard libraries (`core`, `alloc`, `std`,
 `proc_macro`, etc), and `rustdoc`, along with the build system and a bunch of
 tools and submodules for building a full Rust distribution.
 
-As of this writing, this structure is gradually undergoing some transformation
-to make it a bit less monolithic and more approachable, especially to
-newcomers.
+As of August 2020 <!-- date: 2020-08 -->, this structure is gradually undergoing
+some transformation to make it a bit less monolithic and more approachable,
+especially to newcomers.
 
 The repository consists of three main directories:
 

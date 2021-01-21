@@ -2,8 +2,9 @@
 
 <!-- toc -->
 
-As of January 2021, `rustc_codegen_ssa` provides an abstract interface for all backends to
-implement, to allow other codegen backends (e.g. [Cranelift]).
+As of January 2021 <!-- date: 2021-01 -->, `rustc_codegen_ssa` provides an
+abstract interface for all backends to implement, to allow other codegen
+backends (e.g. [Cranelift]).
 
 [Cranelift]: https://github.com/bytecodealliance/wasmtime/tree/HEAD/cranelift
 
