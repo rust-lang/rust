@@ -304,8 +304,7 @@ mod spec_extend;
 ///
 /// - **uninit** represents memory that is not initialized, see [`MaybeUninit`].
 /// - Note: the ABI is not stable and `Vec` makes no guarantees about its memory
-///   layout (including the order of fields). See [the section about
-///   guarantees](#guarantees).
+///   layout (including the order of fields).
 ///
 /// `Vec` will never perform a "small optimization" where elements are actually
 /// stored on the stack for two reasons:
