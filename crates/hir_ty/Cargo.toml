@@ -17,9 +17,9 @@ ena = "0.14.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
 scoped-tls = "1"
-chalk-solve = { version = "0.49", default-features = false }
-chalk-ir = "0.49"
-chalk-recursive = "0.49"
+chalk-solve = { version = "0.50", default-features = false }
+chalk-ir = "0.50"
+chalk-recursive = "0.50"
 la-arena = { version = "0.2.0", path = "../../lib/arena" }
 
 stdx = { path = "../stdx", version = "0.0.0" }
