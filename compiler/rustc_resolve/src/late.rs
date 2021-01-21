@@ -243,6 +243,13 @@ impl<'a> PathSource<'a> {
                 // "function" here means "anything callable" rather than `DefKind::Fn`,
                 // this is not precise but usually more helpful than just "value".
                 Some(ExprKind::Call(call_expr, _)) => match &call_expr.kind {
+                    // the case of `::some_crate()`
+                    ExprKind::Path(_, path)
+                        if path.segments.len() == 2
+                            && path.segments[0].ident.name == kw::PathRoot =>
+                    {
+                        "external crate"
+                    }
                     ExprKind::Path(_, path) => {
                         let mut msg = "function";
                         if let Some(segment) = path.segments.iter().last() {
