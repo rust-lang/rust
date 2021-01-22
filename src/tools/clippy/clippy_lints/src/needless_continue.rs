@@ -221,7 +221,7 @@ where
 {
     if let ast::ExprKind::While(_, loop_block, label)
     | ast::ExprKind::ForLoop(_, _, loop_block, label)
-    | ast::ExprKind::Loop(loop_block, label) = &expr.kind
+    | ast::ExprKind::Loop(loop_block, label, ..) = &expr.kind
     {
         func(loop_block, label.as_ref());
     }

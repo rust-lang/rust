@@ -2266,6 +2266,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 visit::walk_expr(self, expr);
             }
 
+            ExprKind::Break(None, Some(ref e)) => {
+                // We use this instead of `visit::walk_expr` to keep the parent expr around for
+                // better diagnostics.
+                self.resolve_expr(e, Some(&expr));
+            }
+
             ExprKind::Let(ref pat, ref scrutinee) => {
                 self.visit_expr(scrutinee);
                 self.resolve_pattern_top(pat, PatternSource::Let);

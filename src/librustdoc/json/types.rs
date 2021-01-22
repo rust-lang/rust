@@ -68,8 +68,9 @@ pub struct Item {
     /// By default all documented items are public, but you can tell rustdoc to output private items
     /// so this field is needed to differentiate.
     pub visibility: Visibility,
-    /// The full markdown docstring of this item.
-    pub docs: String,
+    /// The full markdown docstring of this item. Absent if there is no documentation at all,
+    /// Some("") if there is some documentation but it is empty (EG `#[doc = ""]`).
+    pub docs: Option<String>,
     /// This mapping resolves [intra-doc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
     pub links: FxHashMap<String, Id>,
     /// Stringified versions of the attributes on this item (e.g. `"#[inline]"`)
@@ -269,6 +270,7 @@ pub enum StructType {
     Plain,
     Tuple,
     Unit,
+    Union,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

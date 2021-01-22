@@ -199,7 +199,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
             // Skip the following checks if we are not currently in a const context.
             _ if self.const_kind.is_none() => {}
 
-            hir::ExprKind::Loop(_, _, source) => {
+            hir::ExprKind::Loop(_, _, source, _) => {
                 self.const_check_violated(NonConstExpr::Loop(*source), e.span);
             }
 

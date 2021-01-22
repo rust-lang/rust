@@ -166,6 +166,9 @@ fn ipv6_addr_to_string() {
 
     // two runs of zeros, equal length
     assert_eq!("1::4:5:0:0:8", Ipv6Addr::new(1, 0, 0, 4, 5, 0, 0, 8).to_string());
+
+    // don't prefix `0x` to each segment in `dbg!`.
+    assert_eq!("1::4:5:0:0:8", &format!("{:#?}", Ipv6Addr::new(1, 0, 0, 4, 5, 0, 0, 8)));
 }
 
 #[test]

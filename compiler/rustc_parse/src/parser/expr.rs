@@ -585,7 +585,7 @@ impl<'a> Parser<'a> {
         lhs_span: Span,
         expr_kind: fn(P<Expr>, P<Ty>) -> ExprKind,
     ) -> PResult<'a, P<Expr>> {
-        let mk_expr = |this: &mut Self, rhs: P<Ty>| {
+        let mk_expr = |this: &mut Self, lhs: P<Expr>, rhs: P<Ty>| {
             this.mk_expr(
                 this.mk_expr_sp(&lhs, lhs_span, rhs.span),
                 expr_kind(lhs, rhs),
@@ -597,12 +597,48 @@ impl<'a> Parser<'a> {
         // LessThan comparison after this cast.
         let parser_snapshot_before_type = self.clone();
         let cast_expr = match self.parse_ty_no_plus() {
-            Ok(rhs) => mk_expr(self, rhs),
+            Ok(rhs) => mk_expr(self, lhs, rhs),
             Err(mut type_err) => {
                 // Rewind to before attempting to parse the type with generics, to recover
                 // from situations like `x as usize < y` in which we first tried to parse
                 // `usize < y` as a type with generic arguments.
                 let parser_snapshot_after_type = mem::replace(self, parser_snapshot_before_type);
+
+                // Check for typo of `'a: loop { break 'a }` with a missing `'`.
+                match (&lhs.kind, &self.token.kind) {
+                    (
+                        // `foo: `
+                        ExprKind::Path(None, ast::Path { segments, .. }),
+                        TokenKind::Ident(kw::For | kw::Loop | kw::While, false),
+                    ) if segments.len() == 1 => {
+                        let snapshot = self.clone();
+                        let label = Label {
+                            ident: Ident::from_str_and_span(
+                                &format!("'{}", segments[0].ident),
+                                segments[0].ident.span,
+                            ),
+                        };
+                        match self.parse_labeled_expr(label, AttrVec::new(), false) {
+                            Ok(expr) => {
+                                type_err.cancel();
+                                self.struct_span_err(label.ident.span, "malformed loop label")
+                                    .span_suggestion(
+                                        label.ident.span,
+                                        "use the correct loop label format",
+                                        label.ident.to_string(),
+                                        Applicability::MachineApplicable,
+                                    )
+                                    .emit();
+                                return Ok(expr);
+                            }
+                            Err(mut err) => {
+                                err.cancel();
+                                *self = snapshot;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
 
                 match self.parse_path(PathStyle::Expr) {
                     Ok(path) => {
@@ -630,7 +666,8 @@ impl<'a> Parser<'a> {
                             op_noun,
                         );
                         let span_after_type = parser_snapshot_after_type.token.span;
-                        let expr = mk_expr(self, self.mk_ty(path.span, TyKind::Path(None, path)));
+                        let expr =
+                            mk_expr(self, lhs, self.mk_ty(path.span, TyKind::Path(None, path)));
 
                         let expr_str = self
                             .span_to_snippet(expr.span)
@@ -1067,7 +1104,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::While) {
             self.parse_while_expr(None, self.prev_token.span, attrs)
         } else if let Some(label) = self.eat_label() {
-            self.parse_labeled_expr(label, attrs)
+            self.parse_labeled_expr(label, attrs, true)
         } else if self.eat_keyword(kw::Loop) {
             self.parse_loop_expr(None, self.prev_token.span, attrs)
         } else if self.eat_keyword(kw::Continue) {
@@ -1228,7 +1265,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `'label: $expr`. The label is already parsed.
-    fn parse_labeled_expr(&mut self, label: Label, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+    fn parse_labeled_expr(
+        &mut self,
+        label: Label,
+        attrs: AttrVec,
+        consume_colon: bool,
+    ) -> PResult<'a, P<Expr>> {
         let lo = label.ident.span;
         let label = Some(label);
         let ate_colon = self.eat(&token::Colon);
@@ -1247,7 +1289,7 @@ impl<'a> Parser<'a> {
             self.parse_expr()
         }?;
 
-        if !ate_colon {
+        if !ate_colon && consume_colon {
             self.error_labeled_expr_must_be_followed_by_colon(lo, expr.span);
         }
 

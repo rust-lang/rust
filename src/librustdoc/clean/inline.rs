@@ -5,7 +5,7 @@ use std::iter::once;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::Mutability;
 use rustc_metadata::creader::LoadedMacro;
@@ -17,7 +17,6 @@ use rustc_span::Span;
 
 use crate::clean::{self, Attributes, GetDefId, ToSource, TypeKind};
 use crate::core::DocContext;
-use crate::doctree;
 
 use super::Clean;
 
@@ -246,11 +245,7 @@ fn build_struct(cx: &DocContext<'_>, did: DefId) -> clean::Struct {
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Struct {
-        struct_type: match variant.ctor_kind {
-            CtorKind::Fictive => doctree::Plain,
-            CtorKind::Fn => doctree::Tuple,
-            CtorKind::Const => doctree::Unit,
-        },
+        struct_type: variant.ctor_kind,
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
         fields: variant.fields.clean(cx),
         fields_stripped: false,
@@ -262,7 +257,6 @@ fn build_union(cx: &DocContext<'_>, did: DefId) -> clean::Union {
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Union {
-        struct_type: doctree::Plain,
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
         fields: variant.fields.clean(cx),
         fields_stripped: false,

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rustc_middle::ty;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::edition::Edition;
 
 use crate::clean;
@@ -20,7 +20,7 @@ crate trait FormatRenderer<'tcx>: Clone {
         render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
-        tcx: ty::TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error>;
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
@@ -55,7 +55,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     render_info: RenderInfo,
     diag: &rustc_errors::Handler,
     edition: Edition,
-    tcx: ty::TyCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) -> Result<(), Error> {
     let (krate, mut cache) = Cache::from_krate(
         render_info.clone(),

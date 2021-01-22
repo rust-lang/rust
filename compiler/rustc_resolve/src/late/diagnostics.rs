@@ -545,17 +545,23 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if let Some(err_code) = &err.code {
             if err_code == &rustc_errors::error_code!(E0425) {
                 for label_rib in &self.label_ribs {
-                    for (label_ident, _) in &label_rib.bindings {
+                    for (label_ident, node_id) in &label_rib.bindings {
                         if format!("'{}", ident) == label_ident.to_string() {
-                            let msg = "a label with a similar name exists";
-                            // FIXME: consider only emitting this suggestion if a label would be valid here
-                            // which is pretty much only the case for `break` expressions.
-                            err.span_suggestion(
-                                span,
-                                &msg,
-                                label_ident.name.to_string(),
-                                Applicability::MaybeIncorrect,
-                            );
+                            err.span_label(label_ident.span, "a label with a similar name exists");
+                            if let PathSource::Expr(Some(Expr {
+                                kind: ExprKind::Break(None, Some(_)),
+                                ..
+                            })) = source
+                            {
+                                err.span_suggestion(
+                                    span,
+                                    "use the similarly named label",
+                                    label_ident.name.to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                // Do not lint against unused label when we suggest them.
+                                self.diagnostic_metadata.unused_labels.remove(node_id);
+                            }
                         }
                     }
                 }

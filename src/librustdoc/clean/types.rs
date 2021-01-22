@@ -16,7 +16,7 @@ use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{CtorKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
@@ -37,7 +37,6 @@ use crate::clean::inline;
 use crate::clean::types::Type::{QPath, ResolvedPath};
 use crate::clean::Clean;
 use crate::core::DocContext;
-use crate::doctree;
 use crate::formats::cache::cache;
 use crate::formats::item_type::ItemType;
 use crate::html::render::cache::ExternalLocation;
@@ -1685,7 +1684,7 @@ impl Visibility {
 
 #[derive(Clone, Debug)]
 crate struct Struct {
-    crate struct_type: doctree::StructType,
+    crate struct_type: CtorKind,
     crate generics: Generics,
     crate fields: Vec<Item>,
     crate fields_stripped: bool,
@@ -1693,7 +1692,6 @@ crate struct Struct {
 
 #[derive(Clone, Debug)]
 crate struct Union {
-    crate struct_type: doctree::StructType,
     crate generics: Generics,
     crate fields: Vec<Item>,
     crate fields_stripped: bool,
@@ -1704,7 +1702,7 @@ crate struct Union {
 /// only as a variant in an enum.
 #[derive(Clone, Debug)]
 crate struct VariantStruct {
-    crate struct_type: doctree::StructType,
+    crate struct_type: CtorKind,
     crate fields: Vec<Item>,
     crate fields_stripped: bool,
 }

@@ -252,7 +252,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
                 terminating(then.hir_id.local_id);
             }
 
-            hir::ExprKind::Loop(ref body, _, _) => {
+            hir::ExprKind::Loop(ref body, _, _, _) => {
                 terminating(body.hir_id.local_id);
             }
 

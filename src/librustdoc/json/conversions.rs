@@ -5,11 +5,11 @@
 use std::convert::From;
 
 use rustc_ast::ast;
+use rustc_hir::def::CtorKind;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_span::Pos;
 
 use crate::clean;
-use crate::doctree;
 use crate::formats::item_type::ItemType;
 use crate::json::types::*;
 use crate::json::JsonRenderer;
@@ -27,7 +27,7 @@ impl JsonRenderer<'_> {
                 name: name.map(|sym| sym.to_string()),
                 source: self.convert_span(source),
                 visibility: self.convert_visibility(visibility),
-                docs: attrs.collapsed_doc_value().unwrap_or_default(),
+                docs: attrs.collapsed_doc_value(),
                 links: attrs
                     .links
                     .into_iter()
@@ -210,9 +210,9 @@ impl From<clean::Struct> for Struct {
 
 impl From<clean::Union> for Struct {
     fn from(struct_: clean::Union) -> Self {
-        let clean::Union { struct_type, generics, fields, fields_stripped } = struct_;
+        let clean::Union { generics, fields, fields_stripped } = struct_;
         Struct {
-            struct_type: struct_type.into(),
+            struct_type: StructType::Union,
             generics: generics.into(),
             fields_stripped,
             fields: ids(fields),
@@ -221,13 +221,12 @@ impl From<clean::Union> for Struct {
     }
 }
 
-impl From<doctree::StructType> for StructType {
-    fn from(struct_type: doctree::StructType) -> Self {
-        use doctree::StructType::*;
+impl From<CtorKind> for StructType {
+    fn from(struct_type: CtorKind) -> Self {
         match struct_type {
-            Plain => StructType::Plain,
-            Tuple => StructType::Tuple,
-            Unit => StructType::Unit,
+            CtorKind::Fictive => StructType::Plain,
+            CtorKind::Fn => StructType::Tuple,
+            CtorKind::Const => StructType::Unit,
         }
     }
 }
