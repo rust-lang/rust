@@ -2,16 +2,14 @@ use either::Either;
 use hir::{HasAttrs, ModuleDef, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
-    symbol_index, RootDatabase,
+    RootDatabase,
 };
 use syntax::{
     ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextSize, TokenAtOffset, T,
 };
 
 use crate::{
-    display::{ToNav, TryToNav},
-    doc_links::extract_definitions_from_markdown,
-    runnables::doc_owner_to_def,
+    display::TryToNav, doc_links::extract_definitions_from_markdown, runnables::doc_owner_to_def,
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -38,28 +36,26 @@ pub(crate) fn goto_definition(
         return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
     }
 
-    let nav_targets = match_ast! {
+    let nav = match_ast! {
         match parent {
             ast::NameRef(name_ref) => {
-                reference_definition(&sema, Either::Right(&name_ref)).to_vec()
+                reference_definition(&sema, Either::Right(&name_ref))
             },
             ast::Name(name) => {
                 let def = NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db);
-                let nav = def.try_to_nav(sema.db)?;
-                vec![nav]
+                def.try_to_nav(sema.db)
             },
             ast::Lifetime(lt) => if let Some(name_class) = NameClass::classify_lifetime(&sema, &lt) {
                 let def = name_class.referenced_or_defined(sema.db);
-                let nav = def.try_to_nav(sema.db)?;
-                vec![nav]
+                def.try_to_nav(sema.db)
             } else {
-                reference_definition(&sema, Either::Left(&lt)).to_vec()
+                reference_definition(&sema, Either::Left(&lt))
             },
             _ => return None,
         }
     };
 
-    Some(RangeInfo::new(original_token.text_range(), nav_targets))
+    Some(RangeInfo::new(original_token.text_range(), nav.into_iter().collect()))
 }
 
 fn def_for_doc_comment(
@@ -120,42 +116,16 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
     }
 }
 
-#[derive(Debug)]
-pub(crate) enum ReferenceResult {
-    Exact(NavigationTarget),
-    Approximate(Vec<NavigationTarget>),
-}
-
-impl ReferenceResult {
-    fn to_vec(self) -> Vec<NavigationTarget> {
-        match self {
-            ReferenceResult::Exact(target) => vec![target],
-            ReferenceResult::Approximate(vec) => vec,
-        }
-    }
-}
-
 pub(crate) fn reference_definition(
     sema: &Semantics<RootDatabase>,
     name_ref: Either<&ast::Lifetime, &ast::NameRef>,
-) -> ReferenceResult {
+) -> Option<NavigationTarget> {
     let name_kind = name_ref.either(
         |lifetime| NameRefClass::classify_lifetime(sema, lifetime),
         |name_ref| NameRefClass::classify(sema, name_ref),
-    );
-    if let Some(def) = name_kind {
-        let def = def.referenced(sema.db);
-        return match def.try_to_nav(sema.db) {
-            Some(nav) => ReferenceResult::Exact(nav),
-            None => ReferenceResult::Approximate(Vec::new()),
-        };
-    }
-
-    // Fallback index based approach:
-    let name = name_ref.either(ast::Lifetime::text, ast::NameRef::text);
-    let navs =
-        symbol_index::index_resolve(sema.db, name).into_iter().map(|s| s.to_nav(sema.db)).collect();
-    ReferenceResult::Approximate(navs)
+    )?;
+    let def = name_kind.referenced(sema.db);
+    def.try_to_nav(sema.db)
 }
 
 #[cfg(test)]
@@ -192,12 +162,12 @@ mod tests {
     fn goto_def_for_extern_crate() {
         check(
             r#"
-            //- /main.rs crate:main deps:std
-            extern crate std$0;
-            //- /std/lib.rs crate:std
-            // empty
-            //^ file
-            "#,
+//- /main.rs crate:main deps:std
+extern crate std$0;
+//- /std/lib.rs crate:std
+// empty
+//^ file
+"#,
         )
     }
 
@@ -205,12 +175,12 @@ mod tests {
     fn goto_def_for_renamed_extern_crate() {
         check(
             r#"
-            //- /main.rs crate:main deps:std
-            extern crate std as abc$0;
-            //- /std/lib.rs crate:std
-            // empty
-            //^ file
-            "#,
+//- /main.rs crate:main deps:std
+extern crate std as abc$0;
+//- /std/lib.rs crate:std
+// empty
+//^ file
+"#,
         )
     }
 
@@ -297,13 +267,13 @@ fn bar() {
     fn goto_def_for_macros_from_other_crates() {
         check(
             r#"
-//- /lib.rs
+//- /lib.rs crate:main deps:foo
 use foo::foo;
 fn bar() {
     $0foo!();
 }
 
-//- /foo/lib.rs
+//- /foo/lib.rs crate:foo
 #[macro_export]
 macro_rules! foo { () => { () } }
            //^^^
@@ -315,10 +285,10 @@ macro_rules! foo { () => { () } }
     fn goto_def_for_macros_in_use_tree() {
         check(
             r#"
-//- /lib.rs
+//- /lib.rs crate:main deps:foo
 use foo::foo$0;
 
-//- /foo/lib.rs
+//- /foo/lib.rs crate:foo
 #[macro_export]
 macro_rules! foo { () => { () } }
            //^^^
@@ -976,10 +946,10 @@ type Alias<T> = T$0;
     fn goto_def_for_macro_container() {
         check(
             r#"
-//- /lib.rs
+//- /lib.rs crate:main deps:foo
 foo::module$0::mac!();
 
-//- /foo/lib.rs
+//- /foo/lib.rs crate:foo
 pub mod module {
       //^^^^^^
     #[macro_export]
