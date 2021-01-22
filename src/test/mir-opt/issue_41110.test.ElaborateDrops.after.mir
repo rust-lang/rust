@@ -37,7 +37,7 @@ fn test() -> () {
         StorageLive(_5);                 // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
         _6 = const false;                // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
         _5 = move _1;                    // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
-        goto -> bb11;                    // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
+        goto -> bb12;                    // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
     }
 
     bb2: {
@@ -47,7 +47,7 @@ fn test() -> () {
     bb3: {
         StorageDead(_5);                 // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
         _0 = const ();                   // scope 0 at $DIR/issue-41110.rs:14:15: 19:2
-        drop(_2) -> [return: bb4, unwind: bb8]; // scope 1 at $DIR/issue-41110.rs:19:1: 19:2
+        drop(_2) -> [return: bb4, unwind: bb9]; // scope 1 at $DIR/issue-41110.rs:19:1: 19:2
     }
 
     bb4: {
@@ -62,36 +62,40 @@ fn test() -> () {
     }
 
     bb6 (cleanup): {
-        goto -> bb7;                     // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
+        goto -> bb8;                     // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
     }
 
     bb7 (cleanup): {
-        goto -> bb8;                     // scope 1 at $DIR/issue-41110.rs:19:1: 19:2
+        goto -> bb8;                     // scope 2 at $DIR/issue-41110.rs:17:11: 17:12
     }
 
     bb8 (cleanup): {
-        goto -> bb13;                    // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
+        goto -> bb9;                     // scope 1 at $DIR/issue-41110.rs:19:1: 19:2
     }
 
     bb9 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue-41110.rs:14:1: 19:2
+        goto -> bb14;                    // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
     }
 
     bb10 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-41110.rs:14:1: 19:2
+    }
+
+    bb11 (cleanup): {
         _2 = move _5;                    // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
         goto -> bb6;                     // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
     }
 
-    bb11: {
+    bb12: {
         _2 = move _5;                    // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
         goto -> bb2;                     // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
     }
 
-    bb12 (cleanup): {
-        drop(_1) -> bb9;                 // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
+    bb13 (cleanup): {
+        drop(_1) -> bb10;                // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
     }
 
-    bb13 (cleanup): {
-        switchInt(_6) -> [false: bb9, otherwise: bb12]; // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
+    bb14 (cleanup): {
+        switchInt(_6) -> [false: bb10, otherwise: bb13]; // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
     }
 }

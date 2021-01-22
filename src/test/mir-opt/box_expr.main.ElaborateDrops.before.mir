@@ -14,7 +14,7 @@ fn main() -> () {
         StorageLive(_1);                 // scope 0 at $DIR/box_expr.rs:7:9: 7:10
         StorageLive(_2);                 // scope 0 at $DIR/box_expr.rs:7:13: 7:25
         _2 = Box(S);                     // scope 0 at $DIR/box_expr.rs:7:13: 7:25
-        (*_2) = S::new() -> [return: bb1, unwind: bb6]; // scope 0 at $DIR/box_expr.rs:7:17: 7:25
+        (*_2) = S::new() -> [return: bb1, unwind: bb7]; // scope 0 at $DIR/box_expr.rs:7:17: 7:25
                                          // mir::Constant
                                          // + span: $DIR/box_expr.rs:7:17: 7:23
                                          // + literal: Const { ty: fn() -> S {S::new}, val: Value(Scalar(<ZST>)) }
@@ -49,14 +49,18 @@ fn main() -> () {
     }
 
     bb5 (cleanup): {
-        drop(_1) -> bb7;                 // scope 0 at $DIR/box_expr.rs:9:1: 9:2
+        drop(_4) -> bb6;                 // scope 1 at $DIR/box_expr.rs:8:11: 8:12
     }
 
     bb6 (cleanup): {
-        drop(_2) -> bb7;                 // scope 0 at $DIR/box_expr.rs:7:24: 7:25
+        drop(_1) -> bb8;                 // scope 0 at $DIR/box_expr.rs:9:1: 9:2
     }
 
     bb7 (cleanup): {
+        drop(_2) -> bb8;                 // scope 0 at $DIR/box_expr.rs:7:24: 7:25
+    }
+
+    bb8 (cleanup): {
         resume;                          // scope 0 at $DIR/box_expr.rs:6:1: 9:2
     }
 }
