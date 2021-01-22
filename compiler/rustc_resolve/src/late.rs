@@ -2268,7 +2268,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             ExprKind::Break(None, Some(ref e)) => {
                 // We use this instead of `visit::walk_expr` to keep the parent expr around for
-                // better
+                // better diagnostics.
                 self.resolve_expr(e, Some(&expr));
             }
 
