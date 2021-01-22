@@ -854,13 +854,7 @@ pub(super) fn check_specialization_validity<'tcx>(
             } else {
                 Some((parent, parent.item(tcx, trait_item.ident, kind, trait_def.def_id)))
             }
-        })
-        .peekable();
-
-    if ancestor_impls.peek().is_none() {
-        // No parent, nothing to specialize.
-        return;
-    }
+        });
 
     let opt_result = ancestor_impls.find_map(|(parent_impl, parent_item)| {
         match parent_item {
