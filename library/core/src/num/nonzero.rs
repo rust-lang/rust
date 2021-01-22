@@ -1,5 +1,8 @@
 //! Definitions of integer that is known not to equal zero.
 
+// This is bad and should be removed
+#![allow(rustc::ineffective_unstable_trait_impl)]
+
 use crate::fmt;
 use crate::ops::{BitOr, BitOrAssign, Div, Rem};
 use crate::str::FromStr;
@@ -135,6 +138,20 @@ macro_rules! nonzero_integers {
                 #[inline]
                 fn bitor_assign(&mut self, rhs: $Int) {
                     *self = *self | rhs;
+                }
+            }
+
+            #[unstable(feature = "nonzero_int_eq", issue = "81181")]
+            impl PartialEq<$Int> for $Ty {
+                fn eq(&self, other: &$Int) -> bool {
+                    self.get() == *other
+                }
+            }
+
+            #[unstable(feature = "nonzero_int_eq", issue = "81181")]
+            impl PartialEq<$Ty> for $Int {
+                fn eq(&self, other: &$Ty) -> bool {
+                    *self == other.get()
                 }
             }
 
