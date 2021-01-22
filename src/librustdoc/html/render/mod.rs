@@ -52,6 +52,7 @@ use rustc_attr::{Deprecation, StabilityLevel};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
+use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
@@ -67,7 +68,6 @@ use serde::{Serialize, Serializer};
 use crate::clean::{self, AttributesExt, GetDefId, RenderedLink, SelfTy, TypeKind};
 use crate::config::{RenderInfo, RenderOptions};
 use crate::docfs::{DocFS, PathError};
-use crate::doctree;
 use crate::error::Error;
 use crate::formats::cache::{cache, Cache};
 use crate::formats::item_type::ItemType;
@@ -3103,7 +3103,7 @@ fn item_struct(
             _ => None,
         })
         .peekable();
-    if let doctree::Plain = s.struct_type {
+    if let CtorKind::Fictive = s.struct_type {
         if fields.peek().is_some() {
             write!(
                 w,
@@ -3353,7 +3353,7 @@ fn render_struct(
     w: &mut Buffer,
     it: &clean::Item,
     g: Option<&clean::Generics>,
-    ty: doctree::StructType,
+    ty: CtorKind,
     fields: &[clean::Item],
     tab: &str,
     structhead: bool,
@@ -3370,7 +3370,7 @@ fn render_struct(
         write!(w, "{}", g.print())
     }
     match ty {
-        doctree::Plain => {
+        CtorKind::Fictive => {
             if let Some(g) = g {
                 write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: true })
             }
@@ -3402,7 +3402,7 @@ fn render_struct(
             }
             write!(w, "}}");
         }
-        doctree::Tuple => {
+        CtorKind::Fn => {
             write!(w, "(");
             for (i, field) in fields.iter().enumerate() {
                 if i > 0 {
@@ -3427,7 +3427,7 @@ fn render_struct(
             }
             write!(w, ";");
         }
-        doctree::Unit => {
+        CtorKind::Const => {
             // Needed for PhantomData.
             if let Some(g) = g {
                 write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: false })
@@ -4462,7 +4462,7 @@ fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clea
     let fields = get_struct_fields_name(&s.fields);
 
     if !fields.is_empty() {
-        if let doctree::Plain = s.struct_type {
+        if let CtorKind::Fictive = s.struct_type {
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
                  <div class=\"sidebar-links\">{}</div>",

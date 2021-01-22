@@ -270,6 +270,7 @@ pub enum StructType {
     Plain,
     Tuple,
     Unit,
+    Union,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
