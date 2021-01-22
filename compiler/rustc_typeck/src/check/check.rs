@@ -932,11 +932,11 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
     // Locate trait definition and items
     let trait_def = tcx.trait_def(impl_trait_ref.def_id);
 
-    let impl_items = || impl_item_refs.iter().map(|iiref| tcx.hir().impl_item(iiref.id));
+    let impl_items = impl_item_refs.iter().map(|iiref| tcx.hir().impl_item(iiref.id));
 
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
-    for impl_item in impl_items() {
+    for impl_item in impl_items {
         let namespace = impl_item.kind.namespace();
         let ty_impl_item = tcx.associated_item(tcx.hir().local_def_id(impl_item.hir_id));
         let ty_trait_item = tcx
