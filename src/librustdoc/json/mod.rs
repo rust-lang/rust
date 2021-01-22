@@ -206,6 +206,9 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let mut index = (*self.index).clone().into_inner();
         index.extend(self.get_trait_items());
         let len = index.len();
+        // This needs to be the default HashMap for compatibility with the public interface for
+        // rustdoc-json
+        #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(String::from("0:0")),
             crate_version: krate.version.clone(),
