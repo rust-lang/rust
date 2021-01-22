@@ -1,4 +1,5 @@
 mod append;
+mod bare_tree;
 mod borrow;
 mod dedup_sorted_iter;
 mod fix;

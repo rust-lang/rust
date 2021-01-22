@@ -9,6 +9,7 @@ use core::mem::{self, ManuallyDrop};
 use core::ops::{Index, RangeBounds};
 use core::ptr;
 
+use super::bare_tree::BareTree;
 use super::borrow::DormantMutRef;
 use super::dedup_sorted_iter::DedupSortedIter;
 use super::navigate::{LazyLeafRange, LeafRange};
@@ -171,43 +172,30 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
     fn clone(&self) -> BTreeMap<K, V> {
-        fn clone_subtree<'a, K: Clone, V: Clone>(
+        fn clone_subtree<'a, K: Clone + 'a, V: Clone + 'a>(
             node: NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>,
-        ) -> BTreeMap<K, V>
-        where
-            K: 'a,
-            V: 'a,
-        {
+        ) -> BareTree<K, V, marker::LeafOrInternal> {
             match node.force() {
                 Leaf(leaf) => {
-                    let mut out_tree = BTreeMap { root: Some(Root::new()), length: 0 };
-
+                    let mut out_tree = BareTree::new_leaf();
                     {
-                        let root = out_tree.root.as_mut().unwrap(); // unwrap succeeds because we just wrapped
-                        let mut out_node = match root.borrow_mut().force() {
-                            Leaf(leaf) => leaf,
-                            Internal(_) => unreachable!(),
-                        };
-
+                        let mut out_node = out_tree.borrow_mut();
                         let mut in_edge = leaf.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
                             let (k, v) = kv.into_kv();
                             in_edge = kv.right_edge();
 
                             out_node.push(k.clone(), v.clone());
-                            out_tree.length += 1;
                         }
                     }
-
-                    out_tree
+                    out_tree.forget_root_type()
                 }
                 Internal(internal) => {
-                    let mut out_tree = clone_subtree(internal.first_edge().descend());
-
+                    let mut in_edge = internal.first_edge();
+                    let first_child = clone_subtree(in_edge.descend());
+                    let mut out_tree = BareTree::new_internal(first_child.into_inner());
                     {
-                        let out_root = BTreeMap::ensure_is_owned(&mut out_tree.root);
-                        let mut out_node = out_root.push_internal_level();
-                        let mut in_edge = internal.first_edge();
+                        let mut out_node = out_tree.borrow_mut();
                         while let Ok(kv) = in_edge.right_kv() {
                             let (k, v) = kv.into_kv();
                             in_edge = kv.right_edge();
@@ -215,31 +203,16 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                             let k = (*k).clone();
                             let v = (*v).clone();
                             let subtree = clone_subtree(in_edge.descend());
-
-                            // We can't destructure subtree directly
-                            // because BTreeMap implements Drop
-                            let (subroot, sublength) = unsafe {
-                                let subtree = ManuallyDrop::new(subtree);
-                                let root = ptr::read(&subtree.root);
-                                let length = subtree.length;
-                                (root, length)
-                            };
-
-                            out_node.push(k, v, subroot.unwrap_or_else(Root::new));
-                            out_tree.length += 1 + sublength;
+                            out_node.push(k, v, subtree.into_inner());
                         }
                     }
-
-                    out_tree
+                    out_tree.forget_root_type()
                 }
             }
         }
 
-        if self.is_empty() {
-            BTreeMap::new()
-        } else {
-            clone_subtree(self.root.as_ref().unwrap().reborrow()) // unwrap succeeds because not empty
-        }
+        let cloned_root = self.root.as_ref().map(|r| clone_subtree(r.reborrow()).into_inner());
+        BTreeMap { root: cloned_root, length: self.length }
     }
 }
 

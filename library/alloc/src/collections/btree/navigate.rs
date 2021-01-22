@@ -441,7 +441,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///   `deallocating_next_back`.
     /// - The returned KV handle is only valid to access the key and value,
     ///   and only valid until the next call to a `deallocating_` method.
-    unsafe fn deallocating_next(
+    pub unsafe fn deallocating_next(
         self,
     ) -> Option<(Self, Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>)>
     {
