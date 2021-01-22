@@ -2975,3 +2975,18 @@ macro_rules! derive_has_tokens {
 derive_has_tokens! {
     Item, Expr, Ty, AttrItem, Visibility, Path, Block, Pat
 }
+
+macro_rules! derive_has_attrs_no_tokens {
+    ($($ty:path),*) => { $(
+        impl HasTokens for $ty {
+            fn finalize_tokens(&mut self, _tokens: LazyTokenStream) {}
+        }
+    )* }
+}
+
+// These ast nodes only support inert attributes, so they don't
+// store tokens (since nothing can observe them)
+derive_has_attrs_no_tokens! {
+    StructField, Arm,
+    Field, FieldPat, Variant, Param, GenericParam
+}

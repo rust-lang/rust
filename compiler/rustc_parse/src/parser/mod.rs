@@ -64,6 +64,24 @@ pub enum ForceCollect {
 pub enum TrailingToken {
     None,
     Semi,
+    /// If the trailing token is a comma, then capture it
+    /// Otherwise, ignore the trailing token
+    MaybeComma,
+}
+
+#[derive(Debug, Clone)]
+pub struct AttrWrapper {
+    attrs: Vec<ast::Attribute>,
+}
+
+impl AttrWrapper {
+    // FIXME: Delay span bug here?
+    fn take_for_recovery(self) -> Vec<ast::Attribute> {
+        self.attrs
+    }
+    fn is_empty(&self) -> bool {
+        self.attrs.is_empty()
+    }
 }
 
 /// Like `maybe_whole_expr`, but for things other than expressions.
@@ -1004,12 +1022,12 @@ impl<'a> Parser<'a> {
 
     fn parse_or_use_outer_attributes(
         &mut self,
-        already_parsed_attrs: Option<AttrVec>,
-    ) -> PResult<'a, AttrVec> {
+        already_parsed_attrs: Option<AttrWrapper>,
+    ) -> PResult<'a, AttrWrapper> {
         if let Some(attrs) = already_parsed_attrs {
             Ok(attrs)
         } else {
-            self.parse_outer_attributes().map(|a| a.into())
+            self.parse_outer_attributes()
         }
     }
 
@@ -1226,11 +1244,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn collect_tokens<R: HasTokens>(
+    pub fn collect_tokens_no_attrs<R: HasTokens>(
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, R> {
-        self.collect_tokens_trailing_token(|this| Ok((f(this)?, TrailingToken::None)))
+        // The only reason to call `collect_tokens_no_attrs` is if you want tokens, so use
+        // `ForceCollect::Yes`
+        self.collect_tokens_trailing_token(
+            AttrWrapper { attrs: Vec::new() },
+            ForceCollect::Yes,
+            |this, _attrs| Ok((f(this)?, TrailingToken::None)),
+        )
     }
 
     /// Records all tokens consumed by the provided callback,
@@ -1251,12 +1275,17 @@ impl<'a> Parser<'a> {
     /// a parsed AST item, which always has matching delimiters.
     pub fn collect_tokens_trailing_token<R: HasTokens>(
         &mut self,
-        f: impl FnOnce(&mut Self) -> PResult<'a, (R, TrailingToken)>,
+        attrs: AttrWrapper,
+        force_collect: ForceCollect,
+        f: impl FnOnce(&mut Self, Vec<ast::Attribute>) -> PResult<'a, (R, TrailingToken)>,
     ) -> PResult<'a, R> {
+        if matches!(force_collect, ForceCollect::No) && !attr::maybe_needs_tokens(&attrs.attrs) {
+            return Ok(f(self, attrs.attrs)?.0);
+        }
         let start_token = (self.token.clone(), self.token_spacing);
         let cursor_snapshot = self.token_cursor.clone();
 
-        let (mut ret, trailing_token) = f(self)?;
+        let (mut ret, trailing_token) = f(self, attrs.attrs)?;
 
         // Produces a `TokenStream` on-demand. Using `cursor_snapshot`
         // and `num_calls`, we can reconstruct the `TokenStream` seen
@@ -1305,6 +1334,11 @@ impl<'a> Parser<'a> {
             TrailingToken::Semi => {
                 assert_eq!(self.token.kind, token::Semi);
                 num_calls += 1;
+            }
+            TrailingToken::MaybeComma => {
+                if self.token.kind == token::Comma {
+                    num_calls += 1;
+                }
             }
         }
 
@@ -1408,17 +1442,4 @@ fn make_token_stream(
     final_buf.inner.extend(append_unglued_token);
     assert!(stack.is_empty(), "Stack should be empty: final_buf={:?} stack={:?}", final_buf, stack);
     TokenStream::new(final_buf.inner)
-}
-
-#[macro_export]
-macro_rules! maybe_collect_tokens {
-    ($self:ident, $force_collect:expr, $attrs:expr, $f:expr) => {
-        if matches!($force_collect, ForceCollect::Yes)
-            || $crate::parser::attr::maybe_needs_tokens($attrs)
-        {
-            $self.collect_tokens_trailing_token($f)
-        } else {
-            Ok($f($self)?.0)
-        }
-    };
 }
