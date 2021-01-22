@@ -1126,8 +1126,7 @@ pub fn is_self(slf: &Param<'_>) -> bool {
 
 pub fn is_self_ty(slf: &hir::Ty<'_>) -> bool {
     if_chain! {
-        if let TyKind::Path(ref qp) = slf.kind;
-        if let QPath::Resolved(None, ref path) = *qp;
+        if let TyKind::Path(QPath::Resolved(None, ref path)) = slf.kind;
         if let Res::SelfTy(..) = path.res;
         then {
             return true
