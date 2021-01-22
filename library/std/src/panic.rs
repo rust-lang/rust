@@ -314,6 +314,13 @@ impl<T> DerefMut for AssertUnwindSafe<T> {
     }
 }
 
+#[stable(feature = "catch_unwind", since = "1.49.0")]
+impl<T: Clone> Clone for AssertUnwindSafe<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<R, F: FnOnce() -> R> FnOnce<()> for AssertUnwindSafe<F> {
     type Output = R;
