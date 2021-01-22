@@ -123,7 +123,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                 self.eq_expr(lc, rc) && self.eq_expr(&**lt, &**rt) && both(le, re, |l, r| self.eq_expr(l, r))
             },
             (&ExprKind::Lit(ref l), &ExprKind::Lit(ref r)) => l.node == r.node,
-            (&ExprKind::Loop(ref lb, ref ll, ref lls), &ExprKind::Loop(ref rb, ref rl, ref rls)) => {
+            (&ExprKind::Loop(ref lb, ref ll, ref lls, _), &ExprKind::Loop(ref rb, ref rl, ref rls, _)) => {
                 lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.name == r.ident.name)
             },
             (&ExprKind::Match(ref le, ref la, ref ls), &ExprKind::Match(ref re, ref ra, ref rs)) => {
@@ -560,7 +560,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Lit(ref l) => {
                 l.node.hash(&mut self.s);
             },
-            ExprKind::Loop(ref b, ref i, _) => {
+            ExprKind::Loop(ref b, ref i, ..) => {
                 self.hash_block(b);
                 if let Some(i) = *i {
                     self.hash_name(i.ident.name);
