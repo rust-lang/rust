@@ -126,6 +126,7 @@
 #![feature(auto_traits)]
 #![feature(or_patterns)]
 #![feature(prelude_import)]
+#![feature(raw_ref_macros)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]
