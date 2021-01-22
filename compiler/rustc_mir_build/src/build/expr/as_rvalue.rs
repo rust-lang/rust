@@ -115,15 +115,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
-                // Initialize the box contents. No scope is needed since the
-                // `Box` is already scheduled to be dropped.
+                // initialize the box contents:
                 unpack!(
-                    block = this.into(
-                        this.hir.tcx().mk_place_deref(Place::from(result)),
-                        None,
-                        block,
-                        value,
-                    )
+                    block =
+                        this.into(this.hir.tcx().mk_place_deref(Place::from(result)), block, value)
                 );
                 let result_operand = Operand::Move(Place::from(result));
                 this.record_operands_moved(slice::from_ref(&result_operand));
