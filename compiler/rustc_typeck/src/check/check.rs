@@ -921,14 +921,13 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
 
     // Locate trait definition and items
     let trait_def = tcx.trait_def(impl_trait_ref.def_id);
-
     let impl_items = impl_item_refs.iter().map(|iiref| tcx.hir().impl_item(iiref.id));
+    let associated_items = tcx.associated_items(impl_trait_ref.def_id);
 
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
         let ty_impl_item = tcx.associated_item(tcx.hir().local_def_id(impl_item.hir_id));
-        let associated_items = tcx.associated_items(impl_trait_ref.def_id);
 
         let mut items = associated_items.filter_by_name(tcx, ty_impl_item.ident, impl_trait_ref.def_id);
 
@@ -1010,7 +1009,7 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
 
     if let Ok(ancestors) = trait_def.ancestors(tcx, impl_id.to_def_id()) {
         let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
-        
+
         // Check for missing items from trait
         let mut missing_items = Vec::new();
         for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
