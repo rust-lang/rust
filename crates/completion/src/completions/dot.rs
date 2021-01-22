@@ -83,7 +83,7 @@ fn foo(s: S) { s.$0 }
 "#,
             expect![[r#"
                 fd foo   u32
-                me bar() fn bar(&self)
+                me bar() -> ()
             "#]],
         );
     }
@@ -99,7 +99,7 @@ impl S {
 "#,
             expect![[r#"
                 fd the_field (u32,)
-                me foo()     fn foo(self)
+                me foo()     -> ()
             "#]],
         )
     }
@@ -115,7 +115,7 @@ impl A {
 "#,
             expect![[r#"
                 fd the_field (u32, i32)
-                me foo()     fn foo(&self)
+                me foo()     -> ()
             "#]],
         )
     }
@@ -165,7 +165,7 @@ mod m {
 fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
-                me the_method() pub(crate) fn the_method(&self)
+                me the_method() -> ()
             "#]],
         );
     }
@@ -198,7 +198,7 @@ impl A<i32> {
 fn foo(a: A<u32>) { a.$0 }
 "#,
             expect![[r#"
-                me the_method() fn the_method(&self)
+                me the_method() -> ()
             "#]],
         )
     }
@@ -213,7 +213,7 @@ impl Trait for A {}
 fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
-                me the_method() fn the_method(&self)
+                me the_method() -> ()
             "#]],
         );
     }
@@ -228,7 +228,7 @@ impl<T> Trait for T {}
 fn foo(a: &A) { a.$0 }
 ",
             expect![[r#"
-                me the_method() fn the_method(&self)
+                me the_method() -> ()
             "#]],
         );
     }
@@ -246,7 +246,7 @@ impl Trait for A {}
 fn foo(a: A) { a.$0 }
 ",
             expect![[r#"
-                me the_method() fn the_method(&self)
+                me the_method() -> ()
             "#]],
         );
     }
@@ -300,7 +300,7 @@ impl T {
 }
 "#,
             expect![[r#"
-                me blah() pub fn blah(&self)
+                me blah() -> ()
             "#]],
         );
     }
@@ -409,7 +409,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                me the_method() pub fn the_method(&self)
+                me the_method() -> ()
             "#]],
         );
     }
@@ -424,7 +424,7 @@ macro_rules! make_s { () => { S }; }
 fn main() { make_s!().f$0; }
 "#,
             expect![[r#"
-                me foo() fn foo(&self)
+                me foo() -> ()
             "#]],
         )
     }

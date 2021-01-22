@@ -1,8 +1,8 @@
 //! Renderer for function calls.
 
-use hir::{HasSource, Type};
+use hir::{HasSource, HirDisplay, Type};
 use ide_db::SymbolKind;
-use syntax::{ast::Fn, display::function_declaration};
+use syntax::ast::Fn;
 use test_utils::mark;
 
 use crate::{
@@ -55,7 +55,8 @@ impl<'a> FunctionRender<'a> {
     }
 
     fn detail(&self) -> String {
-        function_declaration(&self.ast_node)
+        let ty = self.func.ret_type(self.ctx.db());
+        format!("-> {}", ty.display(self.ctx.db()))
     }
 
     fn add_arg(&self, arg: &str, ty: &Type) -> String {

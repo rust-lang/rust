@@ -76,7 +76,12 @@ fn setup_logging(log_file: Option<PathBuf>) -> Result<()> {
     profile::init();
 
     if !cfg!(debug_assertions) {
-        stdx::set_assert_hook(|loc, args| log::error!("assertion failed at {}: {}", loc, args));
+        stdx::set_assert_hook(|loc, args| {
+            if env::var("RA_PROFILE").is_ok() {
+                panic!("assertion failed at {}: {}", loc, args)
+            }
+            log::error!("assertion failed at {}: {}", loc, args)
+        });
     }
 
     Ok(())

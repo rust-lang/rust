@@ -366,8 +366,8 @@ fn main() {
         check(
             fixture,
             expect![[r#"
-            fn weird_function() (dep::test_mod::TestTrait) fn weird_function()
-        "#]],
+                fn weird_function() (dep::test_mod::TestTrait) -> ()
+            "#]],
         );
 
         check_edit(
@@ -459,8 +459,8 @@ fn main() {
         check(
             fixture,
             expect![[r#"
-            me random_method() (dep::test_mod::TestTrait) fn random_method(&self)
-        "#]],
+                me random_method() (dep::test_mod::TestTrait) -> ()
+            "#]],
         );
 
         check_edit(
@@ -629,8 +629,8 @@ fn main() {
 }
         "#,
             expect![[r#"
-                        me random_method() (dep::test_mod::TestTrait) fn random_method(&self) DEPRECATED
-                "#]],
+                me random_method() (dep::test_mod::TestTrait) -> () DEPRECATED
+            "#]],
         );
 
         check(
@@ -660,8 +660,8 @@ fn main() {
 "#,
             expect![[r#"
                 ct SPECIAL_CONST (dep::test_mod::TestTrait) DEPRECATED
-                fn weird_function() (dep::test_mod::TestTrait) fn weird_function() DEPRECATED
-        "#]],
+                fn weird_function() (dep::test_mod::TestTrait) -> () DEPRECATED
+            "#]],
         );
     }
 }
