@@ -846,15 +846,13 @@ pub(super) fn check_specialization_validity<'tcx>(
         Ok(ancestors) => ancestors,
         Err(_) => return,
     };
-    let mut ancestor_impls = ancestors
-        .skip(1)
-        .filter_map(|parent| {
-            if parent.is_from_trait() {
-                None
-            } else {
-                Some((parent, parent.item(tcx, trait_item.ident, kind, trait_def.def_id)))
-            }
-        });
+    let mut ancestor_impls = ancestors.skip(1).filter_map(|parent| {
+        if parent.is_from_trait() {
+            None
+        } else {
+            Some((parent, parent.item(tcx, trait_item.ident, kind, trait_def.def_id)))
+        }
+    });
 
     let opt_result = ancestor_impls.find_map(|(parent_impl, parent_item)| {
         match parent_item {
@@ -931,105 +929,72 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
-        let namespace = impl_item.kind.namespace();
         let ty_impl_item = tcx.associated_item(tcx.hir().local_def_id(impl_item.hir_id));
-        let ty_trait_item = tcx
-            .associated_items(impl_trait_ref.def_id)
-            .find_by_name_and_namespace(tcx, ty_impl_item.ident, namespace, impl_trait_ref.def_id)
-            .or_else(|| {
-                // Not compatible, but needed for the error message
-                tcx.associated_items(impl_trait_ref.def_id)
-                    .filter_by_name(tcx, ty_impl_item.ident, impl_trait_ref.def_id)
-                    .next()
-            });
+        let associated_items = tcx.associated_items(impl_trait_ref.def_id);
 
-        // Check that impl definition matches trait definition
-        if let Some(ty_trait_item) = ty_trait_item {
+        let mut items = associated_items.filter_by_name(tcx, ty_impl_item.ident, impl_trait_ref.def_id);
+
+        let (compatible_kind, ty_trait_item) = if let Some(ty_trait_item) = items.next() {
+
+            let is_compatible = |ty: &&ty::AssocItem| {
+                match (ty.kind, &impl_item.kind) {
+                    (ty::AssocKind::Const, hir::ImplItemKind::Const(..)) => true,
+                    (ty::AssocKind::Fn, hir::ImplItemKind::Fn(..)) => true,
+                    (ty::AssocKind::Type, hir::ImplItemKind::TyAlias(..)) => true,
+                    _ => false
+                }
+            };
+
+            // If we don't have a compatible item, we'll use the first one whose name matches
+            // to report an error.
+            let mut compatible_kind = is_compatible(&ty_trait_item);
+            let mut trait_item = ty_trait_item;
+
+            if  !compatible_kind {
+                if let Some(ty_trait_item) = items.find(is_compatible) {
+                    compatible_kind = true;
+                    trait_item = ty_trait_item;
+                }
+            }
+
+            (compatible_kind, trait_item)
+        } else {
+            continue;
+        };
+
+        if compatible_kind {
             match impl_item.kind {
                 hir::ImplItemKind::Const(..) => {
                     // Find associated const definition.
-                    if ty_trait_item.kind == ty::AssocKind::Const {
-                        compare_const_impl(
-                            tcx,
-                            &ty_impl_item,
-                            impl_item.span,
-                            &ty_trait_item,
-                            impl_trait_ref,
-                        );
-                    } else {
-                        let mut err = struct_span_err!(
-                            tcx.sess,
-                            impl_item.span,
-                            E0323,
-                            "item `{}` is an associated const, \
-                             which doesn't match its trait `{}`",
-                            ty_impl_item.ident,
-                            impl_trait_ref.print_only_trait_path()
-                        );
-                        err.span_label(impl_item.span, "does not match trait");
-                        // We can only get the spans from local trait definition
-                        // Same for E0324 and E0325
-                        if let Some(trait_span) = tcx.hir().span_if_local(ty_trait_item.def_id) {
-                            err.span_label(trait_span, "item in trait");
-                        }
-                        err.emit()
-                    }
+                    compare_const_impl(
+                        tcx,
+                        &ty_impl_item,
+                        impl_item.span,
+                        &ty_trait_item,
+                        impl_trait_ref,
+                    );
                 }
                 hir::ImplItemKind::Fn(..) => {
                     let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                    if ty_trait_item.kind == ty::AssocKind::Fn {
-                        compare_impl_method(
-                            tcx,
-                            &ty_impl_item,
-                            impl_item.span,
-                            &ty_trait_item,
-                            impl_trait_ref,
-                            opt_trait_span,
-                        );
-                    } else {
-                        let mut err = struct_span_err!(
-                            tcx.sess,
-                            impl_item.span,
-                            E0324,
-                            "item `{}` is an associated method, \
-                             which doesn't match its trait `{}`",
-                            ty_impl_item.ident,
-                            impl_trait_ref.print_only_trait_path()
-                        );
-                        err.span_label(impl_item.span, "does not match trait");
-                        if let Some(trait_span) = opt_trait_span {
-                            err.span_label(trait_span, "item in trait");
-                        }
-                        err.emit()
-                    }
+                    compare_impl_method(
+                        tcx,
+                        &ty_impl_item,
+                        impl_item.span,
+                        &ty_trait_item,
+                        impl_trait_ref,
+                        opt_trait_span,
+                    );
                 }
                 hir::ImplItemKind::TyAlias(_) => {
                     let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                    if ty_trait_item.kind == ty::AssocKind::Type {
-                        compare_ty_impl(
-                            tcx,
-                            &ty_impl_item,
-                            impl_item.span,
-                            &ty_trait_item,
-                            impl_trait_ref,
-                            opt_trait_span,
-                        );
-                    } else {
-                        let mut err = struct_span_err!(
-                            tcx.sess,
-                            impl_item.span,
-                            E0325,
-                            "item `{}` is an associated type, \
-                             which doesn't match its trait `{}`",
-                            ty_impl_item.ident,
-                            impl_trait_ref.print_only_trait_path()
-                        );
-                        err.span_label(impl_item.span, "does not match trait");
-                        if let Some(trait_span) = opt_trait_span {
-                            err.span_label(trait_span, "item in trait");
-                        }
-                        err.emit()
-                    }
+                    compare_ty_impl(
+                        tcx,
+                        &ty_impl_item,
+                        impl_item.span,
+                        &ty_trait_item,
+                        impl_trait_ref,
+                        opt_trait_span,
+                    );
                 }
             }
 
@@ -1040,6 +1005,8 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
                 impl_id.to_def_id(),
                 impl_item,
             );
+        } else {
+            report_mismatch_error(tcx, ty_trait_item.def_id, impl_trait_ref, impl_item, &ty_impl_item);
         }
     }
 
@@ -1063,6 +1030,58 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
             missing_items_err(tcx, impl_span, &missing_items, full_impl_span);
         }
     }
+}
+
+#[inline(never)]
+#[cold]
+fn report_mismatch_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_item_def_id: DefId,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+    impl_item: &hir::ImplItem<'_>,
+    ty_impl_item: &ty::AssocItem,
+) {
+    let mut err = match impl_item.kind {
+        hir::ImplItemKind::Const(..) => {
+            // Find associated const definition.
+            struct_span_err!(
+                tcx.sess,
+                impl_item.span,
+                E0323,
+                "item `{}` is an associated const, which doesn't match its trait `{}`",
+                ty_impl_item.ident,
+                impl_trait_ref.print_only_trait_path()
+            )
+        }
+
+        hir::ImplItemKind::Fn(..) => {
+            struct_span_err!(
+                tcx.sess,
+                impl_item.span,
+                E0324,
+                "item `{}` is an associated method, which doesn't match its trait `{}`",
+                ty_impl_item.ident,
+                impl_trait_ref.print_only_trait_path()
+            )
+        }
+
+        hir::ImplItemKind::TyAlias(_) => {
+            struct_span_err!(
+                tcx.sess,
+                impl_item.span,
+                E0325,
+                "item `{}` is an associated type, which doesn't match its trait `{}`",
+                ty_impl_item.ident,
+                impl_trait_ref.print_only_trait_path()
+            )
+        }
+    };
+
+    err.span_label(impl_item.span, "does not match trait");
+    if let Some(trait_span) = tcx.hir().span_if_local(trait_item_def_id) {
+        err.span_label(trait_span, "item in trait");
+    }
+    err.emit();
 }
 
 /// Checks whether a type can be represented in memory. In particular, it
