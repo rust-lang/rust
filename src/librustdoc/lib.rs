@@ -568,7 +568,7 @@ fn main_options(options: config::Options) -> MainResult {
                 info!("going to format");
                 let (error_format, edition, debugging_options) = diag_opts;
                 let diag = core::new_handler(error_format, None, &debugging_options);
-                match output_format {
+                let main_result = match output_format {
                     None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
                         run_renderer::<html::render::Context<'_>>(
                             krate,
@@ -589,7 +589,10 @@ fn main_options(options: config::Options) -> MainResult {
                             tcx,
                         )
                     }),
-                }
+                };
+                // NOTE: this is normally called in codegen, but rustdoc never goes to codegen.
+                tcx.alloc_self_profile_query_strings();
+                main_result
             })
         })
     })
