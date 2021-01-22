@@ -505,6 +505,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "clippy::panic_params",
         "this lint has been uplifted to rustc and is now called `panic_fmt`",
     );
+    store.register_removed(
+        "clippy::find_map",
+        "this lint is replaced by `manual_find_map`, a more specific lint",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
@@ -732,7 +736,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &methods::FILTER_MAP,
         &methods::FILTER_MAP_NEXT,
         &methods::FILTER_NEXT,
-        &methods::FIND_MAP,
         &methods::FLAT_MAP_IDENTITY,
         &methods::FROM_ITER_INSTEAD_OF_COLLECT,
         &methods::GET_UNWRAP,
@@ -745,6 +748,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &methods::ITER_NTH,
         &methods::ITER_NTH_ZERO,
         &methods::ITER_SKIP_NEXT,
+        &methods::MANUAL_FILTER_MAP,
+        &methods::MANUAL_FIND_MAP,
         &methods::MANUAL_SATURATING_ARITHMETIC,
         &methods::MAP_COLLECT_RESULT_UNIT,
         &methods::MAP_FLATTEN,
@@ -1331,7 +1336,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&matches::SINGLE_MATCH_ELSE),
         LintId::of(&methods::FILTER_MAP),
         LintId::of(&methods::FILTER_MAP_NEXT),
-        LintId::of(&methods::FIND_MAP),
         LintId::of(&methods::INEFFICIENT_TO_STRING),
         LintId::of(&methods::MAP_FLATTEN),
         LintId::of(&methods::MAP_UNWRAP_OR),
@@ -1526,6 +1530,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::ITER_NTH),
         LintId::of(&methods::ITER_NTH_ZERO),
         LintId::of(&methods::ITER_SKIP_NEXT),
+        LintId::of(&methods::MANUAL_FILTER_MAP),
+        LintId::of(&methods::MANUAL_FIND_MAP),
         LintId::of(&methods::MANUAL_SATURATING_ARITHMETIC),
         LintId::of(&methods::MAP_COLLECT_RESULT_UNIT),
         LintId::of(&methods::NEW_RET_NO_SELF),
@@ -1823,6 +1829,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::FILTER_NEXT),
         LintId::of(&methods::FLAT_MAP_IDENTITY),
         LintId::of(&methods::INSPECT_FOR_EACH),
+        LintId::of(&methods::MANUAL_FILTER_MAP),
+        LintId::of(&methods::MANUAL_FIND_MAP),
         LintId::of(&methods::OPTION_AS_REF_DEREF),
         LintId::of(&methods::SEARCH_IS_SOME),
         LintId::of(&methods::SKIP_WHILE_NEXT),

@@ -166,3 +166,8 @@ declare_deprecated_lint! {
     pub PANIC_PARAMS,
     "this lint has been uplifted to rustc and is now called `panic_fmt`"
 }
+
+declare_deprecated_lint! {
+    pub FIND_MAP,
+    "this lint is replaced by `manual_find_map`, a more specific lint"
+}
