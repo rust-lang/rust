@@ -314,7 +314,7 @@ impl<T> DerefMut for AssertUnwindSafe<T> {
     }
 }
 
-#[stable(feature = "catch_unwind", since = "1.49.0")]
+#[stable(feature = "assert_unwind_safe_clone", since = "1.51.0")]
 impl<T: Clone> Clone for AssertUnwindSafe<T> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
