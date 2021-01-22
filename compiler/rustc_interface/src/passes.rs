@@ -33,7 +33,7 @@ use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{FileName, RealFileName};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
@@ -211,8 +211,13 @@ pub fn register_plugins<'a>(
     Ok((krate, lint_store))
 }
 
-fn pre_expansion_lint(sess: &Session, lint_store: &LintStore, krate: &ast::Crate) {
-    sess.time("pre_AST_expansion_lint_checks", || {
+fn pre_expansion_lint(
+    sess: &Session,
+    lint_store: &LintStore,
+    krate: &ast::Crate,
+    crate_name: &str,
+) {
+    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", crate_name).run(|| {
         rustc_lint::check_ast_crate(
             sess,
             lint_store,
@@ -233,7 +238,7 @@ fn configure_and_expand_inner<'a>(
     metadata_loader: &'a MetadataLoaderDyn,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     tracing::trace!("configure_and_expand_inner");
-    pre_expansion_lint(sess, lint_store, &krate);
+    pre_expansion_lint(sess, lint_store, &krate, crate_name);
 
     let mut resolver = Resolver::new(sess, &krate, crate_name, metadata_loader, &resolver_arenas);
     rustc_builtin_macros::register_builtin_macros(&mut resolver);
@@ -295,7 +300,9 @@ fn configure_and_expand_inner<'a>(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
-        let extern_mod_loaded = |k: &ast::Crate| pre_expansion_lint(sess, lint_store, k);
+        let extern_mod_loaded = |k: &ast::Crate, ident: Ident| {
+            pre_expansion_lint(sess, lint_store, k, &*ident.name.as_str())
+        };
         let mut ecx = ExtCtxt::new(&sess, cfg, &mut resolver, Some(&extern_mod_loaded));
 
         // Expand macros now!
