@@ -12,6 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_parse::maybe_new_parser_from_source_str;
+use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::edition::Edition;
@@ -483,7 +484,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
 
                 let mut relevant_main_found = false;
                 loop {
-                    match parser.parse_item() {
+                    match parser.parse_item(ForceCollect::No) {
                         Ok(Some(item)) => match &item.kind {
                             // Tests with one of these items are ignored
                             ItemKind::Static(..)

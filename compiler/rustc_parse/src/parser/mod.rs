@@ -54,6 +54,13 @@ enum BlockMode {
     Ignore,
 }
 
+/// Whether or not we should force collection of tokens for an AST node,
+/// regardless of whether or not it has attributes
+pub enum ForceCollect {
+    Yes,
+    No,
+}
+
 /// Like `maybe_whole_expr`, but for things other than expressions.
 #[macro_export]
 macro_rules! maybe_whole {
@@ -1412,4 +1419,17 @@ fn make_token_stream(
     final_buf.inner.extend(append_unglued_token);
     assert!(stack.is_empty(), "Stack should be empty: final_buf={:?} stack={:?}", final_buf, stack);
     TokenStream::new(final_buf.inner)
+}
+
+#[macro_export]
+macro_rules! maybe_collect_tokens {
+    ($self:ident, $force_collect:expr, $attrs:expr, $f:expr) => {
+        if matches!($force_collect, ForceCollect::Yes)
+            || $crate::parser::attr::maybe_needs_tokens($attrs)
+        {
+            $self.collect_tokens($f)
+        } else {
+            $f($self)
+        }
+    };
 }

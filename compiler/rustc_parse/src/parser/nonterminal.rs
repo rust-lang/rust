@@ -5,7 +5,7 @@ use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
 
 use crate::parser::pat::{GateOr, RecoverComma};
-use crate::parser::{FollowedByType, Parser, PathStyle};
+use crate::parser::{FollowedByType, ForceCollect, Parser, PathStyle};
 
 impl<'a> Parser<'a> {
     /// Checks whether a non-terminal may begin with a particular token.
@@ -98,7 +98,7 @@ impl<'a> Parser<'a> {
         // in advance whether or not a proc-macro will be (transitively) invoked,
         // we always capture tokens for any `Nonterminal` which needs them.
         Ok(match kind {
-            NonterminalKind::Item => match self.collect_tokens(|this| this.parse_item())? {
+            NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
                 Some(item) => token::NtItem(item),
                 None => {
                     return Err(self.struct_span_err(self.token.span, "expected an item keyword"));
@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Block => {
                 token::NtBlock(self.collect_tokens(|this| this.parse_block())?)
             }
-            NonterminalKind::Stmt => match self.collect_tokens(|this| this.parse_stmt())? {
+            NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
                 Some(s) => token::NtStmt(s),
                 None => {
                     return Err(self.struct_span_err(self.token.span, "expected a statement"));
