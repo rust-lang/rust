@@ -120,7 +120,7 @@ pub enum Rule {
     Alt(Vec<Rule>),
     /// An optional rule, like `A?`.
     Opt(Box<Rule>),
-    /// An repeated rule, like `A*`.
+    /// A repeated rule, like `A*`.
     Rep(Box<Rule>),
 }
 
