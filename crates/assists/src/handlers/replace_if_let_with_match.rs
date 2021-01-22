@@ -5,12 +5,15 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make, Pat,
+        make,
     },
     AstNode,
 };
 
-use crate::{utils::unwrap_trivial_block, AssistContext, AssistId, AssistKind, Assists};
+use crate::{
+    utils::{does_pat_match_variant, unwrap_trivial_block},
+    AssistContext, AssistId, AssistKind, Assists,
+};
 
 // Assist: replace_if_let_with_match
 //
@@ -85,26 +88,6 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
             edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr);
         },
     )
-}
-
-fn does_pat_match_variant(pat: &Pat, var: &Pat) -> bool {
-    let first_node_text = |pat: &Pat| pat.syntax().first_child().map(|node| node.text());
-
-    let pat_head = match pat {
-        Pat::IdentPat(bind_pat) => {
-            if let Some(p) = bind_pat.pat() {
-                first_node_text(&p)
-            } else {
-                return pat.syntax().text() == var.syntax().text();
-            }
-        }
-        pat => first_node_text(pat),
-    };
-
-    let var_head = first_node_text(var);
-    println!("{:?} {:?}", pat_head, var_head);
-
-    pat_head == var_head
 }
 
 // Assist: replace_match_with_if_let

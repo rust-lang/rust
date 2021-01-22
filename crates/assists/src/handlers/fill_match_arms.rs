@@ -8,7 +8,7 @@ use syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
 use test_utils::mark;
 
 use crate::{
-    utils::{render_snippet, Cursor},
+    utils::{does_pat_match_variant, render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -145,25 +145,6 @@ fn is_variant_missing(existing_arms: &mut Vec<MatchArm>, var: &Pat) -> bool {
 
         !top_level_pats.iter().any(|pat| does_pat_match_variant(pat, var))
     })
-}
-
-fn does_pat_match_variant(pat: &Pat, var: &Pat) -> bool {
-    let first_node_text = |pat: &Pat| pat.syntax().first_child().map(|node| node.text());
-
-    let pat_head = match pat {
-        Pat::IdentPat(bind_pat) => {
-            if let Some(p) = bind_pat.pat() {
-                first_node_text(&p)
-            } else {
-                return false;
-            }
-        }
-        pat => first_node_text(pat),
-    };
-
-    let var_head = first_node_text(var);
-
-    pat_head == var_head
 }
 
 fn resolve_enum_def(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<hir::Enum> {
