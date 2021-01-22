@@ -6,6 +6,11 @@
 //! See this
 //! [introductory post](https://rust-analyzer.github.io/blog/2020/10/24/introducing-ungrammar.html)
 //! for details.
+
+#![deny(missing_debug_implementations)]
+#![deny(missing_docs)]
+#![deny(rust_2018_idioms)]
+
 mod error;
 mod lexer;
 mod parser;
@@ -14,16 +19,27 @@ use std::{ops, str::FromStr};
 
 pub use error::{Error, Result};
 
+/// Returns a Rust grammar.
 pub fn rust_grammar() -> Grammar {
     let src = include_str!("../rust.ungram");
     src.parse().unwrap()
 }
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+/// A node, like `A = 'b' | 'c'`.
+///
+/// Indexing into a [`Grammar`] with a [`Node`] returns a reference to a
+/// [`NodeData`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Node(usize);
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+
+/// A token, denoted with single quotes, like `'+'` or `'struct'`.
+///
+/// Indexing into a [`Grammar`] with a [`Token`] returns a reference to a
+/// [`TokenData`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Token(usize);
 
+/// An Ungrammar grammar.
 #[derive(Default, Debug)]
 pub struct Grammar {
     nodes: Vec<NodeData>,
@@ -39,8 +55,14 @@ impl FromStr for Grammar {
 }
 
 impl Grammar {
+    /// Returns an iterator over all nodes in the grammar.
     pub fn iter(&self) -> impl Iterator<Item = Node> + '_ {
         (0..self.nodes.len()).map(Node)
+    }
+
+    /// Returns an iterator over all tokens in the grammar.
+    pub fn tokens(&self) -> impl Iterator<Item = Token> + '_ {
+        (0..self.tokens.len()).map(Token)
     }
 }
 
@@ -58,25 +80,47 @@ impl ops::Index<Token> for Grammar {
     }
 }
 
+/// Data about a node.
 #[derive(Debug)]
 pub struct NodeData {
+    /// The name of the node.
+    ///
+    /// In the rule `A = 'b' | 'c'`, this is `"A"`.
     pub name: String,
+    /// The rule for this node.
+    ///
+    /// In the rule `A = 'b' | 'c'`, this represents `'b' | 'c'`.
     pub rule: Rule,
 }
 
+/// Data about a token.
 #[derive(Debug)]
 pub struct TokenData {
+    /// The name of the token.
     pub name: String,
 }
 
+/// A production rule.
 #[derive(Debug, Eq, PartialEq)]
 pub enum Rule {
-    Labeled { label: String, rule: Box<Rule> },
+    /// A labeled rule, like `a:B` (`"a"` is the label, `B` is the rule).
+    Labeled {
+        /// The label.
+        label: String,
+        /// The rule.
+        rule: Box<Rule>,
+    },
+    /// A node, like `A`.
     Node(Node),
+    /// A token, like `'struct'`.
     Token(Token),
+    /// A sequence of rules, like `'while' '(' Expr ')' Stmt`.
     Seq(Vec<Rule>),
+    /// An alternative between many rules, like `'+' | '-' | '*' | '/'`.
     Alt(Vec<Rule>),
+    /// An optional rule, like `A?`.
     Opt(Box<Rule>),
+    /// A repeated rule, like `A*`.
     Rep(Box<Rule>),
 }
 
