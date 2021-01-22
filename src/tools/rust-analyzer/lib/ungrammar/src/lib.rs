@@ -19,9 +19,9 @@ pub fn rust_grammar() -> Grammar {
     src.parse().unwrap()
 }
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Hash, PartialOrd, Ord)]
 pub struct Node(usize);
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Hash, PartialOrd, Ord)]
 pub struct Token(usize);
 
 #[derive(Default, Debug)]
