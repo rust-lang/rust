@@ -16,6 +16,7 @@ pub mod tls;
 use log::trace;
 
 use rustc_middle::{mir, ty};
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use helpers::check_arg_count;
@@ -25,6 +26,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn find_mir_or_eval_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
+        abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
@@ -48,7 +50,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
             // foreign function
             // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
-            return this.emulate_foreign_item(instance.def_id(), args, ret, unwind);
+            return this.emulate_foreign_item(instance.def_id(), abi, args, ret, unwind);
         }
 
         // Otherwise, load the MIR.
