@@ -894,8 +894,6 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
     impl_trait_ref: ty::TraitRef<'tcx>,
     impl_item_refs: &[hir::ImplItemRef<'_>],
 ) {
-    let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
-
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
     // isn't populated for such impls.
@@ -1011,6 +1009,8 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
     }
 
     if let Ok(ancestors) = trait_def.ancestors(tcx, impl_id.to_def_id()) {
+        let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
+        
         // Check for missing items from trait
         let mut missing_items = Vec::new();
         for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
