@@ -2,6 +2,7 @@
 use hir_def::{
     attr::{Attrs, Documentation},
     path::ModPath,
+    per_ns::PerNs,
     resolver::HasResolver,
     AttrDefId, GenericParamId, ModuleDefId,
 };
@@ -112,6 +113,11 @@ fn resolve_doc_path(
     let path = ast::Path::parse(link).ok()?;
     let modpath = ModPath::from_src(path, &Hygiene::new_unhygienic()).unwrap();
     let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
+    if resolved == PerNs::none() {
+        if let Some(trait_id) = resolver.resolve_module_path_in_trait_items(db.upcast(), &modpath) {
+            return Some(ModuleDefId::TraitId(trait_id));
+        };
+    }
     let def = match ns {
         Some(Namespace::Types) => resolved.take_types()?,
         Some(Namespace::Values) => resolved.take_values()?,
