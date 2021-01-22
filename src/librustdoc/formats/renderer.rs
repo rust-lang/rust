@@ -1,4 +1,4 @@
-use rustc_middle::ty;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::edition::Edition;
 
 use crate::clean;
@@ -21,7 +21,7 @@ crate trait FormatRenderer<'tcx>: Clone {
         render_info: RenderInfo,
         edition: Edition,
         cache: Cache,
-        tcx: ty::TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error>;
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
@@ -68,9 +68,6 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     let (mut format_renderer, mut krate) = prof
         .extra_verbose_generic_activity("create_renderer", T::descr())
         .run(|| T::init(krate, options, render_info, edition, cache, tcx))?;
-
-    let (mut format_renderer, mut krate) =
-        T::init(krate, options, render_info, edition, cache, tcx)?;
 
     let mut item = match krate.module.take() {
         Some(i) => i,

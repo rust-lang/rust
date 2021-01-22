@@ -394,7 +394,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         _render_info: RenderInfo,
         edition: Edition,
         mut cache: Cache,
-        tcx: ty::TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();

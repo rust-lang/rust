@@ -136,7 +136,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         _render_info: RenderInfo,
         _edition: Edition,
         cache: Cache,
-        tcx: ty::TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
         Ok((
