@@ -1,3 +1,20 @@
+//! Note
+//! ----
+//! You're probably viewing this file because you're adding a test (or you might
+//! just be browsing, in that case, hey there!).
+//!
+//! The iter test suite is split into two big modules, and some miscellaneous
+//! smaller modules. The two big modules are `adapters` and `traits`.
+//!
+//! `adapters` are for methods on `Iterator` that adapt the data inside the
+//! iterator, whether it be by emitting another iterator or returning an item
+//! from inside the iterator after executing a closure on each item.
+//!
+//! `traits` are for trait's that extend an `Iterator` (and the `Iterator`
+//! trait itself, mostly containing miscellaneous methods). For the most part,
+//! if a test in `traits` uses a specific adapter, then it should be moved to
+//! that adapter's test file in `adapters`.
+
 mod adapters;
 mod range;
 mod sources;

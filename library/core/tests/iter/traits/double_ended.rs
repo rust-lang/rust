@@ -1,3 +1,16 @@
+//! Note
+//! ----
+//! You're probably viewing this file because you're adding a test (or you might
+//! just be browsing, in that case, hey there!).
+//!
+//! If you've made a test that happens to use one of DoubleEnded's methods, but
+//! it tests another adapter or trait, you should *add it to the adapter or
+//! trait's test file*.
+//!
+//! Some examples would be `adapters::cloned::test_cloned_try_folds` or
+//! `adapters::flat_map::test_double_ended_flat_map`, which use `try_fold` and
+//! `next_back`, but test their own adapter.
+
 #[test]
 fn test_iterator_rev_nth_back() {
     let v: &[_] = &[0, 1, 2, 3, 4];
