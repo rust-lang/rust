@@ -1,11 +1,12 @@
 //! Renderer for macro invocations.
 
 use hir::{Documentation, HasSource};
+use ide_db::SymbolKind;
 use syntax::display::macro_label;
 use test_utils::mark;
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportEdit},
+    item::{CompletionItem, CompletionKind, ImportEdit},
     render::RenderContext,
 };
 
@@ -41,7 +42,7 @@ impl<'a> MacroRender<'a> {
     fn render(&self, import_to_add: Option<ImportEdit>) -> Option<CompletionItem> {
         let mut builder =
             CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), &self.label())
-                .kind(CompletionItemKind::Macro)
+                .kind(SymbolKind::Macro)
                 .set_documentation(self.docs.clone())
                 .set_deprecated(self.ctx.is_deprecated(self.macro_))
                 .add_import(import_to_add)

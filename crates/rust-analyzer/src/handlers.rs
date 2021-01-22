@@ -10,8 +10,9 @@ use std::{
 
 use ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, LineIndex, NavigationTarget,
-    Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, SymbolKind, TextEdit,
+    Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, TextEdit,
 };
+use ide_db::SymbolKind;
 use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{

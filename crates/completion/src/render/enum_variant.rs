@@ -1,11 +1,12 @@
 //! Renderer for `enum` variants.
 
 use hir::{HasAttrs, HirDisplay, ModPath, StructKind};
+use ide_db::SymbolKind;
 use itertools::Itertools;
 use test_utils::mark;
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportEdit},
+    item::{CompletionItem, CompletionKind, ImportEdit},
     render::{builder_ext::Params, RenderContext},
 };
 
@@ -60,7 +61,7 @@ impl<'a> EnumRender<'a> {
             self.ctx.source_range(),
             self.qualified_name.clone(),
         )
-        .kind(CompletionItemKind::EnumVariant)
+        .kind(SymbolKind::Variant)
         .set_documentation(self.variant.docs(self.ctx.db()))
         .set_deprecated(self.ctx.is_deprecated(self.variant))
         .add_import(import_to_add)

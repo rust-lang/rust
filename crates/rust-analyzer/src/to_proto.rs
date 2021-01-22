@@ -8,8 +8,9 @@ use ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
     FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlPunct, HlRange, HlTag, Indel,
     InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget, ReferenceAccess,
-    RenameError, Runnable, Severity, SourceChange, SymbolKind, TextEdit, TextRange, TextSize,
+    RenameError, Runnable, Severity, SourceChange, TextEdit, TextRange, TextSize,
 };
+use ide_db::SymbolKind;
 use itertools::Itertools;
 
 use crate::{
@@ -87,25 +88,35 @@ pub(crate) fn completion_item_kind(
     completion_item_kind: CompletionItemKind,
 ) -> lsp_types::CompletionItemKind {
     match completion_item_kind {
-        CompletionItemKind::Keyword => lsp_types::CompletionItemKind::Keyword,
-        CompletionItemKind::Snippet => lsp_types::CompletionItemKind::Snippet,
-        CompletionItemKind::Module => lsp_types::CompletionItemKind::Module,
-        CompletionItemKind::Function => lsp_types::CompletionItemKind::Function,
-        CompletionItemKind::Struct => lsp_types::CompletionItemKind::Struct,
-        CompletionItemKind::Enum => lsp_types::CompletionItemKind::Enum,
-        CompletionItemKind::EnumVariant => lsp_types::CompletionItemKind::EnumMember,
-        CompletionItemKind::BuiltinType => lsp_types::CompletionItemKind::Struct,
-        CompletionItemKind::Binding => lsp_types::CompletionItemKind::Variable,
-        CompletionItemKind::Field => lsp_types::CompletionItemKind::Field,
-        CompletionItemKind::Trait => lsp_types::CompletionItemKind::Interface,
-        CompletionItemKind::TypeAlias => lsp_types::CompletionItemKind::Struct,
-        CompletionItemKind::Const => lsp_types::CompletionItemKind::Constant,
-        CompletionItemKind::Static => lsp_types::CompletionItemKind::Value,
-        CompletionItemKind::Method => lsp_types::CompletionItemKind::Method,
-        CompletionItemKind::TypeParam => lsp_types::CompletionItemKind::TypeParameter,
-        CompletionItemKind::Macro => lsp_types::CompletionItemKind::Method,
         CompletionItemKind::Attribute => lsp_types::CompletionItemKind::EnumMember,
+        CompletionItemKind::Binding => lsp_types::CompletionItemKind::Variable,
+        CompletionItemKind::BuiltinType => lsp_types::CompletionItemKind::Struct,
+        CompletionItemKind::Keyword => lsp_types::CompletionItemKind::Keyword,
+        CompletionItemKind::Method => lsp_types::CompletionItemKind::Method,
+        CompletionItemKind::Snippet => lsp_types::CompletionItemKind::Snippet,
         CompletionItemKind::UnresolvedReference => lsp_types::CompletionItemKind::Reference,
+        CompletionItemKind::SymbolKind(symbol) => match symbol {
+            SymbolKind::Const => lsp_types::CompletionItemKind::Constant,
+            SymbolKind::ConstParam => lsp_types::CompletionItemKind::TypeParameter,
+            SymbolKind::Enum => lsp_types::CompletionItemKind::Enum,
+            SymbolKind::Field => lsp_types::CompletionItemKind::Field,
+            SymbolKind::Function => lsp_types::CompletionItemKind::Function,
+            SymbolKind::Impl => lsp_types::CompletionItemKind::Text,
+            SymbolKind::Label => lsp_types::CompletionItemKind::Variable,
+            SymbolKind::LifetimeParam => lsp_types::CompletionItemKind::TypeParameter,
+            SymbolKind::Local => lsp_types::CompletionItemKind::Variable,
+            SymbolKind::Macro => lsp_types::CompletionItemKind::Method,
+            SymbolKind::Module => lsp_types::CompletionItemKind::Module,
+            SymbolKind::SelfParam => lsp_types::CompletionItemKind::Value,
+            SymbolKind::Static => lsp_types::CompletionItemKind::Value,
+            SymbolKind::Struct => lsp_types::CompletionItemKind::Struct,
+            SymbolKind::Trait => lsp_types::CompletionItemKind::Interface,
+            SymbolKind::TypeAlias => lsp_types::CompletionItemKind::Struct,
+            SymbolKind::TypeParam => lsp_types::CompletionItemKind::TypeParameter,
+            SymbolKind::Union => lsp_types::CompletionItemKind::Struct,
+            SymbolKind::ValueParam => lsp_types::CompletionItemKind::Value,
+            SymbolKind::Variant => lsp_types::CompletionItemKind::EnumMember,
+        },
     }
 }
 

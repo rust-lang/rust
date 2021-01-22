@@ -1,9 +1,8 @@
+use ide_db::SymbolKind;
 use syntax::{
     ast::{self, AttrsOwner, GenericParamsOwner, NameOwner},
     match_ast, AstNode, SourceFile, SyntaxNode, TextRange, WalkEvent,
 };
-
-use crate::SymbolKind;
 
 #[derive(Debug, Clone)]
 pub struct StructureNode {

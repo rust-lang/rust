@@ -3,11 +3,13 @@
 use std::iter;
 
 use hir::{Module, ModuleSource};
-use ide_db::base_db::{SourceDatabaseExt, VfsPath};
-use ide_db::RootDatabase;
+use ide_db::{
+    base_db::{SourceDatabaseExt, VfsPath},
+    RootDatabase, SymbolKind,
+};
 use rustc_hash::FxHashSet;
 
-use crate::{CompletionItem, CompletionItemKind};
+use crate::CompletionItem;
 
 use crate::{context::CompletionContext, item::CompletionKind, Completions};
 
@@ -79,7 +81,7 @@ pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
                 label.push(';');
             }
             CompletionItem::new(CompletionKind::Magic, ctx.source_range(), &label)
-                .kind(CompletionItemKind::Module)
+                .kind(SymbolKind::Module)
                 .add_to(acc)
         });
 

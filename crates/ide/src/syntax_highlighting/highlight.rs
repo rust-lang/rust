@@ -3,7 +3,7 @@
 use hir::{AsAssocItem, Semantics, VariantDef};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
-    RootDatabase,
+    RootDatabase, SymbolKind,
 };
 use rustc_hash::FxHashMap;
 use syntax::{
@@ -12,7 +12,7 @@ use syntax::{
     SyntaxNode, SyntaxToken, T,
 };
 
-use crate::{syntax_highlighting::tags::HlPunct, Highlight, HlMod, HlTag, SymbolKind};
+use crate::{syntax_highlighting::tags::HlPunct, Highlight, HlMod, HlTag};
 
 pub(super) fn element(
     sema: &Semantics<RootDatabase>,
