@@ -68,18 +68,18 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::Block(ref b, Some(_label)) => {
                 self.with_context(LabeledBlock, |v| v.visit_block(&b));
             }
-            hir::ExprKind::Break(label, ref opt_expr) => {
+            hir::ExprKind::Break(break_label, ref opt_expr) => {
                 if let Some(e) = opt_expr {
                     self.visit_expr(e);
                 }
 
-                if self.require_label_in_labeled_block(e.span, &label, "break") {
+                if self.require_label_in_labeled_block(e.span, &break_label, "break") {
                     // If we emitted an error about an unlabeled break in a labeled
                     // block, we don't need any further checking for this break any more
                     return;
                 }
 
-                let loop_id = match label.target_id {
+                let loop_id = match break_label.target_id {
                     Ok(loop_id) => Some(loop_id),
                     Err(hir::LoopIdError::OutsideLoopScope) => None,
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
@@ -94,7 +94,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 }
 
                 if let Some(break_expr) = opt_expr {
-                    let (head, label, loop_kind) = if let Some(loop_id) = loop_id {
+                    let (head, loop_label, loop_kind) = if let Some(loop_id) = loop_id {
                         match self.hir_map.expect_expr(loop_id).kind {
                             hir::ExprKind::Loop(_, label, source, sp) => {
                                 (Some(sp), label, Some(source))
@@ -135,10 +135,15 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                     "use `break` on its own without a value inside this `{}` loop",
                                     kind.name(),
                                 ),
-                                "break".to_string(),
+                                format!(
+                                    "break{}",
+                                    break_label
+                                        .label
+                                        .map_or_else(String::new, |l| format!(" {}", l.ident))
+                                ),
                                 Applicability::MaybeIncorrect,
                             );
-                            if let Some(label) = label {
+                            if let (Some(label), None) = (loop_label, break_label.label) {
                                 match break_expr.kind {
                                     hir::ExprKind::Path(hir::QPath::Resolved(
                                         None,
