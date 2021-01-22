@@ -162,12 +162,12 @@ mod tests {
     fn goto_def_for_extern_crate() {
         check(
             r#"
-            //- /main.rs crate:main deps:std
-            extern crate std$0;
-            //- /std/lib.rs crate:std
-            // empty
-            //^ file
-            "#,
+//- /main.rs crate:main deps:std
+extern crate std$0;
+//- /std/lib.rs crate:std
+// empty
+//^ file
+"#,
         )
     }
 
@@ -175,12 +175,12 @@ mod tests {
     fn goto_def_for_renamed_extern_crate() {
         check(
             r#"
-            //- /main.rs crate:main deps:std
-            extern crate std as abc$0;
-            //- /std/lib.rs crate:std
-            // empty
-            //^ file
-            "#,
+//- /main.rs crate:main deps:std
+extern crate std as abc$0;
+//- /std/lib.rs crate:std
+// empty
+//^ file
+"#,
         )
     }
 
