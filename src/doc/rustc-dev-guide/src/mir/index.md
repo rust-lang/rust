@@ -254,7 +254,7 @@ but [you can read about those below](#promoted)).
 
 ### Promoted constants
 
-*to be written*
+See the const-eval WG's [docs on promotion](https://github.com/rust-lang/const-eval/blob/master/promotion.md).
 
 
 [mir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html
