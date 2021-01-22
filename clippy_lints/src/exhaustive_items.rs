@@ -1,4 +1,4 @@
-use crate::utils::{indent_of, snippet_opt, span_lint_and_help, span_lint_and_sugg};
+use crate::utils::{indent_of, snippet_opt, span_lint_and_help, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
@@ -75,29 +75,34 @@ impl LateLintPass<'_> for ExhaustiveItems {
             if cx.access_levels.is_exported(item.hir_id);
             if !item.attrs.iter().any(|a| a.has_name(sym::non_exhaustive));
             then {
-                let lint = if let ItemKind::Enum(..) = item.kind {
-                    EXHAUSTIVE_ENUMS
+                let (lint, msg) = if let ItemKind::Enum(..) = item.kind {
+                    (EXHAUSTIVE_ENUMS, "exported enums should not be exhaustive")
                 } else {
-                    EXHAUSTIVE_STRUCTS
+                    (EXHAUSTIVE_STRUCTS, "exported structs should not be exhaustive")
                 };
+                let suggestion_span = item.span.until(item.ident.span);
 
-                if let Some(snippet) = snippet_opt(cx, item.span) {
+                if let Some(snippet) = snippet_opt(cx, suggestion_span) {
                     let indent = " ".repeat(indent_of(cx, item.span).unwrap_or(0));
-                    span_lint_and_sugg(
+                    span_lint_and_then(
                         cx,
                         lint,
                         item.span,
-                        "enums should not be exhaustive",
-                        "try adding #[non_exhaustive]",
-                        format!("#[non_exhaustive]\n{}{}", indent, snippet),
-                        Applicability::MaybeIncorrect,
+                        msg,
+                        |diag| {
+                            let sugg = format!("#[non_exhaustive]\n{}{}", indent, snippet);
+                            diag.span_suggestion(suggestion_span,
+                                                 "try adding #[non_exhaustive]",
+                                                 sugg,
+                                                 Applicability::MaybeIncorrect);
+                        }
                     );
                 } else {
                     span_lint_and_help(
                         cx,
                         lint,
                         item.span,
-                        "enums should not be exhaustive",
+                        msg,
                         None,
                         "try adding #[non_exhaustive]",
                     );

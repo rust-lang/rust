@@ -1,4 +1,4 @@
-error: enums should not be exhaustive
+error: exported enums should not be exhaustive
   --> $DIR/exhaustive_items.rs:11:5
    |
 LL | /     pub enum Exhaustive {
@@ -10,21 +10,17 @@ LL | |     }
    | |_____^
    |
 note: the lint level is defined here
-  --> $DIR/exhaustive_items.rs:3:35
+  --> $DIR/exhaustive_items.rs:3:9
    |
 LL | #![deny(clippy::exhaustive_enums, clippy::exhaustive_structs)]
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
 help: try adding #[non_exhaustive]
    |
 LL |     #[non_exhaustive]
 LL |     pub enum Exhaustive {
-LL |         Foo,
-LL |         Bar,
-LL |         Baz,
-LL |         Quux(String),
- ...
+   |
 
-error: enums should not be exhaustive
+error: exported structs should not be exhaustive
   --> $DIR/exhaustive_items.rs:46:5
    |
 LL | /     pub struct Exhaustive {
@@ -33,13 +29,15 @@ LL | |         bar: String,
 LL | |     }
    | |_____^
    |
+note: the lint level is defined here
+  --> $DIR/exhaustive_items.rs:3:35
+   |
+LL | #![deny(clippy::exhaustive_enums, clippy::exhaustive_structs)]
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try adding #[non_exhaustive]
    |
 LL |     #[non_exhaustive]
 LL |     pub struct Exhaustive {
-LL |         foo: u8,
-LL |         bar: String,
-LL |     }
    |
 
 error: aborting due to 2 previous errors
