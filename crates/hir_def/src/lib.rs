@@ -73,13 +73,21 @@ use stdx::impl_from;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
-    pub krate: CrateId,
+    krate: CrateId,
     pub local_id: LocalModuleId,
 }
 
 impl ModuleId {
+    pub fn top_level(krate: CrateId, local_id: LocalModuleId) -> Self {
+        Self { krate, local_id }
+    }
+
     pub fn def_map(&self, db: &dyn db::DefDatabase) -> Arc<DefMap> {
         db.crate_def_map(self.krate)
+    }
+
+    pub fn krate(&self) -> CrateId {
+        self.krate
     }
 }
 

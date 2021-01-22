@@ -248,12 +248,12 @@ impl Ty {
         let lang_item_targets = match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
                 TypeCtor::Adt(def_id) => {
-                    return Some(std::iter::once(def_id.module(db.upcast()).krate).collect())
+                    return Some(std::iter::once(def_id.module(db.upcast()).krate()).collect())
                 }
                 TypeCtor::ForeignType(type_alias_id) => {
                     return Some(
                         std::iter::once(
-                            type_alias_id.lookup(db.upcast()).module(db.upcast()).krate,
+                            type_alias_id.lookup(db.upcast()).module(db.upcast()).krate(),
                         )
                         .collect(),
                     )
@@ -280,7 +280,7 @@ impl Ty {
                 LangItemTarget::ImplDefId(it) => Some(it),
                 _ => None,
             })
-            .map(|it| it.lookup(db.upcast()).container.module(db.upcast()).krate)
+            .map(|it| it.lookup(db.upcast()).container.module(db.upcast()).krate())
             .collect();
         Some(res)
     }

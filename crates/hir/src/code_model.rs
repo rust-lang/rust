@@ -270,13 +270,13 @@ impl ModuleDef {
             None => return,
         };
 
-        hir_ty::diagnostics::validate_module_item(db, module.id.krate, id, sink)
+        hir_ty::diagnostics::validate_module_item(db, module.id.krate(), id, sink)
     }
 }
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {
-        Module { id: ModuleId { krate: krate.id, local_id: crate_module_id } }
+        Module { id: ModuleId::top_level(krate.id, crate_module_id) }
     }
 
     /// Name of this module.
@@ -294,14 +294,14 @@ impl Module {
 
     /// Returns the crate this module is part of.
     pub fn krate(self) -> Crate {
-        Crate { id: self.id.krate }
+        Crate { id: self.id.krate() }
     }
 
     /// Topmost parent of this module. Every module has a `crate_root`, but some
     /// might be missing `krate`. This can happen if a module's file is not included
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &dyn HirDatabase) -> Module {
-        let def_map = db.crate_def_map(self.id.krate);
+        let def_map = db.crate_def_map(self.id.krate());
         self.with_module_id(def_map.root())
     }
 
@@ -318,6 +318,7 @@ impl Module {
 
     /// Finds a parent module.
     pub fn parent(self, db: &dyn HirDatabase) -> Option<Module> {
+        // FIXME: handle block expressions as modules (their parent is in a different DefMap)
         let def_map = self.id.def_map(db.upcast());
         let parent_id = def_map[self.id.local_id].parent?;
         Some(self.with_module_id(parent_id))
@@ -457,7 +458,7 @@ impl Field {
         };
         let substs = Substs::type_params(db, generic_def_id);
         let ty = db.field_types(var_id)[self.id].clone().subst(&substs);
-        Type::new(db, self.parent.module(db).id.krate, var_id, ty)
+        Type::new(db, self.parent.module(db).id.krate(), var_id, ty)
     }
 
     pub fn parent_def(&self, _db: &dyn HirDatabase) -> VariantDef {
@@ -502,7 +503,11 @@ impl Struct {
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        Type::from_def(db, self.id.lookup(db.upcast()).container.module(db.upcast()).krate, self.id)
+        Type::from_def(
+            db,
+            self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
+            self.id,
+        )
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprKind> {
@@ -533,7 +538,11 @@ impl Union {
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        Type::from_def(db, self.id.lookup(db.upcast()).container.module(db.upcast()).krate, self.id)
+        Type::from_def(
+            db,
+            self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
+            self.id,
+        )
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
@@ -573,7 +582,11 @@ impl Enum {
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        Type::from_def(db, self.id.lookup(db.upcast()).container.module(db.upcast()).krate, self.id)
+        Type::from_def(
+            db,
+            self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
+            self.id,
+        )
     }
 }
 
@@ -632,7 +645,7 @@ impl Adt {
     /// general set of completions, but will not look very nice when printed.
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let id = AdtId::from(self);
-        Type::from_def(db, id.module(db.upcast()).krate, id)
+        Type::from_def(db, id.module(db.upcast()).krate(), id)
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -750,7 +763,7 @@ impl Function {
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = TraitEnvironment::lower(db, &resolver);
         Type {
-            krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate,
+            krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
             ty: InEnvironment { value: Ty::from_hir_ext(&ctx, ret_type).0, environment },
         }
     }
@@ -771,7 +784,7 @@ impl Function {
             .iter()
             .map(|type_ref| {
                 let ty = Type {
-                    krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate,
+                    krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
                     ty: InEnvironment {
                         value: Ty::from_hir_ext(&ctx, type_ref).0,
                         environment: environment.clone(),
@@ -795,7 +808,7 @@ impl Function {
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
-        let krate = self.module(db).id.krate;
+        let krate = self.module(db).id.krate();
         hir_def::diagnostics::validate_body(db.upcast(), self.id.into(), sink);
         hir_ty::diagnostics::validate_module_item(db, krate, self.id.into(), sink);
         hir_ty::diagnostics::validate_body(db, self.id.into(), sink);
@@ -973,7 +986,7 @@ impl TypeAlias {
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        Type::from_def(db, self.id.lookup(db.upcast()).module(db.upcast()).krate, self.id)
+        Type::from_def(db, self.id.lookup(db.upcast()).module(db.upcast()).krate(), self.id)
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -1230,7 +1243,7 @@ impl Local {
         let def = DefWithBodyId::from(self.parent);
         let infer = db.infer(def);
         let ty = infer[self.pat_id].clone();
-        let krate = def.module(db.upcast()).krate;
+        let krate = def.module(db.upcast()).krate();
         Type::new(db, krate, def, ty)
     }
 
@@ -1318,7 +1331,7 @@ impl TypeParam {
         let environment = TraitEnvironment::lower(db, &resolver);
         let ty = Ty::Placeholder(self.id);
         Type {
-            krate: self.id.parent.module(db.upcast()).krate,
+            krate: self.id.parent.module(db.upcast()).krate(),
             ty: InEnvironment { value: ty, environment },
         }
     }
@@ -1344,7 +1357,7 @@ impl TypeParam {
         let subst = Substs::type_params(db, self.id.parent);
         let ty = ty.subst(&subst.prefix(local_idx));
         Some(Type {
-            krate: self.id.parent.module(db.upcast()).krate,
+            krate: self.id.parent.module(db.upcast()).krate(),
             ty: InEnvironment { value: ty, environment },
         })
     }
@@ -1405,7 +1418,7 @@ impl ConstParam {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let def = self.id.parent;
-        let krate = def.module(db.upcast()).krate;
+        let krate = def.module(db.upcast()).krate();
         Type::new(db, krate, def, db.const_param_ty(self.id))
     }
 }
@@ -1440,7 +1453,7 @@ impl Impl {
         let environment = TraitEnvironment::lower(db, &resolver);
         let ty = Ty::from_hir(&ctx, &impl_data.target_type);
         Type {
-            krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate,
+            krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
             ty: InEnvironment { value: ty, environment },
         }
     }
@@ -1458,7 +1471,7 @@ impl Impl {
     }
 
     pub fn krate(self, db: &dyn HirDatabase) -> Crate {
-        Crate { id: self.module(db).id.krate }
+        Crate { id: self.module(db).id.krate() }
     }
 
     pub fn is_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
