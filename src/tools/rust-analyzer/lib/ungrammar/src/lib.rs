@@ -26,11 +26,11 @@ pub fn rust_grammar() -> Grammar {
 }
 
 /// A node, like `A = 'b' | 'c'`.
-#[derive(Eq, PartialEq, Debug, Copy, Clone, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Node(usize);
 
 /// A token, denoted with single quotes, like `'+'` or `'struct'`.
-#[derive(Eq, PartialEq, Debug, Copy, Clone, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Token(usize);
 
 /// An Ungrammar grammar.
