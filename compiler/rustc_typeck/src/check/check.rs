@@ -1043,9 +1043,9 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
         }
     }
 
-    // Check for missing items from trait
-    let mut missing_items = Vec::new();
     if let Ok(ancestors) = trait_def.ancestors(tcx, impl_id.to_def_id()) {
+        // Check for missing items from trait
+        let mut missing_items = Vec::new();
         for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
             let is_implemented = ancestors
                 .leaf_def(tcx, trait_item.ident, trait_item.kind)
@@ -1058,10 +1058,10 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
                 }
             }
         }
-    }
 
-    if !missing_items.is_empty() {
-        missing_items_err(tcx, impl_span, &missing_items, full_impl_span);
+        if !missing_items.is_empty() {
+            missing_items_err(tcx, impl_span, &missing_items, full_impl_span);
+        }
     }
 }
 
