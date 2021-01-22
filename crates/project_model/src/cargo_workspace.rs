@@ -1,24 +1,15 @@
 //! FIXME: write short doc here
 
-use std::{
-    convert::TryInto,
-    ffi::OsStr,
-    io::BufReader,
-    ops,
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
-};
+use std::{convert::TryInto, ops, process::Command};
 
 use anyhow::{Context, Result};
 use base_db::Edition;
-use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
-use itertools::Itertools;
+use cargo_metadata::{CargoOpt, MetadataCommand};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
-use stdx::JodChild;
 
-use crate::cfg_flag::CfgFlag;
+use crate::build_data::{BuildData, BuildDataMap};
 use crate::utf8_stdout;
 
 /// `CargoWorkspace` represents the logical structure of, well, a Cargo
@@ -103,17 +94,8 @@ pub struct PackageData {
     pub features: FxHashMap<String, Vec<String>>,
     /// List of features enabled on this package
     pub active_features: Vec<String>,
-    /// List of config flags defined by this package's build script
-    pub cfgs: Vec<CfgFlag>,
-    /// List of cargo-related environment variables with their value
-    ///
-    /// If the package has a build script which defines environment variables,
-    /// they can also be found here.
-    pub envs: Vec<(String, String)>,
-    /// Directory where a build script might place its output
-    pub out_dir: Option<AbsPathBuf>,
-    /// Path to the proc-macro library file if this package exposes proc-macros
-    pub proc_macro_dylib_path: Option<AbsPathBuf>,
+    /// Build script related data for this package
+    pub build_data: BuildData,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -246,17 +228,11 @@ impl CargoWorkspace {
             )
         })?;
 
-        let mut out_dir_by_id = FxHashMap::default();
-        let mut cfgs = FxHashMap::default();
-        let mut envs = FxHashMap::default();
-        let mut proc_macro_dylib_paths = FxHashMap::default();
-        if config.load_out_dirs_from_check {
-            let resources = load_extern_resources(cargo_toml, config, progress)?;
-            out_dir_by_id = resources.out_dirs;
-            cfgs = resources.cfgs;
-            envs = resources.env;
-            proc_macro_dylib_paths = resources.proc_dylib_paths;
-        }
+        let resources = if config.load_out_dirs_from_check {
+            BuildDataMap::new(cargo_toml, config, &meta.packages, progress)?
+        } else {
+            BuildDataMap::with_cargo_env(&meta.packages)
+        };
 
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
@@ -267,7 +243,7 @@ impl CargoWorkspace {
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
         for meta_pkg in meta.packages {
             let id = meta_pkg.id.clone();
-            inject_cargo_env(&meta_pkg, envs.entry(id).or_default());
+            let build_data = resources.get(&id).cloned().unwrap_or_default();
 
             let cargo_metadata::Package { id, edition, name, manifest_path, version, .. } =
                 meta_pkg;
@@ -285,10 +261,7 @@ impl CargoWorkspace {
                 dependencies: Vec::new(),
                 features: meta_pkg.features.into_iter().collect(),
                 active_features: Vec::new(),
-                cfgs: cfgs.get(&id).cloned().unwrap_or_default(),
-                envs: envs.get(&id).cloned().unwrap_or_default(),
-                out_dir: out_dir_by_id.get(&id).cloned(),
-                proc_macro_dylib_path: proc_macro_dylib_paths.get(&id).cloned(),
+                build_data,
             });
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(id, pkg);
@@ -364,150 +337,4 @@ impl CargoWorkspace {
     fn is_unique(&self, name: &str) -> bool {
         self.packages.iter().filter(|(_, v)| v.name == name).count() == 1
     }
-}
-
-#[derive(Debug, Clone, Default)]
-pub(crate) struct ExternResources {
-    out_dirs: FxHashMap<PackageId, AbsPathBuf>,
-    proc_dylib_paths: FxHashMap<PackageId, AbsPathBuf>,
-    cfgs: FxHashMap<PackageId, Vec<CfgFlag>>,
-    env: FxHashMap<PackageId, Vec<(String, String)>>,
-}
-
-pub(crate) fn load_extern_resources(
-    cargo_toml: &Path,
-    cargo_features: &CargoConfig,
-    progress: &dyn Fn(String),
-) -> Result<ExternResources> {
-    let mut cmd = Command::new(toolchain::cargo());
-    cmd.args(&["check", "--workspace", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
-
-    // --all-targets includes tests, benches and examples in addition to the
-    // default lib and bins. This is an independent concept from the --targets
-    // flag below.
-    cmd.arg("--all-targets");
-
-    if let Some(target) = &cargo_features.target {
-        cmd.args(&["--target", target]);
-    }
-
-    if cargo_features.all_features {
-        cmd.arg("--all-features");
-    } else {
-        if cargo_features.no_default_features {
-            // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
-            // https://github.com/oli-obk/cargo_metadata/issues/79
-            cmd.arg("--no-default-features");
-        }
-        if !cargo_features.features.is_empty() {
-            cmd.arg("--features");
-            cmd.arg(cargo_features.features.join(" "));
-        }
-    }
-
-    cmd.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null());
-
-    let mut child = cmd.spawn().map(JodChild)?;
-    let child_stdout = child.stdout.take().unwrap();
-    let stdout = BufReader::new(child_stdout);
-
-    let mut res = ExternResources::default();
-    for message in cargo_metadata::Message::parse_stream(stdout) {
-        if let Ok(message) = message {
-            match message {
-                Message::BuildScriptExecuted(BuildScript {
-                    package_id,
-                    out_dir,
-                    cfgs,
-                    env,
-                    ..
-                }) => {
-                    let cfgs = {
-                        let mut acc = Vec::new();
-                        for cfg in cfgs {
-                            match cfg.parse::<CfgFlag>() {
-                                Ok(it) => acc.push(it),
-                                Err(err) => {
-                                    anyhow::bail!("invalid cfg from cargo-metadata: {}", err)
-                                }
-                            };
-                        }
-                        acc
-                    };
-                    // cargo_metadata crate returns default (empty) path for
-                    // older cargos, which is not absolute, so work around that.
-                    if out_dir != PathBuf::default() {
-                        let out_dir = AbsPathBuf::assert(out_dir);
-                        res.out_dirs.insert(package_id.clone(), out_dir);
-                        res.cfgs.insert(package_id.clone(), cfgs);
-                    }
-
-                    res.env.insert(package_id, env);
-                }
-                Message::CompilerArtifact(message) => {
-                    progress(format!("metadata {}", message.target.name));
-
-                    if message.target.kind.contains(&"proc-macro".to_string()) {
-                        let package_id = message.package_id;
-                        // Skip rmeta file
-                        if let Some(filename) = message.filenames.iter().find(|name| is_dylib(name))
-                        {
-                            let filename = AbsPathBuf::assert(filename.clone());
-                            res.proc_dylib_paths.insert(package_id, filename);
-                        }
-                    }
-                }
-                Message::CompilerMessage(message) => {
-                    progress(message.target.name.clone());
-                }
-                Message::Unknown => (),
-                Message::BuildFinished(_) => {}
-                Message::TextLine(_) => {}
-            }
-        }
-    }
-    Ok(res)
-}
-
-// FIXME: File a better way to know if it is a dylib
-fn is_dylib(path: &Path) -> bool {
-    match path.extension().and_then(OsStr::to_str).map(|it| it.to_string().to_lowercase()) {
-        None => false,
-        Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
-    }
-}
-
-/// Recreates the compile-time environment variables that Cargo sets.
-///
-/// Should be synced with <https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates>
-fn inject_cargo_env(package: &cargo_metadata::Package, env: &mut Vec<(String, String)>) {
-    // FIXME: Missing variables:
-    // CARGO, CARGO_PKG_HOMEPAGE, CARGO_CRATE_NAME, CARGO_BIN_NAME, CARGO_BIN_EXE_<name>
-
-    let mut manifest_dir = package.manifest_path.clone();
-    manifest_dir.pop();
-    if let Some(cargo_manifest_dir) = manifest_dir.to_str() {
-        env.push(("CARGO_MANIFEST_DIR".into(), cargo_manifest_dir.into()));
-    }
-
-    env.push(("CARGO_PKG_VERSION".into(), package.version.to_string()));
-    env.push(("CARGO_PKG_VERSION_MAJOR".into(), package.version.major.to_string()));
-    env.push(("CARGO_PKG_VERSION_MINOR".into(), package.version.minor.to_string()));
-    env.push(("CARGO_PKG_VERSION_PATCH".into(), package.version.patch.to_string()));
-
-    let pre = package.version.pre.iter().map(|id| id.to_string()).format(".");
-    env.push(("CARGO_PKG_VERSION_PRE".into(), pre.to_string()));
-
-    let authors = package.authors.join(";");
-    env.push(("CARGO_PKG_AUTHORS".into(), authors));
-
-    env.push(("CARGO_PKG_NAME".into(), package.name.clone()));
-    env.push(("CARGO_PKG_DESCRIPTION".into(), package.description.clone().unwrap_or_default()));
-    //env.push(("CARGO_PKG_HOMEPAGE".into(), package.homepage.clone().unwrap_or_default()));
-    env.push(("CARGO_PKG_REPOSITORY".into(), package.repository.clone().unwrap_or_default()));
-    env.push(("CARGO_PKG_LICENSE".into(), package.license.clone().unwrap_or_default()));
-
-    let license_file =
-        package.license_file.as_ref().map(|buf| buf.display().to_string()).unwrap_or_default();
-    env.push(("CARGO_PKG_LICENSE_FILE".into(), license_file));
 }

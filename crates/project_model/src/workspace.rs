@@ -178,7 +178,7 @@ impl ProjectWorkspace {
                     let pkg_root = cargo[pkg].root().to_path_buf();
 
                     let mut include = vec![pkg_root.clone()];
-                    include.extend(cargo[pkg].out_dir.clone());
+                    include.extend(cargo[pkg].build_data.out_dir.clone());
 
                     let mut exclude = vec![pkg_root.join(".git")];
                     if is_member {
@@ -484,23 +484,21 @@ fn add_target_crate_root(
         for feature in pkg.active_features.iter() {
             opts.insert_key_value("feature".into(), feature.into());
         }
-        opts.extend(pkg.cfgs.iter().cloned());
+        opts.extend(pkg.build_data.cfgs.iter().cloned());
         opts
     };
 
     let mut env = Env::default();
-    for (k, v) in &pkg.envs {
+    for (k, v) in &pkg.build_data.envs {
         env.set(k, v.clone());
     }
-    if let Some(out_dir) = &pkg.out_dir {
-        // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
-        if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
-            env.set("OUT_DIR", out_dir);
-        }
-    }
 
-    let proc_macro =
-        pkg.proc_macro_dylib_path.as_ref().map(|it| proc_macro_loader(&it)).unwrap_or_default();
+    let proc_macro = pkg
+        .build_data
+        .proc_macro_dylib_path
+        .as_ref()
+        .map(|it| proc_macro_loader(&it))
+        .unwrap_or_default();
 
     let display_name = CrateDisplayName::from_canonical_name(pkg.name.clone());
     let crate_id = crate_graph.add_crate_root(
