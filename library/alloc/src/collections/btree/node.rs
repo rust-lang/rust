@@ -132,7 +132,7 @@ impl<K, V> Root<K, V> {
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
-    fn new_leaf() -> Self {
+    pub fn new_leaf() -> Self {
         Self::from_new_leaf(Box::new(unsafe { LeafNode::new() }))
     }
 
@@ -142,7 +142,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
-    fn new_internal(child: Root<K, V>) -> Self {
+    pub fn new_internal(child: Root<K, V>) -> Self {
         let mut new_node = Box::new(unsafe { InternalNode::new() });
         new_node.edges[0].write(child.node);
         NodeRef::from_new_internal(new_node, child.height + 1)
@@ -1461,21 +1461,14 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     }
 }
 
-impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Leaf> {
-    /// Removes any static information asserting that this node is a `Leaf` node.
+impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
+    /// Removes any static information asserting that this node is a `Leaf` or `Internal` node.
     pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 }
 
-impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
-    /// Removes any static information asserting that this node is an `Internal` node.
-    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
-}
-
-impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
     pub fn forget_node_type(
         self,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
@@ -1483,23 +1476,7 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::E
     }
 }
 
-impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge> {
-    pub fn forget_node_type(
-        self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
-        unsafe { Handle::new_edge(self.node.forget_type(), self.idx) }
-    }
-}
-
-impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::KV> {
-    pub fn forget_node_type(
-        self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
-        unsafe { Handle::new_kv(self.node.forget_type(), self.idx) }
-    }
-}
-
-impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV> {
+impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV> {
     pub fn forget_node_type(
         self,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {

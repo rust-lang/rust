@@ -147,42 +147,59 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
     fn clone(&self) -> BTreeMap<K, V> {
+        struct GuardedTree<K, V, Type>(Option<NodeRef<marker::Owned, K, V, Type>>);
+        impl<K, V, Type> GuardedTree<K, V, Type> {
+            fn new(root: NodeRef<marker::Owned, K, V, Type>) -> Self {
+                Self(Some(root))
+            }
+            fn borrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
+                self.0.as_mut().unwrap().borrow_mut()
+            }
+            fn leak(mut self) -> Root<K, V> {
+                self.0.take().unwrap().forget_type()
+            }
+        }
+        impl<K, V, Type> Drop for GuardedTree<K, V, Type> {
+            fn drop(&mut self) {
+                if let Some(root) = self.0.take() {
+                    let mut cur_edge = root.forget_type().into_dying().first_leaf_edge();
+                    while let Some((next_edge, _kv)) = unsafe { cur_edge.deallocating_next() } {
+                        cur_edge = next_edge;
+                    }
+                }
+            }
+        }
+
         fn clone_subtree<'a, K: Clone, V: Clone>(
             node: NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>,
-        ) -> BTreeMap<K, V>
+        ) -> Root<K, V>
         where
             K: 'a,
             V: 'a,
         {
             match node.force() {
                 Leaf(leaf) => {
-                    let mut out_tree = BTreeMap { root: Some(Root::new()), length: 0 };
+                    let mut out_tree = GuardedTree::new(NodeRef::new_leaf());
 
                     {
-                        let root = out_tree.root.as_mut().unwrap(); // unwrap succeeds because we just wrapped
-                        let mut out_node = match root.borrow_mut().force() {
-                            Leaf(leaf) => leaf,
-                            Internal(_) => unreachable!(),
-                        };
-
+                        let mut out_node = out_tree.borrow_mut();
                         let mut in_edge = leaf.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
                             let (k, v) = kv.into_kv();
                             in_edge = kv.right_edge();
 
                             out_node.push(k.clone(), v.clone());
-                            out_tree.length += 1;
                         }
                     }
 
-                    out_tree
+                    out_tree.leak()
                 }
                 Internal(internal) => {
-                    let mut out_tree = clone_subtree(internal.first_edge().descend());
+                    let first_child = clone_subtree(internal.first_edge().descend());
+                    let mut out_tree = GuardedTree::new(NodeRef::new_internal(first_child));
 
                     {
-                        let out_root = BTreeMap::ensure_is_owned(&mut out_tree.root);
-                        let mut out_node = out_root.push_internal_level();
+                        let mut out_node = out_tree.borrow_mut();
                         let mut in_edge = internal.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
                             let (k, v) = kv.into_kv();
@@ -192,32 +209,17 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                             let v = (*v).clone();
                             let subtree = clone_subtree(in_edge.descend());
 
-                            // We can't destructure subtree directly
-                            // because BTreeMap implements Drop
-                            let (subroot, sublength) = unsafe {
-                                let subtree = ManuallyDrop::new(subtree);
-                                let root = ptr::read(&subtree.root);
-                                let length = subtree.length;
-                                (root, length)
-                            };
-
-                            out_node.push(k, v, subroot.unwrap_or_else(Root::new));
-                            out_tree.length += 1 + sublength;
+                            out_node.push(k, v, subtree);
                         }
                     }
 
-                    out_tree
+                    out_tree.leak()
                 }
             }
         }
 
-        if self.is_empty() {
-            // Ideally we'd call `BTreeMap::new` here, but that has the `K:
-            // Ord` constraint, which this method lacks.
-            BTreeMap { root: None, length: 0 }
-        } else {
-            clone_subtree(self.root.as_ref().unwrap().reborrow()) // unwrap succeeds because not empty
-        }
+        let cloned_root = self.root.as_ref().map(|root| clone_subtree(root.reborrow()));
+        BTreeMap { root: cloned_root, length: self.length }
     }
 }
 

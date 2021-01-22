@@ -301,7 +301,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///
     /// # Safety
     /// The next KV must not have been previously returned by counterpart `deallocating_next_back`.
-    unsafe fn deallocating_next(self) -> Option<(Self, (K, V))> {
+    pub unsafe fn deallocating_next(self) -> Option<(Self, (K, V))> {
         let mut edge = self.forget_node_type();
         loop {
             edge = match edge.right_kv() {
