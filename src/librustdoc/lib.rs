@@ -539,7 +539,7 @@ fn main_options(options: config::Options) -> MainResult {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 
-            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
+            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).peek_mut();
 
             global_ctxt.enter(|tcx| {
                 let (mut krate, render_info, render_opts) = sess.time("run_global_ctxt", || {
@@ -568,7 +568,7 @@ fn main_options(options: config::Options) -> MainResult {
                 info!("going to format");
                 let (error_format, edition, debugging_options) = diag_opts;
                 let diag = core::new_handler(error_format, None, &debugging_options);
-                let main_result = match output_format {
+                match output_format {
                     None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
                         run_renderer::<html::render::Context<'_>>(
                             krate,
@@ -589,10 +589,7 @@ fn main_options(options: config::Options) -> MainResult {
                             tcx,
                         )
                     }),
-                };
-                // NOTE: this is normally called in codegen, but rustdoc never goes to codegen.
-                tcx.alloc_self_profile_query_strings();
-                main_result
+                }
             })
         })
     })

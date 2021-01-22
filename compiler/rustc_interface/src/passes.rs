@@ -1017,13 +1017,6 @@ pub fn start_codegen<'tcx>(
     tcx.sess.time("assert_dep_graph", || rustc_incremental::assert_dep_graph(tcx));
     tcx.sess.time("serialize_dep_graph", || rustc_incremental::save_dep_graph(tcx));
 
-    // We assume that no queries are run past here. If there are new queries
-    // after this point, they'll show up as "<unknown>" in self-profiling data.
-    {
-        let _prof_timer = tcx.prof.generic_activity("self_profile_alloc_query_strings");
-        tcx.alloc_self_profile_query_strings();
-    }
-
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
