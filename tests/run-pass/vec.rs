@@ -135,6 +135,11 @@ fn sort() {
     v.sort();
 }
 
+fn swap() {
+    let mut v = vec![1, 2, 3, 4];
+    v.swap(2, 2);
+}
+
 fn main() {
     assert_eq!(vec_reallocate().len(), 5);
 
@@ -161,4 +166,5 @@ fn main() {
     push_str_ptr_stable();
 
     sort();
+    swap();
 }
