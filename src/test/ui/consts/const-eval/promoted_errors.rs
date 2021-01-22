@@ -10,11 +10,11 @@
 
 // The only way to have promoteds that fail is in `const fn` called from `const`/`static`.
 const fn overflow() -> u32 {
-    0 - 1 //~WARN arithmetic_overflow
+    0 - 1
     //[opt_with_overflow_checks,noopt]~^ WARN any use of this value will cause an error
 }
 const fn div_by_zero1() -> i32 {
-    1 / 0 //[opt]~WARN unconditional_panic
+    1 / 0
     //[opt]~^ WARN any use of this value will cause an error
 }
 const fn div_by_zero2() -> i32 {

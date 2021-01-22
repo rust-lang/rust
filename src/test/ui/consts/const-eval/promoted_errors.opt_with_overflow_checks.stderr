@@ -1,15 +1,3 @@
-warning: this arithmetic operation will overflow
-  --> $DIR/promoted_errors.rs:13:5
-   |
-LL |     0 - 1
-   |     ^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
-   |
-note: the lint level is defined here
-  --> $DIR/promoted_errors.rs:9:20
-   |
-LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
-   |                    ^^^^^^^^^^^^^^^^^^^
-
 warning: any use of this value will cause an error
   --> $DIR/promoted_errors.rs:13:5
    |
@@ -48,5 +36,5 @@ LL | |     let _x: &'static i32 = &oob();
 LL | | };
    | |__-
 
-warning: 3 warnings emitted
+warning: 2 warnings emitted
 
