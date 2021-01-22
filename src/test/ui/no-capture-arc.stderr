@@ -14,7 +14,7 @@ LL |     assert_eq!((*arc_v)[2], 3);
    |
    = note: borrow occurs due to deref coercion to `Vec<i32>`
 note: deref defined here
-  --> $SRC_DIR/alloc/src/sync.rs:LL:COL
+  --> $SRC_DIR/alloc/src/sync/arc.rs:LL:COL
    |
 LL |     type Target = T;
    |     ^^^^^^^^^^^^^^^^

@@ -1,4 +1,5 @@
 #![feature(allocator_api)]
+#![feature(arc_new_cyclic)]
 #![feature(box_syntax)]
 #![feature(cow_is_borrowed)]
 #![feature(const_cow_is_borrowed)]
