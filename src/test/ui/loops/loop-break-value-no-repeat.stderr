@@ -1,10 +1,12 @@
 error[E0571]: `break` with value from a `for` loop
   --> $DIR/loop-break-value-no-repeat.rs:12:9
    |
+LL |     for _ in &[1,2,3] {
+   |     ----------------- you can't `break` with a value in a `for` loop
 LL |         break 22
    |         ^^^^^^^^ can only break with a value inside `loop` or breakable block
    |
-help: instead, use `break` on its own without a value inside this `for` loop
+help: use `break` on its own without a value inside this `for` loop
    |
 LL |         break
    |         ^^^^^

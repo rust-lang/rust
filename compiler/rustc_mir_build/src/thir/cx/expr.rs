@@ -546,9 +546,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             scrutinee: discr.to_ref(),
             arms: arms.iter().map(|a| convert_arm(cx, a)).collect(),
         },
-        hir::ExprKind::Loop(ref body, _, _) => {
-            ExprKind::Loop { body: block::to_expr_ref(cx, body) }
-        }
+        hir::ExprKind::Loop(ref body, ..) => ExprKind::Loop { body: block::to_expr_ref(cx, body) },
         hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
             lhs: source.to_ref(),
             name: Field::new(cx.tcx.field_index(expr.hir_id, cx.typeck_results)),

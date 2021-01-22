@@ -1151,7 +1151,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_expr(then);
             walk_list!(visitor, visit_expr, else_opt);
         }
-        ExprKind::Loop(ref block, ref opt_label, _) => {
+        ExprKind::Loop(ref block, ref opt_label, _, _) => {
             walk_list!(visitor, visit_label, opt_label);
             visitor.visit_block(block);
         }

@@ -1,11 +1,13 @@
 error[E0425]: cannot find value `LOOP` in this scope
   --> $DIR/loop-break-value.rs:95:15
    |
+LL |     'LOOP: for _ in 0 .. 9 {
+   |     ----- a label with a similar name exists
 LL |         break LOOP;
    |               ^^^^
    |               |
    |               not found in this scope
-   |               help: a label with a similar name exists: `'LOOP`
+   |               help: use the similarly named label: `'LOOP`
 
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/loop-break-value.rs:26:5
@@ -18,32 +20,44 @@ LL |     'while_loop: while true {
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/loop-break-value.rs:28:9
    |
+LL |     'while_loop: while true {
+   |     ----------------------- you can't `break` with a value in a `while` loop
+LL |         break;
 LL |         break ();
    |         ^^^^^^^^ can only break with a value inside `loop` or breakable block
    |
-help: instead, use `break` on its own without a value inside this `while` loop
+help: use `break` on its own without a value inside this `while` loop
    |
 LL |         break;
    |         ^^^^^
+help: alternatively, you might have meant to use the available loop label
+   |
+LL |         break 'while_loop;
+   |               ^^^^^^^^^^^
 
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/loop-break-value.rs:30:13
    |
+LL |     'while_loop: while true {
+   |     ----------------------- you can't `break` with a value in a `while` loop
+...
 LL |             break 'while_loop 123;
    |             ^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
    |
-help: instead, use `break` on its own without a value inside this `while` loop
+help: use `break` on its own without a value inside this `while` loop
    |
-LL |             break;
-   |             ^^^^^
+LL |             break 'while_loop;
+   |             ^^^^^^^^^^^^^^^^^
 
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/loop-break-value.rs:38:12
    |
+LL |     while let Some(_) = Some(()) {
+   |     ---------------------------- you can't `break` with a value in a `while` loop
 LL |         if break () {
    |            ^^^^^^^^ can only break with a value inside `loop` or breakable block
    |
-help: instead, use `break` on its own without a value inside this `while` loop
+help: use `break` on its own without a value inside this `while` loop
    |
 LL |         if break {
    |            ^^^^^
@@ -51,10 +65,12 @@ LL |         if break {
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/loop-break-value.rs:43:9
    |
+LL |     while let Some(_) = Some(()) {
+   |     ---------------------------- you can't `break` with a value in a `while` loop
 LL |         break None;
    |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
    |
-help: instead, use `break` on its own without a value inside this `while` loop
+help: use `break` on its own without a value inside this `while` loop
    |
 LL |         break;
    |         ^^^^^
@@ -62,21 +78,26 @@ LL |         break;
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/loop-break-value.rs:49:13
    |
+LL |     'while_let_loop: while let Some(_) = Some(()) {
+   |     --------------------------------------------- you can't `break` with a value in a `while` loop
+LL |         loop {
 LL |             break 'while_let_loop "nope";
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
    |
-help: instead, use `break` on its own without a value inside this `while` loop
+help: use `break` on its own without a value inside this `while` loop
    |
-LL |             break;
-   |             ^^^^^
+LL |             break 'while_let_loop;
+   |             ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0571]: `break` with value from a `for` loop
   --> $DIR/loop-break-value.rs:56:9
    |
+LL |     for _ in &[1,2,3] {
+   |     ----------------- you can't `break` with a value in a `for` loop
 LL |         break ();
    |         ^^^^^^^^ can only break with a value inside `loop` or breakable block
    |
-help: instead, use `break` on its own without a value inside this `for` loop
+help: use `break` on its own without a value inside this `for` loop
    |
 LL |         break;
    |         ^^^^^
@@ -84,10 +105,13 @@ LL |         break;
 error[E0571]: `break` with value from a `for` loop
   --> $DIR/loop-break-value.rs:57:9
    |
+LL |     for _ in &[1,2,3] {
+   |     ----------------- you can't `break` with a value in a `for` loop
+LL |         break ();
 LL |         break [()];
    |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
    |
-help: instead, use `break` on its own without a value inside this `for` loop
+help: use `break` on its own without a value inside this `for` loop
    |
 LL |         break;
    |         ^^^^^
@@ -95,24 +119,16 @@ LL |         break;
 error[E0571]: `break` with value from a `for` loop
   --> $DIR/loop-break-value.rs:64:13
    |
+LL |     'for_loop: for _ in &[1,2,3] {
+   |     ---------------------------- you can't `break` with a value in a `for` loop
+...
 LL |             break 'for_loop Some(17);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
    |
-help: instead, use `break` on its own without a value inside this `for` loop
+help: use `break` on its own without a value inside this `for` loop
    |
-LL |             break;
-   |             ^^^^^
-
-error[E0571]: `break` with value from a `for` loop
-  --> $DIR/loop-break-value.rs:95:9
-   |
-LL |         break LOOP;
-   |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
-   |
-help: instead, use `break` on its own without a value inside this `for` loop
-   |
-LL |         break;
-   |         ^^^^^
+LL |             break 'for_loop;
+   |             ^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:4:31
@@ -171,7 +187,7 @@ LL |         break;
    |         expected integer, found `()`
    |         help: give it a value of the expected type: `break value`
 
-error: aborting due to 18 previous errors; 1 warning emitted
+error: aborting due to 17 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0308, E0425, E0571.
 For more information about an error, try `rustc --explain E0308`.

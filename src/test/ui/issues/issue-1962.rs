@@ -3,8 +3,8 @@
 
 fn main() {
     let mut i = 0;
-    while true { //~ ERROR denote infinite loops with `loop
+    'a: while true { //~ ERROR denote infinite loops with `loop
         i += 1;
-        if i == 5 { break; }
+        if i == 5 { break 'a; }
     }
 }

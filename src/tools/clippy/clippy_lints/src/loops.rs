@@ -533,7 +533,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         }
 
         // check for never_loop
-        if let ExprKind::Loop(ref block, _, _) = expr.kind {
+        if let ExprKind::Loop(ref block, _, _, _) = expr.kind {
             match never_loop_block(block, expr.hir_id) {
                 NeverLoopResult::AlwaysBreak => span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops"),
                 NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
@@ -543,7 +543,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
-        if let ExprKind::Loop(ref block, _, LoopSource::Loop) = expr.kind {
+        if let ExprKind::Loop(ref block, _, LoopSource::Loop, _) = expr.kind {
             // also check for empty `loop {}` statements, skipping those in #[panic_handler]
             if block.stmts.is_empty() && block.expr.is_none() && !is_in_panic_handler(cx, expr) {
                 let msg = "empty `loop {}` wastes CPU cycles";
@@ -738,7 +738,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
         | ExprKind::Assign(ref e1, ref e2, _)
         | ExprKind::AssignOp(_, ref e1, ref e2)
         | ExprKind::Index(ref e1, ref e2) => never_loop_expr_all(&mut [&**e1, &**e2].iter().cloned(), main_loop_id),
-        ExprKind::Loop(ref b, _, _) => {
+        ExprKind::Loop(ref b, _, _, _) => {
             // Break can come from the inner loop so remove them.
             absorb_break(&never_loop_block(b, main_loop_id))
         },
@@ -1314,7 +1314,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             // Non-determinism may occur ... don't give a lint
-            ExprKind::Loop(_, _, _) | ExprKind::Match(_, _, _) => self.should_lint = false,
+            ExprKind::Loop(..) | ExprKind::Match(..) => self.should_lint = false,
             ExprKind::Block(block, _) => self.visit_block(block),
             _ => {},
         }

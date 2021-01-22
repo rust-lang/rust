@@ -266,7 +266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
-            ExprKind::Loop(ref body, _, source) => {
+            ExprKind::Loop(ref body, _, source, _) => {
                 self.check_expr_loop(body, source, expected, expr)
             }
             ExprKind::Match(ref discrim, ref arms, match_src) => {

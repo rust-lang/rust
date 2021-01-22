@@ -1396,7 +1396,7 @@ impl<'a> State<'a> {
             hir::ExprKind::If(ref test, ref blk, ref elseopt) => {
                 self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e));
             }
-            hir::ExprKind::Loop(ref blk, opt_label, _) => {
+            hir::ExprKind::Loop(ref blk, opt_label, _, _) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");

@@ -289,7 +289,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Err => {}
 
-            hir::ExprKind::Loop(ref blk, _, _) => {
+            hir::ExprKind::Loop(ref blk, ..) => {
                 self.walk_block(blk);
             }
 
