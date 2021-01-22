@@ -1637,6 +1637,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92c245af8786f6ac35f95ca14feca9119e71339aaab41e878e7cdd655c97e9e5"
 
 [[package]]
+name = "json-types"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "jsondocck"
 version = "0.1.0"
 dependencies = [
@@ -4387,6 +4394,7 @@ version = "0.0.0"
 dependencies = [
  "expect-test",
  "itertools 0.9.0",
+ "json-types",
  "minifier",
  "pulldown-cmark 0.8.0",
  "regex",
