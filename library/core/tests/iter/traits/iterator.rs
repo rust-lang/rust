@@ -430,3 +430,34 @@ fn test_iterator_rev_advance_by() {
     assert_eq!(v.iter().rev().advance_by(v.len()), Ok(()));
     assert_eq!(v.iter().rev().advance_by(100), Err(v.len()));
 }
+
+#[test]
+fn test_find_map() {
+    let xs: &[isize] = &[];
+    assert_eq!(xs.iter().find_map(half_if_even), None);
+    let xs: &[isize] = &[3, 5];
+    assert_eq!(xs.iter().find_map(half_if_even), None);
+    let xs: &[isize] = &[4, 5];
+    assert_eq!(xs.iter().find_map(half_if_even), Some(2));
+    let xs: &[isize] = &[3, 6];
+    assert_eq!(xs.iter().find_map(half_if_even), Some(3));
+
+    let xs: &[isize] = &[1, 2, 3, 4, 5, 6, 7];
+    let mut iter = xs.iter();
+    assert_eq!(iter.find_map(half_if_even), Some(1));
+    assert_eq!(iter.find_map(half_if_even), Some(2));
+    assert_eq!(iter.find_map(half_if_even), Some(3));
+    assert_eq!(iter.next(), Some(&7));
+
+    fn half_if_even(x: &isize) -> Option<isize> {
+        if x % 2 == 0 { Some(x / 2) } else { None }
+    }
+}
+
+#[test]
+fn test_iterator_len() {
+    let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    assert_eq!(v[..4].iter().count(), 4);
+    assert_eq!(v[..10].iter().count(), 10);
+    assert_eq!(v[..0].iter().count(), 0);
+}

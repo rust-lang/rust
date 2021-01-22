@@ -92,3 +92,16 @@ fn test_enumerate_try_folds() {
     assert_eq!(iter.try_rfold(0, f), None);
     assert_eq!(iter.next_back(), Some((11, 111)));
 }
+
+#[test]
+fn test_double_ended_enumerate() {
+    let xs = [1, 2, 3, 4, 5, 6];
+    let mut it = xs.iter().cloned().enumerate();
+    assert_eq!(it.next(), Some((0, 1)));
+    assert_eq!(it.next(), Some((1, 2)));
+    assert_eq!(it.next_back(), Some((5, 6)));
+    assert_eq!(it.next_back(), Some((4, 5)));
+    assert_eq!(it.next_back(), Some((3, 4)));
+    assert_eq!(it.next_back(), Some((2, 3)));
+    assert_eq!(it.next(), None);
+}

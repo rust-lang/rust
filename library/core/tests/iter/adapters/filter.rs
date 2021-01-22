@@ -40,3 +40,13 @@ fn test_filter_try_folds() {
     assert_eq!(iter.try_rfold(0, i8::checked_add), None);
     assert_eq!(iter.next_back(), Some(31));
 }
+
+#[test]
+fn test_double_ended_filter() {
+    let xs = [1, 2, 3, 4, 5, 6];
+    let mut it = xs.iter().filter(|&x| *x & 1 == 0);
+    assert_eq!(it.next_back().unwrap(), &6);
+    assert_eq!(it.next_back().unwrap(), &4);
+    assert_eq!(it.next().unwrap(), &2);
+    assert_eq!(it.next_back(), None);
+}

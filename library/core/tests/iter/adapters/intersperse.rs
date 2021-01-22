@@ -129,3 +129,26 @@ fn test_intersperse_collect_string() {
         .collect::<String>();
     assert_eq!(contents_string, "1, 2, 3");
 }
+
+#[test]
+fn test_try_fold_specialization_intersperse_err() {
+    let orig_iter = ["a", "b"].iter().copied().intersperse("-");
+
+    // Abort after the first item.
+    let mut iter = orig_iter.clone();
+    iter.try_for_each(|_| None::<()>);
+    assert_eq!(iter.next(), Some("-"));
+    assert_eq!(iter.next(), Some("b"));
+    assert_eq!(iter.next(), None);
+
+    // Abort after the second item.
+    let mut iter = orig_iter.clone();
+    iter.try_for_each(|item| if item == "-" { None } else { Some(()) });
+    assert_eq!(iter.next(), Some("b"));
+    assert_eq!(iter.next(), None);
+
+    // Abort after the third item.
+    let mut iter = orig_iter.clone();
+    iter.try_for_each(|item| if item == "b" { None } else { Some(()) });
+    assert_eq!(iter.next(), None);
+}

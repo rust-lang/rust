@@ -14,6 +14,8 @@ fn test_iterator_flatten() {
     assert_eq!(i, ys.len());
 }
 
+/// Tests `Flatten::fold` with items already picked off the front and back,
+/// to make sure all parts of the `Flatten` are folded correctly.
 #[test]
 fn test_iterator_flatten_fold() {
     let xs = [0, 3, 6];
@@ -72,4 +74,21 @@ fn test_flatten_non_fused_inner() {
     assert_eq!(iter.next(), Some(0));
     assert_eq!(iter.next(), Some(1));
     assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_double_ended_flatten() {
+    let u = [0, 1];
+    let v = [5, 6, 7, 8];
+    let mut it = u.iter().map(|x| &v[*x..v.len()]).flatten();
+    assert_eq!(it.next_back().unwrap(), &8);
+    assert_eq!(it.next().unwrap(), &5);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back().unwrap(), &6);
+    assert_eq!(it.next_back().unwrap(), &8);
+    assert_eq!(it.next().unwrap(), &6);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back(), None);
+    assert_eq!(it.next(), None);
+    assert_eq!(it.next_back(), None);
 }

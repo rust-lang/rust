@@ -13,6 +13,8 @@ fn test_iterator_flat_map() {
     assert_eq!(i, ys.len());
 }
 
+/// Tests `FlatMap::fold` with items already picked off the front and back,
+/// to make sure all parts of the `FlatMap` are folded correctly.
 #[test]
 fn test_iterator_flat_map_fold() {
     let xs = [0, 3, 6];
@@ -52,4 +54,21 @@ fn test_flat_map_try_folds() {
     assert_eq!(iter.next(), Some(17));
     assert_eq!(iter.try_rfold(0, i8::checked_add), None);
     assert_eq!(iter.next_back(), Some(35));
+}
+
+#[test]
+fn test_double_ended_flat_map() {
+    let u = [0, 1];
+    let v = [5, 6, 7, 8];
+    let mut it = u.iter().flat_map(|x| &v[*x..v.len()]);
+    assert_eq!(it.next_back().unwrap(), &8);
+    assert_eq!(it.next().unwrap(), &5);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back().unwrap(), &6);
+    assert_eq!(it.next_back().unwrap(), &8);
+    assert_eq!(it.next().unwrap(), &6);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back(), None);
+    assert_eq!(it.next(), None);
+    assert_eq!(it.next_back(), None);
 }

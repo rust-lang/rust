@@ -431,3 +431,16 @@ fn test_range_inclusive_size_hint() {
     assert_eq!((imin..=imax).size_hint(), (usize::MAX, None));
     assert_eq!((imin..=imax + 1).size_hint(), (usize::MAX, None));
 }
+
+#[test]
+fn test_double_ended_range() {
+    assert_eq!((11..14).rev().collect::<Vec<_>>(), [13, 12, 11]);
+    for _ in (10..0).rev() {
+        panic!("unreachable");
+    }
+
+    assert_eq!((11..14).rev().collect::<Vec<_>>(), [13, 12, 11]);
+    for _ in (10..0).rev() {
+        panic!("unreachable");
+    }
+}

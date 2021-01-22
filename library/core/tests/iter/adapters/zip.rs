@@ -231,3 +231,17 @@ fn test_zip_trusted_random_access_composition() {
     assert_trusted_random_access(&z2);
     assert_eq!(z2.next().unwrap(), ((1, 1), 1));
 }
+
+#[test]
+fn test_double_ended_zip() {
+    let xs = [1, 2, 3, 4, 5, 6];
+    let ys = [1, 2, 3, 7];
+    let a = xs.iter().cloned();
+    let b = ys.iter().cloned();
+    let mut it = a.zip(b);
+    assert_eq!(it.next(), Some((1, 1)));
+    assert_eq!(it.next(), Some((2, 2)));
+    assert_eq!(it.next_back(), Some((4, 7)));
+    assert_eq!(it.next_back(), Some((3, 3)));
+    assert_eq!(it.next(), None);
+}

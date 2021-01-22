@@ -15,7 +15,6 @@ mod peekable;
 mod scan;
 mod skip;
 mod skip_while;
-mod step;
 mod step_by;
 mod take;
 mod take_while;

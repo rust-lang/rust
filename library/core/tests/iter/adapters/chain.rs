@@ -226,3 +226,47 @@ fn test_chain_try_folds() {
     iter.nth(14); // skip the first 15, ending in state Back
     assert_eq!(iter.try_rfold(7, f), (15..20).try_rfold(7, f));
 }
+
+#[test]
+fn test_double_ended_chain() {
+    let xs = [1, 2, 3, 4, 5];
+    let ys = [7, 9, 11];
+    let mut it = xs.iter().chain(&ys).rev();
+    assert_eq!(it.next().unwrap(), &11);
+    assert_eq!(it.next().unwrap(), &9);
+    assert_eq!(it.next_back().unwrap(), &1);
+    assert_eq!(it.next_back().unwrap(), &2);
+    assert_eq!(it.next_back().unwrap(), &3);
+    assert_eq!(it.next_back().unwrap(), &4);
+    assert_eq!(it.next_back().unwrap(), &5);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back(), None);
+
+    // test that .chain() is well behaved with an unfused iterator
+    struct CrazyIterator(bool);
+    impl CrazyIterator {
+        fn new() -> CrazyIterator {
+            CrazyIterator(false)
+        }
+    }
+    impl Iterator for CrazyIterator {
+        type Item = i32;
+        fn next(&mut self) -> Option<i32> {
+            if self.0 {
+                Some(99)
+            } else {
+                self.0 = true;
+                None
+            }
+        }
+    }
+
+    impl DoubleEndedIterator for CrazyIterator {
+        fn next_back(&mut self) -> Option<i32> {
+            self.next()
+        }
+    }
+
+    assert_eq!(CrazyIterator::new().chain(0..10).rev().last(), Some(0));
+    assert!((0..10).chain(CrazyIterator::new()).rev().any(|i| i == 0));
+}
