@@ -23,6 +23,7 @@ fn test_range() {
         (isize::MAX as usize + 2, Some(isize::MAX as usize + 2))
     );
 }
+
 #[test]
 fn test_char_range() {
     use std::char;
@@ -37,6 +38,7 @@ fn test_char_range() {
     assert_eq!(('\u{D7FF}'..'\u{E000}').count(), 1);
     assert_eq!(('\u{D7FF}'..'\u{E000}').size_hint(), (1, Some(1)));
 }
+
 #[test]
 fn test_range_exhaustion() {
     let mut r = 10..10;
@@ -65,6 +67,7 @@ fn test_range_exhaustion() {
     assert_eq!(r.next_back(), None);
     assert_eq!(r, 100..10);
 }
+
 #[test]
 fn test_range_inclusive_exhaustion() {
     let mut r = 10..=10;
@@ -124,6 +127,7 @@ fn test_range_inclusive_exhaustion() {
     assert_eq!(r.next_back(), None);
     assert_eq!(r, 100..=10);
 }
+
 #[test]
 fn test_range_nth() {
     assert_eq!((10..15).nth(0), Some(10));
@@ -139,6 +143,7 @@ fn test_range_nth() {
     assert_eq!(r.nth(10), None);
     assert_eq!(r, 20..20);
 }
+
 #[test]
 fn test_range_nth_back() {
     assert_eq!((10..15).nth_back(0), Some(14));
@@ -155,6 +160,7 @@ fn test_range_nth_back() {
     assert_eq!(r.nth_back(10), None);
     assert_eq!(r, 10..10);
 }
+
 #[test]
 fn test_range_from_nth() {
     assert_eq!((10..).nth(0), Some(10));
@@ -171,6 +177,7 @@ fn test_range_from_nth() {
 
     assert_eq!((0..).size_hint(), (usize::MAX, None));
 }
+
 #[test]
 fn test_range_from_take() {
     let mut it = (0..).take(3);
@@ -183,11 +190,13 @@ fn test_range_from_take() {
     assert_eq!((0..).take(0).size_hint(), (0, Some(0)));
     assert_eq!((0..).take(usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
 }
+
 #[test]
 fn test_range_from_take_collect() {
     let v: Vec<_> = (0..).take(3).collect();
     assert_eq!(v, vec![0, 1, 2]);
 }
+
 #[test]
 fn test_range_inclusive_nth() {
     assert_eq!((10..=15).nth(0), Some(10));
@@ -210,6 +219,7 @@ fn test_range_inclusive_nth() {
     assert_eq!(r, exhausted_via_next);
     assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
+
 #[test]
 fn test_range_inclusive_nth_back() {
     assert_eq!((10..=15).nth_back(0), Some(15));
@@ -233,6 +243,7 @@ fn test_range_inclusive_nth_back() {
     assert_eq!(r, exhausted_via_next_back);
     assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
+
 #[test]
 fn test_range_len() {
     assert_eq!((0..10_u8).len(), 10);
@@ -241,6 +252,7 @@ fn test_range_len() {
     assert_eq!((11..10_u8).len(), 0);
     assert_eq!((100..10_u8).len(), 0);
 }
+
 #[test]
 fn test_range_inclusive_len() {
     assert_eq!((0..=10_u8).len(), 11);
@@ -249,6 +261,7 @@ fn test_range_inclusive_len() {
     assert_eq!((11..=10_u8).len(), 0);
     assert_eq!((100..=10_u8).len(), 0);
 }
+
 #[test]
 fn test_range_step() {
     #![allow(deprecated)]
@@ -271,6 +284,7 @@ fn test_range_step() {
     assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX as usize).size_hint(), (3, Some(3)));
     assert_eq!((isize::MIN..isize::MAX).step_by(1).size_hint(), (usize::MAX, Some(usize::MAX)));
 }
+
 #[test]
 fn test_range_inclusive_step() {
     assert_eq!((0..=50).step_by(10).collect::<Vec<_>>(), [0, 10, 20, 30, 40, 50]);
@@ -278,6 +292,7 @@ fn test_range_inclusive_step() {
     assert_eq!((200..=255u8).step_by(10).collect::<Vec<_>>(), [200, 210, 220, 230, 240, 250]);
     assert_eq!((250..=255u8).step_by(1).collect::<Vec<_>>(), [250, 251, 252, 253, 254, 255]);
 }
+
 #[test]
 fn test_range_last_max() {
     assert_eq!((0..20).last(), Some(19));
@@ -288,6 +303,7 @@ fn test_range_last_max() {
     assert_eq!((-20..0).max(), Some(-1));
     assert_eq!((5..5).max(), None);
 }
+
 #[test]
 fn test_range_inclusive_last_max() {
     assert_eq!((0..=20).last(), Some(20));
@@ -304,12 +320,14 @@ fn test_range_inclusive_last_max() {
     r.next();
     assert_eq!(r.max(), None);
 }
+
 #[test]
 fn test_range_min() {
     assert_eq!((0..20).min(), Some(0));
     assert_eq!((-20..0).min(), Some(-20));
     assert_eq!((5..5).min(), None);
 }
+
 #[test]
 fn test_range_inclusive_min() {
     assert_eq!((0..=20).min(), Some(0));
@@ -319,6 +337,7 @@ fn test_range_inclusive_min() {
     r.next();
     assert_eq!(r.min(), None);
 }
+
 #[test]
 fn test_range_inclusive_folds() {
     assert_eq!((1..=10).sum::<i32>(), 55);
@@ -356,6 +375,7 @@ fn test_range_inclusive_folds() {
     assert_eq!(it.try_rfold(0, |a, b| Some(a + b)), Some(0));
     assert!(it.is_empty());
 }
+
 #[test]
 fn test_range_size_hint() {
     assert_eq!((0..0usize).size_hint(), (0, Some(0)));
@@ -379,6 +399,7 @@ fn test_range_size_hint() {
     assert_eq!((imin..imax).size_hint(), (usize::MAX, Some(usize::MAX)));
     assert_eq!((imin..imax + 1).size_hint(), (usize::MAX, None));
 }
+
 #[test]
 fn test_range_inclusive_size_hint() {
     assert_eq!((1..=0usize).size_hint(), (0, Some(0)));

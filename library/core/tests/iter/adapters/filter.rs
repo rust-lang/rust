@@ -5,6 +5,7 @@ fn test_iterator_filter_count() {
     let xs = [0, 1, 2, 3, 4, 5, 6, 7, 8];
     assert_eq!(xs.iter().filter(|&&x| x % 2 == 0).count(), 5);
 }
+
 #[test]
 fn test_iterator_filter_fold() {
     let xs = [0, 1, 2, 3, 4, 5, 6, 7, 8];
@@ -23,6 +24,7 @@ fn test_iterator_filter_fold() {
     });
     assert_eq!(i, 0);
 }
+
 #[test]
 fn test_filter_try_folds() {
     fn p(&x: &i32) -> bool {

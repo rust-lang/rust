@@ -23,6 +23,7 @@ fn test_iterator_chain() {
     }
     assert_eq!(i, expected.len());
 }
+
 #[test]
 fn test_iterator_chain_advance_by() {
     fn test_chain(xs: &[i32], ys: &[i32]) {
@@ -55,6 +56,7 @@ fn test_iterator_chain_advance_by() {
     test_chain(&[0, 1, 2, 3, 4, 5], &[]);
     test_chain(&[0, 1, 2, 3, 4, 5], &[30, 40, 50, 60]);
 }
+
 #[test]
 fn test_iterator_chain_advance_back_by() {
     fn test_chain(xs: &[i32], ys: &[i32]) {
@@ -87,6 +89,7 @@ fn test_iterator_chain_advance_back_by() {
     test_chain(&[0, 1, 2, 3, 4, 5], &[]);
     test_chain(&[0, 1, 2, 3, 4, 5], &[30, 40, 50, 60]);
 }
+
 #[test]
 fn test_iterator_chain_nth() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -102,6 +105,7 @@ fn test_iterator_chain_nth() {
     assert_eq!(it.nth(5), Some(&5));
     assert_eq!(it.next(), None);
 }
+
 #[test]
 fn test_iterator_chain_nth_back() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -117,6 +121,7 @@ fn test_iterator_chain_nth_back() {
     assert_eq!(it.nth_back(5), Some(&0));
     assert_eq!(it.next(), None);
 }
+
 #[test]
 fn test_iterator_chain_last() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -127,6 +132,7 @@ fn test_iterator_chain_last() {
     assert_eq!(ys.iter().chain(&zs).last(), Some(&60));
     assert_eq!(zs.iter().chain(&zs).last(), None);
 }
+
 #[test]
 fn test_iterator_chain_count() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -135,6 +141,7 @@ fn test_iterator_chain_count() {
     assert_eq!(xs.iter().chain(&ys).count(), 10);
     assert_eq!(zs.iter().chain(&ys).count(), 4);
 }
+
 #[test]
 fn test_iterator_chain_find() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -147,6 +154,7 @@ fn test_iterator_chain_find() {
     assert_eq!(iter.find(|&&i| i == 100), None);
     assert_eq!(iter.next(), None);
 }
+
 #[test]
 fn test_iterator_chain_size_hint() {
     // this chains an iterator of length 0 with an iterator of length 1,
@@ -161,6 +169,7 @@ fn test_iterator_chain_size_hint() {
     assert_eq!(iter.next_back(), Some(()));
     assert_eq!(iter.size_hint(), (0, Some(0)));
 }
+
 #[test]
 fn test_iterator_chain_unfused() {
     // Chain shouldn't be fused in its second iterator, depending on direction
@@ -174,6 +183,7 @@ fn test_iterator_chain_unfused() {
     iter.next_back().unwrap();
     iter.next_back().unwrap_none();
 }
+
 #[test]
 fn test_chain_fold() {
     let xs = [1, 2, 3];
@@ -185,6 +195,7 @@ fn test_chain_fold() {
     iter.fold((), |(), &elt| result.push(elt));
     assert_eq!(&[2, 3, 1, 2, 0], &result[..]);
 }
+
 #[test]
 fn test_chain_try_folds() {
     let c = || (0..10).chain(10..20);

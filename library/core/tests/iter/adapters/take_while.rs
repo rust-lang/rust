@@ -12,6 +12,7 @@ fn test_iterator_take_while() {
     }
     assert_eq!(i, ys.len());
 }
+
 #[test]
 fn test_take_while_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);

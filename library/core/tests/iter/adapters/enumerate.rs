@@ -8,6 +8,7 @@ fn test_iterator_enumerate() {
         assert_eq!(i, x);
     }
 }
+
 #[test]
 fn test_iterator_enumerate_nth() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -29,6 +30,7 @@ fn test_iterator_enumerate_nth() {
     assert_eq!(i, x);
     assert_eq!(i, 3);
 }
+
 #[test]
 fn test_iterator_enumerate_nth_back() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -46,11 +48,13 @@ fn test_iterator_enumerate_nth_back() {
     assert_eq!(i, x);
     assert_eq!(i, 2);
 }
+
 #[test]
 fn test_iterator_enumerate_count() {
     let xs = [0, 1, 2, 3, 4, 5];
     assert_eq!(xs.iter().enumerate().count(), 6);
 }
+
 #[test]
 fn test_iterator_enumerate_fold() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -74,6 +78,7 @@ fn test_iterator_enumerate_fold() {
     });
     assert_eq!(i, 0);
 }
+
 #[test]
 fn test_enumerate_try_folds() {
     let f = &|acc, (i, x)| usize::checked_add(2 * acc, x / (i + 1) + i);

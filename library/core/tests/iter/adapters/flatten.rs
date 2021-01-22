@@ -13,6 +13,7 @@ fn test_iterator_flatten() {
     }
     assert_eq!(i, ys.len());
 }
+
 #[test]
 fn test_iterator_flatten_fold() {
     let xs = [0, 3, 6];
@@ -35,6 +36,7 @@ fn test_iterator_flatten_fold() {
     });
     assert_eq!(i, 0);
 }
+
 #[test]
 fn test_flatten_try_folds() {
     let f = &|acc, x| i32::checked_add(acc * 2 / 3, x);
@@ -52,6 +54,7 @@ fn test_flatten_try_folds() {
     assert_eq!(iter.try_rfold(0, i8::checked_add), None);
     assert_eq!(iter.next_back(), Some(35));
 }
+
 #[test]
 fn test_flatten_non_fused_outer() {
     let mut iter = NonFused::new(once(0..2)).flatten();
@@ -60,6 +63,7 @@ fn test_flatten_non_fused_outer() {
     assert_eq!(iter.next(), Some(0));
     assert_eq!(iter.next(), None);
 }
+
 #[test]
 fn test_flatten_non_fused_inner() {
     let mut iter = once(0..1).chain(once(1..3)).flat_map(NonFused::new);

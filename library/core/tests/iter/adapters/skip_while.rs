@@ -12,6 +12,7 @@ fn test_iterator_skip_while() {
     }
     assert_eq!(i, ys.len());
 }
+
 #[test]
 fn test_iterator_skip_while_fold() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
@@ -31,6 +32,7 @@ fn test_iterator_skip_while_fold() {
     });
     assert_eq!(i, ys.len());
 }
+
 #[test]
 fn test_skip_while_try_fold() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);

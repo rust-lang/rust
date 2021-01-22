@@ -68,6 +68,7 @@ fn test_lt() {
     assert!(c.iter().gt(b.iter()) == (c[0] > b[0]));
     assert!(c.iter().ge(b.iter()) == (c[0] >= b[0]));
 }
+
 #[test]
 fn test_cmp_by() {
     use core::cmp::Ordering;
@@ -83,6 +84,7 @@ fn test_cmp_by() {
     assert_eq!(xs().cmp_by(ys().rev(), f), Ordering::Less);
     assert_eq!(xs().cmp_by(ys().take(2), f), Ordering::Greater);
 }
+
 #[test]
 fn test_partial_cmp_by() {
     use core::cmp::Ordering;
@@ -105,6 +107,7 @@ fn test_partial_cmp_by() {
     assert_eq!(xs().partial_cmp_by(ys(), f), None);
     assert_eq!(ys().partial_cmp_by(xs(), f), Some(Ordering::Greater));
 }
+
 #[test]
 fn test_eq_by() {
     let f = |x: i32, y: i32| x * x == y;
@@ -120,6 +123,7 @@ fn test_eq_by() {
     assert!(!xs().eq_by(ys().take(3), f));
     assert!(xs().take(3).eq_by(ys().take(3), f));
 }
+
 #[test]
 fn test_iterator_nth() {
     let v: &[_] = &[0, 1, 2, 3, 4];
@@ -128,6 +132,7 @@ fn test_iterator_nth() {
     }
     assert_eq!(v.iter().nth(v.len()), None);
 }
+
 #[test]
 fn test_iterator_nth_back() {
     let v: &[_] = &[0, 1, 2, 3, 4];
@@ -136,6 +141,7 @@ fn test_iterator_nth_back() {
     }
     assert_eq!(v.iter().nth_back(v.len()), None);
 }
+
 #[test]
 fn test_iterator_advance_by() {
     let v: &[_] = &[0, 1, 2, 3, 4];
@@ -150,6 +156,7 @@ fn test_iterator_advance_by() {
     assert_eq!(v.iter().advance_by(v.len()), Ok(()));
     assert_eq!(v.iter().advance_by(100), Err(v.len()));
 }
+
 #[test]
 fn test_iterator_advance_back_by() {
     let v: &[_] = &[0, 1, 2, 3, 4];
@@ -164,6 +171,7 @@ fn test_iterator_advance_back_by() {
     assert_eq!(v.iter().advance_back_by(v.len()), Ok(()));
     assert_eq!(v.iter().advance_back_by(100), Err(v.len()));
 }
+
 #[test]
 fn test_iterator_rev_advance_back_by() {
     let v: &[_] = &[0, 1, 2, 3, 4];
@@ -178,12 +186,14 @@ fn test_iterator_rev_advance_back_by() {
     assert_eq!(v.iter().rev().advance_back_by(v.len()), Ok(()));
     assert_eq!(v.iter().rev().advance_back_by(100), Err(v.len()));
 }
+
 #[test]
 fn test_iterator_last() {
     let v: &[_] = &[0, 1, 2, 3, 4];
     assert_eq!(v.iter().last().unwrap(), &4);
     assert_eq!(v[..1].iter().last().unwrap(), &0);
 }
+
 #[test]
 fn test_iterator_max() {
     let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -192,6 +202,7 @@ fn test_iterator_max() {
     assert_eq!(v[..0].iter().cloned().max(), None);
     assert_eq!(v.iter().cloned().map(Mod3).max().map(|x| x.0), Some(8));
 }
+
 #[test]
 fn test_iterator_min() {
     let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -200,6 +211,7 @@ fn test_iterator_min() {
     assert_eq!(v[..0].iter().cloned().min(), None);
     assert_eq!(v.iter().cloned().map(Mod3).min().map(|x| x.0), Some(0));
 }
+
 #[test]
 fn test_iterator_size_hint() {
     let c = (0..).step_by(1);
@@ -239,6 +251,7 @@ fn test_iterator_size_hint() {
     assert_eq!(vi.clone().map(|&i| i + 1).size_hint(), (10, Some(10)));
     assert_eq!(vi.filter_map(|_| Some(0)).size_hint(), (0, Some(10)));
 }
+
 #[test]
 fn test_all() {
     let v: Box<[isize]> = Box::new([1, 2, 3, 4, 5]);
@@ -247,6 +260,7 @@ fn test_all() {
     assert!(!v.iter().all(|&x| x > 100));
     assert!(v[..0].iter().all(|_| panic!()));
 }
+
 #[test]
 fn test_any() {
     let v: Box<[isize]> = Box::new([1, 2, 3, 4, 5]);
@@ -255,6 +269,7 @@ fn test_any() {
     assert!(!v.iter().any(|&x| x > 100));
     assert!(!v[..0].iter().any(|_| panic!()));
 }
+
 #[test]
 fn test_find() {
     let v: &[isize] = &[1, 3, 9, 27, 103, 14, 11];
@@ -262,6 +277,7 @@ fn test_find() {
     assert_eq!(*v.iter().find(|&&x| x % 3 == 0).unwrap(), 3);
     assert!(v.iter().find(|&&x| x % 12 == 0).is_none());
 }
+
 #[test]
 fn test_try_find() {
     let xs: &[isize] = &[];
@@ -287,6 +303,7 @@ fn test_try_find() {
         Ok(false)
     }
 }
+
 #[test]
 fn test_try_find_api_usability() -> Result<(), Box<dyn std::error::Error>> {
     let a = ["1", "2"];
@@ -300,6 +317,7 @@ fn test_try_find_api_usability() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
 #[test]
 fn test_position() {
     let v = &[1, 3, 9, 27, 103, 14, 11];
@@ -307,6 +325,7 @@ fn test_position() {
     assert_eq!(v.iter().position(|x| *x % 3 == 0).unwrap(), 1);
     assert!(v.iter().position(|x| *x % 12 == 0).is_none());
 }
+
 #[test]
 fn test_count() {
     let xs = &[1, 2, 2, 1, 5, 9, 0, 2];
@@ -314,26 +333,31 @@ fn test_count() {
     assert_eq!(xs.iter().filter(|x| **x == 5).count(), 1);
     assert_eq!(xs.iter().filter(|x| **x == 95).count(), 0);
 }
+
 #[test]
 fn test_max_by_key() {
     let xs: &[isize] = &[-3, 0, 1, 5, -10];
     assert_eq!(*xs.iter().max_by_key(|x| x.abs()).unwrap(), -10);
 }
+
 #[test]
 fn test_max_by() {
     let xs: &[isize] = &[-3, 0, 1, 5, -10];
     assert_eq!(*xs.iter().max_by(|x, y| x.abs().cmp(&y.abs())).unwrap(), -10);
 }
+
 #[test]
 fn test_min_by_key() {
     let xs: &[isize] = &[-3, 0, 1, 5, -10];
     assert_eq!(*xs.iter().min_by_key(|x| x.abs()).unwrap(), 0);
 }
+
 #[test]
 fn test_min_by() {
     let xs: &[isize] = &[-3, 0, 1, 5, -10];
     assert_eq!(*xs.iter().min_by(|x, y| x.abs().cmp(&y.abs())).unwrap(), 0);
 }
+
 #[test]
 fn test_by_ref() {
     let mut xs = 0..10;
@@ -342,6 +366,7 @@ fn test_by_ref() {
     assert_eq!(partial_sum, 10);
     assert_eq!(xs.next(), Some(5));
 }
+
 #[test]
 fn test_is_sorted() {
     assert!([1, 2, 2, 9].iter().is_sorted());
@@ -354,6 +379,7 @@ fn test_is_sorted() {
     assert!(!["c", "bb", "aaa"].iter().is_sorted());
     assert!(["c", "bb", "aaa"].iter().is_sorted_by_key(|s| s.len()));
 }
+
 #[test]
 fn test_partition() {
     fn check(xs: &mut [i32], ref p: impl Fn(&i32) -> bool, expected: usize) {
@@ -389,6 +415,7 @@ fn test_partition() {
     check(xs, |&x| x < 3, 3); // small
     check(xs, |&x| x > 6, 3); // large
 }
+
 #[test]
 fn test_iterator_rev_advance_by() {
     let v: &[_] = &[0, 1, 2, 3, 4];

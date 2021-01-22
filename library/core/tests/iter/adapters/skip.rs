@@ -14,6 +14,7 @@ fn test_iterator_skip() {
     assert_eq!(i, ys.len());
     assert_eq!(it.len(), 0);
 }
+
 #[test]
 fn test_iterator_skip_doubleended() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
@@ -51,6 +52,7 @@ fn test_iterator_skip_doubleended() {
     let it = xs.iter().skip(5).rev();
     assert_eq!(it.last(), Some(&13));
 }
+
 #[test]
 fn test_iterator_skip_nth() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
@@ -66,6 +68,7 @@ fn test_iterator_skip_nth() {
     let mut it = xs.iter().skip(12);
     assert_eq!(it.nth(0), None);
 }
+
 #[test]
 fn test_iterator_skip_count() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
@@ -76,6 +79,7 @@ fn test_iterator_skip_count() {
     assert_eq!(xs.iter().skip(12).count(), 0);
     assert_eq!(xs.iter().skip(13).count(), 0);
 }
+
 #[test]
 fn test_iterator_skip_last() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
@@ -90,6 +94,7 @@ fn test_iterator_skip_last() {
     assert_eq!(it.next(), Some(&13));
     assert_eq!(it.last(), Some(&30));
 }
+
 #[test]
 fn test_iterator_skip_fold() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
@@ -127,6 +132,7 @@ fn test_iterator_skip_fold() {
     });
     assert_eq!(i, 1);
 }
+
 #[test]
 fn test_skip_try_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);
@@ -139,6 +145,7 @@ fn test_skip_try_folds() {
     assert_eq!(iter.try_rfold(0, i8::checked_add), None);
     assert_eq!(iter.next_back(), Some(24));
 }
+
 #[test]
 fn test_skip_nth_back() {
     let xs = [0, 1, 2, 3, 4, 5];

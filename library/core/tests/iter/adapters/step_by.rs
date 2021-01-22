@@ -29,6 +29,7 @@ fn test_iterator_step_by() {
     assert_eq!(it.next_back(), Some(0));
     assert_eq!(it.next_back(), None);
 }
+
 #[test]
 fn test_iterator_step_by_nth() {
     let mut it = (0..16).step_by(5);
@@ -46,6 +47,7 @@ fn test_iterator_step_by_nth() {
     assert_eq!(it.clone().nth(4), None);
     assert_eq!(it.clone().nth(42), None);
 }
+
 #[test]
 fn test_iterator_step_by_nth_overflow() {
     #[cfg(target_pointer_width = "8")]
@@ -91,6 +93,7 @@ fn test_iterator_step_by_nth_overflow() {
     (&mut it).step_by(1).nth(usize::MAX);
     assert_eq!(it.0, (usize::MAX as Bigger) * 1);
 }
+
 #[test]
 fn test_iterator_step_by_nth_try_fold() {
     let mut it = (0..).step_by(10);
@@ -107,6 +110,7 @@ fn test_iterator_step_by_nth_try_fold() {
     assert_eq!(it.next(), Some(100));
     assert_eq!(it.try_fold(0, i8::checked_add), Some(0));
 }
+
 #[test]
 fn test_iterator_step_by_nth_back() {
     let mut it = (0..16).step_by(5);
@@ -131,6 +135,7 @@ fn test_iterator_step_by_nth_back() {
     assert_eq!(it().nth_back(4), None);
     assert_eq!(it().nth_back(42), None);
 }
+
 #[test]
 fn test_iterator_step_by_nth_try_rfold() {
     let mut it = (0..100).step_by(10);
@@ -148,12 +153,14 @@ fn test_iterator_step_by_nth_try_rfold() {
     assert_eq!(it.next_back(), Some(100));
     assert_eq!(it.try_fold(0, i8::checked_add), Some(0));
 }
+
 #[test]
 #[should_panic]
 fn test_iterator_step_by_zero() {
     let mut it = (0..).step_by(0);
     it.next();
 }
+
 #[test]
 fn test_iterator_step_by_size_hint() {
     struct StubSizeHint(usize, Option<usize>);
@@ -232,6 +239,7 @@ fn test_iterator_step_by_size_hint() {
     assert!(TrustedLenCheck::test(a.iter()));
     assert!(!TrustedLenCheck::test(a.iter().step_by(1)));
 }
+
 #[test]
 fn test_step_by_skip() {
     assert_eq!((0..640).step_by(128).skip(1).collect::<Vec<_>>(), [128, 256, 384, 512]);

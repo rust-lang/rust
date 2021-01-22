@@ -9,6 +9,7 @@ fn test_repeat() {
     assert_eq!(it.next(), Some(42));
     assert_eq!(repeat(42).size_hint(), (usize::MAX, None));
 }
+
 #[test]
 fn test_repeat_take() {
     let mut it = repeat(42).take(3);
@@ -21,11 +22,13 @@ fn test_repeat_take() {
     assert_eq!(repeat(42).take(0).size_hint(), (0, Some(0)));
     assert_eq!(repeat(42).take(usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
 }
+
 #[test]
 fn test_repeat_take_collect() {
     let v: Vec<_> = repeat(42).take(3).collect();
     assert_eq!(v, vec![42, 42, 42]);
 }
+
 #[test]
 fn test_repeat_with() {
     #[derive(PartialEq, Debug)]
@@ -36,6 +39,7 @@ fn test_repeat_with() {
     assert_eq!(it.next(), Some(NotClone(42)));
     assert_eq!(repeat_with(|| NotClone(42)).size_hint(), (usize::MAX, None));
 }
+
 #[test]
 fn test_repeat_with_take() {
     let mut it = repeat_with(|| 42).take(3);
@@ -48,6 +52,7 @@ fn test_repeat_with_take() {
     assert_eq!(repeat_with(|| 42).take(0).size_hint(), (0, Some(0)));
     assert_eq!(repeat_with(|| 42).take(usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
 }
+
 #[test]
 fn test_repeat_with_take_collect() {
     let mut curr = 1;
@@ -60,6 +65,7 @@ fn test_repeat_with_take_collect() {
     .collect();
     assert_eq!(v, vec![1, 2, 4, 8, 16]);
 }
+
 #[test]
 fn test_successors() {
     let mut powers_of_10 = successors(Some(1_u16), |n| n.checked_mul(10));
@@ -70,12 +76,14 @@ fn test_successors() {
     assert_eq!(empty.next(), None);
     assert_eq!(empty.next(), None);
 }
+
 #[test]
 fn test_once() {
     let mut it = once(42);
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), None);
 }
+
 #[test]
 fn test_once_with() {
     let count = Cell::new(0);
@@ -92,6 +100,7 @@ fn test_once_with() {
     assert_eq!(it.next(), None);
     assert_eq!(count.get(), 1);
 }
+
 #[test]
 fn test_empty() {
     let mut it = empty::<i32>();

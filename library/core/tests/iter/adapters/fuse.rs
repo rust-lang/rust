@@ -11,6 +11,7 @@ fn test_fuse_nth() {
     assert_eq!(it.nth(2), None);
     assert_eq!(it.len(), 0);
 }
+
 #[test]
 fn test_fuse_last() {
     let xs = [0, 1, 2];
@@ -19,6 +20,7 @@ fn test_fuse_last() {
     assert_eq!(it.len(), 3);
     assert_eq!(it.last(), Some(&2));
 }
+
 #[test]
 fn test_fuse_count() {
     let xs = [0, 1, 2];
@@ -28,6 +30,7 @@ fn test_fuse_count() {
     assert_eq!(it.count(), 3);
     // Can't check len now because count consumes.
 }
+
 #[test]
 fn test_fuse_fold() {
     let xs = [0, 1, 2];

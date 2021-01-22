@@ -6,6 +6,7 @@ fn test_iterator_rev_nth_back() {
     }
     assert_eq!(v.iter().rev().nth_back(v.len()), None);
 }
+
 #[test]
 fn test_iterator_rev_nth() {
     let v: &[_] = &[0, 1, 2, 3, 4];
@@ -14,6 +15,7 @@ fn test_iterator_rev_nth() {
     }
     assert_eq!(v.iter().rev().nth(v.len()), None);
 }
+
 #[test]
 fn test_iterator_len() {
     let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -21,6 +23,7 @@ fn test_iterator_len() {
     assert_eq!(v[..10].iter().count(), 10);
     assert_eq!(v[..0].iter().count(), 0);
 }
+
 #[test]
 fn test_rev() {
     let xs = [2, 4, 6, 8, 10, 12, 14, 16];
@@ -29,6 +32,7 @@ fn test_rev() {
     it.next();
     assert!(it.rev().cloned().collect::<Vec<isize>>() == vec![16, 14, 12, 10, 8, 6]);
 }
+
 #[test]
 fn test_double_ended_map() {
     let xs = [1, 2, 3, 4, 5, 6];
@@ -41,6 +45,7 @@ fn test_double_ended_map() {
     assert_eq!(it.next_back(), Some(-4));
     assert_eq!(it.next(), None);
 }
+
 #[test]
 fn test_double_ended_enumerate() {
     let xs = [1, 2, 3, 4, 5, 6];
@@ -53,6 +58,7 @@ fn test_double_ended_enumerate() {
     assert_eq!(it.next_back(), Some((2, 3)));
     assert_eq!(it.next(), None);
 }
+
 #[test]
 fn test_double_ended_zip() {
     let xs = [1, 2, 3, 4, 5, 6];
@@ -66,6 +72,7 @@ fn test_double_ended_zip() {
     assert_eq!(it.next_back(), Some((3, 3)));
     assert_eq!(it.next(), None);
 }
+
 #[test]
 fn test_double_ended_filter() {
     let xs = [1, 2, 3, 4, 5, 6];
@@ -75,6 +82,7 @@ fn test_double_ended_filter() {
     assert_eq!(it.next().unwrap(), &2);
     assert_eq!(it.next_back(), None);
 }
+
 #[test]
 fn test_double_ended_filter_map() {
     let xs = [1, 2, 3, 4, 5, 6];
@@ -84,6 +92,7 @@ fn test_double_ended_filter_map() {
     assert_eq!(it.next().unwrap(), 4);
     assert_eq!(it.next_back(), None);
 }
+
 #[test]
 fn test_double_ended_chain() {
     let xs = [1, 2, 3, 4, 5];
@@ -127,6 +136,7 @@ fn test_double_ended_chain() {
     assert_eq!(CrazyIterator::new().chain(0..10).rev().last(), Some(0));
     assert!((0..10).chain(CrazyIterator::new()).rev().any(|i| i == 0));
 }
+
 #[test]
 fn test_double_ended_flat_map() {
     let u = [0, 1];
@@ -143,6 +153,7 @@ fn test_double_ended_flat_map() {
     assert_eq!(it.next(), None);
     assert_eq!(it.next_back(), None);
 }
+
 #[test]
 fn test_double_ended_flatten() {
     let u = [0, 1];
@@ -159,6 +170,7 @@ fn test_double_ended_flatten() {
     assert_eq!(it.next(), None);
     assert_eq!(it.next_back(), None);
 }
+
 #[test]
 fn test_double_ended_range() {
     assert_eq!((11..14).rev().collect::<Vec<_>>(), [13, 12, 11]);
@@ -171,6 +183,7 @@ fn test_double_ended_range() {
         panic!("unreachable");
     }
 }
+
 #[test]
 fn test_rev_try_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);

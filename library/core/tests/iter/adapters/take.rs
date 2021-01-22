@@ -27,6 +27,7 @@ fn test_iterator_take() {
     assert_eq!(i, ys.len());
     assert_eq!(it.len(), 0);
 }
+
 #[test]
 fn test_iterator_take_nth() {
     let xs = [0, 1, 2, 4, 5];
@@ -50,6 +51,7 @@ fn test_iterator_take_nth() {
         i += 2;
     }
 }
+
 #[test]
 fn test_iterator_take_nth_back() {
     let xs = [0, 1, 2, 4, 5];
@@ -70,6 +72,7 @@ fn test_iterator_take_nth_back() {
     assert_eq!(it.nth_back(1), Some(&1));
     assert_eq!(it.nth_back(1), None);
 }
+
 #[test]
 fn test_iterator_take_short() {
     let xs = [0, 1, 2, 3];
@@ -96,6 +99,7 @@ fn test_iterator_take_short() {
     assert_eq!(i, xs.len());
     assert_eq!(it.len(), 0);
 }
+
 #[test]
 fn test_take_try_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);

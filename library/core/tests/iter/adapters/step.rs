@@ -23,6 +23,7 @@ fn test_steps_between() {
         None,
     );
 }
+
 #[test]
 fn test_step_forward() {
     assert_eq!(Step::forward_checked(55_u8, 200_usize), Some(255_u8));
@@ -59,6 +60,7 @@ fn test_step_forward() {
         None
     );
 }
+
 #[test]
 fn test_step_backward() {
     assert_eq!(Step::backward_checked(255_u8, 200_usize), Some(55_u8));

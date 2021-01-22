@@ -59,6 +59,7 @@ fn test_iterator_peekable() {
     assert!(it.next_back().is_none());
     assert_eq!(it.len(), 0);
 }
+
 #[test]
 fn test_iterator_peekable_count() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -82,6 +83,7 @@ fn test_iterator_peekable_count() {
     let mut it = zs.iter().peekable();
     assert_eq!(it.peek(), None);
 }
+
 #[test]
 fn test_iterator_peekable_nth() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -95,6 +97,7 @@ fn test_iterator_peekable_nth() {
     assert_eq!(it.nth(2), Some(&5));
     assert_eq!(it.next(), None);
 }
+
 #[test]
 fn test_iterator_peekable_last() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -113,6 +116,7 @@ fn test_iterator_peekable_last() {
     assert_eq!(it.peek(), None);
     assert_eq!(it.last(), None);
 }
+
 #[test]
 fn test_iterator_peekable_fold() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -124,6 +128,7 @@ fn test_iterator_peekable_fold() {
     });
     assert_eq!(i, xs.len());
 }
+
 #[test]
 fn test_iterator_peekable_rfold() {
     let xs = [0, 1, 2, 3, 4, 5];
@@ -135,6 +140,7 @@ fn test_iterator_peekable_rfold() {
     });
     assert_eq!(i, xs.len());
 }
+
 #[test]
 fn test_iterator_peekable_next_if_eq() {
     // first, try on references
@@ -158,6 +164,7 @@ fn test_iterator_peekable_next_if_eq() {
     assert_eq!(it.next_if_eq("speed"), Some("speed".into()));
     assert_eq!(it.next_if_eq(""), None);
 }
+
 #[test]
 fn test_iterator_peekable_mut() {
     let mut it = vec![1, 2, 3].into_iter().peekable();
@@ -168,6 +175,7 @@ fn test_iterator_peekable_mut() {
     }
     assert_eq!(it.collect::<Vec<_>>(), vec![5, 2, 3]);
 }
+
 #[test]
 fn test_iterator_peekable_remember_peek_none_1() {
     // Check that the loop using .peek() terminates
@@ -185,6 +193,7 @@ fn test_iterator_peekable_remember_peek_none_1() {
     }
     assert_eq!(n, data.len());
 }
+
 #[test]
 fn test_iterator_peekable_remember_peek_none_2() {
     let data = [0];
@@ -193,6 +202,7 @@ fn test_iterator_peekable_remember_peek_none_2() {
     assert_eq!(iter.peek(), None);
     assert_eq!(iter.last(), None);
 }
+
 #[test]
 fn test_iterator_peekable_remember_peek_none_3() {
     let data = [0];
@@ -205,6 +215,7 @@ fn test_iterator_peekable_remember_peek_none_3() {
     assert_eq!(iter.peek(), None);
     assert_eq!(iter.nth(0), None);
 }
+
 #[test]
 fn test_peek_try_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);
@@ -251,6 +262,7 @@ fn test_peek_try_folds() {
     assert_eq!(iter.peek(), None);
     assert_eq!(iter.try_rfold((), |(), x| Err(x)), Ok(()));
 }
+
 #[test]
 fn test_peekable_non_fused() {
     let mut iter = NonFused::new(empty::<i32>()).peekable();

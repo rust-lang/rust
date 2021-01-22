@@ -12,6 +12,7 @@ fn test_iterator_flat_map() {
     }
     assert_eq!(i, ys.len());
 }
+
 #[test]
 fn test_iterator_flat_map_fold() {
     let xs = [0, 3, 6];
@@ -34,6 +35,7 @@ fn test_iterator_flat_map_fold() {
     });
     assert_eq!(i, 0);
 }
+
 #[test]
 fn test_flat_map_try_folds() {
     let f = &|acc, x| i32::checked_add(acc * 2 / 3, x);

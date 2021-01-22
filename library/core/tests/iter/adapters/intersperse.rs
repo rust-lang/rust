@@ -17,6 +17,7 @@ fn test_intersperse() {
     let mut it = ys[..0].iter().map(|x| *x).intersperse(1);
     assert!(it.next() == None);
 }
+
 #[test]
 fn test_intersperse_size_hint() {
     let iter = std::iter::empty::<i32>().intersperse(0);
@@ -33,6 +34,7 @@ fn test_intersperse_size_hint() {
 
     assert_eq!([].iter().intersperse(&()).size_hint(), (0, Some(0)));
 }
+
 #[test]
 fn test_fold_specialization_intersperse() {
     let mut iter = (1..2).intersperse(0);
@@ -44,6 +46,7 @@ fn test_fold_specialization_intersperse() {
     let mut iter = (1..4).intersperse(0);
     iter.clone().for_each(|x| assert_eq!(Some(x), iter.next()));
 }
+
 #[test]
 fn test_try_fold_specialization_intersperse_ok() {
     let mut iter = (1..2).intersperse(0);
@@ -64,6 +67,7 @@ fn test_try_fold_specialization_intersperse_ok() {
         Some(())
     });
 }
+
 #[test]
 fn test_intersperse_with() {
     #[derive(PartialEq, Debug)]
@@ -84,6 +88,7 @@ fn test_intersperse_with() {
     let r = (0..3).intersperse_with(separator).collect::<Vec<_>>();
     assert_eq!(r, vec![0, 200, 1, 400, 2]);
 }
+
 #[test]
 fn test_intersperse_fold() {
     let v = (1..4).intersperse(9).fold(Vec::new(), |mut acc, x| {
@@ -112,6 +117,7 @@ fn test_intersperse_fold() {
     let v = NoneAtStart(0).intersperse(1000).fold(0, |a, b| a + b);
     assert_eq!(v, 0);
 }
+
 #[test]
 fn test_intersperse_collect_string() {
     let contents = vec![1, 2, 3];

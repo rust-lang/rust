@@ -10,6 +10,7 @@ fn test_inspect() {
     assert_eq!(n, xs.len());
     assert_eq!(&xs[..], &ys[..]);
 }
+
 #[test]
 fn test_inspect_fold() {
     let xs = [1, 2, 3, 4];

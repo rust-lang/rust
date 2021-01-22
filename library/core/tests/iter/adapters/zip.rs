@@ -17,6 +17,7 @@ fn test_zip_nth() {
     let mut it = ys.iter().zip(&xs);
     assert_eq!(it.nth(3), None);
 }
+
 #[test]
 fn test_zip_nth_side_effects() {
     let mut a = Vec::new();
@@ -38,6 +39,7 @@ fn test_zip_nth_side_effects() {
     assert_eq!(a, vec![1, 2, 3, 4, 5]);
     assert_eq!(b, vec![200, 300, 400, 500, 600]);
 }
+
 #[test]
 fn test_zip_next_back_side_effects() {
     let mut a = Vec::new();
@@ -63,6 +65,7 @@ fn test_zip_next_back_side_effects() {
     assert_eq!(a, vec![6, 5, 4, 3]);
     assert_eq!(b, vec![800, 700, 600, 500, 400]);
 }
+
 #[test]
 fn test_zip_nth_back_side_effects() {
     let mut a = Vec::new();
@@ -83,6 +86,7 @@ fn test_zip_nth_back_side_effects() {
     assert_eq!(a, vec![6, 5, 4, 3]);
     assert_eq!(b, vec![800, 700, 600, 500, 400]);
 }
+
 #[test]
 fn test_zip_next_back_side_effects_exhausted() {
     let mut a = Vec::new();
@@ -107,6 +111,7 @@ fn test_zip_next_back_side_effects_exhausted() {
     assert_eq!(a, vec![1, 2, 3, 4, 6, 5]);
     assert_eq!(b, vec![200, 300, 400]);
 }
+
 #[test]
 fn test_zip_cloned_sideffectful() {
     let xs = [CountClone::new(), CountClone::new(), CountClone::new(), CountClone::new()];
@@ -125,6 +130,7 @@ fn test_zip_cloned_sideffectful() {
     assert_eq!(&xs, &[1, 1][..]);
     assert_eq!(&ys, &[1, 1, 0, 0][..]);
 }
+
 #[test]
 fn test_zip_map_sideffectful() {
     let mut xs = [0; 6];
@@ -143,6 +149,7 @@ fn test_zip_map_sideffectful() {
     assert_eq!(&xs, &[1, 1, 1, 1]);
     assert_eq!(&ys, &[1, 1, 1, 1, 0, 0]);
 }
+
 #[test]
 fn test_zip_map_rev_sideffectful() {
     let mut xs = [0; 6];
@@ -166,6 +173,7 @@ fn test_zip_map_rev_sideffectful() {
     assert_eq!(&xs, &[1, 1, 1, 1, 1, 1]);
     assert_eq!(&ys, &[1, 1, 1, 1]);
 }
+
 #[test]
 fn test_zip_nested_sideffectful() {
     let mut xs = [0; 6];
@@ -178,6 +186,7 @@ fn test_zip_nested_sideffectful() {
     }
     assert_eq!(&xs, &[1, 1, 1, 1, 1, 0]);
 }
+
 #[test]
 fn test_zip_nth_back_side_effects_exhausted() {
     let mut a = Vec::new();
@@ -202,6 +211,7 @@ fn test_zip_nth_back_side_effects_exhausted() {
     assert_eq!(a, vec![1, 2, 3, 4, 6, 5]);
     assert_eq!(b, vec![200, 300, 400]);
 }
+
 #[test]
 fn test_zip_trusted_random_access_composition() {
     let a = [0, 1, 2, 3, 4];

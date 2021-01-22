@@ -6,6 +6,9 @@ mod traits;
 use core::cell::Cell;
 use core::convert::TryFrom;
 use core::iter::*;
+
+pub fn is_trusted_len<I: TrustedLen>(_: I) {}
+
 #[test]
 fn test_multi_iter() {
     let xs = [1, 2, 3, 4];
@@ -13,6 +16,7 @@ fn test_multi_iter() {
     assert!(xs.iter().eq(ys.iter().rev()));
     assert!(xs.iter().lt(xs.iter().skip(2)));
 }
+
 #[test]
 fn test_counter_from_iter() {
     let it = (0..).step_by(5).take(10);
@@ -20,7 +24,6 @@ fn test_counter_from_iter() {
     assert_eq!(xs, [0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
 }
 
-pub fn is_trusted_len<I: TrustedLen>(_: I) {}
 #[test]
 fn test_functor_laws() {
     // identity:
@@ -41,6 +44,7 @@ fn test_functor_laws() {
     }
     assert_eq!((0..10).map(f).map(g).sum::<usize>(), (0..10).map(h).sum());
 }
+
 #[test]
 fn test_monad_laws_left_identity() {
     fn f(x: usize) -> impl Iterator<Item = usize> {
@@ -48,10 +52,12 @@ fn test_monad_laws_left_identity() {
     }
     assert_eq!(once(42).flat_map(f.clone()).sum::<usize>(), f(42).sum());
 }
+
 #[test]
 fn test_monad_laws_right_identity() {
     assert_eq!((0..10).flat_map(|x| once(x)).sum::<usize>(), (0..10).sum());
 }
+
 #[test]
 fn test_monad_laws_associativity() {
     fn f(x: usize) -> impl Iterator<Item = usize> {
@@ -77,6 +83,7 @@ pub fn extend_for_unit() {
     }
     assert_eq!(x, 5);
 }
+
 #[test]
 fn test_try_fold_specialization_intersperse_err() {
     let orig_iter = ["a", "b"].iter().copied().intersperse("-");

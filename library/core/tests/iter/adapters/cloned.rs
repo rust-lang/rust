@@ -16,6 +16,7 @@ fn test_cloned() {
     assert_eq!(it.len(), 0);
     assert_eq!(it.next_back(), None);
 }
+
 #[test]
 fn test_cloned_side_effects() {
     let mut count = 0;
@@ -32,6 +33,7 @@ fn test_cloned_side_effects() {
     }
     assert_eq!(count, 2);
 }
+
 #[test]
 fn test_cloned_try_folds() {
     let a = [1, 2, 3, 4, 5, 6, 7, 8, 9];

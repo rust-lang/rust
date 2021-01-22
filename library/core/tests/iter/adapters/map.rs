@@ -22,6 +22,7 @@ fn test_find_map() {
         if x % 2 == 0 { Some(x / 2) } else { None }
     }
 }
+
 #[test]
 fn test_map_try_folds() {
     let f = &|acc, x| i32::checked_add(2 * acc, x);
@@ -34,6 +35,7 @@ fn test_map_try_folds() {
     assert_eq!(iter.try_rfold(0, i8::checked_add), None);
     assert_eq!(iter.next_back(), Some(46));
 }
+
 #[test]
 fn test_filter_map_try_folds() {
     let mp = &|x| if 0 <= x && x < 10 { Some(x * 2) } else { None };
