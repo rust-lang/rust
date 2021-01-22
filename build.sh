@@ -5,7 +5,7 @@ set -e
 export CHANNEL="release"
 build_sysroot=1
 target_dir='build'
-newbe=''
+oldbe=''
 while [[ $# != 0 ]]; do
     case $1 in
         "--debug")
@@ -18,12 +18,13 @@ while [[ $# != 0 ]]; do
             target_dir=$2
             shift
             ;;
-        "--newbe")
-            newbe='--features newbe'
+        "--oldbe")
+            oldbe='--features oldbe'
             ;;
         *)
             echo "Unknown flag '$1'"
-            echo "Usage: ./build.sh [--debug] [--without-sysroot] [--target-dir DIR] [--newbe]"
+            echo "Usage: ./build.sh [--debug] [--without-sysroot] [--target-dir DIR] [--oldbe]"
+            exit 1
             ;;
     esac
     shift
@@ -43,9 +44,9 @@ else
    exit 1
 fi
 if [[ "$CHANNEL" == "release" ]]; then
-    cargo build $newbe --release
+    cargo build $oldbe --release
 else
-    cargo build $newbe
+    cargo build $oldbe
 fi
 
 rm -rf "$target_dir"
