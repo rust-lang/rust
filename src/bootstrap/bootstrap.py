@@ -637,35 +637,19 @@ class RustBuild(object):
         # If `download-rustc` is not set, default to rebuilding.
         if self.get_toml("download-rustc", section="rust") != "true":
             return None
-        # Look for a version to compare to based on the current commit.
-        # There are a few different cases to handle.
-        # 1. This commit is a fast-forward from master: `master - * - * - HEAD`
-        # 2. This commit and master have diverged:
-        # ```
-        #   Y - * - HEAD
-        #  /
-        # X - * - master
-        # ```
-        # In this case, we should compare to `X`.
-        # 3. `master` and `HEAD` are radically different (>100 commits, or similar). This probably
-        # means that `master` does *not* correspond to the version we want to compare to, e.g. a
-        # fork. Instead, we want to compare to `rust-lang/rust:master`, which this has to share a
-        # recent merge base with.
 
-        # Find which remote corresponds to `rust-lang/rust`.
-        remotes = subprocess.check_output(["git", "remote", "-v"], universal_newlines=True)
-        # e.g. `origin https://github.com//rust-lang/rust (fetch)`
-        rust_lang_remote = next(line for line in remotes.splitlines() if "rust-lang/rust" in line)
-        rust_lang_remote = rust_lang_remote.split()[0]
-
-        # Find which commit to compare to
-        merge_base = ["git", "merge-base", "HEAD", "{}/master".format(rust_lang_remote)]
-        commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
-
-        # Warn if there were changes to the compiler since the ancestor commit.
+        # Handle running from a directory other than the top level
         rev_parse = ["git", "rev-parse", "--show-toplevel"]
         top_level = subprocess.check_output(rev_parse, universal_newlines=True).strip()
         compiler = "{}/compiler/".format(top_level)
+
+        # Look for a version to compare to based on the current commit.
+        # Ideally this would just use `merge-base`, but on beta and stable branches that wouldn't
+        # come up with any commits, so hack it and use `author=bors` instead.
+        merge_base = ["git", "log", "--author=bors", "--pretty=%H", "-n1", "--", compiler]
+        commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
+
+        # Warn if there were changes to the compiler since the ancestor commit.
         status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler])
         if status != 0:
             print("warning: `download-rustc` is enabled, but there are changes to compiler/")
