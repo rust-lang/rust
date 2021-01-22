@@ -6,6 +6,9 @@ Our approach to "clean code" is two-fold:
 It is explicitly OK for a reviewer to flag only some nits in the PR, and then send a follow-up cleanup PR for things which are easier to explain by example, cc-ing the original author.
 Sending small cleanup PRs (like renaming a single local variable) is encouraged.
 
+When reviewing pull requests prefer extending this document to leaving
+non-reusable comments on the pull request itself.
+
 # General
 
 ## Scale of Changes
@@ -375,6 +378,15 @@ This allows for exceptionally good performance, but leads to increased compile t
 Runtime performance obeys 80%/20% rule -- only a small fraction of code is hot.
 Compile time **does not** obey this rule -- all code has to be compiled.
 
+## Appropriate String Types
+
+When interfacing with OS APIs, use `OsString`, even if the original source of
+data is utf-8 encoded. **Rationale:** cleanly delineates the boundary when the
+data goes into the OS-land.
+
+Use `AbsPathBuf` and `AbsPath` over `std::Path`. **Rationale:** rust-analyzer is
+a long-lived process which handles several projects at the same time. It is
+important not to leak cwd by accident.
 
 # Premature Pessimization
 
