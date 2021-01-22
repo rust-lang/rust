@@ -491,7 +491,10 @@ impl<'a> InferenceContext<'a> {
             Expr::Box { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 if let Some(box_) = self.resolve_boxed_box() {
-                    Ty::apply_one(TypeCtor::Adt(box_), inner_ty)
+                    let mut sb = Substs::build_for_type_ctor(self.db, TypeCtor::Adt(box_));
+                    sb = sb.push(inner_ty);
+                    sb = sb.fill(repeat_with(|| self.table.new_type_var()));
+                    Ty::apply(TypeCtor::Adt(box_), sb.build())
                 } else {
                     Ty::Unknown
                 }

@@ -29,6 +29,30 @@ mod boxed {
 }
 
 #[test]
+fn infer_box_with_allocator() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:std
+fn test() {
+    let x = box 1;
+    let t = (x, box x, box &1, box [1]);
+    t;
+} //^ (Box<i32, {unknown}>, Box<Box<i32, {unknown}>, {unknown}>, Box<&i32, {unknown}>, Box<[i32; _], {unknown}>)
+
+//- /std.rs crate:std
+#[prelude_import] use prelude::*;
+mod boxed {
+    #[lang = "owned_box"]
+    pub struct Box<T: ?Sized, A: Allocator> {
+        inner: *mut T,
+        allocator: A,
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn infer_adt_self() {
     check_types(
         r#"
