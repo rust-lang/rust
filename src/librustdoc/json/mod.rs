@@ -210,21 +210,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         debug!("Done with crate");
         let mut index = (*self.index).clone().into_inner();
         index.extend(self.get_trait_items(cache));
-        let len = index.len();
-        // This needs to be the default HashMap for compatibility with the public interface for
-        // rustdoc-json
-        #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(String::from("0:0")),
             crate_version: krate.version.clone(),
             includes_private: cache.document_private,
-            index: index.into_iter().fold(
-                std::collections::HashMap::with_capacity(len),
-                |mut acc, (key, val)| {
-                    acc.insert(key, val);
-                    acc
-                },
-            ),
+            index: index.into_iter().collect(),
             paths: cache
                 .paths
                 .clone()
