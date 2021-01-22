@@ -365,6 +365,9 @@ fn run_test(
     } else {
         cmd = Command::new(output_file);
     }
+    if let Some(run_directory) = options.test_run_directory {
+        cmd.current_dir(run_directory);
+    }
 
     match cmd.output() {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
