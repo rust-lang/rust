@@ -209,24 +209,23 @@ mod tests {
     fn test_completion_detail_from_macro_generated_struct_fn_doc_attr() {
         check_detail_and_documentation(
             r#"
-            //- /lib.rs
-            macro_rules! bar {
-                () => {
-                    struct Bar;
-                    impl Bar {
-                        #[doc = "Do the foo"]
-                        fn foo(&self) {}
-                    }
-                }
-            }
+macro_rules! bar {
+    () => {
+        struct Bar;
+        impl Bar {
+            #[doc = "Do the foo"]
+            fn foo(&self) {}
+        }
+    }
+}
 
-            bar!();
+bar!();
 
-            fn foo() {
-                let bar = Bar;
-                bar.fo$0;
-            }
-            "#,
+fn foo() {
+    let bar = Bar;
+    bar.fo$0;
+}
+"#,
             DetailAndDocumentation { detail: "-> ()", documentation: "Do the foo" },
         );
     }
@@ -235,24 +234,23 @@ mod tests {
     fn test_completion_detail_from_macro_generated_struct_fn_doc_comment() {
         check_detail_and_documentation(
             r#"
-            //- /lib.rs
-            macro_rules! bar {
-                () => {
-                    struct Bar;
-                    impl Bar {
-                        /// Do the foo
-                        fn foo(&self) {}
-                    }
-                }
-            }
+macro_rules! bar {
+    () => {
+        struct Bar;
+        impl Bar {
+            /// Do the foo
+            fn foo(&self) {}
+        }
+    }
+}
 
-            bar!();
+bar!();
 
-            fn foo() {
-                let bar = Bar;
-                bar.fo$0;
-            }
-            "#,
+fn foo() {
+    let bar = Bar;
+    bar.fo$0;
+}
+"#,
             DetailAndDocumentation { detail: "-> ()", documentation: " Do the foo" },
         );
     }
@@ -260,23 +258,17 @@ mod tests {
     #[test]
     fn test_no_completions_required() {
         // There must be no hint for 'in' keyword.
-        check_no_completion(
-            r#"
-            fn foo() {
-                for i i$0
-            }
-            "#,
-        );
+        check_no_completion(r#"fn foo() { for i i$0 }"#);
         // After 'in' keyword hints may be spawned.
         check_detail_and_documentation(
             r#"
-            /// Do the foo
-            fn foo() -> &'static str { "foo" }
+/// Do the foo
+fn foo() -> &'static str { "foo" }
 
-            fn bar() {
-                for c in fo$0
-            }
-            "#,
+fn bar() {
+    for c in fo$0
+}
+"#,
             DetailAndDocumentation { detail: "-> &str", documentation: "Do the foo" },
         );
     }
