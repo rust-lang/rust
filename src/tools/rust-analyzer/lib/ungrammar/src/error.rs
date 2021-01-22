@@ -3,8 +3,10 @@ use std::fmt;
 
 use crate::lexer::Location;
 
+/// A type alias for std's Result with the Error as our error type.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// An error encountered when parsing a Grammar.
 #[derive(Debug)]
 pub struct Error {
     pub(crate) message: String,
