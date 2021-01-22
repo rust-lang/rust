@@ -243,7 +243,7 @@ impl DefMap {
                             kind: PathKind::Super(0),
                         };
                         log::debug!("resolving {:?} in other crate", path);
-                        let defp_map = db.crate_def_map(module.krate);
+                        let defp_map = module.def_map(db);
                         let (def, s) = defp_map.resolve_path(db, module.local_id, &path, shadow);
                         return ResolvePathResult::with(
                             def,
@@ -356,7 +356,7 @@ impl DefMap {
                 self
             } else {
                 // Extend lifetime
-                keep = db.crate_def_map(prelude.krate);
+                keep = prelude.def_map(db);
                 &keep
             };
             def_map[prelude.local_id].scope.get(name)

@@ -110,7 +110,7 @@ fn find_path_inner(
     // Base cases:
 
     // - if the item is already in scope, return the name under which it is
-    let def_map = db.crate_def_map(from.krate);
+    let def_map = from.def_map(db);
     let from_scope: &crate::item_scope::ItemScope = &def_map[from.local_id].scope;
     let scope_name =
         if let Some((name, _)) = from_scope.name_of(item) { Some(name.clone()) } else { None };
@@ -145,7 +145,7 @@ fn find_path_inner(
 
     // - if the item is in the prelude, return the name from there
     if let Some(prelude_module) = def_map.prelude() {
-        let prelude_def_map = db.crate_def_map(prelude_module.krate);
+        let prelude_def_map = prelude_module.def_map(db);
         let prelude_scope: &crate::item_scope::ItemScope =
             &prelude_def_map[prelude_module.local_id].scope;
         if let Some((name, vis)) = prelude_scope.name_of(item) {
@@ -283,7 +283,7 @@ fn find_local_import_locations(
     // above `from` with any visibility. That means we do not need to descend into private siblings
     // of `from` (and similar).
 
-    let def_map = db.crate_def_map(from.krate);
+    let def_map = from.def_map(db);
 
     // Compute the initial worklist. We start with all direct child modules of `from` as well as all
     // of its (recursive) parent modules.
@@ -312,7 +312,7 @@ fn find_local_import_locations(
             &def_map[module.local_id]
         } else {
             // The crate might reexport a module defined in another crate.
-            ext_def_map = db.crate_def_map(module.krate);
+            ext_def_map = module.def_map(db);
             &ext_def_map[module.local_id]
         };
 
@@ -375,7 +375,7 @@ mod tests {
             parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
         let mod_path = ModPath::from_src(ast_path, &Hygiene::new_unhygienic()).unwrap();
 
-        let crate_def_map = db.crate_def_map(module.krate);
+        let crate_def_map = module.def_map(&db);
         let resolved = crate_def_map
             .resolve_path(
                 &db,

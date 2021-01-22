@@ -196,7 +196,7 @@ impl Attrs {
     pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
         let raw_attrs = match def {
             AttrDefId::ModuleId(module) => {
-                let def_map = db.crate_def_map(module.krate);
+                let def_map = module.def_map(db);
                 let mod_data = &def_map[module.local_id];
                 match mod_data.declaration_source(db) {
                     Some(it) => {

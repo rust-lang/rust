@@ -281,7 +281,7 @@ impl Module {
 
     /// Name of this module.
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
-        let def_map = db.crate_def_map(self.id.krate);
+        let def_map = self.id.def_map(db.upcast());
         let parent = def_map[self.id.local_id].parent?;
         def_map[parent].children.iter().find_map(|(name, module_id)| {
             if *module_id == self.id.local_id {
@@ -307,7 +307,7 @@ impl Module {
 
     /// Iterates over all child modules.
     pub fn children(self, db: &dyn HirDatabase) -> impl Iterator<Item = Module> {
-        let def_map = db.crate_def_map(self.id.krate);
+        let def_map = self.id.def_map(db.upcast());
         let children = def_map[self.id.local_id]
             .children
             .iter()
@@ -318,7 +318,7 @@ impl Module {
 
     /// Finds a parent module.
     pub fn parent(self, db: &dyn HirDatabase) -> Option<Module> {
-        let def_map = db.crate_def_map(self.id.krate);
+        let def_map = self.id.def_map(db.upcast());
         let parent_id = def_map[self.id.local_id].parent?;
         Some(self.with_module_id(parent_id))
     }
@@ -339,7 +339,7 @@ impl Module {
         db: &dyn HirDatabase,
         visible_from: Option<Module>,
     ) -> Vec<(Name, ScopeDef)> {
-        db.crate_def_map(self.id.krate)[self.id.local_id]
+        self.id.def_map(db.upcast())[self.id.local_id]
             .scope
             .entries()
             .filter_map(|(name, def)| {
@@ -362,14 +362,14 @@ impl Module {
     }
 
     pub fn visibility_of(self, db: &dyn HirDatabase, def: &ModuleDef) -> Option<Visibility> {
-        db.crate_def_map(self.id.krate)[self.id.local_id].scope.visibility_of(def.clone().into())
+        self.id.def_map(db.upcast())[self.id.local_id].scope.visibility_of(def.clone().into())
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
         let _p = profile::span("Module::diagnostics").detail(|| {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
         });
-        let crate_def_map = db.crate_def_map(self.id.krate);
+        let crate_def_map = self.id.def_map(db.upcast());
         crate_def_map.add_diagnostics(db.upcast(), self.id.local_id, sink);
         for decl in self.declarations(db) {
             match decl {
@@ -396,12 +396,12 @@ impl Module {
     }
 
     pub fn declarations(self, db: &dyn HirDatabase) -> Vec<ModuleDef> {
-        let def_map = db.crate_def_map(self.id.krate);
+        let def_map = self.id.def_map(db.upcast());
         def_map[self.id.local_id].scope.declarations().map(ModuleDef::from).collect()
     }
 
     pub fn impl_defs(self, db: &dyn HirDatabase) -> Vec<Impl> {
-        let def_map = db.crate_def_map(self.id.krate);
+        let def_map = self.id.def_map(db.upcast());
         def_map[self.id.local_id].scope.impls().map(Impl::from).collect()
     }
 

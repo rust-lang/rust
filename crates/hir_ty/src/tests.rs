@@ -188,10 +188,10 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     };
 
     let module = db.module_for_file(file_id);
-    let crate_def_map = db.crate_def_map(module.krate);
+    let def_map = module.def_map(&db);
 
     let mut defs: Vec<DefWithBodyId> = Vec::new();
-    visit_module(&db, &crate_def_map, module.local_id, &mut |it| defs.push(it));
+    visit_module(&db, &def_map, module.local_id, &mut |it| defs.push(it));
     defs.sort_by_key(|def| match def {
         DefWithBodyId::FunctionId(it) => {
             let loc = it.lookup(&db);
@@ -321,7 +321,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     {
         let events = db.log_executed(|| {
             let module = db.module_for_file(pos.file_id);
-            let crate_def_map = db.crate_def_map(module.krate);
+            let crate_def_map = module.def_map(&db);
             visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
                 db.infer(def);
             });
