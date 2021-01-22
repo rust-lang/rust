@@ -142,6 +142,17 @@ There are many benefits to this:
 
 Formatting ensures that you can use your editor's "number of selected characters" feature to correlate offsets with test's source code.
 
+## Marked Tests
+
+Use
+[`mark::hit! / mark::check!`](https://github.com/rust-analyzer/rust-analyzer/blob/71fe719dd5247ed8615641d9303d7ca1aa201c2f/crates/test_utils/src/mark.rs)
+when testing specific conditions.
+Do not place several marks into a single test or condition.
+Do not reuse marks between several tests.
+
+**Rationale:** marks provide an easy way to find the canonical test for each bit of code.
+This makes it much easier to understand.
+
 ## Function Preconditions
 
 Express function preconditions in types and force the caller to provide them (rather than checking in callee):
@@ -380,13 +391,12 @@ Compile time **does not** obey this rule -- all code has to be compiled.
 
 ## Appropriate String Types
 
-When interfacing with OS APIs, use `OsString`, even if the original source of
-data is utf-8 encoded. **Rationale:** cleanly delineates the boundary when the
-data goes into the OS-land.
+When interfacing with OS APIs, use `OsString`, even if the original source of data is utf-8 encoded.
+**Rationale:** cleanly delineates the boundary when the data goes into the OS-land.
 
-Use `AbsPathBuf` and `AbsPath` over `std::Path`. **Rationale:** rust-analyzer is
-a long-lived process which handles several projects at the same time. It is
-important not to leak cwd by accident.
+Use `AbsPathBuf` and `AbsPath` over `std::Path`.
+**Rationale:** rust-analyzer is a long-lived process which handles several projects at the same time.
+It is important not to leak cwd by accident.
 
 # Premature Pessimization
 
