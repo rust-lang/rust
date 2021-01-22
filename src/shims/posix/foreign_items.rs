@@ -180,6 +180,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let sysconfs = &[
                     ("_SC_PAGESIZE", Scalar::from_int(PAGE_SIZE, this.pointer_size())),
+                    ("_SC_NPROCESSORS_CONF", Scalar::from_int(NUM_CPUS, this.pointer_size())),
                     ("_SC_NPROCESSORS_ONLN", Scalar::from_int(NUM_CPUS, this.pointer_size())),
                 ];
                 let mut result = None;
