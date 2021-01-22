@@ -6,6 +6,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
+/// Wrapper around an absolute [`PathBuf`].
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct AbsPathBuf(PathBuf);
 
@@ -58,18 +59,33 @@ impl PartialEq<AbsPath> for AbsPathBuf {
 }
 
 impl AbsPathBuf {
+    /// Wrap the given absolute path in `AbsPathBuf`
+    ///
+    /// # Panics
+    ///
+    /// Panics if `path` is not absolute.
     pub fn assert(path: PathBuf) -> AbsPathBuf {
         AbsPathBuf::try_from(path)
             .unwrap_or_else(|path| panic!("expected absolute path, got {}", path.display()))
     }
+
+    /// Coerces to a `AbsPath` slice.
+    ///
+    /// Equivalent of [`PathBuf::as_path`] for `AbsPathBuf`.
     pub fn as_path(&self) -> &AbsPath {
         AbsPath::assert(self.0.as_path())
     }
+
+    /// Equivalent of [`PathBuf::pop`] for `AbsPathBuf`.
+    ///
+    /// Note that this won't remove the root component, so `self` will still be
+    /// absolute.
     pub fn pop(&mut self) -> bool {
         self.0.pop()
     }
 }
 
+/// Wrapper around an absolute [`Path`].
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 pub struct AbsPath(Path);
@@ -98,28 +114,56 @@ impl<'a> TryFrom<&'a Path> for &'a AbsPath {
 }
 
 impl AbsPath {
+    /// Wrap the given absolute path in `AbsPath`
+    ///
+    /// # Panics
+    ///
+    /// Panics if `path` is not absolute.
     pub fn assert(path: &Path) -> &AbsPath {
         assert!(path.is_absolute());
         unsafe { &*(path as *const Path as *const AbsPath) }
     }
 
+    /// Equivalent of [`Path::parent`] for `AbsPath`.
     pub fn parent(&self) -> Option<&AbsPath> {
         self.0.parent().map(AbsPath::assert)
     }
+
+    /// Equivalent of [`Path::join`] for `AbsPath`.
     pub fn join(&self, path: impl AsRef<Path>) -> AbsPathBuf {
         self.as_ref().join(path).try_into().unwrap()
     }
+
+    /// Normalize the given path:
+    /// - Removes repeated separators: `/a//b` becomes `/a/b`
+    /// - Removes occurrences of `.` and resolves `..`.
+    /// - Removes trailing slashes: `/a/b/` becomes `/a/b`.
+    ///
+    /// # Example
+    /// ```
+    /// # use paths::AbsPathBuf;
+    /// let abs_path_buf = AbsPathBuf::assert("/a/../../b/.//c//".into());
+    /// let normalized = abs_path_buf.normalize();
+    /// assert_eq!(normalized, AbsPathBuf::assert("/b/c".into()));
+    /// ```
     pub fn normalize(&self) -> AbsPathBuf {
         AbsPathBuf(normalize_path(&self.0))
     }
+
+    /// Equivalent of [`Path::to_path_buf`] for `AbsPath`.
     pub fn to_path_buf(&self) -> AbsPathBuf {
         AbsPathBuf::try_from(self.0.to_path_buf()).unwrap()
     }
+
+    /// Equivalent of [`Path::strip_prefix`] for `AbsPath`.
+    ///
+    /// Returns a relative path.
     pub fn strip_prefix(&self, base: &AbsPath) -> Option<&RelPath> {
         self.0.strip_prefix(base).ok().map(RelPath::new_unchecked)
     }
 }
 
+/// Wrapper around a relative [`PathBuf`].
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct RelPathBuf(PathBuf);
 
@@ -160,11 +204,15 @@ impl TryFrom<&str> for RelPathBuf {
 }
 
 impl RelPathBuf {
+    /// Coerces to a `RelPath` slice.
+    ///
+    /// Equivalent of [`PathBuf::as_path`] for `RelPathBuf`.
     pub fn as_path(&self) -> &RelPath {
         RelPath::new_unchecked(self.0.as_path())
     }
 }
 
+/// Wrapper around a relative [`Path`].
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 pub struct RelPath(Path);
@@ -183,12 +231,13 @@ impl AsRef<Path> for RelPath {
 }
 
 impl RelPath {
+    /// Creates a new `RelPath` from `path`, without checking if it is relative.
     pub fn new_unchecked(path: &Path) -> &RelPath {
         unsafe { &*(path as *const Path as *const RelPath) }
     }
 }
 
-// https://github.com/rust-lang/cargo/blob/79c769c3d7b4c2cf6a93781575b7f592ef974255/src/cargo/util/paths.rs#L60-L85
+/// Taken from https://github.com/rust-lang/cargo/blob/79c769c3d7b4c2cf6a93781575b7f592ef974255/src/cargo/util/paths.rs#L60-L85
 fn normalize_path(path: &Path) -> PathBuf {
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
