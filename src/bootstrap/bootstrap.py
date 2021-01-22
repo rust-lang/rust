@@ -378,6 +378,7 @@ class RustBuild(object):
         self.verbose = False
         self.git_version = None
         self.nix_deps_dir = None
+        self.rustc_commit = None
 
     def download_stage0(self):
         """Fetch the build system for Rust, written in Rust
@@ -394,20 +395,27 @@ class RustBuild(object):
 
         if self.rustc().startswith(self.bin_root()) and \
                 (not os.path.exists(self.rustc()) or
-                 self.program_out_of_date(self.rustc_stamp(), self.date)):
+                 self.program_out_of_date(self.rustc_stamp(), self.date + str(self.rustc_commit))):
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
+            download_rustc = self.rustc_commit is not None
             tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
             filename = "rust-std-{}-{}{}".format(
                 rustc_channel, self.build, tarball_suffix)
             pattern = "rust-std-{}".format(self.build)
-            self._download_stage0_helper(filename, pattern, tarball_suffix)
+            self._download_component_helper(filename, pattern, tarball_suffix, download_rustc)
             filename = "rustc-{}-{}{}".format(rustc_channel, self.build,
                                               tarball_suffix)
-            self._download_stage0_helper(filename, "rustc", tarball_suffix)
+            self._download_component_helper(filename, "rustc", tarball_suffix, download_rustc)
             filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
                                               tarball_suffix)
-            self._download_stage0_helper(filename, "cargo", tarball_suffix)
+            self._download_component_helper(filename, "cargo", tarball_suffix)
+            if self.rustc_commit is not None:
+                filename = "rustc-dev-{}-{}{}".format(rustc_channel, self.build, tarball_suffix)
+                self._download_component_helper(
+                    filename, "rustc-dev", tarball_suffix, download_rustc
+                )
+
             self.fix_bin_or_dylib("{}/bin/rustc".format(self.bin_root()))
             self.fix_bin_or_dylib("{}/bin/rustdoc".format(self.bin_root()))
             self.fix_bin_or_dylib("{}/bin/cargo".format(self.bin_root()))
@@ -416,7 +424,7 @@ class RustBuild(object):
                 if lib.endswith(".so"):
                     self.fix_bin_or_dylib(os.path.join(lib_dir, lib), rpath_libz=True)
             with output(self.rustc_stamp()) as rust_stamp:
-                rust_stamp.write(self.date)
+                rust_stamp.write(self.date + str(self.rustc_commit))
 
         if self.rustfmt() and self.rustfmt().startswith(self.bin_root()) and (
             not os.path.exists(self.rustfmt())
@@ -426,7 +434,9 @@ class RustBuild(object):
                 tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
                 [channel, date] = rustfmt_channel.split('-', 1)
                 filename = "rustfmt-{}-{}{}".format(channel, self.build, tarball_suffix)
-                self._download_stage0_helper(filename, "rustfmt-preview", tarball_suffix, date)
+                self._download_component_helper(
+                    filename, "rustfmt-preview", tarball_suffix, key=date
+                )
                 self.fix_bin_or_dylib("{}/bin/rustfmt".format(self.bin_root()))
                 self.fix_bin_or_dylib("{}/bin/cargo-fmt".format(self.bin_root()))
                 with output(self.rustfmt_stamp()) as rustfmt_stamp:
@@ -482,18 +492,27 @@ class RustBuild(object):
         return opt == "true" \
             or (opt == "if-available" and self.build in supported_platforms)
 
-    def _download_stage0_helper(self, filename, pattern, tarball_suffix, date=None):
-        if date is None:
-            date = self.date
+    def _download_component_helper(
+        self, filename, pattern, tarball_suffix, download_rustc=False, key=None
+    ):
+        if key is None:
+            if download_rustc:
+                key = self.rustc_commit
+            else:
+                key = self.date
         cache_dst = os.path.join(self.build_dir, "cache")
-        rustc_cache = os.path.join(cache_dst, date)
+        rustc_cache = os.path.join(cache_dst, key)
         if not os.path.exists(rustc_cache):
             os.makedirs(rustc_cache)
 
-        url = "{}/dist/{}".format(self._download_url, date)
+        if download_rustc:
+            url = "https://ci-artifacts.rust-lang.org/rustc-builds/{}".format(self.rustc_commit)
+        else:
+            url = "{}/dist/{}".format(self._download_url, key)
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
-            get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
+            do_verify = not download_rustc
+            get("{}/{}".format(url, filename), tarball, verbose=self.verbose, do_verify=do_verify)
         unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
 
     def _download_ci_llvm(self, llvm_sha, llvm_assertions):
@@ -612,6 +631,46 @@ class RustBuild(object):
         except subprocess.CalledProcessError as reason:
             print("warning: failed to call patchelf:", reason)
             return
+
+    # Return the stage1 compiler to download, if any.
+    def maybe_download_rustc(self):
+        # If `download-rustc` is not set, default to rebuilding.
+        if self.get_toml("download-rustc", section="rust") != "true":
+            return None
+        # Look for a version to compare to based on the current commit.
+        # There are a few different cases to handle.
+        # 1. This commit is a fast-forward from master: `master - * - * - HEAD`
+        # 2. This commit and master have diverged:
+        # ```
+        #   Y - * - HEAD
+        #  /
+        # X - * - master
+        # ```
+        # In this case, we should compare to `X`.
+        # 3. `master` and `HEAD` are radically different (>100 commits, or similar). This probably
+        # means that `master` does *not* correspond to the version we want to compare to, e.g. a
+        # fork. Instead, we want to compare to `rust-lang/rust:master`, which this has to share a
+        # recent merge base with.
+
+        # Find which remote corresponds to `rust-lang/rust`.
+        remotes = subprocess.check_output(["git", "remote", "-v"], universal_newlines=True)
+        # e.g. `origin https://github.com//rust-lang/rust (fetch)`
+        rust_lang_remote = next(line for line in remotes.splitlines() if "rust-lang/rust" in line)
+        rust_lang_remote = rust_lang_remote.split()[0]
+
+        # Find which commit to compare to
+        merge_base = ["git", "merge-base", "HEAD", "{}/master".format(rust_lang_remote)]
+        commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
+
+        # Warn if there were changes to the compiler since the ancestor commit.
+        rev_parse = ["git", "rev-parse", "--show-toplevel"]
+        top_level = subprocess.check_output(rev_parse, universal_newlines=True).strip()
+        compiler = "{}/compiler/".format(top_level)
+        status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler])
+        if status != 0:
+            print("warning: `download-rustc` is enabled, but there are changes to compiler/")
+
+        return commit
 
     def rustc_stamp(self):
         """Return the path for .rustc-stamp
@@ -1090,6 +1149,13 @@ def bootstrap(help_triggered):
     build.update_submodules()
 
     # Fetch/build the bootstrap
+    build.rustc_commit = build.maybe_download_rustc()
+    if build.rustc_commit is not None:
+        if build.verbose:
+            commit = build.rustc_commit
+            print("using downloaded stage1 artifacts from CI (commit {})".format(commit))
+        # FIXME: support downloading artifacts from the beta channel
+        build.rustc_channel = "nightly"
     build.download_stage0()
     sys.stdout.flush()
     build.ensure_vendored()

@@ -358,6 +358,12 @@ changelog-seen = 2
 #
 #debug = false
 
+# Whether to download the stage 1 and 2 compilers from CI.
+# This is mostly useful for tools; if you have changes to `compiler/` they will be ignored.
+#
+# FIXME: currently, this also uses the downloaded compiler for stage0, but that causes unnecessary rebuilds.
+#download-rustc = false
+
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
 # compiler.
