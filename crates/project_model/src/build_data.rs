@@ -10,7 +10,7 @@ use std::{
 use anyhow::Result;
 use cargo_metadata::{BuildScript, Message, Package, PackageId};
 use itertools::Itertools;
-use paths::AbsPathBuf;
+use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use stdx::JodChild;
 
@@ -37,14 +37,14 @@ pub struct BuildData {
 
 impl BuildDataMap {
     pub(crate) fn new(
-        cargo_toml: &Path,
+        cargo_toml: &AbsPath,
         cargo_features: &CargoConfig,
         packages: &Vec<Package>,
         progress: &dyn Fn(String),
     ) -> Result<BuildDataMap> {
         let mut cmd = Command::new(toolchain::cargo());
         cmd.args(&["check", "--workspace", "--message-format=json", "--manifest-path"])
-            .arg(cargo_toml);
+            .arg(cargo_toml.as_ref());
 
         // --all-targets includes tests, benches and examples in addition to the
         // default lib and bins. This is an independent concept from the --targets
