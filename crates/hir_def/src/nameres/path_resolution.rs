@@ -65,6 +65,7 @@ impl ResolvePathResult {
 impl DefMap {
     pub(super) fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs {
         if name == &name!(self) {
+            mark::hit!(extern_crate_self_as);
             return PerNs::types(
                 ModuleId { krate: self.krate, local_id: self.root }.into(),
                 Visibility::Public,

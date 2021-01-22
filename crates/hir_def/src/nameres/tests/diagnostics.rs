@@ -63,6 +63,7 @@ fn unresolved_extern_crate() {
 
 #[test]
 fn extern_crate_self_as() {
+    mark::check!(extern_crate_self_as);
     check_diagnostics(
         r"
         //- /lib.rs
