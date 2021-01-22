@@ -26,10 +26,16 @@ pub fn rust_grammar() -> Grammar {
 }
 
 /// A node, like `A = 'b' | 'c'`.
+///
+/// Indexing into a [`Grammar`] with a [`Node`] returns a reference to a
+/// [`NodeData`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Node(usize);
 
 /// A token, denoted with single quotes, like `'+'` or `'struct'`.
+///
+/// Indexing into a [`Grammar`] with a [`Token`] returns a reference to a
+/// [`TokenData`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Token(usize);
 
