@@ -50,7 +50,10 @@ pub mod import_map;
 #[cfg(test)]
 mod test_db;
 
-use std::hash::{Hash, Hasher};
+use std::{
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 use base_db::{impl_intern_key, salsa, CrateId};
 use hir_expand::{
@@ -58,6 +61,7 @@ use hir_expand::{
     MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use la_arena::Idx;
+use nameres::DefMap;
 use syntax::ast;
 
 use crate::builtin_type::BuiltinType;
@@ -71,6 +75,12 @@ use stdx::impl_from;
 pub struct ModuleId {
     pub krate: CrateId,
     pub local_id: LocalModuleId,
+}
+
+impl ModuleId {
+    pub fn def_map(&self, db: &dyn db::DefDatabase) -> Arc<DefMap> {
+        db.crate_def_map(self.krate)
+    }
 }
 
 /// An ID of a module, **local** to a specific crate

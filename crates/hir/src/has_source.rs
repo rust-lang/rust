@@ -24,12 +24,12 @@ pub trait HasSource {
 impl Module {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(self, db: &dyn HirDatabase) -> InFile<ModuleSource> {
-        let def_map = db.crate_def_map(self.id.krate);
+        let def_map = self.id.def_map(db.upcast());
         def_map[self.id.local_id].definition_source(db.upcast())
     }
 
     pub fn is_mod_rs(self, db: &dyn HirDatabase) -> bool {
-        let def_map = db.crate_def_map(self.id.krate);
+        let def_map = self.id.def_map(db.upcast());
         match def_map[self.id.local_id].origin {
             ModuleOrigin::File { is_mod_rs, .. } => is_mod_rs,
             _ => false,
@@ -39,7 +39,7 @@ impl Module {
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
     /// `None` for the crate root.
     pub fn declaration_source(self, db: &dyn HirDatabase) -> Option<InFile<ast::Module>> {
-        let def_map = db.crate_def_map(self.id.krate);
+        let def_map = self.id.def_map(db.upcast());
         def_map[self.id.local_id].declaration_source(db.upcast())
     }
 }

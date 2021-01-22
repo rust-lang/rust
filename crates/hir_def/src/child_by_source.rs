@@ -74,7 +74,7 @@ impl ChildBySource for ImplId {
 
 impl ChildBySource for ModuleId {
     fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
-        let crate_def_map = db.crate_def_map(self.krate);
+        let crate_def_map = self.def_map(db);
         let module_data = &crate_def_map[self.local_id];
         module_data.scope.child_by_source(db)
     }

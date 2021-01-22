@@ -578,7 +578,7 @@ impl DefCollector<'_> {
                     } else if m.krate != self.def_map.krate {
                         mark::hit!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
-                        let item_map = self.db.crate_def_map(m.krate);
+                        let item_map = m.def_map(self.db);
                         let scope = &item_map[m.local_id].scope;
 
                         // Module scoped macros is included

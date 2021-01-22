@@ -103,7 +103,7 @@ impl Visibility {
         if from_module.krate != to_module.krate {
             return false;
         }
-        let def_map = db.crate_def_map(from_module.krate);
+        let def_map = from_module.def_map(db);
         self.is_visible_from_def_map(&def_map, from_module.local_id)
     }
 

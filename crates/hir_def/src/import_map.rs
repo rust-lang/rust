@@ -83,7 +83,7 @@ impl ImportMap {
                 &def_map[module.local_id]
             } else {
                 // The crate might reexport a module defined in another crate.
-                ext_def_map = db.crate_def_map(module.krate);
+                ext_def_map = module.def_map(db);
                 &ext_def_map[module.local_id]
             };
 
