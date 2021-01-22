@@ -85,7 +85,12 @@ fn check_arm(arm: &Arm<'_>, wild_outer_arm: &Arm<'_>, cx: &LateContext<'_>) {
         // the "wild-like" branches must be equal
         if SpanlessEq::new(cx).eq_expr(wild_inner_arm.body, wild_outer_arm.body);
         // the binding must not be used in the if guard
-        if !matches!(arm.guard, Some(Guard::If(guard)) if LocalUsedVisitor::new(binding_id).check_expr(guard));
+        if match arm.guard {
+            None => true,
+            Some(Guard::If(expr) | Guard::IfLet(_, expr)) => {
+                !LocalUsedVisitor::new(binding_id).check_expr(expr)
+            }
+        };
         // ...or anywhere in the inner match
         if !arms_inner.iter().any(|arm| LocalUsedVisitor::new(binding_id).check_arm(arm));
         then {
