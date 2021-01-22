@@ -211,19 +211,21 @@ impl TypeCtor {
             | TypeCtor::Tuple { .. } => None,
             // Closure's krate is irrelevant for coherence I would think?
             TypeCtor::Closure { .. } => None,
-            TypeCtor::Adt(adt) => Some(adt.module(db.upcast()).krate),
+            TypeCtor::Adt(adt) => Some(adt.module(db.upcast()).krate()),
             TypeCtor::FnDef(callable) => Some(callable.krate(db)),
             TypeCtor::AssociatedType(type_alias) => {
-                Some(type_alias.lookup(db.upcast()).module(db.upcast()).krate)
+                Some(type_alias.lookup(db.upcast()).module(db.upcast()).krate())
             }
             TypeCtor::ForeignType(type_alias) => {
-                Some(type_alias.lookup(db.upcast()).module(db.upcast()).krate)
+                Some(type_alias.lookup(db.upcast()).module(db.upcast()).krate())
             }
             TypeCtor::OpaqueType(opaque_ty_id) => match opaque_ty_id {
                 OpaqueTyId::ReturnTypeImplTrait(func, _) => {
-                    Some(func.lookup(db.upcast()).module(db.upcast()).krate)
+                    Some(func.lookup(db.upcast()).module(db.upcast()).krate())
                 }
-                OpaqueTyId::AsyncBlockTypeImplTrait(def, _) => Some(def.module(db.upcast()).krate),
+                OpaqueTyId::AsyncBlockTypeImplTrait(def, _) => {
+                    Some(def.module(db.upcast()).krate())
+                }
             },
         }
     }
@@ -870,7 +872,7 @@ impl Ty {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::OpaqueType(opaque_ty_id), .. }) => {
                 match opaque_ty_id {
                     OpaqueTyId::AsyncBlockTypeImplTrait(def, _expr) => {
-                        let krate = def.module(db.upcast()).krate;
+                        let krate = def.module(db.upcast()).krate();
                         if let Some(future_trait) = db
                             .lang_item(krate, "future_trait".into())
                             .and_then(|item| item.as_trait())

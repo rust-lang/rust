@@ -1147,7 +1147,7 @@ impl CallableDefId {
             CallableDefId::StructId(s) => s.lookup(db).container.module(db),
             CallableDefId::EnumVariantId(e) => e.parent.lookup(db).container.module(db),
         }
-        .krate
+        .krate()
     }
 }
 

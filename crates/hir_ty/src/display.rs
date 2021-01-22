@@ -617,7 +617,7 @@ impl HirDisplay for FnSig {
 }
 
 fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = TraitId> {
-    let krate = trait_.lookup(db).container.module(db).krate;
+    let krate = trait_.lookup(db).container.module(db).krate();
     let fn_traits = [
         db.lang_item(krate, "fn".into()),
         db.lang_item(krate, "fn_mut".into()),

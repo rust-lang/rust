@@ -343,7 +343,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     {
         let events = db.log_executed(|| {
             let module = db.module_for_file(pos.file_id);
-            let crate_def_map = db.crate_def_map(module.krate);
+            let crate_def_map = module.def_map(&db);
             visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
                 db.infer(def);
             });
