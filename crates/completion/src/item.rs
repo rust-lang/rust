@@ -398,14 +398,13 @@ impl Builder {
         self.insert_text_format = InsertTextFormat::Snippet;
         self.text_edit(edit)
     }
-    #[allow(unused)]
     pub(crate) fn detail(self, detail: impl Into<String>) -> Builder {
         self.set_detail(Some(detail))
     }
     pub(crate) fn set_detail(mut self, detail: Option<impl Into<String>>) -> Builder {
         self.detail = detail.map(Into::into);
         if let Some(detail) = &self.detail {
-            if assert_never!(detail.contains('\n'), "multiline detail: {}", detail) {
+            if assert_never!(detail.contains('\n'), "multiline detail:\n{}", detail) {
                 self.detail = Some(detail.splitn(2, '\n').next().unwrap().to_string());
             }
         }

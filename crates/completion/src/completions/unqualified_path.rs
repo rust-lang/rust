@@ -167,7 +167,7 @@ fn quux(x: i32) {
             expect![[r#"
                 lc y       i32
                 lc x       i32
-                fn quux(…) fn quux(x: i32)
+                fn quux(…) -> ()
             "#]],
         );
     }
@@ -189,7 +189,7 @@ fn quux() {
             expect![[r#"
                 lc b      i32
                 lc a
-                fn quux() fn quux()
+                fn quux() -> ()
             "#]],
         );
     }
@@ -204,7 +204,7 @@ fn quux() {
 "#,
             expect![[r#"
                 lc x
-                fn quux() fn quux()
+                fn quux() -> ()
             "#]],
         );
     }
@@ -235,14 +235,14 @@ fn main() {
             r#"fn quux<T>() { $0 }"#,
             expect![[r#"
                 tp T
-                fn quux() fn quux<T>()
+                fn quux() -> ()
             "#]],
         );
         check(
             r#"fn quux<const C: usize>() { $0 }"#,
             expect![[r#"
                 cp C
-                fn quux() fn quux<const C: usize>()
+                fn quux() -> ()
             "#]],
         );
     }
@@ -253,7 +253,7 @@ fn main() {
         check(
             r#"fn quux<'a>() { $0 }"#,
             expect![[r#"
-                fn quux() fn quux<'a>()
+                fn quux() -> ()
             "#]],
         );
     }
@@ -291,7 +291,7 @@ fn quux() { $0 }
 "#,
             expect![[r#"
                 st S
-                fn quux() fn quux()
+                fn quux() -> ()
                 en E
             "#]],
         );
@@ -344,7 +344,7 @@ mod m {
 }
 "#,
             expect![[r#"
-                fn quux() fn quux()
+                fn quux() -> ()
                 st Bar
             "#]],
         );
@@ -359,7 +359,7 @@ fn x() -> $0
 "#,
             expect![[r#"
                 st Foo
-                fn x() fn x()
+                fn x() -> ()
             "#]],
         );
     }
@@ -380,7 +380,7 @@ fn foo() {
             expect![[r#"
                 lc bar   i32
                 lc bar   i32
-                fn foo() fn foo()
+                fn foo() -> ()
             "#]],
         );
     }
@@ -410,7 +410,7 @@ use prelude::*;
 mod prelude { struct Option; }
 "#,
             expect![[r#"
-                fn foo()  fn foo()
+                fn foo()  -> ()
                 md std
                 st Option
             "#]],
@@ -440,7 +440,7 @@ mod macros {
 }
 "#,
             expect![[r##"
-                fn f()        fn f()
+                fn f()        -> ()
                 ma concat!(…) #[macro_export] macro_rules! concat
                 md std
             "##]],
@@ -467,7 +467,7 @@ use prelude::*;
 mod prelude { struct String; }
 "#,
             expect![[r#"
-                fn foo()  fn foo()
+                fn foo()  -> ()
                 md std
                 md core
                 st String
@@ -498,7 +498,7 @@ fn main() { let v = $0 }
             expect![[r##"
                 md m1
                 ma baz!(…) #[macro_export] macro_rules! baz
-                fn main()  fn main()
+                fn main()  -> ()
                 md m2
                 ma bar!(…) macro_rules! bar
                 ma foo!(…) macro_rules! foo
@@ -514,7 +514,7 @@ macro_rules! foo { () => {} }
 fn foo() { $0 }
 "#,
             expect![[r#"
-                fn foo()   fn foo()
+                fn foo()   -> ()
                 ma foo!(…) macro_rules! foo
             "#]],
         );
@@ -528,7 +528,7 @@ macro_rules! foo { () => {} }
 fn main() { let x: $0 }
 "#,
             expect![[r#"
-                fn main()  fn main()
+                fn main()  -> ()
                 ma foo!(…) macro_rules! foo
             "#]],
         );
@@ -542,7 +542,7 @@ macro_rules! foo { () => {} }
 fn main() { $0 }
 "#,
             expect![[r#"
-                fn main()  fn main()
+                fn main()  -> ()
                 ma foo!(…) macro_rules! foo
             "#]],
         );
@@ -558,8 +558,8 @@ fn main() {
 }
 "#,
             expect![[r#"
-                fn frobnicate() fn frobnicate()
-                fn main()       fn main()
+                fn frobnicate() -> ()
+                fn main()       -> ()
             "#]],
         );
     }
@@ -577,7 +577,7 @@ fn quux(x: i32) {
             expect![[r#"
                 lc y       i32
                 lc x       i32
-                fn quux(…) fn quux(x: i32)
+                fn quux(…) -> ()
                 ma m!(…)   macro_rules! m
             "#]],
         );
@@ -596,7 +596,7 @@ fn quux(x: i32) {
             expect![[r#"
                 lc y       i32
                 lc x       i32
-                fn quux(…) fn quux(x: i32)
+                fn quux(…) -> ()
                 ma m!(…)   macro_rules! m
             "#]],
         );
@@ -615,7 +615,7 @@ fn quux(x: i32) {
             expect![[r#"
                 lc y       i32
                 lc x       i32
-                fn quux(…) fn quux(x: i32)
+                fn quux(…) -> ()
                 ma m!(…)   macro_rules! m
             "#]],
         );
@@ -630,7 +630,7 @@ use spam::Quux;
 fn main() { $0 }
 "#,
             expect![[r#"
-                fn main() fn main()
+                fn main() -> ()
                 ?? Quux
             "#]],
         );
@@ -708,7 +708,7 @@ fn main() { let foo: Foo = Q$0 }
                 ev Foo::Baz  ()
                 ev Foo::Quux ()
                 en Foo
-                fn main()    fn main()
+                fn main()    -> ()
             "#]],
         )
     }
@@ -723,7 +723,7 @@ fn f() -> m::E { V$0 }
             expect![[r#"
                 ev m::E::V ()
                 md m
-                fn f()     fn f() -> m::E
+                fn f()     -> E
             "#]],
         )
     }

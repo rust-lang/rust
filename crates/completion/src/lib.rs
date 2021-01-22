@@ -227,7 +227,7 @@ mod tests {
                 bar.fo$0;
             }
             "#,
-            DetailAndDocumentation { detail: "fn foo(&self)", documentation: "Do the foo" },
+            DetailAndDocumentation { detail: "-> ()", documentation: "Do the foo" },
         );
     }
 
@@ -253,7 +253,7 @@ mod tests {
                 bar.fo$0;
             }
             "#,
-            DetailAndDocumentation { detail: "fn foo(&self)", documentation: " Do the foo" },
+            DetailAndDocumentation { detail: "-> ()", documentation: " Do the foo" },
         );
     }
 
@@ -277,10 +277,7 @@ mod tests {
                 for c in fo$0
             }
             "#,
-            DetailAndDocumentation {
-                detail: "fn foo() -> &'static str",
-                documentation: "Do the foo",
-            },
+            DetailAndDocumentation { detail: "-> &str", documentation: "Do the foo" },
         );
     }
 }

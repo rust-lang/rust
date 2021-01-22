@@ -679,11 +679,6 @@ impl Test for () {
     #[test]
     fn complete_without_name() {
         let test = |completion: &str, hint: &str, completed: &str, next_sibling: &str| {
-            println!(
-                "completion='{}', hint='{}', next_sibling='{}'",
-                completion, hint, next_sibling
-            );
-
             check_edit(
                 completion,
                 &format!(

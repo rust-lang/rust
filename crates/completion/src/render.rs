@@ -523,7 +523,7 @@ fn main() { let _: m::Spam = S$0 }
                             Function,
                         ),
                         lookup: "main",
-                        detail: "fn main()",
+                        detail: "-> ()",
                     },
                 ]
             "#]],
@@ -552,7 +552,7 @@ fn main() { som$0 }
                             Function,
                         ),
                         lookup: "main",
-                        detail: "fn main()",
+                        detail: "-> ()",
                     },
                     CompletionItem {
                         label: "something_deprecated()",
@@ -563,7 +563,7 @@ fn main() { som$0 }
                             Function,
                         ),
                         lookup: "something_deprecated",
-                        detail: "fn something_deprecated()",
+                        detail: "-> ()",
                         deprecated: true,
                     },
                     CompletionItem {
@@ -575,7 +575,7 @@ fn main() { som$0 }
                             Function,
                         ),
                         lookup: "something_else_deprecated",
-                        detail: "fn something_else_deprecated()",
+                        detail: "-> ()",
                         deprecated: true,
                     },
                 ]
@@ -626,7 +626,7 @@ impl S {
                         insert: "bar()$0",
                         kind: Method,
                         lookup: "bar",
-                        detail: "fn bar(self)",
+                        detail: "-> ()",
                         documentation: Documentation(
                             "Method docs",
                         ),
@@ -726,7 +726,7 @@ fn foo(s: S) { s.$0 }
                         insert: "the_method()$0",
                         kind: Method,
                         lookup: "the_method",
-                        detail: "fn the_method(&self)",
+                        detail: "-> ()",
                     },
                 ]
             "#]],
