@@ -3,8 +3,8 @@
 use clap::{App, Arg, ArgMatches, SubCommand};
 use clippy_dev::{bless, fmt, new_lint, ra_setup, serve, stderr_length_check, update_lints};
 
-#[cfg(feature = "crater")]
-use clippy_dev::crater;
+#[cfg(feature = "lintcheck")]
+use clippy_dev::lintcheck;
 
 fn main() {
     let matches = get_clap_config();
@@ -13,9 +13,9 @@ fn main() {
         ("bless", Some(matches)) => {
             bless::bless(matches.is_present("ignore-timestamp"));
         },
-        #[cfg(feature = "crater")]
-        ("crater", Some(matches)) => {
-            crater::run(&matches);
+        #[cfg(feature = "lintcheck")]
+        ("lintcheck", Some(matches)) => {
+            lintcheck::run(&matches);
         },
         ("fmt", Some(matches)) => {
             fmt::run(matches.is_present("check"), matches.is_present("verbose"));
@@ -53,8 +53,8 @@ fn main() {
 }
 
 fn get_clap_config<'a>() -> ArgMatches<'a> {
-    #[cfg(feature = "crater")]
-    let crater_sbcmd = SubCommand::with_name("crater")
+    #[cfg(feature = "lintcheck")]
+    let lintcheck_sbcmd = SubCommand::with_name("lintcheck")
         .about("run clippy on a set of crates and check output")
         .arg(
             Arg::with_name("only")
@@ -183,8 +183,8 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .arg(Arg::with_name("lint").help("Which lint's page to load initially (optional)")),
         );
 
-    #[cfg(feature = "crater")]
-    let app = app.subcommand(crater_sbcmd);
+    #[cfg(feature = "lintcheck")]
+    let app = app.subcommand(lintcheck_sbcmd);
 
     app.get_matches()
 }

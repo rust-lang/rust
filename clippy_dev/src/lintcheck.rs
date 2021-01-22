@@ -4,7 +4,7 @@
 // When a new lint is introduced, we can search the results for new warnings and check for false
 // positives.
 
-#![cfg(feature = "crater")]
+#![cfg(feature = "lintcheck")]
 #![allow(clippy::filter_map)]
 
 use crate::clippy_project_root;
@@ -69,8 +69,8 @@ impl std::fmt::Display for ClippyWarning {
 
 impl CrateSource {
     fn download_and_extract(&self) -> Crate {
-        let extract_dir = PathBuf::from("target/crater/crates");
-        let krate_download_dir = PathBuf::from("target/crater/downloads");
+        let extract_dir = PathBuf::from("target/lintcheck/crates");
+        let krate_download_dir = PathBuf::from("target/lintcheck/downloads");
 
         // url to download the crate from crates.io
         let url = format!(
@@ -78,7 +78,7 @@ impl CrateSource {
             self.name, self.version
         );
         println!("Downloading and extracting {} {} from {}", self.name, self.version, url);
-        let _ = std::fs::create_dir("target/crater/");
+        let _ = std::fs::create_dir("target/lintcheck/");
         let _ = std::fs::create_dir(&krate_download_dir);
         let _ = std::fs::create_dir(&extract_dir);
 
@@ -112,7 +112,7 @@ impl Crate {
         println!("Linting {} {}...", &self.name, &self.version);
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
 
-        let shared_target_dir = clippy_project_root().join("target/crater/shared_target_dir/");
+        let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir/");
 
         let all_output = std::process::Command::new(cargo_clippy_path)
             .env("CARGO_TARGET_DIR", shared_target_dir)
@@ -149,9 +149,9 @@ fn build_clippy() {
         .expect("Failed to build clippy!");
 }
 
-// get a list of CrateSources we want to check from a "crater_crates.toml" file.
+// get a list of CrateSources we want to check from a "lintcheck_crates.toml" file.
 fn read_crates() -> Vec<CrateSource> {
-    let toml_path = PathBuf::from("clippy_dev/crater_crates.toml");
+    let toml_path = PathBuf::from("clippy_dev/lintcheck_crates.toml");
     let toml_content: String =
         std::fs::read_to_string(&toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: CrateList =
@@ -231,7 +231,7 @@ pub fn run(clap_config: &ArgMatches) {
         // if we don't have the specified crated in the .toml, throw an error
         if !crates.iter().any(|krate| krate.name == only_one_crate) {
             eprintln!(
-                "ERROR: could not find crate '{}' in clippy_dev/crater_crates.toml",
+                "ERROR: could not find crate '{}' in clippy_dev/lintcheck_crates.toml",
                 only_one_crate
             );
             std::process::exit(1);
@@ -279,8 +279,8 @@ pub fn run(clap_config: &ArgMatches) {
     all_msgs.push("\n\n\n\nStats\n\n".into());
     all_msgs.push(stats_formatted);
 
-    // save the text into mini-crater/logs.txt
+    // save the text into lintcheck-logs/logs.txt
     let mut text = clippy_ver; // clippy version number on top
     text.push_str(&format!("\n{}", all_msgs.join("")));
-    write("mini-crater/logs.txt", text).unwrap();
+    write("lintcheck-logs/logs.txt", text).unwrap();
 }
