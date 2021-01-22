@@ -151,12 +151,10 @@ where
 {
     let (lo, hi) = iter.size_hint();
     let next_is_elem = !needs_sep;
-    let lo = lo.saturating_sub(next_is_elem as usize).saturating_add(lo);
-    let hi = match hi {
-        Some(hi) => hi.saturating_sub(next_is_elem as usize).checked_add(hi),
-        None => None,
-    };
-    (lo, hi)
+    (
+        lo.saturating_sub(next_is_elem as usize).saturating_add(lo),
+        hi.and_then(|hi| hi.saturating_sub(next_is_elem as usize).checked_add(hi)),
+    )
 }
 
 fn intersperse_fold<I, B, F, G>(
