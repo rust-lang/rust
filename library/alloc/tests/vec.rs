@@ -288,75 +288,64 @@ fn test_retain() {
 }
 
 #[test]
-fn test_retain_pred_panic() {
-    use std::sync::atomic::{AtomicU64, Ordering};
-
-    struct Wrap<'a>(&'a AtomicU64, u64, bool);
-
-    impl Drop for Wrap<'_> {
-        fn drop(&mut self) {
-            self.0.fetch_or(self.1, Ordering::SeqCst);
-        }
-    }
-
-    let dropped = AtomicU64::new(0);
-
-    let ret = std::panic::catch_unwind(|| {
-        let mut v = vec![
-            Wrap(&dropped, 1, false),
-            Wrap(&dropped, 2, false),
-            Wrap(&dropped, 4, false),
-            Wrap(&dropped, 8, false),
-            Wrap(&dropped, 16, false),
-        ];
-        v.retain(|w| match w.1 {
-            1 => true,
-            2 => false,
-            4 => true,
+fn test_retain_pred_panic_with_hole() {
+    let v = (0..5).map(Rc::new).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.clone();
+        v.retain(|r| match **r {
+            0 => true,
+            1 => false,
+            2 => true,
             _ => panic!(),
         });
-    });
-    assert!(ret.is_err());
+    }))
+    .unwrap_err();
     // Everything is dropped when predicate panicked.
-    assert_eq!(dropped.load(Ordering::SeqCst), 1 | 2 | 4 | 8 | 16);
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+fn test_retain_pred_panic_no_hole() {
+    let v = (0..5).map(Rc::new).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.clone();
+        v.retain(|r| match **r {
+            0 | 1 | 2 => true,
+            _ => panic!(),
+        });
+    }))
+    .unwrap_err();
+    // Everything is dropped when predicate panicked.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
 }
 
 #[test]
 fn test_retain_drop_panic() {
-    use std::sync::atomic::{AtomicU64, Ordering};
+    struct Wrap(Rc<i32>);
 
-    struct Wrap<'a>(&'a AtomicU64, u64);
-
-    impl Drop for Wrap<'_> {
+    impl Drop for Wrap {
         fn drop(&mut self) {
-            if self.1 == 8 {
+            if *self.0 == 3 {
                 panic!();
             }
-            self.0.fetch_or(self.1, Ordering::SeqCst);
         }
     }
 
-    let dropped = AtomicU64::new(0);
-
-    let ret = std::panic::catch_unwind(|| {
-        let mut v = vec![
-            Wrap(&dropped, 1),
-            Wrap(&dropped, 2),
-            Wrap(&dropped, 4),
-            Wrap(&dropped, 8),
-            Wrap(&dropped, 16),
-        ];
-        v.retain(|w| match w.1 {
-            1 => true,
-            2 => false,
-            4 => true,
-            8 => false,
+    let v = (0..5).map(|x| Rc::new(x)).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.iter().map(|r| Wrap(r.clone())).collect::<Vec<_>>();
+        v.retain(|w| match *w.0 {
+            0 => true,
+            1 => false,
+            2 => true,
+            3 => false, // Drop panic.
             _ => true,
         });
-    });
-    assert!(ret.is_err());
+    }))
+    .unwrap_err();
     // Other elements are dropped when `drop` of one element panicked.
-    assert_eq!(dropped.load(Ordering::SeqCst), 1 | 2 | 4 | 16);
+    // The panicked wrapper also has its Rc dropped.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
 }
 
 #[test]
