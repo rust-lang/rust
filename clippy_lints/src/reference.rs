@@ -111,6 +111,12 @@ declare_clippy_lint! {
     /// let point = Point(30, 20);
     /// let x = (&point).0;
     /// ```
+    /// Use instead:
+    /// ```rust
+    /// # struct Point(u32, u32);
+    /// # let point = Point(30, 20);
+    /// let x = point.0;
+    /// ```
     pub REF_IN_DEREF,
     complexity,
     "Use of reference in auto dereference expression."
