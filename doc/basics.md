@@ -11,6 +11,7 @@ the codebase take a look at [Adding Lints] or [Common Tools].
   - [Get the Code](#get-the-code)
   - [Building and Testing](#building-and-testing)
   - [`cargo dev`](#cargo-dev)
+  - [Common Abbreviations](#common-abbreviations)
   - [PR](#pr)
 
 ## Get the Code
@@ -109,7 +110,7 @@ See <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
 | TCX          | Type context                           |
 
 This is a concise list of abbreviations that can come up during clippy development. An extensive
-genal list can be found in the [rustc-dev-guide glossary][glossary]. Always feel free to ask if
+general list can be found in the [rustc-dev-guide glossary][glossary]. Always feel free to ask if
 an abbreviation or meaning is unclear to you.
 
 [glossary]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html
