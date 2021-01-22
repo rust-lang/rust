@@ -14,6 +14,7 @@ use std::iter::successors;
 
 use base_db::Edition;
 use hir_expand::name::Name;
+use hir_expand::name;
 use test_utils::mark;
 
 use crate::{
@@ -63,6 +64,11 @@ impl ResolvePathResult {
 
 impl DefMap {
     pub(super) fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs {
+        if name == &name!(self) {
+            return PerNs::types(ModuleId { krate: self.krate, local_id: self.root }.into(),
+                Visibility::Public,
+            );
+        }
         self.extern_prelude
             .get(name)
             .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public))
