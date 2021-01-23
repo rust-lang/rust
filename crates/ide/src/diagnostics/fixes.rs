@@ -161,8 +161,7 @@ impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
 
         let edit = TextEdit::replace(range_to_replace, replacement);
 
-        let source_change =
-            SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
+        let source_change = SourceChange::from_text_edit(self.file.original_file(sema.db), edit);
 
         Some(Fix::new(
             "Replace filter_map(..).next() with find_map()",
