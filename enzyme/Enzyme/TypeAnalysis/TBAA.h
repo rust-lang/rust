@@ -385,17 +385,6 @@ static inline ConcreteType getTypeFromTBAAString(std::string TypeName,
     if (PrintType)
       llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
     return Type::getDoubleTy(I.getContext());
-  } else if (TypeName == "jtbaa_arraybuf") {
-    if (PrintType)
-      llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
-    if (isa<LoadInst>(&I)) {
-      if (I.getType()->isFPOrFPVectorTy()) {
-        return I.getType()->getScalarType();
-      }
-      if (I.getType()->isIntOrIntVectorTy()) {
-        return BaseType::Integer;
-      }
-    }
   }
   return ConcreteType(BaseType::Unknown);
 }
