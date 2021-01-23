@@ -776,10 +776,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
-        // Lower outside new scope to preserve `is_in_loop_condition`.
-        let fn_decl = self.lower_fn_decl(decl, None, false, None);
-
-        self.with_new_scopes(move |this| {
+        let (body_id, generator_option) = self.with_new_scopes(move |this| {
             let prev = this.current_item;
             this.current_item = Some(fn_decl_span);
             let mut generator_kind = None;
@@ -791,8 +788,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let generator_option =
                 this.generator_movability_for_fn(&decl, fn_decl_span, generator_kind, movability);
             this.current_item = prev;
-            hir::ExprKind::Closure(capture_clause, fn_decl, body_id, fn_decl_span, generator_option)
-        })
+            (body_id, generator_option)
+        });
+
+        // Lower outside new scope to preserve `is_in_loop_condition`.
+        let fn_decl = self.lower_fn_decl(decl, None, false, None);
+
+        hir::ExprKind::Closure(capture_clause, fn_decl, body_id, fn_decl_span, generator_option)
     }
 
     fn generator_movability_for_fn(
@@ -838,12 +840,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ExprKind<'hir> {
         let outer_decl =
             FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
-        // We need to lower the declaration outside the new scope, because we
-        // have to conserve the state of being inside a loop condition for the
-        // closure argument types.
-        let fn_decl = self.lower_fn_decl(&outer_decl, None, false, None);
 
-        self.with_new_scopes(move |this| {
+        let body_id = self.with_new_scopes(|this| {
             // FIXME(cramertj): allow `async` non-`move` closures with arguments.
             if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
                 struct_span_err!(
@@ -874,8 +872,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 this.expr(fn_decl_span, async_body, ThinVec::new())
             });
-            hir::ExprKind::Closure(capture_clause, fn_decl, body_id, fn_decl_span, None)
-        })
+            body_id
+        });
+
+        // We need to lower the declaration outside the new scope, because we
+        // have to conserve the state of being inside a loop condition for the
+        // closure argument types.
+        let fn_decl = self.lower_fn_decl(&outer_decl, None, false, None);
+
+        hir::ExprKind::Closure(capture_clause, fn_decl, body_id, fn_decl_span, None)
     }
 
     /// Destructure the LHS of complex assignments.
