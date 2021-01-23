@@ -893,6 +893,9 @@ fn link_sanitizers(sess: &Session, crate_type: CrateType, linker: &mut dyn Linke
     if sanitizer.contains(SanitizerSet::THREAD) {
         link_sanitizer_runtime(sess, linker, "tsan");
     }
+    if sanitizer.contains(SanitizerSet::HWADDRESS) {
+        link_sanitizer_runtime(sess, linker, "hwasan");
+    }
 }
 
 fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
