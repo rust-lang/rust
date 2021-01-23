@@ -27,10 +27,16 @@ mod x86_win64;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PassMode {
     /// Ignore the argument.
+    ///
+    /// The argument is either uninhabited or a ZST.
     Ignore,
     /// Pass the argument directly.
+    ///
+    /// The argument has a layout abi of `Scalar` or `Vector`.
     Direct(ArgAttributes),
     /// Pass a pair's elements directly in two arguments.
+    ///
+    /// The argument has a layout abi of `ScalarPair`.
     Pair(ArgAttributes, ArgAttributes),
     /// Pass the argument after casting it, to either
     /// a single uniform or a pair of registers.
