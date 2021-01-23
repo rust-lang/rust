@@ -1656,7 +1656,7 @@ pub struct Coverage {
     pub code_region: Option<CodeRegion>,
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub struct CopyNonOverlapping<'tcx> {
     pub src: Operand<'tcx>,
     pub dst: Operand<'tcx>,

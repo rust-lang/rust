@@ -40,6 +40,27 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
+                    sym::copy_nonoverlapping => {
+                        let target = destination.unwrap().1;
+                        let mut args = args.drain(..);
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::CopyNonOverlapping(
+                                box rustc_middle::mir::CopyNonOverlapping {
+                                    src: args.next().unwrap(),
+                                    dst: args.next().unwrap(),
+                                    count: args.next().unwrap(),
+                                },
+                            ),
+                        });
+                        assert_eq!(
+                            args.next(),
+                            None,
+                            "Extra argument for copy_non_overlapping intrinsic"
+                        );
+                        drop(args);
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
                     sym::wrapping_add | sym::wrapping_sub | sym::wrapping_mul => {
                         if let Some((destination, target)) = *destination {
                             let lhs;

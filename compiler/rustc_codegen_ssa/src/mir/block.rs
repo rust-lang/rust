@@ -643,23 +643,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         match intrinsic {
             None | Some(sym::drop_in_place) => {}
-            Some(sym::copy_nonoverlapping) => {
-                bx = self.codegen_statement(
-                    bx,
-                    &rustc_middle::mir::Statement {
-                        source_info: rustc_middle::mir::SourceInfo::outermost(span),
-                        kind: rustc_middle::mir::StatementKind::CopyNonOverlapping(
-                            box rustc_middle::mir::CopyNonOverlapping {
-                                src: args[0].clone(),
-                                dst: args[1].clone(),
-                                count: args[2].clone(),
-                            },
-                        ),
-                    },
-                );
-                helper.funclet_br(self, &mut bx, destination.unwrap().1);
-                return;
-            }
+            Some(sym::copy_nonoverlapping) => unreachable!(),
             Some(intrinsic) => {
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
@@ -702,7 +686,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     })
                     .collect();
 
-                self.codegen_intrinsic_call(
+                Self::codegen_intrinsic_call(
                     &mut bx,
                     *instance.as_ref().unwrap(),
                     &fn_abi,
