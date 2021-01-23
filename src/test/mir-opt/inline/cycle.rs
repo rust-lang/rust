@@ -1,17 +1,16 @@
-// Needs build-pass to trigger `optimized_mir` on all mir bodies
-// build-pass
-// compile-flags: -Zmir-opt-level=2
-
+// EMIT_MIR cycle.f.Inline.diff
 #[inline(always)]
 fn f(g: impl Fn()) {
     g();
 }
 
+// EMIT_MIR cycle.g.Inline.diff
 #[inline(always)]
 fn g() {
     f(main);
 }
 
+// EMIT_MIR cycle.main.Inline.diff
 fn main() {
     f(g);
 }
