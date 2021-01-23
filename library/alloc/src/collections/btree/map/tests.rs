@@ -1,3 +1,4 @@
+use super::super::testing::crash_test::{CrashTest, Panic};
 use super::super::testing::ord_chaos::{Cyclic3, Governed, Governor};
 use super::super::testing::rng::DeterministicRng;
 use super::Entry::{Occupied, Vacant};
@@ -1134,91 +1135,48 @@ mod test_drain_filter {
 
     #[test]
     fn drop_panic_leak() {
-        static PREDS: AtomicUsize = AtomicUsize::new(0);
-        static DROPS: AtomicUsize = AtomicUsize::new(0);
+        let test = CrashTest::new();
+        let mut map = BTreeMap::new();
+        map.insert(test.dummy(0, Panic::Never), ());
+        map.insert(test.dummy(1, Panic::InDrop), ());
+        map.insert(test.dummy(2, Panic::Never), ());
 
-        struct D;
-        impl Drop for D {
-            fn drop(&mut self) {
-                if DROPS.fetch_add(1, SeqCst) == 1 {
-                    panic!("panic in `drop`");
-                }
-            }
-        }
+        catch_unwind(move || drop(map.drain_filter(|dummy, _| dummy.query(true)))).unwrap_err();
 
-        // Keys are multiples of 4, so that each key is counted by a hexadecimal digit.
-        let mut map = (0..3).map(|i| (i * 4, D)).collect::<BTreeMap<_, _>>();
-
-        catch_unwind(move || {
-            drop(map.drain_filter(|i, _| {
-                PREDS.fetch_add(1usize << i, SeqCst);
-                true
-            }))
-        })
-        .unwrap_err();
-
-        assert_eq!(PREDS.load(SeqCst), 0x011);
-        assert_eq!(DROPS.load(SeqCst), 3);
+        assert_eq!(test.queried(), 0x011);
+        assert_eq!(test.dropped(), 0x111);
     }
 
     #[test]
     fn pred_panic_leak() {
-        static PREDS: AtomicUsize = AtomicUsize::new(0);
-        static DROPS: AtomicUsize = AtomicUsize::new(0);
+        let test = CrashTest::new();
+        let mut map = BTreeMap::new();
+        map.insert(test.dummy(0, Panic::Never), ());
+        map.insert(test.dummy(1, Panic::InQuery), ());
+        map.insert(test.dummy(2, Panic::InQuery), ());
 
-        struct D;
-        impl Drop for D {
-            fn drop(&mut self) {
-                DROPS.fetch_add(1, SeqCst);
-            }
-        }
+        catch_unwind(AssertUnwindSafe(|| drop(map.drain_filter(|dummy, _| dummy.query(true)))))
+            .unwrap_err();
 
-        // Keys are multiples of 4, so that each key is counted by a hexadecimal digit.
-        let mut map = (0..3).map(|i| (i * 4, D)).collect::<BTreeMap<_, _>>();
-
-        catch_unwind(AssertUnwindSafe(|| {
-            drop(map.drain_filter(|i, _| {
-                PREDS.fetch_add(1usize << i, SeqCst);
-                match i {
-                    0 => true,
-                    _ => panic!(),
-                }
-            }))
-        }))
-        .unwrap_err();
-
-        assert_eq!(PREDS.load(SeqCst), 0x011);
-        assert_eq!(DROPS.load(SeqCst), 1);
+        assert_eq!(test.queried(), 0x011);
+        assert_eq!(test.dropped(), 0x001);
         assert_eq!(map.len(), 2);
-        assert_eq!(map.first_entry().unwrap().key(), &4);
-        assert_eq!(map.last_entry().unwrap().key(), &8);
+        assert_eq!(map.first_entry().unwrap().key().id, 1);
+        assert_eq!(map.last_entry().unwrap().key().id, 2);
         map.check();
     }
 
     // Same as above, but attempt to use the iterator again after the panic in the predicate
     #[test]
     fn pred_panic_reuse() {
-        static PREDS: AtomicUsize = AtomicUsize::new(0);
-        static DROPS: AtomicUsize = AtomicUsize::new(0);
-
-        struct D;
-        impl Drop for D {
-            fn drop(&mut self) {
-                DROPS.fetch_add(1, SeqCst);
-            }
-        }
-
-        // Keys are multiples of 4, so that each key is counted by a hexadecimal digit.
-        let mut map = (0..3).map(|i| (i * 4, D)).collect::<BTreeMap<_, _>>();
+        let test = CrashTest::new();
+        let mut map = BTreeMap::new();
+        map.insert(test.dummy(0, Panic::Never), ());
+        map.insert(test.dummy(1, Panic::InQuery), ());
+        map.insert(test.dummy(2, Panic::InQuery), ());
 
         {
-            let mut it = map.drain_filter(|i, _| {
-                PREDS.fetch_add(1usize << i, SeqCst);
-                match i {
-                    0 => true,
-                    _ => panic!(),
-                }
-            });
+            let mut it = map.drain_filter(|dummy, _| dummy.query(true));
             catch_unwind(AssertUnwindSafe(|| while it.next().is_some() {})).unwrap_err();
             // Iterator behaviour after a panic is explicitly unspecified,
             // so this is just the current implementation:
@@ -1226,11 +1184,11 @@ mod test_drain_filter {
             assert!(matches!(result, Ok(None)));
         }
 
-        assert_eq!(PREDS.load(SeqCst), 0x011);
-        assert_eq!(DROPS.load(SeqCst), 1);
+        assert_eq!(test.queried(), 0x011);
+        assert_eq!(test.dropped(), 0x001);
         assert_eq!(map.len(), 2);
-        assert_eq!(map.first_entry().unwrap().key(), &4);
-        assert_eq!(map.last_entry().unwrap().key(), &8);
+        assert_eq!(map.first_entry().unwrap().key().id, 1);
+        assert_eq!(map.last_entry().unwrap().key().id, 2);
         map.check();
     }
 }
@@ -1480,6 +1438,25 @@ fn test_clone() {
     assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2);
     assert_eq!(map, map.clone());
     map.check();
+}
+
+#[test]
+fn test_clone_panic_leak() {
+    let test = CrashTest::new();
+
+    let mut map = BTreeMap::new();
+    map.insert(test.dummy(0, Panic::Never), ());
+    map.insert(test.dummy(1, Panic::InClone), ());
+    map.insert(test.dummy(2, Panic::Never), ());
+
+    catch_unwind(|| map.clone()).unwrap_err();
+    assert_eq!(test.cloned(), 0x011);
+    assert_eq!(test.dropped(), 0x001);
+    assert_eq!(map.len(), 3);
+
+    drop(map);
+    assert_eq!(test.cloned(), 0x011);
+    assert_eq!(test.dropped(), 0x112);
 }
 
 #[test]
@@ -1858,29 +1835,18 @@ create_append_test!(test_append_1700, 1700);
 
 #[test]
 fn test_append_drop_leak() {
-    static DROPS: AtomicUsize = AtomicUsize::new(0);
-
-    struct D;
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            if DROPS.fetch_add(1, SeqCst) == 0 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
+    let test = CrashTest::new();
     let mut left = BTreeMap::new();
     let mut right = BTreeMap::new();
-    left.insert(0, D);
-    left.insert(1, D); // first to be dropped during append
-    left.insert(2, D);
-    right.insert(1, D);
-    right.insert(2, D);
+    left.insert(test.dummy(0, Panic::Never), ());
+    left.insert(test.dummy(1, Panic::InDrop), ()); // first duplicate key, dropped during append
+    left.insert(test.dummy(2, Panic::Never), ());
+    right.insert(test.dummy(1, Panic::Never), ());
+    right.insert(test.dummy(2, Panic::Never), ());
 
     catch_unwind(move || left.append(&mut right)).unwrap_err();
 
-    assert_eq!(DROPS.load(SeqCst), 5);
+    assert_eq!(test.dropped(), 0x221);
 }
 
 #[test]
@@ -2007,51 +1973,32 @@ fn test_split_off_large_random_sorted() {
 
 #[test]
 fn test_into_iter_drop_leak_height_0() {
-    static DROPS: AtomicUsize = AtomicUsize::new(0);
-
-    struct D;
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            if DROPS.fetch_add(1, SeqCst) == 3 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
+    let test = CrashTest::new();
     let mut map = BTreeMap::new();
-    map.insert("a", D);
-    map.insert("b", D);
-    map.insert("c", D);
-    map.insert("d", D);
-    map.insert("e", D);
+    map.insert("a", test.dummy(0, Panic::Never));
+    map.insert("b", test.dummy(1, Panic::Never));
+    map.insert("c", test.dummy(2, Panic::Never));
+    map.insert("d", test.dummy(3, Panic::InDrop));
+    map.insert("e", test.dummy(4, Panic::Never));
 
     catch_unwind(move || drop(map.into_iter())).unwrap_err();
 
-    assert_eq!(DROPS.load(SeqCst), 5);
+    assert_eq!(test.dropped(), 0x11111);
 }
 
 #[test]
 fn test_into_iter_drop_leak_height_1() {
     let size = MIN_INSERTS_HEIGHT_1;
-    static DROPS: AtomicUsize = AtomicUsize::new(0);
-    static PANIC_POINT: AtomicUsize = AtomicUsize::new(0);
-
-    struct D;
-    impl Drop for D {
-        fn drop(&mut self) {
-            if DROPS.fetch_add(1, SeqCst) == PANIC_POINT.load(SeqCst) {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
     for panic_point in vec![0, 1, size - 2, size - 1] {
-        DROPS.store(0, SeqCst);
-        PANIC_POINT.store(panic_point, SeqCst);
-        let map: BTreeMap<_, _> = (0..size).map(|i| (i, D)).collect();
+        let test = CrashTest::new_totaling();
+        let map: BTreeMap<_, _> = (0..size)
+            .map(|i| {
+                let panic = if i == panic_point { Panic::InDrop } else { Panic::Never };
+                (test.dummy(i, Panic::Never), test.dummy(i, panic))
+            })
+            .collect();
         catch_unwind(move || drop(map.into_iter())).unwrap_err();
-        assert_eq!(DROPS.load(SeqCst), size);
+        assert_eq!(test.dropped(), size as u64 * 2);
     }
 }
 
