@@ -1,6 +1,5 @@
 #![feature(const_mut_refs)]
 #![feature(const_fn)]
-#![feature(const_transmute)]
 #![feature(raw_ref_op)]
 #![feature(const_raw_ptr_deref)]
 
@@ -18,18 +17,8 @@ const B2: Option<&mut i32> = None;
 // Not ok, can't prove that no mutable allocation ends up in final value
 const B3: Option<&mut i32> = Some(&mut 42); //~ ERROR temporary value dropped while borrowed
 
-const fn helper() -> Option<&'static mut i32> { unsafe {
-    // Undefined behaviour, who doesn't love tests like this.
-    // This code never gets executed, because the static checks fail before that.
-    Some(&mut *(42 as *mut i32))
-} }
-// Check that we do not look into function bodies.
-// We treat all functions as not returning a mutable reference, because there is no way to
-// do that without causing the borrow checker to complain (see the B5/helper2 test below).
-const B4: Option<&mut i32> = helper();
-
-const fn helper2(x: &mut i32) -> Option<&mut i32> { Some(x) }
-const B5: Option<&mut i32> = helper2(&mut 42); //~ ERROR temporary value dropped while borrowed
+const fn helper(x: &mut i32) -> Option<&mut i32> { Some(x) }
+const B4: Option<&mut i32> = helper(&mut 42); //~ ERROR temporary value dropped while borrowed
 
 // Ok, because no references to mutable data exist here, since the `{}` moves
 // its value and then takes a reference to that.
