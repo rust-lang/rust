@@ -2736,13 +2736,14 @@ where
         let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
             let is_return = arg_idx.is_none();
 
+            let layout = cx.layout_of(ty);
             let layout = if force_thin_self_ptr && arg_idx == Some(0) {
                 // Don't pass the vtable, it's not an argument of the virtual fn.
                 // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
                 // or `&/&mut dyn Trait` because this is special-cased elsewhere in codegen
-                make_thin_self_ptr(cx, cx.layout_of(ty))
+                make_thin_self_ptr(cx, layout)
             } else {
-                cx.layout_of(ty)
+                layout
             };
 
             let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
@@ -2842,11 +2843,9 @@ where
                 let max_by_val_size = Pointer.size(cx) * 2;
                 let size = arg.layout.size;
 
-                assert!(
-                    matches!(arg.mode, PassMode::Indirect { on_stack: false, .. }),
-                    "{:?}",
-                    arg
-                );
+                let is_indirect_not_on_stack =
+                    matches!(arg.mode, PassMode::Indirect { on_stack: false, .. });
+                assert!(is_indirect_not_on_stack, "{:?}", arg);
                 if !arg.layout.is_unsized() && size <= max_by_val_size {
                     // We want to pass small aggregates as immediates, but using
                     // a LLVM aggregate type for this leads to bad optimizations,
