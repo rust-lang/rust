@@ -119,6 +119,9 @@ void CacheUtility::replaceAWithB(Value *A, Value *B, bool storeInCache) {
     if (ctx.second.limit == A) {
       ctx.second.limit = B;
     }
+    if (ctx.second.trueLimit == A) {
+      ctx.second.trueLimit = B;
+    }
   }
 
   auto found = scopeMap.find(A);
@@ -467,8 +470,8 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
   SCEVUnionPredicate BackedgePred;
 
   const SCEV *Limit = nullptr;
+  const SCEV *MaxIterations = nullptr;
   {
-
     const SCEV *MayExitMaxBECount = nullptr;
 
     SmallVector<BasicBlock *, 8> ExitingBlocks;
@@ -500,33 +503,39 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
 
       ScalarEvolution::ExitLimit EL =
           SE.computeExitLimit(L, ExitingBlock, /*AllowPredicates*/ true);
-      if (MayExitMaxBECount != SE.getCouldNotCompute()) {
-        if (!MayExitMaxBECount || EL.ExactNotTaken == SE.getCouldNotCompute())
-          MayExitMaxBECount = EL.ExactNotTaken;
-        else {
-          if (MayExitMaxBECount != EL.ExactNotTaken) {
-            llvm::errs() << MayExitMaxBECount << "\n";
-            if (EnzymePrintPerf)
-              llvm::errs() << "Missed cache optimization opportunity! could "
-                              "allocate max!\n";
-            MayExitMaxBECount = SE.getCouldNotCompute();
-            break;
-          }
 
-          MayExitMaxBECount = SE.getUMaxFromMismatchedTypes(MayExitMaxBECount,
-                                                            EL.ExactNotTaken);
+      if (MaxIterations == nullptr) {
+        if (EL.ExactNotTaken != SE.getCouldNotCompute())
+          MaxIterations = EL.ExactNotTaken;
+        else
+          MaxIterations = EL.MaxNotTaken;
+      } else if (EL.MaxNotTaken == SE.getCouldNotCompute())
+        MaxIterations = EL.MaxNotTaken;
+
+      if (MayExitMaxBECount == nullptr || EL.ExactNotTaken == SE.getCouldNotCompute())
+        MayExitMaxBECount = EL.ExactNotTaken;
+
+
+      if (MaxIterations != SE.getCouldNotCompute()) {
+        if (EL.ExactNotTaken != SE.getCouldNotCompute()) {
+          MaxIterations = SE.getUMaxFromMismatchedTypes(MaxIterations,
+                                                        EL.ExactNotTaken);
+        } else if (EL.MaxNotTaken != SE.getCouldNotCompute()) {
+          MaxIterations = SE.getUMaxFromMismatchedTypes(MaxIterations,
+                                                        EL.MaxNotTaken);
         }
-      } else {
+      }
+      if (EL.ExactNotTaken != MayExitMaxBECount) {
         MayExitMaxBECount = SE.getCouldNotCompute();
       }
     }
     if (ExitingBlocks.size() == 0) {
       MayExitMaxBECount = SE.getCouldNotCompute();
+      MaxIterations = SE.getCouldNotCompute();
     }
     Limit = MayExitMaxBECount;
   }
   assert(Limit);
-
   Value *LimitVar = nullptr;
 
   if (SE.getCouldNotCompute() != Limit) {
@@ -576,6 +585,22 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
     loopContexts[L].dynamic = true;
   }
   loopContexts[L].limit = LimitVar;
+  if (loopContexts[L].dynamic && SE.getCouldNotCompute() != MaxIterations) {
+    if (MaxIterations->getType() != CanonicalIV->getType())
+      MaxIterations = SE.getZeroExtendExpr(MaxIterations, CanonicalIV->getType());
+
+#if LLVM_VERSION_MAJOR >= 12
+    SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(),
+                     "enzyme");
+#else
+    fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(),
+                           "enzyme");
+#endif
+    loopContexts[L].trueLimit = Exp.expandCodeFor(MaxIterations, CanonicalIV->getType(),
+                                 loopContexts[L].preheader->getTerminator());
+  } else {
+    loopContexts[L].trueLimit = nullptr;
+  }
 
   loopContext = loopContexts.find(L)->second;
   return true;

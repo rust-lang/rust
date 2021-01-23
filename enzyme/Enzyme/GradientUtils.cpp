@@ -897,6 +897,9 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
       if (lc.dynamic) {
         lim = lookupValueFromCache(/*forwardPass*/ false, tbuild, lc.preheader,
                                    cast<AllocaInst>(lc.limit), /*isi1*/ false);
+      } else if (lc.trueLimit) {
+        lim = lookupValueFromCache(/*forwardPass*/ false, tbuild, lc.preheader,
+                                   cast<AllocaInst>(lc.trueLimit), /*isi1*/ false);
       } else {
         lim = lookupM(lc.limit, tbuild);
       }
@@ -2070,6 +2073,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                     getContext(ar1->getLoop()->getHeader(), l1);
                     LoopContext l2;
                     getContext(ar2->getLoop()->getHeader(), l2);
+                    if (l1.dynamic || l2.dynamic || l1.trueLimit || l2.trueLimit)
+                      continue;
 
                     // TODO IF len(ar2) >= len(ar1) then we can replace li with
                     // li2
@@ -2115,7 +2120,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               LoopContext l1;
               getContext(ar1->getLoop()->getHeader(), l1);
 
-              if (l1.dynamic)
+              if (l1.dynamic || l1.trueLimit)
                 goto noSpeedCache;
 
               BasicBlock *ctx = l1.preheader;

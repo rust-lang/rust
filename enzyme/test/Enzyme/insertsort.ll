@@ -52,8 +52,8 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 
 ; CHECK: land.rhs:                                         ; preds = %while.body, %land.rhs.preheader
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %while.body ], [ 0, %land.rhs.preheader ]
-; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %1 = mul nuw nsw i64 %iv, -1
+; CHECK-DAG:   %iv.next = add nuw nsw i64 %iv, 1
+; CHECK-DAG:   %1 = mul nuw nsw i64 %iv, -1
 ; CHECK-NEXT:   %[[a1:.+]] = add nuw nsw i64 %0, %1
 ; CHECK-NEXT:   %indvars.iv.next = add nsw i64 %[[a1]], -1
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds float, float* %array, i64 %indvars.iv.next

@@ -64,6 +64,8 @@ struct LoopContext {
   /// iters is number of times loop is run (thus iters = limit + 1)
   llvm::Value *limit;
 
+  llvm::Value *trueLimit;
+
   /// All blocks this loop exits too
   llvm::SmallPtrSet<llvm::BasicBlock *, 8> exitBlocks;
 
@@ -141,7 +143,7 @@ public:
   bool isInstructionUsedInLoopInduction(llvm::Instruction &I) {
     for (auto &context : loopContexts) {
       if (context.second.var == &I || context.second.incvar == &I ||
-          context.second.limit == &I) {
+          context.second.limit == &I || context.second.trueLimit == &I) {
         return true;
       }
     }
