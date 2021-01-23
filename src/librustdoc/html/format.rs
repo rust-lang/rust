@@ -102,14 +102,6 @@ impl Buffer {
         self.into_inner()
     }
 
-    crate fn from_display<T: std::fmt::Display>(&mut self, t: T) {
-        if self.for_html {
-            write!(self, "{}", t);
-        } else {
-            write!(self, "{:#}", t);
-        }
-    }
-
     crate fn is_for_html(&self) -> bool {
         self.for_html
     }
@@ -900,16 +892,7 @@ impl clean::Type {
 }
 
 impl clean::Impl {
-    crate fn print<'a>(&'a self, cache: &'a Cache) -> impl fmt::Display + 'a {
-        self.print_inner(true, false, cache)
-    }
-
-    fn print_inner<'a>(
-        &'a self,
-        link_trait: bool,
-        use_absolute: bool,
-        cache: &'a Cache,
-    ) -> impl fmt::Display + 'a {
+    crate fn print<'a>(&'a self, cache: &'a Cache, use_absolute: bool) -> impl fmt::Display + 'a {
         display_fn(move |f| {
             if f.alternate() {
                 write!(f, "impl{:#} ", self.generics.print(cache))?;
@@ -921,21 +904,7 @@ impl clean::Impl {
                 if self.negative_polarity {
                     write!(f, "!")?;
                 }
-
-                if link_trait {
-                    fmt::Display::fmt(&ty.print(cache), f)?;
-                } else {
-                    match ty {
-                        clean::ResolvedPath {
-                            param_names: None, path, is_generic: false, ..
-                        } => {
-                            let last = path.segments.last().unwrap();
-                            fmt::Display::fmt(&last.name, f)?;
-                            fmt::Display::fmt(&last.args.print(cache), f)?;
-                        }
-                        _ => unreachable!(),
-                    }
-                }
+                fmt::Display::fmt(&ty.print(cache), f)?;
                 write!(f, " for ")?;
             }
 
@@ -950,16 +919,6 @@ impl clean::Impl {
             Ok(())
         })
     }
-}
-
-// The difference from above is that trait is not hyperlinked.
-crate fn fmt_impl_for_trait_page(
-    i: &clean::Impl,
-    f: &mut Buffer,
-    use_absolute: bool,
-    cache: &Cache,
-) {
-    f.from_display(i.print_inner(false, use_absolute, cache))
 }
 
 impl clean::Arguments {
