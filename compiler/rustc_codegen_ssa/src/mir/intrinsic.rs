@@ -49,6 +49,7 @@ fn memset_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_intrinsic_call(
+        &self,
         bx: &mut Bx,
         instance: ty::Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
@@ -127,16 +128,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             sym::copy_nonoverlapping => {
-                copy_intrinsic(
-                    bx,
-                    false,
-                    false,
-                    substs.type_at(0),
-                    args[1].immediate(),
-                    args[0].immediate(),
-                    args[2].immediate(),
-                );
-                return;
+                // handled explicitly in compiler/rustc_codegen_ssa/src/mir/block.rs
+                unreachable!();
             }
             sym::copy => {
                 copy_intrinsic(

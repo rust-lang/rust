@@ -123,20 +123,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let dst_val = self.codegen_operand(&mut bx, dst);
                 let src_val = self.codegen_operand(&mut bx, src);
                 let count = self.codegen_operand(&mut bx, count).immediate();
-                let get_val_align = |oper_ref: crate::mir::OperandRef<'_, _>| match oper_ref.val {
-                    OperandValue::Ref(val, _, align) => (val, align),
-                    _ => unreachable!(),
-                };
                 let pointee_layout = dst_val
                     .layout
                     .pointee_info_at(&mut bx, rustc_target::abi::Size::ZERO)
                     .expect("Expected pointer");
-                let elem_size = bx.const_u64(pointee_layout.size.bytes());
-                let byte_count = bx.mul(count, elem_size);
+                let bytes = bx.mul(count, bx.const_usize(pointee_layout.size.bytes()));
 
-                let (dst, dst_align) = get_val_align(dst_val);
-                let (src, src_align) = get_val_align(src_val);
-                bx.memcpy(dst, dst_align, src, src_align, byte_count, crate::MemFlags::empty());
+                let align = pointee_layout.align;
+                let dst = dst_val.immediate();
+                let src = src_val.immediate();
+                bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty());
                 bx
             }
             mir::StatementKind::FakeRead(..)
