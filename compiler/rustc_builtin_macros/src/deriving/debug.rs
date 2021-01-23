@@ -97,11 +97,8 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         }
         ast::VariantData::Struct(..) => {
             // normal struct/struct variant
-            let fn_path_debug_struct =
-                cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_struct]);
-            let expr = cx.expr_call_global(
-                span, fn_path_debug_struct, vec![fmt, name]
-            );
+            let fn_path_debug_struct = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_struct]);
+            let expr = cx.expr_call_global(span, fn_path_debug_struct, vec![fmt, name]);
             stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
 
             for field in fields {
@@ -115,11 +112,8 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 let field = cx.expr_addr_of(field.span, field.self_.clone());
                 let field = cx.expr_addr_of(field.span, field);
                 let builder_recv = make_mut_borrow(cx, span, builder_expr.clone());
-                let expr = cx.expr_call_global(
-                    span,
-                    fn_path_field,
-                    vec![builder_recv, name, field],
-                );
+                let expr =
+                    cx.expr_call_global(span, fn_path_field, vec![builder_recv, name, field]);
                 stmts.push(stmt_let_underscore(cx, span, expr));
             }
             fn_path_finish = cx.std_path(&[sym::fmt, sym::DebugStruct, sym::finish]);
