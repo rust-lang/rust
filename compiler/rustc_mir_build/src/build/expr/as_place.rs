@@ -303,7 +303,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self.base
     }
 
-    fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
+    crate fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
         self.project(PlaceElem::Field(f, ty))
     }
 
