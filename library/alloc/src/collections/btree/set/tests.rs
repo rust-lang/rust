@@ -1,4 +1,4 @@
-use super::super::DeterministicRng;
+use super::super::testing::rng::DeterministicRng;
 use super::*;
 use crate::vec::Vec;
 use std::cmp::Ordering;
