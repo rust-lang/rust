@@ -896,12 +896,9 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
       Value *lim = nullptr;
       if (lc.dynamic) {
         lim = lookupValueFromCache(/*forwardPass*/ false, tbuild, lc.preheader,
-                                   cast<AllocaInst>(lc.limit), /*isi1*/ false);
-      } else if (lc.trueLimit) {
-        lim = lookupValueFromCache(/*forwardPass*/ false, tbuild, lc.preheader,
                                    cast<AllocaInst>(lc.trueLimit), /*isi1*/ false);
       } else {
-        lim = lookupM(lc.limit, tbuild);
+        lim = lookupM(lc.trueLimit, tbuild);
       }
 
       tbuild.SetInsertPoint(incB);
@@ -2073,13 +2070,13 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                     getContext(ar1->getLoop()->getHeader(), l1);
                     LoopContext l2;
                     getContext(ar2->getLoop()->getHeader(), l2);
-                    if (l1.dynamic || l2.dynamic || l1.trueLimit || l2.trueLimit)
+                    if (l1.dynamic || l2.dynamic)
                       continue;
 
                     // TODO IF len(ar2) >= len(ar1) then we can replace li with
                     // li2
-                    if (SE.getSCEV(l1.limit) != SE.getCouldNotCompute() &&
-                        SE.getSCEV(l1.limit) == SE.getSCEV(l2.limit)) {
+                    if (SE.getSCEV(l1.trueLimit) != SE.getCouldNotCompute() &&
+                        SE.getSCEV(l1.trueLimit) == SE.getSCEV(l2.trueLimit)) {
                       // llvm::errs()
                       //    << " step1: " << *ar1->getStepRecurrence(SE)
                       //    << " step2: " << *ar2->getStepRecurrence(SE) <<
@@ -2120,7 +2117,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               LoopContext l1;
               getContext(ar1->getLoop()->getHeader(), l1);
 
-              if (l1.dynamic || l1.trueLimit)
+              if (l1.dynamic)
                 goto noSpeedCache;
 
               BasicBlock *ctx = l1.preheader;
@@ -2133,7 +2130,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 goto noSpeedCache;
               }
 
-              Value *lim = unwrapM(l1.limit, v,
+              Value *lim = unwrapM(l1.trueLimit, v,
                                    /*available*/ ValueToValueMapTy(),
                                    UnwrapMode::AttemptFullUnwrapWithLookup);
               if (!lim) {

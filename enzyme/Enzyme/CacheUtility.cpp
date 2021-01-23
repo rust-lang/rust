@@ -38,6 +38,10 @@ llvm::cl::opt<bool>
     EnzymePrintPerf("enzyme-print-perf", cl::init(false), cl::Hidden,
                     cl::desc("Enable Enzyme to print performance info"));
 
+llvm::cl::opt<bool>
+    EfficientMaxCache("enzyme-max-cache", cl::init(false), cl::Hidden,
+                       cl::desc("Avoid reallocs when possible by potentially overallocating cache"));
+
 CacheUtility::~CacheUtility() {}
 
 /// Erase this instruction both from LLVM modules and any local data-structures
@@ -51,7 +55,8 @@ void CacheUtility::erase(Instruction *I) {
     assert(ctx.second.var != I);
     assert(ctx.second.incvar != I);
     assert(ctx.second.antivaralloc != I);
-    assert(ctx.second.limit != I);
+    assert(ctx.second.trueLimit != I);
+    assert(ctx.second.maxLimit != I);
   }
   for (const auto &pair : scopeMap) {
     if (pair.second.first == I) {
@@ -116,8 +121,8 @@ void CacheUtility::erase(Instruction *I) {
 /// Replace this instruction both in LLVM modules and any local data-structures
 void CacheUtility::replaceAWithB(Value *A, Value *B, bool storeInCache) {
   for (auto &ctx : loopContexts) {
-    if (ctx.second.limit == A) {
-      ctx.second.limit = B;
+    if (ctx.second.maxLimit == A) {
+      ctx.second.maxLimit = B;
     }
     if (ctx.second.trueLimit == A) {
       ctx.second.trueLimit = B;
@@ -504,27 +509,43 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
       ScalarEvolution::ExitLimit EL =
           SE.computeExitLimit(L, ExitingBlock, /*AllowPredicates*/ true);
 
-      if (MaxIterations == nullptr) {
-        if (EL.ExactNotTaken != SE.getCouldNotCompute())
+
+      bool seenHeaders = false;
+      SmallPtrSet<BasicBlock*, 4> Seen;
+      std::deque<BasicBlock*> Todo = { ExitingBlock };
+      while (Todo.size()) {
+        auto cur = Todo.front();
+        Todo.pop_front();
+        if (Seen.count(cur)) continue;
+        if (!L->contains(cur)) continue;
+        if (cur == loopContexts[L].header) {
+          seenHeaders = true;
+          break;
+        }
+        for (auto S : successors(cur)) {
+          Todo.push_back(S);
+        }
+      }
+
+      if (seenHeaders) {
+        if (MaxIterations == nullptr || MaxIterations == SE.getCouldNotCompute()) {
           MaxIterations = EL.ExactNotTaken;
-        else
-          MaxIterations = EL.MaxNotTaken;
-      } else if (EL.MaxNotTaken == SE.getCouldNotCompute())
-        MaxIterations = EL.MaxNotTaken;
+        }
+        if (MaxIterations != SE.getCouldNotCompute()) {
+          // a block can either branch to exit, the header, or another piece of the loop
+          // if it branches either to an exit or another part of the loop, the number
+          // of iterations is therefore bounded by the successors it exits into
+          
+          if (EL.ExactNotTaken != SE.getCouldNotCompute()) {
+            MaxIterations = SE.getUMaxFromMismatchedTypes(MaxIterations,
+                                                          EL.ExactNotTaken);
+          }
+        }
+      }
 
       if (MayExitMaxBECount == nullptr || EL.ExactNotTaken == SE.getCouldNotCompute())
         MayExitMaxBECount = EL.ExactNotTaken;
 
-
-      if (MaxIterations != SE.getCouldNotCompute()) {
-        if (EL.ExactNotTaken != SE.getCouldNotCompute()) {
-          MaxIterations = SE.getUMaxFromMismatchedTypes(MaxIterations,
-                                                        EL.ExactNotTaken);
-        } else if (EL.MaxNotTaken != SE.getCouldNotCompute()) {
-          MaxIterations = SE.getUMaxFromMismatchedTypes(MaxIterations,
-                                                        EL.MaxNotTaken);
-        }
-      }
       if (EL.ExactNotTaken != MayExitMaxBECount) {
         MayExitMaxBECount = SE.getCouldNotCompute();
       }
@@ -557,6 +578,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
     LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
                                  loopContexts[L].preheader->getTerminator());
     loopContexts[L].dynamic = false;
+    loopContexts[L].maxLimit = LimitVar;
   } else {
     if (EnzymePrintPerf)
       llvm::errs() << "SE could not compute loop limit of "
@@ -583,9 +605,10 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
                               cast<AllocaInst>(LimitVar));
     }
     loopContexts[L].dynamic = true;
+    loopContexts[L].maxLimit = nullptr;
   }
-  loopContexts[L].limit = LimitVar;
-  if (loopContexts[L].dynamic && SE.getCouldNotCompute() != MaxIterations) {
+  loopContexts[L].trueLimit = LimitVar;
+  if (EfficientMaxCache && loopContexts[L].dynamic && SE.getCouldNotCompute() != MaxIterations) {
     if (MaxIterations->getType() != CanonicalIV->getType())
       MaxIterations = SE.getZeroExtendExpr(MaxIterations, CanonicalIV->getType());
 
@@ -596,10 +619,9 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
     fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(),
                            "enzyme");
 #endif
-    loopContexts[L].trueLimit = Exp.expandCodeFor(MaxIterations, CanonicalIV->getType(),
+
+    loopContexts[L].maxLimit = Exp.expandCodeFor(MaxIterations, CanonicalIV->getType(),
                                  loopContexts[L].preheader->getTerminator());
-  } else {
-    loopContexts[L].trueLimit = nullptr;
   }
 
   loopContext = loopContexts.find(L)->second;
@@ -695,7 +717,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 
       StoreInst *storealloc = nullptr;
       // Statically allocate memory for all iterations if possible
-      if (!sublimits[i].second.back().first.dynamic) {
+      if (sublimits[i].second.back().first.maxLimit) {
         auto firstallocation = CallInst::CreateMalloc(
             &allocationBuilder.GetInsertBlock()->back(), size->getType(),
             myType, byteSizeOfType, size, nullptr, name + "_malloccache");
@@ -917,7 +939,8 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
     idx.var = nullptr; // = zero;
     idx.incvar = nullptr;
     idx.antivaralloc = nullptr;
-    idx.limit = zero;
+    idx.trueLimit = zero;
+    idx.maxLimit = zero;
     idx.header = subctx;
     idx.preheader = subctx;
     idx.dynamic = false;
@@ -939,7 +962,8 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
     blk = idx.preheader;
   }
   if (ompTrueLimit && contexts.size()) {
-    contexts.back().limit = ompTrueLimit;
+    contexts.back().trueLimit = ompTrueLimit;
+    contexts.back().maxLimit = ompTrueLimit;
   }
 
   // Legal preheaders for loop i (indexed from inner => outer)
@@ -953,7 +977,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
     // outside the loop nest
     if ((unsigned)i == contexts.size() - 1) {
       allocationPreheaders[i] = contexts[i].preheader;
-    } else if (contexts[i].dynamic) {
+    } else if (!contexts[i].maxLimit) {
       // For dynamic loops, the preheader is now forced to be the preheader
       // of that loop
       allocationPreheaders[i] = contexts[i].preheader;
@@ -966,7 +990,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
     // Dynamic loops are considered to have a limit of one for allocation
     // purposes This is because we want to allocate 1 x (# of iterations inside
     // chunk) inside every dynamic iteration
-    if (contexts[i].dynamic) {
+    if (!contexts[i].maxLimit) {
       limits[i] =
           ConstantInt::get(Type::getInt64Ty(ctx.Block->getContext()), 1);
     } else {
@@ -993,7 +1017,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
 
       // Attempt to compute the limit of this loop at the corresponding
       // allocation preheader. This is null if it was not legal to compute
-      limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, prevMap,
+      limitMinus1 = unwrapM(contexts[i].maxLimit, allocationBuilder, prevMap,
                             UnwrapMode::AttemptFullUnwrap);
 
       // We have a loop with static bounds, but whose limit is not available
@@ -1003,7 +1027,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
       if (limitMinus1 == nullptr) {
         allocationPreheaders[i] = contexts[i].preheader;
         allocationBuilder.SetInsertPoint(&allocationPreheaders[i]->back());
-        limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, prevMap,
+        limitMinus1 = unwrapM(contexts[i].maxLimit, allocationBuilder, prevMap,
                               UnwrapMode::AttemptFullUnwrap);
       }
       assert(limitMinus1 != nullptr);

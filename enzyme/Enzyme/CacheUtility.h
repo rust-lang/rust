@@ -62,7 +62,7 @@ struct LoopContext {
 
   /// limit is last value of a canonical induction variable
   /// iters is number of times loop is run (thus iters = limit + 1)
-  llvm::Value *limit;
+  llvm::Value *maxLimit;
 
   llvm::Value *trueLimit;
 
@@ -143,7 +143,7 @@ public:
   bool isInstructionUsedInLoopInduction(llvm::Instruction &I) {
     for (auto &context : loopContexts) {
       if (context.second.var == &I || context.second.incvar == &I ||
-          context.second.limit == &I || context.second.trueLimit == &I) {
+          context.second.maxLimit == &I || context.second.trueLimit == &I) {
         return true;
       }
     }

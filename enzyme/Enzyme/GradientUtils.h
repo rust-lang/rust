@@ -957,6 +957,9 @@ public:
         builderLoop = builderLoop->getParentLoop();
       }
 
+      //llvm::errs() << " fb: " << forwardBlock->getName() << " fblf: " << LI.getLoopFor(forwardBlock)->getHeader()->getName()
+      //  << " lch: " << lc.header->getName() << " icl=" << isChildLoop << " inst: " << *inst << "\n";
+
       if (!isChildLoop) {
         // llvm::errs() << "manually performing lcssa for instruction" << *inst
         // << " in block " << BuilderM.GetInsertBlock()->getName() << "\n";
