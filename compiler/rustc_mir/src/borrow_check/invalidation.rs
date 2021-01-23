@@ -100,12 +100,6 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 self.consume_operand(location, src);
                 self.consume_operand(location, dst);
                 self.consume_operand(location, count);
-                match dst {
-                    Operand::Move(ref place) | Operand::Copy(ref place) => {
-                        self.mutate_place(location, *place, Deep, JustWrite);
-                    }
-                    _ => {}
-                }
             }
             StatementKind::Nop
             | StatementKind::Coverage(..)
