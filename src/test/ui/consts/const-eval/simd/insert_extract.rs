@@ -8,7 +8,7 @@
 
 #[repr(simd)] struct i8x1(i8);
 #[repr(simd)] struct u16x2(u16, u16);
-#[repr(simd)] struct f32x3(f32, f32, f32);
+#[repr(simd)] struct f32x4(f32, f32, f32, f32);
 
 extern "platform-intrinsic" {
     #[rustc_const_stable(feature = "foo", since = "1.3.37")]
@@ -39,19 +39,23 @@ fn main() {
         assert_eq!(Y1, 42);
     }
     {
-        const U: f32x3 = f32x3(13., 14., 15.);
-        const V: f32x3 = unsafe { simd_insert(U, 1_u32, 42_f32) };
+        const U: f32x4 = f32x4(13., 14., 15., 16.);
+        const V: f32x4 = unsafe { simd_insert(U, 1_u32, 42_f32) };
         const X0: f32 = V.0;
         const X1: f32 = V.1;
         const X2: f32 = V.2;
+        const X3: f32 = V.3;
         const Y0: f32 = unsafe { simd_extract(V, 0) };
         const Y1: f32 = unsafe { simd_extract(V, 1) };
         const Y2: f32 = unsafe { simd_extract(V, 2) };
+        const Y3: f32 = unsafe { simd_extract(V, 3) };
         assert_eq!(X0, 13.);
         assert_eq!(X1, 42.);
         assert_eq!(X2, 15.);
+        assert_eq!(X3, 16.);
         assert_eq!(Y0, 13.);
         assert_eq!(Y1, 42.);
         assert_eq!(Y2, 15.);
+        assert_eq!(Y3, 16.);
     }
 }

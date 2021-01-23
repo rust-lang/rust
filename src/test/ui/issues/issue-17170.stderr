@@ -1,0 +1,11 @@
+error[E0075]: SIMD vector length must be a power of two
+  --> $DIR/issue-17170.rs:4:1
+   |
+LL | struct T(f64, f64, f64);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: monomorphising SIMD type `T` of non-power-of-two length
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0075`.
