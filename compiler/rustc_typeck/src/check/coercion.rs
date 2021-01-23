@@ -1472,22 +1472,22 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 fn_output = Some(&fn_decl.output); // `impl Trait` return type
             }
         }
-        if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.borrow().as_ref(), fn_output) {
-            self.add_impl_trait_explanation(&mut err, cause, fcx, expected, *sp, fn_output);
+        if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.get(), fn_output) {
+            self.add_impl_trait_explanation(&mut err, cause, fcx, expected, sp, fn_output);
         }
 
-        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+        if let Some(sp) = fcx.ret_coercion_span.get() {
             // If the closure has an explicit return type annotation,
             // then a type error may occur at the first return expression we
             // see in the closure (if it conflicts with the declared
             // return type). Skip adding a note in this case, since it
             // would be incorrect.
-            if !err.span.primary_spans().iter().any(|span| span == sp) {
+            if !err.span.primary_spans().iter().any(|&span| span == sp) {
                 let hir = fcx.tcx.hir();
                 let body_owner = hir.body_owned_by(hir.enclosing_body_owner(fcx.body_id));
                 if fcx.tcx.is_closure(hir.body_owner_def_id(body_owner).to_def_id()) {
                     err.span_note(
-                        *sp,
+                        sp,
                         &format!(
                             "return type inferred to be `{}` here",
                             fcx.resolve_vars_if_possible(expected)

@@ -66,11 +66,11 @@ pub struct FnCtxt<'a, 'tcx> {
     pub(super) in_tail_expr: bool,
 
     /// First span of a return site that we find. Used in error messages.
-    pub(super) ret_coercion_span: RefCell<Option<Span>>,
+    pub(super) ret_coercion_span: Cell<Option<Span>>,
 
     pub(super) resume_yield_tys: Option<(Ty<'tcx>, Ty<'tcx>)>,
 
-    pub(super) ps: RefCell<UnsafetyState>,
+    pub(super) ps: Cell<UnsafetyState>,
 
     /// Whether the last checked node generates a divergence (e.g.,
     /// `return` will set this to `Always`). In general, when entering
@@ -127,9 +127,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ret_coercion_impl_trait: None,
             ret_type_span: None,
             in_tail_expr: false,
-            ret_coercion_span: RefCell::new(None),
+            ret_coercion_span: Cell::new(None),
             resume_yield_tys: None,
-            ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal, hir::CRATE_HIR_ID)),
+            ps: Cell::new(UnsafetyState::function(hir::Unsafety::Normal, hir::CRATE_HIR_ID)),
             diverges: Cell::new(Diverges::Maybe),
             has_errors: Cell::new(false),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
