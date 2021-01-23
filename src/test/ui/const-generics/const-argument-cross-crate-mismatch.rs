@@ -1,5 +1,7 @@
 // aux-build:const_generic_lib.rs
 // revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
 
 extern crate const_generic_lib;
 
