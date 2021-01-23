@@ -125,6 +125,10 @@ impl JsonRenderer<'_> {
 }
 
 impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
+    fn descr() -> &'static str {
+        "json"
+    }
+
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
