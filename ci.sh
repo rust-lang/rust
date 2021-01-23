@@ -47,7 +47,7 @@ run_tests
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
-    MIRI_TEST_TARGET=x86_64-apple-darwin run_tests
+    MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=i686-pc-windows-msvc run_tests
     ;;
   x86_64-apple-darwin)
