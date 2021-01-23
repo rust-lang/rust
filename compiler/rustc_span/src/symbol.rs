@@ -133,6 +133,8 @@ symbols! {
         Copy,
         Count,
         Debug,
+        DebugStruct,
+        DebugTuple,
         Decodable,
         Decoder,
         Default,
