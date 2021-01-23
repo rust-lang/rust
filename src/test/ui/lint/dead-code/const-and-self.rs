@@ -1,6 +1,6 @@
 // check-pass
 
-#![deny(dead_code)]
+#![warn(dead_code)]
 
 const TLC: usize = 4;
 
@@ -28,8 +28,27 @@ impl Foo<Y> for X {
     }
 }
 
+enum E {
+    A,
+    B, //~ WARN variant is never constructed: `B`
+    C, //~ WARN variant is never constructed: `C`
+}
+
+type F = E;
+
+impl E {
+    fn check(&self) -> bool {
+        match self {
+            Self::A => true,
+            Self::B => false,
+            F::C => false,
+        }
+    }
+}
+
 fn main() {
     let s = [0,1,2,3];
     s.doit();
     X::foo();
+    E::A.check();
 }

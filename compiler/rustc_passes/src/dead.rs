@@ -290,6 +290,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     }
 
     fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+        self.in_pat = true;
         match pat.kind {
             PatKind::Struct(ref path, ref fields, _) => {
                 let res = self.typeck_results().qpath_res(path, pat.hir_id);
@@ -302,7 +303,6 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             _ => (),
         }
 
-        self.in_pat = true;
         intravisit::walk_pat(self, pat);
         self.in_pat = false;
     }
