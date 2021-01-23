@@ -633,6 +633,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.lens.references": {
+                    "markdownDescription": "Whether to show `References` lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.linkedProjects": {
                     "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set of projects.\\n\\nElements must be paths pointing to `Cargo.toml`, `rust-project.json`, or JSON objects in `rust-project.json` format.",
                     "default": [],

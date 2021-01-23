@@ -86,6 +86,8 @@
  Whether to show `Run` lens. Only applies when  `#rust-analyzer.lens.enable#` is set.
 [[rust-analyzer.lens.methodReferences]]rust-analyzer.lens.methodReferences (default: `false`)::
  Whether to show `Method References` lens. Only applies when  `#rust-analyzer.lens.enable#` is set.
+[[rust-analyzer.lens.references]]rust-analyzer.lens.references (default: `false`)::
+ Whether to show `References` lens. Only applies when  `#rust-analyzer.lens.enable#` is set.
 [[rust-analyzer.linkedProjects]]rust-analyzer.linkedProjects (default: `[]`)::
  Disable project auto-discovery in favor of explicitly specified set  of projects.\n\nElements must be paths pointing to `Cargo.toml`,  `rust-project.json`, or JSON objects in `rust-project.json` format.
 [[rust-analyzer.lruCapacity]]rust-analyzer.lruCapacity (default: `null`)::

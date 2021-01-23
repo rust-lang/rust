@@ -1112,42 +1112,48 @@ pub(crate) fn handle_code_lens(
         }
     }
 
-    if lens_config.implementations {
-        // Handle impls
-        lenses.extend(
-            snap.analysis
-                .file_structure(file_id)?
-                .into_iter()
-                .filter(|it| {
-                    matches!(
-                        it.kind,
-                        SymbolKind::Trait
-                            | SymbolKind::Struct
-                            | SymbolKind::Enum
-                            | SymbolKind::Union
-                    )
-                })
-                .map(|it| {
-                    let range = to_proto::range(&line_index, it.node_range);
-                    let pos = range.start;
-                    let lens_params = lsp_types::request::GotoImplementationParams {
-                        text_document_position_params: lsp_types::TextDocumentPositionParams::new(
-                            params.text_document.clone(),
-                            pos,
-                        ),
-                        work_done_progress_params: Default::default(),
-                        partial_result_params: Default::default(),
-                    };
-                    CodeLens {
+    if lens_config.implementations || lens_config.refs {
+        snap.analysis
+            .file_structure(file_id)?
+            .into_iter()
+            .filter(|it| {
+                matches!(
+                    it.kind,
+                    SymbolKind::Trait | SymbolKind::Struct | SymbolKind::Enum | SymbolKind::Union
+                )
+            })
+            .for_each(|it| {
+                let range = to_proto::range(&line_index, it.node_range);
+                let position = to_proto::position(&line_index, it.navigation_range.start());
+                let doc_pos = lsp_types::TextDocumentPositionParams::new(
+                    params.text_document.clone(),
+                    position,
+                );
+                let goto_params = lsp_types::request::GotoImplementationParams {
+                    text_document_position_params: doc_pos.clone(),
+                    work_done_progress_params: Default::default(),
+                    partial_result_params: Default::default(),
+                };
+
+                if lens_config.implementations {
+                    lenses.push(CodeLens {
                         range,
                         command: None,
-                        data: Some(to_value(CodeLensResolveData::Impls(lens_params)).unwrap()),
-                    }
-                }),
-        );
+                        data: Some(to_value(CodeLensResolveData::Impls(goto_params)).unwrap()),
+                    })
+                }
+
+                if lens_config.refs {
+                    lenses.push(CodeLens {
+                        range,
+                        command: None,
+                        data: Some(to_value(CodeLensResolveData::References(doc_pos)).unwrap()),
+                    })
+                }
+            });
     }
 
-    if lens_config.references() {
+    if lens_config.method_refs {
         lenses.extend(snap.analysis.find_all_methods(file_id)?.into_iter().map(|it| {
             let range = to_proto::range(&line_index, it.range);
             let position = to_proto::position(&line_index, it.range.start());
