@@ -416,6 +416,10 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   // was created outside a function (e.g. global, constant), that is allowed
   assert(Val);
   if (auto I = dyn_cast<Instruction>(Val)) {
+    if (TR.info.Function != I->getParent()->getParent()) {
+      llvm::errs() << *TR.info.Function << "\n";
+      llvm::errs() << *I << "\n";
+    }
     assert(TR.info.Function == I->getParent()->getParent());
   }
   if (auto Arg = dyn_cast<Argument>(Val)) {
@@ -487,7 +491,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   }
 
   // All arguments must be marked constant/nonconstant ahead of time
-  if (isa<Argument>(Val)) {
+  if (isa<Argument>(Val) && !cast<Argument>(Val)->hasByValAttr()) {
     llvm::errs() << *(cast<Argument>(Val)->getParent()) << "\n";
     llvm::errs() << *Val << "\n";
     assert(0 && "must've put arguments in constant/nonconstant");
@@ -656,14 +660,16 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     if (directions & UP) {
       // If we are derived from an argument our activity is equal to the
       // activity of the argument by definition
-      if (isa<Argument>(TmpOrig)) {
-        bool res = isConstantValue(TR, TmpOrig);
-        if (res) {
-          ConstantValues.insert(Val);
-        } else {
-          ActiveValues.insert(Val);
+      if (auto arg = dyn_cast<Argument>(TmpOrig)) {
+        if (!arg->hasByValAttr()) {
+          bool res = isConstantValue(TR, TmpOrig);
+          if (res) {
+            ConstantValues.insert(Val);
+          } else {
+            ActiveValues.insert(Val);
+          }
+          return res;
         }
-        return res;
       }
 
       UpHypothesis =
@@ -1598,7 +1604,7 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
           (isa<CallInst>(inst) && AA.onlyReadsMemory(cast<CallInst>(inst)))) {
         // if not written to memory and returning a known constant, this
         // cannot be actively returned/stored
-        if (isConstantValue(TR, a)) {
+        if (inst->getParent()->getParent() == TR.info.Function && isConstantValue(TR, a)) {
           continue;
         }
         // if not written to memory and returning a value itself

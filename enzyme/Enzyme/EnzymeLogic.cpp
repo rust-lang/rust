@@ -190,14 +190,11 @@ bool is_load_uncacheable(
 #endif
           if (castinst->isCast()) {
             if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-              if (isAllocationFunction(*fn, TLI) ||
-                  isDeallocationFunction(*fn, TLI)) {
-                called = fn;
-              }
+              called = fn;
             }
           }
         }
-        if (called && isCertainMallocOrFree(called)) {
+        if (called && (isCertainMallocOrFree(called) || isMemFreeLibMFunction(called->getName()))) {
           return false;
         }
       }

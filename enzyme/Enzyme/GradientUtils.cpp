@@ -429,10 +429,7 @@ endCheck:
     return toreturn;
   }
 
-  // llvm::errs() << "cannot unwrap following " << *val << "\n";
-
   if (auto inst = dyn_cast<Instruction>(val)) {
-    // LoopContext lc;
     // if (BuilderM.GetInsertBlock() != inversionAllocs && !(
     // (reverseBlocks.find(BuilderM.GetInsertBlock()) != reverseBlocks.end())
     // && /*inLoop*/getContext(inst->getParent(), lc)) ) {
@@ -452,6 +449,9 @@ endCheck:
         }
       }
     }
+    EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
+                "Cannot unwrap ", *val);
+    // LoopContext lc;
   }
   return nullptr;
 }
@@ -896,7 +896,8 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
       Value *lim = nullptr;
       if (lc.dynamic) {
         lim = lookupValueFromCache(/*forwardPass*/ false, tbuild, lc.preheader,
-                                   cast<AllocaInst>(lc.trueLimit), /*isi1*/ false);
+                                   cast<AllocaInst>(lc.trueLimit),
+                                   /*isi1*/ false);
       } else {
         lim = lookupM(lc.trueLimit, tbuild);
       }
@@ -1313,7 +1314,34 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     return lookupM(invertedPointers[oval], BuilderM);
   }
 
-  if (auto arg = dyn_cast<GlobalVariable>(oval)) {
+  if (isa<Argument>(oval) && cast<Argument>(oval)->hasByValAttr()) {
+    IRBuilder<> bb(inversionAllocs);
+    AllocaInst *antialloca = bb.CreateAlloca(
+        cast<PointerType>(oval->getType())->getElementType(), cast<PointerType>(oval->getType())->getPointerAddressSpace(),
+        nullptr, oval->getName() + "'ipa");
+    invertedPointers[oval] = antialloca;
+    auto dst_arg = bb.CreateBitCast(
+        antialloca, Type::getInt8PtrTy(oval->getContext()));
+    auto val_arg =
+        ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);
+    auto len_arg = ConstantInt::get(
+        Type::getInt64Ty(oval->getContext()),
+        M->getDataLayout().getTypeAllocSizeInBits(cast<PointerType>(oval->getType())->getElementType()) /
+            8);
+    auto volatile_arg = ConstantInt::getFalse(oval->getContext());
+
+#if LLVM_VERSION_MAJOR == 6
+    auto align_arg = ConstantInt::get(
+        Type::getInt32Ty(oval->getContext()), antialloca->getAlignment());
+    Value *args[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
+#else
+    Value *args[] = {dst_arg, val_arg, len_arg, volatile_arg};
+#endif
+    Type *tys[] = {dst_arg->getType(), len_arg->getType()};
+    auto memset = cast<CallInst>(bb.CreateCall(
+        Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
+    return antialloca;
+  } else if (auto arg = dyn_cast<GlobalVariable>(oval)) {
     if (!hasMetadata(arg, "enzyme_shadow")) {
 
       if (mode == DerivativeMode::Both &&

@@ -806,13 +806,6 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
                     F->getName() == "__fd_sincos_1")) {
             continue;
           }
-
-          if (F && (F->getName().startswith("f90io") ||
-                    F->getName() == "ftnio_fmt_write64" ||
-                    F->getName() == "__mth_i_ipowi" ||
-                    F->getName() == "f90_pausea")) {
-            continue;
-          }
           if (F && F->getName() == "__enzyme_integer") {
             continue;
           }
@@ -825,11 +818,17 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
           if (F && F->getName() == "__enzyme_double") {
             continue;
           }
-
+          if (F && (F->getName().startswith("f90io") ||
+                    F->getName() == "ftnio_fmt_write64" ||
+                    F->getName() == "__mth_i_ipowi" ||
+                    F->getName() == "f90_pausea")) {
+            continue;
+          }
           if (llvm::isModOrRefSet(AA2.getModRefInfo(CI, Loc))) {
             llvm::errs() << " failed to inline global: " << g << " due to "
                          << *CI << "\n";
             activeCall = true;
+            break;
           }
         }
 
@@ -1323,7 +1322,8 @@ Function *CloneFunctionWithReturns(
   unsigned ii = 0, jj = 0;
   for (auto i = F->arg_begin(), j = NewF->arg_begin(); i != F->arg_end();) {
     if (constant_args[ii] == DIFFE_TYPE::CONSTANT) {
-      constants.insert(i);
+      if (!i->hasByValAttr())
+        constants.insert(i);
       if (printconst)
         llvm::errs() << "in new function " << NewF->getName()
                      << " constant arg " << *j << "\n";

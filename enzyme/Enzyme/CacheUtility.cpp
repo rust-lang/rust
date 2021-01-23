@@ -38,9 +38,10 @@ llvm::cl::opt<bool>
     EnzymePrintPerf("enzyme-print-perf", cl::init(false), cl::Hidden,
                     cl::desc("Enable Enzyme to print performance info"));
 
-llvm::cl::opt<bool>
-    EfficientMaxCache("enzyme-max-cache", cl::init(false), cl::Hidden,
-                       cl::desc("Avoid reallocs when possible by potentially overallocating cache"));
+llvm::cl::opt<bool> EfficientMaxCache(
+    "enzyme-max-cache", cl::init(false), cl::Hidden,
+    cl::desc(
+        "Avoid reallocs when possible by potentially overallocating cache"));
 
 CacheUtility::~CacheUtility() {}
 
@@ -509,15 +510,16 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
       ScalarEvolution::ExitLimit EL =
           SE.computeExitLimit(L, ExitingBlock, /*AllowPredicates*/ true);
 
-
       bool seenHeaders = false;
-      SmallPtrSet<BasicBlock*, 4> Seen;
-      std::deque<BasicBlock*> Todo = { ExitingBlock };
+      SmallPtrSet<BasicBlock *, 4> Seen;
+      std::deque<BasicBlock *> Todo = {ExitingBlock};
       while (Todo.size()) {
         auto cur = Todo.front();
         Todo.pop_front();
-        if (Seen.count(cur)) continue;
-        if (!L->contains(cur)) continue;
+        if (Seen.count(cur))
+          continue;
+        if (!L->contains(cur))
+          continue;
         if (cur == loopContexts[L].header) {
           seenHeaders = true;
           break;
@@ -526,32 +528,31 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
           Todo.push_back(S);
         }
       }
-
       if (seenHeaders) {
-        if (MaxIterations == nullptr || MaxIterations == SE.getCouldNotCompute()) {
+        if (MaxIterations == nullptr ||
+            MaxIterations == SE.getCouldNotCompute()) {
           MaxIterations = EL.ExactNotTaken;
         }
         if (MaxIterations != SE.getCouldNotCompute()) {
-          // a block can either branch to exit, the header, or another piece of the loop
-          // if it branches either to an exit or another part of the loop, the number
-          // of iterations is therefore bounded by the successors it exits into
-          
           if (EL.ExactNotTaken != SE.getCouldNotCompute()) {
             MaxIterations = SE.getUMaxFromMismatchedTypes(MaxIterations,
                                                           EL.ExactNotTaken);
           }
         }
-      }
 
-      if (MayExitMaxBECount == nullptr || EL.ExactNotTaken == SE.getCouldNotCompute())
-        MayExitMaxBECount = EL.ExactNotTaken;
+        if (MayExitMaxBECount == nullptr ||
+            EL.ExactNotTaken == SE.getCouldNotCompute())
+          MayExitMaxBECount = EL.ExactNotTaken;
 
-      if (EL.ExactNotTaken != MayExitMaxBECount) {
-        MayExitMaxBECount = SE.getCouldNotCompute();
+        if (EL.ExactNotTaken != MayExitMaxBECount) {
+          MayExitMaxBECount = SE.getCouldNotCompute();
+        }
       }
     }
-    if (ExitingBlocks.size() == 0) {
+    if (MayExitMaxBECount == nullptr) {
       MayExitMaxBECount = SE.getCouldNotCompute();
+    }
+    if (MaxIterations == nullptr) {
       MaxIterations = SE.getCouldNotCompute();
     }
     Limit = MayExitMaxBECount;
@@ -583,7 +584,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
     if (EnzymePrintPerf)
       llvm::errs() << "SE could not compute loop limit of "
                    << L->getHeader()->getName() << " "
-                   << L->getHeader()->getParent()->getName() << "\n";
+                   << L->getHeader()->getParent()->getName() << " lim: " << *Limit << " maxlim: " << *MaxIterations << "\n";
 
     LimitVar = createCacheForScope(LimitContext(loopContexts[L].preheader),
                                    CanonicalIV->getType(), "loopLimit",
@@ -608,9 +609,11 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
     loopContexts[L].maxLimit = nullptr;
   }
   loopContexts[L].trueLimit = LimitVar;
-  if (EfficientMaxCache && loopContexts[L].dynamic && SE.getCouldNotCompute() != MaxIterations) {
+  if (EfficientMaxCache && loopContexts[L].dynamic &&
+      SE.getCouldNotCompute() != MaxIterations) {
     if (MaxIterations->getType() != CanonicalIV->getType())
-      MaxIterations = SE.getZeroExtendExpr(MaxIterations, CanonicalIV->getType());
+      MaxIterations =
+          SE.getZeroExtendExpr(MaxIterations, CanonicalIV->getType());
 
 #if LLVM_VERSION_MAJOR >= 12
     SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(),
@@ -620,8 +623,9 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
                            "enzyme");
 #endif
 
-    loopContexts[L].maxLimit = Exp.expandCodeFor(MaxIterations, CanonicalIV->getType(),
-                                 loopContexts[L].preheader->getTerminator());
+    loopContexts[L].maxLimit =
+        Exp.expandCodeFor(MaxIterations, CanonicalIV->getType(),
+                          loopContexts[L].preheader->getTerminator());
   }
 
   loopContext = loopContexts.find(L)->second;
@@ -1025,6 +1029,8 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
       // loop of triangular iteration domain) Handle this case like a dynamic
       // loop and create a new chunk.
       if (limitMinus1 == nullptr) {
+        EmitWarning("NoOuterLimit", cast<Instruction>(contexts[i].maxLimit)->getDebugLoc(), newFunc, cast<Instruction>(contexts[i].maxLimit)->getParent(),
+          "Could not compute outermost loop limit by moving value ", *contexts[i].maxLimit, " computed at block",  contexts[i].header->getName(), " function ", contexts[i].header->getParent()->getName());
         allocationPreheaders[i] = contexts[i].preheader;
         allocationBuilder.SetInsertPoint(&allocationPreheaders[i]->back());
         limitMinus1 = unwrapM(contexts[i].maxLimit, allocationBuilder, prevMap,
