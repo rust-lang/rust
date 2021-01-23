@@ -2,14 +2,13 @@ use super::ty::AllowPlus;
 use super::TokenType;
 use super::{BlockMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep, TokenExpectType};
 
+use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Lit, LitKind, TokenKind};
 use rustc_ast::util::parser::AssocOp;
-use rustc_ast::{
-    self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
-    Block, BlockCheckMode, Expr, ExprKind, GenericArg, Item, ItemKind, Mutability, Param, Pat,
-    PatKind, Path, PathSegment, QSelf, Ty, TyKind,
-};
+use rustc_ast::{AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec};
+use rustc_ast::{BinOpKind, BindingMode, Block, BlockCheckMode, Expr, ExprKind, GenericArg, Item};
+use rustc_ast::{ItemKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QSelf, Ty, TyKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err};
@@ -220,6 +219,7 @@ impl<'a> Parser<'a> {
         edible: &[TokenKind],
         inedible: &[TokenKind],
     ) -> PResult<'a, bool /* recovered */> {
+        debug!("expected_one_of_not_found(edible: {:?}, inedible: {:?})", edible, inedible);
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on `Iterator`.
@@ -245,6 +245,7 @@ impl<'a> Parser<'a> {
             .collect::<Vec<_>>();
         expected.sort_by_cached_key(|x| x.to_string());
         expected.dedup();
+
         let expect = tokens_to_string(&expected[..]);
         let actual = super::token_descr(&self.token);
         let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
@@ -270,6 +271,16 @@ impl<'a> Parser<'a> {
         };
         self.last_unexpected_token_span = Some(self.token.span);
         let mut err = self.struct_span_err(self.token.span, &msg_exp);
+
+        // Add suggestion for a missing closing angle bracket if '>' is included in expected_tokens
+        // there are unclosed angle brackets
+        if self.unmatched_angle_bracket_count > 0
+            && self.token.kind == TokenKind::Eq
+            && expected.iter().any(|tok| matches!(tok, TokenType::Token(TokenKind::Gt)))
+        {
+            err.span_label(self.prev_token.span, "maybe try to close unmatched angle bracket");
+        }
+
         let sp = if self.token == token::Eof {
             // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_token.span

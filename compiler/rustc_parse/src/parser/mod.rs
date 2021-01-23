@@ -277,7 +277,7 @@ impl TokenCursor {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 enum TokenType {
     Token(TokenKind),
     Keyword(Symbol),

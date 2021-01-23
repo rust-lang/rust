@@ -1,22 +1,26 @@
-error: paths with multiple segments cannot be used in associated type constraints
-  --> $DIR/trait-path-segments.rs:9:31
+error: expected one of `!`, `(`, `+`, `,`, `::`, `:`, `<`, or `>`, found `=`
+  --> $DIR/trait-path-segments.rs:9:36
    |
 LL |     fn f1<'a>(arg : Box<dyn X<X::Y = u32>>) {}
-   |                               ^^^^
+   |                                  - ^ expected one of 8 possible tokens
+   |                                  |
+   |                                  maybe try to close unmatched angle bracket
 
-error: qualified paths cannot be used in associated type constraints
-  --> $DIR/trait-path-segments.rs:20:16
+error: expected one of `,`, `::`, `:`, or `>`, found `=`
+  --> $DIR/trait-path-segments.rs:20:35
    |
 LL |     impl<T : X<<Self as X>::Y<'a> = &'a u32>> Z for T {}
-   |                ^^^^^^^^^-^^^^^^^^
-   |                         |
-   |                         not allowed in associated type constraints
+   |                                 - ^ expected one of `,`, `::`, `:`, or `>`
+   |                                 |
+   |                                 maybe try to close unmatched angle bracket
 
-error: paths with multiple segments cannot be used in associated type constraints
-  --> $DIR/trait-path-segments.rs:31:16
+error: expected one of `!`, `+`, `,`, `::`, `:`, or `>`, found `=`
+  --> $DIR/trait-path-segments.rs:31:25
    |
 LL |     impl<T : X<X::Y<'a> = &'a u32>> Z for T {}
-   |                ^^^^^^^^
+   |                       - ^ expected one of `!`, `+`, `,`, `::`, `:`, or `>`
+   |                       |
+   |                       maybe try to close unmatched angle bracket
 
 warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/trait-path-segments.rs:1:12

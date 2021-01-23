@@ -185,7 +185,6 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_path_segment(&mut self, style: PathStyle) -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
-
         let is_args_start = |token: &Token| {
             matches!(
                 token.kind,
@@ -420,7 +419,10 @@ impl<'a> Parser<'a> {
         match arg {
             Some(arg) => {
                 if self.check(&token::Colon) | self.check(&token::Eq) {
-                    let (ident, gen_args) = self.get_ident_from_generic_arg(arg, lo)?;
+                    let (ident, gen_args) = match self.get_ident_from_generic_arg(arg) {
+                        Ok(ident_gen_args) => ident_gen_args,
+                        Err(arg) => return Ok(Some(AngleBracketedArg::Arg(arg))),
+                    };
                     let kind = if self.eat(&token::Colon) {
                         // Parse associated type constraint bound.
 
@@ -561,50 +563,15 @@ impl<'a> Parser<'a> {
     fn get_ident_from_generic_arg(
         &self,
         gen_arg: GenericArg,
-        lo: Span,
-    ) -> PResult<'a, (Ident, Option<GenericArgs>)> {
-        let gen_arg_span = gen_arg.span();
-        match gen_arg {
-            GenericArg::Type(t) => match t.into_inner().kind {
-                ast::TyKind::Path(qself, mut path) => {
-                    if let Some(qself) = qself {
-                        let mut err = self.struct_span_err(
-                            gen_arg_span,
-                            "qualified paths cannot be used in associated type constraints",
-                        );
-                        err.span_label(
-                            qself.path_span,
-                            "not allowed in associated type constraints",
-                        );
-                        return Err(err);
-                    }
-                    if path.segments.len() == 1 {
-                        let path_seg = path.segments.remove(0);
-                        let ident = path_seg.ident;
-                        let gen_args = path_seg.args.map(|args| args.into_inner());
-                        return Ok((ident, gen_args));
-                    }
-                    let err = self.struct_span_err(
-                        path.span,
-                        "paths with multiple segments cannot be used in associated type constraints",
-                    );
-                    return Err(err);
+    ) -> Result<(Ident, Option<GenericArgs>), GenericArg> {
+        if let GenericArg::Type(ty) = &gen_arg {
+            if let ast::TyKind::Path(qself, path) = &ty.kind {
+                if qself.is_none() && path.segments.len() == 1 {
+                    let seg = &path.segments[0];
+                    return Ok((seg.ident, seg.args.as_deref().cloned()));
                 }
-                _ => {
-                    let span = lo.to(self.prev_token.span);
-                    let err = self.struct_span_err(
-                        span,
-                        "only path types can be used in associated type constraints",
-                    );
-                    return Err(err);
-                }
-            },
-            _ => {
-                let span = lo.to(self.prev_token.span);
-                let err = self
-                    .struct_span_err(span, "only types can be used in associated type constraints");
-                return Err(err);
             }
         }
+        Err(gen_arg)
     }
 }
