@@ -1370,7 +1370,7 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         F: FnMut(&T) -> bool,
     {
-        let len = self.len();
+        let original_len = self.len();
         // Avoid double drop if the drop guard is not executed,
         // since we may make some holes during the process.
         unsafe { self.set_len(0) };
@@ -1396,49 +1396,49 @@ impl<T, A: Allocator> Vec<T, A> {
         impl<T, A: Allocator> Drop for BackshiftOnDrop<'_, T, A> {
             fn drop(&mut self) {
                 if self.deleted_cnt > 0 {
-                    // SAFETY: Fill the hole of dropped or moved
+                    // SAFETY: Trailing unchecked items must be valid since we never touch them.
                     unsafe {
                         ptr::copy(
-                            self.v.as_ptr().offset(self.processed_len as isize),
-                            self.v
-                                .as_mut_ptr()
-                                .offset(self.processed_len as isize - self.deleted_cnt as isize),
+                            self.v.as_ptr().add(self.processed_len),
+                            self.v.as_mut_ptr().add(self.processed_len - self.deleted_cnt),
                             self.original_len - self.processed_len,
                         );
-                        self.v.set_len(self.original_len - self.deleted_cnt);
                     }
                 }
+                // SAFETY: After filling holes, all items are in contiguous memory.
+                unsafe {
+                    self.v.set_len(self.original_len - self.deleted_cnt);
+                }
             }
         }
 
-        let mut guard =
-            BackshiftOnDrop { v: self, processed_len: 0, deleted_cnt: 0, original_len: len };
+        let mut g = BackshiftOnDrop { v: self, processed_len: 0, deleted_cnt: 0, original_len };
 
-        let mut del = 0usize;
-        for i in 0..len {
+        while g.processed_len < original_len {
             // SAFETY: Unchecked element must be valid.
-            let cur = unsafe { &mut *guard.v.as_mut_ptr().offset(i as isize) };
+            let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.processed_len) };
             if !f(cur) {
-                del += 1;
                 // Advance early to avoid double drop if `drop_in_place` panicked.
-                guard.processed_len = i + 1;
-                guard.deleted_cnt = del;
+                g.processed_len += 1;
+                g.deleted_cnt += 1;
                 // SAFETY: We never touch this element again after dropped.
                 unsafe { ptr::drop_in_place(cur) };
-            } else if del > 0 {
-                // SAFETY: `del` > 0 so the hole slot must not overlap with current element.
+                // We already advanced the counter.
+                continue;
+            }
+            if g.deleted_cnt > 0 {
+                // SAFETY: `deleted_cnt` > 0, so the hole slot must not overlap with current element.
                 // We use copy for move, and never touch this element again.
                 unsafe {
-                    let hole_slot = guard.v.as_mut_ptr().offset(i as isize - del as isize);
+                    let hole_slot = g.v.as_mut_ptr().add(g.processed_len - g.deleted_cnt);
                     ptr::copy_nonoverlapping(cur, hole_slot, 1);
                 }
-                guard.processed_len = i + 1;
             }
+            g.processed_len += 1;
         }
 
-        // All holes are at the end now. Simply cut them out.
-        unsafe { guard.v.set_len(len - del) };
-        mem::forget(guard);
+        // All item are processed. This can be optimized to `set_len` by LLVM.
+        drop(g);
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
