@@ -1,4 +1,4 @@
-error: unknown character escape: \r
+error: unknown character escape: `\r`
   --> $DIR/trailing-carriage-return-in-string.rs:10:25
    |
 LL |     let bad = "This is \ a test";

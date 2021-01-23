@@ -1,4 +1,4 @@
 #![feature(rustc_attrs)]
 
-#[rustc_dummy = b"ﬃ.rs"] //~ ERROR byte constant must be ASCII
+#[rustc_dummy = b"ﬃ.rs"] //~ ERROR non-ASCII character in byte constant
 fn main() {}
