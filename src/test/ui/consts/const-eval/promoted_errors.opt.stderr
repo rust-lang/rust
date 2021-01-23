@@ -1,32 +1,21 @@
-warning: this arithmetic operation will overflow
-  --> $DIR/promoted_errors.rs:14:14
+warning: any use of this value will cause an error
+  --> $DIR/promoted_errors.rs:17:5
    |
-LL |     let _x = 0u32 - 1;
-   |              ^^^^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
-   |
-note: the lint level is defined here
-  --> $DIR/promoted_errors.rs:9:20
-   |
-LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
-   |                    ^^^^^^^^^^^^^^^^^^^
-
-warning: this operation will panic at runtime
-  --> $DIR/promoted_errors.rs:16:20
-   |
-LL |     println!("{}", 1 / (1 - 1));
-   |                    ^^^^^^^^^^^ attempt to divide `1_i32` by zero
-   |
-note: the lint level is defined here
-  --> $DIR/promoted_errors.rs:9:41
-   |
-LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
-   |                                         ^^^^^^^^^^^^^^^^^^^
-
-warning: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors.rs:16:20
-   |
-LL |     println!("{}", 1 / (1 - 1));
-   |                    ^^^^^^^^^^^ dividing by zero
+LL |       1 / 0
+   |       ^^^^^
+   |       |
+   |       attempt to divide `1_i32` by zero
+   |       inside `div_by_zero1` at $DIR/promoted_errors.rs:17:5
+   |       inside `X` at $DIR/promoted_errors.rs:33:29
+...
+LL | / const X: () = {
+LL | |     let _x: &'static u32 = &overflow();
+LL | |
+LL | |     let _x: &'static i32 = &div_by_zero1();
+...  |
+LL | |     let _x: &'static i32 = &oob();
+LL | | };
+   | |__-
    |
 note: the lint level is defined here
   --> $DIR/promoted_errors.rs:9:9
@@ -34,41 +23,18 @@ note: the lint level is defined here
 LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
    |         ^^^^^^^^^
 
-warning: erroneous constant used
-  --> $DIR/promoted_errors.rs:16:20
+warning: any use of this value will cause an error
+  --> $DIR/promoted_errors.rs:33:28
    |
-LL |     println!("{}", 1 / (1 - 1));
-   |                    ^^^^^^^^^^^ referenced constant has errors
+LL | / const X: () = {
+LL | |     let _x: &'static u32 = &overflow();
+LL | |
+LL | |     let _x: &'static i32 = &div_by_zero1();
+   | |                            ^^^^^^^^^^^^^^^ referenced constant has errors
+...  |
+LL | |     let _x: &'static i32 = &oob();
+LL | | };
+   | |__-
 
-warning: this operation will panic at runtime
-  --> $DIR/promoted_errors.rs:20:14
-   |
-LL |     let _x = 1 / (1 - 1);
-   |              ^^^^^^^^^^^ attempt to divide `1_i32` by zero
-
-warning: this operation will panic at runtime
-  --> $DIR/promoted_errors.rs:22:20
-   |
-LL |     println!("{}", 1 / (false as u32));
-   |                    ^^^^^^^^^^^^^^^^^^ attempt to divide `1_u32` by zero
-
-warning: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors.rs:22:20
-   |
-LL |     println!("{}", 1 / (false as u32));
-   |                    ^^^^^^^^^^^^^^^^^^ dividing by zero
-
-warning: erroneous constant used
-  --> $DIR/promoted_errors.rs:22:20
-   |
-LL |     println!("{}", 1 / (false as u32));
-   |                    ^^^^^^^^^^^^^^^^^^ referenced constant has errors
-
-warning: this operation will panic at runtime
-  --> $DIR/promoted_errors.rs:26:14
-   |
-LL |     let _x = 1 / (false as u32);
-   |              ^^^^^^^^^^^^^^^^^^ attempt to divide `1_u32` by zero
-
-warning: 9 warnings emitted
+warning: 2 warnings emitted
 

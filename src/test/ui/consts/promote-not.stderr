@@ -65,7 +65,7 @@ LL |     let _val: &'static _ = &(Cell::new(1), 2).0;
    |               ----------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
    |               |
    |               type annotation requires that borrow lasts for `'static`
-LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
+...
 LL | }
    | - temporary value is freed at the end of this statement
 
@@ -76,9 +76,64 @@ LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
    |               ----------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
    |               |
    |               type annotation requires that borrow lasts for `'static`
+...
 LL | }
    | - temporary value is freed at the end of this statement
 
-error: aborting due to 8 previous errors
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:49:29
+   |
+LL |     let _val: &'static _ = &(1/0);
+   |               ----------    ^^^^^ creates a temporary which is freed while still in use
+   |               |
+   |               type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:50:29
+   |
+LL |     let _val: &'static _ = &(1/(1-1));
+   |               ----------    ^^^^^^^^^ creates a temporary which is freed while still in use
+   |               |
+   |               type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:51:29
+   |
+LL |     let _val: &'static _ = &(1%0);
+   |               ----------    ^^^^^ creates a temporary which is freed while still in use
+   |               |
+   |               type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:52:29
+   |
+LL |     let _val: &'static _ = &(1%(1-1));
+   |               ----------    ^^^^^^^^^ creates a temporary which is freed while still in use
+   |               |
+   |               type annotation requires that borrow lasts for `'static`
+LL |     let _val: &'static _ = &([1,2,3][4]+1);
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:53:29
+   |
+LL |     let _val: &'static _ = &([1,2,3][4]+1);
+   |               ----------    ^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |               |
+   |               type annotation requires that borrow lasts for `'static`
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 13 previous errors
 
 For more information about this error, try `rustc --explain E0716`.

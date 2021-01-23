@@ -8,21 +8,34 @@
 
 #![warn(const_err, arithmetic_overflow, unconditional_panic)]
 
+// The only way to have promoteds that fail is in `const fn` called from `const`/`static`.
+const fn overflow() -> u32 {
+    0 - 1
+    //[opt_with_overflow_checks,noopt]~^ WARN any use of this value will cause an error
+}
+const fn div_by_zero1() -> i32 {
+    1 / 0
+    //[opt]~^ WARN any use of this value will cause an error
+}
+const fn div_by_zero2() -> i32 {
+    1 / (1-1)
+}
+const fn div_by_zero3() -> i32 {
+    1 / (false as i32)
+}
+const fn oob() -> i32 {
+    [1,2,3][4]
+}
+
+const X: () = {
+    let _x: &'static u32 = &overflow();
+    //[opt_with_overflow_checks,noopt]~^ WARN any use of this value will cause an error
+    let _x: &'static i32 = &div_by_zero1();
+    //[opt]~^ WARN any use of this value will cause an error
+    let _x: &'static i32 = &div_by_zero2();
+    let _x: &'static i32 = &div_by_zero3();
+    let _x: &'static i32 = &oob();
+};
+
 fn main() {
-    println!("{}", 0u32 - 1);
-    //[opt_with_overflow_checks,noopt]~^ WARN [arithmetic_overflow]
-    let _x = 0u32 - 1;
-    //~^ WARN [arithmetic_overflow]
-    println!("{}", 1 / (1 - 1));
-    //~^ WARN [unconditional_panic]
-    //~| WARN panic or abort [const_err]
-    //~| WARN erroneous constant used [const_err]
-    let _x = 1 / (1 - 1);
-    //~^ WARN [unconditional_panic]
-    println!("{}", 1 / (false as u32));
-    //~^ WARN [unconditional_panic]
-    //~| WARN panic or abort [const_err]
-    //~| WARN erroneous constant used [const_err]
-    let _x = 1 / (false as u32);
-    //~^ WARN [unconditional_panic]
 }
