@@ -1,6 +1,6 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{FollowedByType, ForceCollect, Parser, PathStyle};
+use super::{FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 
 use crate::{maybe_collect_tokens, maybe_whole};
 
@@ -125,7 +125,7 @@ impl<'a> Parser<'a> {
         let item = maybe_collect_tokens!(self, force_collect, &attrs, |this: &mut Self| {
             let item = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name);
             unclosed_delims.append(&mut this.unclosed_delims);
-            item
+            Ok((item?, TrailingToken::None))
         })?;
 
         self.unclosed_delims.append(&mut unclosed_delims);
