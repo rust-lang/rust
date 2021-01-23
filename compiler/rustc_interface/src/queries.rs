@@ -417,9 +417,19 @@ impl Compiler {
         let queries = Queries::new(&self);
         let ret = f(&queries);
 
-        if self.session().opts.debugging_opts.query_stats {
-            if let Ok(gcx) = queries.global_ctxt() {
-                gcx.peek_mut().print_stats();
+        // NOTE: intentionally does not compute the global context if it hasn't been built yet,
+        // since that likely means there was a parse error.
+        if let Some(Ok(gcx)) = &mut *queries.global_ctxt.result.borrow_mut() {
+            // We assume that no queries are run past here. If there are new queries
+            // after this point, they'll show up as "<unknown>" in self-profiling data.
+            {
+                let _prof_timer =
+                    queries.session().prof.generic_activity("self_profile_alloc_query_strings");
+                gcx.enter(|tcx| tcx.alloc_self_profile_query_strings());
+            }
+
+            if self.session().opts.debugging_opts.query_stats {
+                gcx.print_stats();
             }
         }
 

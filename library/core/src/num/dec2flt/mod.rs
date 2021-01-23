@@ -3,7 +3,7 @@
 //! # Problem statement
 //!
 //! We are given a decimal string such as `12.34e56`. This string consists of integral (`12`),
-//! fractional (`45`), and exponent (`56`) parts. All parts are optional and interpreted as zero
+//! fractional (`34`), and exponent (`56`) parts. All parts are optional and interpreted as zero
 //! when missing.
 //!
 //! We seek the IEEE 754 floating point number that is closest to the exact value of the decimal

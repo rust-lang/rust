@@ -12,6 +12,9 @@ use crate::formats::cache::{Cache, CACHE_KEY};
 /// backend renderer has hooks for initialization, documenting an item, entering and exiting a
 /// module, and cleanup/finalizing output.
 crate trait FormatRenderer<'tcx>: Clone {
+    /// Gives a description of the renderer. Used for performance profiling.
+    fn descr() -> &'static str;
+
     /// Sets up any state required for the renderer. When this is called the cache has already been
     /// populated.
     fn init(
@@ -57,16 +60,20 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     edition: Edition,
     tcx: TyCtxt<'tcx>,
 ) -> Result<(), Error> {
-    let (krate, mut cache) = Cache::from_krate(
-        render_info.clone(),
-        options.document_private,
-        &options.extern_html_root_urls,
-        &options.output,
-        krate,
-    );
+    let (krate, mut cache) = tcx.sess.time("create_format_cache", || {
+        Cache::from_krate(
+            render_info.clone(),
+            options.document_private,
+            &options.extern_html_root_urls,
+            &options.output,
+            krate,
+        )
+    });
+    let prof = &tcx.sess.prof;
 
-    let (mut format_renderer, mut krate) =
-        T::init(krate, options, render_info, edition, &mut cache, tcx)?;
+    let (mut format_renderer, mut krate) = prof
+        .extra_verbose_generic_activity("create_renderer", T::descr())
+        .run(|| T::init(krate, options, render_info, edition, &mut cache, tcx))?;
 
     let cache = Arc::new(cache);
     // Freeze the cache now that the index has been built. Put an Arc into TLS for future
@@ -83,6 +90,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     // Render the crate documentation
     let mut work = vec![(format_renderer.clone(), item)];
 
+    let unknown = rustc_span::Symbol::intern("<unknown item>");
     while let Some((mut cx, item)) = work.pop() {
         if item.is_mod() {
             // modules are special because they add a namespace. We also need to
@@ -91,6 +99,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             if name.is_empty() {
                 panic!("Unexpected module with empty name");
             }
+            let _timer = prof.generic_activity_with_arg("render_mod_item", name.as_str());
 
             cx.mod_item_in(&item, &name, &cache)?;
             let module = match *item.kind {
@@ -104,9 +113,10 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
 
             cx.mod_item_out(&name)?;
         } else if item.name.is_some() {
-            cx.item(item, &cache)?;
+            prof.generic_activity_with_arg("render_item", &*item.name.unwrap_or(unknown).as_str())
+                .run(|| cx.item(item, &cache))?;
         }
     }
-
-    format_renderer.after_krate(&krate, &cache, diag)
+    prof.extra_verbose_generic_activity("renderer_after_krate", T::descr())
+        .run(|| format_renderer.after_krate(&krate, &cache, diag))
 }

@@ -1465,16 +1465,14 @@ impl<'a> Resolver<'a> {
 
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
-        let _prof_timer = self.session.prof.generic_activity("resolve_crate");
-
-        ImportResolver { r: self }.finalize_imports();
-        self.finalize_macro_resolutions();
-
-        self.late_resolve_crate(krate);
-
-        self.check_unused(krate);
-        self.report_errors(krate);
-        self.crate_loader.postprocess(krate);
+        self.session.time("resolve_crate", || {
+            self.session.time("finalize_imports", || ImportResolver { r: self }.finalize_imports());
+            self.session.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
+            self.session.time("late_resolve_crate", || self.late_resolve_crate(krate));
+            self.session.time("resolve_check_unused", || self.check_unused(krate));
+            self.session.time("resolve_report_errors", || self.report_errors(krate));
+            self.session.time("resolve_postprocess", || self.crate_loader.postprocess(krate));
+        });
     }
 
     pub fn traits_in_scope(

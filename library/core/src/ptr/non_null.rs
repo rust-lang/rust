@@ -19,12 +19,19 @@ use crate::slice::{self, SliceIndex};
 /// as a discriminant -- `Option<NonNull<T>>` has the same size as `*mut T`.
 /// However the pointer may still dangle if it isn't dereferenced.
 ///
-/// Unlike `*mut T`, `NonNull<T>` is covariant over `T`. If this is incorrect
-/// for your use case, you should include some [`PhantomData`] in your type to
-/// provide invariance, such as `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
-/// Usually this won't be necessary; covariance is correct for most safe abstractions,
-/// such as `Box`, `Rc`, `Arc`, `Vec`, and `LinkedList`. This is the case because they
-/// provide a public API that follows the normal shared XOR mutable rules of Rust.
+/// Unlike `*mut T`, `NonNull<T>` was chosen to be covariant over `T`. This makes it
+/// possible to use `NonNull<T>` when building covariant types, but introduces the
+/// risk of unsoundness if used in a type that shouldn't actually be covariant.
+/// (The opposite choice was made for `*mut T` even though technically the unsoundness
+/// could only be caused by calling unsafe functions.)
+///
+/// Covariance is correct for most safe abstractions, such as `Box`, `Rc`, `Arc`, `Vec`,
+/// and `LinkedList`. This is the case because they provide a public API that follows the
+/// normal shared XOR mutable rules of Rust.
+///
+/// If your type cannot safely be covariant, you must ensure it contains some
+/// additional field to provide invariance. Often this field will be a [`PhantomData`]
+/// type like `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
 ///
 /// Notice that `NonNull<T>` has a `From` instance for `&T`. However, this does
 /// not change the fact that mutating through a (pointer derived from a) shared

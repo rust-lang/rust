@@ -1,16 +1,17 @@
-//! This module defines the `DepNode` type which the compiler uses to represent
-//! nodes in the dependency graph.
+//! Nodes in the dependency graph.
 //!
-//! A `DepNode` consists of a `DepKind` (which
-//! specifies the kind of thing it represents, like a piece of HIR, MIR, etc)
-//! and a `Fingerprint`, a 128-bit hash value the exact meaning of which
+//! A node in the [dependency graph] is represented by a [`DepNode`].
+//! A `DepNode` consists of a [`DepKind`] (which
+//! specifies the kind of thing it represents, like a piece of HIR, MIR, etc.)
+//! and a [`Fingerprint`], a 128-bit hash value, the exact meaning of which
 //! depends on the node's `DepKind`. Together, the kind and the fingerprint
 //! fully identify a dependency node, even across multiple compilation sessions.
 //! In other words, the value of the fingerprint does not depend on anything
 //! that is specific to a given compilation session, like an unpredictable
-//! interning key (e.g., NodeId, DefId, Symbol) or the numeric value of a
+//! interning key (e.g., `NodeId`, `DefId`, `Symbol`) or the numeric value of a
 //! pointer. The concept behind this could be compared to how git commit hashes
-//! uniquely identify a given commit and has a few advantages:
+//! uniquely identify a given commit. The fingerprinting approach has
+//! a few advantages:
 //!
 //! * A `DepNode` can simply be serialized to disk and loaded in another session
 //!   without the need to do any "rebasing" (like we have to do for Spans and
@@ -51,6 +52,8 @@
 //! than a zeroed out fingerprint. More generally speaking, it relieves the
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
+//!
+//! [dependency graph]: https://rustc-dev-guide.rust-lang.org/query.html
 
 use crate::ty::TyCtxt;
 

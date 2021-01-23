@@ -23,7 +23,6 @@ use rustc_span::{self, MultiSpan, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
 
 use crate::structured_errors::StructuredDiagnostic;
-use std::mem::replace;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -589,11 +588,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         blk: &'tcx hir::Block<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let prev = {
-            let mut fcx_ps = self.ps.borrow_mut();
-            let unsafety_state = fcx_ps.recurse(blk);
-            replace(&mut *fcx_ps, unsafety_state)
-        };
+        let prev = self.ps.replace(self.ps.get().recurse(blk));
 
         // In some cases, blocks have just one exit, but other blocks
         // can be targeted by multiple breaks. This can happen both
@@ -709,7 +704,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.write_ty(blk.hir_id, ty);
 
-        *self.ps.borrow_mut() = prev;
+        self.ps.set(prev);
         ty
     }
 

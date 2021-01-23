@@ -540,7 +540,7 @@ fn main_options(options: config::Options) -> MainResult {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 
-            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
+            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).peek_mut();
 
             global_ctxt.enter(|tcx| {
                 let (mut krate, render_info, render_opts) = sess.time("run_global_ctxt", || {

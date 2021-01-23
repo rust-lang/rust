@@ -289,7 +289,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            let ty = PlaceRef::ty(&used_place, self.body, self.infcx.tcx).ty;
+            let ty = used_place.ty(self.body, self.infcx.tcx).ty;
             let needs_note = match ty.kind() {
                 ty::Closure(id, _) => {
                     let tables = self.infcx.tcx.typeck(id.expect_local());
@@ -728,6 +728,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Define a small closure that we can use to check if the type of a place
         // is a union.
         let union_ty = |place_base| {
+            // Need to use fn call syntax `PlaceRef::ty` to determine the type of `place_base`;
+            // using a type annotation in the closure argument instead leads to a lifetime error.
             let ty = PlaceRef::ty(&place_base, self.body, self.infcx.tcx).ty;
             ty.ty_adt_def().filter(|adt| adt.is_union()).map(|_| ty)
         };

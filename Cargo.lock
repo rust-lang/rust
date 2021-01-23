@@ -427,6 +427,7 @@ dependencies = [
  "remove_dir_all",
  "serde_json",
  "tar",
+ "toml",
  "url 2.1.1",
 ]
 

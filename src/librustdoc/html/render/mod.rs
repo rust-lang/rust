@@ -383,6 +383,10 @@ crate fn initial_ids() -> Vec<String> {
 
 /// Generates the documentation for `crate` into the directory `dst`
 impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
+    fn descr() -> &'static str {
+        "html"
+    }
+
     fn init(
         mut krate: clean::Crate,
         options: RenderOptions,

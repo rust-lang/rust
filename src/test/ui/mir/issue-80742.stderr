@@ -1,3 +1,17 @@
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL |     intrinsics::size_of::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     size_of called on unsized type `dyn Debug`
+   |     inside `std::mem::size_of::<dyn Debug>` at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   | 
+  ::: $DIR/issue-80742.rs:23:10
+   |
+LL |     [u8; size_of::<T>() + 1]: ,
+   |          -------------- inside `Inline::<dyn Debug>::{constant#0}` at $DIR/issue-80742.rs:23:10
+
 error[E0599]: no function or associated item named `new` found for struct `Inline<dyn Debug>` in the current scope
   --> $DIR/issue-80742.rs:31:36
    |
@@ -21,6 +35,20 @@ LL |   pub trait Debug {
    = note: the method `new` exists but the following trait bounds were not satisfied:
            `dyn Debug: Sized`
 
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL |     intrinsics::size_of::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     size_of called on unsized type `dyn Debug`
+   |     inside `std::mem::size_of::<dyn Debug>` at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   | 
+  ::: $DIR/issue-80742.rs:15:10
+   |
+LL |     [u8; size_of::<T>() + 1]: ,
+   |          -------------- inside `Inline::<dyn Debug>::{constant#0}` at $DIR/issue-80742.rs:15:10
+
 error[E0277]: the size for values of type `dyn Debug` cannot be known at compilation time
   --> $DIR/issue-80742.rs:31:15
    |
@@ -36,7 +64,7 @@ help: consider relaxing the implicit `Sized` restriction
 LL | struct Inline<T: ?Sized>
    |                ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0277, E0599.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0080, E0277, E0599.
+For more information about an error, try `rustc --explain E0080`.

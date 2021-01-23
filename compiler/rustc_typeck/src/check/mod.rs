@@ -184,14 +184,14 @@ impl UnsafetyState {
         UnsafetyState { def, unsafety, unsafe_push_count: 0, from_fn: true }
     }
 
-    pub fn recurse(&mut self, blk: &hir::Block<'_>) -> UnsafetyState {
+    pub fn recurse(self, blk: &hir::Block<'_>) -> UnsafetyState {
         use hir::BlockCheckMode;
         match self.unsafety {
             // If this unsafe, then if the outer function was already marked as
             // unsafe we shouldn't attribute the unsafe'ness to the block. This
             // way the block can be warned about instead of ignoring this
             // extraneous block (functions are never warned about).
-            hir::Unsafety::Unsafe if self.from_fn => *self,
+            hir::Unsafety::Unsafe if self.from_fn => self,
 
             unsafety => {
                 let (unsafety, def, count) = match blk.rules {

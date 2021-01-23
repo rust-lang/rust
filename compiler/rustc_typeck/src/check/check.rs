@@ -66,7 +66,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     // Create the function context. This is either derived from scratch or,
     // in the case of closures, based on the outer context.
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.hir_id);
-    *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
+    fcx.ps.set(UnsafetyState::function(fn_sig.unsafety, fn_id));
 
     let tcx = fcx.tcx;
     let sess = tcx.sess;
