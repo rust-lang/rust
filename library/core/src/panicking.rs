@@ -187,10 +187,10 @@ fn assert_failed_inner(
     right_val: &dyn fmt::Debug,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
-    let op = match kind {
-        AssertKind::Eq => "==",
-        AssertKind::Ne => "!=",
-        AssertKind::Match => "matches",
+    let (op, macro_name) = match kind {
+        AssertKind::Eq => ("==", "assert_eq"),
+        AssertKind::Ne => ("!=", "assert_ne"),
+        AssertKind::Match => ("matches", "assert_matches"),
     };
 
     match args {
@@ -209,6 +209,7 @@ fn assert_failed_inner(
                     left_val,
                     right_val,
                 }),
+                macro_name,
                 message: Some(args),
             })),
         ),
@@ -227,6 +228,7 @@ fn assert_failed_inner(
                     left_val,
                     right_val,
                 }),
+                macro_name,
                 message: None,
             })),
         ),

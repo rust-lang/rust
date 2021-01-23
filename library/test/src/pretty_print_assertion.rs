@@ -4,6 +4,7 @@ use core::panic::Location;
 const RED: &str = "\x1b[31m";
 const YELLOW: &str = "\x1b[33m";
 const BLUE: &str = "\x1b[34m";
+const MAGENTA: &str = "\x1b[35m";
 const CYAN: &str = "\x1b[36m";
 const BOLD: &str = "\x1b[1m";
 const RESET: &str = "\x1b[0m";
@@ -13,11 +14,12 @@ const RESET: &str = "\x1b[0m";
 /// If `ansi_colors` is true, this function unconditionally prints ANSI color codes.
 /// It should only be set to true only if it is known that the terminal supports it.
 pub fn pretty_print_assertion(assert: &AssertInfo<'_>, loc: Location<'_>, ansi_colors: bool) {
+    let macro_name = assert.macro_name;
     if ansi_colors {
         print_pretty_header(loc);
         match &assert.assertion {
-            Assertion::Bool(assert) => print_pretty_bool_assertion(assert),
-            Assertion::Binary(assert) => print_pretty_binary_assertion(assert),
+            Assertion::Bool(assert) => print_pretty_bool_assertion(macro_name, assert),
+            Assertion::Binary(assert) => print_pretty_binary_assertion(macro_name, assert),
         }
         if let Some(msg) = &assert.message {
             print_pretty_message(msg);
@@ -25,8 +27,8 @@ pub fn pretty_print_assertion(assert: &AssertInfo<'_>, loc: Location<'_>, ansi_c
     } else {
         print_plain_header(loc);
         match &assert.assertion {
-            Assertion::Bool(assert) => print_plain_bool_assertion(assert),
-            Assertion::Binary(assert) => print_plain_binary_assertion(assert),
+            Assertion::Bool(assert) => print_plain_bool_assertion(macro_name, assert),
+            Assertion::Binary(assert) => print_plain_binary_assertion(macro_name, assert),
         }
         if let Some(msg) = &assert.message {
             print_plain_message(msg);
@@ -50,55 +52,111 @@ fn print_pretty_header(loc: Location<'_>) {
     );
 }
 
-fn print_plain_bool_assertion(assert: &BoolAssertion) {
-    eprintln!("Assertion:\n  {}", assert.expr);
-    eprintln!("Expansion:\n  false");
+fn print_plain_bool_assertion(macro_name: &'static str, assert: &BoolAssertion) {
+    eprint!(
+        concat!(
+            "Assertion:\n",
+            "  {macro_name}!( {expr} )\n",
+            "Expansion:\n",
+            "  {macro_name}!( false )\n",
+        ),
+        macro_name = macro_name,
+        expr = assert.expr,
+    )
 }
 
-fn print_pretty_bool_assertion(assert: &BoolAssertion) {
-    eprintln!(
-        "{bold}Assertion:{reset}\n  {cyan}{expr}{reset}",
+fn print_pretty_bool_assertion(macro_name: &'static str, assert: &BoolAssertion) {
+    eprint!(
+        concat!(
+            "{bold}Assertion:{reset}\n",
+            "  {magenta}{macro_name}!( {cyan}{expr} {magenta}){reset}\n",
+            "{bold}Expansion:{reset}\n",
+            "  {magenta}{macro_name}!( {cyan}false {magenta}){reset}\n",
+        ),
+        magenta = MAGENTA,
         cyan = CYAN,
         reset = RESET,
         bold = BOLD,
+        macro_name = macro_name,
         expr = assert.expr,
     );
-    eprintln!(
-        "{bold}Expansion:{reset}\n  {cyan}false{reset}",
-        cyan = CYAN,
-        bold = BOLD,
-        reset = RESET,
-    );
 }
 
-fn print_plain_binary_assertion(assert: &BinaryAssertion<'_>) {
-    eprintln!("Assertion:\n  {} {} {}", assert.left_expr, assert.op, assert.right_expr);
-    eprintln!("Expansion:\n  {:?} {} {:?}", assert.left_val, assert.op, assert.right_val);
+fn print_plain_binary_assertion(macro_name: &'static str, assert: &BinaryAssertion<'_>) {
+    if macro_name == "assert_eq" || macro_name == "assert_ne" {
+        eprint!(
+            concat!(
+                "Assertion:\n",
+                "  {macro_name}!( {left_expr}, {right_expr} )\n",
+                "Expansion:\n",
+                "  {macro_name}!( {left_val:?}, {right_val:?} )\n",
+            ),
+            macro_name = macro_name,
+            left_expr = assert.left_expr,
+            right_expr = assert.right_expr,
+            left_val = assert.left_val,
+            right_val = assert.right_val,
+        );
+    } else {
+        eprint!(
+            concat!(
+                "Assertion:\n",
+                "  {macro_name}!( {left_expr} {op} {right_expr} )\n",
+                "Expansion:\n",
+                "  {macro_name}!( {left_val:?} {op} {right_val:?} )\n",
+            ),
+            macro_name = macro_name,
+            op = assert.op,
+            left_expr = assert.left_expr,
+            right_expr = assert.right_expr,
+            left_val = assert.left_val,
+            right_val = assert.right_val,
+        );
+    };
 }
 
-fn print_pretty_binary_assertion(assert: &BinaryAssertion<'_>) {
-    eprintln!(
-        "{bold}Assertion:{reset}\n  {cyan}{left} {bold}{blue}{op}{reset} {yellow}{right}{reset}",
-        cyan = CYAN,
-        blue = BLUE,
-        yellow = YELLOW,
-        bold = BOLD,
-        reset = RESET,
-        left = assert.left_expr,
-        op = assert.op,
-        right = assert.right_expr,
-    );
-    eprintln!(
-        "{bold}Expansion:{reset}\n  {cyan}{left:?} {bold}{blue}{op}{reset} {yellow}{right:?}{reset}",
-        cyan = CYAN,
-        blue = BLUE,
-        yellow = YELLOW,
-        bold = BOLD,
-        reset = RESET,
-        left = assert.left_val,
-        op = assert.op,
-        right = assert.right_val,
-    );
+fn print_pretty_binary_assertion(macro_name: &'static str, assert: &BinaryAssertion<'_>) {
+    if macro_name == "assert_eq" || macro_name == "assert_ne" {
+        eprint!(
+            concat!(
+                "{bold}Assertion:{reset}\n",
+                "  {magenta}{macro_name}!( {cyan}{left_expr}{magenta}, {yellow}{right_expr} {magenta}){reset}\n",
+                "{bold}Expansion:{reset}\n",
+                "  {magenta}{macro_name}!( {cyan}{left_val:?}{magenta}, {yellow}{right_val:?} {magenta}){reset}\n",
+            ),
+            cyan = CYAN,
+            magenta = MAGENTA,
+            yellow = YELLOW,
+            bold = BOLD,
+            reset = RESET,
+            macro_name = macro_name,
+            left_expr = assert.left_expr,
+            right_expr = assert.right_expr,
+            left_val = assert.left_val,
+            right_val = assert.right_val,
+        );
+    } else {
+        eprint!(
+            concat!(
+                "{bold}Assertion:{reset}\n",
+                "  {magenta}{macro_name}!( {cyan}{left_expr} {bold}{blue}{op}{reset} {yellow}{right_expr} {magenta}){reset}\n",
+                "{bold}Expansion:{reset}\n",
+                "  {magenta}{macro_name}!( {cyan}{left_val:?} {bold}{blue}{op}{reset} {yellow}{right_val:?} {magenta}){reset}\n",
+            ),
+            blue = BLUE,
+            cyan = CYAN,
+            magenta = MAGENTA,
+            yellow = YELLOW,
+            bold = BOLD,
+            reset = RESET,
+            macro_name = macro_name,
+            op = assert.op,
+            left_expr = assert.left_expr,
+            right_expr = assert.right_expr,
+            left_val = assert.left_val,
+            right_val = assert.right_val,
+        );
+    };
 }
 
 fn print_plain_message(message: &std::fmt::Arguments<'_>) {

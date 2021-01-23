@@ -5,6 +5,8 @@ use crate::fmt::Debug;
 pub struct AssertInfo<'a> {
     /// The assertion that failed.
     pub assertion: Assertion<'a>,
+    /// The name of the macro that triggered the panic.
+    pub macro_name: &'static str,
     /// Optional additional message to include in the failure report.
     pub message: Option<crate::fmt::Arguments<'a>>,
 }
