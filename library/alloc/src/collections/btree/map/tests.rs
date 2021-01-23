@@ -1,4 +1,5 @@
-use super::super::{node, DeterministicRng};
+use super::super::testing::ord_chaos::{Cyclic3, Governed, Governor};
+use super::super::testing::rng::DeterministicRng;
 use super::Entry::{Occupied, Vacant};
 use super::*;
 use crate::boxed::Box;
@@ -14,9 +15,6 @@ use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-
-mod ord_chaos;
-use ord_chaos::{Cyclic3, Governed, Governor};
 
 // Capacity of a tree with a single level,
 // i.e., a tree who's root is a leaf node at height 0.
