@@ -2,6 +2,7 @@
 //!
 //! The main entry point is the `step` method.
 
+use crate::interpret::OpTy;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_target::abi::LayoutOf;
@@ -115,35 +116,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             // Call CopyNonOverlapping
             CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
-                let (src, size) = {
-                    let src = self.eval_operand(src, None)?;
-                    let size = src.layout.layout.size;
-                    let mplace = *src.assert_mem_place(self);
-                    let ptr = match mplace.ptr {
-                        Scalar::Ptr(ptr) => ptr,
-                        _ => panic!(),
-                    };
-                    (ptr, size)
-                };
-
-                let dst = {
-                    let dst = self.eval_operand(dst, None)?;
-                    let mplace = *dst.assert_mem_place(self);
-                    match mplace.ptr {
-                        Scalar::Ptr(ptr) => ptr,
-                        _ => panic!(),
-                    }
-                };
-
                 let count = self.eval_operand(count, None)?;
-                let count = self.read_immediate(count)?.to_scalar()?;
-                let count = if let Scalar::Int(i) = count {
-                    core::convert::TryFrom::try_from(i).unwrap()
-                } else {
-                    panic!();
-                };
 
-                self.memory.copy_repeatedly(src, dst, size, count, /*nonoverlapping*/ true)?;
+                let src = self.eval_operand(src, None)?;
+                let dst = self.eval_operand(dst, None)?;
+                self.copy_nonoverlapping(src, dst, count)?;
             }
 
             // Statements we do not track.
@@ -170,6 +147,31 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         self.stack_mut()[frame_idx].loc.as_mut().unwrap().statement_index += 1;
+        Ok(())
+    }
+
+    pub(crate) fn copy_nonoverlapping(
+        &mut self,
+        src: OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        dst: OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        count: OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+    ) -> InterpResult<'tcx> {
+        let count = self.read_scalar(&count)?.to_machine_usize(self)?;
+        let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
+        let (size, align) = (layout.size, layout.align.abi);
+        let src =
+            self.memory.check_ptr_access(self.read_scalar(&src)?.check_init()?, size, align)?;
+
+        let dst =
+            self.memory.check_ptr_access(self.read_scalar(&dst)?.check_init()?, size, align)?;
+
+        let size = size.checked_mul(count, self).ok_or_else(|| {
+            err_ub_format!("overflow computing total size of `copy_nonoverlapping`")
+        })?;
+
+        if let (Some(src), Some(dst)) = (src, dst) {
+            self.memory.copy(src, dst, size, /*nonoverlapping*/ true)?;
+        }
         Ok(())
     }
 

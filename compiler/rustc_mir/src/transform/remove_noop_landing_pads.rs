@@ -39,7 +39,6 @@ impl RemoveNoopLandingPads {
                 | StatementKind::StorageDead(_)
                 | StatementKind::AscribeUserType(..)
                 | StatementKind::Coverage(..)
-                | StatementKind::CopyNonOverlapping(..)
                 | StatementKind::Nop => {
                     // These are all nops in a landing pad
                 }
@@ -56,6 +55,7 @@ impl RemoveNoopLandingPads {
                 StatementKind::Assign { .. }
                 | StatementKind::SetDiscriminant { .. }
                 | StatementKind::LlvmInlineAsm { .. }
+                | StatementKind::CopyNonOverlapping(..)
                 | StatementKind::Retag { .. } => {
                     return false;
                 }

@@ -115,7 +115,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
             | StatementKind::Nop => {
                 // safe (at least as emitted during MIR construction)
             }
@@ -124,6 +123,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 UnsafetyViolationKind::General,
                 UnsafetyViolationDetails::UseOfInlineAssembly,
             ),
+            StatementKind::CopyNonOverlapping(..) => unreachable!(),
         }
         self.super_statement(statement, location);
     }
