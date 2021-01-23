@@ -1075,8 +1075,7 @@ fn generic_simd_intrinsic(
         };
 
         let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
-        let f = bx.declare_cfn(&llvm_name, fn_ty);
-        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
+        let f = bx.declare_cfn(&llvm_name, llvm::UnnamedAddr::No, fn_ty);
         let c = bx.call(f, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
         unsafe { llvm::LLVMRustSetHasUnsafeAlgebra(c) };
         Ok(c)
@@ -1255,12 +1254,12 @@ fn generic_simd_intrinsic(
             format!("llvm.masked.gather.{}.{}", llvm_elem_vec_str, llvm_pointer_vec_str);
         let f = bx.declare_cfn(
             &llvm_intrinsic,
+            llvm::UnnamedAddr::No,
             bx.type_func(
                 &[llvm_pointer_vec_ty, alignment_ty, mask_ty, llvm_elem_vec_ty],
                 llvm_elem_vec_ty,
             ),
         );
-        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[args[1].immediate(), alignment, mask, args[0].immediate()], None);
         return Ok(v);
     }
@@ -1385,9 +1384,9 @@ fn generic_simd_intrinsic(
             format!("llvm.masked.scatter.{}.{}", llvm_elem_vec_str, llvm_pointer_vec_str);
         let f = bx.declare_cfn(
             &llvm_intrinsic,
+            llvm::UnnamedAddr::No,
             bx.type_func(&[llvm_elem_vec_ty, llvm_pointer_vec_ty, alignment_ty, mask_ty], ret_t),
         );
-        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[args[0].immediate(), args[1].immediate(), alignment, mask], None);
         return Ok(v);
     }
@@ -1691,8 +1690,11 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         );
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
-        let f = bx.declare_cfn(&llvm_intrinsic, bx.type_func(&[vec_ty, vec_ty], vec_ty));
-        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
+        let f = bx.declare_cfn(
+            &llvm_intrinsic,
+            llvm::UnnamedAddr::No,
+            bx.type_func(&[vec_ty, vec_ty], vec_ty),
+        );
         let v = bx.call(f, &[lhs, rhs], None);
         return Ok(v);
     }

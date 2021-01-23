@@ -380,7 +380,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     "rust_eh_personality"
                 };
                 let fty = self.type_variadic_func(&[], self.type_i32());
-                self.declare_cfn(name, fty)
+                self.declare_cfn(name, llvm::UnnamedAddr::Global, fty)
             }
         };
         attributes::apply_target_cpu_attr(self, llfn);
@@ -429,7 +429,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         if self.get_declared_value("main").is_none() {
-            Some(self.declare_cfn("main", fn_type))
+            Some(self.declare_cfn("main", llvm::UnnamedAddr::Global, fn_type))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
@@ -459,8 +459,7 @@ impl CodegenCx<'b, 'tcx> {
         } else {
             self.type_variadic_func(&[], ret)
         };
-        let f = self.declare_cfn(name, fn_ty);
-        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
+        let f = self.declare_cfn(name, llvm::UnnamedAddr::No, fn_ty);
         self.intrinsics.borrow_mut().insert(name, f);
         f
     }
