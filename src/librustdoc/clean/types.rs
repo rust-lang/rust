@@ -1305,10 +1305,20 @@ crate enum TypeKind {
 }
 
 crate trait GetDefId {
-    /// Doesn't retrieve primitive types `DefId`. Use `def_id_full` if you want it.
+    /// Use this method to get the [`DefId`] of a [`clean`] AST node.
+    /// This will return [`None`] when called on a primitive [`clean::Type`].
+    /// Use [`Self::def_id_full`] if you are calling it on a primitive [`clean::Type`].
+    ///
+    /// [`clean`]: crate::clean
+    /// [`clean::Type`]: Type
     fn def_id(&self) -> Option<DefId>;
-    /// Retrieves all types' `DefId` (including primitives). If you're not interested about
-    /// primitives, use `def_id`.
+
+    /// Use this method to get the [`DefId`] of a [`clean`] AST node that may be
+    /// a primitive [`clean::Type`].
+    ///
+    /// See [`Self::def_id`] for more.
+    ///
+    /// [`clean::Type`]: Type
     fn def_id_full(&self, cache: &Cache) -> Option<DefId>;
 }
 
