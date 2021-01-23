@@ -1520,7 +1520,41 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::CopyNonOverlapping(..) => todo!(),
+            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
+                ref src,
+                ref dst,
+                ref count,
+            }) => {
+                let op_src_ty = self.normalize(src.ty(body, self.tcx()), location);
+                let op_dst_ty = self.normalize(dst.ty(body, self.tcx()), location);
+                // since CopyNonOverlapping is parametrized by 1 type,
+                // we only need to check that they are equal and not keep an extra parameter.
+                if let Err(terr) = self.eq_types(
+                    op_src_ty,
+                    op_dst_ty,
+                    location.to_locations(),
+                    ConstraintCategory::Internal,
+                ) {
+                    span_mirbug!(
+                        self,
+                        stmt,
+                        "bad arg ({:?} != {:?}): {:?}",
+                        op_src_ty,
+                        op_dst_ty,
+                        terr
+                    );
+                }
+
+                let op_cnt_ty = self.normalize(count.ty(body, self.tcx()), location);
+                if let Err(terr) = self.eq_types(
+                    op_cnt_ty,
+                    tcx.types.usize,
+                    location.to_locations(),
+                    ConstraintCategory::Internal,
+                ) {
+                    span_mirbug!(self, stmt, "bad arg ({:?} != usize): {:?}", op_cnt_ty, terr);
+                }
+            }
             StatementKind::FakeRead(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)

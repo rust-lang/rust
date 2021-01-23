@@ -126,8 +126,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let count = count_val.immediate_or_packed_pair(&mut bx);
                 let dst = dst_val.immediate_or_packed_pair(&mut bx);
                 let src = src_val.immediate_or_packed_pair(&mut bx);
-                use crate::MemFlags;
-                let flags = MemFlags::empty();
+                let flags = crate::MemFlags::empty();
                 bx.memcpy(
                     dst,
                     dst_val.layout.layout.align.pref,
