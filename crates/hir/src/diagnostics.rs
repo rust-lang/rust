@@ -5,5 +5,5 @@ pub use hir_expand::diagnostics::{
 };
 pub use hir_ty::diagnostics::{
     IncorrectCase, MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
-    NoSuchField, RemoveThisSemicolon,
+    NoSuchField, RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap,
 };

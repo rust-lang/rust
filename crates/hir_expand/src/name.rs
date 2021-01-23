@@ -186,6 +186,9 @@ pub mod known {
         Neg,
         Not,
         Index,
+        // Components of known path (function name)
+        filter_map,
+        next,
         // Builtin macros
         file,
         column,

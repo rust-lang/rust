@@ -136,6 +136,9 @@ pub(crate) fn diagnostics(
         .on::<hir::diagnostics::IncorrectCase, _>(|d| {
             res.borrow_mut().push(warning_with_fix(d, &sema));
         })
+        .on::<hir::diagnostics::ReplaceFilterMapNextWithFindMap, _>(|d| {
+            res.borrow_mut().push(warning_with_fix(d, &sema));
+        })
         .on::<hir::diagnostics::InactiveCode, _>(|d| {
             // If there's inactive code somewhere in a macro, don't propagate to the call-site.
             if d.display_source().file_id.expansion_info(db).is_some() {

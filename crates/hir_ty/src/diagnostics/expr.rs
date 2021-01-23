@@ -2,8 +2,10 @@
 
 use std::sync::Arc;
 
-use hir_def::{expr::Statement, path::path, resolver::HasResolver, AdtId, DefWithBodyId};
-use hir_expand::diagnostics::DiagnosticSink;
+use hir_def::{
+    expr::Statement, path::path, resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId,
+};
+use hir_expand::{diagnostics::DiagnosticSink, name};
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstPtr};
 
@@ -24,6 +26,8 @@ pub(crate) use hir_def::{
     LocalFieldId, VariantId,
 };
 
+use super::ReplaceFilterMapNextWithFindMap;
+
 pub(super) struct ExprValidator<'a, 'b: 'a> {
     owner: DefWithBodyId,
     infer: Arc<InferenceResult>,
@@ -40,6 +44,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     }
 
     pub(super) fn validate_body(&mut self, db: &dyn HirDatabase) {
+        self.check_for_filter_map_next(db);
+
         let body = db.body(self.owner.into());
 
         for (id, expr) in body.exprs.iter() {
@@ -150,20 +156,76 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
     }
 
-    fn validate_call(&mut self, db: &dyn HirDatabase, call_id: ExprId, expr: &Expr) -> Option<()> {
+    fn check_for_filter_map_next(&mut self, db: &dyn HirDatabase) {
+        // Find the FunctionIds for Iterator::filter_map and Iterator::next
+        let iterator_path = path![core::iter::Iterator];
+        let resolver = self.owner.resolver(db.upcast());
+        let iterator_trait_id = match resolver.resolve_known_trait(db.upcast(), &iterator_path) {
+            Some(id) => id,
+            None => return,
+        };
+        let iterator_trait_items = &db.trait_data(iterator_trait_id).items;
+        let filter_map_function_id =
+            match iterator_trait_items.iter().find(|item| item.0 == name![filter_map]) {
+                Some((_, AssocItemId::FunctionId(id))) => id,
+                _ => return,
+            };
+        let next_function_id = match iterator_trait_items.iter().find(|item| item.0 == name![next])
+        {
+            Some((_, AssocItemId::FunctionId(id))) => id,
+            _ => return,
+        };
+
+        // Search function body for instances of .filter_map(..).next()
+        let body = db.body(self.owner.into());
+        let mut prev = None;
+        for (id, expr) in body.exprs.iter() {
+            if let Expr::MethodCall { receiver, .. } = expr {
+                let function_id = match self.infer.method_resolution(id) {
+                    Some(id) => id,
+                    None => continue,
+                };
+
+                if function_id == *filter_map_function_id {
+                    prev = Some(id);
+                    continue;
+                }
+
+                if function_id == *next_function_id {
+                    if let Some(filter_map_id) = prev {
+                        if *receiver == filter_map_id {
+                            let (_, source_map) = db.body_with_source_map(self.owner.into());
+                            if let Ok(next_source_ptr) = source_map.expr_syntax(id) {
+                                self.sink.push(ReplaceFilterMapNextWithFindMap {
+                                    file: next_source_ptr.file_id,
+                                    next_expr: next_source_ptr.value,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            prev = None;
+        }
+    }
+
+    fn validate_call(&mut self, db: &dyn HirDatabase, call_id: ExprId, expr: &Expr) {
         // Check that the number of arguments matches the number of parameters.
 
         // FIXME: Due to shortcomings in the current type system implementation, only emit this
         // diagnostic if there are no type mismatches in the containing function.
         if self.infer.type_mismatches.iter().next().is_some() {
-            return None;
+            return;
         }
 
         let is_method_call = matches!(expr, Expr::MethodCall { .. });
         let (sig, args) = match expr {
             Expr::Call { callee, args } => {
                 let callee = &self.infer.type_of_expr[*callee];
-                let sig = callee.callable_sig(db)?;
+                let sig = match callee.callable_sig(db) {
+                    Some(sig) => sig,
+                    None => return,
+                };
                 (sig, args.clone())
             }
             Expr::MethodCall { receiver, args, .. } => {
@@ -175,22 +237,25 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                     // if the receiver is of unknown type, it's very likely we
                     // don't know enough to correctly resolve the method call.
                     // This is kind of a band-aid for #6975.
-                    return None;
+                    return;
                 }
 
                 // FIXME: note that we erase information about substs here. This
                 // is not right, but, luckily, doesn't matter as we care only
                 // about the number of params
-                let callee = self.infer.method_resolution(call_id)?;
+                let callee = match self.infer.method_resolution(call_id) {
+                    Some(callee) => callee,
+                    None => return,
+                };
                 let sig = db.callable_item_signature(callee.into()).value;
 
                 (sig, args)
             }
-            _ => return None,
+            _ => return,
         };
 
         if sig.is_varargs {
-            return None;
+            return;
         }
 
         let params = sig.params();
@@ -213,8 +278,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 });
             }
         }
-
-        None
     }
 
     fn validate_match(

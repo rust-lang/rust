@@ -4,7 +4,7 @@ use hir::{
     db::AstDatabase,
     diagnostics::{
         Diagnostic, IncorrectCase, MissingFields, MissingOkOrSomeInTailExpr, NoSuchField,
-        RemoveThisSemicolon, UnresolvedModule,
+        RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap, UnresolvedModule,
     },
     HasSource, HirDisplay, InFile, Semantics, VariantDef,
 };
@@ -15,8 +15,8 @@ use ide_db::{
 };
 use syntax::{
     algo,
-    ast::{self, edit::IndentLevel, make},
-    AstNode,
+    ast::{self, edit::IndentLevel, make, ArgListOwner},
+    AstNode, TextRange,
 };
 use text_edit::TextEdit;
 
@@ -141,6 +141,33 @@ impl DiagnosticWithFix for IncorrectCase {
 
         let label = format!("Rename to {}", self.suggested_text);
         Some(Fix::new(&label, rename_changes, frange.range))
+    }
+}
+
+impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+        let root = sema.db.parse_or_expand(self.file)?;
+        let next_expr = self.next_expr.to_node(&root);
+        let next_call = ast::MethodCallExpr::cast(next_expr.syntax().clone())?;
+
+        let filter_map_call = ast::MethodCallExpr::cast(next_call.receiver()?.syntax().clone())?;
+        let filter_map_name_range = filter_map_call.name_ref()?.ident_token()?.text_range();
+        let filter_map_args = filter_map_call.arg_list()?;
+
+        let range_to_replace =
+            TextRange::new(filter_map_name_range.start(), next_expr.syntax().text_range().end());
+        let replacement = format!("find_map{}", filter_map_args.syntax().text());
+        let trigger_range = next_expr.syntax().text_range();
+
+        let edit = TextEdit::replace(range_to_replace, replacement);
+
+        let source_change = SourceChange::from_text_edit(self.file.original_file(sema.db), edit);
+
+        Some(Fix::new(
+            "Replace filter_map(..).next() with find_map()",
+            source_change,
+            trigger_range,
+        ))
     }
 }
 

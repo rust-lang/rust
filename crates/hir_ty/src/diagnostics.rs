@@ -247,7 +247,7 @@ impl Diagnostic for RemoveThisSemicolon {
 
 // Diagnostic: break-outside-of-loop
 //
-// This diagnostic is triggered if `break` keyword is used outside of a loop.
+// This diagnostic is triggered if the `break` keyword is used outside of a loop.
 #[derive(Debug)]
 pub struct BreakOutsideOfLoop {
     pub file: HirFileId,
@@ -271,7 +271,7 @@ impl Diagnostic for BreakOutsideOfLoop {
 
 // Diagnostic: missing-unsafe
 //
-// This diagnostic is triggered if operation marked as `unsafe` is used outside of `unsafe` function or block.
+// This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
 #[derive(Debug)]
 pub struct MissingUnsafe {
     pub file: HirFileId,
@@ -295,7 +295,7 @@ impl Diagnostic for MissingUnsafe {
 
 // Diagnostic: mismatched-arg-count
 //
-// This diagnostic is triggered if function is invoked with an incorrect amount of arguments.
+// This diagnostic is triggered if a function is invoked with an incorrect amount of arguments.
 #[derive(Debug)]
 pub struct MismatchedArgCount {
     pub file: HirFileId,
@@ -347,7 +347,7 @@ impl fmt::Display for CaseType {
 
 // Diagnostic: incorrect-ident-case
 //
-// This diagnostic is triggered if item name doesn't follow https://doc.rust-lang.org/1.0.0/style/style/naming/README.html[Rust naming convention].
+// This diagnostic is triggered if an item name doesn't follow https://doc.rust-lang.org/1.0.0/style/style/naming/README.html[Rust naming convention].
 #[derive(Debug)]
 pub struct IncorrectCase {
     pub file: HirFileId,
@@ -383,6 +383,31 @@ impl Diagnostic for IncorrectCase {
 
     fn is_experimental(&self) -> bool {
         true
+    }
+}
+
+// Diagnostic: replace-filter-map-next-with-find-map
+//
+// This diagnostic is triggered when `.filter_map(..).next()` is used, rather than the more concise `.find_map(..)`.
+#[derive(Debug)]
+pub struct ReplaceFilterMapNextWithFindMap {
+    pub file: HirFileId,
+    /// This expression is the whole method chain up to and including `.filter_map(..).next()`.
+    pub next_expr: AstPtr<ast::Expr>,
+}
+
+impl Diagnostic for ReplaceFilterMapNextWithFindMap {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("replace-filter-map-next-with-find-map")
+    }
+    fn message(&self) -> String {
+        "replace filter_map(..).next() with find_map(..)".to_string()
+    }
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.next_expr.clone().into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
     }
 }
 
@@ -643,5 +668,88 @@ fn foo() { break; }
                                  //^^^ Remove this semicolon
             "#,
         );
+    }
+
+    // Register the required standard library types to make the tests work
+    fn add_filter_map_with_find_next_boilerplate(body: &str) -> String {
+        let prefix = r#"
+        //- /main.rs crate:main deps:core
+        use core::iter::Iterator;
+        use core::option::Option::{self, Some, None};
+        "#;
+        let suffix = r#"
+        //- /core/lib.rs crate:core
+        pub mod option {
+            pub enum Option<T> { Some(T), None }
+        }
+        pub mod iter {
+            pub trait Iterator {
+                type Item;
+                fn filter_map<B, F>(self, f: F) -> FilterMap where F: FnMut(Self::Item) -> Option<B> { FilterMap }
+                fn next(&mut self) -> Option<Self::Item>;
+            }
+            pub struct FilterMap {}
+            impl Iterator for FilterMap {
+                type Item = i32;
+                fn next(&mut self) -> i32 { 7 }
+            }
+        }
+        "#;
+        format!("{}{}{}", prefix, body, suffix)
+    }
+
+    #[test]
+    fn replace_filter_map_next_with_find_map2() {
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3].iter().filter_map(|x| if *x == 2 { Some (4) } else { None }).next();
+                      //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ replace filter_map(..).next() with find_map(..)
+            }
+        "#,
+        ));
+    }
+
+    #[test]
+    fn replace_filter_map_next_with_find_map_no_diagnostic_without_next() {
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3]
+                    .iter()
+                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
+                    .len();
+            }
+            "#,
+        ));
+    }
+
+    #[test]
+    fn replace_filter_map_next_with_find_map_no_diagnostic_with_intervening_methods() {
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3]
+                    .iter()
+                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
+                    .map(|x| x + 2)
+                    .len();
+            }
+            "#,
+        ));
+    }
+
+    #[test]
+    fn replace_filter_map_next_with_find_map_no_diagnostic_if_not_in_chain() {
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3]
+                    .iter()
+                    .filter_map(|x| if *x == 2 { Some (4) } else { None });
+                let n = m.next();
+            }
+            "#,
+        ));
     }
 }

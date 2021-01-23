@@ -304,6 +304,7 @@ pub use hir_expand::name as __name;
 #[macro_export]
 macro_rules! __known_path {
     (core::iter::IntoIterator) => {};
+    (core::iter::Iterator) => {};
     (core::result::Result) => {};
     (core::option::Option) => {};
     (core::ops::Range) => {};
