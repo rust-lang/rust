@@ -286,6 +286,8 @@ different Miri binaries, and as such worth documenting:
   directory after loading all the source files, but before commencing
   interpretation. This is useful if the interpreted program wants a different
   working directory at run-time than at build-time.
+* `MIRI_VERBOSE` when set to any value tells the various `cargo-miri` phases to
+  perform verbose logging.
   
 [testing-miri]: CONTRIBUTING.md#testing-the-miri-driver
 
