@@ -421,12 +421,14 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             let t = relation.relate(a_t, b_t)?;
             match relation.relate(sz_a, sz_b) {
                 Ok(sz) => Ok(tcx.mk_ty(ty::Array(t, sz))),
-                // FIXME(#72219) Implement improved diagnostics for mismatched array
-                // length?
-                Err(err) if relation.tcx().lazy_normalization() => Err(err),
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.
+                    //
+                    // It might seem dubious to eagerly evaluate these constants here,
+                    // we however cannot end up with errors in `Relate` during both
+                    // `type_of` and `predicates_of`. This means that evaluating the
+                    // constants should not cause cycle errors here.
                     let sz_a = sz_a.try_eval_usize(tcx, relation.param_env());
                     let sz_b = sz_b.try_eval_usize(tcx, relation.param_env());
                     match (sz_a, sz_b) {
