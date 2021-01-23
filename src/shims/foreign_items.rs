@@ -484,6 +484,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[] = check_arg_count(args)?;
                 this.yield_active_thread();
             }
+            "llvm.aarch64.hint" if this.tcx.sess.target.arch == "aarch64" => {
+                let &[hint] = check_arg_count(args)?;
+                let hint = this.read_scalar(hint)?.to_i32()?;
+                match hint {
+                    1 => { // HINT_YIELD
+                        this.yield_active_thread();
+                    }
+                    _ => {
+                        throw_unsup_format!("unsupported llvm.aarch64.hint argument {}", hint);
+                    }
+                }
+            }
 
             // Platform-specific shims
             _ => match this.tcx.sess.target.os.as_str() {
