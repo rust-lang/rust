@@ -2934,34 +2934,25 @@ fn render_stability_since_raw(
     containing_ver: Option<&str>,
     containing_const_ver: Option<&str>,
 ) {
-    let ver = ver.and_then(|inner| if !inner.is_empty() { Some(inner) } else { None });
+    let ver = ver.filter(|inner| !inner.is_empty());
+    let const_ver = const_ver.filter(|inner| !inner.is_empty());
 
-    let const_ver = const_ver.and_then(|inner| if !inner.is_empty() { Some(inner) } else { None });
-
-    if let Some(v) = ver {
-        if let Some(cv) = const_ver {
-            if const_ver != containing_const_ver {
-                write!(
-                    w,
-                    "<span class=\"since\" title=\"Stable since Rust version {0}, const since {1}\">{0} (const: {1})</span>",
-                    v, cv
-                );
-            } else if ver != containing_ver {
-                write!(
-                    w,
-                    "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
-                    v
-                );
-            }
-        } else {
-            if ver != containing_ver {
-                write!(
-                    w,
-                    "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
-                    v
-                );
-            }
+    match (ver, const_ver) {
+        (Some(v), Some(cv)) if const_ver != containing_const_ver => {
+            write!(
+                w,
+                "<span class=\"since\" title=\"Stable since Rust version {0}, const since {1}\">{0} (const: {1})</span>",
+                v, cv
+            );
         }
+        (Some(v), _) if ver != containing_ver => {
+            write!(
+                w,
+                "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
+                v
+            );
+        }
+        _ => {}
     }
 }
 
