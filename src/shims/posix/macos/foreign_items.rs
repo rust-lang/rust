@@ -25,32 +25,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // File related shims
-            "close$NOCANCEL" => {
+            "close" | "close$NOCANCEL" => {
                 let &[result] = check_arg_count(args)?;
                 let result = this.close(result)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-            "stat$INODE64" => {
+            "stat" | "stat$INODE64" => {
                 let &[path, buf] = check_arg_count(args)?;
                 let result = this.macos_stat(path, buf)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-            "lstat$INODE64" => {
+            "lstat" | "lstat$INODE64" => {
                 let &[path, buf] = check_arg_count(args)?;
                 let result = this.macos_lstat(path, buf)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-            "fstat$INODE64" => {
+            "fstat" | "fstat$INODE64" => {
                 let &[fd, buf] = check_arg_count(args)?;
                 let result = this.macos_fstat(fd, buf)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-            "opendir$INODE64" => {
+            "opendir" | "opendir$INODE64" => {
                 let &[name] = check_arg_count(args)?;
                 let result = this.opendir(name)?;
                 this.write_scalar(result, dest)?;
             }
-            "readdir_r$INODE64" => {
+            "readdir_r" | "readdir_r$INODE64" => {
                 let &[dirp, entry, result] = check_arg_count(args)?;
                 let result = this.macos_readdir_r(dirp, entry, result)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
