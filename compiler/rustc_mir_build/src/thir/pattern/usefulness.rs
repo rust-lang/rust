@@ -590,8 +590,10 @@ impl<'p, 'tcx> MatrixEntry<'p, 'tcx> {
 }
 
 #[derive(Clone)]
-enum UndoKind {
+enum UndoKind<'p, 'tcx> {
     Specialize { ctor_arity: usize, any_or_pats: bool },
+    OrPat { new_rows_count: usize },
+    OrPatBranch { i: usize, alt_count: usize, pat: &'p Pat<'tcx> },
 }
 
 /// A 2D matrix.
@@ -608,7 +610,7 @@ struct Matrix<'p, 'tcx> {
     /// this.
     row_data: Vec<RowData>,
     /// Stores the history of operations done on this matrix, so that we can undo them in-place.
-    history: Vec<UndoKind>,
+    history: Vec<UndoKind<'p, 'tcx>>,
     last_col_history: VecVec<MatrixEntry<'p, 'tcx>>,
     selected_rows_history: VecVec<usize>,
 }
@@ -824,18 +826,26 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.columns.push(new_last_col);
     }
 
-    /// Undo the last specialization, possibly also undoing an or-pattern expansion if there was
-    /// one.
-    fn unspecialize(&mut self) {
-        let UndoKind::Specialize { ctor_arity, any_or_pats } = self.history.pop().unwrap();
-        if any_or_pats {
-            self.columns.pop().unwrap();
-            self.restore_last_col();
+    /// Undo either the last specialization or the last manual or-pattern expansion.
+    fn undo(&mut self) {
+        match self.history.pop().unwrap() {
+            UndoKind::Specialize { ctor_arity, any_or_pats } => {
+                if any_or_pats {
+                    self.columns.pop().unwrap();
+                    self.restore_last_col();
+                }
+                for _ in 0..ctor_arity {
+                    self.columns.pop().unwrap();
+                }
+                self.restore_last_col();
+            }
+            UndoKind::OrPat { new_rows_count } => {
+                for _ in 0..new_rows_count {
+                    self.pop_last_row();
+                }
+            }
+            UndoKind::OrPatBranch { .. } => {}
         }
-        for _ in 0..ctor_arity {
-            self.columns.pop().unwrap();
-        }
-        self.restore_last_col();
     }
 }
 
@@ -1345,11 +1355,13 @@ fn is_useful<'p, 'tcx>(
         let v_head = v.head();
         let vs: Vec<_> = v.expand_or_pat().collect();
         let alt_count = vs.len();
+        matrix.history.push(UndoKind::OrPat { new_rows_count: alt_count });
         // We expand the or pattern, trying each of its branches in turn and keeping careful track
         // of possible unreachable sub-branches.
-        let old_row_count = matrix.row_count();
         let usefulnesses = vs.into_iter().enumerate().map(|(i, v)| {
+            matrix.history.push(UndoKind::OrPatBranch { i, alt_count, pat: v_head });
             let usefulness = is_useful(cx, matrix, &v, false);
+            matrix.undo();
             // If pattern has a guard don't add it to the matrix.
             // We push the already-seen patterns into the matrix in order to detect redundant
             // branches like `Some(_) | Some(0)`.
@@ -1357,9 +1369,7 @@ fn is_useful<'p, 'tcx>(
             usefulness.unsplit_or_pat(i, alt_count, v_head)
         });
         let usefulness = Usefulness::merge(v.row_data.witness_preference, usefulnesses);
-        for _ in old_row_count..matrix.row_count() {
-            matrix.pop_last_row();
-        }
+        matrix.undo();
         usefulness
     } else {
         let v_ctor = v.head_ctor(cx);
@@ -1383,7 +1393,7 @@ fn is_useful<'p, 'tcx>(
             matrix.specialize(pcx, &ctor, &ctor_wild_subpatterns);
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
             let usefulness = is_useful(cx, matrix, &v, false);
-            matrix.unspecialize();
+            matrix.undo();
             usefulness.apply_constructor(pcx, matrix, &ctor, &ctor_wild_subpatterns)
         });
         Usefulness::merge(v.row_data.witness_preference, usefulnesses)
