@@ -218,6 +218,7 @@ symbols! {
         abi,
         abi_amdgpu_kernel,
         abi_avr_interrupt,
+        abi_c_cmse_nonsecure_call,
         abi_efiapi,
         abi_msp430_interrupt,
         abi_ptx,

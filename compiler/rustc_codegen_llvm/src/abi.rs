@@ -389,7 +389,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
     fn llvm_cconv(&self) -> llvm::CallConv {
         match self.conv {
-            Conv::C | Conv::Rust => llvm::CCallConv,
+            Conv::C | Conv::Rust | Conv::CCmseNonSecureCall => llvm::CCallConv,
             Conv::AmdGpuKernel => llvm::AmdGpuKernel,
             Conv::AvrInterrupt => llvm::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
@@ -545,6 +545,18 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         let cconv = self.llvm_cconv();
         if cconv != llvm::CCallConv {
             llvm::SetInstructionCallConv(callsite, cconv);
+        }
+
+        if self.conv == Conv::CCmseNonSecureCall {
+            // This will probably get ignored on all targets but those supporting the TrustZone-M
+            // extension (thumbv8m targets).
+            unsafe {
+                llvm::AddCallSiteAttrString(
+                    callsite,
+                    llvm::AttributePlace::Function,
+                    rustc_data_structures::const_cstr!("cmse_nonsecure_call"),
+                );
+            }
         }
     }
 }

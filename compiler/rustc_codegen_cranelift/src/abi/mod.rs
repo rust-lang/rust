@@ -28,6 +28,7 @@ fn clif_sig_from_fn_abi<'tcx>(
         Conv::X86_64SysV => CallConv::SystemV,
         Conv::X86_64Win64 => CallConv::WindowsFastcall,
         Conv::ArmAapcs
+        | Conv::CCmseNonSecureCall
         | Conv::Msp430Intr
         | Conv::PtxKernel
         | Conv::X86Fastcall

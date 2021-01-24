@@ -156,6 +156,14 @@ impl<'a> PostExpansionVisitor<'a> {
                     "efiapi ABI is experimental and subject to change"
                 );
             }
+            "C-cmse-nonsecure-call" => {
+                gate_feature_post!(
+                    &self,
+                    abi_c_cmse_nonsecure_call,
+                    span,
+                    "C-cmse-nonsecure-call ABI is experimental and subject to change"
+                );
+            }
             abi => self
                 .sess
                 .parse_sess
