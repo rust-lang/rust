@@ -2,6 +2,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
+use std::iter::TakeWhile;
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -36,9 +37,9 @@ enum MiriCommand {
     Setup,
 }
 
-/// The inforamtion Miri needs to run a crate. Stored as JSON when the crate is "compiled".
+/// The information to run a crate with the given environment.
 #[derive(Serialize, Deserialize)]
-struct CrateRunInfo {
+struct CrateRunEnv {
     /// The command-line arguments.
     args: Vec<String>,
     /// The environment.
@@ -47,13 +48,22 @@ struct CrateRunInfo {
     current_dir: OsString,
 }
 
+/// The information Miri needs to run a crate. Stored as JSON when the crate is "compiled".
+#[derive(Serialize, Deserialize)]
+enum CrateRunInfo {
+    /// Run it with the given environment.
+    RunWith(CrateRunEnv),
+    /// Skip it as Miri does not support interpreting such kind of crates.
+    SkipProcMacroTest,
+}
+
 impl CrateRunInfo {
     /// Gather all the information we need.
     fn collect(args: env::Args) -> Self {
         let args = args.collect();
         let env = env::vars_os().collect();
         let current_dir = env::current_dir().unwrap().into_os_string();
-        CrateRunInfo { args, env, current_dir }
+        Self::RunWith(CrateRunEnv { args, env, current_dir })
     }
 
     fn store(&self, filename: &Path) {
@@ -89,29 +99,48 @@ fn has_arg_flag(name: &str) -> bool {
     args.any(|val| val == name)
 }
 
-/// Gets the value of a `--flag`.
-fn get_arg_flag_value(name: &str) -> Option<String> {
-    // Stop searching at `--`.
-    let mut args = std::env::args().take_while(|val| val != "--");
-    loop {
-        let arg = match args.next() {
-            Some(arg) => arg,
-            None => return None,
-        };
-        if !arg.starts_with(name) {
-            continue;
-        }
-        // Strip leading `name`.
-        let suffix = &arg[name.len()..];
-        if suffix.is_empty() {
-            // This argument is exactly `name`; the next one is the value.
-            return args.next();
-        } else if suffix.starts_with('=') {
-            // This argument is `name=value`; get the value.
-            // Strip leading `=`.
-            return Some(suffix[1..].to_owned());
+/// Yields all values of command line flag `name`.
+struct ArgFlagValueIter<'a> {
+    args: TakeWhile<env::Args, fn(&String) -> bool>,
+    name: &'a str,
+}
+
+impl<'a> ArgFlagValueIter<'a> {
+    fn new(name: &'a str) -> Self {
+        Self {
+            // Stop searching at `--`.
+            args: env::args().take_while(|val| val != "--"),
+            name,
         }
     }
+}
+
+impl Iterator for ArgFlagValueIter<'_> {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let arg = self.args.next()?;
+            if !arg.starts_with(self.name) {
+                continue;
+            }
+            // Strip leading `name`.
+            let suffix = &arg[self.name.len()..];
+            if suffix.is_empty() {
+                // This argument is exactly `name`; the next one is the value.
+                return self.args.next();
+            } else if suffix.starts_with('=') {
+                // This argument is `name=value`; get the value.
+                // Strip leading `=`.
+                return Some(suffix[1..].to_owned());
+            }
+        }
+    }
+}
+
+/// Gets the value of a `--flag`.
+fn get_arg_flag_value(name: &str) -> Option<String> {
+    ArgFlagValueIter::new(name).next()
 }
 
 /// Returns the path to the `miri` binary
@@ -436,14 +465,15 @@ fn phase_cargo_miri(mut args: env::Args) {
     // This is needed to make the `CARGO_TARGET_*_RUNNER` env var do something,
     // and it later helps us detect which crates are proc-macro/build-script
     // (host crates) and which crates are needed for the program itself.
-    let target = if let Some(target) = get_arg_flag_value("--target") {
+    let host = version_info().host;
+    let target = get_arg_flag_value("--target");
+    let target = if let Some(ref target) = target {
         target
     } else {
         // No target given. Pick default and tell cargo about it.
-        let host = version_info().host;
         cmd.arg("--target");
         cmd.arg(&host);
-        host
+        &host
     };
 
     // Forward all further arguments. We do some processing here because we want to
@@ -495,9 +525,16 @@ fn phase_cargo_miri(mut args: env::Args) {
     }
     cmd.env("RUSTC_WRAPPER", &cargo_miri_path);
 
-    // Set the runner for the current target to us as well, so we can interpret the binaries.
-    let runner_env_name = format!("CARGO_TARGET_{}_RUNNER", target.to_uppercase().replace('-', "_"));
-    cmd.env(&runner_env_name, &cargo_miri_path);
+    let runner_env_name = |triple: &str| {
+        format!("CARGO_TARGET_{}_RUNNER", triple.to_uppercase().replace('-', "_"))
+    };
+    let host_runner_env_name = runner_env_name(&host);
+    let target_runner_env_name = runner_env_name(target);
+    // Set the target runner to us, so we can interpret the binaries.
+    cmd.env(&target_runner_env_name, &cargo_miri_path);
+    // Unit tests of `proc-macro` crates are run on the host, so we set the host runner to
+    // us in order to skip them.
+    cmd.env(&host_runner_env_name, &cargo_miri_path);
 
     // Set rustdoc to us as well, so we can make it do nothing (see issue #584).
     cmd.env("RUSTDOC", &cargo_miri_path);
@@ -505,7 +542,10 @@ fn phase_cargo_miri(mut args: env::Args) {
     // Run cargo.
     if verbose {
         eprintln!("[cargo-miri miri] RUSTC_WRAPPER={:?}", cargo_miri_path);
-        eprintln!("[cargo-miri miri] {}={:?}", runner_env_name, cargo_miri_path);
+        eprintln!("[cargo-miri miri] {}={:?}", target_runner_env_name, cargo_miri_path);
+        if *target != host {
+            eprintln!("[cargo-miri miri] {}={:?}", host_runner_env_name, cargo_miri_path);
+        }
         eprintln!("[cargo-miri miri] RUSTDOC={:?}", cargo_miri_path);
         eprintln!("[cargo-miri miri] {:?}", cmd);
         cmd.env("MIRI_VERBOSE", ""); // This makes the other phases verbose.
@@ -568,23 +608,34 @@ fn phase_cargo_rustc(args: env::Args) {
         _ => {},
     }
 
-    if !print && target_crate && is_runnable_crate() {
+    let store_json = |info: CrateRunInfo| {
+        let filename = out_filename("", "");
+        if verbose {
+            eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
+        }
+        info.store(&filename);
+        // For Windows, do the same thing again with `.exe` appended to the filename.
+        // (Need to do this here as cargo moves that "binary" to a different place before running it.)
+        info.store(&out_filename("", ".exe"));
+    };
+
+    let runnable_crate = !print && is_runnable_crate();
+
+    if runnable_crate && target_crate {
         // This is the binary or test crate that we want to interpret under Miri.
         // But we cannot run it here, as cargo invoked us as a compiler -- our stdin and stdout are not
         // like we want them.
         // Instead of compiling, we write JSON into the output file with all the relevant command-line flags
         // and environment variables; this is used when cargo calls us again in the CARGO_TARGET_RUNNER phase.
-        let info = CrateRunInfo::collect(args);
-        let filename = out_filename("", "");
-        if verbose {
-            eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
-        }
+        store_json(CrateRunInfo::collect(args));
+        return;
+    }
 
-        info.store(&filename);
-        // For Windows, do the same thing again with `.exe` appended to the filename.
-        // (Need to do this here as cargo moves that "binary" to a different place before running it.)
-        info.store(&out_filename("", ".exe"));
-
+    if runnable_crate && ArgFlagValueIter::new("--extern").any(|krate| krate == "proc_macro") {
+        // This is a "runnable" `proc-macro` crate (unit tests). We do not support
+        // interpreting that under Miri now, so we write a JSON file to (display a
+        // helpful message and) skip it in the runner phase.
+        store_json(CrateRunInfo::SkipProcMacroTest);
         return;
     }
 
@@ -652,8 +703,16 @@ fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
     let file = File::open(&binary)
         .unwrap_or_else(|_| show_error(format!("file {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
     let file = BufReader::new(file);
-    let info: CrateRunInfo = serde_json::from_reader(file)
+
+    let info = serde_json::from_reader(file)
         .unwrap_or_else(|_| show_error(format!("file {:?} contains outdated or invalid JSON; try `cargo clean`", binary)));
+    let info = match info {
+        CrateRunInfo::RunWith(info) => info,
+        CrateRunInfo::SkipProcMacroTest => {
+            eprintln!("Running unit tests of `proc-macro` crates is not currently supported by Miri.");
+            return;
+        }
+    };
 
     let mut cmd = miri();
 
