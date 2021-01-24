@@ -253,7 +253,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let hir_id = self.lower_node_id(i.id);
         let attrs = self.lower_attrs(hir_id, &i.attrs);
         let kind = self.lower_item_kind(i.span, i.id, hir_id, &mut ident, attrs, &mut vis, &i.kind);
-        Some(hir::Item { hir_id, ident, attrs, kind, vis, span: i.span })
+        Some(hir::Item { hir_id, ident, kind, vis, span: i.span })
     }
 
     fn lower_item_kind(
@@ -561,14 +561,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let vis = this.rebuild_vis(&vis);
                         this.attrs.push_sparse(new_id, attrs);
 
-                        this.insert_item(hir::Item {
-                            hir_id: new_id,
-                            ident,
-                            attrs,
-                            kind,
-                            vis,
-                            span,
-                        });
+                        this.insert_item(hir::Item { hir_id: new_id, ident, kind, vis, span });
                     });
                 }
 
@@ -637,7 +630,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         this.insert_item(hir::Item {
                             hir_id: new_hir_id,
                             ident,
-                            attrs,
                             kind,
                             vis,
                             span: use_tree.span,

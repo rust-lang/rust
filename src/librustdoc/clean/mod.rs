@@ -872,7 +872,8 @@ fn clean_fn_or_proc_macro(
     name: &mut Symbol,
     cx: &DocContext<'_>,
 ) -> ItemKind {
-    let macro_kind = item.attrs.iter().find_map(|a| {
+    let attrs = cx.tcx.hir().attrs(item.hir_id);
+    let macro_kind = attrs.iter().find_map(|a| {
         if a.has_name(sym::proc_macro) {
             Some(MacroKind::Bang)
         } else if a.has_name(sym::proc_macro_derive) {
@@ -886,8 +887,7 @@ fn clean_fn_or_proc_macro(
     match macro_kind {
         Some(kind) => {
             if kind == MacroKind::Derive {
-                *name = item
-                    .attrs
+                *name = attrs
                     .lists(sym::proc_macro_derive)
                     .find_map(|mi| mi.ident())
                     .expect("proc-macro derives require a name")
@@ -895,7 +895,7 @@ fn clean_fn_or_proc_macro(
             }
 
             let mut helpers = Vec::new();
-            for mi in item.attrs.lists(sym::proc_macro_derive) {
+            for mi in attrs.lists(sym::proc_macro_derive) {
                 if !mi.has_name(sym::attributes) {
                     continue;
                 }
@@ -2011,7 +2011,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                         .iter()
                         .map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx))
                         .collect();
-                    let attrs = item.attrs.clean(cx);
+                    let attrs = cx.tcx.hir().attrs(item.hir_id).clean(cx);
                     let is_spotlight = attrs.has_doc_flag(sym::spotlight);
                     TraitItem(Trait {
                         unsafety,
@@ -2113,8 +2113,9 @@ fn clean_extern_crate(
     let cnum = cx.tcx.extern_mod_stmt_cnum(def_id).unwrap_or(LOCAL_CRATE);
     // this is the ID of the crate itself
     let crate_def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+    let attrs = cx.tcx.hir().attrs(krate.hir_id);
     let please_inline = krate.vis.node.is_pub()
-        && krate.attrs.iter().any(|a| {
+        && attrs.iter().any(|a| {
             a.has_name(sym::doc)
                 && match a.meta_item_list() {
                     Some(l) => attr::list_contains_name(&l, sym::inline),
@@ -2132,7 +2133,7 @@ fn clean_extern_crate(
             cx.tcx.parent_module(krate.hir_id).to_def_id(),
             res,
             name,
-            Some(krate.attrs),
+            Some(attrs),
             &mut visited,
         ) {
             return items;
@@ -2141,7 +2142,7 @@ fn clean_extern_crate(
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: None,
-        attrs: box krate.attrs.clean(cx),
+        attrs: box attrs.clean(cx),
         source: krate.span.clean(cx),
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
@@ -2163,7 +2164,8 @@ fn clean_use_statement(
         return Vec::new();
     }
 
-    let (doc_meta_item, please_inline) = import.attrs.lists(sym::doc).get_word_attr(sym::inline);
+    let attrs = cx.tcx.hir().attrs(import.hir_id);
+    let (doc_meta_item, please_inline) = attrs.lists(sym::doc).get_word_attr(sym::inline);
     let pub_underscore = import.vis.node.is_pub() && name == kw::Underscore;
 
     if pub_underscore && please_inline {
@@ -2183,7 +2185,7 @@ fn clean_use_statement(
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
     let mut denied = !import.vis.node.is_pub()
         || pub_underscore
-        || import.attrs.iter().any(|a| {
+        || attrs.iter().any(|a| {
             a.has_name(sym::doc)
                 && match a.meta_item_list() {
                     Some(l) => {
@@ -2224,7 +2226,7 @@ fn clean_use_statement(
                 cx.tcx.parent_module(import.hir_id).to_def_id(),
                 path.res,
                 name,
-                Some(import.attrs),
+                Some(attrs),
                 &mut visited,
             ) {
                 items.push(Item::from_def_id_and_parts(

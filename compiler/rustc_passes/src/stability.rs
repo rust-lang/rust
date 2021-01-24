@@ -714,15 +714,15 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     // error if all involved types and traits are stable, because
                     // it will have no effect.
                     // See: https://github.com/rust-lang/rust/issues/55436
+                    let attrs = self.tcx.hir().attrs(item.hir_id);
                     if let (Some(Stability { level: attr::Unstable { .. }, .. }), _) =
-                        attr::find_stability(&self.tcx.sess, &item.attrs, item.span)
+                        attr::find_stability(&self.tcx.sess, attrs, item.span)
                     {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty(self_ty);
                         c.visit_trait_ref(t);
                         if c.fully_stable {
-                            let span = item
-                                .attrs
+                            let span = attrs
                                 .iter()
                                 .find(|a| a.has_name(sym::unstable))
                                 .map_or(item.span, |a| a.span);

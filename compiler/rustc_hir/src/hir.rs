@@ -2539,7 +2539,6 @@ pub struct ItemId {
 pub struct Item<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
-    pub attrs: &'hir [Attribute],
     pub kind: ItemKind<'hir>,
     pub vis: Visibility<'hir>,
     pub span: Span,
