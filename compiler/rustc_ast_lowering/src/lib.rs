@@ -1579,7 +1579,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_item = hir::Item {
             def_id: opaque_ty_id,
             ident: Ident::invalid(),
-            attrs: Default::default(),
             kind: opaque_ty_item_kind,
             vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
             span: opaque_ty_span,

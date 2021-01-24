@@ -203,6 +203,7 @@ impl<'tcx> SaveContext<'tcx> {
 
     pub fn get_item_data(&self, item: &hir::Item<'_>) -> Option<Data> {
         let def_id = item.def_id.to_def_id();
+        let attrs = self.tcx.hir().attrs(item.hir_id());
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
@@ -225,9 +226,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Static(ref typ, ..) => {
@@ -248,9 +249,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Const(ref typ, _) => {
@@ -270,9 +271,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Mod(ref m) => {
@@ -297,9 +298,9 @@ impl<'tcx> SaveContext<'tcx> {
                         .map(|i| id_from_def_id(i.def_id.to_def_id()))
                         .collect(),
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Enum(ref def, ref generics) => {
@@ -318,9 +319,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: def.variants.iter().map(|v| id_from_hir_id(v.id, self)).collect(),
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Impl(hir::Impl { ref of_trait, ref self_ty, ref items, .. }) => {

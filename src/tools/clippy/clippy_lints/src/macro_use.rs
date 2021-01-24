@@ -107,8 +107,8 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         if_chain! {
             if cx.sess().opts.edition >= Edition::Edition2018;
             if let hir::ItemKind::Use(path, _kind) = &item.kind;
-            if let Some(mac_attr) = item
-                .attrs
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            if let Some(mac_attr) = attrs
                 .iter()
                 .find(|attr| attr.ident().map(|s| s.to_string()) == Some("macro_use".to_string()));
             if let Res::Def(DefKind::Mod, id) = path.res;

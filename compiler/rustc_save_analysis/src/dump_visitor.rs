@@ -496,6 +496,7 @@ impl<'tcx> DumpVisitor<'tcx> {
 
         if !self.span.filter_generated(item.ident.span) {
             let span = self.span_from_span(item.ident.span);
+            let attrs = self.tcx.hir().attrs(item.hir_id());
             self.dumper.dump_def(
                 &access_from!(self.save_ctxt, item, item.hir_id()),
                 Def {
@@ -508,9 +509,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                     parent: None,
                     children: fields,
                     decl_id: None,
-                    docs: self.save_ctxt.docs_for_attrs(&item.attrs),
+                    docs: self.save_ctxt.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, &self.save_ctxt),
-                    attributes: lower_attributes(item.attrs.to_vec(), &self.save_ctxt),
+                    attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                 },
             );
         }
@@ -671,6 +672,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             let span = self.span_from_span(item.ident.span);
             let children =
                 methods.iter().map(|i| id_from_def_id(i.id.def_id.to_def_id())).collect();
+            let attrs = self.tcx.hir().attrs(item.hir_id());
             self.dumper.dump_def(
                 &access_from!(self.save_ctxt, item, item.hir_id()),
                 Def {
@@ -683,9 +685,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                     parent: None,
                     children,
                     decl_id: None,
-                    docs: self.save_ctxt.docs_for_attrs(&item.attrs),
+                    docs: self.save_ctxt.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, &self.save_ctxt),
-                    attributes: lower_attributes(item.attrs.to_vec(), &self.save_ctxt),
+                    attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                 },
             );
         }
@@ -1260,6 +1262,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
                     let id = id_from_def_id(item.def_id.to_def_id());
+                    let attrs = self.tcx.hir().attrs(item.hir_id());
 
                     self.dumper.dump_def(
                         &access_from!(self.save_ctxt, item, item.hir_id()),
@@ -1273,9 +1276,9 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                             parent: None,
                             children: vec![],
                             decl_id: None,
-                            docs: self.save_ctxt.docs_for_attrs(&item.attrs),
+                            docs: self.save_ctxt.docs_for_attrs(attrs),
                             sig: sig::item_signature(item, &self.save_ctxt),
-                            attributes: lower_attributes(item.attrs.to_vec(), &self.save_ctxt),
+                            attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                         },
                     );
                 }

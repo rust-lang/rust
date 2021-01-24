@@ -285,10 +285,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     return;
                 }
 
+                let attrs = self.cx.tcx.hir().attrs(item.hir_id());
+
                 // If there was a private module in the current path then don't bother inlining
                 // anything as it will probably be stripped anyway.
                 if item.vis.node.is_pub() && self.inside_public_path {
-                    let please_inline = item.attrs.iter().any(|item| match item.meta_item_list() {
+                    let please_inline = attrs.iter().any(|item| match item.meta_item_list() {
                         Some(ref list) if item.has_name(sym::doc) => {
                             list.iter().any(|i| i.has_name(sym::inline))
                         }

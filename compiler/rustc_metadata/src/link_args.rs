@@ -36,7 +36,9 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
         // First, add all of the custom #[link_args] attributes
         let sess = &self.tcx.sess;
-        for m in it.attrs.iter().filter(|a| sess.check_name(a, sym::link_args)) {
+        for m in
+            self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| sess.check_name(a, sym::link_args))
+        {
             if let Some(linkarg) = m.value_str() {
                 self.add_link_args(linkarg);
             }

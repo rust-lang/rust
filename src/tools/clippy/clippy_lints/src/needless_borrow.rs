@@ -115,8 +115,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         }
     }
 
-    fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if is_automatically_derived(item.attrs) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        if is_automatically_derived(attrs) {
             debug_assert!(self.derived_item.is_none());
             self.derived_item = Some(item.def_id);
         }

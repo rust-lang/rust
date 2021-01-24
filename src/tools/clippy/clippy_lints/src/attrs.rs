@@ -276,14 +276,15 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
         if is_relevant_item(cx, item) {
-            check_attrs(cx, item.span, item.ident.name, &item.attrs)
+            check_attrs(cx, item.span, item.ident.name, attrs)
         }
         match item.kind {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
-                let skip_unused_imports = item.attrs.iter().any(|attr| attr.has_name(sym::macro_use));
+                let skip_unused_imports = attrs.iter().any(|attr| attr.has_name(sym::macro_use));
 
-                for attr in item.attrs {
+                for attr in attrs {
                     if in_external_macro(cx.sess(), attr.span) {
                         return;
                     }

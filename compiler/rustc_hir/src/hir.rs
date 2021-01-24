@@ -2697,7 +2697,6 @@ impl ItemId {
 pub struct Item<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
-    pub attrs: &'hir [Attribute],
     pub kind: ItemKind<'hir>,
     pub vis: Visibility<'hir>,
     pub span: Span,
@@ -3077,7 +3076,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
 
-    rustc_data_structures::static_assert_size!(super::Item<'static>, 200);
+    rustc_data_structures::static_assert_size!(super::Item<'static>, 184);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
     rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 152);
     rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 136);

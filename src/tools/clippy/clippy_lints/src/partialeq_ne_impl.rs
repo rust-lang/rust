@@ -35,7 +35,8 @@ impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if_chain! {
             if let ItemKind::Impl(Impl { of_trait: Some(ref trait_ref), items: impl_items, .. }) = item.kind;
-            if !is_automatically_derived(&*item.attrs);
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            if !is_automatically_derived(attrs);
             if let Some(eq_trait) = cx.tcx.lang_items().eq_trait();
             if trait_ref.path.res.def_id() == eq_trait;
             then {

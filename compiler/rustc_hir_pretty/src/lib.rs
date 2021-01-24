@@ -561,7 +561,8 @@ impl<'a> State<'a> {
     pub fn print_item(&mut self, item: &hir::Item<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
+        let attrs = self.attrs(item.hir_id());
+        self.print_outer_attributes(attrs);
         self.ann.pre(self, AnnNode::Item(item));
         match item.kind {
             hir::ItemKind::ExternCrate(orig_name) => {
@@ -646,14 +647,14 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident);
                 self.nbsp();
                 self.bopen();
-                self.print_mod(_mod, &item.attrs);
+                self.print_mod(_mod, attrs);
                 self.bclose(item.span);
             }
             hir::ItemKind::ForeignMod { abi, items } => {
                 self.head("extern");
                 self.word_nbsp(abi.to_string());
                 self.bopen();
-                self.print_inner_attributes(item.attrs);
+                self.print_inner_attributes(self.attrs(item.hir_id()));
                 for item in items {
                     self.ann.nested(self, Nested::ForeignItem(item.id));
                 }
@@ -737,7 +738,7 @@ impl<'a> State<'a> {
 
                 self.s.space();
                 self.bopen();
-                self.print_inner_attributes(&item.attrs);
+                self.print_inner_attributes(attrs);
                 for impl_item in items {
                     self.ann.nested(self, Nested::ImplItem(impl_item.id));
                 }
