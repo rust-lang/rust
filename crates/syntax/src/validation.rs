@@ -1,4 +1,6 @@
-//! FIXME: write short doc here
+//! This module implements syntax validation that the parser doesn't handle.
+//!
+//! A failed validation emits a diagnostic.
 
 mod block;
 
@@ -92,6 +94,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
         match_ast! {
             match node {
                 ast::Literal(it) => validate_literal(it, &mut errors),
+                ast::Const(it) => validate_const(it, &mut errors),
                 ast::BlockExpr(it) => block::validate_block_expr(it, &mut errors),
                 ast::FieldExpr(it) => validate_numeric_name(it.name_ref(), &mut errors),
                 ast::RecordExprField(it) => validate_numeric_name(it.name_ref(), &mut errors),
@@ -360,5 +363,16 @@ fn validate_macro_rules(mac: ast::MacroRules, errors: &mut Vec<SyntaxError>) {
             "visibilities are not allowed on `macro_rules!` items",
             vis.syntax().text_range(),
         ));
+    }
+}
+
+fn validate_const(const_: ast::Const, errors: &mut Vec<SyntaxError>) {
+    if let Some(mut_token) = const_
+        .const_token()
+        .and_then(|t| t.next_token())
+        .and_then(|t| algo::skip_trivia_token(t, Direction::Next))
+        .filter(|t| t.kind() == T![mut])
+    {
+        errors.push(SyntaxError::new("const globals cannot be mutable", mut_token.text_range()));
     }
 }

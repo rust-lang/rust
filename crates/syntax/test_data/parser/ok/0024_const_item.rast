@@ -1,4 +1,4 @@
-SOURCE_FILE@0..64
+SOURCE_FILE@0..39
   CONST@0..17
     CONST_KW@0..5 "const"
     WHITESPACE@5..6 " "
@@ -36,24 +36,3 @@ SOURCE_FILE@0..64
       INT_NUMBER@35..37 "92"
     SEMICOLON@37..38 ";"
   WHITESPACE@38..39 "\n"
-  CONST@39..63
-    CONST_KW@39..44 "const"
-    WHITESPACE@44..45 " "
-    MUT_KW@45..48 "mut"
-    WHITESPACE@48..49 " "
-    NAME@49..52
-      IDENT@49..52 "BAR"
-    COLON@52..53 ":"
-    WHITESPACE@53..54 " "
-    PATH_TYPE@54..57
-      PATH@54..57
-        PATH_SEGMENT@54..57
-          NAME_REF@54..57
-            IDENT@54..57 "u32"
-    WHITESPACE@57..58 " "
-    EQ@58..59 "="
-    WHITESPACE@59..60 " "
-    LITERAL@60..62
-      INT_NUMBER@60..62 "62"
-    SEMICOLON@62..63 ";"
-  WHITESPACE@63..64 "\n"
