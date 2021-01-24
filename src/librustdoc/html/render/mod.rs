@@ -2587,11 +2587,8 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         );
 
         if !t.generics.where_predicates.is_empty() {
-            write!(
-                w,
-                "{}",
-                WhereClause { gens: &t.generics, indent: 0, end_newline: true }.print(cx.cache())
-            );
+            let where_ = WhereClause { gens: &t.generics, indent: 0, end_newline: true };
+            write!(w, "{}", where_.print(cx.cache()));
         } else {
             write!(w, " ");
         }

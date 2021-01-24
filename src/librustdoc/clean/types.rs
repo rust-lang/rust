@@ -1307,18 +1307,15 @@ crate enum TypeKind {
 crate trait GetDefId {
     /// Use this method to get the [`DefId`] of a [`clean`] AST node.
     /// This will return [`None`] when called on a primitive [`clean::Type`].
-    /// Use [`Self::def_id_full`] if you are calling it on a primitive [`clean::Type`].
+    /// Use [`Self::def_id_full`] if you want to include primitives.
     ///
     /// [`clean`]: crate::clean
-    /// [`clean::Type`]: Type
+    // FIXME: get rid of this function and always use `def_id_full`
     fn def_id(&self) -> Option<DefId>;
 
-    /// Use this method to get the [`DefId`] of a [`clean`] AST node that may be
-    /// a primitive [`clean::Type`].
+    /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
     ///
     /// See [`Self::def_id`] for more.
-    ///
-    /// [`clean::Type`]: Type
     fn def_id_full(&self, cache: &Cache) -> Option<DefId>;
 }
 
@@ -1419,31 +1416,28 @@ impl Type {
 
 impl Type {
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
-        let t: &dyn GetDefId = match *self {
+        let t: PrimitiveType = match *self {
             ResolvedPath { did, .. } => return Some(did),
             Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
-            BorrowedRef { type_: box Generic(..), .. } => &Primitive(PrimitiveType::Reference),
+            BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
             BorrowedRef { ref type_, .. } => return type_.inner_def_id(cache),
             Tuple(ref tys) => {
                 if tys.is_empty() {
-                    &Primitive(PrimitiveType::Unit)
+                    PrimitiveType::Unit
                 } else {
-                    &Primitive(PrimitiveType::Tuple)
+                    PrimitiveType::Tuple
                 }
             }
-            BareFunction(..) => &Primitive(PrimitiveType::Fn),
-            Never => &Primitive(PrimitiveType::Never),
-            Slice(..) => &Primitive(PrimitiveType::Slice),
-            Array(..) => &Primitive(PrimitiveType::Array),
-            RawPointer(..) => &Primitive(PrimitiveType::RawPointer),
+            BareFunction(..) => PrimitiveType::Fn,
+            Never => PrimitiveType::Never,
+            Slice(..) => PrimitiveType::Slice,
+            Array(..) => PrimitiveType::Array,
+            RawPointer(..) => PrimitiveType::RawPointer,
             QPath { ref self_type, .. } => return self_type.inner_def_id(cache),
             // FIXME: remove this wildcard
             _ => return None,
         };
-        match cache {
-            Some(c) => t.def_id_full(c),
-            None => t.def_id(),
-        }
+        cache.and_then(|c| Primitive(t).def_id_full(c))
     }
 }
 

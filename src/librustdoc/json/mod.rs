@@ -41,8 +41,7 @@ impl JsonRenderer<'_> {
     }
 
     fn get_trait_implementors(&mut self, id: rustc_span::def_id::DefId) -> Vec<types::Id> {
-        self.cache
-            .clone()
+        Rc::clone(&self.cache)
             .implementors
             .get(&id)
             .map(|implementors| {
@@ -59,8 +58,7 @@ impl JsonRenderer<'_> {
     }
 
     fn get_impls(&mut self, id: rustc_span::def_id::DefId) -> Vec<types::Id> {
-        self.cache
-            .clone()
+        Rc::clone(&self.cache)
             .impls
             .get(&id)
             .map(|impls| {
@@ -81,8 +79,7 @@ impl JsonRenderer<'_> {
     }
 
     fn get_trait_items(&mut self) -> Vec<(types::Id, types::Item)> {
-        self.cache
-            .clone()
+        Rc::clone(&self.cache)
             .traits
             .iter()
             .filter_map(|(&id, trait_item)| {
