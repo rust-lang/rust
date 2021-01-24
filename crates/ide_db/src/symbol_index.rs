@@ -356,15 +356,16 @@ pub struct FileSymbol {
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum FileSymbolKind {
-    Function,
-    Struct,
-    Enum,
-    Trait,
-    Module,
-    TypeAlias,
     Const,
-    Static,
+    Enum,
+    Function,
     Macro,
+    Module,
+    Static,
+    Struct,
+    Trait,
+    TypeAlias,
+    Union,
 }
 
 impl FileSymbolKind {
@@ -375,6 +376,7 @@ impl FileSymbolKind {
                 | FileSymbolKind::Enum
                 | FileSymbolKind::Trait
                 | FileSymbolKind::TypeAlias
+                | FileSymbolKind::Union
         )
     }
 }
@@ -425,6 +427,7 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
             ast::Const(it) => decl(it),
             ast::Static(it) => decl(it),
             ast::MacroRules(it) => decl(it),
+            ast::Union(it) => decl(it),
             _ => None,
         }
     }
@@ -443,6 +446,7 @@ fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
             CONST => FileSymbolKind::Const,
             STATIC => FileSymbolKind::Static,
             MACRO_RULES => FileSymbolKind::Macro,
+            UNION => FileSymbolKind::Union,
             kind => unreachable!("{:?}", kind),
         },
         range: node.text_range(),
