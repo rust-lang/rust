@@ -1164,16 +1164,6 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
         }
     }
 
-    /// When trying several branches and each returns a `Usefulness`, we need to combine the
-    /// results together.
-    fn merge(pref: WitnessPreference, usefulnesses: impl Iterator<Item = Self>) -> Self {
-        let mut ret = Self::new_not_useful(pref);
-        for u in usefulnesses {
-            ret.extend(u);
-        }
-        ret
-    }
-
     /// After calculating the usefulness for a branch of an or-pattern, call this to make this
     /// usefulness mergeable with those from the other branches.
     fn unsplit_or_pat(self, alt_id: usize, alt_count: usize, pat: &'p Pat<'tcx>) -> Self {
@@ -1340,8 +1330,9 @@ fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &mut Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
+    usefulness: &mut Usefulness<'p, 'tcx>,
     is_top_level: bool,
-) -> Usefulness<'p, 'tcx> {
+) {
     debug!("matrix,v={:?}{:?}", matrix, v);
 
     // The base case. We are pattern-matching on () and the return value is
@@ -1352,7 +1343,7 @@ fn is_useful<'p, 'tcx>(
     if matrix.column_count() == 0 {
         let is_covered =
             matrix.selected_rows.iter().any(|row_id| !matrix.row_data[*row_id].is_under_guard);
-        let mut usefulness = if is_covered {
+        let mut u = if is_covered {
             Usefulness::new_not_useful(v.row_data.witness_preference)
         } else {
             Usefulness::new_useful(v.row_data.witness_preference)
@@ -1363,21 +1354,21 @@ fn is_useful<'p, 'tcx>(
             match hist {
                 UndoKind::Specialize { ty, span, ctor, ctor_wild_subpatterns, .. } => {
                     let pcx = PatCtxt { cx, ty, span, is_top_level };
-                    usefulness =
-                        usefulness.apply_constructor(pcx, &matrix, &ctor, &ctor_wild_subpatterns)
+                    u = u.apply_constructor(pcx, &matrix, &ctor, &ctor_wild_subpatterns)
                 }
                 UndoKind::OrPatBranch { i, alt_count, pat } => {
                     matrix.history.pop(); // Remove the `UndoKind::OrPat` without triggering `undo()`.
                     for _ in 0..i {
                         matrix.pop_last_row();
                     }
-                    usefulness = usefulness.unsplit_or_pat(i, alt_count, pat);
+                    u = u.unsplit_or_pat(i, alt_count, pat);
                 }
                 UndoKind::OrPat { .. } => unreachable!(),
             }
         }
-        debug!(?usefulness);
-        return usefulness;
+        debug!(?u);
+        usefulness.extend(u);
+        return;
     }
 
     let pat = v.head();
@@ -1386,26 +1377,23 @@ fn is_useful<'p, 'tcx>(
     let pcx = PatCtxt { cx, ty, span: pat.span, is_top_level };
 
     // If the first pattern is an or-pattern, expand it.
-    let ret = if pat.is_or_pat() {
+    if pat.is_or_pat() {
         debug!("expanding or-pattern");
         let vs: Vec<_> = v.expand_or_pat().collect();
         let alt_count = vs.len();
         matrix.history.push(UndoKind::OrPat { new_rows_count: alt_count });
         // We expand the or pattern, trying each of its branches in turn and keeping careful track
         // of possible unreachable sub-branches.
-        let usefulnesses = vs.into_iter().enumerate().map(|(i, v)| {
+        for (i, v) in vs.into_iter().enumerate() {
             matrix.history.push(UndoKind::OrPatBranch { i, alt_count, pat });
-            let usefulness = is_useful(cx, matrix, &v, false);
+            is_useful(cx, matrix, &v, usefulness, false);
             matrix.undo();
             // If pattern has a guard don't add it to the matrix.
             // We push the already-seen patterns into the matrix in order to detect redundant
             // branches like `Some(_) | Some(0)`.
             matrix.push(v);
-            usefulness
-        });
-        let usefulness = Usefulness::merge(v.row_data.witness_preference, usefulnesses);
+        }
         matrix.undo(); // Remove all the newly added rows
-        usefulness
     } else {
         let v_ctor = v.head_ctor(cx);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
@@ -1421,20 +1409,16 @@ fn is_useful<'p, 'tcx>(
         let split_ctors = v_ctor.split(pcx, matrix.head_ctors(cx));
         // For each constructor, we compute whether there's a value that starts with it that would
         // witness the usefulness of `v`.
-        let usefulnesses = split_ctors.into_iter().map(|ctor| {
+        for ctor in split_ctors.into_iter() {
             debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
             matrix.specialize(pcx, ctor, ctor_wild_subpatterns);
-            let usefulness = is_useful(cx, matrix, &v, false);
+            is_useful(cx, matrix, &v, usefulness, false);
             matrix.undo();
-            usefulness
-        });
-        Usefulness::merge(v.row_data.witness_preference, usefulnesses)
-    };
-    debug!(?ret);
-    ret
+        }
+    }
 }
 
 /// The arm of a match expression.
@@ -1485,7 +1469,8 @@ crate fn compute_match_usefulness<'p, 'tcx>(
                 hir_id: arm.hir_id,
             };
             let v = PatStack::from_pattern(arm.pat, row_data);
-            let usefulness = is_useful(cx, &mut matrix, &v, true);
+            let mut usefulness = Usefulness::new_not_useful(v.row_data.witness_preference);
+            is_useful(cx, &mut matrix, &v, &mut usefulness, true);
             matrix.push(v);
             let reachability = match usefulness {
                 NoWitnesses(subpats) if subpats.is_full() => Reachability::Unreachable,
@@ -1503,7 +1488,8 @@ crate fn compute_match_usefulness<'p, 'tcx>(
         hir_id: scrut_hir_id,
     };
     let v = PatStack::from_pattern(wild_pattern, row_data);
-    let usefulness = is_useful(cx, &mut matrix, &v, true);
+    let mut usefulness = Usefulness::new_not_useful(v.row_data.witness_preference);
+    is_useful(cx, &mut matrix, &v, &mut usefulness, true);
     let non_exhaustiveness_witnesses = match usefulness {
         WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
         NoWitnesses(_) => bug!(),
