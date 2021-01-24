@@ -13,6 +13,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{OptLevel, SanitizerSet};
 use rustc_session::Session;
+use rustc_target::spec::StackProbeType;
 
 use crate::attributes;
 use crate::llvm::AttributePlace::Function;
@@ -98,12 +99,6 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 }
 
 fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
-    // Only use stack probes if the target specification indicates that we
-    // should be using stack probes
-    if !cx.sess().target.stack_probes {
-        return;
-    }
-
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
@@ -127,19 +122,31 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         return;
     }
 
-    llvm::AddFunctionAttrStringValue(
-        llfn,
-        llvm::AttributePlace::Function,
-        const_cstr!("probe-stack"),
-        if llvm_util::get_version() < (11, 0, 1) {
-            // Flag our internal `__rust_probestack` function as the stack probe symbol.
-            // This is defined in the `compiler-builtins` crate for each architecture.
-            const_cstr!("__rust_probestack")
-        } else {
-            // On LLVM 11+, emit inline asm for stack probes instead of a function call.
-            const_cstr!("inline-asm")
-        },
-    );
+    let attr_value = match cx.sess().target.stack_probes {
+        StackProbeType::None => None,
+        // Request LLVM to generate the probes inline. If the given LLVM version does not support
+        // this, no probe is generated at all (even if the attribute is specified).
+        StackProbeType::Inline => Some(const_cstr!("inline-asm")),
+        // Flag our internal `__rust_probestack` function as the stack probe symbol.
+        // This is defined in the `compiler-builtins` crate for each architecture.
+        StackProbeType::Call => Some(const_cstr!("__rust_probestack")),
+        // Pick from the two above based on the LLVM version.
+        StackProbeType::InlineOrCall { min_llvm_version_for_inline } => {
+            if llvm_util::get_version() < min_llvm_version_for_inline {
+                Some(const_cstr!("__rust_probestack"))
+            } else {
+                Some(const_cstr!("inline-asm"))
+            }
+        }
+    };
+    if let Some(attr_value) = attr_value {
+        llvm::AddFunctionAttrStringValue(
+            llfn,
+            llvm::AttributePlace::Function,
+            const_cstr!("probe-stack"),
+            attr_value,
+        );
+    }
 }
 
 pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {

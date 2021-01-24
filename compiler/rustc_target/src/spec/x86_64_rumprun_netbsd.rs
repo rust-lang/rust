@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::netbsd_base::opts();
@@ -12,7 +12,7 @@ pub fn target() -> Target {
     base.has_rpath = false;
     base.position_independent_executables = false;
     base.disable_redzone = true;
-    base.stack_probes = true;
+    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
 
     Target {
         llvm_target: "x86_64-rumprun-netbsd".to_string(),

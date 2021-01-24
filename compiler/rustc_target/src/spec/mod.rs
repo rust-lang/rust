@@ -40,6 +40,7 @@ use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_serialize::json::{Json, ToJson};
 use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -477,6 +478,83 @@ macro_rules! supported_targets {
             )+
         }
     };
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StackProbeType {
+    /// Don't emit any stack probes.
+    None,
+    /// It is harmless to use this option even on targets that do not have backend support for
+    /// stack probes as the failure mode is the same as if no stack-probe option was specified in
+    /// the first place.
+    Inline,
+    /// Call `__rust_probestack` whenever stack needs to be probed.
+    Call,
+    /// Use inline option for LLVM versions later than specified in `min_llvm_version_for_inline`
+    /// and call `__rust_probestack` otherwise.
+    InlineOrCall { min_llvm_version_for_inline: (u32, u32, u32) },
+}
+
+impl StackProbeType {
+    fn from_json(json: &Json) -> Result<Self, String> {
+        let object = json.as_object().ok_or_else(|| "expected a JSON object")?;
+        let kind = object
+            .get("kind")
+            .and_then(|o| o.as_string())
+            .ok_or_else(|| "expected `kind` to be a string")?;
+        match kind {
+            "none" => Ok(StackProbeType::None),
+            "inline" => Ok(StackProbeType::Inline),
+            "call" => Ok(StackProbeType::Call),
+            "inline-or-call" => {
+                let min_version = object
+                    .get("min-llvm-version-for-inline")
+                    .and_then(|o| o.as_array())
+                    .ok_or_else(|| "expected `min-llvm-version-for-inline` to be an array")?;
+                let mut iter = min_version.into_iter().map(|v| {
+                    let int = v.as_u64().ok_or_else(
+                        || "expected `min-llvm-version-for-inline` values to be integers",
+                    )?;
+                    u32::try_from(int)
+                        .map_err(|_| "`min-llvm-version-for-inline` values don't convert to u32")
+                });
+                let min_llvm_version_for_inline = (
+                    iter.next().unwrap_or(Ok(11))?,
+                    iter.next().unwrap_or(Ok(0))?,
+                    iter.next().unwrap_or(Ok(0))?,
+                );
+                Ok(StackProbeType::InlineOrCall { min_llvm_version_for_inline })
+            }
+            _ => Err(String::from(
+                "`kind` expected to be one of `inline-or-none`, `call` or `inline-or-call`",
+            )),
+        }
+    }
+}
+
+impl ToJson for StackProbeType {
+    fn to_json(&self) -> Json {
+        Json::Object(match self {
+            StackProbeType::None => {
+                vec![(String::from("kind"), "none".to_json())].into_iter().collect()
+            }
+            StackProbeType::Inline => {
+                vec![(String::from("kind"), "inline".to_json())].into_iter().collect()
+            }
+            StackProbeType::Call => {
+                vec![(String::from("kind"), "call".to_json())].into_iter().collect()
+            }
+            StackProbeType::InlineOrCall { min_llvm_version_for_inline } => vec![
+                (String::from("kind"), "inline-or-call".to_json()),
+                (
+                    String::from("min-llvm-version-for-inline"),
+                    min_llvm_version_for_inline.to_json(),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        })
+    }
 }
 
 supported_targets! {
@@ -926,8 +1004,8 @@ pub struct TargetOptions {
     /// Whether or not crt-static is respected by the compiler (or is a no-op).
     pub crt_static_respected: bool,
 
-    /// Whether or not stack probes (__rust_probestack) are enabled
-    pub stack_probes: bool,
+    /// The implementation of stack probes to use.
+    pub stack_probes: StackProbeType,
 
     /// The minimum alignment for global symbols.
     pub min_global_align: Option<u64>,
@@ -1085,7 +1163,7 @@ impl Default for TargetOptions {
             crt_static_allows_dylibs: false,
             crt_static_default: false,
             crt_static_respected: false,
-            stack_probes: false,
+            stack_probes: StackProbeType::None,
             min_global_align: None,
             default_codegen_units: None,
             trap_unreachable: true,
@@ -1361,6 +1439,18 @@ impl Target {
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, StackProbeType) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| match StackProbeType::from_json(o) {
+                    Ok(v) => {
+                        base.$key_name = v;
+                        Some(Ok(()))
+                    },
+                    Err(s) => Some(Err(
+                        format!("`{:?}` is not a valid value for `{}`: {}", o, name, s)
+                    )),
+                }).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, crt_objects_fallback) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1516,7 +1606,7 @@ impl Target {
         key!(crt_static_allows_dylibs, bool);
         key!(crt_static_default, bool);
         key!(crt_static_respected, bool);
-        key!(stack_probes, bool);
+        key!(stack_probes, StackProbeType)?;
         key!(min_global_align, Option<u64>);
         key!(default_codegen_units, Option<u64>);
         key!(trap_unreachable, bool);

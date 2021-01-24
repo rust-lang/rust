@@ -1,5 +1,5 @@
 use super::apple_sdk_base::{opts, Arch};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let base = opts("tvos", Arch::X86_64);
@@ -8,6 +8,10 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-f80:128-n8:16:32:64-S128".to_string(),
         arch: "x86_64".to_string(),
-        options: TargetOptions { max_atomic_width: Some(64), stack_probes: true, ..base },
+        options: TargetOptions {
+            max_atomic_width: Some(64),
+            stack_probes: StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) },
+            ..base
+        },
     }
 }

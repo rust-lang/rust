@@ -1,11 +1,11 @@
-use crate::spec::{LinkerFlavor, Target};
+use crate::spec::{LinkerFlavor, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::haiku_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m32".to_string()]);
-    base.stack_probes = true;
+    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
 
     Target {
         llvm_target: "i686-unknown-haiku".to_string(),

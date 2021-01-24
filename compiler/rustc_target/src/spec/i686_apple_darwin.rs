@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::apple_base::opts("macos");
@@ -6,7 +6,7 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m32".to_string()]);
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
-    base.stack_probes = true;
+    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
     base.eliminate_frame_pointer = false;
 
     // Clang automatically chooses a more specific target based on
