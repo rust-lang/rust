@@ -1,8 +1,8 @@
-error[E0764]: mutable references are not allowed in statics
+error[E0764]: mutable references are not allowed in the final value of statics
   --> $DIR/check-static-immutable-mut-slices.rs:3:37
    |
 LL | static TEST: &'static mut [isize] = &mut [];
-   |                                     ^^^^^^^ `&mut` is only allowed in `const fn`
+   |                                     ^^^^^^^
 
 error: aborting due to previous error
 
