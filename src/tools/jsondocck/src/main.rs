@@ -149,15 +149,17 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
             }
         }
 
-        let args = cap.name("args")
-            .map_or(Some(vec![]), |m| shlex::split(m.as_str()));
+        let args = cap.name("args").map_or(Some(vec![]), |m| shlex::split(m.as_str()));
 
         let args = match args {
             Some(args) => args,
             None => {
                 print_err(
-                    &format!("Invalid arguments to shlex::split: `{}`", cap.name("args").unwrap().as_str()),
-                    lineno
+                    &format!(
+                        "Invalid arguments to shlex::split: `{}`",
+                        cap.name("args").unwrap().as_str()
+                    ),
+                    lineno,
                 );
                 errors = true;
                 continue;
