@@ -1170,6 +1170,9 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
+    // We use `fn` argument here for `drop` as the function will only be called if the `hasher`
+    // panics which should be exceptionally rare. In return we only instantiate a single
+    // `prepare_rehash_in_place` per allocator (instead of per type and allocator)
     #[allow(clippy::mut_mut)]
     #[inline]
     unsafe fn prepare_rehash_in_place<'s>(
