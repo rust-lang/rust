@@ -299,7 +299,7 @@ use rustc_span::Span;
 
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
-use std::iter::{FromIterator, IntoIterator};
+use std::iter::IntoIterator;
 use std::ops::Index;
 
 crate struct MatchCheckCtxt<'a, 'tcx> {
@@ -495,17 +495,18 @@ impl<T> Default for VecVec<T> {
 #[derive(Clone)]
 struct PatStack<'p, 'tcx> {
     pats: SmallVec<[&'p Pat<'tcx>; 2]>,
+    row_data: RowData,
     /// Cache for the constructor of the head
     head_ctor: OnceCell<Constructor<'tcx>>,
 }
 
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
-    fn from_pattern(pat: &'p Pat<'tcx>) -> Self {
-        Self::from_vec(smallvec![pat])
+    fn from_pattern(pat: &'p Pat<'tcx>, row_data: RowData) -> Self {
+        Self::from_vec(smallvec![pat], row_data)
     }
 
-    fn from_vec(vec: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
-        PatStack { pats: vec, head_ctor: OnceCell::new() }
+    fn from_vec(vec: SmallVec<[&'p Pat<'tcx>; 2]>, row_data: RowData) -> Self {
+        PatStack { pats: vec, row_data, head_ctor: OnceCell::new() }
     }
 
     fn is_empty(&self) -> bool {
@@ -532,7 +533,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     // or-pattern. Panics if `self` is empty.
     fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, 'tcx>> + Captures<'a> {
         self.head().expand_or_pat().into_iter().map(move |pat| {
-            let mut new_patstack = PatStack::from_pattern(pat);
+            let mut new_patstack = PatStack::from_pattern(pat, self.row_data.clone());
             new_patstack.pats.extend_from_slice(&self.pats[1..]);
             new_patstack
         })
@@ -550,28 +551,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         let mut new_fields =
             ctor_wild_subpatterns.replace_with_pattern_arguments(self.head()).into_patterns();
         new_fields.extend_from_slice(&self.pats[1..]);
-        PatStack::from_vec(new_fields)
-    }
-}
-
-impl<'p, 'tcx> Default for PatStack<'p, 'tcx> {
-    fn default() -> Self {
-        Self::from_vec(smallvec![])
-    }
-}
-
-impl<'p, 'tcx> PartialEq for PatStack<'p, 'tcx> {
-    fn eq(&self, other: &Self) -> bool {
-        self.pats == other.pats
-    }
-}
-
-impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = &'p Pat<'tcx>>,
-    {
-        Self::from_vec(iter.into_iter().collect())
+        PatStack::from_vec(new_fields, self.row_data.clone())
     }
 }
 
@@ -596,6 +576,13 @@ struct MatrixEntry<'p, 'tcx> {
     ctor: OnceCell<Constructor<'tcx>>,
 }
 
+#[derive(Clone, Debug)]
+struct RowData {
+    is_under_guard: bool,
+    witness_preference: WitnessPreference,
+    hir_id: HirId,
+}
+
 impl<'p, 'tcx> MatrixEntry<'p, 'tcx> {
     fn head_ctor<'a>(&'a self, cx: &MatchCheckCtxt<'p, 'tcx>) -> &'a Constructor<'tcx> {
         self.ctor.get_or_init(|| Constructor::from_pat(cx, self.pat))
@@ -617,6 +604,9 @@ struct Matrix<'p, 'tcx> {
     /// `selected_rows`, and the contents in subsequent columns can be found by following
     /// `next_row_id`s.
     selected_rows: Vec<usize>,
+    /// Stores data for each of the original rows. The rightmost column's `next_row_id` points into
+    /// this.
+    row_data: Vec<RowData>,
     /// Stores the history of operations done on this matrix, so that we can undo them in-place.
     history: Vec<UndoKind>,
     last_col_history: VecVec<MatrixEntry<'p, 'tcx>>,
@@ -660,17 +650,16 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     fn push(&mut self, mut row: PatStack<'p, 'tcx>) {
         assert_eq!(row.len(), self.column_count());
 
-        self.selected_rows.push(0);
+        self.selected_rows.push(self.row_data.len());
         let next_row_id = self.selected_rows.last_mut().unwrap();
         for i in 0..row.len() {
-            let entry = MatrixEntry {
+            self.columns[i].push(MatrixEntry {
                 // Patterns are stored in the reverse order in `PatStack`.
                 pat: row.pats[row.len() - 1 - i],
                 next_row_id: *next_row_id,
                 ctor: OnceCell::new(),
-            };
-            *next_row_id = self.columns[i].len();
-            self.columns[i].push(entry);
+            });
+            *next_row_id = self.columns[i].len() - 1;
         }
 
         if !row.is_empty() {
@@ -691,10 +680,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 }
             }
         }
+        self.row_data.push(row.row_data);
     }
 
     /// Removes the last row of the matrix, if any.
     fn pop_last_row(&mut self) -> bool {
+        self.row_data.pop();
         self.selected_rows.pop().is_some()
     }
 
@@ -1311,14 +1302,11 @@ impl<'tcx> Witness<'tcx> {
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
-#[instrument(skip(cx, matrix, witness_preference, hir_id, is_under_guard, is_top_level))]
+#[instrument(skip(cx, matrix, is_top_level))]
 fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &mut Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
-    witness_preference: WitnessPreference,
-    hir_id: HirId,
-    is_under_guard: bool,
     is_top_level: bool,
 ) -> Usefulness<'p, 'tcx> {
     debug!("matrix,v={:?}{:?}", matrix, v);
@@ -1330,9 +1318,9 @@ fn is_useful<'p, 'tcx>(
     // the type of the tuple we're checking is inhabited or not.
     if v.is_empty() {
         let ret = if matrix.is_empty() {
-            Usefulness::new_useful(witness_preference)
+            Usefulness::new_useful(v.row_data.witness_preference)
         } else {
-            Usefulness::new_not_useful(witness_preference)
+            Usefulness::new_not_useful(v.row_data.witness_preference)
         };
         debug!(?ret);
         return ret;
@@ -1352,17 +1340,16 @@ fn is_useful<'p, 'tcx>(
         // of possible unreachable sub-branches.
         let old_row_count = matrix.row_count();
         let usefulnesses = vs.into_iter().enumerate().map(|(i, v)| {
-            let usefulness =
-                is_useful(cx, matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            let usefulness = is_useful(cx, matrix, &v, false);
             // If pattern has a guard don't add it to the matrix.
-            if !is_under_guard {
+            if !v.row_data.is_under_guard {
                 // We push the already-seen patterns into the matrix in order to detect redundant
                 // branches like `Some(_) | Some(0)`.
                 matrix.push(v);
             }
             usefulness.unsplit_or_pat(i, alt_count, v_head)
         });
-        let usefulness = Usefulness::merge(witness_preference, usefulnesses);
+        let usefulness = Usefulness::merge(v.row_data.witness_preference, usefulnesses);
         for _ in old_row_count..matrix.row_count() {
             matrix.pop_last_row();
         }
@@ -1375,7 +1362,7 @@ fn is_useful<'p, 'tcx>(
                 pcx,
                 matrix.head_ctors_and_spans(cx),
                 matrix.column_count(),
-                hir_id,
+                v.row_data.hir_id,
             )
         }
         // We split the head constructor of `v`.
@@ -1388,12 +1375,11 @@ fn is_useful<'p, 'tcx>(
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
             matrix.specialize(pcx, &ctor, &ctor_wild_subpatterns);
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
-            let usefulness =
-                is_useful(cx, matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            let usefulness = is_useful(cx, matrix, &v, false);
             matrix.unspecialize();
             usefulness.apply_constructor(pcx, matrix, &ctor, &ctor_wild_subpatterns)
         });
-        Usefulness::merge(witness_preference, usefulnesses)
+        Usefulness::merge(v.row_data.witness_preference, usefulnesses)
     };
     debug!(?ret);
     ret
@@ -1441,9 +1427,13 @@ crate fn compute_match_usefulness<'p, 'tcx>(
         .iter()
         .copied()
         .map(|arm| {
-            let v = PatStack::from_pattern(arm.pat);
-            let usefulness =
-                is_useful(cx, &mut matrix, &v, LeaveOutWitness, arm.hir_id, arm.has_guard, true);
+            let row_data = RowData {
+                is_under_guard: arm.has_guard,
+                witness_preference: LeaveOutWitness,
+                hir_id: arm.hir_id,
+            };
+            let v = PatStack::from_pattern(arm.pat, row_data);
+            let usefulness = is_useful(cx, &mut matrix, &v, true);
             if !arm.has_guard {
                 matrix.push(v);
             }
@@ -1457,8 +1447,13 @@ crate fn compute_match_usefulness<'p, 'tcx>(
         .collect();
 
     let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(scrut_ty));
-    let v = PatStack::from_pattern(wild_pattern);
-    let usefulness = is_useful(cx, &mut matrix, &v, ConstructWitness, scrut_hir_id, false, true);
+    let row_data = RowData {
+        is_under_guard: false,
+        witness_preference: ConstructWitness,
+        hir_id: scrut_hir_id,
+    };
+    let v = PatStack::from_pattern(wild_pattern, row_data);
+    let usefulness = is_useful(cx, &mut matrix, &v, true);
     let non_exhaustiveness_witnesses = match usefulness {
         WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
         NoWitnesses(_) => bug!(),
