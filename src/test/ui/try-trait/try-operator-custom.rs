@@ -6,7 +6,7 @@
 #![feature(try_trait_v2)]
 
 use std::convert::Infallible;
-use std::ops::{BreakHolder, ControlFlow, Try2015, Try2021, Bubble};
+use std::ops::{ControlFlow, Try2015, Try2021, FromTryResidual};
 
 enum MyResult<T, U> {
     Awesome(T),
@@ -33,14 +33,14 @@ impl<U, V> Try2015 for MyResult<U, V> {
     }
 }
 
-impl<U, V> Bubble for MyResult<U, V> {
-    //type Continue = U;
+impl<U, V> Try2021 for MyResult<U, V> {
+    //type Output = U;
     type Ok = U;
-    type Holder = MyResult<Infallible, V>;
-    fn continue_with(x: U) -> Self {
+    type Residual = MyResult<Infallible, V>;
+    fn from_output(x: U) -> Self {
         MyResult::Awesome(x)
     }
-    fn branch(self) -> ControlFlow<Self::Holder, U> {
+    fn branch(self) -> ControlFlow<Self::Residual, U> {
         match self {
             MyResult::Awesome(u) => ControlFlow::Continue(u),
             MyResult::Terrible(e) => ControlFlow::Break(MyResult::Terrible(e)),
@@ -48,12 +48,8 @@ impl<U, V> Bubble for MyResult<U, V> {
     }
 }
 
-impl<U, V> BreakHolder<U> for MyResult<Infallible, V> {
-    type Output = MyResult<U, V>;
-}
-
-impl<U, V, W: From<V>> Try2021<MyResult<Infallible, V>> for MyResult<U, W> {
-    fn from_holder(x: MyResult<Infallible, V>) -> Self {
+impl<U, V, W: From<V>> FromTryResidual<MyResult<Infallible, V>> for MyResult<U, W> {
+    fn from_residual(x: MyResult<Infallible, V>) -> Self {
         match x {
             MyResult::Terrible(e) => MyResult::Terrible(From::from(e)),
             MyResult::Awesome(infallible) => match infallible {}
@@ -61,8 +57,8 @@ impl<U, V, W: From<V>> Try2021<MyResult<Infallible, V>> for MyResult<U, W> {
     }
 }
 
-impl<U, V, W: From<V>> Try2021<Result<!, V>> for MyResult<U, W> {
-    fn from_holder(x: Result<!, V>) -> Self {
+impl<U, V, W: From<V>> FromTryResidual<Result<!, V>> for MyResult<U, W> {
+    fn from_residual(x: Result<!, V>) -> Self {
         match x {
             Err(e) => MyResult::Terrible(From::from(e)),
             Ok(infallible) => match infallible {}
@@ -70,8 +66,8 @@ impl<U, V, W: From<V>> Try2021<Result<!, V>> for MyResult<U, W> {
     }
 }
 
-impl<U, V, W: From<V>> Try2021<MyResult<Infallible, V>> for Result<U, W> {
-    fn from_holder(x: MyResult<Infallible, V>) -> Self {
+impl<U, V, W: From<V>> FromTryResidual<MyResult<Infallible, V>> for Result<U, W> {
+    fn from_residual(x: MyResult<Infallible, V>) -> Self {
         match x {
             MyResult::Terrible(e) => Err(From::from(e)),
             MyResult::Awesome(infallible) => match infallible {}
@@ -110,6 +106,4 @@ fn main() {
     assert!(f(10) == Err("Hello".to_owned()));
     let _ = h();
     let _ = i();
-    let mapped = MyResult::<_, ()>::Awesome(4_i32).map(|x| x as i64);
-    assert!(matches!(mapped, MyResult::Awesome(4_i64)));
 }

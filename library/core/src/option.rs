@@ -1724,18 +1724,18 @@ impl<T> ops::Try2015 for Option<T> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T> ops::Bubble for Option<T> {
-    //type Continue = T;
+impl<T> ops::Try2021 for Option<T> {
+    //type Output = T;
     type Ok = T;
-    type Holder = Option<!>;
+    type Residual = Option<!>;
 
     #[inline]
-    fn continue_with(c: T) -> Self {
+    fn from_output(c: T) -> Self {
         Some(c)
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Holder, T> {
+    fn branch(self) -> ControlFlow<Self::Residual, T> {
         match self {
             Some(c) => ControlFlow::Continue(c),
             None => ControlFlow::Break(None),
@@ -1744,7 +1744,7 @@ impl<T> ops::Bubble for Option<T> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T> ops::BreakHolder<T> for Option<!> {
+impl<T> ops::GetCorrespondingTryType<T> for Option<!> {
     type Output = Option<T>;
 
     // fn expand(x: Self) -> Self::Output {
@@ -1755,8 +1755,8 @@ impl<T> ops::BreakHolder<T> for Option<!> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T> ops::Try2021<Option<!>> for Option<T> {
-    fn from_holder(x: Self::Holder) -> Self {
+impl<T> ops::FromTryResidual for Option<T> {
+    fn from_residual(x: <Self as ops::Try2021>::Residual) -> Self {
         match x {
             None => None,
         }

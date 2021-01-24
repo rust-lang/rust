@@ -164,9 +164,9 @@ where
             Some(None) => try { init },
             Some(Some(v)) => match self.iter.try_rfold(init, &mut f).branch() {
                 ControlFlow::Continue(acc) => f(acc, v),
-                ControlFlow::Break(h) => {
+                ControlFlow::Break(r) => {
                     self.peeked = Some(Some(v));
-                    R::from_holder(h)
+                    R::from_residual(r)
                 }
             },
             None => self.iter.try_rfold(init, f),

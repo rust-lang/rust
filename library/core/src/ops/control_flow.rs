@@ -84,16 +84,18 @@ impl<B, C> ops::Try2015 for ControlFlow<B, C> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<B, C> ops::Bubble for ControlFlow<B, C> {
-    //type Continue = C;
+impl<B, C> ops::Try2021 for ControlFlow<B, C> {
+    //type Output = C;
     type Ok = C;
-    type Holder = ControlFlow<B, !>;
+    type Residual = ControlFlow<B, !>;
+
     #[inline]
-    fn continue_with(c: C) -> Self {
+    fn from_output(c: C) -> Self {
         ControlFlow::Continue(c)
     }
+
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Holder, C> {
+    fn branch(self) -> ControlFlow<Self::Residual, C> {
         match self {
             ControlFlow::Continue(c) => ControlFlow::Continue(c),
             ControlFlow::Break(b) => ControlFlow::Break(ControlFlow::Break(b)),
@@ -102,7 +104,7 @@ impl<B, C> ops::Bubble for ControlFlow<B, C> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<C, B> ops::BreakHolder<C> for ControlFlow<B, !> {
+impl<C, B> ops::GetCorrespondingTryType<C> for ControlFlow<B, !> {
     type Output = ControlFlow<B, C>;
     // fn expand(x: Self) -> Self::Output {
     //     match x {
@@ -112,10 +114,10 @@ impl<C, B> ops::BreakHolder<C> for ControlFlow<B, !> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<B, C> ops::Try2021 for ControlFlow<B, C> {
-    fn from_holder(x: Self::Holder) -> Self {
+impl<B, C> ops::FromTryResidual for ControlFlow<B, C> {
+    fn from_residual(x: <Self as ops::Try2021>::Residual) -> Self {
         match x {
-            ControlFlow::Break(b) => ControlFlow::Break(b),
+            ControlFlow::Break(r) => ControlFlow::Break(r),
         }
     }
 }
@@ -222,7 +224,7 @@ impl<R: Try> ControlFlow<R, R::Ok> {
     pub fn from_try(r: R) -> Self {
         match r.branch() {
             ControlFlow::Continue(v) => ControlFlow::Continue(v),
-            ControlFlow::Break(h) => ControlFlow::Break(R::from_holder(h)),
+            ControlFlow::Break(r) => ControlFlow::Break(R::from_residual(r)),
         }
     }
 
@@ -231,7 +233,7 @@ impl<R: Try> ControlFlow<R, R::Ok> {
     #[inline]
     pub fn into_try(self) -> R {
         match self {
-            ControlFlow::Continue(v) => R::continue_with(v),
+            ControlFlow::Continue(v) => R::from_output(v),
             ControlFlow::Break(v) => v,
         }
     }

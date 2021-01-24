@@ -4,7 +4,7 @@ fn main() {}
 
 fn foo() -> Result<u32, ()> {
     let x: Option<u32> = None;
-    x?; //~ ERROR the trait bound `(): From<result::sadness::PleaseCallTheOkOrMethod
+    x?; //~ ERROR `?` couldn't convert the error to `()`
     Ok(22)
 }
 

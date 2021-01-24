@@ -1,4 +1,4 @@
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try2021`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromTryResidual`)
   --> $DIR/try-operator-on-main.rs:10:5
    |
 LL | / fn main() {
@@ -11,54 +11,36 @@ LL | |     try_trait_generic::<()>();
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `Try2021<std::result::Result<!, std::io::Error>>` is not implemented for `()`
-   = note: required by `from_holder`
+   = help: the trait `FromTryResidual<std::result::Result<!, std::io::Error>>` is not implemented for `()`
+   = note: required by `from_residual`
 
-error[E0277]: the `?` operator can only be applied to values that implement `Bubble`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/try-operator-on-main.rs:13:5
    |
 LL |     ()?;
    |     ^^^ the `?` operator cannot be applied to type `()`
    |
-   = help: the trait `Bubble` is not implemented for `()`
+   = help: the trait `Try` is not implemented for `()`
    = note: required by `branch`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try2021`)
-  --> $DIR/try-operator-on-main.rs:13:5
-   |
-LL | / fn main() {
-LL | |     // error for a `Try` type on a non-`Try` fn
-LL | |     std::fs::File::open("foo")?;
-LL | |
-LL | |     // a non-`Try` type on a non-`Try` fn
-LL | |     ()?;
-   | |     ^^^ cannot use the `?` operator in a function that returns `()`
-...  |
-LL | |     try_trait_generic::<()>();
-LL | | }
-   | |_- this function should return `Result` or `Option` to accept `?`
-   |
-   = help: the trait `Try2021<_>` is not implemented for `()`
-   = note: required by `from_holder`
-
-error[E0277]: the trait bound `(): Try2021<_>` is not satisfied
-  --> $DIR/try-operator-on-main.rs:17:25
+error[E0277]: the trait bound `(): Try` is not satisfied
+  --> $DIR/try-operator-on-main.rs:16:25
    |
 LL |     try_trait_generic::<()>();
-   |                         ^^ the trait `Try2021<_>` is not implemented for `()`
+   |                         ^^ the trait `Try` is not implemented for `()`
 ...
 LL | fn try_trait_generic<T: Try>() -> T {
    |                         --- required by this bound in `try_trait_generic`
 
-error[E0277]: the `?` operator can only be applied to values that implement `Bubble`
-  --> $DIR/try-operator-on-main.rs:24:5
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-operator-on-main.rs:23:5
    |
 LL |     ()?;
    |     ^^^ the `?` operator cannot be applied to type `()`
    |
-   = help: the trait `Bubble` is not implemented for `()`
+   = help: the trait `Try` is not implemented for `()`
    = note: required by `branch`
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

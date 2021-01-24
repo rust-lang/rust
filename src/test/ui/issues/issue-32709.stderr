@@ -1,11 +1,14 @@
-error[E0277]: the trait bound `(): From<{integer}>` is not satisfied
+error[E0277]: `?` couldn't convert the error to `()`
   --> $DIR/issue-32709.rs:4:5
    |
+LL | fn a() -> Result<i32, ()> {
+   |           --------------- expected `()` because of this
 LL |     Err(5)?;
    |     ^^^^^^^ the trait `From<{integer}>` is not implemented for `()`
    |
-   = note: required because of the requirements on the impl of `Try2021<std::result::Result<!, {integer}>>` for `std::result::Result<i32, ()>`
-   = note: required by `from_holder`
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = note: required because of the requirements on the impl of `FromTryResidual<std::result::Result<!, {integer}>>` for `std::result::Result<i32, ()>`
+   = note: required by `from_residual`
 
 error: aborting due to previous error
 

@@ -1,19 +1,19 @@
-error[E0277]: the `?` operator can only be applied to values that implement `Bubble`
+error[E0277]: the `?` operator can only be applied to values that implement `Try2021`
   --> $DIR/issue-61076.rs:42:5
    |
 LL |     foo()?;
    |     ^^^^^^ the `?` operator cannot be applied to type `impl Future`
    |
-   = help: the trait `Bubble` is not implemented for `impl Future`
+   = help: the trait `Try2021` is not implemented for `impl Future`
    = note: required by `branch`
 
-error[E0277]: the `?` operator can only be applied to values that implement `Bubble`
+error[E0277]: the `?` operator can only be applied to values that implement `Try2021`
   --> $DIR/issue-61076.rs:63:5
    |
 LL |     t?;
    |     ^^ the `?` operator cannot be applied to type `T`
    |
-   = help: the trait `Bubble` is not implemented for `T`
+   = help: the trait `Try2021` is not implemented for `T`
    = note: required by `branch`
 
 error[E0609]: no field `0` on type `impl Future`

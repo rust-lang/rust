@@ -1612,18 +1612,18 @@ impl<T, E> ops::Try2015 for Result<T, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E> ops::Bubble for Result<T, E> {
-    //type Continue = T;
+impl<T, E> ops::Try2021 for Result<T, E> {
+    //type Output = T;
     type Ok = T;
-    type Holder = Result<!, E>;
+    type Residual = Result<!, E>;
 
     #[inline]
-    fn continue_with(c: T) -> Self {
+    fn from_output(c: T) -> Self {
         Ok(c)
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Holder, T> {
+    fn branch(self) -> ControlFlow<Self::Residual, T> {
         match self {
             Ok(c) => ControlFlow::Continue(c),
             Err(e) => ControlFlow::Break(Err(e)),
@@ -1632,7 +1632,7 @@ impl<T, E> ops::Bubble for Result<T, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E> ops::BreakHolder<T> for Result<!, E> {
+impl<T, E> ops::GetCorrespondingTryType<T> for Result<!, E> {
     type Output = Result<T, E>;
 
     // fn expand(x: Self) -> Self::Output {
@@ -1643,8 +1643,8 @@ impl<T, E> ops::BreakHolder<T> for Result<!, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E, F: From<E>> ops::Try2021<Result<!, E>> for Result<T, F> {
-    fn from_holder(x: Result<!, E>) -> Self {
+impl<T, E, F: From<E>> ops::FromTryResidual<Result<!, E>> for Result<T, F> {
+    fn from_residual(x: Result<!, E>) -> Self {
         match x {
             Err(e) => Err(From::from(e)),
         }
@@ -1662,11 +1662,11 @@ mod sadness {
     pub struct PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult;
 
     #[unstable(feature = "try_trait_v2", issue = "42327")]
-    impl<T, E> ops::Try2021<Option<!>> for Result<T, E>
+    impl<T, E> ops::FromTryResidual<Option<!>> for Result<T, E>
     where
         E: From<PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult>,
     {
-        fn from_holder(x: Option<!>) -> Self {
+        fn from_residual(x: Option<!>) -> Self {
             match x {
                 None => Err(From::from(
                     PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult,

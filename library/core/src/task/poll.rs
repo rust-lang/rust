@@ -153,19 +153,18 @@ impl<T, E> ops::Try2015 for Poll<Result<T, E>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E> ops::Bubble for Poll<Result<T, E>> {
-    //type Continue = Poll<T>;
+impl<T, E> ops::Try2021 for Poll<Result<T, E>> {
+    //type Output = Poll<T>;
     type Ok = Poll<T>;
-    //type Holder = PollResultHolder<E>;
-    type Holder = <Result<T, E> as ops::Bubble>::Holder;
+    type Residual = <Result<T, E> as ops::Try2021>::Residual;
 
     #[inline]
-    fn continue_with(c: Self::Ok) -> Self {
+    fn from_output(c: Self::Ok) -> Self {
         c.map(Ok)
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Holder, Self::Ok> {
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Ok> {
         match self {
             Poll::Ready(Ok(x)) => ControlFlow::Continue(Poll::Ready(x)),
             Poll::Ready(Err(e)) => ControlFlow::Break(Err(e)),
@@ -174,30 +173,9 @@ impl<T, E> ops::Bubble for Poll<Result<T, E>> {
     }
 }
 
-/* This is needed if the Try::Holder bound gets tighter again
-
-#[unstable(feature = "try_trait_v2_never_stable", issue = "42327")]
-#[allow(missing_debug_implementations)]
-/// This type is *only* useful for `expand`ing,
-/// so it's intentional that it implements no traits.
-pub struct PollResultHolder<E>(E);
-
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E> BreakHolder<Poll<T>> for PollResultHolder<E> {
-    type Output = Poll<Result<T, E>>;
-
-    fn expand(x: Self) -> Self::Output {
-        match x {
-            PollResultHolder(e) => Poll::Ready(Err(e)),
-        }
-    }
-}
-
-*/
-
-#[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E, F: From<E>> ops::Try2021<Result<!, E>> for Poll<Result<T, F>> {
-    fn from_holder(x: Result<!, E>) -> Self {
+impl<T, E, F: From<E>> ops::FromTryResidual<Result<!, E>> for Poll<Result<T, F>> {
+    fn from_residual(x: Result<!, E>) -> Self {
         match x {
             Err(e) => Poll::Ready(Err(From::from(e))),
         }
@@ -231,19 +209,18 @@ impl<T, E> ops::Try2015 for Poll<Option<Result<T, E>>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E> ops::Bubble for Poll<Option<Result<T, E>>> {
-    //type Continue = Poll<Option<T>>;
+impl<T, E> ops::Try2021 for Poll<Option<Result<T, E>>> {
+    //type Output = Poll<Option<T>>;
     type Ok = Poll<Option<T>>;
-    //type Holder = PollOptionResultHolder<E>;
-    type Holder = <Result<T, E> as ops::Bubble>::Holder;
+    type Residual = <Result<T, E> as ops::Try2021>::Residual;
 
     #[inline]
-    fn continue_with(c: Self::Ok) -> Self {
+    fn from_output(c: Self::Ok) -> Self {
         c.map(|x| x.map(Ok))
     }
 
     #[inline]
-    fn branch(self) -> ControlFlow<Self::Holder, Self::Ok> {
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Ok> {
         match self {
             Poll::Ready(Some(Ok(x))) => ControlFlow::Continue(Poll::Ready(Some(x))),
             Poll::Ready(Some(Err(e))) => ControlFlow::Break(Err(e)),
@@ -262,7 +239,7 @@ impl<T, E> ops::Bubble for Poll<Option<Result<T, E>>> {
 pub struct PollOptionResultHolder<E>(E);
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E> BreakHolder<Poll<Option<T>>> for PollOptionResultHolder<E> {
+impl<T, E> GetCorrespondingTryType<Poll<Option<T>>> for PollOptionResultHolder<E> {
     type Output = Poll<Option<Result<T, E>>>;
 
     fn expand(x: Self) -> Self::Output {
@@ -275,8 +252,8 @@ impl<T, E> BreakHolder<Poll<Option<T>>> for PollOptionResultHolder<E> {
 */
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E, F: From<E>> ops::Try2021<Result<!, E>> for Poll<Option<Result<T, F>>> {
-    fn from_holder(x: Result<!, E>) -> Self {
+impl<T, E, F: From<E>> ops::FromTryResidual<Result<!, E>> for Poll<Option<Result<T, F>>> {
+    fn from_residual(x: Result<!, E>) -> Self {
         match x {
             Err(e) => Poll::Ready(Some(Err(From::from(e)))),
         }

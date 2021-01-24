@@ -4,6 +4,8 @@
 
 use crate::cmp::{self, Ordering};
 use crate::ops::{self, Add, ControlFlow, Try};
+#[cfg(not(bootstrap))]
+use crate::ops::FromTryResidual;
 
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
@@ -2439,15 +2441,15 @@ pub trait Iterator {
     fn try_find<F, R>(
         &mut self,
         f: F,
-    ) -> <R::Holder as ops::BreakHolder<Option<Self::Item>>>::Output
+    ) -> <R::Residual as ops::GetCorrespondingTryType<Option<Self::Item>>>::Output
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
         R: ops::Try<Ok = bool>,
-        R::Holder: ops::BreakHolder<Option<Self::Item>>,
+        R::Residual: ops::GetCorrespondingTryType<Option<Self::Item>>,
     {
         #[inline]
-        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Holder>>
+        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Residual>>
         where
             F: FnMut(&T) -> R,
             R: Try<Ok = bool>,
@@ -2455,14 +2457,14 @@ pub trait Iterator {
             move |(), x| match f(&x).branch() {
                 ControlFlow::Continue(false) => ControlFlow::CONTINUE,
                 ControlFlow::Continue(true) => ControlFlow::Break(Ok(x)),
-                ControlFlow::Break(h) => ControlFlow::Break(Err(h)),
+                ControlFlow::Break(r) => ControlFlow::Break(Err(r)),
             }
         }
 
         match self.try_fold((), check(f)) {
-            ControlFlow::Continue(()) => ops::Bubble::continue_with(None),
-            ControlFlow::Break(Ok(x)) => ops::Bubble::continue_with(Some(x)),
-            ControlFlow::Break(Err(h)) => Try::from_holder(h),
+            ControlFlow::Continue(()) => Try::from_output(None),
+            ControlFlow::Break(Ok(x)) => Try::from_output(Some(x)),
+            ControlFlow::Break(Err(r)) => <_>::from_residual(r),
         }
     }
 

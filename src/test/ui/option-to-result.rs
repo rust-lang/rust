@@ -2,7 +2,7 @@ fn main(){ }
 
 fn test_result() -> Result<(),()> {
     let a:Option<()> = Some(());
-    a?;//~ ERROR the trait bound `(): From<result::sadness::PleaseCallTheOkOrMethod
+    a?;//~ ERROR `?` couldn't convert the error to `()`
     Ok(())
 }
 
