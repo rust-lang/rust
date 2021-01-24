@@ -47,12 +47,15 @@ impl Tracked for () {
 
 fn main() {
     let tracked: &dyn Tracked = &();
-    tracked.track_caller_trait_method(line!(), 13); // The column is the start of 'track_caller_trait_method'
+    // The column is the start of 'track_caller_trait_method'
+    tracked.track_caller_trait_method(line!(), 13);
 
     const TRACKED: &dyn Tracked = &();
-    TRACKED.track_caller_trait_method(line!(), 13); // The column is the start of 'track_caller_trait_method'
+    // The column is the start of 'track_caller_trait_method'
+    TRACKED.track_caller_trait_method(line!(), 13);
     TRACKED.track_caller_not_on_trait_method();
 
+    // The column is the start of `track_caller_through_self`
     let boxed: Box<dyn Tracked> = Box::new(());
-    boxed.track_caller_through_self(line!(), 11); // The column is the start of `track_caller_through_self`
+    boxed.track_caller_through_self(line!(), 11);
 }
