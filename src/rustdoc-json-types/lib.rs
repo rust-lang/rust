@@ -194,6 +194,7 @@ pub enum ItemEnum {
     },
     ImportItem(Import),
 
+    UnionItem(Union),
     StructItem(Struct),
     StructFieldItem(Type),
     EnumItem(Enum),
@@ -239,6 +240,14 @@ pub struct Module {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct Union {
+    pub generics: Generics,
+    pub fields_stripped: bool,
+    pub fields: Vec<Id>,
+    pub impls: Vec<Id>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Struct {
     pub struct_type: StructType,
     pub generics: Generics,
@@ -270,7 +279,6 @@ pub enum StructType {
     Plain,
     Tuple,
     Unit,
-    Union,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

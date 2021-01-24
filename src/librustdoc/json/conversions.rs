@@ -154,7 +154,7 @@ impl From<clean::ItemKind> for ItemEnum {
             }
             ImportItem(i) => ItemEnum::ImportItem(i.into()),
             StructItem(s) => ItemEnum::StructItem(s.into()),
-            UnionItem(u) => ItemEnum::StructItem(u.into()),
+            UnionItem(u) => ItemEnum::UnionItem(u.into()),
             StructFieldItem(f) => ItemEnum::StructFieldItem(f.into()),
             EnumItem(e) => ItemEnum::EnumItem(e.into()),
             VariantItem(v) => ItemEnum::VariantItem(v.into()),
@@ -205,11 +205,10 @@ impl From<clean::Struct> for Struct {
     }
 }
 
-impl From<clean::Union> for Struct {
+impl From<clean::Union> for Union {
     fn from(struct_: clean::Union) -> Self {
         let clean::Union { generics, fields, fields_stripped } = struct_;
-        Struct {
-            struct_type: StructType::Union,
+        Union {
             generics: generics.into(),
             fields_stripped,
             fields: ids(fields),
