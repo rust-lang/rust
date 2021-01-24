@@ -1,4 +1,3 @@
-
 // @has has_body.json "$.index[*][?(@.name=='Foo')]"
 pub trait Foo {
     // @has - "$.index[*][?(@.name=='no_self')].inner.has_body" false
