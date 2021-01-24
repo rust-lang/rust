@@ -37,6 +37,12 @@ pub use self::chalk::{ChalkEnvironmentAndGoal, RustInterner as ChalkRustInterner
 /// more or less conservative.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 pub enum Reveal {
+    // Similar to `Reveal::UserFacing`, except that we also do not emit errors
+    // when failing const evaluation.
+    //
+    // Used by `feature(const_evaluatable_checked)` to allow for `ConstEvaluatable`
+    // predicates to not hold without emitting an error.
+    Selection,
     /// At type-checking time, we refuse to project any associated
     /// type that is marked `default`. Non-`default` ("final") types
     /// are always projected. This is necessary in general for

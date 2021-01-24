@@ -795,11 +795,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let violations = self.tcx.object_safety_violations(did);
                 report_object_safety_error(self.tcx, span, did, violations)
             }
-
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsInfer) => {
                 bug!(
                     "MentionsInfer should have been handled in `traits/fulfill.rs` or `traits/select/mod.rs`"
                 )
+            ConstEvalFailure(ErrorHandled::Silent) => {
+                tcx.sess.struct_span_err(span, "failed to evaluate the given constant")
             }
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsParam) => {
                 if !self.tcx.features().generic_const_exprs {

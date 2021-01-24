@@ -150,7 +150,11 @@ pub struct MainDefinition {
 
 impl MainDefinition {
     pub fn opt_fn_def_id(self) -> Option<DefId> {
-        if let Res::Def(DefKind::Fn, def_id) = self.res { Some(def_id) } else { None }
+        if let Res::Def(DefKind::Fn, def_id) = self.res {
+            Some(def_id)
+        } else {
+            None
+        }
     }
 }
 
@@ -1180,7 +1184,11 @@ impl WithOptConstParam<LocalDefId> {
     }
 
     pub fn def_id_for_type_of(self) -> DefId {
-        if let Some(did) = self.const_param_did { did } else { self.did.to_def_id() }
+        if let Some(did) = self.const_param_did {
+            did
+        } else {
+            self.did.to_def_id()
+        }
     }
 }
 
@@ -1343,6 +1351,11 @@ impl<'tcx> ParamEnv<'tcx> {
         ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, ParamTag { reveal, constness }) }
     }
 
+    pub fn with_reveal_selection(mut self) -> Self {
+        self.packed.set_tag(Reveal::Selection);
+        self
+    }
+
     pub fn with_user_facing(mut self) -> Self {
         self.packed.set_tag(ParamTag { reveal: Reveal::UserFacing, ..self.packed.tag() });
         self
@@ -1412,7 +1425,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// although the surrounding function is never reachable.
     pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         match self.reveal() {
-            Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
+            Reveal::Selection | Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
 
             Reveal::All => {
                 if value.is_known_global() {

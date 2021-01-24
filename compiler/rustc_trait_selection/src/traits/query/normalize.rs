@@ -210,8 +210,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal() {
-                    Reveal::UserFacing => ty.try_super_fold_with(self),
-
+                    Reveal::UserFacing | Reveal::Selection => ty.try_super_fold_with(self),
                     Reveal::All => {
                         let substs = substs.try_super_fold_with(self)?;
                         let recursion_limit = self.tcx().recursion_limit();
