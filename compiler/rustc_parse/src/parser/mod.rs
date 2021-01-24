@@ -980,12 +980,8 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    // The value here is never passed to macros as tokens by itself (not as a part
-                    // of the whole attribute), so we don't collect tokens here. If this changes,
-                    // then token will need to be collected. One catch here is that we are using
-                    // a nonterminal for keeping the expression, but this nonterminal should not
-                    // be wrapped into a group when converting to token stream.
-                    let expr = self.parse_expr()?;
+                    // Collect tokens because they are used during lowering to HIR.
+                    let expr = self.collect_tokens(|this| this.parse_expr())?;
                     let span = expr.span;
 
                     match &expr.kind {
