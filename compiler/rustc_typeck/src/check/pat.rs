@@ -1408,7 +1408,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .map(|f| match self.tcx.sess.source_map().span_to_snippet(f.pat.span) {
                             Ok(f) => f,
                             Err(_) => rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
-                                s.print_pat(f.pat)
+                                s.print_pat(f.pat, true)
                             }),
                         })
                         .collect::<Vec<String>>()

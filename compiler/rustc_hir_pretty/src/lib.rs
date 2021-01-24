@@ -59,7 +59,7 @@ impl PpAnn for hir::Crate<'_> {
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),
-            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
+            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat, true),
         }
     }
 }
@@ -74,7 +74,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),
-            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
+            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat, true),
         }
     }
 }
@@ -88,7 +88,7 @@ pub struct State<'a> {
 impl<'a> State<'a> {
     pub fn print_node(&mut self, node: Node<'_>) {
         match node {
-            Node::Param(a) => self.print_param(&a),
+            Node::Param(a) => self.print_param(&a, true),
             Node::Item(a) => self.print_item(&a),
             Node::ForeignItem(a) => self.print_foreign_item(&a),
             Node::TraitItem(a) => self.print_trait_item(a),
@@ -100,7 +100,7 @@ impl<'a> State<'a> {
             Node::PathSegment(a) => self.print_path_segment(&a),
             Node::Ty(a) => self.print_type(&a),
             Node::TraitRef(a) => self.print_trait_ref(&a),
-            Node::Binding(a) | Node::Pat(a) => self.print_pat(&a),
+            Node::Binding(a) | Node::Pat(a) => self.print_pat(&a, true),
             Node::Arm(a) => self.print_arm(&a),
             Node::Block(a) => {
                 // Containing cbox, will be closed by print-block at `}`.
@@ -208,8 +208,8 @@ pub fn bounds_to_string<'b>(bounds: impl IntoIterator<Item = &'b hir::GenericBou
     to_string(NO_ANN, |s| s.print_bounds("", bounds))
 }
 
-pub fn param_to_string(arg: &hir::Param<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_param(arg))
+pub fn param_to_string(arg: &hir::Param<'_>, print_mut: bool) -> String {
+    to_string(NO_ANN, |s| s.print_param(arg, print_mut))
 }
 
 pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
@@ -1677,7 +1677,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_local_decl(&mut self, loc: &hir::Local<'_>) {
-        self.print_pat(&loc.pat);
+        self.print_pat(&loc.pat, true);
         if let Some(ref ty) = loc.ty {
             self.word_space(":");
             self.print_type(&ty);
@@ -1858,7 +1858,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_pat(&mut self, pat: &hir::Pat<'_>) {
+    pub fn print_pat(&mut self, pat: &hir::Pat<'_>, print_mut: bool) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
         // Pat isn't normalized, but the beauty of it
@@ -1867,6 +1867,10 @@ impl<'a> State<'a> {
             PatKind::Wild => self.s.word("_"),
             PatKind::Binding(binding_mode, _, ident, ref sub) => {
                 match binding_mode {
+                    hir::BindingAnnotation::Ref | hir::BindingAnnotation::RefMut if !print_mut => {
+                        self.word_nbsp("ref");
+                    }
+                    hir::BindingAnnotation::Mutable if !print_mut => {}
                     hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref");
                         self.print_mutability(hir::Mutability::Not, false);
@@ -1883,24 +1887,26 @@ impl<'a> State<'a> {
                 self.print_ident(ident);
                 if let Some(ref p) = *sub {
                     self.s.word("@");
-                    self.print_pat(&p);
+                    self.print_pat(&p, print_mut);
                 }
             }
             PatKind::TupleStruct(ref qpath, ref elts, ddpos) => {
                 self.print_qpath(qpath, true);
                 self.popen();
                 if let Some(ddpos) = ddpos {
-                    self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(&p));
+                    self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(&p, print_mut));
                     if ddpos != 0 {
                         self.word_space(",");
                     }
                     self.s.word("..");
                     if ddpos != elts.len() {
                         self.s.word(",");
-                        self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(&p));
+                        self.commasep(Inconsistent, &elts[ddpos..], |s, p| {
+                            s.print_pat(&p, print_mut)
+                        });
                     }
                 } else {
-                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p));
+                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p, print_mut));
                 }
                 self.pclose();
             }
@@ -1920,7 +1926,7 @@ impl<'a> State<'a> {
                             s.print_ident(f.ident);
                             s.word_nbsp(":");
                         }
-                        s.print_pat(&f.pat);
+                        s.print_pat(&f.pat, print_mut);
                         s.end()
                     },
                     |f| f.pat.span,
@@ -1935,22 +1941,24 @@ impl<'a> State<'a> {
                 self.s.word("}");
             }
             PatKind::Or(ref pats) => {
-                self.strsep("|", true, Inconsistent, &pats[..], |s, p| s.print_pat(&p));
+                self.strsep("|", true, Inconsistent, &pats[..], |s, p| s.print_pat(&p, print_mut));
             }
             PatKind::Tuple(ref elts, ddpos) => {
                 self.popen();
                 if let Some(ddpos) = ddpos {
-                    self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(&p));
+                    self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(&p, print_mut));
                     if ddpos != 0 {
                         self.word_space(",");
                     }
                     self.s.word("..");
                     if ddpos != elts.len() {
                         self.s.word(",");
-                        self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(&p));
+                        self.commasep(Inconsistent, &elts[ddpos..], |s, p| {
+                            s.print_pat(&p, print_mut)
+                        });
                     }
                 } else {
-                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p));
+                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p, print_mut));
                     if elts.len() == 1 {
                         self.s.word(",");
                     }
@@ -1963,7 +1971,7 @@ impl<'a> State<'a> {
                 if is_range_inner {
                     self.popen();
                 }
-                self.print_pat(&inner);
+                self.print_pat(&inner, print_mut);
                 if is_range_inner {
                     self.pclose();
                 }
@@ -1975,7 +1983,7 @@ impl<'a> State<'a> {
                 if is_range_inner {
                     self.popen();
                 }
-                self.print_pat(&inner);
+                self.print_pat(&inner, print_mut);
                 if is_range_inner {
                     self.pclose();
                 }
@@ -1996,7 +2004,7 @@ impl<'a> State<'a> {
             }
             PatKind::Slice(ref before, ref slice, ref after) => {
                 self.s.word("[");
-                self.commasep(Inconsistent, &before[..], |s, p| s.print_pat(&p));
+                self.commasep(Inconsistent, &before[..], |s, p| s.print_pat(&p, print_mut));
                 if let Some(ref p) = *slice {
                     if !before.is_empty() {
                         self.word_space(",");
@@ -2004,23 +2012,23 @@ impl<'a> State<'a> {
                     if let PatKind::Wild = p.kind {
                         // Print nothing.
                     } else {
-                        self.print_pat(&p);
+                        self.print_pat(&p, print_mut);
                     }
                     self.s.word("..");
                     if !after.is_empty() {
                         self.word_space(",");
                     }
                 }
-                self.commasep(Inconsistent, &after[..], |s, p| s.print_pat(&p));
+                self.commasep(Inconsistent, &after[..], |s, p| s.print_pat(&p, print_mut));
                 self.s.word("]");
             }
         }
         self.ann.post(self, AnnNode::Pat(pat))
     }
 
-    pub fn print_param(&mut self, arg: &hir::Param<'_>) {
+    pub fn print_param(&mut self, arg: &hir::Param<'_>, print_mut: bool) {
         self.print_outer_attributes(&arg.attrs);
-        self.print_pat(&arg.pat);
+        self.print_pat(&arg.pat, print_mut);
     }
 
     pub fn print_arm(&mut self, arm: &hir::Arm<'_>) {
@@ -2033,7 +2041,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
         self.print_outer_attributes(&arm.attrs);
-        self.print_pat(&arm.pat);
+        self.print_pat(&arm.pat, true);
         self.s.space();
         if let Some(ref g) = arm.guard {
             match g {
@@ -2045,7 +2053,7 @@ impl<'a> State<'a> {
                 hir::Guard::IfLet(pat, e) => {
                     self.word_nbsp("if");
                     self.word_nbsp("let");
-                    self.print_pat(&pat);
+                    self.print_pat(&pat, true);
                     self.s.space();
                     self.word_space("=");
                     self.print_expr(&e);
