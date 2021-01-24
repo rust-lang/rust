@@ -658,8 +658,7 @@ where
     /// down no lower than the supplied limit while maintaining the internal rules
     /// and possibly leaving some space in accordance with the resize policy.
     ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
+    /// If the current capacity is less than the lower limit, this is a no-op.
     ///
     /// # Examples
     ///
@@ -679,7 +678,6 @@ where
     #[inline]
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        assert!(self.capacity() >= min_capacity, "Tried to shrink to a larger capacity");
         self.base.shrink_to(min_capacity);
     }
 

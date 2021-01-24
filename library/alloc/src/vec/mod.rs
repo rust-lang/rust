@@ -321,7 +321,7 @@ mod spec_extend;
 /// ensures no unnecessary allocations or deallocations occur. Emptying a `Vec`
 /// and then filling it back up to the same [`len`] should incur no calls to
 /// the allocator. If you wish to free up unused memory, use
-/// [`shrink_to_fit`].
+/// [`shrink_to_fit`] or [`shrink_to`].
 ///
 /// [`push`] and [`insert`] will never (re)allocate if the reported capacity is
 /// sufficient. [`push`] and [`insert`] *will* (re)allocate if
@@ -360,6 +360,7 @@ mod spec_extend;
 /// [`String`]: crate::string::String
 /// [`&str`]: type@str
 /// [`shrink_to_fit`]: Vec::shrink_to_fit
+/// [`shrink_to`]: Vec::shrink_to
 /// [`capacity`]: Vec::capacity
 /// [`mem::size_of::<T>`]: core::mem::size_of
 /// [`len`]: Vec::len
@@ -909,10 +910,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
     ///
-    /// # Panics
-    ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
+    /// If the current capacity is less than the lower limit, this is a no-op.
     ///
     /// # Examples
     ///
@@ -929,7 +927,9 @@ impl<T, A: Allocator> Vec<T, A> {
     #[doc(alias = "realloc")]
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
+        if self.capacity() > min_capacity {
+            self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
+        }
     }
 
     /// Converts the vector into [`Box<[T]>`][owned slice].
