@@ -358,3 +358,10 @@ fn result_opt_conversions() {
 
     assert_eq!(res, Err(BadNumErr))
 }
+
+#[test]
+fn test_result_swap() {
+    assert_eq!(Ok("err").swap(), Err("err"));
+    assert_eq!(Err("ok").swap(), Ok("ok"));
+    assert_eq!(Ok("ok").swap().swap(), Ok("ok"));
+}

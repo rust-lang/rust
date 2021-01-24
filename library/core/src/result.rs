@@ -592,6 +592,28 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Maps a `Result<T, E>` to a `Result<E, T>` by swapping the success/failure
+    /// semantics of the stored variant.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(result_swap)]
+    ///
+    /// assert_eq!(Ok("Error :(").swap(), Err("Error :("));
+    /// assert_eq!(Err("Success!").swap(), Ok("Success!"));
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_swap", issue = "none")]
+    pub fn swap(self) -> Result<E, T> {
+        match self {
+            Ok(t) => Err(t),
+            Err(e) => Ok(e),
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Iterator constructors
     /////////////////////////////////////////////////////////////////////////
