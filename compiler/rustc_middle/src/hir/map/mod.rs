@@ -1,7 +1,6 @@
 use self::collector::NodeCollector;
 
 use crate::hir::{Owner, OwnerNodes};
-use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::svh::Svh;
@@ -183,14 +182,18 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions.opt_local_def_id_to_hir_id(def_id)
     }
 
-    pub fn def_kind(&self, local_def_id: LocalDefId) -> DefKind {
+    pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.tcx.definitions.iter_local_def_id()
+    }
+
+    pub fn opt_def_kind(&self, local_def_id: LocalDefId) -> Option<DefKind> {
         // FIXME(eddyb) support `find` on the crate root.
         if local_def_id.to_def_id().index == CRATE_DEF_INDEX {
-            return DefKind::Mod;
+            return Some(DefKind::Mod);
         }
 
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
-        match self.get(hir_id) {
+        let def_kind = match self.find(hir_id)? {
             Node::Item(item) => match item.kind {
                 ItemKind::Static(..) => DefKind::Static,
                 ItemKind::Const(..) => DefKind::Const,
@@ -249,6 +252,7 @@ impl<'hir> Map<'hir> {
                 GenericParamKind::Type { .. } => DefKind::TyParam,
                 GenericParamKind::Const { .. } => DefKind::ConstParam,
             },
+            Node::Crate(_) => DefKind::Mod,
             Node::Stmt(_)
             | Node::PathSegment(_)
             | Node::Ty(_)
@@ -260,9 +264,14 @@ impl<'hir> Map<'hir> {
             | Node::Arm(_)
             | Node::Lifetime(_)
             | Node::Visibility(_)
-            | Node::Block(_)
-            | Node::Crate(_) => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
-        }
+            | Node::Block(_) => return None,
+        };
+        Some(def_kind)
+    }
+
+    pub fn def_kind(&self, local_def_id: LocalDefId) -> DefKind {
+        self.opt_def_kind(local_def_id)
+            .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", local_def_id))
     }
 
     fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {
@@ -514,9 +523,7 @@ impl<'hir> Map<'hir> {
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn find(&self, hir_id: HirId) -> Option<Node<'hir>> {
-        self.find_entry(hir_id).and_then(|entry| {
-            if let Node::Crate(..) = entry.node { None } else { Some(entry.node) }
-        })
+        self.find_entry(hir_id).map(|entry| entry.node)
     }
 
     /// Similar to `get_parent`; returns the parent HIR Id, or just `hir_id` if there
@@ -848,50 +855,55 @@ impl<'hir> Map<'hir> {
     /// Gets the span of the definition of the specified HIR node.
     /// This is used by `tcx.get_span`
     pub fn span(&self, hir_id: HirId) -> Span {
-        match self.find_entry(hir_id).map(|entry| entry.node) {
-            Some(Node::Param(param)) => param.span,
-            Some(Node::Item(item)) => match &item.kind {
+        self.opt_span(hir_id)
+            .unwrap_or_else(|| bug!("hir::map::Map::span: id not in map: {:?}", hir_id))
+    }
+
+    pub fn opt_span(&self, hir_id: HirId) -> Option<Span> {
+        let span = match self.find_entry(hir_id)?.node {
+            Node::Param(param) => param.span,
+            Node::Item(item) => match &item.kind {
                 ItemKind::Fn(sig, _, _) => sig.span,
                 _ => item.span,
             },
-            Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
-            Some(Node::TraitItem(trait_item)) => match &trait_item.kind {
+            Node::ForeignItem(foreign_item) => foreign_item.span,
+            Node::TraitItem(trait_item) => match &trait_item.kind {
                 TraitItemKind::Fn(sig, _) => sig.span,
                 _ => trait_item.span,
             },
-            Some(Node::ImplItem(impl_item)) => match &impl_item.kind {
+            Node::ImplItem(impl_item) => match &impl_item.kind {
                 ImplItemKind::Fn(sig, _) => sig.span,
                 _ => impl_item.span,
             },
-            Some(Node::Variant(variant)) => variant.span,
-            Some(Node::Field(field)) => field.span,
-            Some(Node::AnonConst(constant)) => self.body(constant.body).value.span,
-            Some(Node::Expr(expr)) => expr.span,
-            Some(Node::Stmt(stmt)) => stmt.span,
-            Some(Node::PathSegment(seg)) => seg.ident.span,
-            Some(Node::Ty(ty)) => ty.span,
-            Some(Node::TraitRef(tr)) => tr.path.span,
-            Some(Node::Binding(pat)) => pat.span,
-            Some(Node::Pat(pat)) => pat.span,
-            Some(Node::Arm(arm)) => arm.span,
-            Some(Node::Block(block)) => block.span,
-            Some(Node::Ctor(..)) => match self.find(self.get_parent_node(hir_id)) {
-                Some(Node::Item(item)) => item.span,
-                Some(Node::Variant(variant)) => variant.span,
+            Node::Variant(variant) => variant.span,
+            Node::Field(field) => field.span,
+            Node::AnonConst(constant) => self.body(constant.body).value.span,
+            Node::Expr(expr) => expr.span,
+            Node::Stmt(stmt) => stmt.span,
+            Node::PathSegment(seg) => seg.ident.span,
+            Node::Ty(ty) => ty.span,
+            Node::TraitRef(tr) => tr.path.span,
+            Node::Binding(pat) => pat.span,
+            Node::Pat(pat) => pat.span,
+            Node::Arm(arm) => arm.span,
+            Node::Block(block) => block.span,
+            Node::Ctor(..) => match self.find(self.get_parent_node(hir_id))? {
+                Node::Item(item) => item.span,
+                Node::Variant(variant) => variant.span,
                 _ => unreachable!(),
             },
-            Some(Node::Lifetime(lifetime)) => lifetime.span,
-            Some(Node::GenericParam(param)) => param.span,
-            Some(Node::Visibility(&Spanned {
+            Node::Lifetime(lifetime) => lifetime.span,
+            Node::GenericParam(param) => param.span,
+            Node::Visibility(&Spanned {
                 node: VisibilityKind::Restricted { ref path, .. },
                 ..
-            })) => path.span,
-            Some(Node::Visibility(v)) => bug!("unexpected Visibility {:?}", v),
-            Some(Node::Local(local)) => local.span,
-            Some(Node::MacroDef(macro_def)) => macro_def.span,
-            Some(Node::Crate(item)) => item.span,
-            None => bug!("hir::map::Map::span: id not in map: {:?}", hir_id),
-        }
+            }) => path.span,
+            Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
+            Node::Local(local) => local.span,
+            Node::MacroDef(macro_def) => macro_def.span,
+            Node::Crate(item) => item.span,
+        };
+        Some(span)
     }
 
     /// Like `hir.span()`, but includes the body of function items
@@ -907,7 +919,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
-        id.as_local().map(|id| self.span(self.local_def_id_to_hir_id(id)))
+        id.as_local().and_then(|id| self.opt_span(self.local_def_id_to_hir_id(id)))
     }
 
     pub fn res_span(&self, res: Res) -> Option<Span> {
@@ -1100,8 +1112,4 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
         Some(Node::Crate(..)) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
     }
-}
-
-pub fn provide(providers: &mut Providers) {
-    providers.def_kind = |tcx, def_id| tcx.hir().def_kind(def_id.expect_local());
 }

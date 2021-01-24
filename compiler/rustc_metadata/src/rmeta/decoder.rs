@@ -618,43 +618,6 @@ impl MetadataBlob {
     }
 }
 
-impl EntryKind {
-    fn def_kind(&self) -> DefKind {
-        match *self {
-            EntryKind::AnonConst(..) => DefKind::AnonConst,
-            EntryKind::Const(..) => DefKind::Const,
-            EntryKind::AssocConst(..) => DefKind::AssocConst,
-            EntryKind::ImmStatic
-            | EntryKind::MutStatic
-            | EntryKind::ForeignImmStatic
-            | EntryKind::ForeignMutStatic => DefKind::Static,
-            EntryKind::Struct(_, _) => DefKind::Struct,
-            EntryKind::Union(_, _) => DefKind::Union,
-            EntryKind::Fn(_) | EntryKind::ForeignFn(_) => DefKind::Fn,
-            EntryKind::AssocFn(_) => DefKind::AssocFn,
-            EntryKind::Type => DefKind::TyAlias,
-            EntryKind::TypeParam => DefKind::TyParam,
-            EntryKind::ConstParam => DefKind::ConstParam,
-            EntryKind::OpaqueTy => DefKind::OpaqueTy,
-            EntryKind::AssocType(_) => DefKind::AssocTy,
-            EntryKind::Mod(_) => DefKind::Mod,
-            EntryKind::Variant(_) => DefKind::Variant,
-            EntryKind::Trait(_) => DefKind::Trait,
-            EntryKind::TraitAlias => DefKind::TraitAlias,
-            EntryKind::Enum(..) => DefKind::Enum,
-            EntryKind::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
-            EntryKind::ProcMacro(kind) => DefKind::Macro(kind),
-            EntryKind::ForeignType => DefKind::ForeignTy,
-            EntryKind::Impl(_) => DefKind::Impl,
-            EntryKind::Closure => DefKind::Closure,
-            EntryKind::ForeignMod => DefKind::ForeignMod,
-            EntryKind::GlobalAsm => DefKind::GlobalAsm,
-            EntryKind::Field => DefKind::Field,
-            EntryKind::Generator(_) => DefKind::Generator,
-        }
-    }
-}
-
 impl CrateRoot<'_> {
     crate fn is_proc_macro_crate(&self) -> bool {
         self.proc_macro_data.is_some()
@@ -685,21 +648,6 @@ impl CrateRoot<'_> {
 }
 
 impl<'a, 'tcx> CrateMetadataRef<'a> {
-    fn maybe_kind(&self, item_id: DefIndex) -> Option<EntryKind> {
-        self.root.tables.kind.get(self, item_id).map(|k| k.decode(self))
-    }
-
-    fn kind(&self, item_id: DefIndex) -> EntryKind {
-        self.maybe_kind(item_id).unwrap_or_else(|| {
-            bug!(
-                "CrateMetadata::kind({:?}): id not found, in crate {:?} with number {}",
-                item_id,
-                self.root.name,
-                self.cnum,
-            )
-        })
-    }
-
     fn raw_proc_macro(&self, id: DefIndex) -> &ProcMacro {
         // DefIndex's in root.proc_macro_data have a one-to-one correspondence
         // with items in 'raw_proc_macros'.
@@ -736,8 +684,30 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.try_item_ident(item_index, sess).unwrap()
     }
 
-    fn def_kind(&self, index: DefIndex) -> DefKind {
-        self.kind(index).def_kind()
+    fn maybe_kind(&self, item_id: DefIndex) -> Option<EntryKind> {
+        self.root.tables.kind.get(self, item_id).map(|k| k.decode(self))
+    }
+
+    fn kind(&self, item_id: DefIndex) -> EntryKind {
+        self.maybe_kind(item_id).unwrap_or_else(|| {
+            bug!(
+                "CrateMetadata::kind({:?}): id not found, in crate {:?} with number {}",
+                item_id,
+                self.root.name,
+                self.cnum,
+            )
+        })
+    }
+
+    fn def_kind(&self, item_id: DefIndex) -> DefKind {
+        self.root.tables.def_kind.get(self, item_id).map(|k| k.decode(self)).unwrap_or_else(|| {
+            bug!(
+                "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
+                item_id,
+                self.root.name,
+                self.cnum,
+            )
+        })
     }
 
     fn get_span(&self, index: DefIndex, sess: &Session) -> Span {

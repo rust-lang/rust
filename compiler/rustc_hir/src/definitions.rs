@@ -419,6 +419,10 @@ impl Definitions {
     pub fn add_parent_module_of_macro_def(&mut self, expn_id: ExpnId, module: DefId) {
         self.parent_modules_of_macro_defs.insert(expn_id, module);
     }
+
+    pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.def_id_to_hir_id.iter_enumerated().map(|(k, _)| k)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
