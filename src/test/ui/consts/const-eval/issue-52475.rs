@@ -1,5 +1,5 @@
 fn main() {
-    let _ = [(); {
+    let _ = [(); { //~ ERROR failed to evaluate the given constant
         let mut x = &0;
         let mut n = 0;
         while n < 5 {

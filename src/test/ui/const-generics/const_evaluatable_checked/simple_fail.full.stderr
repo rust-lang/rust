@@ -1,9 +1,17 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/simple_fail.rs:6:33
+error: failed to evaluate the given constant
+  --> $DIR/simple_fail.rs:14:5
    |
-LL | type Arr<const N: usize> = [u8; N - 1];
-   |                                 ^^^^^ attempt to compute `0_usize - 1_usize`, which would overflow
+LL | fn test<const N: usize>() -> Arr<N> where Arr<N>: Sized {
+   |                                           ------ required by this bound in `test`
+...
+LL |     test::<0>();
+   |     ^^^^^^^^^
 
-error: aborting due to previous error
+error: failed to evaluate the given constant
+  --> $DIR/simple_fail.rs:14:5
+   |
+LL |     test::<0>();
+   |     ^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0080`.
+error: aborting due to 2 previous errors
+

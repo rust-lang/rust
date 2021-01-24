@@ -28,6 +28,8 @@ where
 }
 
 fn main() {
-    let dst = Inline::<dyn Debug>::new(0); //~ ERROR
-    //~^ ERROR
+    let dst = Inline::<dyn Debug>::new(0);
+    //~^ ERROR failed to evaluate the given constant
+    //~| ERROR the size for values of type
+    //~| ERROR no function or associated item
 }
