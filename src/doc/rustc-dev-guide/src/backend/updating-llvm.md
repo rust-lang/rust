@@ -98,9 +98,9 @@ through each in detail.
    * `./x.py build src/tools/lld` - same for LLD
    * `./x.py build` - build the rest of rustc
 
-   You'll likely need to update `src/rustllvm/*.cpp` to compile with updated
-   LLVM bindings. Note that you should use `#ifdef` and such to ensure that the
-   bindings still compile on older LLVM versions.
+   You'll likely need to update [`llvm-wrapper/*.cpp`][`llvm-wrapper`] to compile
+   with updated LLVM bindings. Note that you should use `#ifdef` and such to ensure
+   that the bindings still compile on older LLVM versions.
 
    Note that `profile = "compiler"` and other defaults set by `x.py setup`
    download LLVM from CI instead of building it from source. You should
@@ -133,17 +133,19 @@ through each in detail.
 5. Prepare a PR to `rust-lang/rust`. Work with maintainers of
    `rust-lang/llvm-project` to get your commit in a branch of that repository,
    and then you can send a PR to `rust-lang/rust`. You'll change at least
-   `src/llvm-project` and will likely also change `src/rustllvm/*` as well.
+   `src/llvm-project` and will likely also change [`llvm-wrapper`] as well.
 
 For prior art, previous LLVM updates look like
 [#55835](https://github.com/rust-lang/rust/pull/55835)
 [#47828](https://github.com/rust-lang/rust/pull/47828)
 [#62474](https://github.com/rust-lang/rust/pull/62474)
 [#62592](https://github.com/rust-lang/rust/pull/62592). Note that sometimes it's
-easiest to land `src/rustllvm/*` compatibility as a PR before actually updating
+easiest to land [`llvm-wrapper`] compatibility as a PR before actually updating
 `src/llvm-project`. This way while you're working through LLVM issues others
 interested in trying out the new LLVM can benefit from work you've done to
 update the C++ bindings.
+
+[`llvm-wrapper`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_llvm/llvm-wrapper
 
 ### Caveats and gotchas
 
