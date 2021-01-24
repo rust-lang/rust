@@ -13,7 +13,7 @@ pub(super) fn konst(p: &mut Parser, m: Marker) {
 fn const_or_static(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
     assert!(p.at(kw));
     p.bump(kw);
-    p.eat(T![mut]); // FIXME: validator to forbid const mut
+    p.eat(T![mut]);
 
     // Allow `_` in place of an identifier in a `const`.
     let is_const_underscore = kw == T![const] && p.eat(T![_]);
