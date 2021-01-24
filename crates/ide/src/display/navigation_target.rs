@@ -173,6 +173,7 @@ impl ToNav for FileSymbol {
                 FileSymbolKind::Const => SymbolKind::Const,
                 FileSymbolKind::Static => SymbolKind::Static,
                 FileSymbolKind::Macro => SymbolKind::Macro,
+                FileSymbolKind::Union => SymbolKind::Union,
             }),
             full_range: self.range,
             focus_range: self.name_range,

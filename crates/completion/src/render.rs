@@ -201,8 +201,7 @@ impl<'a> Render<'a> {
             ScopeDef::ModuleDef(Module(..)) => CompletionItemKind::SymbolKind(SymbolKind::Module),
             ScopeDef::ModuleDef(Adt(adt)) => CompletionItemKind::SymbolKind(match adt {
                 hir::Adt::Struct(_) => SymbolKind::Struct,
-                // FIXME: add CompletionItemKind::Union
-                hir::Adt::Union(_) => SymbolKind::Struct,
+                hir::Adt::Union(_) => SymbolKind::Union,
                 hir::Adt::Enum(_) => SymbolKind::Enum,
             }),
             ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::SymbolKind(SymbolKind::Const),
