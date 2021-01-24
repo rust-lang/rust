@@ -13,6 +13,8 @@ pub(crate) fn emit_unescape_error(
     lit: &str,
     // full span of the literal, including quotes
     span_with_quotes: Span,
+    // interior span of the literal, without quotes
+    span: Span,
     mode: Mode,
     // range of the error inside `lit`
     range: Range<usize>,
@@ -26,13 +28,6 @@ pub(crate) fn emit_unescape_error(
         range,
         error
     );
-    let span = {
-        let Range { start, end } = range;
-        let (start, end) = (start as u32, end as u32);
-        let lo = span_with_quotes.lo() + BytePos(start + 1);
-        let hi = lo + BytePos(end - start);
-        span_with_quotes.with_lo(lo).with_hi(hi)
-    };
     let last_char = || {
         let c = lit[range.clone()].chars().rev().next().unwrap();
         let span = span.with_lo(span.hi() - BytePos(c.len_utf8() as u32));
