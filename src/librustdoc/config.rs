@@ -103,6 +103,8 @@ crate struct Options {
     crate should_test: bool,
     /// List of arguments to pass to the test harness, if running tests.
     crate test_args: Vec<String>,
+    /// The working directory in which to run tests.
+    crate test_run_directory: Option<PathBuf>,
     /// Optional path to persist the doctest executables to, defaults to a
     /// temporary directory if not set.
     crate persist_doctests: Option<PathBuf>,
@@ -175,6 +177,7 @@ impl fmt::Debug for Options {
             .field("lint_cap", &self.lint_cap)
             .field("should_test", &self.should_test)
             .field("test_args", &self.test_args)
+            .field("test_run_directory", &self.test_run_directory)
             .field("persist_doctests", &self.persist_doctests)
             .field("default_passes", &self.default_passes)
             .field("manual_passes", &self.manual_passes)
@@ -572,6 +575,7 @@ impl Options {
         let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
         let static_root_path = matches.opt_str("static-root-path");
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
+        let test_run_directory = matches.opt_str("test-run-directory").map(PathBuf::from);
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let codegen_options_strs = matches.opt_strs("C");
@@ -613,6 +617,7 @@ impl Options {
             display_warnings,
             show_coverage,
             crate_version,
+            test_run_directory,
             persist_doctests,
             runtool,
             runtool_args,

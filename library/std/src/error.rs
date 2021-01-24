@@ -486,6 +486,27 @@ impl<T: Error> Error for Box<T> {
     }
 }
 
+#[stable(feature = "error_by_ref", since = "1.51.0")]
+impl<'a, T: Error + ?Sized> Error for &'a T {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        Error::description(&**self)
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn Error> {
+        Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&**self)
+    }
+
+    fn backtrace(&self) -> Option<&Backtrace> {
+        Error::backtrace(&**self)
+    }
+}
+
 #[stable(feature = "fmt_error", since = "1.11.0")]
 impl Error for fmt::Error {
     #[allow(deprecated)]

@@ -168,6 +168,14 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("test-args", |o| {
             o.optmulti("", "test-args", "arguments to pass to the test runner", "ARGS")
         }),
+        unstable("test-run-directory", |o| {
+            o.optopt(
+                "",
+                "test-run-directory",
+                "The working directory in which to run tests",
+                "PATH",
+            )
+        }),
         stable("target", |o| o.optopt("", "target", "target triple to document", "TRIPLE")),
         stable("markdown-css", |o| {
             o.optmulti(

@@ -18,4 +18,3 @@ rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_session = { path = "../rustc_session" }
 rustc_ast = { path = "../rustc_ast" }
-version_check = "0.9"
