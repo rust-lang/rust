@@ -1,0 +1,20 @@
+warning: variant is never constructed: `B`
+  --> $DIR/const-and-self.rs:33:5
+   |
+LL |     B,
+   |     ^
+   |
+note: the lint level is defined here
+  --> $DIR/const-and-self.rs:3:9
+   |
+LL | #![warn(dead_code)]
+   |         ^^^^^^^^^
+
+warning: variant is never constructed: `C`
+  --> $DIR/const-and-self.rs:34:5
+   |
+LL |     C,
+   |     ^
+
+warning: 2 warnings emitted
+
