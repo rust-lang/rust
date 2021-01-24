@@ -99,13 +99,15 @@ export async function download(opts: DownloadOpts) {
         async (progress, _cancellationToken) => {
             let lastPercentage = 0;
             await downloadFile(opts.url, tempFile, opts.mode, !!opts.gunzip, (readBytes, totalBytes) => {
-                const newPercentage = (readBytes / totalBytes) * 100;
-                progress.report({
-                    message: newPercentage.toFixed(0) + "%",
-                    increment: newPercentage - lastPercentage
-                });
+                const newPercentage = Math.round((readBytes / totalBytes) * 100);
+                if (newPercentage !== lastPercentage) {
+                    progress.report({
+                        message: `${newPercentage.toFixed(0)}%`,
+                        increment: newPercentage - lastPercentage
+                    });
 
-                lastPercentage = newPercentage;
+                    lastPercentage = newPercentage;
+                }
             });
         }
     );
