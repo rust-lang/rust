@@ -31,7 +31,7 @@ impl Tr for u32 {
 fn main() {
     assert_eq!(<() as Tr>::A, 255);
     assert_eq!(<() as Tr>::B, 0);    // causes the error above
-    //~^ ERROR evaluation of constant expression failed
+    //~^ ERROR evaluation of constant value failed
     //~| ERROR erroneous constant used
 
     assert_eq!(<u8 as Tr>::A, 254);
