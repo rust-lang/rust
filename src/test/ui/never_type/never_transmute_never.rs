@@ -18,6 +18,7 @@ pub fn ub() {
     // but we still want to make sure it compiles.
     let x: ! = unsafe {
         std::mem::transmute::<Foo, !>(Foo)
+        //~^ WARNING: the type `!` does not permit initialization
     };
     f(x)
 }

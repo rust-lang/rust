@@ -2352,6 +2352,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         enum InitKind {
             Zeroed,
             Uninit,
+            UninhabitedTransmute,
         }
 
         /// Information about why a type cannot be initialized this way.
@@ -2378,7 +2379,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         /// Determine if this expression is a "dangerous initialization".
         fn is_dangerous_init(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<InitKind> {
             if let hir::ExprKind::Call(ref path_expr, ref args) = expr.kind {
-                // Find calls to `mem::{uninitialized,zeroed}` methods.
+                // Find calls to `mem::{uninitialized,zeroed,transmute}` methods.
                 if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                     let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
 
@@ -2389,6 +2390,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     } else if cx.tcx.is_diagnostic_item(sym::transmute, def_id) && is_zero(&args[0])
                     {
                         return Some(InitKind::Zeroed);
+                    } else if cx.tcx.is_diagnostic_item(sym::transmute, def_id) {
+                        let result_ty = cx.typeck_results().expr_ty(expr);
+                        if result_ty.conservative_is_privately_uninhabited(cx.tcx) {
+                            return Some(InitKind::UninhabitedTransmute);
+                        }
                     }
                 }
             } else if let hir::ExprKind::MethodCall(_, _, ref args, _) = expr.kind {
@@ -2541,6 +2547,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         match init {
                             InitKind::Zeroed => "zero-initialization",
                             InitKind::Uninit => "being left uninitialized",
+                            InitKind::UninhabitedTransmute => "initialization",
                         },
                     ));
                     err.span_label(expr.span, "this code causes undefined behavior when executed");

@@ -1,0 +1,14 @@
+warning: the type `!` does not permit initialization
+  --> $DIR/never_transmute_never.rs:20:9
+   |
+LL |         std::mem::transmute::<Foo, !>(Foo)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: `#[warn(invalid_value)]` on by default
+   = note: the `!` type has no valid value
+
+warning: 1 warning emitted
+

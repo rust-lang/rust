@@ -1,0 +1,25 @@
+warning: the type `Never` does not permit zero-initialization
+  --> $DIR/zst_initialization.rs:7:9
+   |
+LL |         std::mem::transmute::<(), Never>(());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: `#[warn(invalid_value)]` on by default
+   = note: enums with no variants have no valid value
+
+warning: the type `Never` does not permit initialization
+  --> $DIR/zst_initialization.rs:9:9
+   |
+LL |         std::mem::transmute::<Option<Never>, Never>(None);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: enums with no variants have no valid value
+
+warning: 2 warnings emitted
+
