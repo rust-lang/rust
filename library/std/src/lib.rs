@@ -406,6 +406,8 @@ pub use core::cmp;
 pub use core::convert;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::default;
+#[stable(feature = "futures_api", since = "1.36.0")]
+pub use core::future;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::hash;
 #[stable(feature = "core_hint", since = "1.27.0")]
@@ -504,9 +506,6 @@ pub mod task {
     #[unstable(feature = "wake_trait", issue = "69912")]
     pub use alloc::task::*;
 }
-
-#[stable(feature = "futures_api", since = "1.36.0")]
-pub mod future;
 
 // Platform-abstraction modules
 #[macro_use]
