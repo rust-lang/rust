@@ -49,7 +49,7 @@ FLAGS:
     -q,  --quiet      Set verbosity
 
     --log-file <PATH> Log to the specified file instead of stderr
-    --no-buffering    Flush log records to the file immediatly
+    --no-buffering    Flush log records to the file immediately
 
 ENVIRONMENTAL VARIABLES:
     RA_LOG            Set log filter in env_logger format

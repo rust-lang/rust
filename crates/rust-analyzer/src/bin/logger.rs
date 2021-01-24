@@ -2,7 +2,10 @@
 //! filter syntax. Amusingly, there's no crates.io crate that can do this and
 //! only this.
 
-use std::{borrow::BorrowMut, fs::File, io::{BufWriter, Write}};
+use std::{
+    fs::File,
+    io::{self, BufWriter, Write},
+};
 
 use env_logger::filter::{Builder, Filter};
 use log::{Log, Metadata, Record};
@@ -53,10 +56,6 @@ impl Log for Logger {
                     record.module_path().unwrap_or_default(),
                     record.args(),
                 );
-
-                if self.no_buffering {
-                    w.lock().borrow_mut().flush().unwrap();
-                }
             }
             None => eprintln!(
                 "[{} {}] {}",
@@ -65,11 +64,20 @@ impl Log for Logger {
                 record.args(),
             ),
         }
+
+        if self.no_buffering {
+            self.flush();
+        }
     }
 
     fn flush(&self) {
-        if let Some(w) = &self.file {
-            let _ = w.lock().flush();
+        match &self.file {
+            Some(w) => {
+                let _ = w.lock().flush();
+            }
+            None => {
+                let _ = io::stderr().flush();
+            }
         }
     }
 }
