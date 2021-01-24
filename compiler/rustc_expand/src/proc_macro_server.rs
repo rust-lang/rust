@@ -333,7 +333,8 @@ impl Ident {
             panic!("`{:?}` is not a valid identifier", string)
         }
         if is_raw && !sym.can_be_raw() {
-            panic!("`{}` cannot be a raw identifier", string);
+            sess.span_diagnostic
+                .delay_span_bug(span, &format!("`{}` cannot be a raw identifier", string));
         }
         sess.symbol_gallery.insert(sym, span);
         Ident { sym, is_raw, span }
