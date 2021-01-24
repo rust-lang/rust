@@ -280,7 +280,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        let attr = must_use_attr(&item.attrs);
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let attr = must_use_attr(attrs);
         if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
             let is_public = cx.access_levels.is_exported(item.hir_id());
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
@@ -291,7 +292,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
                 return;
             }
-            if is_public && !is_proc_macro(cx.sess(), &item.attrs) && attr_by_name(&item.attrs, "no_mangle").is_none() {
+            if is_public && !is_proc_macro(cx.sess(), attrs) && attr_by_name(attrs, "no_mangle").is_none() {
                 check_must_use_candidate(
                     cx,
                     &sig.decl,

@@ -33,7 +33,7 @@ declare_lint_pass!(DeepCodeInspector => [DEEP_CODE_INSPECTION]);
 
 impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx.sess(), cx.tcx.hir().attrs(item.hir_id())) {
             return;
         }
         print_item(cx, item);

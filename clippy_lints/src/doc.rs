@@ -214,7 +214,8 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let headers = check_attrs(cx, &self.valid_idents, attrs);
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
                 if !(is_entrypoint_fn(cx, item.def_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
