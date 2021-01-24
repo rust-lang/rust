@@ -46,9 +46,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 
                 // FIXME(eddyb) is this `doc(hidden)` check needed?
                 if !cx.tcx.get_attrs(def_id).lists(sym::doc).has_word(sym::hidden) {
-                    let self_ty = cx.tcx.type_of(def_id);
-                    let impls = get_auto_trait_and_blanket_impls(cx, self_ty, def_id);
-
+                    let impls = get_auto_trait_and_blanket_impls(cx, def_id);
                     new_items.extend(impls.filter(|i| cx.renderinfo.inlined.insert(i.def_id)));
                 }
             });
@@ -170,11 +168,7 @@ impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
             if !self.cx.tcx.get_attrs(i.def_id).lists(sym::doc).has_word(sym::hidden) {
-                self.impls.extend(get_auto_trait_and_blanket_impls(
-                    self.cx,
-                    self.cx.tcx.type_of(i.def_id),
-                    i.def_id,
-                ));
+                self.impls.extend(get_auto_trait_and_blanket_impls(self.cx, i.def_id));
             }
         }
 
