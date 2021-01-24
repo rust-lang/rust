@@ -12,27 +12,43 @@ use rustc_span::{Span, DUMMY_SP};
 
 pub fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
-    sp: Span,
+    span: Span,
     tts: TokenStream,
 ) -> Box<dyn MacResult + 'cx> {
-    let Assert { cond_expr, custom_message } = match parse_assert(cx, sp, tts) {
+    let Assert { cond_expr, custom_message } = match parse_assert(cx, span, tts) {
         Ok(assert) => assert,
         Err(mut err) => {
             err.emit();
-            return DummyResult::any(sp);
+            return DummyResult::any(span);
         }
     };
 
     // `core::panic` and `std::panic` are different macros, so we use call-site
     // context to pick up whichever is currently in scope.
-    let sp = cx.with_call_site_ctxt(sp);
+    let sp = cx.with_call_site_ctxt(span);
 
     let panic_call = if let Some(tokens) = custom_message {
+        let path = if span.rust_2021() {
+            // On edition 2021, we always call `$crate::panic!()`.
+            Path {
+                span: sp,
+                segments: cx
+                    .std_path(&[sym::panic])
+                    .into_iter()
+                    .map(|ident| PathSegment::from_ident(ident))
+                    .collect(),
+                tokens: None,
+            }
+        } else {
+            // Before edition 2021, we call `panic!()` unqualified,
+            // such that it calls either `std::panic!()` or `core::panic!()`.
+            Path::from_ident(Ident::new(sym::panic, sp))
+        };
         // Pass the custom message to panic!().
         cx.expr(
             sp,
             ExprKind::MacCall(MacCall {
-                path: Path::from_ident(Ident::new(sym::panic, sp)),
+                path,
                 args: P(MacArgs::Delimited(
                     DelimSpan::from_single(sp),
                     MacDelimiter::Parenthesis,
