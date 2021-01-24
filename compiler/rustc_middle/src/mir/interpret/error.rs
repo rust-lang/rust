@@ -18,6 +18,9 @@ pub enum ErrorHandled {
     Reported(ErrorReported),
     /// Already emitted a lint for this evaluation.
     Linted,
+    /// Encountered an error without emitting anything. Only returned
+    /// with `Reveal::Selection`.
+    Silent,
     /// Don't emit an error, the evaluation failed because the MIR was generic
     /// and the substs didn't fully monomorphize it.
     TooGeneric,
@@ -72,7 +75,7 @@ fn print_backtrace(backtrace: &Backtrace) {
 impl From<ErrorHandled> for InterpErrorInfo<'_> {
     fn from(err: ErrorHandled) -> Self {
         match err {
-            ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
+            ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted | ErrorHandled::Silent => {
                 err_inval!(ReferencedConstant)
             }
             ErrorHandled::TooGeneric => err_inval!(TooGeneric),

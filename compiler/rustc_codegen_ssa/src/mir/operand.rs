@@ -446,6 +446,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         ErrorHandled::TooGeneric => {
                             bug!("codegen encountered polymorphic constant")
                         }
+                        ErrorHandled::Silent => {
+                            bug!("silent error encountered codegen for {:?}", operand)
+                        }
                     }
                     // Allow RalfJ to sleep soundly knowing that even refactorings that remove
                     // the above error (or silence it under some conditions) will not cause UB.

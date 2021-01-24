@@ -1768,17 +1768,19 @@ pub struct ParamEnv<'tcx> {
 }
 
 unsafe impl rustc_data_structures::tagged_ptr::Tag for traits::Reveal {
-    const BITS: usize = 1;
+    const BITS: usize = 2;
     fn into_usize(self) -> usize {
         match self {
-            traits::Reveal::UserFacing => 0,
-            traits::Reveal::All => 1,
+            traits::Reveal::Selection => 0,
+            traits::Reveal::UserFacing => 1,
+            traits::Reveal::All => 2,
         }
     }
     unsafe fn from_usize(ptr: usize) -> Self {
         match ptr {
-            0 => traits::Reveal::UserFacing,
-            1 => traits::Reveal::All,
+            0 => traits::Reveal::Selection,
+            1 => traits::Reveal::UserFacing,
+            2 => traits::Reveal::All,
             _ => std::hint::unreachable_unchecked(),
         }
     }
@@ -1849,6 +1851,11 @@ impl<'tcx> ParamEnv<'tcx> {
         ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, reveal) }
     }
 
+    pub fn with_reveal_selection(mut self) -> Self {
+        self.packed.set_tag(Reveal::Selection);
+        self
+    }
+
     pub fn with_user_facing(mut self) -> Self {
         self.packed.set_tag(Reveal::UserFacing);
         self
@@ -1890,7 +1897,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// although the surrounding function is never reachable.
     pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         match self.reveal() {
-            Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
+            Reveal::Selection | Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
 
             Reveal::All => {
                 if value.is_global() {
@@ -2561,6 +2568,7 @@ impl<'tcx> AdtDef {
                         "enum discriminant evaluation failed"
                     }
                     ErrorHandled::TooGeneric => "enum discriminant depends on generics",
+                    ErrorHandled::Silent => return None,
                 };
                 tcx.sess.delay_span_bug(tcx.def_span(expr_did), msg);
                 None

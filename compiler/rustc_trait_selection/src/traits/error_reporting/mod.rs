@@ -739,6 +739,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let violations = self.tcx.object_safety_violations(did);
                 report_object_safety_error(self.tcx, span, did, violations)
             }
+            ConstEvalFailure(ErrorHandled::Silent) => {
+                tcx.sess.struct_span_err(span, "failed to evaluate the given constant")
+            }
             ConstEvalFailure(ErrorHandled::TooGeneric) => {
                 bug!("too generic should have been handled in `is_const_evaluatable`");
             }

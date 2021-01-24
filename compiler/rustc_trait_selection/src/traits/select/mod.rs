@@ -562,7 +562,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
                             self.infcx
                                 .const_eval_resolve(
-                                    obligation.param_env,
+                                    obligation.param_env.with_reveal_selection(),
                                     def,
                                     substs,
                                     promoted,
@@ -585,8 +585,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
-                        (Err(ErrorHandled::Reported(ErrorReported)), _)
-                        | (_, Err(ErrorHandled::Reported(ErrorReported))) => Ok(EvaluatedToErr),
+                        (Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Silent), _)
+                        | (_, Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Silent)) => {
+                            Ok(EvaluatedToErr)
+                        }
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
                                 obligation.cause.span(self.tcx()),

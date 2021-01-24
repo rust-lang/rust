@@ -655,6 +655,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                         "collection encountered polymorphic constant: {}",
                         substituted_constant
                     ),
+                    Err(ErrorHandled::Silent) => span_bug!(
+                        self.body.source_info(location).span,
+                        "silent error emitted during collection",
+                    ),
                 }
             }
             _ => {}

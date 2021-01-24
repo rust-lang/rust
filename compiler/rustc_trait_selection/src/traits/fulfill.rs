@@ -589,6 +589,11 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                                 "ConstEquate: const_eval_resolve returned an unexpected error"
                             )
                         }
+                        (Err(ErrorHandled::Silent), _) | (_, Err(ErrorHandled::Silent)) => {
+                            ProcessResult::Error(CodeSelectionError(ConstEvalFailure(
+                                ErrorHandled::Silent,
+                            )))
+                        }
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
                             ProcessResult::Unchanged
                         }

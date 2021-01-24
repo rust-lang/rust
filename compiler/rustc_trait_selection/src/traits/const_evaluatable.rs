@@ -147,7 +147,8 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     // and hopefully soon change this to an error.
     //
     // See #74595 for more details about this.
-    let concrete = infcx.const_eval_resolve(param_env, def, substs, None, Some(span));
+    let concrete =
+        infcx.const_eval_resolve(param_env.with_reveal_selection(), def, substs, None, Some(span));
 
     if concrete.is_ok() && substs.has_param_types_or_consts() {
         match infcx.tcx.def_kind(def.did) {

@@ -341,7 +341,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal() {
-                    Reveal::UserFacing => ty,
+                    Reveal::Selection | Reveal::UserFacing => ty,
 
                     Reveal::All => {
                         let recursion_limit = self.tcx().sess.recursion_limit();

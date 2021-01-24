@@ -11,6 +11,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::Reveal;
+use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
@@ -209,14 +210,28 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
     // see comment in const_eval_raw_provider for what we're doing here
-    if key.param_env.reveal() == Reveal::All {
-        let mut key = key;
-        key.param_env = key.param_env.with_user_facing();
-        match tcx.eval_to_const_value_raw(key) {
-            // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {}
-            // deduplicate calls
-            other => return other,
+    match key.param_env.reveal() {
+        Reveal::Selection => {}
+        Reveal::UserFacing => {
+            let mut key = key;
+            key.param_env = key.param_env.with_reveal_selection();
+            match tcx.eval_to_const_value_raw(key) {
+                // try again with reveal all as requested
+                Err(ErrorHandled::Silent) => {}
+                // deduplicate calls
+                other => return other,
+            }
+        }
+        Reveal::All => {
+            let mut key = key;
+            key.param_env = key.param_env.with_user_facing();
+            match tcx.eval_to_const_value_raw(key) {
+                // try again with reveal all as requested
+                Err(ErrorHandled::Silent) => bug!("unexpected error for {:?}", key),
+                Err(ErrorHandled::TooGeneric) => {}
+                // deduplicate calls
+                other => return other,
+            }
         }
     }
 
@@ -248,18 +263,29 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     // computed. For a large percentage of constants that will already have succeeded. Only
     // associated constants of generic functions will fail due to not enough monomorphization
     // information being available.
-
-    // In case we fail in the `UserFacing` variant, we just do the real computation.
-    if key.param_env.reveal() == Reveal::All {
-        let mut key = key;
-        key.param_env = key.param_env.with_user_facing();
-        match tcx.eval_to_allocation_raw(key) {
-            // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {}
-            // deduplicate calls
-            other => return other,
+    match key.param_env.reveal() {
+        Reveal::Selection => {}
+        Reveal::UserFacing => {
+            let mut key = key;
+            key.param_env = key.param_env.with_reveal_selection();
+            match tcx.eval_to_allocation_raw(key) {
+                Err(ErrorHandled::Silent) => {}
+                // deduplicate calls
+                other => return other,
+            }
+        }
+        Reveal::All => {
+            let mut key = key;
+            key.param_env = key.param_env.with_user_facing();
+            match tcx.eval_to_allocation_raw(key) {
+                Err(ErrorHandled::Silent) => bug!("unexpected error for {:?}", key),
+                Err(ErrorHandled::TooGeneric) => {}
+                // deduplicate calls
+                other => return other,
+            }
         }
     }
+
     if cfg!(debug_assertions) {
         // Make sure we format the instance even if we do not print it.
         // This serves as a regression test against an ICE on printing.
@@ -304,6 +330,15 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
         Err(error) => {
+            if key.param_env.reveal() == Reveal::Selection {
+                match error.kind {
+                    err_inval!(Layout(LayoutError::Unknown(_)))
+                    | err_inval!(TooGeneric)
+                    | err_inval!(AlreadyReported(_)) => {}
+                    _ => return Err(ErrorHandled::Silent),
+                }
+            }
+
             let err = ConstEvalErr::new(&ecx, error, None);
             // errors in statics are always emitted as fatal errors
             if is_static {

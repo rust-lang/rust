@@ -59,6 +59,12 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Module>) {
                                 err
                             );
                         }
+                        ErrorHandled::Silent => {
+                            span_bug!(
+                                constant.span,
+                                "codgen encountered silent error",
+                            );
+                        }
                     }
                 }
             }

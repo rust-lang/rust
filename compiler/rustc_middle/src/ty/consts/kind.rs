@@ -129,7 +129,7 @@ impl<'tcx> ConstKind<'tcx> {
                 // (which may be identity substs, see above),
                 // can leak through `val` into the const we return.
                 Ok(val) => Some(Ok(val)),
-                Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => None,
+                Err(ErrorHandled::TooGeneric | ErrorHandled::Linted | ErrorHandled::Silent) => None,
                 Err(ErrorHandled::Reported(e)) => Some(Err(e)),
             }
         } else {
