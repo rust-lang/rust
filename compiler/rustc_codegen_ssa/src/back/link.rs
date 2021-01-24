@@ -885,9 +885,22 @@ fn link_sanitizers(sess: &Session, crate_type: CrateType, linker: &mut dyn Linke
 }
 
 fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
-    let default_sysroot = filesearch::get_or_default_sysroot();
-    let default_tlib =
-        filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.triple());
+    fn find_sanitizer_runtime(sess: &Session, filename: &String) -> PathBuf {
+        let session_tlib =
+            filesearch::make_target_lib_path(&sess.sysroot, sess.opts.target_triple.triple());
+        let path = session_tlib.join(&filename);
+        if path.exists() {
+            return session_tlib;
+        } else {
+            let default_sysroot = filesearch::get_or_default_sysroot();
+            let default_tlib = filesearch::make_target_lib_path(
+                &default_sysroot,
+                sess.opts.target_triple.triple(),
+            );
+            return default_tlib;
+        }
+    }
+
     let channel = option_env!("CFG_RELEASE_CHANNEL")
         .map(|channel| format!("-{}", channel))
         .unwrap_or_default();
@@ -898,10 +911,11 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
             // LLVM will link to `@rpath/*.dylib`, so we need to specify an
             // rpath to the library as well (the rpath should be absolute, see
             // PR #41352 for details).
-            let libname = format!("rustc{}_rt.{}", channel, name);
-            let rpath = default_tlib.to_str().expect("non-utf8 component in path");
+            let filename = format!("rustc{}_rt.{}", channel, name);
+            let path = find_sanitizer_runtime(&sess, &filename);
+            let rpath = path.to_str().expect("non-utf8 component in path");
             linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
-            linker.link_dylib(Symbol::intern(&libname));
+            linker.link_dylib(Symbol::intern(&filename));
         }
         "aarch64-fuchsia"
         | "aarch64-unknown-linux-gnu"
@@ -909,7 +923,7 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         | "x86_64-unknown-freebsd"
         | "x86_64-unknown-linux-gnu" => {
             let filename = format!("librustc{}_rt.{}.a", channel, name);
-            let path = default_tlib.join(&filename);
+            let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
             linker.link_whole_rlib(&path);
         }
         _ => {}
