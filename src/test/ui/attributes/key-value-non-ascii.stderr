@@ -1,0 +1,8 @@
+error: byte constant must be ASCII. Use a \xHH escape for a non-ASCII byte
+  --> $DIR/key-value-non-ascii.rs:3:19
+   |
+LL | #[rustc_dummy = b"ﬃ.rs"]
+   |                   ^
+
+error: aborting due to previous error
+
