@@ -3551,7 +3551,6 @@ version = "0.0.0"
 dependencies = [
  "rustc_ast",
  "rustc_span",
- "rustc_target",
  "tracing",
 ]
 
