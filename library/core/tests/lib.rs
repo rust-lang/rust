@@ -76,6 +76,7 @@
 #![feature(integer_atomics)]
 #![feature(slice_group_by)]
 #![feature(trusted_random_access)]
+#![feature(result_swap)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;
