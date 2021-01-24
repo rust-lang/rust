@@ -887,12 +887,6 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
         let mut ret = Self::new_not_useful(pref);
         for u in usefulnesses {
             ret.extend(u);
-            if let NoWitnesses(subpats) = &ret {
-                if subpats.is_empty() {
-                    // Once we reach the empty set, more intersections won't change the result.
-                    return ret;
-                }
-            }
         }
         ret
     }
