@@ -1,0 +1,60 @@
+error[E0764]: mutable references are not allowed in the final value of constants
+  --> $DIR/mut_ref_in_final.rs:12:21
+   |
+LL | const B: *mut i32 = &mut 4;
+   |                     ^^^^^^
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/mut_ref_in_final.rs:18:40
+   |
+LL | const B3: Option<&mut i32> = Some(&mut 42);
+   |                              ----------^^-
+   |                              |         | |
+   |                              |         | temporary value is freed at the end of this statement
+   |                              |         creates a temporary which is freed while still in use
+   |                              using this value as a constant requires that borrow lasts for `'static`
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/mut_ref_in_final.rs:21:42
+   |
+LL | const B4: Option<&mut i32> = helper(&mut 42);
+   |                              ------------^^-
+   |                              |           | |
+   |                              |           | temporary value is freed at the end of this statement
+   |                              |           creates a temporary which is freed while still in use
+   |                              using this value as a constant requires that borrow lasts for `'static`
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/mut_ref_in_final.rs:36:65
+   |
+LL | const FOO: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
+   |                                  -------------------------------^^--
+   |                                  |                              |  |
+   |                                  |                              |  temporary value is freed at the end of this statement
+   |                                  |                              creates a temporary which is freed while still in use
+   |                                  using this value as a constant requires that borrow lasts for `'static`
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/mut_ref_in_final.rs:39:67
+   |
+LL | static FOO2: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
+   |                                    -------------------------------^^--
+   |                                    |                              |  |
+   |                                    |                              |  temporary value is freed at the end of this statement
+   |                                    |                              creates a temporary which is freed while still in use
+   |                                    using this value as a static requires that borrow lasts for `'static`
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/mut_ref_in_final.rs:42:71
+   |
+LL | static mut FOO3: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
+   |                                        -------------------------------^^--
+   |                                        |                              |  |
+   |                                        |                              |  temporary value is freed at the end of this statement
+   |                                        |                              creates a temporary which is freed while still in use
+   |                                        using this value as a static requires that borrow lasts for `'static`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0716, E0764.
+For more information about an error, try `rustc --explain E0716`.

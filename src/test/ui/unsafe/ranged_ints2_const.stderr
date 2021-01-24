@@ -16,6 +16,15 @@ LL |     let y = unsafe { &mut x.0 };
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
+error[E0658]: mutable references are not allowed in constant functions
+  --> $DIR/ranged_ints2_const.rs:24:22
+   |
+LL |     unsafe { let y = &mut x.0; }
+   |                      ^^^^^^^^
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+
 error[E0133]: mutation of layout constrained field is unsafe and requires unsafe function or block
   --> $DIR/ranged_ints2_const.rs:11:13
    |
@@ -24,7 +33,7 @@ LL |     let y = &mut x.0;
    |
    = note: mutating layout constrained fields cannot statically be checked for valid values
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0133, E0658.
 For more information about an error, try `rustc --explain E0133`.

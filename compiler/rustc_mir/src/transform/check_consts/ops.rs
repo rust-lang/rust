@@ -268,16 +268,20 @@ impl NonConstOp for CellBorrow {
 }
 
 #[derive(Debug)]
+/// This op is for `&mut` borrows in the trailing expression of a constant
+/// which uses the "enclosing scopes rule" to leak its locals into anonymous
+/// static or const items.
 pub struct MutBorrow(pub hir::BorrowKind);
 
 impl NonConstOp for MutBorrow {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        // Forbid everywhere except in const fn with a feature gate
-        if ccx.const_kind() == hir::ConstContext::ConstFn {
-            Status::Unstable(sym::const_mut_refs)
-        } else {
-            Status::Forbidden
-        }
+    fn status_in_item(&self, _ccx: &ConstCx<'_, '_>) -> Status {
+        Status::Forbidden
+    }
+
+    fn importance(&self) -> DiagnosticImportance {
+        // If there were primary errors (like non-const function calls), do not emit further
+        // errors about mutable references.
+        DiagnosticImportance::Secondary
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
@@ -286,25 +290,15 @@ impl NonConstOp for MutBorrow {
             hir::BorrowKind::Ref => "",
         };
 
-        let mut err = if ccx.const_kind() == hir::ConstContext::ConstFn {
-            feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_mut_refs,
-                span,
-                &format!("{}mutable references are not allowed in {}s", raw, ccx.const_kind()),
-            )
-        } else {
-            let mut err = struct_span_err!(
-                ccx.tcx.sess,
-                span,
-                E0764,
-                "{}mutable references are not allowed in {}s",
-                raw,
-                ccx.const_kind(),
-            );
-            err.span_label(span, format!("`&{}mut` is only allowed in `const fn`", raw));
-            err
-        };
+        let mut err = struct_span_err!(
+            ccx.tcx.sess,
+            span,
+            E0764,
+            "{}mutable references are not allowed in the final value of {}s",
+            raw,
+            ccx.const_kind(),
+        );
+
         if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "References in statics and constants may only refer \
@@ -322,6 +316,29 @@ impl NonConstOp for MutBorrow {
 }
 
 #[derive(Debug)]
+pub struct TransientMutBorrow(pub hir::BorrowKind);
+
+impl NonConstOp for TransientMutBorrow {
+    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+        Status::Unstable(sym::const_mut_refs)
+    }
+
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        let raw = match self.0 {
+            hir::BorrowKind::Raw => "raw ",
+            hir::BorrowKind::Ref => "",
+        };
+
+        feature_err(
+            &ccx.tcx.sess.parse_sess,
+            sym::const_mut_refs,
+            span,
+            &format!("{}mutable references are not allowed in {}s", raw, ccx.const_kind()),
+        )
+    }
+}
+
+#[derive(Debug)]
 pub struct MutDeref;
 impl NonConstOp for MutDeref {
     fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
@@ -329,7 +346,7 @@ impl NonConstOp for MutDeref {
     }
 
     fn importance(&self) -> DiagnosticImportance {
-        // Usually a side-effect of a `MutBorrow` somewhere.
+        // Usually a side-effect of a `TransientMutBorrow` somewhere.
         DiagnosticImportance::Secondary
     }
 
