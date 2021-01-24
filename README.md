@@ -198,6 +198,8 @@ environment variable:
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
   can focus on other failures, but it means Miri can miss bugs in your program.
   Using this flag is **unsound**.
+* `-Zmiri-disable-data-race-detector` disables checking for data races.  Using
+  this flag is **unsound**.
 * `-Zmiri-disable-stacked-borrows` disables checking the experimental
   [Stacked Borrows] aliasing rules.  This can make Miri run faster, but it also
   means no aliasing violations will be detected.  Using this flag is **unsound**
