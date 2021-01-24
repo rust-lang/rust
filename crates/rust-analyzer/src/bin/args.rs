@@ -16,6 +16,7 @@ pub(crate) struct Args {
     pub(crate) log_file: Option<PathBuf>,
     pub(crate) no_buffering: bool,
     pub(crate) command: Command,
+    pub(crate) wait_dbg: bool,
 }
 
 pub(crate) enum Command {
@@ -50,6 +51,8 @@ FLAGS:
 
     --log-file <PATH> Log to the specified file instead of stderr
     --no-buffering    Flush log records to the file immediately
+
+    --wait-dbg        Wait until a debugger is attached to
 
 ENVIRONMENTAL VARIABLES:
     RA_LOG            Set log filter in env_logger format
@@ -117,6 +120,7 @@ impl Args {
                 log_file: None,
                 command: Command::Version,
                 no_buffering: false,
+                wait_dbg: false,
             });
         }
 
@@ -134,21 +138,40 @@ impl Args {
         };
         let log_file = matches.opt_value_from_str("--log-file")?;
         let no_buffering = matches.contains("--no-buffering");
+        let wait_dbg = matches.contains("--wait-dbg");
 
         if matches.contains(["-h", "--help"]) {
             eprintln!("{}", HELP);
-            return Ok(Args { verbosity, log_file: None, command: Command::Help, no_buffering });
+            return Ok(Args {
+                verbosity,
+                log_file: None,
+                command: Command::Help,
+                no_buffering,
+                wait_dbg,
+            });
         }
 
         if matches.contains("--print-config-schema") {
-            return Ok(Args { verbosity, log_file, command: Command::PrintConfigSchema, no_buffering }, );
+            return Ok(Args {
+                verbosity,
+                log_file,
+                command: Command::PrintConfigSchema,
+                no_buffering,
+                wait_dbg,
+            });
         }
 
         let subcommand = match matches.subcommand()? {
             Some(it) => it,
             None => {
                 finish_args(matches)?;
-                return Ok(Args { verbosity, log_file, command: Command::RunServer, no_buffering });
+                return Ok(Args {
+                    verbosity,
+                    log_file,
+                    command: Command::RunServer,
+                    no_buffering,
+                    wait_dbg,
+                });
             }
         };
         let command = match subcommand.as_str() {
@@ -223,11 +246,17 @@ impl Args {
             },
             _ => {
                 eprintln!("{}", HELP);
-                return Ok(Args { verbosity, log_file: None, command: Command::Help, no_buffering });
+                return Ok(Args {
+                    verbosity,
+                    log_file: None,
+                    command: Command::Help,
+                    no_buffering,
+                    wait_dbg,
+                });
             }
         };
         finish_args(matches)?;
-        Ok(Args { verbosity, log_file, command, no_buffering })
+        Ok(Args { verbosity, log_file, command, no_buffering, wait_dbg })
     }
 }
 

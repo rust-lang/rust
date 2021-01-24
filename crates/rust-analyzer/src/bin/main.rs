@@ -21,6 +21,7 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 fn main() {
     if let Err(err) = try_main() {
+        log::error!("Unexpected error: {}", err);
         eprintln!("{}", err);
         process::exit(101);
     }
@@ -28,6 +29,14 @@ fn main() {
 
 fn try_main() -> Result<()> {
     let args = args::Args::parse()?;
+    if args.wait_dbg {
+        #[allow(unused_mut)]
+        let mut d = 4;
+        while d == 4 {
+            d = 4;
+        }
+    }
+
     setup_logging(args.log_file, args.no_buffering)?;
     match args.command {
         args::Command::RunServer => run_server()?,
@@ -56,7 +65,7 @@ fn try_main() -> Result<()> {
     Ok(())
 }
 
-fn setup_logging(log_file: Option<PathBuf>, flush_file: bool) -> Result<()> {
+fn setup_logging(log_file: Option<PathBuf>, no_buffering: bool) -> Result<()> {
     env::set_var("RUST_BACKTRACE", "short");
 
     let log_file = match log_file {
@@ -69,7 +78,7 @@ fn setup_logging(log_file: Option<PathBuf>, flush_file: bool) -> Result<()> {
         None => None,
     };
     let filter = env::var("RA_LOG").ok();
-    logger::Logger::new(log_file, flush_file, filter.as_deref()).install();
+    logger::Logger::new(log_file, no_buffering, filter.as_deref()).install();
 
     tracing_setup::setup_tracing()?;
 
