@@ -1144,7 +1144,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                     Some(Implementor {
                         text: imp.inner_impl().print(cx.cache()).to_string(),
                         synthetic: imp.inner_impl().synthetic,
-                        types: collect_paths_for_type(imp.inner_impl().for_.clone(), &cx.cache),
+                        types: collect_paths_for_type(imp.inner_impl().for_.clone(), cx.cache()),
                     })
                 }
             })
@@ -2466,7 +2466,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
             WhereClause { gens: &f.generics, indent: 0, end_newline: true }.print(cx.cache()),
         decl = Function { decl: &f.decl, header_len, indent: 0, asyncness: f.header.asyncness }
             .print(cx.cache()),
-        spotlight = spotlight_decl(&f.decl, &cx.cache),
+        spotlight = spotlight_decl(&f.decl, cx.cache()),
     );
     document(w, cx, it, None)
 }
@@ -3685,30 +3685,31 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, cache: &Cache) -> bo
     }
 }
 
-fn spotlight_decl(decl: &clean::FnDecl, c: &Cache) -> String {
+fn spotlight_decl(decl: &clean::FnDecl, cache: &Cache) -> String {
     let mut out = Buffer::html();
     let mut trait_ = String::new();
 
-    if let Some(did) = decl.output.def_id_full(c) {
-        if let Some(impls) = c.impls.get(&did) {
+    if let Some(did) = decl.output.def_id_full(cache) {
+        if let Some(impls) = cache.impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
-                if impl_.trait_.def_id_full(c).map_or(false, |d| c.traits[&d].is_spotlight) {
+                if impl_.trait_.def_id_full(cache).map_or(false, |d| cache.traits[&d].is_spotlight)
+                {
                     if out.is_empty() {
                         out.push_str(&format!(
                             "<h3 class=\"notable\">Notable traits for {}</h3>\
                              <code class=\"content\">",
-                            impl_.for_.print(c)
+                            impl_.for_.print(cache)
                         ));
-                        trait_.push_str(&impl_.for_.print(c).to_string());
+                        trait_.push_str(&impl_.for_.print(cache).to_string());
                     }
 
                     //use the "where" class here to make it small
                     out.push_str(&format!(
                         "<span class=\"where fmt-newline\">{}</span>",
-                        impl_.print(c)
+                        impl_.print(cache)
                     ));
-                    let t_did = impl_.trait_.def_id_full(c).unwrap();
+                    let t_did = impl_.trait_.def_id_full(cache).unwrap();
                     for it in &impl_.items {
                         if let clean::TypedefItem(ref tydef, _) = *it.kind {
                             out.push_str("<span class=\"where fmt-newline\">    ");
@@ -3719,7 +3720,7 @@ fn spotlight_decl(decl: &clean::FnDecl, c: &Cache) -> String {
                                 Some(&tydef.type_),
                                 AssocItemLink::GotoSource(t_did, &FxHashSet::default()),
                                 "",
-                                c,
+                                cache,
                             );
                             out.push_str(";</span>");
                         }
