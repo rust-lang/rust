@@ -1260,9 +1260,11 @@ impl<'a> Parser<'a> {
         let start_token = (self.token.clone(), self.token_spacing);
         let cursor_snapshot = TokenCursor {
             frame: self.token_cursor.frame.clone(),
-            // We only ever capture tokens within our current frame,
-            // so we can just use an empty frame stack
-            stack: vec![],
+            // If we start collecting on the first token of a frame
+            // (e.g. the '{' in '{ my_tokens }'), then we can legally
+            // exit the frame (e.g. collecting '{ my_tokens } something_else'
+            // Therefore, we preserve the top of the stack, but nothing else
+            stack: self.token_cursor.stack.first().cloned().into_iter().collect(),
             desugar_doc_comments: self.token_cursor.desugar_doc_comments,
             num_next_calls: self.token_cursor.num_next_calls,
             append_unglued_token: self.token_cursor.append_unglued_token.clone(),
