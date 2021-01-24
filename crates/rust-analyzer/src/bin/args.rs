@@ -14,6 +14,7 @@ use vfs::AbsPathBuf;
 pub(crate) struct Args {
     pub(crate) verbosity: Verbosity,
     pub(crate) log_file: Option<PathBuf>,
+    pub(crate) no_buffering: bool,
     pub(crate) command: Command,
 }
 
@@ -47,7 +48,8 @@ FLAGS:
     -vv, --spammy
     -q,  --quiet      Set verbosity
 
-    --log-file <PATH> Log to the specified filed instead of stderr
+    --log-file <PATH> Log to the specified file instead of stderr
+    --no-buffering    Flush log records to the file immediatly
 
 ENVIRONMENTAL VARIABLES:
     RA_LOG            Set log filter in env_logger format
@@ -114,6 +116,7 @@ impl Args {
                 verbosity: Verbosity::Normal,
                 log_file: None,
                 command: Command::Version,
+                no_buffering: false,
             });
         }
 
@@ -130,21 +133,22 @@ impl Args {
             (false, true, true) => bail!("Invalid flags: -q conflicts with -v"),
         };
         let log_file = matches.opt_value_from_str("--log-file")?;
+        let no_buffering = matches.contains("--no-buffering");
 
         if matches.contains(["-h", "--help"]) {
             eprintln!("{}", HELP);
-            return Ok(Args { verbosity, log_file: None, command: Command::Help });
+            return Ok(Args { verbosity, log_file: None, command: Command::Help, no_buffering });
         }
 
         if matches.contains("--print-config-schema") {
-            return Ok(Args { verbosity, log_file, command: Command::PrintConfigSchema });
+            return Ok(Args { verbosity, log_file, command: Command::PrintConfigSchema, no_buffering }, );
         }
 
         let subcommand = match matches.subcommand()? {
             Some(it) => it,
             None => {
                 finish_args(matches)?;
-                return Ok(Args { verbosity, log_file, command: Command::RunServer });
+                return Ok(Args { verbosity, log_file, command: Command::RunServer, no_buffering });
             }
         };
         let command = match subcommand.as_str() {
@@ -219,11 +223,11 @@ impl Args {
             },
             _ => {
                 eprintln!("{}", HELP);
-                return Ok(Args { verbosity, log_file: None, command: Command::Help });
+                return Ok(Args { verbosity, log_file: None, command: Command::Help, no_buffering });
             }
         };
         finish_args(matches)?;
-        Ok(Args { verbosity, log_file, command })
+        Ok(Args { verbosity, log_file, command, no_buffering })
     }
 }
 

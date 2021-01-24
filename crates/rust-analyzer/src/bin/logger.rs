@@ -2,10 +2,7 @@
 //! filter syntax. Amusingly, there's no crates.io crate that can do this and
 //! only this.
 
-use std::{
-    fs::File,
-    io::{BufWriter, Write},
-};
+use std::{borrow::BorrowMut, fs::File, io::{BufWriter, Write}};
 
 use env_logger::filter::{Builder, Filter};
 use log::{Log, Metadata, Record};
@@ -14,10 +11,11 @@ use parking_lot::Mutex;
 pub(crate) struct Logger {
     filter: Filter,
     file: Option<Mutex<BufWriter<File>>>,
+    no_buffering: bool,
 }
 
 impl Logger {
-    pub(crate) fn new(log_file: Option<File>, filter: Option<&str>) -> Logger {
+    pub(crate) fn new(log_file: Option<File>, no_buffering: bool, filter: Option<&str>) -> Logger {
         let filter = {
             let mut builder = Builder::new();
             if let Some(filter) = filter {
@@ -28,7 +26,7 @@ impl Logger {
 
         let file = log_file.map(|it| Mutex::new(BufWriter::new(it)));
 
-        Logger { filter, file }
+        Logger { filter, file, no_buffering }
     }
 
     pub(crate) fn install(self) {
@@ -55,6 +53,10 @@ impl Log for Logger {
                     record.module_path().unwrap_or_default(),
                     record.args(),
                 );
+
+                if self.no_buffering {
+                    w.lock().borrow_mut().flush().unwrap();
+                }
             }
             None => eprintln!(
                 "[{} {}] {}",
