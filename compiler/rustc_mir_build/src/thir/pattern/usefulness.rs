@@ -622,12 +622,6 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         this
     }
 
-    /// Returns whether the matrix has no rows. Note that it would have no columns and be
-    /// non-empty.
-    fn is_empty(&self) -> bool {
-        self.selected_rows.is_empty()
-    }
-
     /// Number of columns of this matrix.
     fn column_count(&self) -> usize {
         self.columns.len()
@@ -700,15 +694,28 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         &'a self,
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
     ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> + Clone {
-        self.last_col().map(move |e| e.head_ctor(cx))
+        self.head_ctors_and_spans(cx).map(|(ctor, _)| ctor)
     }
 
     /// Iterate over the first constructor and the corresponding span of each row.
     fn head_ctors_and_spans<'a>(
         &'a self,
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
-    ) -> impl Iterator<Item = (&'a Constructor<'tcx>, Span)> + Captures<'p> {
-        self.last_col().map(move |e| (e.head_ctor(cx), e.pat.span))
+    ) -> impl Iterator<Item = (&'a Constructor<'tcx>, Span)> + Captures<'p> + Clone {
+        let last_col = self.columns.last().unwrap();
+        self.selected_rows.iter().map(move |&row_id| {
+            let first_entry = &last_col[row_id];
+            // // Go through the row to get to the row data.
+            // // TODO: lol so slow.
+            // let last_entry = self.row(row_id).last().unwrap();
+            // let row_data = &self.row_data[last_entry.next_row_id];
+            // if row_data.is_under_guard {
+            //     None
+            // } else {
+            //     Some((first_entry.head_ctor(cx), first_entry.pat.span))
+            // }
+            (first_entry.head_ctor(cx), first_entry.pat.span)
+        })
     }
 
     /// Iterate over the entries of the selected row.
@@ -1316,11 +1323,13 @@ fn is_useful<'p, 'tcx>(
     // NOTE: This could potentially be optimized by checking rows.is_empty()
     // first and then, if v is non-empty, the return value is based on whether
     // the type of the tuple we're checking is inhabited or not.
-    if v.is_empty() {
-        let ret = if matrix.is_empty() {
-            Usefulness::new_useful(v.row_data.witness_preference)
-        } else {
+    if matrix.column_count() == 0 {
+        let is_covered =
+            matrix.selected_rows.iter().any(|row_id| !matrix.row_data[*row_id].is_under_guard);
+        let ret = if is_covered {
             Usefulness::new_not_useful(v.row_data.witness_preference)
+        } else {
+            Usefulness::new_useful(v.row_data.witness_preference)
         };
         debug!(?ret);
         return ret;
@@ -1342,11 +1351,9 @@ fn is_useful<'p, 'tcx>(
         let usefulnesses = vs.into_iter().enumerate().map(|(i, v)| {
             let usefulness = is_useful(cx, matrix, &v, false);
             // If pattern has a guard don't add it to the matrix.
-            if !v.row_data.is_under_guard {
-                // We push the already-seen patterns into the matrix in order to detect redundant
-                // branches like `Some(_) | Some(0)`.
-                matrix.push(v);
-            }
+            // We push the already-seen patterns into the matrix in order to detect redundant
+            // branches like `Some(_) | Some(0)`.
+            matrix.push(v);
             usefulness.unsplit_or_pat(i, alt_count, v_head)
         });
         let usefulness = Usefulness::merge(v.row_data.witness_preference, usefulnesses);
@@ -1434,9 +1441,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
             };
             let v = PatStack::from_pattern(arm.pat, row_data);
             let usefulness = is_useful(cx, &mut matrix, &v, true);
-            if !arm.has_guard {
-                matrix.push(v);
-            }
+            matrix.push(v);
             let reachability = match usefulness {
                 NoWitnesses(subpats) if subpats.is_full() => Reachability::Unreachable,
                 NoWitnesses(subpats) => Reachability::Reachable(subpats.to_spans().unwrap()),
