@@ -361,7 +361,7 @@ fn result_opt_conversions() {
 
 #[test]
 fn test_result_swap() {
-    assert_eq!(Ok("err").swap(), Err("err"));
-    assert_eq!(Err("ok").swap(), Ok("ok"));
-    assert_eq!(Ok("ok").swap().swap(), Ok("ok"));
+    assert_eq!(Ok::<_, u8>("err").swap(), Err("err"));
+    assert_eq!(Err::<u8, _>("ok").swap(), Ok("ok"));
+    assert_eq!(Ok::<_, u8>("ok").swap().swap(), Ok("ok"));
 }
