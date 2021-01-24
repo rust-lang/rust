@@ -225,32 +225,6 @@ fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
     }
 }
 
-/// Returns a Layout which describes the allocation required for a hash table,
-/// and the offset of the control bytes in the allocation.
-/// (the offset is also one past last element of buckets)
-///
-/// Returns `None` if an overflow occurs.
-#[cfg_attr(feature = "inline-more", inline)]
-#[cfg(feature = "nightly")]
-fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
-    debug_assert!(buckets.is_power_of_two());
-
-    // Array of buckets
-    let data = Layout::array::<T>(buckets).ok()?;
-
-    // Array of control bytes. This must be aligned to the group size.
-    //
-    // We add `Group::WIDTH` control bytes at the end of the array which
-    // replicate the bytes at the start of the array and thus avoids the need to
-    // perform bounds-checking while probing.
-    //
-    // There is no possible overflow here since buckets is a power of two and
-    // Group::WIDTH is a small number.
-    let ctrl = unsafe { Layout::from_size_align_unchecked(buckets + Group::WIDTH, Group::WIDTH) };
-
-    data.extend(ctrl).ok()
-}
-
 /// Helper which allows the max calculation for ctrl_align to be statically computed for each T
 /// while keeping the rest of `calculate_layout_for` independent of `T`
 #[derive(Copy, Clone)]
@@ -292,7 +266,6 @@ impl TableLayout {
 ///
 /// Returns `None` if an overflow occurs.
 #[cfg_attr(feature = "inline-more", inline)]
-#[cfg(not(feature = "nightly"))]
 fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     TableLayout::new::<T>().calculate_layout_for(buckets)
 }
