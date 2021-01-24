@@ -251,7 +251,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         hir_id: hir::HirId,
         ident: &mut Ident,
-        attrs: &'hir [Attribute],
+        attrs: Option<&'hir [Attribute]>,
         vis: &mut hir::Visibility<'hir>,
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
@@ -502,7 +502,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         vis: &mut hir::Visibility<'hir>,
         ident: &mut Ident,
-        attrs: &'hir [Attribute],
+        attrs: Option<&'hir [Attribute]>,
     ) -> hir::ItemKind<'hir> {
         debug!("lower_use_tree(tree={:?})", tree);
         debug!("lower_use_tree: vis = {:?}", vis);
@@ -551,7 +551,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let path = this.lower_path_extra(res, &path, ParamMode::Explicit, None);
                         let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
                         let vis = this.rebuild_vis(&vis);
-                        this.attrs.push_sparse(new_id, attrs);
+                        if let Some(attrs) = attrs {
+                            this.attrs.insert(new_id, attrs);
+                        }
 
                         this.insert_item(hir::Item {
                             def_id: new_id.expect_owner(),
@@ -623,7 +625,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                         let kind =
                             this.lower_use_tree(use_tree, &prefix, id, &mut vis, &mut ident, attrs);
-                        this.attrs.push_sparse(new_hir_id, attrs);
+                        if let Some(attrs) = attrs {
+                            this.attrs.insert(new_hir_id, attrs);
+                        }
 
                         this.insert_item(hir::Item {
                             def_id: new_hir_id.expect_owner(),
@@ -770,7 +774,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ),
             VariantData::Tuple(ref fields, id) => {
                 let ctor_id = self.lower_node_id(id);
-                self.attrs.push_sparse(ctor_id, self.attrs[parent_id]);
+                self.alias_attrs(ctor_id, parent_id);
                 hir::VariantData::Tuple(
                     self.arena.alloc_from_iter(
                         fields.iter().enumerate().map(|f| self.lower_struct_field(f)),
@@ -780,7 +784,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             VariantData::Unit(id) => {
                 let ctor_id = self.lower_node_id(id);
-                self.attrs.push_sparse(ctor_id, self.attrs[parent_id]);
+                self.alias_attrs(ctor_id, parent_id);
                 hir::VariantData::Unit(ctor_id)
             }
         }
@@ -1168,7 +1172,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 //
                 // If this is the simple case, this parameter will end up being the same as the
                 // original parameter, but with a different pattern id.
-                let stmt_attrs = this.attrs[parameter.hir_id];
+                let stmt_attrs = this.attrs.get(&parameter.hir_id).copied();
                 let (new_parameter_pat, new_parameter_id) = this.pat_ident(desugared_span, ident);
                 let new_parameter = hir::Param {
                     hir_id: parameter.hir_id,
@@ -1213,7 +1217,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     );
                     let move_expr = this.expr_ident(desugared_span, ident, new_parameter_id);
                     let move_stmt = this.stmt_let_pat(
-                        &[],
+                        None,
                         desugared_span,
                         Some(move_expr),
                         move_pat,

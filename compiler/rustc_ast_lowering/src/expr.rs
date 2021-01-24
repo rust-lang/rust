@@ -258,12 +258,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ex.span = e.span;
                     }
                     // Merge attributes into the inner expression.
-                    self.attrs[ex.hir_id] = &*self.arena.alloc_from_iter(
-                        e.attrs
-                            .iter()
-                            .map(|a| self.lower_attr(a))
-                            .chain(self.attrs[ex.hir_id].iter().cloned()),
-                    );
+                    if !e.attrs.is_empty() {
+                        let old_attrs = self.attrs.get(&ex.hir_id).map(|la| *la).unwrap_or(&[]);
+                        self.attrs.insert(
+                            ex.hir_id,
+                            &*self.arena.alloc_from_iter(
+                                e.attrs
+                                    .iter()
+                                    .map(|a| self.lower_attr(a))
+                                    .chain(old_attrs.iter().cloned()),
+                            ),
+                        );
+                    }
                     return ex;
                 }
 
@@ -1016,7 +1022,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Introduce a `let` for destructuring: `let (lhs1, lhs2) = t`.
         let destructure_let = self.stmt_let_pat(
-            &[],
+            None,
             whole_span,
             Some(rhs),
             pat,
@@ -1775,7 +1781,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `let mut __next`
         let next_let = self.stmt_let_pat(
-            &[],
+            None,
             desugared_span,
             None,
             next_pat,
@@ -1785,7 +1791,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `let <pat> = __next`
         let pat = self.lower_pat(pat);
         let pat_let = self.stmt_let_pat(
-            &[],
+            None,
             desugared_span,
             Some(next_expr),
             pat,

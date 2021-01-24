@@ -88,7 +88,6 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
 
 #[derive(Debug)]
 pub(super) struct HirOwnerData<'hir> {
-    pub(super) attrs: &'hir IndexVec<ItemLocalId, &'hir [ast::Attribute]>,
     pub(super) signature: Option<&'hir Owner<'hir>>,
     pub(super) with_bodies: Option<&'hir mut OwnerNodes<'hir>>,
 }
@@ -851,7 +850,7 @@ impl<'hir> Map<'hir> {
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
-        self.tcx.hir_attrs(id.owner).get(id.local_id).copied().unwrap_or(&[])
+        self.tcx.hir_attrs(id.owner).get(id.local_id)
     }
 
     /// Gets the span of the definition of the specified HIR node.

@@ -114,7 +114,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     generator_kind: Option<hir::GeneratorKind>,
 
-    attrs: hir::HirIdVec<&'hir [Attribute]>,
+    attrs: BTreeMap<hir::HirId, &'hir [Attribute]>,
 
     /// When inside an `async` context, this is the `HirId` of the
     /// `task_context` local bound to the resume argument of the generator.
@@ -311,7 +311,7 @@ pub fn lower_crate<'a, 'hir>(
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
-        attrs: hir::HirIdVec::default(),
+        attrs: BTreeMap::default(),
         exported_macros: Vec::new(),
         non_exported_macro_attrs: Vec::new(),
         catch_scopes: Vec::new(),
@@ -595,8 +595,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.resolver.definitions().init_def_id_to_hir_id_mapping(def_id_to_hir_id);
 
-        // Not all HIR owners have declared attrs. Complete with empty IndexVecs.
-        self.attrs.push_owner(Idx::new(self.resolver.definitions().def_index_count() - 1));
+        #[cfg(debug_assertions)]
+        for (&id, attrs) in self.attrs.iter() {
+            // Verify that we do not store empty slices in the map.
+            if attrs.is_empty() {
+                panic!("Stored empty attributes for {:?}", id);
+            }
+        }
 
         hir::Crate {
             item: hir::CrateItem { module, span: c.span },
@@ -973,10 +978,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attrs(&mut self, id: hir::HirId, attrs: &[Attribute]) -> &'hir [Attribute] {
-        let ret = self.arena.alloc_from_iter(attrs.iter().map(|a| self.lower_attr(a)));
-        self.attrs.push_sparse(id, ret);
-        ret
+    fn lower_attrs(&mut self, id: hir::HirId, attrs: &[Attribute]) -> Option<&'hir [Attribute]> {
+        if attrs.is_empty() {
+            None
+        } else {
+            let ret = self.arena.alloc_from_iter(attrs.iter().map(|a| self.lower_attr(a)));
+            debug_assert!(!ret.is_empty());
+            self.attrs.insert(id, ret);
+            Some(ret)
+        }
     }
 
     fn lower_attr(&self, attr: &Attribute) -> Attribute {
@@ -997,6 +1007,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         Attribute { kind, id: attr.id, style: attr.style, span: attr.span }
+    }
+
+    fn alias_attrs(&mut self, id: hir::HirId, target_id: hir::HirId) {
+        if let Some(&a) = self.attrs.get(&target_id) {
+            debug_assert!(!a.is_empty());
+            self.attrs.insert(id, a);
+        }
     }
 
     fn lower_mac_args(&self, args: &MacArgs) -> MacArgs {
@@ -2447,7 +2464,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     })
                     .collect();
                 let hir_id = self.lower_node_id(s.id);
-                self.attrs.push_sparse(hir_id, self.attrs[l.hir_id]);
+                self.alias_attrs(hir_id, l.hir_id);
                 ids.push({
                     hir::Stmt {
                         hir_id,
@@ -2476,13 +2493,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             StmtKind::Expr(ref e) => {
                 let e = self.lower_expr(e);
                 let hir_id = self.lower_node_id(s.id);
-                self.attrs.push_sparse(hir_id, self.attrs[e.hir_id]);
+                self.alias_attrs(hir_id, e.hir_id);
                 (hir_id, hir::StmtKind::Expr(e))
             }
             StmtKind::Semi(ref e) => {
                 let e = self.lower_expr(e);
                 let hir_id = self.lower_node_id(s.id);
-                self.attrs.push_sparse(hir_id, self.attrs[e.hir_id]);
+                self.alias_attrs(hir_id, e.hir_id);
                 (hir_id, hir::StmtKind::Semi(e))
             }
             StmtKind::Empty => return smallvec![],
@@ -2532,14 +2549,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn stmt_let_pat(
         &mut self,
-        attrs: &'hir [Attribute],
+        attrs: Option<&'hir [Attribute]>,
         span: Span,
         init: Option<&'hir hir::Expr<'hir>>,
         pat: &'hir hir::Pat<'hir>,
         source: hir::LocalSource,
     ) -> hir::Stmt<'hir> {
         let hir_id = self.next_id();
-        self.attrs.push_sparse(hir_id, attrs);
+        if let Some(a) = attrs {
+            debug_assert!(!a.is_empty());
+            self.attrs.insert(hir_id, a);
+        }
         let local = hir::Local { hir_id, init, pat, source, span, ty: None };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
