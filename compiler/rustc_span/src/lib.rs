@@ -65,6 +65,7 @@ use std::hash::Hash;
 use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::thread::LocalKey;
 
 use md5::Md5;
 use sha1::Digest;
@@ -1865,6 +1866,11 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// instead of implementing everything in rustc_middle.
 pub trait HashStableContext {
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
+    /// Obtains a cache for storing the `Fingerprint` of an `ExpnId`.
+    /// This method allows us to have multiple `HashStableContext` implementations
+    /// that hash things in a different way, without the results of one polluting
+    /// the cache of the other.
+    fn expn_id_cache() -> &'static LocalKey<ExpnIdCache>;
     fn hash_crate_num(&mut self, _: CrateNum, hasher: &mut StableHasher);
     fn hash_spans(&self) -> bool;
     fn byte_pos_to_line_and_col(
@@ -1961,15 +1967,10 @@ impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
     }
 }
 
+pub type ExpnIdCache = RefCell<Vec<Option<Fingerprint>>>;
+
 impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        // Since the same expansion context is usually referenced many
-        // times, we cache a stable hash of it and hash that instead of
-        // recursing every time.
-        thread_local! {
-            static CACHE: RefCell<Vec<Option<Fingerprint>>> = Default::default();
-        }
-
         const TAG_ROOT: u8 = 0;
         const TAG_NOT_ROOT: u8 = 1;
 
@@ -1978,8 +1979,11 @@ impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
             return;
         }
 
+        // Since the same expansion context is usually referenced many
+        // times, we cache a stable hash of it and hash that instead of
+        // recursing every time.
         let index = self.as_u32() as usize;
-        let res = CACHE.with(|cache| cache.borrow().get(index).copied().flatten());
+        let res = CTX::expn_id_cache().with(|cache| cache.borrow().get(index).copied().flatten());
 
         if let Some(res) = res {
             res.hash_stable(ctx, hasher);
@@ -1991,7 +1995,7 @@ impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
             self.expn_data().hash_stable(ctx, &mut sub_hasher);
             let sub_hash: Fingerprint = sub_hasher.finish();
 
-            CACHE.with(|cache| {
+            CTX::expn_id_cache().with(|cache| {
                 let mut cache = cache.borrow_mut();
                 if cache.len() < new_len {
                     cache.resize(new_len, None);
