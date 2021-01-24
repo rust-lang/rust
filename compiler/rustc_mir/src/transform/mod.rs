@@ -482,6 +482,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
         &multiple_return_terminators::MultipleReturnTerminators,
         &instcombine::InstCombine,
+        &simplify::SimplifyCfg::new("after-instcombine"),
         &const_prop::ConstProp,
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
         &early_otherwise_branch::EarlyOtherwiseBranch,

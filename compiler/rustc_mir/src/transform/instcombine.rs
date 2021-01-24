@@ -3,10 +3,13 @@
 use crate::transform::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::{
-    BinOp, Body, Constant, LocalDecls, Operand, Place, ProjectionElem, Rvalue, SourceInfo,
-    StatementKind,
+    BasicBlock, LocalDecls, PlaceElem, SourceInfo, Statement, StatementKind, Terminator,
+    TerminatorKind,
 };
+use rustc_middle::mir::{BinOp, Body, Constant, Local, Operand, Place, ProjectionElem, Rvalue};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::{sym, Symbol};
+use rustc_target::spec::abi::Abi;
 
 pub struct InstCombine;
 
@@ -24,6 +27,10 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
                     }
                     _ => {}
                 }
+            }
+
+            if let Some(terminator) = &mut block.terminator {
+                ctx.combine_copy_nonoverlapping(terminator, local_decls, &mut block.statements);
             }
         }
     }
@@ -118,6 +125,80 @@ impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
                 let constant = Constant { span: source_info.span, literal: len, user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(box constant));
             }
+        }
+    }
+
+    fn func_as_intrinsic(
+        &self,
+        operand: &Operand<'tcx>,
+        locals: &LocalDecls<'tcx>,
+    ) -> Option<Symbol> {
+        let func_ty = operand.ty(locals, self.tcx);
+
+        if let ty::FnDef(def_id, _) = *func_ty.kind() {
+            let fn_sig = func_ty.fn_sig(self.tcx);
+
+            if fn_sig.abi() == Abi::RustIntrinsic {
+                return Some(self.tcx.item_name(def_id));
+            }
+        }
+
+        None
+    }
+
+    fn find_copy_nonoverlapping(
+        &self,
+        terminator: &Terminator<'tcx>,
+        locals: &LocalDecls<'tcx>,
+    ) -> Option<(Local, Local, BasicBlock)> {
+        if let TerminatorKind::Call { func, args, destination: Some((_, next_bb)), .. } =
+            &terminator.kind
+        {
+            let intrinsic = self.func_as_intrinsic(func, locals)?;
+
+            if intrinsic == sym::copy_nonoverlapping && args.len() == 3 {
+                let src = args[0].place()?.as_local()?;
+                let dest = args[1].place()?.as_local()?;
+                let constant = args[2].constant()?;
+
+                if constant.literal.ty == self.tcx.types.usize {
+                    let val = constant
+                        .literal
+                        .val
+                        .try_to_value()?
+                        .try_to_scalar()?
+                        .to_machine_usize(&self.tcx)
+                        .ok()?;
+
+                    if val == 1 {
+                        return Some((src, dest, *next_bb));
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    fn combine_copy_nonoverlapping(
+        &self,
+        terminator: &mut Terminator<'tcx>,
+        locals: &LocalDecls<'tcx>,
+        statements: &mut Vec<Statement<'tcx>>,
+    ) {
+        if let Some((src, dest, next_bb)) = self.find_copy_nonoverlapping(terminator, locals) {
+            trace!("replacing call to copy_nonoverlapping({:?}, {:?}, 1) intrinsic", src, dest);
+            let deref_projection = self.tcx._intern_place_elems(&[PlaceElem::Deref]);
+
+            statements.push(Statement {
+                source_info: terminator.source_info,
+                kind: StatementKind::Assign(Box::new((
+                    Place { local: dest, projection: deref_projection },
+                    Rvalue::Use(Operand::Copy(Place { local: src, projection: deref_projection })),
+                ))),
+            });
+
+            terminator.kind = TerminatorKind::Goto { target: next_bb };
         }
     }
 }
