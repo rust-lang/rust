@@ -1171,6 +1171,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     }
 
     #[allow(clippy::mut_mut)]
+    #[inline]
     unsafe fn prepare_rehash_in_place<'s>(
         &'s mut self,
         needs_drop: bool,
