@@ -5,6 +5,7 @@ fn main() {
     atomic_isize();
     atomic_u64();
     atomic_fences();
+    weak_sometimes_fails();
 }
 
 fn atomic_bool() {
@@ -84,4 +85,18 @@ fn atomic_fences() {
     compiler_fence(Release);
     compiler_fence(Acquire);
     compiler_fence(AcqRel);
+}
+
+fn weak_sometimes_fails() {
+    static ATOMIC: AtomicBool = AtomicBool::new(false);
+    let tries = 20;
+    for _ in 0..tries {
+        let cur = ATOMIC.load(Relaxed);
+        // Try (weakly) to flip the flag.
+        if ATOMIC.compare_exchange_weak(cur, !cur, Relaxed, Relaxed).is_err() {
+            // We succeeded, so return and skip the panic.
+            return;
+        }
+    }
+    panic!("compare_exchange_weak succeeded {} tries in a row", tries);
 }
