@@ -1,9 +1,6 @@
-// From rust:
-/* global ALIASES */
-
 // Local js definitions:
-/* global addClass, getCurrentValue, hasClass */
-/* global onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
+/* global addClass, getSettingValue, hasClass */
+/* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
 /* global hideThemeButtonState, showThemeButtonState */
 
 if (!String.prototype.startsWith) {
@@ -2214,7 +2211,7 @@ function defocusSearchBar() {
         }
     }
 
-    function toggleAllDocs(pageId, fromAutoCollapse) {
+    function toggleAllDocs(fromAutoCollapse) {
         var innerToggle = document.getElementById(toggleAllDocsId);
         if (!innerToggle) {
             return;
@@ -2257,14 +2254,14 @@ function defocusSearchBar() {
                     }
                     if (!parent || !superParent || superParent.id !== "main" ||
                         hasClass(parent, "impl") === false) {
-                        collapseDocs(e, "hide", pageId);
+                        collapseDocs(e, "hide");
                     }
                 });
             }
         }
     }
 
-    function collapseDocs(toggle, mode, pageId) {
+    function collapseDocs(toggle, mode) {
         if (!toggle || !toggle.parentNode) {
             return;
         }
@@ -2384,27 +2381,27 @@ function defocusSearchBar() {
         }
     }
 
-    function collapser(pageId, e, collapse) {
+    function collapser(e, collapse) {
         // inherent impl ids are like "impl" or impl-<number>'.
         // they will never be hidden by default.
         var n = e.parentElement;
         if (n.id.match(/^impl(?:-\d+)?$/) === null) {
             // Automatically minimize all non-inherent impls
             if (collapse || hasClass(n, "impl")) {
-                collapseDocs(e, "hide", pageId);
+                collapseDocs(e, "hide");
             }
         }
     }
 
-    function autoCollapse(pageId, collapse) {
+    function autoCollapse(collapse) {
         if (collapse) {
-            toggleAllDocs(pageId, true);
+            toggleAllDocs(true);
         } else if (getSettingValue("auto-hide-trait-implementations") !== "false") {
             var impl_list = document.getElementById("trait-implementations-list");
 
             if (impl_list !== null) {
                 onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(pageId, e, collapse);
+                    collapser(e, collapse);
                 });
             }
 
@@ -2412,7 +2409,7 @@ function defocusSearchBar() {
 
             if (blanket_list !== null) {
                 onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(pageId, e, collapse);
+                    collapser(e, collapse);
                 });
             }
         }
@@ -2475,7 +2472,6 @@ function defocusSearchBar() {
         var toggle = createSimpleToggle(false);
         var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
         var hideImplementors = getSettingValue("auto-collapse-implementors") !== "false";
-        var pageId = getPageId();
 
         var func = function(e) {
             var next = e.nextElementSibling;
@@ -2489,7 +2485,7 @@ function defocusSearchBar() {
                 var newToggle = toggle.cloneNode(true);
                 insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
                 if (hideMethodDocs === true && hasClass(e, "method") === true) {
-                    collapseDocs(newToggle, "hide", pageId);
+                    collapseDocs(newToggle, "hide");
                 }
             }
         };
@@ -2513,7 +2509,7 @@ function defocusSearchBar() {
                 // In case the option "auto-collapse implementors" is not set to false, we collapse
                 // all implementors.
                 if (hideImplementors === true && e.parentNode.id === "implementors-list") {
-                    collapseDocs(newToggle, "hide", pageId);
+                    collapseDocs(newToggle, "hide");
                 }
             }
         };
@@ -2527,7 +2523,7 @@ function defocusSearchBar() {
                 if (e.id.match(/^impl(?:-\d+)?$/) === null) {
                     // Automatically minimize all non-inherent impls
                     if (hasClass(e, "impl") === true) {
-                        collapseDocs(newToggle, "hide", pageId);
+                        collapseDocs(newToggle, "hide");
                     }
                 }
             };
@@ -2562,14 +2558,12 @@ function defocusSearchBar() {
         }
         onEachLazy(document.getElementsByClassName("impl-items"), function(e) {
             onEachLazy(e.getElementsByClassName("associatedconstant"), func);
-            var hiddenElems = e.getElementsByClassName("hidden");
-            var needToggle = false;
-
-            var needToggle = onEachLazy(e.getElementsByClassName("hidden"), function(hiddenElem) {
-                if (hasClass(hiddenElem, "content") === false &&
-                    hasClass(hiddenElem, "docblock") === false) {
-                    return true;
-                }
+            // We transform the DOM iterator into a vec of DOM elements to prevent performance
+            // issues on webkit browsers.
+            var hiddenElems = Array.prototype.slice.call(e.getElementsByClassName("hidden"));
+            var needToggle = hiddenElems.some(function(hiddenElem) {
+                return hasClass(hiddenElem, "content") === false &&
+                    hasClass(hiddenElem, "docblock") === false;
             });
             if (needToggle === true) {
                 var inner_toggle = newToggle.cloneNode(true);
@@ -2672,10 +2666,10 @@ function defocusSearchBar() {
 
         onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
         onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
+
+        autoCollapse(getSettingValue("collapse") === "true");
+
         var pageId = getPageId();
-
-        autoCollapse(pageId, getSettingValue("collapse") === "true");
-
         if (pageId !== null) {
             expandSection(pageId);
         }
