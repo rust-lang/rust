@@ -27,7 +27,6 @@ impl Dlsym {
             "AcquireSRWLockShared" => Some(Dlsym::AcquireSRWLockShared),
             "ReleaseSRWLockShared" => Some(Dlsym::ReleaseSRWLockShared),
             "TryAcquireSRWLockShared" => Some(Dlsym::TryAcquireSRWLockShared),
-            "SetThreadStackGuarantee" => None,
             "GetSystemTimePreciseAsFileTime" => None,
             _ => throw_unsup_format!("unsupported Windows dlsym: {}", name),
         })
