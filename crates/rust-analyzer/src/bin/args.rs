@@ -57,6 +57,7 @@ FLAGS:
 ENVIRONMENTAL VARIABLES:
     RA_LOG            Set log filter in env_logger format
     RA_PROFILE        Enable hierarchical profiler
+    RA_WAIT_DBG       If set acts like a --wait-dbg flag
 
 COMMANDS:
 

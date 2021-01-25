@@ -29,7 +29,7 @@ fn main() {
 
 fn try_main() -> Result<()> {
     let args = args::Args::parse()?;
-    if args.wait_dbg {
+    if args.wait_dbg || env::var("RA_WAIT_DBG").is_ok() {
         #[allow(unused_mut)]
         let mut d = 4;
         while d == 4 {
