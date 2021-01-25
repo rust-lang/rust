@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/issue-79690.rs:26:1
+  --> $DIR/issue-79690.rs:29:1
    |
 LL | const G: Fat = unsafe { Transmute { t: FOO }.u };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered read of part of a pointer at .1.<deref>.size.foo
