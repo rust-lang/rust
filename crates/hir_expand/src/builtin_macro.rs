@@ -327,17 +327,12 @@ fn concat_expand(
                 // concat works with string and char literals, so remove any quotes.
                 // It also works with integer, float and boolean literals, so just use the rest
                 // as-is.
-
-                text += it
-                    .text
-                    .trim_start_matches(|c| match c {
-                        'r' | '#' | '\'' | '"' => true,
-                        _ => false,
-                    })
-                    .trim_end_matches(|c| match c {
-                        '#' | '\'' | '"' => true,
-                        _ => false,
-                    });
+                let component = unquote_str(&it).unwrap_or_else(|| it.text.to_string());
+                text.push_str(&component);
+            }
+            // handle boolean literals
+            tt::TokenTree::Leaf(tt::Leaf::Ident(id)) if i % 2 == 0 => {
+                text.push_str(id.text.as_str());
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
             _ => {
@@ -345,7 +340,6 @@ fn concat_expand(
             }
         }
     }
-
     ExpandResult { value: Some((quote!(#text), FragmentKind::Expr)), err }
 }
 
@@ -745,12 +739,10 @@ mod tests {
             r##"
             #[rustc_builtin_macro]
             macro_rules! concat {}
-            concat!("foo", 0, r#"bar"#);
+            concat!("foo", r, 0, r#"bar"#, false);
             "##,
         );
 
-        assert_eq!(expanded, r#""foo0bar""#);
-
-        // FIXME: `true`/`false` literals don't work.
+        assert_eq!(expanded, r#""foor0barfalse""#);
     }
 }
