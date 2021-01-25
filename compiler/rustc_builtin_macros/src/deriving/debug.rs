@@ -8,6 +8,10 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
+fn make_mut_borrow(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<Expr>) -> P<Expr> {
+    cx.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Mut, expr))
+}
+
 pub fn expand_deriving_debug(
     cx: &mut ExtCtxt<'_>,
     span: Span,
@@ -67,11 +71,12 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     let fmt = substr.nonself_args[0].clone();
 
     let mut stmts = Vec::with_capacity(fields.len() + 2);
+    let fn_path_finish;
     match vdata {
         ast::VariantData::Tuple(..) | ast::VariantData::Unit(..) => {
             // tuple struct/"normal" variant
-            let expr =
-                cx.expr_method_call(span, fmt, Ident::new(sym::debug_tuple, span), vec![name]);
+            let fn_path_debug_tuple = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_tuple]);
+            let expr = cx.expr_call_global(span, fn_path_debug_tuple, vec![fmt, name]);
             stmts.push(cx.stmt_let(span, true, builder, expr));
 
             for field in fields {
@@ -79,22 +84,21 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 let field = cx.expr_addr_of(field.span, field.self_.clone());
                 let field = cx.expr_addr_of(field.span, field);
 
-                let expr = cx.expr_method_call(
-                    span,
-                    builder_expr.clone(),
-                    Ident::new(sym::field, span),
-                    vec![field],
-                );
+                let fn_path_field = cx.std_path(&[sym::fmt, sym::DebugTuple, sym::field]);
+                let builder_recv = make_mut_borrow(cx, span, builder_expr.clone());
+                let expr = cx.expr_call_global(span, fn_path_field, vec![builder_recv, field]);
 
                 // Use `let _ = expr;` to avoid triggering the
                 // unused_results lint.
                 stmts.push(stmt_let_underscore(cx, span, expr));
             }
+
+            fn_path_finish = cx.std_path(&[sym::fmt, sym::DebugTuple, sym::finish]);
         }
         ast::VariantData::Struct(..) => {
             // normal struct/struct variant
-            let expr =
-                cx.expr_method_call(span, fmt, Ident::new(sym::debug_struct, span), vec![name]);
+            let fn_path_debug_struct = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_struct]);
+            let expr = cx.expr_call_global(span, fn_path_debug_struct, vec![fmt, name]);
             stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
 
             for field in fields {
@@ -104,20 +108,20 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 );
 
                 // Use double indirection to make sure this works for unsized types
+                let fn_path_field = cx.std_path(&[sym::fmt, sym::DebugStruct, sym::field]);
                 let field = cx.expr_addr_of(field.span, field.self_.clone());
                 let field = cx.expr_addr_of(field.span, field);
-                let expr = cx.expr_method_call(
-                    span,
-                    builder_expr.clone(),
-                    Ident::new(sym::field, span),
-                    vec![name, field],
-                );
+                let builder_recv = make_mut_borrow(cx, span, builder_expr.clone());
+                let expr =
+                    cx.expr_call_global(span, fn_path_field, vec![builder_recv, name, field]);
                 stmts.push(stmt_let_underscore(cx, span, expr));
             }
+            fn_path_finish = cx.std_path(&[sym::fmt, sym::DebugStruct, sym::finish]);
         }
     }
 
-    let expr = cx.expr_method_call(span, builder_expr, Ident::new(sym::finish, span), vec![]);
+    let builder_recv = make_mut_borrow(cx, span, builder_expr);
+    let expr = cx.expr_call_global(span, fn_path_finish, vec![builder_recv]);
 
     stmts.push(cx.stmt_expr(expr));
     let block = cx.block(span, stmts);
