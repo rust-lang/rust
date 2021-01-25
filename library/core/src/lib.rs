@@ -127,6 +127,7 @@
 #![feature(no_core)]
 #![feature(auto_traits)]
 #![cfg_attr(bootstrap, feature(or_patterns))]
+#![feature(pin_deref_mut)]
 #![feature(prelude_import)]
 #![cfg_attr(not(bootstrap), feature(ptr_metadata))]
 #![feature(repr_simd, platform_intrinsics)]
