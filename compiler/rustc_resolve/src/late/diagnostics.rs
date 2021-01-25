@@ -1107,7 +1107,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if let Some(items) = self.diagnostic_metadata.current_trait_assoc_items {
             for assoc_item in &items[..] {
                 if assoc_item.ident == ident {
-                    return Some(match &assoc_item.kind {
+                    return Some(match &*assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
                         ast::AssocItemKind::Fn(_, sig, ..) if sig.decl.has_self() => {
                             AssocSuggestion::MethodWithSelf
@@ -1547,16 +1547,16 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             return None;
         }
         match (self.diagnostic_metadata.current_item, single_uppercase_char) {
-            (Some(Item { kind: ItemKind::Fn(..), ident, .. }), _) if ident.name == sym::main => {
+            (Some(Item { kind: box ItemKind::Fn(..), ident, .. }), _) if ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
             }
             (
                 Some(Item {
                     kind:
-                        kind @ ItemKind::Fn(..)
-                        | kind @ ItemKind::Enum(..)
-                        | kind @ ItemKind::Struct(..)
-                        | kind @ ItemKind::Union(..),
+                        kind @ box ItemKind::Fn(..)
+                        | kind @ box ItemKind::Enum(..)
+                        | kind @ box ItemKind::Struct(..)
+                        | kind @ box ItemKind::Union(..),
                     ..
                 }),
                 true,

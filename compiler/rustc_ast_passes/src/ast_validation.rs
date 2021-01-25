@@ -919,7 +919,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.check_nomangle_item_asciionly(item.ident, item.span);
         }
 
-        match item.kind {
+        match *item.kind {
             ItemKind::Impl {
                 unsafety,
                 polarity,
@@ -1090,7 +1090,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
-        match &fi.kind {
+        match &*fi.kind {
             ForeignItemKind::Fn(def, sig, _, body) => {
                 self.check_defaultness(fi.span, *def);
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
@@ -1332,7 +1332,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         if ctxt == AssocCtxt::Impl {
-            match &item.kind {
+            match &*item.kind {
                 AssocItemKind::Const(_, _, body) => {
                     self.check_impl_item_provided(item.span, body, "constant", " = <expr>;");
                 }
@@ -1349,13 +1349,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if ctxt == AssocCtxt::Trait || self.in_trait_impl {
             self.invalid_visibility(&item.vis, None);
-            if let AssocItemKind::Fn(_, sig, _, _) = &item.kind {
+            if let AssocItemKind::Fn(_, sig, _, _) = &*item.kind {
                 self.check_trait_fn_not_const(sig.header.constness);
                 self.check_trait_fn_not_async(item.span, sig.header.asyncness);
             }
         }
 
-        if let AssocItemKind::Const(..) = item.kind {
+        if let AssocItemKind::Const(..) = *item.kind {
             self.check_item_named(item.ident, "const");
         }
 

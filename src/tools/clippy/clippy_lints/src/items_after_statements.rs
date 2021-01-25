@@ -71,7 +71,7 @@ impl EarlyLintPass for ItemsAfterStatements {
                 if in_external_macro(cx.sess(), it.span) {
                     return;
                 }
-                if let ItemKind::MacroDef(..) = it.kind {
+                if let ItemKind::MacroDef(..) = *it.kind {
                     // do not lint `macro_rules`, but continue processing further statements
                     continue;
                 }

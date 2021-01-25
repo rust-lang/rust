@@ -244,7 +244,7 @@ impl<'a> CollectProcMacros<'a> {
 
 impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
-        if let ast::ItemKind::MacroDef(..) = item.kind {
+        if let ast::ItemKind::MacroDef(..) = *item.kind {
             if self.is_proc_macro_crate && self.sess.contains_name(&item.attrs, sym::macro_export) {
                 let msg =
                     "cannot export macro_rules! macros from a `proc-macro` crate type currently";
@@ -256,7 +256,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         // we're just not interested in this item.
         //
         // If we find one, try to locate a `#[proc_macro_derive]` attribute on it.
-        let is_fn = matches!(item.kind, ast::ItemKind::Fn(..));
+        let is_fn = matches!(*item.kind, ast::ItemKind::Fn(..));
 
         let mut found_attr: Option<&'a ast::Attribute> = None;
 

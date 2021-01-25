@@ -376,7 +376,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let krate_item = AstFragment::Items(smallvec![P(ast::Item {
             attrs: krate.attrs,
             span: krate.span,
-            kind: ast::ItemKind::Mod(krate.module),
+            kind: box ast::ItemKind::Mod(krate.module),
             ident: Ident::invalid(),
             id: ast::DUMMY_NODE_ID,
             vis: ast::Visibility {
@@ -388,7 +388,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         })]);
 
         match self.fully_expand_fragment(krate_item).make_items().pop().map(P::into_inner) {
-            Some(ast::Item { attrs, kind: ast::ItemKind::Mod(module), .. }) => {
+            Some(ast::Item { attrs, kind: box ast::ItemKind::Mod(module), .. }) => {
                 krate.attrs = attrs;
                 krate.module = module;
             }
@@ -859,7 +859,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         impl<'ast, 'a> Visitor<'ast> for GateProcMacroInput<'a> {
             fn visit_item(&mut self, item: &'ast ast::Item) {
-                match &item.kind {
+                match &*item.kind {
                     ast::ItemKind::Mod(module) if !module.inline => {
                         feature_err(
                             self.parse_sess,
@@ -1366,11 +1366,11 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         let ident = item.ident;
         let span = item.span;
 
-        match item.kind {
+        match *item.kind {
             ast::ItemKind::MacCall(..) => {
                 item.attrs = attrs;
                 self.check_attributes(&item.attrs);
-                item.and_then(|item| match item.kind {
+                item.and_then(|item| match *item.kind {
                     ItemKind::MacCall(mac) => {
                         self.collect_bang(mac, span, AstFragmentKind::Items).make_items()
                     }
@@ -1458,10 +1458,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 .make_trait_items();
         }
 
-        match item.kind {
+        match *item.kind {
             ast::AssocItemKind::MacCall(..) => {
                 self.check_attributes(&item.attrs);
-                item.and_then(|item| match item.kind {
+                item.and_then(|item| match *item.kind {
                     ast::AssocItemKind::MacCall(mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::TraitItems)
                         .make_trait_items(),
@@ -1481,10 +1481,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 .make_impl_items();
         }
 
-        match item.kind {
+        match *item.kind {
             ast::AssocItemKind::MacCall(..) => {
                 self.check_attributes(&item.attrs);
-                item.and_then(|item| match item.kind {
+                item.and_then(|item| match *item.kind {
                     ast::AssocItemKind::MacCall(mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::ImplItems)
                         .make_impl_items(),
@@ -1528,10 +1528,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 .make_foreign_items();
         }
 
-        match foreign_item.kind {
+        match *foreign_item.kind {
             ast::ForeignItemKind::MacCall(..) => {
                 self.check_attributes(&foreign_item.attrs);
-                foreign_item.and_then(|item| match item.kind {
+                foreign_item.and_then(|item| match *item.kind {
                     ast::ForeignItemKind::MacCall(mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::ForeignItems)
                         .make_foreign_items(),

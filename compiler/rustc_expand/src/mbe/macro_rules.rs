@@ -376,7 +376,7 @@ pub fn compile_declarative_macro(
     let tt_spec = Some(NonterminalKind::TT);
 
     // Parse the macro_rules! invocation
-    let (macro_rules, body) = match &def.kind {
+    let (macro_rules, body) = match &*def.kind {
         ast::ItemKind::MacroDef(def) => (def.macro_rules, def.body.inner_tokens()),
         _ => unreachable!(),
     };

@@ -492,7 +492,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         visit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
-        match foreign_item.kind {
+        match *foreign_item.kind {
             ForeignItemKind::Fn(_, _, ref generics, _)
             | ForeignItemKind::TyAlias(_, ref generics, ..) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
@@ -937,7 +937,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let name = item.ident.name;
         debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
-        match item.kind {
+        match *item.kind {
             ItemKind::TyAlias(_, ref generics, _, _) | ItemKind::Fn(_, _, ref generics, _) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_item(this, item)
@@ -976,7 +976,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
                         this.with_trait_items(trait_items, |this| {
                             for item in trait_items {
-                                match &item.kind {
+                                match &*item.kind {
                                     AssocItemKind::Const(_, ty, default) => {
                                         this.visit_ty(ty);
                                         // Only impose the restrictions of `ConstRibKind` for an
@@ -1033,7 +1033,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
                     if let Some(expr) = expr {
-                        let constant_item_kind = match item.kind {
+                        let constant_item_kind = match *item.kind {
                             ItemKind::Const(..) => ConstantItemKind::Const,
                             ItemKind::Static(..) => ConstantItemKind::Static,
                             _ => unreachable!(),
@@ -1276,7 +1276,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
                                 for item in impl_items {
                                     use crate::ResolutionError::*;
-                                    match &item.kind {
+                                    match &*item.kind {
                                         AssocItemKind::Const(_default, _ty, _expr) => {
                                             debug!("resolve_implementation AssocItemKind::Const",);
                                             // If this is a trait impl, ensure the const
@@ -2201,7 +2201,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // Descend into the block.
         for stmt in &block.stmts {
             if let StmtKind::Item(ref item) = stmt.kind {
-                if let ItemKind::MacroDef(..) = item.kind {
+                if let ItemKind::MacroDef(..) = *item.kind {
                     num_macro_definition_ribs += 1;
                     let res = self.r.local_def_id(item.id).to_def_id();
                     self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));

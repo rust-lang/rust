@@ -2581,7 +2581,7 @@ pub struct Item<K = ItemKind> {
     /// It might be a dummy name in case of anonymous items.
     pub ident: Ident,
 
-    pub kind: K,
+    pub kind: Box<K>,
 
     /// Original tokens this item was parsed from. This isn't necessarily
     /// available for all items, although over time more and more items should
@@ -2593,6 +2593,10 @@ pub struct Item<K = ItemKind> {
     pub tokens: Option<LazyTokenStream>,
 }
 
+rustc_data_structures::static_assert_size!(Item<ItemKind>, 96);
+rustc_data_structures::static_assert_size!(Item<AssocItemKind>, 96);
+rustc_data_structures::static_assert_size!(Item<ForeignItemKind>, 96);
+
 impl Item {
     /// Return the span that encompasses the attributes.
     pub fn span_with_attributes(&self) -> Span {
@@ -2603,7 +2607,7 @@ impl Item {
 impl<K: Into<ItemKind>> Item<K> {
     pub fn into_item(self) -> Item {
         let Item { attrs, id, span, vis, ident, kind, tokens } = self;
-        Item { attrs, id, span, vis, ident, kind: kind.into(), tokens }
+        Item { attrs, id, span, vis, ident, kind: box (*kind).into(), tokens }
     }
 }
 

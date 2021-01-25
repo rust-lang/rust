@@ -34,7 +34,7 @@ pub fn expand(
     }
 
     let item = match item {
-        Annotatable::Item(item) => match item.kind {
+        Annotatable::Item(item) => match *item.kind {
             ItemKind::Static(..) => item,
             _ => return not_static(Annotatable::Item(item)),
         },

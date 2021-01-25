@@ -72,7 +72,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
 
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
-        let def_data = match &i.kind {
+        let def_data = match &*i.kind {
             ItemKind::Impl { .. } => DefPathData::Impl,
             ItemKind::Mod(..) if i.ident.name == kw::Empty => {
                 // Fake crate root item from expand.
@@ -103,7 +103,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
         let def = self.create_def(i.id, def_data, i.span);
 
         self.with_parent(def, |this| {
-            match i.kind {
+            match *i.kind {
                 ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
                     // If this is a unit or tuple-like struct, register the constructor.
                     if let Some(ctor_hir_id) = struct_def.ctor_id() {
@@ -141,7 +141,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
-        if let ForeignItemKind::MacCall(_) = foreign_item.kind {
+        if let ForeignItemKind::MacCall(_) = *foreign_item.kind {
             return self.visit_macro_invoc(foreign_item.id);
         }
 
@@ -195,7 +195,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
-        let def_data = match &i.kind {
+        let def_data = match &*i.kind {
             AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident.name),
             AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
             AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),

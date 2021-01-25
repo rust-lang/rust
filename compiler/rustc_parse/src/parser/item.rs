@@ -147,6 +147,7 @@ impl<'a> Parser<'a> {
             self.error_on_unconsumed_default(def, &kind);
             let span = lo.to(self.prev_token.span);
             let id = DUMMY_NODE_ID;
+            let kind = box kind;
             let item = Item { ident, attrs, id, kind, vis, span, tokens: None };
             return Ok(Some(item));
         }
@@ -734,7 +735,7 @@ impl<'a> Parser<'a> {
     fn parse_assoc_item(&mut self, req_name: ReqName) -> PResult<'a, Option<Option<P<AssocItem>>>> {
         Ok(self.parse_item_(req_name, ForceCollect::No)?.map(
             |Item { attrs, id, span, vis, ident, kind, tokens }| {
-                let kind = match AssocItemKind::try_from(kind) {
+                let kind = box match AssocItemKind::try_from(*kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
                         ItemKind::Static(a, _, b) => {
@@ -926,7 +927,7 @@ impl<'a> Parser<'a> {
     pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
         Ok(self.parse_item_(|_| true, ForceCollect::No)?.map(
             |Item { attrs, id, span, vis, ident, kind, tokens }| {
-                let kind = match ForeignItemKind::try_from(kind) {
+                let kind = box match ForeignItemKind::try_from(*kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
                         ItemKind::Const(_, a, b) => {

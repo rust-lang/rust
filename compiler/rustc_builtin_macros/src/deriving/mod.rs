@@ -120,7 +120,7 @@ fn inject_impl_of_structural_trait(
         _ => unreachable!(),
     };
 
-    let generics = match item.kind {
+    let generics = match *item.kind {
         ItemKind::Struct(_, ref generics) | ItemKind::Enum(_, ref generics) => generics,
         // Do not inject `impl Structural for Union`. (`PartialEq` does not
         // support unions, so we will see error downstream.)

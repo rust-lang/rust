@@ -485,7 +485,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let mut relevant_main_found = false;
                 loop {
                     match parser.parse_item(ForceCollect::No) {
-                        Ok(Some(item)) => match &item.kind {
+                        Ok(Some(item)) => match &*item.kind {
                             // Tests with one of these items are ignored
                             ItemKind::Static(..)
                             | ItemKind::Const(..)

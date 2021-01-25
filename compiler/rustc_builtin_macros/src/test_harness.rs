@@ -103,7 +103,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(mut module) = item.kind {
+        if let ast::ItemKind::Mod(mut module) = *item.kind {
             let tests = mem::take(&mut self.tests);
             noop_visit_mod(&mut module, self);
             let mut tests = mem::replace(&mut self.tests, tests);
@@ -126,7 +126,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
                 }
                 self.cx.test_cases.extend(tests);
             }
-            item.kind = ast::ItemKind::Mod(module);
+            item.kind = box ast::ItemKind::Mod(module);
         }
         smallvec![P(item)]
     }
@@ -135,7 +135,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 // Beware, this is duplicated in librustc_passes/entry.rs (with
 // `rustc_hir::Item`), so make sure to keep them in sync.
 fn entry_point_type(sess: &Session, item: &ast::Item, depth: usize) -> EntryPointType {
-    match item.kind {
+    match *item.kind {
         ast::ItemKind::Fn(..) => {
             if sess.contains_name(&item.attrs, sym::start) {
                 EntryPointType::Start
@@ -323,7 +323,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         ident: main_id,
         attrs: vec![main_attr],
         id: ast::DUMMY_NODE_ID,
-        kind: main,
+        kind: box main,
         vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },
         span: sp,
         tokens: None,

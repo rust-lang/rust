@@ -656,7 +656,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &'b Item) {
-        if matches!(item.kind, ItemKind::Mod(..)) && item.ident.name == kw::Empty {
+        if matches!(*item.kind, ItemKind::Mod(..)) && item.ident.name == kw::Empty {
             // Fake crate root item from expand.
             return;
         }
@@ -672,7 +672,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
         self.r.visibilities.insert(local_def_id, vis);
 
-        match item.kind {
+        match *item.kind {
             ItemKind::Use(ref use_tree) => {
                 self.build_reduced_graph_for_use_tree(
                     // This particular use tree
@@ -900,7 +900,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem) {
         let local_def_id = self.r.local_def_id(item.id);
         let def_id = local_def_id.to_def_id();
-        let (def_kind, ns) = match item.kind {
+        let (def_kind, ns) = match *item.kind {
             ForeignItemKind::Fn(..) => (DefKind::Fn, ValueNS),
             ForeignItemKind::Static(..) => (DefKind::Static, ValueNS),
             ForeignItemKind::TyAlias(..) => (DefKind::ForeignTy, TypeNS),
@@ -1047,7 +1047,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     )
                     .emit();
                 }
-                if let ItemKind::ExternCrate(Some(orig_name)) = item.kind {
+                if let ItemKind::ExternCrate(Some(orig_name)) = *item.kind {
                     if orig_name == kw::SelfLower {
                         self.r
                             .session
@@ -1214,7 +1214,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let parent_scope = self.parent_scope;
         let expansion = parent_scope.expansion;
         let def_id = self.r.local_def_id(item.id);
-        let (ext, ident, span, macro_rules) = match &item.kind {
+        let (ext, ident, span, macro_rules) = match &*item.kind {
             ItemKind::MacroDef(def) => {
                 let ext = Lrc::new(self.r.compile_macro(item, self.r.session.edition()));
                 (ext, item.ident, item.span, def.macro_rules)
@@ -1262,7 +1262,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             ))
         } else {
             let module = parent_scope.module;
-            let vis = match item.kind {
+            let vis = match *item.kind {
                 // Visibilities must not be resolved non-speculatively twice
                 // and we already resolved this one as a `fn` item visibility.
                 ItemKind::Fn(..) => self
@@ -1299,7 +1299,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_item(&mut self, item: &'b Item) {
         let orig_module_scope = self.parent_scope.module;
-        self.parent_scope.macro_rules = match item.kind {
+        self.parent_scope.macro_rules = match *item.kind {
             ItemKind::MacroDef(..) => {
                 let macro_rules_scope = self.define_macro(item);
                 visit::walk_item(self, item);
@@ -1314,7 +1314,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
                 let orig_macro_rules_scope = self.parent_scope.macro_rules;
                 self.build_reduced_graph_for_item(item);
                 visit::walk_item(self, item);
-                match item.kind {
+                match *item.kind {
                     ItemKind::Mod(..) if self.contains_macro_use(&item.attrs) => {
                         self.parent_scope.macro_rules
                     }
@@ -1334,7 +1334,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'b ForeignItem) {
-        if let ForeignItemKind::MacCall(_) = foreign_item.kind {
+        if let ForeignItemKind::MacCall(_) = *foreign_item.kind {
             self.visit_invoc_in_module(foreign_item.id);
             return;
         }
@@ -1353,7 +1353,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_assoc_item(&mut self, item: &'b AssocItem, ctxt: AssocCtxt) {
-        if let AssocItemKind::MacCall(_) = item.kind {
+        if let AssocItemKind::MacCall(_) = *item.kind {
             match ctxt {
                 AssocCtxt::Trait => {
                     self.visit_invoc_in_module(item.id);
@@ -1369,7 +1369,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         let def_id = local_def_id.to_def_id();
         let vis = match ctxt {
             AssocCtxt::Trait => {
-                let (def_kind, ns) = match item.kind {
+                let (def_kind, ns) = match *item.kind {
                     AssocItemKind::Const(..) => (DefKind::AssocConst, ValueNS),
                     AssocItemKind::Fn(_, ref sig, _, _) => {
                         if sig.decl.has_self() {

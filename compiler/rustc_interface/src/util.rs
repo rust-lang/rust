@@ -766,7 +766,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     }
 
     fn flat_map_trait_item(&mut self, i: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        let is_const = match i.kind {
+        let is_const = match *i.kind {
             ast::AssocItemKind::Const(..) => true,
             ast::AssocItemKind::Fn(_, ref sig, _, _) => Self::is_sig_const(sig),
             _ => false,

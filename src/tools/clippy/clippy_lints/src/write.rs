@@ -233,7 +233,7 @@ impl EarlyLintPass for Write {
         if let ItemKind::Impl {
             of_trait: Some(trait_ref),
             ..
-        } = &item.kind
+        } = &*item.kind
         {
             let trait_name = trait_ref
                 .path

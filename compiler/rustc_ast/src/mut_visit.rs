@@ -971,7 +971,7 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
-    match kind {
+    match &mut **kind {
         AssocItemKind::Const(_, ty, expr) => {
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
@@ -1014,7 +1014,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
             id: DUMMY_NODE_ID,
             vis: item_vis,
             span,
-            kind: ItemKind::Mod(module),
+            kind: box ItemKind::Mod(module),
             tokens: None,
         });
         let items = vis.flat_map_item(item);
@@ -1025,7 +1025,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
             Crate { module, attrs: vec![], span, proc_macros }
         } else if len == 1 {
             let Item { attrs, span, kind, .. } = items.into_iter().next().unwrap().into_inner();
-            match kind {
+            match *kind {
                 ItemKind::Mod(module) => Crate { module, attrs, span, proc_macros },
                 _ => panic!("visitor converted a module to not a module"),
             }
@@ -1061,7 +1061,7 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
-    match kind {
+    match &mut **kind {
         ForeignItemKind::Static(ty, _, expr) => {
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));

@@ -360,7 +360,7 @@ impl EarlyLintPass for NonExpressiveNames {
             return;
         }
 
-        if let ItemKind::Fn(_, ref sig, _, Some(ref blk)) = item.kind {
+        if let ItemKind::Fn(_, ref sig, _, Some(ref blk)) = *item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
@@ -370,7 +370,7 @@ impl EarlyLintPass for NonExpressiveNames {
             return;
         }
 
-        if let AssocItemKind::Fn(_, ref sig, _, Some(ref blk)) = item.kind {
+        if let AssocItemKind::Fn(_, ref sig, _, Some(ref blk)) = *item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }

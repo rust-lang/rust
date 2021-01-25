@@ -401,7 +401,7 @@ impl<'a> TraitDef<'a> {
                     }
                     false
                 });
-                let has_no_type_params = match item.kind {
+                let has_no_type_params = match *item.kind {
                     ast::ItemKind::Struct(_, ref generics)
                     | ast::ItemKind::Enum(_, ref generics)
                     | ast::ItemKind::Union(_, ref generics) => !generics
@@ -414,7 +414,7 @@ impl<'a> TraitDef<'a> {
                 let always_copy = has_no_type_params && cx.resolver.has_derive_copy(container_id);
                 let use_temporaries = is_packed && always_copy;
 
-                let newitem = match item.kind {
+                let newitem = match *item.kind {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => self.expand_struct_def(
                         cx,
                         &struct_def,
@@ -527,7 +527,7 @@ impl<'a> TraitDef<'a> {
                     tokens: None,
                 },
                 attrs: Vec::new(),
-                kind: ast::AssocItemKind::TyAlias(
+                kind: box ast::AssocItemKind::TyAlias(
                     ast::Defaultness::Final,
                     Generics::default(),
                     Vec::new(),
@@ -929,7 +929,7 @@ impl<'a> MethodDef<'a> {
                 tokens: None,
             },
             ident: method_ident,
-            kind: ast::AssocItemKind::Fn(def, sig, fn_generics, Some(body_block)),
+            kind: box ast::AssocItemKind::Fn(def, sig, fn_generics, Some(body_block)),
             tokens: None,
         })
     }
@@ -1732,7 +1732,7 @@ where
 /// (for an enum, no variant has any fields)
 pub fn is_type_without_fields(item: &Annotatable) -> bool {
     if let Annotatable::Item(ref item) = *item {
-        match item.kind {
+        match *item.kind {
             ast::ItemKind::Enum(ref enum_def, _) => {
                 enum_def.variants.iter().all(|v| v.data.fields().is_empty())
             }

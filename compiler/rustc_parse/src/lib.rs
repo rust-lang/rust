@@ -1,6 +1,7 @@
 //! The main parser interface.
 
 #![feature(crate_visibility_modifier)]
+#![feature(box_syntax)]
 #![feature(bindings_after_at)]
 #![feature(iter_order_by)]
 #![feature(or_patterns)]

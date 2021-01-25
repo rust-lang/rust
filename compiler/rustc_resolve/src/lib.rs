@@ -10,6 +10,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
+#![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(nll)]
@@ -305,7 +306,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
         }
         // find a use statement
         for item in &module.items {
-            match item.kind {
+            match *item.kind {
                 ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones

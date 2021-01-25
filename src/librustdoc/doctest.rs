@@ -466,7 +466,7 @@ crate fn make_test(
                 match parser.parse_item(ForceCollect::No) {
                     Ok(Some(item)) => {
                         if !found_main {
-                            if let ast::ItemKind::Fn(..) = item.kind {
+                            if let ast::ItemKind::Fn(..) = *item.kind {
                                 if item.ident.name == sym::main {
                                     found_main = true;
                                 }
@@ -474,7 +474,7 @@ crate fn make_test(
                         }
 
                         if !found_extern_crate {
-                            if let ast::ItemKind::ExternCrate(original) = item.kind {
+                            if let ast::ItemKind::ExternCrate(original) = *item.kind {
                                 // This code will never be reached if `cratename` is none because
                                 // `found_extern_crate` is initialized to `true` if it is none.
                                 let cratename = cratename.unwrap();
@@ -487,7 +487,7 @@ crate fn make_test(
                         }
 
                         if !found_macro {
-                            if let ast::ItemKind::MacCall(..) = item.kind {
+                            if let ast::ItemKind::MacCall(..) = *item.kind {
                                 found_macro = true;
                             }
                         }

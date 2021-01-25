@@ -172,7 +172,7 @@ crate fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKin
         if matches!(
             cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())),
             LoadedMacro::MacroDef(def, _)
-                if matches!(&def.kind, ast::ItemKind::MacroDef(ast_def)
+                if matches!(&*def.kind, ast::ItemKind::MacroDef(ast_def)
                     if !ast_def.macro_rules)
         ) {
             once(crate_name).chain(relative).collect()
@@ -526,7 +526,7 @@ fn build_macro(cx: &DocContext<'_>, did: DefId, name: Symbol) -> clean::ItemKind
     let imported_from = cx.tcx.original_crate_name(did.krate);
     match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
         LoadedMacro::MacroDef(def, _) => {
-            let matchers: Vec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.kind {
+            let matchers: Vec<Span> = if let ast::ItemKind::MacroDef(ref def) = *def.kind {
                 let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
                 tts.chunks(4).map(|arm| arm[0].span()).collect()
             } else {

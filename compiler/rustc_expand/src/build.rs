@@ -529,7 +529,7 @@ impl<'a> ExtCtxt<'a> {
             ident: name,
             attrs,
             id: ast::DUMMY_NODE_ID,
-            kind,
+            kind: box kind,
             vis: ast::Visibility {
                 span: span.shrink_to_lo(),
                 kind: ast::VisibilityKind::Inherited,

@@ -356,7 +356,7 @@ impl EarlyLintPass for UnsafeCode {
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
-        match it.kind {
+        match *it.kind {
             ast::ItemKind::Trait(_, ast::Unsafe::Yes(_), ..) => {
                 self.report_unsafe(cx, it.span, |lint| {
                     lint.build("declaration of an `unsafe` trait").emit()
@@ -872,7 +872,7 @@ declare_lint_pass!(
 
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        if let ast::AssocItemKind::Fn(_, ref sig, _, _) = it.kind {
+        if let ast::AssocItemKind::Fn(_, ref sig, _, _) = *it.kind {
             for arg in sig.decl.inputs.iter() {
                 if let ast::PatKind::Ident(_, ident, None) = arg.pat.kind {
                     if ident.name == kw::Empty {

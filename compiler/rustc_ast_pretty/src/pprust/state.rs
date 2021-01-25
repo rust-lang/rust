@@ -1021,7 +1021,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
-        match kind {
+        match &**kind {
             ast::ForeignItemKind::Fn(def, sig, gen, body) => {
                 self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
             }
@@ -1106,7 +1106,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
         self.ann.pre(self, AnnNode::Item(item));
-        match item.kind {
+        match *item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
                 self.head(visibility_qualified(&item.vis, "extern crate"));
                 if let Some(orig_name) = orig_name {
@@ -1452,7 +1452,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
-        match kind {
+        match &**kind {
             ast::AssocItemKind::Fn(def, sig, gen, body) => {
                 self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
             }

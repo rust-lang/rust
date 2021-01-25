@@ -281,7 +281,7 @@ pub fn walk_trait_ref<'a, V: Visitor<'a>>(visitor: &mut V, trait_ref: &'a TraitR
 pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.ident);
-    match item.kind {
+    match *item.kind {
         ItemKind::ExternCrate(orig_name) => {
             if let Some(orig_name) = orig_name {
                 visitor.visit_name(item.span, orig_name);
@@ -538,7 +538,7 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignI
     visitor.visit_vis(vis);
     visitor.visit_ident(ident);
     walk_list!(visitor, visit_attribute, attrs);
-    match kind {
+    match &**kind {
         ForeignItemKind::Static(ty, _, expr) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
@@ -648,7 +648,7 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
     visitor.visit_vis(vis);
     visitor.visit_ident(ident);
     walk_list!(visitor, visit_attribute, attrs);
-    match kind {
+    match &**kind {
         AssocItemKind::Const(_, ty, expr) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);

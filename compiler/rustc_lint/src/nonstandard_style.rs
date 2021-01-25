@@ -157,7 +157,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
             return;
         }
 
-        match it.kind {
+        match *it.kind {
             ast::ItemKind::TyAlias(..)
             | ast::ItemKind::Enum(..)
             | ast::ItemKind::Struct(..)
@@ -168,7 +168,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
     }
 
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        if let ast::AssocItemKind::TyAlias(..) = it.kind {
+        if let ast::AssocItemKind::TyAlias(..) = *it.kind {
             self.check_case(cx, "associated type", &it.ident);
         }
     }

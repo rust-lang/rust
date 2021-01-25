@@ -694,7 +694,7 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        if let Const(.., Some(expr)) | Static(.., Some(expr)) = &item.kind {
+        if let Const(.., Some(expr)) | Static(.., Some(expr)) = &*item.kind {
             self.check_unused_delims_expr(
                 cx,
                 expr,
@@ -1139,7 +1139,7 @@ impl UnusedImportBraces {
 
 impl EarlyLintPass for UnusedImportBraces {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if let ast::ItemKind::Use(ref use_tree) = item.kind {
+        if let ast::ItemKind::Use(ref use_tree) = *item.kind {
             self.check_use_tree(cx, use_tree, item);
         }
     }

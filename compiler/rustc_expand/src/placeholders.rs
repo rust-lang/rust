@@ -55,7 +55,7 @@ pub fn placeholder(
             ident,
             vis,
             attrs,
-            kind: ast::ItemKind::MacCall(mac_placeholder()),
+            kind: box ast::ItemKind::MacCall(mac_placeholder()),
             tokens: None,
         })]),
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![P(ast::AssocItem {
@@ -64,7 +64,7 @@ pub fn placeholder(
             ident,
             vis,
             attrs,
-            kind: ast::AssocItemKind::MacCall(mac_placeholder()),
+            kind: box ast::AssocItemKind::MacCall(mac_placeholder()),
             tokens: None,
         })]),
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![P(ast::AssocItem {
@@ -73,7 +73,7 @@ pub fn placeholder(
             ident,
             vis,
             attrs,
-            kind: ast::AssocItemKind::MacCall(mac_placeholder()),
+            kind: box ast::AssocItemKind::MacCall(mac_placeholder()),
             tokens: None,
         })]),
         AstFragmentKind::ForeignItems => {
@@ -83,7 +83,7 @@ pub fn placeholder(
                 ident,
                 vis,
                 attrs,
-                kind: ast::ForeignItemKind::MacCall(mac_placeholder()),
+                kind: box ast::ForeignItemKind::MacCall(mac_placeholder()),
                 tokens: None,
             })])
         }
@@ -257,21 +257,21 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
     }
 
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        match item.kind {
+        match *item.kind {
             ast::ItemKind::MacCall(_) => self.remove(item.id).make_items(),
             _ => noop_flat_map_item(item, self),
         }
     }
 
     fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        match item.kind {
+        match *item.kind {
             ast::AssocItemKind::MacCall(_) => self.remove(item.id).make_trait_items(),
             _ => noop_flat_map_assoc_item(item, self),
         }
     }
 
     fn flat_map_impl_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        match item.kind {
+        match *item.kind {
             ast::AssocItemKind::MacCall(_) => self.remove(item.id).make_impl_items(),
             _ => noop_flat_map_assoc_item(item, self),
         }
@@ -281,7 +281,7 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
         &mut self,
         item: P<ast::ForeignItem>,
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
-        match item.kind {
+        match *item.kind {
             ast::ForeignItemKind::MacCall(_) => self.remove(item.id).make_foreign_items(),
             _ => noop_flat_map_foreign_item(item, self),
         }
@@ -376,7 +376,7 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
         noop_visit_mod(module, self);
         // remove macro definitions
         module.items.retain(
-            |item| !matches!(item.kind, ast::ItemKind::MacCall(_) if !self.cx.ecfg.keep_macs),
+            |item| !matches!(*item.kind, ast::ItemKind::MacCall(_) if !self.cx.ecfg.keep_macs),
         );
     }
 }

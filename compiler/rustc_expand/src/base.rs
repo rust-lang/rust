@@ -239,12 +239,12 @@ impl Annotatable {
         match *self {
             Annotatable::Stmt(ref stmt) => match stmt.kind {
                 ast::StmtKind::Item(ref item) => matches!(
-                    item.kind,
+                    *item.kind,
                     ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..)
                 ),
                 _ => false,
             },
-            Annotatable::Item(ref item) => match item.kind {
+            Annotatable::Item(ref item) => match *item.kind {
                 ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
                     true
                 }

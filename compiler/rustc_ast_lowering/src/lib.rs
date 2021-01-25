@@ -497,7 +497,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             fn visit_item(&mut self, item: &'tcx Item) {
                 let hir_id = self.lctx.allocate_hir_id_counter(item.id);
 
-                match item.kind {
+                match *item.kind {
                     ItemKind::Struct(_, ref generics)
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)

@@ -78,7 +78,7 @@ impl EarlyLintPass for ManualNonExhaustive {
             return;
         }
 
-        match &item.kind {
+        match &*item.kind {
             ItemKind::Enum(def, _) => {
                 check_manual_non_exhaustive_enum(cx, item, &def.variants);
             },

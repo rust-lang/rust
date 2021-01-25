@@ -67,7 +67,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         if let Some(hir_id) = item_hir_id {
             self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
                 let this = &mut ItemLowerer { lctx: this };
-                if let ItemKind::Impl { ref of_trait, .. } = item.kind {
+                if let ItemKind::Impl { ref of_trait, .. } = *item.kind {
                     this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
                 } else {
                     visit::walk_item(this, item);
@@ -182,7 +182,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_item_id(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
-        let node_ids = match i.kind {
+        let node_ids = match *i.kind {
             ItemKind::Use(ref use_tree) => {
                 let mut vec = smallvec![i.id];
                 self.lower_item_id_use_tree(use_tree, i.id, &mut vec);
@@ -228,7 +228,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
 
-        if let ItemKind::MacroDef(MacroDef { ref body, macro_rules }) = i.kind {
+        if let ItemKind::MacroDef(MacroDef { ref body, macro_rules }) = *i.kind {
             if !macro_rules || self.sess.contains_name(&i.attrs, sym::macro_export) {
                 let hir_id = self.lower_node_id(i.id);
                 let body = P(self.lower_mac_args(body));
@@ -697,7 +697,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
-            kind: match i.kind {
+            kind: match *i.kind {
                 ForeignItemKind::Fn(_, ref sig, ref generics, _) => {
                     let fdec = &sig.decl;
                     let (generics, (fn_dec, fn_args)) = self.add_in_band_defs(
@@ -797,7 +797,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_trait_item(&mut self, i: &AssocItem) -> hir::TraitItem<'hir> {
         let trait_item_def_id = self.resolver.local_def_id(i.id);
 
-        let (generics, kind) = match i.kind {
+        let (generics, kind) = match *i.kind {
             AssocItemKind::Const(_, ref ty, ref default) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
                 let body = default.as_ref().map(|x| self.lower_const_body(i.span, Some(x)));
@@ -839,7 +839,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {
-        let (kind, has_default) = match &i.kind {
+        let (kind, has_default) = match &*i.kind {
             AssocItemKind::Const(_, _, default) => (hir::AssocItemKind::Const, default.is_some()),
             AssocItemKind::TyAlias(_, _, _, default) => {
                 (hir::AssocItemKind::Type, default.is_some())
@@ -862,7 +862,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem<'hir> {
         let impl_item_def_id = self.resolver.local_def_id(i.id);
 
-        let (generics, kind) = match &i.kind {
+        let (generics, kind) = match &*i.kind {
             AssocItemKind::Const(_, ty, expr) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
                 (
@@ -935,7 +935,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
             defaultness,
-            kind: match &i.kind {
+            kind: match &*i.kind {
                 AssocItemKind::Const(..) => hir::AssocItemKind::Const,
                 AssocItemKind::TyAlias(..) => hir::AssocItemKind::Type,
                 AssocItemKind::Fn(_, sig, ..) => {

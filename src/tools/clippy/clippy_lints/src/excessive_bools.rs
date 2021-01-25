@@ -135,7 +135,7 @@ impl EarlyLintPass for ExcessiveBools {
         if in_macro(item.span) {
             return;
         }
-        match &item.kind {
+        match &*item.kind {
             ItemKind::Struct(variant_data, _) => {
                 if attr_by_name(&item.attrs, "repr").is_some() {
                     return;
@@ -164,7 +164,7 @@ impl EarlyLintPass for ExcessiveBools {
             }
             | ItemKind::Trait(_, _, _, _, items) => {
                 for item in items {
-                    if let AssocItemKind::Fn(_, fn_sig, _, _) = &item.kind {
+                    if let AssocItemKind::Fn(_, fn_sig, _, _) = &*item.kind {
                         self.check_fn_sig(cx, fn_sig, item.span);
                     }
                 }

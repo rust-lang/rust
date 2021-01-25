@@ -901,7 +901,7 @@ impl<'a> CrateLoader<'a> {
         definitions: &Definitions,
         def_id: LocalDefId,
     ) -> CrateNum {
-        match item.kind {
+        match *item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
                 debug!(
                     "resolving extern crate stmt. ident: {} orig_name: {:?}",
