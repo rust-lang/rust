@@ -53,12 +53,8 @@ fn check_self_super(def_map: &DefMap, item: ItemInNs, from: ModuleId) -> Option<
         Some(ModPath::from_segments(PathKind::Super(0), Vec::new()))
     } else if let Some(parent_id) = def_map[from.local_id].parent {
         // - if the item is the parent module, use `super` (this is not used recursively, since `super::super` is ugly)
-        if item
-            == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId {
-                krate: from.krate,
-                local_id: parent_id,
-            }))
-        {
+        let parent_id = def_map.module_id(parent_id);
+        if item == ItemInNs::Types(ModuleDefId::ModuleId(parent_id)) {
             Some(ModPath::from_segments(PathKind::Super(1), Vec::new()))
         } else {
             None
@@ -120,12 +116,8 @@ fn find_path_inner(
     }
 
     // - if the item is the crate root, return `crate`
-    if item
-        == ItemInNs::Types(ModuleDefId::ModuleId(ModuleId {
-            krate: from.krate,
-            local_id: def_map.root(),
-        }))
-    {
+    let root = def_map.module_id(def_map.root());
+    if item == ItemInNs::Types(ModuleDefId::ModuleId(root)) {
         return Some(ModPath::from_segments(PathKind::Crate, Vec::new()));
     }
 
@@ -175,7 +167,7 @@ fn find_path_inner(
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
 
-    let crate_root = ModuleId { local_id: def_map.root(), krate: from.krate };
+    let crate_root = def_map.module_id(def_map.root());
     let crate_attrs = db.attrs(crate_root.into());
     let prefer_no_std = crate_attrs.by_key("no_std").exists();
     let mut best_path = None;
@@ -288,14 +280,11 @@ fn find_local_import_locations(
     // Compute the initial worklist. We start with all direct child modules of `from` as well as all
     // of its (recursive) parent modules.
     let data = &def_map[from.local_id];
-    let mut worklist = data
-        .children
-        .values()
-        .map(|child| ModuleId { krate: from.krate, local_id: *child })
-        .collect::<Vec<_>>();
+    let mut worklist =
+        data.children.values().map(|child| def_map.module_id(*child)).collect::<Vec<_>>();
     let mut parent = data.parent;
     while let Some(p) = parent {
-        worklist.push(ModuleId { krate: from.krate, local_id: p });
+        worklist.push(def_map.module_id(p));
         parent = def_map[p].parent;
     }
 

@@ -37,8 +37,8 @@ use crate::{
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
     AdtId, AsMacroCall, AstId, AstIdWithPath, ConstLoc, ContainerId, EnumLoc, EnumVariantId,
-    FunctionLoc, ImplLoc, Intern, LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc,
-    TraitLoc, TypeAliasLoc, UnionLoc,
+    FunctionLoc, ImplLoc, Intern, LocalModuleId, ModuleDefId, StaticLoc, StructLoc, TraitLoc,
+    TypeAliasLoc, UnionLoc,
 };
 
 const GLOB_RECURSION_LIMIT: usize = 100;
@@ -56,10 +56,9 @@ pub(super) fn collect_defs(
     for dep in &crate_graph[def_map.krate].dependencies {
         log::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
         let dep_def_map = db.crate_def_map(dep.crate_id);
-        def_map.extern_prelude.insert(
-            dep.as_name(),
-            ModuleId { krate: dep.crate_id, local_id: dep_def_map.root }.into(),
-        );
+        def_map
+            .extern_prelude
+            .insert(dep.as_name(), dep_def_map.module_id(dep_def_map.root).into());
 
         // look for the prelude
         // If the dependency defines a prelude, we overwrite an already defined
@@ -332,11 +331,9 @@ impl DefCollector<'_> {
             // exported in type/value namespace. This function reduces the visibility of all items
             // in the crate root that aren't proc macros.
             let root = self.def_map.root;
+            let module_id = self.def_map.module_id(root);
             let root = &mut self.def_map.modules[root];
-            root.scope.censor_non_proc_macros(ModuleId {
-                krate: self.def_map.krate,
-                local_id: self.def_map.root,
-            });
+            root.scope.censor_non_proc_macros(module_id);
         }
     }
 
@@ -1029,8 +1026,7 @@ impl ModCollector<'_, '_> {
                     continue;
                 }
             }
-            let module =
-                ModuleId { krate: self.def_collector.def_map.krate, local_id: self.module_id };
+            let module = self.def_collector.def_map.module_id(self.module_id);
             let container = ContainerId::ModuleId(module);
 
             let mut def = None;
@@ -1097,10 +1093,7 @@ impl ModCollector<'_, '_> {
                     }
                 }
                 ModItem::Impl(imp) => {
-                    let module = ModuleId {
-                        krate: self.def_collector.def_map.krate,
-                        local_id: self.module_id,
-                    };
+                    let module = self.def_collector.def_map.module_id(self.module_id);
                     let container = ContainerId::ModuleId(module);
                     let impl_id = ImplLoc { container, id: ItemTreeId::new(self.file_id, imp) }
                         .intern(self.def_collector.db);
@@ -1343,7 +1336,7 @@ impl ModCollector<'_, '_> {
             modules[res].scope.define_legacy_macro(name, mac)
         }
         modules[self.module_id].children.insert(name.clone(), res);
-        let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
+        let module = self.def_collector.def_map.module_id(res);
         let def: ModuleDefId = module.into();
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
         self.def_collector.update(

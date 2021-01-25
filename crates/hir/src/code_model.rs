@@ -18,8 +18,8 @@ use hir_def::{
     type_ref::{Mutability, TypeRef},
     AdtId, AssocContainerId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId,
     DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule, ImplId, LifetimeParamId,
-    LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StaticId, StructId, TraitId,
-    TypeAliasId, TypeParamId, UnionId,
+    LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
+    TypeParamId, UnionId,
 };
 use hir_def::{find_path::PrefixKind, item_scope::ItemInNs, visibility::Visibility};
 use hir_expand::{
@@ -90,8 +90,8 @@ impl Crate {
     }
 
     pub fn root_module(self, db: &dyn HirDatabase) -> Module {
-        let module_id = db.crate_def_map(self.id).root();
-        Module::new(self, module_id)
+        let def_map = db.crate_def_map(self.id);
+        Module { id: def_map.module_id(def_map.root()) }
     }
 
     pub fn root_file(self, db: &dyn HirDatabase) -> FileId {
@@ -275,10 +275,6 @@ impl ModuleDef {
 }
 
 impl Module {
-    pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {
-        Module { id: ModuleId::top_level(krate.id, crate_module_id) }
-    }
-
     /// Name of this module.
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         let def_map = self.id.def_map(db.upcast());
@@ -302,7 +298,7 @@ impl Module {
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &dyn HirDatabase) -> Module {
         let def_map = db.crate_def_map(self.id.krate());
-        self.with_module_id(def_map.root())
+        Module { id: def_map.module_id(def_map.root()) }
     }
 
     /// Iterates over all child modules.
@@ -311,7 +307,7 @@ impl Module {
         let children = def_map[self.id.local_id]
             .children
             .iter()
-            .map(|(_, module_id)| self.with_module_id(*module_id))
+            .map(|(_, module_id)| Module { id: def_map.module_id(*module_id) })
             .collect::<Vec<_>>();
         children.into_iter()
     }
@@ -321,7 +317,7 @@ impl Module {
         // FIXME: handle block expressions as modules (their parent is in a different DefMap)
         let def_map = self.id.def_map(db.upcast());
         let parent_id = def_map[self.id.local_id].parent?;
-        Some(self.with_module_id(parent_id))
+        Some(Module { id: def_map.module_id(parent_id) })
     }
 
     pub fn path_to_root(self, db: &dyn HirDatabase) -> Vec<Module> {
@@ -404,10 +400,6 @@ impl Module {
     pub fn impl_defs(self, db: &dyn HirDatabase) -> Vec<Impl> {
         let def_map = self.id.def_map(db.upcast());
         def_map[self.id.local_id].scope.impls().map(Impl::from).collect()
-    }
-
-    pub(crate) fn with_module_id(self, module_id: LocalModuleId) -> Module {
-        Module::new(self.krate(), module_id)
     }
 
     /// Finds a path that can be used to refer to the given item from within
@@ -1013,8 +1005,9 @@ impl MacroDef {
     /// early, in `hir_expand`, where modules simply do not exist yet.
     pub fn module(self, db: &dyn HirDatabase) -> Option<Module> {
         let krate = self.id.krate;
-        let module_id = db.crate_def_map(krate).root();
-        Some(Module::new(Crate { id: krate }, module_id))
+        let def_map = db.crate_def_map(krate);
+        let module_id = def_map.root();
+        Some(Module { id: def_map.module_id(module_id) })
     }
 
     /// XXX: this parses the file

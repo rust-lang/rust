@@ -83,7 +83,7 @@ impl TestDB {
             let crate_def_map = self.crate_def_map(krate);
             for (local_id, data) in crate_def_map.modules() {
                 if data.origin.file_id() == Some(file_id) {
-                    return ModuleId::top_level(krate, local_id);
+                    return crate_def_map.module_id(local_id);
                 }
             }
         }

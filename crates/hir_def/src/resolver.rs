@@ -459,7 +459,7 @@ impl Resolver {
 
     pub fn module(&self) -> Option<ModuleId> {
         let (def_map, local_id) = self.module_scope()?;
-        Some(ModuleId { krate: def_map.krate(), local_id })
+        Some(def_map.module_id(local_id))
     }
 
     pub fn krate(&self) -> Option<CrateId> {
