@@ -88,13 +88,13 @@ fn atomic_fences() {
 }
 
 fn weak_sometimes_fails() {
-    static ATOMIC: AtomicBool = AtomicBool::new(false);
+    let atomic = AtomicBool::new(false);
     let tries = 20;
     for _ in 0..tries {
-        let cur = ATOMIC.load(Relaxed);
+        let cur = atomic.load(Relaxed);
         // Try (weakly) to flip the flag.
-        if ATOMIC.compare_exchange_weak(cur, !cur, Relaxed, Relaxed).is_err() {
-            // We succeeded, so return and skip the panic.
+        if atomic.compare_exchange_weak(cur, !cur, Relaxed, Relaxed).is_err() {
+            // We failed, so return and skip the panic.
             return;
         }
     }
