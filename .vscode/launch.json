@@ -120,6 +120,12 @@
       "sourceMaps": true,
       "outFiles": [ "${workspaceFolder}/editors/code/out/tests/unit/**/*.js" ],
       "preLaunchTask": "Pretest"
+    },
+    {
+      "name": "Win Attach to Server",
+      "type": "cppvsdbg",
+      "processId":"${command:pickProcess}",
+      "request": "attach"
     }
   ]
 }
