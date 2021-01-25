@@ -275,9 +275,9 @@ checksum = "28b9d6de7f49e22cf97ad17fc4036ece69300032f45f78f30b4a4482cdc3f4a6"
 
 [[package]]
 name = "countme"
-version = "2.0.0-pre.2"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5716604cba7c02a846ecad3f4a3fd2d2b641faccc2a24a51efb21aff0d01f35"
+checksum = "4f8038ded86523aa26c1321dfe8bb432707d0a3e2608f9d0108803727546e089"
 dependencies = [
  "dashmap",
  "once_cell",
@@ -1400,9 +1400,9 @@ checksum = "b5eb417147ba9860a96cfe72a0b93bf88fee1744b5636ec99ab20c1aa9376581"
 
 [[package]]
 name = "rowan"
-version = "0.12.1"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24c2d78254049413f9d73495f883e7fa0b7a7d4b88468cd72a3bbbd0ad585cd1"
+checksum = "5e05df24c035422fb2b845d66ef3542d6c4f8572eafe077175a30787b0254207"
 dependencies = [
  "countme",
  "hashbrown",
