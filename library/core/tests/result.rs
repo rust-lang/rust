@@ -120,6 +120,18 @@ pub fn test_unwrap_or_else_panic() {
 }
 
 #[test]
+fn test_unwrap_unchecked() {
+    let ok: Result<isize, &'static str> = Ok(100);
+    assert_eq!(unsafe { ok.unwrap_unchecked() }, 100);
+}
+
+#[test]
+fn test_unwrap_err_unchecked() {
+    let ok_err: Result<isize, &'static str> = Err("Err");
+    assert_eq!(unsafe { ok_err.unwrap_err_unchecked() }, "Err");
+}
+
+#[test]
 pub fn test_expect_ok() {
     let ok: Result<isize, &'static str> = Ok(100);
     assert_eq!(ok.expect("Unexpected error"), 100);
