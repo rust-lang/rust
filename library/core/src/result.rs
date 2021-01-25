@@ -229,7 +229,7 @@
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::ops::{self, Deref, DerefMut};
-use crate::{convert, fmt};
+use crate::{convert, fmt, hint};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -819,6 +819,74 @@ impl<T, E> Result<T, E> {
         match self {
             Ok(t) => t,
             Err(e) => op(e),
+        }
+    }
+
+    /// Returns the contained [`Ok`] value, consuming the `self` value,
+    /// without checking that the value is not an [`Err`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method on an [`Err`] is *[undefined behavior]*.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x: Result<u32, &str> = Ok(2);
+    /// assert_eq!(unsafe { x.unwrap_unchecked() }, 2);
+    /// ```
+    ///
+    /// ```no_run
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// unsafe { x.unwrap_unchecked(); } // Undefined behavior!
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
+    pub unsafe fn unwrap_unchecked(self) -> T {
+        debug_assert!(self.is_ok());
+        match self {
+            Ok(t) => t,
+            // SAFETY: the safety contract must be upheld by the caller.
+            Err(_) => unsafe { hint::unreachable_unchecked() },
+        }
+    }
+
+    /// Returns the contained [`Err`] value, consuming the `self` value,
+    /// without checking that the value is not an [`Ok`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method on an [`Ok`] is *[undefined behavior]*.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x: Result<u32, &str> = Ok(2);
+    /// unsafe { x.unwrap_err_unchecked() }; // Undefined behavior!
+    /// ```
+    ///
+    /// ```
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// assert_eq!(unsafe { x.unwrap_err_unchecked() }, "emergency failure");
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
+    pub unsafe fn unwrap_err_unchecked(self) -> E {
+        debug_assert!(self.is_err());
+        match self {
+            // SAFETY: the safety contract must be upheld by the caller.
+            Ok(_) => unsafe { hint::unreachable_unchecked() },
+            Err(e) => e,
         }
     }
 }
