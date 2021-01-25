@@ -704,12 +704,20 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             // that we haven't rehashed yet. We unfortunately can't preserve the
             // element since we lost their hash and have no way of recovering it
             // without risking another panic.
-            let mut guard = self.table.prepare_rehash_in_place(
-                mem::needs_drop::<T>(),
-                |self_: &mut RawTableInner<A>, index| {
-                    self_.bucket::<T>(index).drop();
-                },
-            );
+            self.table.prepare_rehash_in_place();
+
+            let mut guard = guard(&mut self.table, move |self_| {
+                if mem::needs_drop::<T>() {
+                    for i in 0..self_.buckets() {
+                        if *self_.ctrl(i) == DELETED {
+                            self_.set_ctrl(i, EMPTY);
+                            self_.bucket::<T>(i).drop();
+                            self_.items -= 1;
+                        }
+                    }
+                }
+                self_.growth_left = bucket_mask_to_capacity(self_.bucket_mask) - self_.items;
+            });
 
             // At this point, DELETED elements are elements that we haven't
             // rehashed yet. Find them and re-insert them at their ideal
@@ -1170,16 +1178,9 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
-    // We use `fn` argument here for `drop` as the function will only be called if the `hasher`
-    // panics which should be exceptionally rare. In return we only instantiate a single
-    // `prepare_rehash_in_place` per allocator (instead of per type and allocator)
     #[allow(clippy::mut_mut)]
     #[inline]
-    unsafe fn prepare_rehash_in_place<'s>(
-        &'s mut self,
-        needs_drop: bool,
-        drop: fn(&mut Self, usize),
-    ) -> crate::scopeguard::ScopeGuard<&mut Self, impl FnMut(&mut &'s mut Self) + 's> {
+    unsafe fn prepare_rehash_in_place(&mut self) {
         // Bulk convert all full control bytes to DELETED, and all DELETED
         // control bytes to EMPTY. This effectively frees up all buckets
         // containing a DELETED entry.
@@ -1198,18 +1199,6 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             self.ctrl(0)
                 .copy_to(self.ctrl(self.buckets()), Group::WIDTH);
         }
-        guard(self, move |self_| {
-            if needs_drop {
-                for i in 0..self_.buckets() {
-                    if *self_.ctrl(i) == DELETED {
-                        self_.set_ctrl(i, EMPTY);
-                        drop(self_, i);
-                        self_.items -= 1;
-                    }
-                }
-            }
-            self_.growth_left = bucket_mask_to_capacity(self_.bucket_mask) - self_.items;
-        })
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
