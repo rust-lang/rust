@@ -80,69 +80,86 @@ impl PassMode {
 }
 
 pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> PassMode {
+    let mut arg_abi = ArgAbi::new(&tcx, layout, |_, _, _| ArgAttributes::new());
     if layout.is_zst() {
         // WARNING zst arguments must never be passed, as that will break CastKind::ClosureFnPointer
-        PassMode::NoPass
-    } else {
-        let arg_abi = ArgAbi::new(&tcx, layout, |_, _, _| ArgAttributes::new());
-        match arg_abi.mode {
-            RustcPassMode::Ignore => PassMode::NoPass,
-            RustcPassMode::Direct(_) => match &arg_abi.layout.abi {
-                Abi::Scalar(scalar) => PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone())),
-                // FIXME implement Vector Abi in a cg_llvm compatible way
-                Abi::Vector { .. } => {
-                    if let Some(vector_ty) = crate::intrinsics::clif_vector_type(tcx, arg_abi.layout) {
-                        PassMode::ByVal(vector_ty)
-                    } else {
-                        PassMode::ByRef {
-                            size: Some(arg_abi.layout.size),
-                        }
-                    }
-                }
-                _ => unreachable!("{:?}", arg_abi.layout.abi)
-            },
-            RustcPassMode::Pair(_, _) => match &arg_abi.layout.abi {
-                Abi::ScalarPair(a, b) => {
-                    let a = scalar_to_clif_type(tcx, a.clone());
-                    let b = scalar_to_clif_type(tcx, b.clone());
-                    if a == types::I128 && b == types::I128 {
-                        // Returning (i128, i128) by-val-pair would take 4 regs, while only 3 are
-                        // available on x86_64. Cranelift gets confused when too many return params
-                        // are used.
-                        PassMode::ByRef {
-                            size: Some(arg_abi.layout.size),
-                        }
-                    } else {
-                        PassMode::ByValPair(a, b)
-                    }
-                }
-                _ => unreachable!("{:?}", arg_abi.layout.abi)
-            },
-            RustcPassMode::Cast(_) | RustcPassMode::Indirect {
-                attrs: _,
-                extra_attrs: None,
-                on_stack: false,
-            } => PassMode::ByRef {
-                size: Some(arg_abi.layout.size),
-            },
-            RustcPassMode::Indirect {
-                attrs: _,
-                extra_attrs,
-                on_stack: true,
-            } => {
-                assert!(extra_attrs.is_none());
-                PassMode::ByRef {
-                    size: Some(arg_abi.layout.size)
+        arg_abi.mode = RustcPassMode::Ignore;
+    }
+    match arg_abi.mode {
+        RustcPassMode::Ignore => {}
+        RustcPassMode::Direct(_) => match &arg_abi.layout.abi {
+            Abi::Scalar(_) => {},
+            // FIXME implement Vector Abi in a cg_llvm compatible way
+            Abi::Vector { .. } => {
+                if crate::intrinsics::clif_vector_type(tcx, arg_abi.layout).is_none() {
+                    arg_abi.mode = RustcPassMode::Indirect {
+                        attrs: ArgAttributes::new(),
+                        extra_attrs: None,
+                        on_stack: false,
+                    };
                 }
             }
-            RustcPassMode::Indirect {
-                attrs: _,
-                extra_attrs: Some(_),
-                on_stack: false,
-            } => PassMode::ByRef {
-                size: None,
-            },
+            _ => unreachable!("{:?}", arg_abi.layout.abi)
+        },
+        RustcPassMode::Pair(_, _) => match &arg_abi.layout.abi {
+            Abi::ScalarPair(a, b) => {
+                let a = scalar_to_clif_type(tcx, a.clone());
+                let b = scalar_to_clif_type(tcx, b.clone());
+                if a == types::I128 && b == types::I128 {
+                    arg_abi.mode = RustcPassMode::Indirect {
+                        attrs: ArgAttributes::new(),
+                        extra_attrs: None,
+                        on_stack: false,
+                    };
+                }
+            }
+            _ => unreachable!("{:?}", arg_abi.layout.abi)
+        },
+        _ => {}
+    }
+    match arg_abi.mode {
+        RustcPassMode::Ignore => PassMode::NoPass,
+        RustcPassMode::Direct(_) => match &arg_abi.layout.abi {
+            Abi::Scalar(scalar) => PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone())),
+            // FIXME implement Vector Abi in a cg_llvm compatible way
+            Abi::Vector { .. } => {
+                let vector_ty = crate::intrinsics::clif_vector_type(tcx, arg_abi.layout).unwrap();
+                PassMode::ByVal(vector_ty)
+            }
+            _ => unreachable!("{:?}", arg_abi.layout.abi)
+        },
+        RustcPassMode::Pair(_, _) => match &arg_abi.layout.abi {
+            Abi::ScalarPair(a, b) => {
+                let a = scalar_to_clif_type(tcx, a.clone());
+                let b = scalar_to_clif_type(tcx, b.clone());
+                PassMode::ByValPair(a, b)
+            }
+            _ => unreachable!("{:?}", arg_abi.layout.abi)
+        },
+        RustcPassMode::Cast(_) | RustcPassMode::Indirect {
+            attrs: _,
+            extra_attrs: None,
+            on_stack: false,
+        } => PassMode::ByRef {
+            size: Some(arg_abi.layout.size),
+        },
+        RustcPassMode::Indirect {
+            attrs: _,
+            extra_attrs,
+            on_stack: true,
+        } => {
+            assert!(extra_attrs.is_none());
+            PassMode::ByRef {
+                size: Some(arg_abi.layout.size)
+            }
         }
+        RustcPassMode::Indirect {
+            attrs: _,
+            extra_attrs: Some(_),
+            on_stack: false,
+        } => PassMode::ByRef {
+            size: None,
+        },
     }
 }
 
