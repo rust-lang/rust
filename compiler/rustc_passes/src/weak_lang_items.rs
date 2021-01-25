@@ -59,7 +59,7 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
         }
     }
 
-    for (name, &item) in WEAK_ITEMS_REFS.iter() {
+    for (name, item) in WEAK_ITEMS_REFS.clone().into_sorted_vector().into_iter() {
         if missing.contains(&item) && required(tcx, item) && items.require(item).is_err() {
             if item == LangItem::PanicImpl {
                 tcx.sess.err("`#[panic_handler]` function required, but not found");
