@@ -846,7 +846,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[track_caller]
-    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "none")]
+    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
     pub unsafe fn unwrap_unchecked(self) -> T {
         debug_assert!(self.is_ok());
         match self {
@@ -880,7 +880,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[track_caller]
-    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "none")]
+    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
     pub unsafe fn unwrap_err_unchecked(self) -> E {
         debug_assert!(self.is_err());
         match self {
