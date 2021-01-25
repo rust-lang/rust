@@ -24,6 +24,20 @@ pgo_perf_benchmark ctfe-stress-4
 
 cp -pri ../src/tools/cargo /tmp/cargo
 
+# The Cargo repository does not have a Cargo.lock in it, as it relies on the
+# lockfile already present in the rust-lang/rust monorepo. This decision breaks
+# down when Cargo is built outside the monorepo though (like in this case),
+# resulting in a build without any dependency locking.
+#
+# To ensure Cargo is built with locked dependencies even during PGO profiling
+# the following command copies the monorepo's lockfile into the Cargo temporary
+# directory. Cargo will *not* keep that lockfile intact, as it will remove all
+# the dependencies Cargo itself doesn't rely on. Still, it will prevent
+# building Cargo with arbitrary dependency versions.
+#
+# See #81378 for the bug that prompted adding this.
+cp -p ../Cargo.lock /tmp/cargo
+
 # Build cargo (with some flags)
 function pgo_cargo {
     RUSTC=./build/$PGO_HOST/stage2/bin/rustc \
