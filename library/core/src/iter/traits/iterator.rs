@@ -3280,7 +3280,7 @@ pub trait Iterator {
     ///
     /// assert!([1, 2, 2, 9].iter().is_sorted());
     /// assert!(![1, 3, 2, 4].iter().is_sorted());
-    /// assert!([0].iter().is_sorted());
+    /// assert!(std::iter::once("ferris").is_sorted());
     /// assert!(std::iter::empty::<i32>().is_sorted());
     /// ```
     #[inline]
@@ -3304,9 +3304,9 @@ pub trait Iterator {
     /// ```
     /// #![feature(is_sorted)]
     ///
-    /// assert!([1, 2, 2, 9].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// assert!(![1, 3, 2, 4].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// assert!([0].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!([8, 5, 4, 1].iter().is_sorted_by(|a, b| a.partial_cmp(b).map(|o| o.reverse())));
+    /// assert!(![1, 3, 2, 4].iter().is_sorted_by(|a, b| a.partial_cmp(b).map(|o| o.reverse())));
+    /// assert!(std::iter::once("ferris").is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// ```
