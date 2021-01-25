@@ -69,7 +69,6 @@ pub(super) fn codegen_return_param<'tcx>(
         None,
         ret_param,
         &ret_arg_abi,
-        ret_layout.ty,
     );
 
     ret_place

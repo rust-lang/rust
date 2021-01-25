@@ -24,7 +24,6 @@ pub(super) fn add_arg_comment<'tcx>(
     local_field: Option<usize>,
     params: EmptySinglePair<Value>,
     arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
-    ty: Ty<'tcx>,
 ) {
     let local = if let Some(local) = local {
         Cow::Owned(format!("{:?}", local))
@@ -51,7 +50,7 @@ pub(super) fn add_arg_comment<'tcx>(
         local_field = local_field,
         params = params,
         pass_mode = pass_mode,
-        ty = ty,
+        ty = arg_abi.layout.ty,
     ));
 }
 

@@ -123,10 +123,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             RustcPassMode::Direct(_) => match &self.layout.abi {
                 Abi::Scalar(scalar) => (
                     None,
-                    vec![AbiParam::new(scalar_to_clif_type(
-                        tcx,
-                        scalar.clone(),
-                    ))],
+                    vec![AbiParam::new(scalar_to_clif_type(tcx, scalar.clone()))],
                 ),
                 // FIXME implement Vector Abi in a cg_llvm compatible way
                 Abi::Vector { .. } => {
@@ -139,10 +136,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 Abi::ScalarPair(a, b) => {
                     let a = scalar_to_clif_type(tcx, a.clone());
                     let b = scalar_to_clif_type(tcx, b.clone());
-                    (
-                        None,
-                        vec![AbiParam::new(a), AbiParam::new(b)],
-                    )
+                    (None, vec![AbiParam::new(a), AbiParam::new(b)])
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
@@ -192,11 +186,7 @@ pub(super) fn get_arg_abi<'tcx>(
             // FIXME implement Vector Abi in a cg_llvm compatible way
             Abi::Vector { .. } => {
                 if crate::intrinsics::clif_vector_type(tcx, arg_abi.layout).is_none() {
-                    arg_abi.mode = RustcPassMode::Indirect {
-                        attrs: ArgAttributes::new(),
-                        extra_attrs: None,
-                        on_stack: false,
-                    };
+                    arg_abi.make_indirect();
                 }
             }
             _ => unreachable!("{:?}", arg_abi.layout.abi),
@@ -206,11 +196,7 @@ pub(super) fn get_arg_abi<'tcx>(
                 let a = scalar_to_clif_type(tcx, a.clone());
                 let b = scalar_to_clif_type(tcx, b.clone());
                 if a == types::I128 && b == types::I128 {
-                    arg_abi.mode = RustcPassMode::Indirect {
-                        attrs: ArgAttributes::new(),
-                        extra_attrs: None,
-                        on_stack: false,
-                    };
+                    arg_abi.make_indirect();
                 }
             }
             _ => unreachable!("{:?}", arg_abi.layout.abi),
@@ -257,15 +243,7 @@ pub(super) fn cvalue_for_param<'tcx>(
         clif_types.map(|abi_param| fx.bcx.append_block_param(start_block, abi_param.value_type));
 
     #[cfg(debug_assertions)]
-    crate::abi::comments::add_arg_comment(
-        fx,
-        "arg",
-        local,
-        local_field,
-        block_params,
-        &arg_abi,
-        arg_ty,
-    );
+    crate::abi::comments::add_arg_comment(fx, "arg", local, local_field, block_params, &arg_abi);
 
     match arg_abi.mode {
         RustcPassMode::Ignore => None,
