@@ -1,7 +1,7 @@
 use crate::consts::{constant_simple, Constant};
 use crate::utils::{
-    is_expn_of, match_def_path, match_qpath, match_type, method_calls, path_to_res, paths, qpath_res, run_lints,
-    snippet, span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
+    is_expn_of, match_def_path, match_qpath, match_type, method_calls, path_to_res, paths, run_lints, snippet,
+    span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, NodeId};
@@ -787,7 +787,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
 
     match &expr.kind {
         ExprKind::AddrOf(.., expr) => return path_to_matched_type(cx, expr),
-        ExprKind::Path(qpath) => match qpath_res(cx, qpath, expr.hir_id) {
+        ExprKind::Path(qpath) => match cx.qpath_res(qpath, expr.hir_id) {
             Res::Local(hir_id) => {
                 let parent_id = cx.tcx.hir().get_parent_node(hir_id);
                 if let Some(Node::Local(local)) = cx.tcx.hir().find(parent_id) {
