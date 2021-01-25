@@ -229,6 +229,39 @@ macro_rules! int_tests {
             }
 
             #[test]
+            #[should_panic]
+            fn div_min_panics() {
+                let a = from_slice(&vec![$scalar::MIN; 64]);
+                let b = from_slice(&vec![-1; 64]);
+                let _ = a / b;
+            }
+
+            #[test]
+            #[should_panic]
+            fn div_by_all_zeros_panics() {
+                let a = from_slice(&A);
+                let b = from_slice(&vec![0 ; 64]);
+                let _ = a / b;
+            }
+
+            #[test]
+            #[should_panic]
+            fn div_by_one_zero_panics() {
+                let a = from_slice(&A);
+                let mut b = from_slice(&B);
+                b[0] = 0 as _;
+                let _ = a / b;
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn div_min_neg_one_no_panic() {
+                let a = from_slice(&A);
+                let b = from_slice(&vec![-1; 64]);
+                let _ = a / b;
+            }
+
+            #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
             fn rem() {
                 let a = from_slice(&A);
@@ -273,6 +306,30 @@ macro_rules! int_tests {
                 let expected = apply_binary_scalar_rhs_lanewise(a, b, core::ops::Rem::rem);
                 a %= b;
                 assert_biteq!(a, expected);
+            }
+
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn rem_min_neg_one_no_panic() {
+                let a = from_slice(&A);
+                let b = from_slice(&vec![-1; 64]);
+                let _ = a % b;
+            }
+
+            #[test]
+            #[should_panic]
+            fn rem_min_panic() {
+                let a = from_slice(&vec![$scalar::MIN; 64]);
+                let b = from_slice(&vec![-1 ; 64]);
+                let _ = a % b;
+            }
+
+            #[test]
+            #[should_panic]
+            fn rem_min_zero_panic() {
+                let a = from_slice(&A);
+                let b = from_slice(&vec![0 ; 64]);
+                let _ = a % b;
             }
 
             #[test]
