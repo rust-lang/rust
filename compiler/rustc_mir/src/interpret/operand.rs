@@ -511,6 +511,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Constant(ref constant) => {
                 let val =
                     self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal);
+                // This can still fail:
+                // * During ConstProp, with `TooGeneric` or since the `requried_consts` were not all
+                //   checked yet.
+                // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
                 self.const_to_op(val, layout)?
             }
         };
