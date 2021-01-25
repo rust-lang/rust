@@ -4,6 +4,7 @@
 use std::borrow::Cow;
 
 use rustc_middle::mir;
+use rustc_target::abi::call::ArgAbi;
 
 use cranelift_codegen::entity::EntityRef;
 
@@ -22,7 +23,7 @@ pub(super) fn add_arg_comment<'tcx>(
     local: Option<mir::Local>,
     local_field: Option<usize>,
     params: EmptySinglePair<Value>,
-    pass_mode: PassMode,
+    arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     ty: Ty<'tcx>,
 ) {
     let local = if let Some(local) = local {
@@ -42,7 +43,7 @@ pub(super) fn add_arg_comment<'tcx>(
         Pair(param_a, param_b) => Cow::Owned(format!("= {:?}, {:?}", param_a, param_b)),
     };
 
-    let pass_mode = format!("{:?}", pass_mode);
+    let pass_mode = format!("{:?}", arg_abi.mode);
     fx.add_global_comment(format!(
         "{kind:5}{local:>3}{local_field:<5} {params:10} {pass_mode:36} {ty:?}",
         kind = kind,

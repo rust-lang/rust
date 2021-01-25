@@ -2,16 +2,9 @@
 
 use crate::prelude::*;
 
+use cranelift_codegen::ir::ArgumentPurpose;
 use rustc_target::abi::call::{ArgAbi, ArgAttributes, PassMode as RustcPassMode};
 pub(super) use EmptySinglePair::*;
-
-#[derive(Copy, Clone, Debug)]
-pub(super) enum PassMode {
-    NoPass,
-    ByVal(Type),
-    ByValPair(Type, Type),
-    ByRef { size: Option<Size> },
-}
 
 #[derive(Copy, Clone, Debug)]
 pub(super) enum EmptySinglePair<T> {
@@ -67,19 +60,126 @@ impl<T: std::fmt::Debug> EmptySinglePair<T> {
     }
 }
 
-impl PassMode {
-    pub(super) fn get_param_ty(self, tcx: TyCtxt<'_>) -> EmptySinglePair<Type> {
-        match self {
-            PassMode::NoPass => Empty,
-            PassMode::ByVal(clif_type) => Single(clif_type),
-            PassMode::ByValPair(a, b) => Pair(a, b),
-            PassMode::ByRef { size: Some(_) } => Single(pointer_ty(tcx)),
-            PassMode::ByRef { size: None } => Pair(pointer_ty(tcx), pointer_ty(tcx)),
+pub(super) trait ArgAbiExt<'tcx> {
+    fn get_abi_param(&self, tcx: TyCtxt<'tcx>) -> EmptySinglePair<AbiParam>;
+    fn get_abi_return(&self, tcx: TyCtxt<'tcx>) -> (Option<AbiParam>, Vec<AbiParam>);
+}
+
+impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
+    fn get_abi_param(&self, tcx: TyCtxt<'tcx>) -> EmptySinglePair<AbiParam> {
+        match self.mode {
+            RustcPassMode::Ignore => EmptySinglePair::Empty,
+            RustcPassMode::Direct(_) => match &self.layout.abi {
+                Abi::Scalar(scalar) => {
+                    EmptySinglePair::Single(AbiParam::new(scalar_to_clif_type(tcx, scalar.clone())))
+                }
+                Abi::Vector { .. } => {
+                    let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout).unwrap();
+                    EmptySinglePair::Single(AbiParam::new(vector_ty))
+                }
+                _ => unreachable!("{:?}", self.layout.abi),
+            },
+            RustcPassMode::Pair(_, _) => match &self.layout.abi {
+                Abi::ScalarPair(a, b) => {
+                    let a = scalar_to_clif_type(tcx, a.clone());
+                    let b = scalar_to_clif_type(tcx, b.clone());
+                    EmptySinglePair::Pair(AbiParam::new(a), AbiParam::new(b))
+                }
+                _ => unreachable!("{:?}", self.layout.abi),
+            },
+            RustcPassMode::Cast(_) => EmptySinglePair::Single(AbiParam::new(pointer_ty(tcx))),
+            RustcPassMode::Indirect {
+                attrs: _,
+                extra_attrs: None,
+                on_stack,
+            } => {
+                if on_stack {
+                    let size = u32::try_from(self.layout.size.bytes()).unwrap();
+                    EmptySinglePair::Single(AbiParam::special(
+                        pointer_ty(tcx),
+                        ArgumentPurpose::StructArgument(size),
+                    ))
+                } else {
+                    EmptySinglePair::Single(AbiParam::new(pointer_ty(tcx)))
+                }
+            }
+            RustcPassMode::Indirect {
+                attrs: _,
+                extra_attrs: Some(_),
+                on_stack,
+            } => {
+                assert!(!on_stack);
+                EmptySinglePair::Pair(
+                    AbiParam::new(pointer_ty(tcx)),
+                    AbiParam::new(pointer_ty(tcx)),
+                )
+            }
+        }
+    }
+
+    fn get_abi_return(&self, tcx: TyCtxt<'tcx>) -> (Option<AbiParam>, Vec<AbiParam>) {
+        match self.mode {
+            RustcPassMode::Ignore => (None, vec![]),
+            RustcPassMode::Direct(_) => match &self.layout.abi {
+                Abi::Scalar(scalar) => (
+                    None,
+                    vec![AbiParam::new(scalar_to_clif_type(
+                        tcx,
+                        scalar.clone(),
+                    ))],
+                ),
+                // FIXME implement Vector Abi in a cg_llvm compatible way
+                Abi::Vector { .. } => {
+                    let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout).unwrap();
+                    (None, vec![AbiParam::new(vector_ty)])
+                }
+                _ => unreachable!("{:?}", self.layout.abi),
+            },
+            RustcPassMode::Pair(_, _) => match &self.layout.abi {
+                Abi::ScalarPair(a, b) => {
+                    let a = scalar_to_clif_type(tcx, a.clone());
+                    let b = scalar_to_clif_type(tcx, b.clone());
+                    (
+                        None,
+                        vec![AbiParam::new(a), AbiParam::new(b)],
+                    )
+                }
+                _ => unreachable!("{:?}", self.layout.abi),
+            },
+            RustcPassMode::Cast(_) => (
+                Some(AbiParam::special(
+                    pointer_ty(tcx),
+                    ArgumentPurpose::StructReturn,
+                )),
+                vec![],
+            ),
+            RustcPassMode::Indirect {
+                attrs: _,
+                extra_attrs: None,
+                on_stack,
+            } => {
+                assert!(!on_stack);
+                (
+                    Some(AbiParam::special(
+                        pointer_ty(tcx),
+                        ArgumentPurpose::StructReturn,
+                    )),
+                    vec![],
+                )
+            }
+            RustcPassMode::Indirect {
+                attrs: _,
+                extra_attrs: Some(_),
+                on_stack: _,
+            } => unreachable!("unsized return value"),
         }
     }
 }
 
-pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> PassMode {
+pub(super) fn get_arg_abi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    layout: TyAndLayout<'tcx>,
+) -> ArgAbi<'tcx, Ty<'tcx>> {
     let mut arg_abi = ArgAbi::new(&tcx, layout, |_, _, _| ArgAttributes::new());
     if layout.is_zst() {
         // WARNING zst arguments must never be passed, as that will break CastKind::ClosureFnPointer
@@ -88,7 +188,7 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
     match arg_abi.mode {
         RustcPassMode::Ignore => {}
         RustcPassMode::Direct(_) => match &arg_abi.layout.abi {
-            Abi::Scalar(_) => {},
+            Abi::Scalar(_) => {}
             // FIXME implement Vector Abi in a cg_llvm compatible way
             Abi::Vector { .. } => {
                 if crate::intrinsics::clif_vector_type(tcx, arg_abi.layout).is_none() {
@@ -99,7 +199,7 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
                     };
                 }
             }
-            _ => unreachable!("{:?}", arg_abi.layout.abi)
+            _ => unreachable!("{:?}", arg_abi.layout.abi),
         },
         RustcPassMode::Pair(_, _) => match &arg_abi.layout.abi {
             Abi::ScalarPair(a, b) => {
@@ -113,54 +213,11 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
                     };
                 }
             }
-            _ => unreachable!("{:?}", arg_abi.layout.abi)
+            _ => unreachable!("{:?}", arg_abi.layout.abi),
         },
         _ => {}
     }
-    match arg_abi.mode {
-        RustcPassMode::Ignore => PassMode::NoPass,
-        RustcPassMode::Direct(_) => match &arg_abi.layout.abi {
-            Abi::Scalar(scalar) => PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone())),
-            // FIXME implement Vector Abi in a cg_llvm compatible way
-            Abi::Vector { .. } => {
-                let vector_ty = crate::intrinsics::clif_vector_type(tcx, arg_abi.layout).unwrap();
-                PassMode::ByVal(vector_ty)
-            }
-            _ => unreachable!("{:?}", arg_abi.layout.abi)
-        },
-        RustcPassMode::Pair(_, _) => match &arg_abi.layout.abi {
-            Abi::ScalarPair(a, b) => {
-                let a = scalar_to_clif_type(tcx, a.clone());
-                let b = scalar_to_clif_type(tcx, b.clone());
-                PassMode::ByValPair(a, b)
-            }
-            _ => unreachable!("{:?}", arg_abi.layout.abi)
-        },
-        RustcPassMode::Cast(_) | RustcPassMode::Indirect {
-            attrs: _,
-            extra_attrs: None,
-            on_stack: false,
-        } => PassMode::ByRef {
-            size: Some(arg_abi.layout.size),
-        },
-        RustcPassMode::Indirect {
-            attrs: _,
-            extra_attrs,
-            on_stack: true,
-        } => {
-            assert!(extra_attrs.is_none());
-            PassMode::ByRef {
-                size: Some(arg_abi.layout.size)
-            }
-        }
-        RustcPassMode::Indirect {
-            attrs: _,
-            extra_attrs: Some(_),
-            on_stack: false,
-        } => PassMode::ByRef {
-            size: None,
-        },
-    }
+    arg_abi
 }
 
 /// Get a set of values to be passed as function arguments.
@@ -168,14 +225,15 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     arg: CValue<'tcx>,
 ) -> EmptySinglePair<Value> {
-    match get_pass_mode(fx.tcx, arg.layout()) {
-        PassMode::NoPass => Empty,
-        PassMode::ByVal(_) => Single(arg.load_scalar(fx)),
-        PassMode::ByValPair(_, _) => {
+    let arg_abi = get_arg_abi(fx.tcx, arg.layout());
+    match arg_abi.mode {
+        RustcPassMode::Ignore => Empty,
+        RustcPassMode::Direct(_) => Single(arg.load_scalar(fx)),
+        RustcPassMode::Pair(_, _) => {
             let (a, b) = arg.load_scalar_pair(fx);
             Pair(a, b)
         }
-        PassMode::ByRef { size: _ } => match arg.force_stack(fx) {
+        RustcPassMode::Cast(_) | RustcPassMode::Indirect { .. } => match arg.force_stack(fx) {
             (ptr, None) => Single(ptr.get_addr(fx)),
             (ptr, Some(meta)) => Pair(ptr.get_addr(fx), meta),
         },
@@ -192,14 +250,11 @@ pub(super) fn cvalue_for_param<'tcx>(
     arg_ty: Ty<'tcx>,
 ) -> Option<CValue<'tcx>> {
     let layout = fx.layout_of(arg_ty);
-    let pass_mode = get_pass_mode(fx.tcx, layout);
+    let arg_abi = get_arg_abi(fx.tcx, layout);
 
-    if let PassMode::NoPass = pass_mode {
-        return None;
-    }
-
-    let clif_types = pass_mode.get_param_ty(fx.tcx);
-    let block_params = clif_types.map(|t| fx.bcx.append_block_param(start_block, t));
+    let clif_types = arg_abi.get_abi_param(fx.tcx);
+    let block_params =
+        clif_types.map(|abi_param| fx.bcx.append_block_param(start_block, abi_param.value_type));
 
     #[cfg(debug_assertions)]
     crate::abi::comments::add_arg_comment(
@@ -208,22 +263,31 @@ pub(super) fn cvalue_for_param<'tcx>(
         local,
         local_field,
         block_params,
-        pass_mode,
+        &arg_abi,
         arg_ty,
     );
 
-    match pass_mode {
-        PassMode::NoPass => unreachable!(),
-        PassMode::ByVal(_) => Some(CValue::by_val(block_params.assert_single(), layout)),
-        PassMode::ByValPair(_, _) => {
+    match arg_abi.mode {
+        RustcPassMode::Ignore => None,
+        RustcPassMode::Direct(_) => Some(CValue::by_val(block_params.assert_single(), layout)),
+        RustcPassMode::Pair(_, _) => {
             let (a, b) = block_params.assert_pair();
             Some(CValue::by_val_pair(a, b, layout))
         }
-        PassMode::ByRef { size: Some(_) } => Some(CValue::by_ref(
+        RustcPassMode::Cast(_)
+        | RustcPassMode::Indirect {
+            attrs: _,
+            extra_attrs: None,
+            on_stack: _,
+        } => Some(CValue::by_ref(
             Pointer::new(block_params.assert_single()),
             layout,
         )),
-        PassMode::ByRef { size: None } => {
+        RustcPassMode::Indirect {
+            attrs: _,
+            extra_attrs: Some(_),
+            on_stack: _,
+        } => {
             let (ptr, meta) = block_params.assert_pair();
             Some(CValue::by_ref_unsized(Pointer::new(ptr), meta, layout))
         }

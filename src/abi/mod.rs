@@ -6,9 +6,10 @@ mod pass_mode;
 mod returning;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_target::abi::call::PassMode as RustcPassMode;
 use rustc_target::spec::abi::Abi;
 
-use cranelift_codegen::ir::{AbiParam, ArgumentPurpose};
+use cranelift_codegen::ir::AbiParam;
 
 use self::pass_mode::*;
 use crate::prelude::*;
@@ -96,7 +97,6 @@ fn clif_sig_from_fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     triple: &target_lexicon::Triple,
     sig: FnSig<'tcx>,
-    span: Span,
     is_vtable_fn: bool,
     requires_caller_location: bool,
 ) -> Signature {
@@ -147,54 +147,26 @@ fn clif_sig_from_fn_sig<'tcx>(
                     .layout_of(ParamEnv::reveal_all().and(tcx.mk_mut_ptr(tcx.mk_unit())))
                     .unwrap();
             }
-            let pass_mode = get_pass_mode(tcx, layout);
+            let mut arg_abi = get_arg_abi(tcx, layout);
             if abi != Abi::Rust && abi != Abi::RustCall && abi != Abi::RustIntrinsic {
-                match pass_mode {
-                    PassMode::NoPass | PassMode::ByVal(_) => {}
-                    PassMode::ByRef { size: Some(size) } => {
-                        let purpose = ArgumentPurpose::StructArgument(u32::try_from(size.bytes()).expect("struct too big to pass on stack"));
-                        return EmptySinglePair::Single(AbiParam::special(pointer_ty(tcx), purpose)).into_iter();
-                    }
-                    PassMode::ByValPair(_, _) | PassMode::ByRef { size: None } => {
-                        tcx.sess.span_warn(
-                            span,
-                            &format!(
-                                "Argument of type `{:?}` with pass mode `{:?}` is not yet supported \
-                                for non-rust abi `{}`. Calling this function may result in a crash.",
-                                layout.ty,
-                                pass_mode,
-                                abi,
-                            ),
-                        );
-                    }
+                match arg_abi.mode {
+                    RustcPassMode::Indirect {
+                        ref mut on_stack, ..
+                    } => *on_stack = true,
+                    _ => {}
                 }
             }
-            pass_mode.get_param_ty(tcx).map(AbiParam::new).into_iter()
+            arg_abi.get_abi_param(tcx).into_iter()
         })
         .flatten();
 
-    let (mut params, returns): (Vec<_>, Vec<_>) = match get_pass_mode(
+    let return_arg_abi = get_arg_abi(
         tcx,
         tcx.layout_of(ParamEnv::reveal_all().and(output)).unwrap(),
-    ) {
-        PassMode::NoPass => (inputs.collect(), vec![]),
-        PassMode::ByVal(ret_ty) => (inputs.collect(), vec![AbiParam::new(ret_ty)]),
-        PassMode::ByValPair(ret_ty_a, ret_ty_b) => (
-            inputs.collect(),
-            vec![AbiParam::new(ret_ty_a), AbiParam::new(ret_ty_b)],
-        ),
-        PassMode::ByRef { size: Some(_) } => {
-            (
-                Some(pointer_ty(tcx)) // First param is place to put return val
-                    .into_iter()
-                    .map(|ty| AbiParam::special(ty, ArgumentPurpose::StructReturn))
-                    .chain(inputs)
-                    .collect(),
-                vec![],
-            )
-        }
-        PassMode::ByRef { size: None } => todo!(),
-    };
+    );
+    let (return_ptr, returns) = return_arg_abi.get_abi_return(tcx);
+    // Sometimes the first param is an pointer to the place where the return value needs to be stored.
+    let mut params: Vec<_> = return_ptr.into_iter().chain(inputs).collect();
 
     if requires_caller_location {
         params.push(AbiParam::new(pointer_ty(tcx)));
@@ -226,7 +198,6 @@ pub(crate) fn get_function_name_and_sig<'tcx>(
         tcx,
         triple,
         fn_sig,
-        tcx.def_span(inst.def_id()),
         false,
         inst.def.requires_caller_location(tcx),
     );
@@ -584,7 +555,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     nop_inst,
                     format!(
                         "virtual call; self arg pass mode: {:?}",
-                        get_pass_mode(fx.tcx, args[0].layout())
+                        get_arg_abi(fx.tcx, args[0].layout()).mode,
                     ),
                 );
             }
@@ -647,7 +618,6 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     fx.tcx,
                     fx.triple(),
                     fn_sig,
-                    span,
                     is_virtual_call,
                     false, // calls through function pointers never pass the caller location
                 );
@@ -723,7 +693,6 @@ pub(crate) fn codegen_drop<'tcx>(
                     fx.tcx,
                     fx.triple(),
                     fn_sig,
-                    span,
                     true,
                     false, // `drop_in_place` is never `#[track_caller]`
                 );
