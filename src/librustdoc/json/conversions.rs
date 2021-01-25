@@ -9,7 +9,7 @@ use rustc_hir::def::CtorKind;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_span::Pos;
 
-use json_types::*;
+use rustdoc_json_types::*;
 
 use crate::clean;
 use crate::formats::item_type::ItemType;
