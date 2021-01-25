@@ -212,7 +212,7 @@ To log all communication between the server and the client, there are two choice
 
 * you can log on the server side, by running something like
   ```
-  env RA_LOG=gen_lsp_server=trace code .
+  env RA_LOG=lsp_server=debug code .
   ```
 
 * you can log on the client side, by enabling `"rust-analyzer.trace.server":

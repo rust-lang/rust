@@ -147,6 +147,9 @@ config_data! {
         /// Whether to show `Method References` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_methodReferences: bool = "false",
+        /// Whether to show `References` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_references: bool = "false",
 
         /// Disable project auto-discovery in favor of explicitly specified set
         /// of projects.\n\nElements must be paths pointing to `Cargo.toml`,
@@ -221,6 +224,7 @@ pub struct LensConfig {
     pub debug: bool,
     pub implementations: bool,
     pub method_refs: bool,
+    pub refs: bool, // for Struct, Enum, Union and Trait
 }
 
 impl LensConfig {
@@ -237,7 +241,7 @@ impl LensConfig {
     }
 
     pub fn references(&self) -> bool {
-        self.method_refs
+        self.method_refs || self.refs
     }
 }
 
@@ -593,6 +597,7 @@ impl Config {
             debug: self.data.lens_enable && self.data.lens_debug,
             implementations: self.data.lens_enable && self.data.lens_implementations,
             method_refs: self.data.lens_enable && self.data.lens_methodReferences,
+            refs: self.data.lens_enable && self.data.lens_references,
         }
     }
     pub fn hover(&self) -> HoverConfig {
