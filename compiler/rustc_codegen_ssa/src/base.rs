@@ -13,7 +13,7 @@ use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind}
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
-use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
+use rustc_data_structures::sync::{par_iter, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
@@ -554,8 +554,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         codegen_units
     };
 
-    let total_codegen_time = Lock::new(Duration::new(0, 0));
-
     // The non-parallel compiler can only translate codegen units to LLVM IR
     // on a single thread, leading to a staircase effect where the N LLVM
     // threads have to wait on the single codegen threads to generate work
@@ -578,23 +576,25 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                     .collect();
 
                 // Compile the found CGUs in parallel.
-                par_iter(cgus)
+                let start_time = Instant::now();
+
+                let pre_compiled_cgus = par_iter(cgus)
                     .map(|(i, _)| {
-                        let start_time = Instant::now();
                         let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
-                        let mut time = total_codegen_time.lock();
-                        *time += start_time.elapsed();
                         (i, module)
                     })
-                    .collect()
+                    .collect();
+
+                (pre_compiled_cgus, start_time.elapsed())
             })
         } else {
-            FxHashMap::default()
+            (FxHashMap::default(), Duration::new(0, 0))
         }
     };
 
     let mut cgu_reuse = Vec::new();
     let mut pre_compiled_cgus: Option<FxHashMap<usize, _>> = None;
+    let mut total_codegen_time = Duration::new(0, 0);
 
     for (i, cgu) in codegen_units.iter().enumerate() {
         ongoing_codegen.wait_for_signal_to_codegen_item();
@@ -607,7 +607,9 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 codegen_units.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect()
             });
             // Pre compile some CGUs
-            pre_compiled_cgus = Some(pre_compile_cgus(&cgu_reuse));
+            let (compiled_cgus, codegen_time) = pre_compile_cgus(&cgu_reuse);
+            pre_compiled_cgus = Some(compiled_cgus);
+            total_codegen_time += codegen_time;
         }
 
         let cgu_reuse = cgu_reuse[i];
@@ -621,8 +623,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                     } else {
                         let start_time = Instant::now();
                         let module = backend.compile_codegen_unit(tcx, cgu.name());
-                        let mut time = total_codegen_time.lock();
-                        *time += start_time.elapsed();
+                        total_codegen_time += start_time.elapsed();
                         module
                     };
                 submit_codegened_module_to_llvm(
@@ -663,11 +664,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
-    print_time_passes_entry(
-        tcx.sess.time_passes(),
-        "codegen_to_LLVM_IR",
-        total_codegen_time.into_inner(),
-    );
+    print_time_passes_entry(tcx.sess.time_passes(), "codegen_to_LLVM_IR", total_codegen_time);
 
     ongoing_codegen.check_for_errors(tcx.sess);
 
