@@ -131,8 +131,8 @@ impl DefMap {
             result.krate = result.krate.or(new.krate);
             result.segment_index = result.segment_index.min(new.segment_index);
 
-            match &current_map.parent {
-                Some(map) => current_map = map,
+            match &current_map.block {
+                Some(block) => current_map = &block.parent,
                 None => return result,
             }
         }

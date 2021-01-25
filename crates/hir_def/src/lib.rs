@@ -74,12 +74,16 @@ use stdx::impl_from;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
     krate: CrateId,
+    block: Option<BlockId>,
     pub local_id: LocalModuleId,
 }
 
 impl ModuleId {
     pub fn def_map(&self, db: &dyn db::DefDatabase) -> Arc<DefMap> {
-        db.crate_def_map(self.krate)
+        match self.block {
+            Some(block) => db.block_def_map(block),
+            None => db.crate_def_map(self.krate),
+        }
     }
 
     pub fn krate(&self) -> CrateId {
@@ -229,6 +233,15 @@ impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_al
 pub struct ImplId(salsa::InternId);
 type ImplLoc = ItemLoc<Impl>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct BlockId(salsa::InternId);
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+pub struct BlockLoc {
+    ast_id: AstId<ast::BlockExpr>,
+    module: ModuleId,
+}
+impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeParamId {

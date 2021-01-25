@@ -8,12 +8,12 @@ mod block;
 
 use std::sync::Arc;
 
-use base_db::{fixture::WithFixture, SourceDatabase};
+use base_db::{fixture::WithFixture, FilePosition, SourceDatabase};
 use expect_test::{expect, Expect};
-use hir_expand::db::AstDatabase;
+use syntax::AstNode;
 use test_utils::mark;
 
-use crate::{db::DefDatabase, nameres::*, test_db::TestDB};
+use crate::{db::DefDatabase, nameres::*, test_db::TestDB, Lookup};
 
 fn compute_crate_def_map(ra_fixture: &str) -> Arc<DefMap> {
     let db = TestDB::with_files(ra_fixture);
@@ -23,14 +23,58 @@ fn compute_crate_def_map(ra_fixture: &str) -> Arc<DefMap> {
 
 fn compute_block_def_map(ra_fixture: &str) -> Arc<DefMap> {
     let (db, position) = TestDB::with_position(ra_fixture);
-    let module = db.module_for_file(position.file_id);
-    let ast_map = db.ast_id_map(position.file_id.into());
-    let ast = db.parse(position.file_id);
-    let block: ast::BlockExpr =
-        syntax::algo::find_node_at_offset(&ast.syntax_node(), position.offset).unwrap();
-    let block_id = ast_map.ast_id(&block);
 
-    db.block_def_map(module.krate, InFile::new(position.file_id.into(), block_id))
+    // FIXME: perhaps we should make this use body lowering tests instead?
+
+    let module = db.module_for_file(position.file_id);
+    let mut def_map = db.crate_def_map(module.krate);
+    while let Some(new_def_map) = descend_def_map_at_position(&db, position, def_map.clone()) {
+        def_map = new_def_map;
+    }
+
+    // FIXME: select the right module, not the root
+
+    def_map
+}
+
+fn descend_def_map_at_position(
+    db: &dyn DefDatabase,
+    position: FilePosition,
+    def_map: Arc<DefMap>,
+) -> Option<Arc<DefMap>> {
+    for (local_id, module_data) in def_map.modules() {
+        let mod_def = module_data.origin.definition_source(db);
+        let ast_map = db.ast_id_map(mod_def.file_id);
+        let item_tree = db.item_tree(mod_def.file_id);
+        let root = db.parse_or_expand(mod_def.file_id).unwrap();
+        for item in module_data.scope.declarations() {
+            match item {
+                ModuleDefId::FunctionId(it) => {
+                    // Technically blocks can be inside any type (due to arrays and const generics),
+                    // and also in const/static initializers. For tests we only really care about
+                    // functions though.
+
+                    let ast = ast_map.get(item_tree[it.lookup(db).id.value].ast_id).to_node(&root);
+
+                    if ast.syntax().text_range().contains(position.offset) {
+                        // Cursor inside function, descend into its body's DefMap.
+                        // Note that we don't handle block *expressions* inside function bodies.
+                        let ast_map = db.ast_id_map(position.file_id.into());
+                        let ast_id = ast_map.ast_id(&ast.body().unwrap());
+                        let block = BlockLoc {
+                            ast_id: InFile::new(position.file_id.into(), ast_id),
+                            module: def_map.module_id(local_id),
+                        };
+                        let block_id = db.intern_block(block);
+                        return Some(db.block_def_map(block_id));
+                    }
+                }
+                _ => continue,
+            }
+        }
+    }
+
+    None
 }
 
 fn check(ra_fixture: &str, expect: Expect) {
