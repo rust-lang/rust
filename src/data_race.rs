@@ -567,10 +567,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         let old = this.allow_data_races_mut(|this| this.read_immediate(place.into()))?;
         // `binary_op` will bail if either of them is not a scalar.
         let eq = this.overflowing_binary_op(mir::BinOp::Eq, old, expect_old)?.0;
-        // If the operation would succeed, but is "weak", fail 50% of the time.
+        // If the operation would succeed, but is "weak", fail 80% of the time.
         // FIXME: this is quite arbitrary.
         let cmpxchg_success = eq.to_bool()?
-            && (!can_fail_spuriously || this.memory.extra.rng.borrow_mut().gen_range(0, 2) == 0);
+            && (!can_fail_spuriously || this.memory.extra.rng.borrow_mut().gen_range(0, 10) < 8);
         let res = Immediate::ScalarPair(
             old.to_scalar_or_uninit(),
             Scalar::from_bool(cmpxchg_success).into(),

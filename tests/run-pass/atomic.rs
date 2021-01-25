@@ -89,7 +89,7 @@ fn atomic_fences() {
 
 fn weak_sometimes_fails() {
     let atomic = AtomicBool::new(false);
-    let tries = 20;
+    let tries = 100;
     for _ in 0..tries {
         let cur = atomic.load(Relaxed);
         // Try (weakly) to flip the flag.
