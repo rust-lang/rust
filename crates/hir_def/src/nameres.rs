@@ -265,6 +265,10 @@ impl DefMap {
         self.extern_prelude.iter()
     }
 
+    pub fn module_id(&self, local_id: LocalModuleId) -> ModuleId {
+        ModuleId { krate: self.krate, local_id }
+    }
+
     pub(crate) fn resolve_path(
         &self,
         db: &dyn DefDatabase,

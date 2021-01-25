@@ -24,7 +24,7 @@ use crate::{
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
+    AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,10 +66,7 @@ impl DefMap {
     pub(super) fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs {
         if name == &name!(self) {
             mark::hit!(extern_crate_self_as);
-            return PerNs::types(
-                ModuleId { krate: self.krate, local_id: self.root }.into(),
-                Visibility::Public,
-            );
+            return PerNs::types(self.module_id(self.root).into(), Visibility::Public);
         }
         self.extern_prelude
             .get(name)
@@ -154,21 +151,15 @@ impl DefMap {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
                     mark::hit!(macro_dollar_crate_self);
-                    PerNs::types(
-                        ModuleId { krate: self.krate, local_id: self.root }.into(),
-                        Visibility::Public,
-                    )
+                    PerNs::types(self.module_id(self.root).into(), Visibility::Public)
                 } else {
                     let def_map = db.crate_def_map(krate);
-                    let module = ModuleId { krate, local_id: def_map.root };
+                    let module = def_map.module_id(def_map.root);
                     mark::hit!(macro_dollar_crate_other);
                     PerNs::types(module.into(), Visibility::Public)
                 }
             }
-            PathKind::Crate => PerNs::types(
-                ModuleId { krate: self.krate, local_id: self.root }.into(),
-                Visibility::Public,
-            ),
+            PathKind::Crate => PerNs::types(self.module_id(self.root).into(), Visibility::Public),
             // plain import or absolute path in 2015: crate-relative with
             // fallback to extern prelude (with the simplification in
             // rust-lang/rust#57745)
@@ -205,10 +196,7 @@ impl DefMap {
                 let m = successors(Some(original_module), |m| self.modules[*m].parent)
                     .nth(lvl as usize);
                 if let Some(local_id) = m {
-                    PerNs::types(
-                        ModuleId { krate: self.krate, local_id }.into(),
-                        Visibility::Public,
-                    )
+                    PerNs::types(self.module_id(local_id).into(), Visibility::Public)
                 } else {
                     log::debug!("super path in root module");
                     return ResolvePathResult::empty(ReachedFixedPoint::Yes);

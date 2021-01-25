@@ -78,10 +78,6 @@ pub struct ModuleId {
 }
 
 impl ModuleId {
-    pub fn top_level(krate: CrateId, local_id: LocalModuleId) -> Self {
-        Self { krate, local_id }
-    }
-
     pub fn def_map(&self, db: &dyn db::DefDatabase) -> Arc<DefMap> {
         db.crate_def_map(self.krate)
     }

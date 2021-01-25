@@ -30,13 +30,12 @@ pub(super) struct SourceToDefCtx<'a, 'b> {
 impl SourceToDefCtx<'_, '_> {
     pub(super) fn file_to_def(&mut self, file: FileId) -> Option<ModuleId> {
         let _p = profile::span("SourceBinder::to_module_def");
-        let (krate, local_id) = self.db.relevant_crates(file).iter().find_map(|&crate_id| {
+        self.db.relevant_crates(file).iter().find_map(|&crate_id| {
             // FIXME: inner items
             let crate_def_map = self.db.crate_def_map(crate_id);
             let local_id = crate_def_map.modules_for_file(file).next()?;
-            Some((crate_id, local_id))
-        })?;
-        Some(ModuleId::top_level(krate, local_id))
+            Some(crate_def_map.module_id(local_id))
+        })
     }
 
     pub(super) fn module_to_def(&mut self, src: InFile<ast::Module>) -> Option<ModuleId> {
@@ -63,8 +62,7 @@ impl SourceToDefCtx<'_, '_> {
         let child_name = src.value.name()?.as_name();
         let def_map = parent_module.def_map(self.db.upcast());
         let child_id = *def_map[parent_module.local_id].children.get(&child_name)?;
-        // FIXME: handle block expression modules
-        Some(ModuleId::top_level(parent_module.krate(), child_id))
+        Some(def_map.module_id(child_id))
     }
 
     pub(super) fn trait_to_def(&mut self, src: InFile<ast::Trait>) -> Option<TraitId> {

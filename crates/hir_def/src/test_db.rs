@@ -15,7 +15,7 @@ use rustc_hash::FxHashSet;
 use syntax::{TextRange, TextSize};
 use test_utils::extract_annotations;
 
-use crate::{db::DefDatabase, ModuleDefId};
+use crate::{db::DefDatabase, ModuleDefId, ModuleId};
 
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,
@@ -72,12 +72,12 @@ impl FileLoader for TestDB {
 }
 
 impl TestDB {
-    pub(crate) fn module_for_file(&self, file_id: FileId) -> crate::ModuleId {
+    pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
             for (local_id, data) in crate_def_map.modules() {
                 if data.origin.file_id() == Some(file_id) {
-                    return crate::ModuleId { krate, local_id };
+                    return crate_def_map.module_id(local_id);
                 }
             }
         }
