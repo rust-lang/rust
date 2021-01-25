@@ -1,4 +1,4 @@
-use crate::utils::{indent_of, snippet_opt, span_lint_and_help, span_lint_and_then};
+use crate::utils::{indent_of, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
@@ -80,33 +80,22 @@ impl LateLintPass<'_> for ExhaustiveItems {
                 } else {
                     (EXHAUSTIVE_STRUCTS, "exported structs should not be exhaustive")
                 };
-                let suggestion_span = item.span.until(item.ident.span);
+                let suggestion_span = item.span.shrink_to_lo();
+                let indent = " ".repeat(indent_of(cx, item.span).unwrap_or(0));
+                span_lint_and_then(
+                    cx,
+                    lint,
+                    item.span,
+                    msg,
+                    |diag| {
+                        let sugg = format!("#[non_exhaustive]\n{}", indent);
+                        diag.span_suggestion(suggestion_span,
+                                             "try adding #[non_exhaustive]",
+                                             sugg,
+                                             Applicability::MaybeIncorrect);
+                    }
+                );
 
-                if let Some(snippet) = snippet_opt(cx, suggestion_span) {
-                    let indent = " ".repeat(indent_of(cx, item.span).unwrap_or(0));
-                    span_lint_and_then(
-                        cx,
-                        lint,
-                        item.span,
-                        msg,
-                        |diag| {
-                            let sugg = format!("#[non_exhaustive]\n{}{}", indent, snippet);
-                            diag.span_suggestion(suggestion_span,
-                                                 "try adding #[non_exhaustive]",
-                                                 sugg,
-                                                 Applicability::MaybeIncorrect);
-                        }
-                    );
-                } else {
-                    span_lint_and_help(
-                        cx,
-                        lint,
-                        item.span,
-                        msg,
-                        None,
-                        "try adding #[non_exhaustive]",
-                    );
-                }
             }
         }
     }
