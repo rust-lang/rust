@@ -208,7 +208,6 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
             url: artifact.browser_download_url,
             dest,
             progressTitle: "Downloading rust-analyzer extension",
-            overwrite: true,
         });
     });
 
@@ -340,7 +339,6 @@ async function getServer(config: Config, state: PersistentState): Promise<string
             progressTitle: "Downloading rust-analyzer server",
             gunzip: true,
             mode: 0o755,
-            overwrite: true,
         });
     });
 
