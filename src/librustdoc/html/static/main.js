@@ -1925,7 +1925,8 @@ function defocusSearchBar() {
                 clearInputTimeout();
                 if (search_input.value.length === 0) {
                     if (browserSupportsHistoryApi()) {
-                        history.replaceState("", window.currentCrate + " - Rust", "?search=");
+                        history.replaceState("", window.currentCrate + " - Rust",
+                            window.location.href.split("?")[0]);
                     }
                     hideSearchResults();
                 } else {
