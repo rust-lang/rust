@@ -15,6 +15,15 @@ pub mod enums {
         Quux(String),
     }
 
+    /// Some docs
+    #[repr(C)]
+    pub enum ExhaustiveWithAttrs {
+        Foo,
+        Bar,
+        Baz,
+        Quux(String),
+    }
+
     // no warning, already non_exhaustive
     #[non_exhaustive]
     pub enum NonExhaustive {
