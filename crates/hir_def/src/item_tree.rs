@@ -66,7 +66,7 @@ impl GenericParamsId {
 }
 
 /// The item tree of a source file.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
     _c: Count<Self>,
 
@@ -82,7 +82,7 @@ impl ItemTree {
         let syntax = if let Some(node) = db.parse_or_expand(file_id) {
             node
         } else {
-            return Arc::new(Self::empty());
+            return Default::default();
         };
 
         let hygiene = Hygiene::new(db.upcast(), file_id);
@@ -116,15 +116,6 @@ impl ItemTree {
         }
         item_tree.shrink_to_fit();
         Arc::new(item_tree)
-    }
-
-    fn empty() -> Self {
-        Self {
-            _c: Count::new(),
-            top_level: Default::default(),
-            attrs: Default::default(),
-            data: Default::default(),
-        }
     }
 
     fn shrink_to_fit(&mut self) {
