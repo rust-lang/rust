@@ -2752,6 +2752,14 @@ where
                 attrs
             });
 
+            if target.arch == "wasm32" && target.os == "unknown" {
+                // wasm-bindgen depends on ABI details and is incompatible with the
+                // correct C ABI, so this is being kept around until wasm-bindgen
+                // can be fixed to work with the correct ABI. See #63649 for further
+                // discussion.
+                arg.mode = PassMode::Direct(ArgAttributes::new());
+            }
+
             if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
                 // doesn't ignore zero-sized struct arguments.
