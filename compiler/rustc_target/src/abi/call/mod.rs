@@ -1,6 +1,6 @@
 use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, LayoutOf, TyAndLayout, TyAndLayoutMethods};
-use crate::spec::{self, HasTargetSpec};
+use crate::spec::{self, HasTargetSpec, Target};
 
 mod aarch64;
 mod amdgpu;
@@ -631,14 +631,26 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "nvptx64" => nvptx64::compute_abi_info(self),
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
-            "wasm32" => match cx.target_spec().os.as_str() {
-                "emscripten" | "wasi" => wasm32::compute_abi_info(cx, self),
-                _ => wasm32_bindgen_compat::compute_abi_info(self),
+            "wasm32" => if use_wasm_bindgen_compat_abi(cx.target_spec()) {
+                wasm32_bindgen_compat::compute_abi_info(self)
+            } else {
+                wasm32::compute_abi_info(cx, self)
             },
             "asmjs" => wasm32::compute_abi_info(cx, self),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
         }
 
         Ok(())
+    }
+}
+
+pub fn use_wasm_bindgen_compat_abi(target_spec: &Target) -> bool {
+    if target_spec.arch.as_str() == "wasm32" {
+        match target_spec.os.as_str() {
+            "emscripten" | "wasi" => false,
+            _ => true,
+        }
+    } else {
+        false
     }
 }
