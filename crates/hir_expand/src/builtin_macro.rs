@@ -331,7 +331,9 @@ fn concat_expand(
                 text.push_str(&component);
             }
             // handle boolean literals
-            tt::TokenTree::Leaf(tt::Leaf::Ident(id)) if i % 2 == 0 => {
+            tt::TokenTree::Leaf(tt::Leaf::Ident(id))
+                if i % 2 == 0 && (id.text == "true" || id.text == "false") =>
+            {
                 text.push_str(id.text.as_str());
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
@@ -739,7 +741,7 @@ mod tests {
             r##"
             #[rustc_builtin_macro]
             macro_rules! concat {}
-            concat!("foo", r, 0, r#"bar"#, false);
+            concat!("foo", "r", 0, r#"bar"#, false);
             "##,
         );
 
