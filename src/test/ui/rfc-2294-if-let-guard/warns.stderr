@@ -2,15 +2,15 @@ error: irrefutable `if let` guard pattern
   --> $DIR/warns.rs:7:20
    |
 LL |         Some(x) if let () = x => {}
-   |                    ^^^^^^^^^^
+   |                    ^^^^^^^^^^ this pattern will always match, so the guard is useless
    |
 note: the lint level is defined here
   --> $DIR/warns.rs:4:8
    |
 LL | #[deny(irrefutable_let_patterns)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this pattern will always match, so the guard is useless
    = help: consider removing the guard and adding a `let` inside the match arm
+   = help: for more information, visit <https://doc.rust-lang.org/book/ch18-02-refutability.html>
 
 error: unreachable pattern
   --> $DIR/warns.rs:16:25

@@ -11,11 +11,11 @@ warning: irrefutable `if let` pattern
   --> $DIR/closure-origin-single-variant-diagnostics.rs:18:12
    |
 LL |         if let SingleVariant::Point(ref mut x, _) = point {
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this pattern will always match, so the `if let` is useless
    |
    = note: `#[warn(irrefutable_let_patterns)]` on by default
-   = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`
+   = help: for more information, visit <https://doc.rust-lang.org/book/ch18-02-refutability.html>
 
 error[E0382]: use of moved value: `c`
   --> $DIR/closure-origin-single-variant-diagnostics.rs:25:13

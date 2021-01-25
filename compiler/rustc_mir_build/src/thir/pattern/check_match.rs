@@ -366,31 +366,38 @@ fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<
 }
 
 fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, source: hir::MatchSource) {
-    tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| match source {
-        hir::MatchSource::IfLetDesugar { .. } => {
-            let mut diag = lint.build("irrefutable `if let` pattern");
-            diag.note("this pattern will always match, so the `if let` is useless");
-            diag.help("consider replacing the `if let` with a `let`");
-            diag.emit()
-        }
-        hir::MatchSource::WhileLetDesugar { .. } => {
-            let mut diag = lint.build("irrefutable `while let` pattern");
-            diag.note("this pattern will always match, so the loop will never exit");
-            diag.help("consider instead using a `loop { ... }` with a `let` inside it");
-            diag.emit()
-        }
-        hir::MatchSource::IfLetGuardDesugar { .. }=> {
-            let mut diag = lint.build("irrefutable `if let` guard pattern");
-            diag.note("this pattern will always match, so the guard is useless");
-            diag.help("consider removing the guard and adding a `let` inside the match arm");
-            diag.emit()
-        }
-        _ => {
-            bug!(
-                "expected `if let`, `while let`, or `if let` guard HIR match source, found {:?}",
-                source,
-            )
-        }
+    tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| {
+        let mut diag = match source {
+            hir::MatchSource::IfLetDesugar { .. } => {
+                let mut diag = lint.build("irrefutable `if let` pattern");
+                diag.span_label(span, "this pattern will always match, so the `if let` is useless");
+                diag.help("consider replacing the `if let` with a `let`");
+                diag
+            }
+            hir::MatchSource::WhileLetDesugar { .. } => {
+                let mut diag = lint.build("irrefutable `while let` pattern");
+                diag.span_label(span, "this pattern will always match, so the loop will never exit");
+                diag.help("consider instead using a `loop { ... }` with a `let` inside it");
+                diag
+            }
+            hir::MatchSource::IfLetGuardDesugar { .. }=> {
+                let mut diag = lint.build("irrefutable `if let` guard pattern");
+                diag.span_label(span, "this pattern will always match, so the guard is useless");
+                diag.help("consider removing the guard and adding a `let` inside the match arm");
+                diag
+            }
+            _ => {
+                bug!(
+                    "expected `if let`, `while let`, or `if let` guard HIR match source, found {:?}",
+                    source,
+                )
+            }
+        };
+        diag.help(
+            "for more information, visit \
+             <https://doc.rust-lang.org/book/ch18-02-refutability.html>",
+        );
+        diag.emit();
     });
 }
 
