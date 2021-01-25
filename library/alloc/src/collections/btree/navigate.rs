@@ -103,7 +103,8 @@ where
     }
 }
 
-/// Equivalent to `range_search(k, v, ..)` but without the `Ord` bound.
+/// Equivalent to `range_search(root1, root2, ..)` but without the `Ord` bound.
+/// Equivalent to `(root1.first_leaf_edge(), root2.last_leaf_edge())` but more efficient.
 fn full_range<BorrowType: marker::BorrowType, K, V>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
@@ -130,7 +131,7 @@ fn full_range<BorrowType: marker::BorrowType, K, V>(
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
-    /// Creates a pair of leaf edges delimiting a specified range in or underneath a node.
+    /// Finds the pair of leaf edges delimiting a specific range in a tree.
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
@@ -149,7 +150,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
         range_search(self, self, range)
     }
 
-    /// Returns (self.first_leaf_edge(), self.last_leaf_edge()), but more efficiently.
+    /// Finds the pair of leaf edges delimiting an entire tree.
     pub fn full_range(
         self,
     ) -> (
