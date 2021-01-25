@@ -95,3 +95,29 @@ fn outer() {
         "#]],
     );
 }
+
+#[test]
+fn super_imports() {
+    check_at(
+        r#"
+mod module {
+    fn f() {
+        use super::Struct;
+        $0
+    }
+}
+
+struct Struct {}
+"#,
+        expect![[r#"
+            block scope
+            Struct: t
+            crate
+            Struct: t
+            module: t
+
+            crate::module
+            f: v
+        "#]],
+    );
+}
