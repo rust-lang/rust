@@ -16,7 +16,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 
-use json_types as types;
+use rustdoc_json_types as types;
 
 use crate::clean;
 use crate::config::{RenderInfo, RenderOptions};
