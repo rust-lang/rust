@@ -509,10 +509,6 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         PatStack { pats: vec, row_data, head_ctor: OnceCell::new() }
     }
 
-    fn is_empty(&self) -> bool {
-        self.pats.is_empty()
-    }
-
     fn len(&self) -> usize {
         self.pats.len()
     }
@@ -597,6 +593,8 @@ enum UndoKind<'p, 'tcx> {
         ctor: Constructor<'tcx>,
         ctor_arity: usize,
         ctor_wild_subpatterns: Fields<'p, 'tcx>,
+    },
+    OrPatsExp {
         any_or_pats: bool,
     },
     OrPat {
@@ -666,23 +664,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             *next_row_id = self.columns[i].len() - 1;
         }
 
-        if !row.is_empty() {
-            if let Some(ctor) = row.head_ctor.take() {
-                let _ = self.columns.last().unwrap()[*next_row_id].ctor.set(ctor);
-            }
-
-            if row.head().is_or_pat() {
-                self.selected_rows.pop().unwrap();
-                // Expand the or-pattern. All subpatterns point to the same row in the next column.
-                let last_col = self.columns.last_mut().unwrap();
-                let entry = last_col.pop().unwrap();
-                for pat in entry.pat.expand_or_pat() {
-                    let entry =
-                        MatrixEntry { pat, next_row_id: entry.next_row_id, ctor: OnceCell::new() };
-                    self.selected_rows.push(last_col.len());
-                    last_col.push(entry);
-                }
-            }
+        if let Some(ctor) = row.head_ctor.take() {
+            let _ = self.columns.last().unwrap()[*next_row_id].ctor.set(ctor);
         }
         self.row_data.push(row.row_data);
     }
@@ -795,25 +778,24 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             }
         }
 
-        let mut any_or_pats = false;
-        // Expand any or-patterns present in the new last column.
-        if !self.columns.is_empty() && self.last_col().any(|e| e.pat.is_or_pat()) {
-            any_or_pats = true;
-            self.expand_or_patterns();
-        }
-
         self.history.push(UndoKind::Specialize {
             ty: pcx.ty,
             span: pcx.span,
             ctor,
             ctor_arity: ctor_wild_subpatterns.len(),
             ctor_wild_subpatterns,
-            any_or_pats,
         });
     }
 
-    /// Expands or-patterns in the last column of the matrix. Panics if the matrix has no columns.
+    /// Expands or-patterns in the last column of the matrix. Does nothing if the first column is
+    /// missing or has no or-patterns.
     fn expand_or_patterns(&mut self) {
+        let any_or_pats = !self.columns.is_empty() && self.last_col().any(|e| e.pat.is_or_pat());
+        self.history.push(UndoKind::OrPatsExp { any_or_pats });
+        if !any_or_pats {
+            return;
+        }
+
         self.save_last_col();
         let old_last_col = self.last_col_history.last().unwrap();
         let mut new_last_col = Vec::new();
@@ -844,11 +826,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     fn undo(&mut self) -> Option<UndoKind<'p, 'tcx>> {
         let undo = self.history.pop()?;
         match undo {
-            UndoKind::Specialize { ctor_arity, any_or_pats, .. } => {
-                if any_or_pats {
-                    self.columns.pop().unwrap();
-                    self.restore_last_col();
-                }
+            UndoKind::Specialize { ctor_arity, .. } => {
                 for _ in 0..ctor_arity {
                     self.columns.pop().unwrap();
                 }
@@ -860,6 +838,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 }
             }
             UndoKind::OrPatBranch { .. } => {}
+            UndoKind::OrPatsExp { any_or_pats } => {
+                if any_or_pats {
+                    self.columns.pop().unwrap();
+                    self.restore_last_col();
+                }
+            }
         };
         Some(undo)
     }
@@ -1351,12 +1335,8 @@ fn is_useful<'p, 'tcx>(
                             span,
                             ref ctor,
                             ref ctor_wild_subpatterns,
-                            any_or_pats,
                             ..
                         } => {
-                            if any_or_pats {
-                                hist_col_id -= 1;
-                            }
                             let column = &matrix.last_col_history[hist_col_id];
                             let selected_rows = &matrix.selected_rows_history[hist_col_id];
                             let head_ctors =
@@ -1366,6 +1346,11 @@ fn is_useful<'p, 'tcx>(
                             hist_col_id -= 1;
                         }
                         UndoKind::OrPatBranch { .. } | UndoKind::OrPat { .. } => unreachable!(),
+                        UndoKind::OrPatsExp { any_or_pats } => {
+                            if any_or_pats {
+                                hist_col_id -= 1;
+                            }
+                        }
                     }
                 }
                 u
@@ -1382,7 +1367,7 @@ fn is_useful<'p, 'tcx>(
                             UndoKind::OrPatBranch { i, alt_count, pat } => {
                                 set = set.unsplit_or_pat(i, alt_count, pat);
                             }
-                            UndoKind::OrPat { .. } => {}
+                            UndoKind::OrPat { .. } | UndoKind::OrPatsExp { .. } => {}
                         }
                     }
                 }
@@ -1437,7 +1422,10 @@ fn is_useful<'p, 'tcx>(
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
             matrix.specialize(pcx, ctor, ctor_wild_subpatterns);
+            // Expand any or-patterns present in the new last column.
+            matrix.expand_or_patterns();
             is_useful(cx, matrix, &v, usefulness, false);
+            matrix.undo();
             matrix.undo();
         }
     }
@@ -1492,7 +1480,9 @@ crate fn compute_match_usefulness<'p, 'tcx>(
             };
             let v = PatStack::from_pattern(arm.pat, row_data);
             let mut usefulness = Usefulness::new_not_useful(v.row_data.witness_preference);
+            matrix.expand_or_patterns();
             is_useful(cx, &mut matrix, &v, &mut usefulness, true);
+            matrix.undo();
             matrix.push(v);
             let reachability = match usefulness {
                 NoWitnesses(subpats) if subpats.is_full() => Reachability::Unreachable,
@@ -1511,6 +1501,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     };
     let v = PatStack::from_pattern(wild_pattern, row_data);
     let mut usefulness = Usefulness::new_not_useful(v.row_data.witness_preference);
+    matrix.expand_or_patterns();
     is_useful(cx, &mut matrix, &v, &mut usefulness, true);
     let non_exhaustiveness_witnesses = match usefulness {
         WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
