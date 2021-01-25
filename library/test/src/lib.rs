@@ -62,6 +62,7 @@ pub mod test {
 }
 
 use std::{
+    collections::VecDeque,
     env, io,
     io::prelude::Write,
     panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo},
@@ -211,13 +212,17 @@ where
     use std::sync::mpsc::RecvTimeoutError;
 
     struct RunningTest {
-        timeout: Instant,
         join_handle: Option<thread::JoinHandle<()>>,
     }
 
     // Use a deterministic hasher
     type TestMap =
         HashMap<TestDesc, RunningTest, BuildHasherDefault<collections::hash_map::DefaultHasher>>;
+
+    struct TimeoutEntry {
+        desc: TestDesc,
+        timeout: Instant,
+    }
 
     let tests_len = tests.len();
 
@@ -262,25 +267,28 @@ where
     };
 
     let mut running_tests: TestMap = HashMap::default();
+    let mut timeout_queue: VecDeque<TimeoutEntry> = VecDeque::new();
 
-    fn get_timed_out_tests(running_tests: &mut TestMap) -> Vec<TestDesc> {
+    fn get_timed_out_tests(
+        running_tests: &TestMap,
+        timeout_queue: &mut VecDeque<TimeoutEntry>,
+    ) -> Vec<TestDesc> {
         let now = Instant::now();
-        let timed_out = running_tests
-            .iter()
-            .filter_map(
-                |(desc, running_test)| {
-                    if now >= running_test.timeout { Some(desc.clone()) } else { None }
-                },
-            )
-            .collect();
-        for test in &timed_out {
-            running_tests.remove(test);
+        let mut timed_out = Vec::new();
+        while let Some(timeout_entry) = timeout_queue.front() {
+            if now < timeout_entry.timeout {
+                break;
+            }
+            let timeout_entry = timeout_queue.pop_front().unwrap();
+            if running_tests.contains_key(&timeout_entry.desc) {
+                timed_out.push(timeout_entry.desc);
+            }
         }
         timed_out
     }
 
-    fn calc_timeout(running_tests: &TestMap) -> Option<Duration> {
-        running_tests.values().map(|running_test| running_test.timeout).min().map(|next_timeout| {
+    fn calc_timeout(timeout_queue: &VecDeque<TimeoutEntry>) -> Option<Duration> {
+        timeout_queue.front().map(|&TimeoutEntry { timeout: next_timeout, .. }| {
             let now = Instant::now();
             if next_timeout >= now { next_timeout - now } else { Duration::new(0, 0) }
         })
@@ -305,7 +313,7 @@ where
                 let timeout = time::get_default_test_timeout();
                 let desc = test.desc.clone();
 
-                let event = TestEvent::TeWait(test.desc.clone());
+                let event = TestEvent::TeWait(desc.clone());
                 notify_about_test_event(event)?; //here no pad
                 let join_handle = run_test(
                     opts,
@@ -315,15 +323,16 @@ where
                     tx.clone(),
                     Concurrent::Yes,
                 );
-                running_tests.insert(desc, RunningTest { timeout, join_handle });
+                running_tests.insert(desc.clone(), RunningTest { join_handle });
+                timeout_queue.push_back(TimeoutEntry { desc, timeout });
                 pending += 1;
             }
 
             let mut res;
             loop {
-                if let Some(timeout) = calc_timeout(&running_tests) {
+                if let Some(timeout) = calc_timeout(&timeout_queue) {
                     res = rx.recv_timeout(timeout);
-                    for test in get_timed_out_tests(&mut running_tests) {
+                    for test in get_timed_out_tests(&running_tests, &mut timeout_queue) {
                         let event = TestEvent::TeTimeout(test);
                         notify_about_test_event(event)?;
                     }
