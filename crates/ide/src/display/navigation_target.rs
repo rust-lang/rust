@@ -435,13 +435,16 @@ impl TryToNav for hir::TypeParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let src = self.source(db)?;
         let full_range = match &src.value {
-            Either::Left(it) => it.syntax().text_range(),
+            Either::Left(it) => it
+                .name()
+                .map_or_else(|| it.syntax().text_range(), |name| name.syntax().text_range()),
             Either::Right(it) => it.syntax().text_range(),
         };
         let focus_range = match &src.value {
-            Either::Left(_) => None,
-            Either::Right(it) => it.name().map(|it| it.syntax().text_range()),
-        };
+            Either::Left(it) => it.name(),
+            Either::Right(it) => it.name(),
+        }
+        .map(|it| it.syntax().text_range());
         Some(NavigationTarget {
             file_id: src.file_id.original_file(db),
             name: self.name(db).to_string().into(),
