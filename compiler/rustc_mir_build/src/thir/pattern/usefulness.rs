@@ -1164,31 +1164,25 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
         }
     }
 
-    /// After calculating the usefulness for a branch of an or-pattern, call this to make this
-    /// usefulness mergeable with those from the other branches.
-    fn unsplit_or_pat(self, alt_id: usize, alt_count: usize, pat: &'p Pat<'tcx>) -> Self {
-        match self {
-            NoWitnesses(subpats) => NoWitnesses(subpats.unsplit_or_pat(alt_id, alt_count, pat)),
-            WithWitnesses(_) => bug!(),
-        }
-    }
-
     /// After calculating usefulness after a specialization, call this to recontruct a usefulness
     /// that makes sense for the matrix pre-specialization. This new usefulness can then be merged
     /// with the results of specializing with the other constructors.
-    fn apply_constructor(
+    fn apply_constructor<'a>(
         self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
-        matrix: &Matrix<'p, 'tcx>, // used to compute missing ctors
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-    ) -> Self {
+        head_ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
+    ) -> Self
+    where
+        'tcx: 'a,
+    {
         match self {
             WithWitnesses(witnesses) if witnesses.is_empty() => WithWitnesses(witnesses),
             WithWitnesses(witnesses) => {
                 let new_witnesses = if matches!(ctor, Constructor::Missing) {
                     let mut split_wildcard = SplitWildcard::new(pcx);
-                    split_wildcard.split(pcx, matrix.head_ctors(pcx.cx));
+                    split_wildcard.split(pcx, head_ctors);
                     // Construct for each missing constructor a "wild" version of this
                     // constructor, that matches everything that can be built with
                     // it. For example, if `ctor` is a `Constructor::Variant` for
@@ -1343,29 +1337,58 @@ fn is_useful<'p, 'tcx>(
     if matrix.column_count() == 0 {
         let is_covered =
             matrix.selected_rows.iter().any(|row_id| !matrix.row_data[*row_id].is_under_guard);
-        let mut u = if is_covered {
-            Usefulness::new_not_useful(v.row_data.witness_preference)
-        } else {
-            Usefulness::new_useful(v.row_data.witness_preference)
-        };
-        // Rewind the matrix history to reconstruct the appropriate witnesses/spansets.
-        let mut matrix = matrix.clone();
-        while let Some(hist) = matrix.undo() {
-            match hist {
-                UndoKind::Specialize { ty, span, ctor, ctor_wild_subpatterns, .. } => {
-                    let pcx = PatCtxt { cx, ty, span, is_top_level };
-                    u = u.apply_constructor(pcx, &matrix, &ctor, &ctor_wild_subpatterns)
-                }
-                UndoKind::OrPatBranch { i, alt_count, pat } => {
-                    matrix.history.pop(); // Remove the `UndoKind::OrPat` without triggering `undo()`.
-                    for _ in 0..i {
-                        matrix.pop_last_row();
+        let u = match (v.row_data.witness_preference, is_covered) {
+            (_, true) => Usefulness::new_not_useful(v.row_data.witness_preference),
+            (ConstructWitness, false) => {
+                let mut u = Usefulness::new_useful(ConstructWitness);
+                // The column in the matrix history that we are currently processing.
+                let mut hist_col_id = matrix.last_col_history.len() - 1;
+                // Rewind the matrix history to reconstruct the appropriate witnesses.
+                for hist in matrix.history.iter().rev() {
+                    match *hist {
+                        UndoKind::Specialize {
+                            ty,
+                            span,
+                            ref ctor,
+                            ref ctor_wild_subpatterns,
+                            any_or_pats,
+                            ..
+                        } => {
+                            if any_or_pats {
+                                hist_col_id -= 1;
+                            }
+                            let column = &matrix.last_col_history[hist_col_id];
+                            let selected_rows = &matrix.selected_rows_history[hist_col_id];
+                            let head_ctors =
+                                selected_rows.iter().map(|&row_id| column[row_id].head_ctor(cx));
+                            let pcx = PatCtxt { cx, ty, span, is_top_level };
+                            u = u.apply_constructor(pcx, ctor, ctor_wild_subpatterns, head_ctors);
+                            hist_col_id -= 1;
+                        }
+                        UndoKind::OrPatBranch { .. } | UndoKind::OrPat { .. } => unreachable!(),
                     }
-                    u = u.unsplit_or_pat(i, alt_count, pat);
                 }
-                UndoKind::OrPat { .. } => unreachable!(),
+                u
             }
-        }
+            (LeaveOutWitness, false) => {
+                let mut set = SubPatSet::empty();
+                if matrix.history.iter().any(|hist| matches!(hist, UndoKind::OrPatBranch { .. })) {
+                    // Rewind the matrix history to reconstruct the appropriate spansets.
+                    for hist in matrix.history.iter().rev() {
+                        match *hist {
+                            UndoKind::Specialize { ref ctor_wild_subpatterns, .. } => {
+                                set = set.unspecialize(ctor_wild_subpatterns.len());
+                            }
+                            UndoKind::OrPatBranch { i, alt_count, pat } => {
+                                set = set.unsplit_or_pat(i, alt_count, pat);
+                            }
+                            UndoKind::OrPat { .. } => {}
+                        }
+                    }
+                }
+                NoWitnesses(set)
+            }
+        };
         debug!(?u);
         usefulness.extend(u);
         return;
@@ -1388,7 +1411,6 @@ fn is_useful<'p, 'tcx>(
             matrix.history.push(UndoKind::OrPatBranch { i, alt_count, pat });
             is_useful(cx, matrix, &v, usefulness, false);
             matrix.undo();
-            // If pattern has a guard don't add it to the matrix.
             // We push the already-seen patterns into the matrix in order to detect redundant
             // branches like `Some(_) | Some(0)`.
             matrix.push(v);
