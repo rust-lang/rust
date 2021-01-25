@@ -200,6 +200,7 @@ macro_rules! step_identical_methods {
         }
 
         #[inline]
+        #[allow(arithmetic_overflow)]
         fn forward(start: Self, n: usize) -> Self {
             // In debug builds, trigger a panic on overflow.
             // This should optimize completely out in release builds.
@@ -211,6 +212,7 @@ macro_rules! step_identical_methods {
         }
 
         #[inline]
+        #[allow(arithmetic_overflow)]
         fn backward(start: Self, n: usize) -> Self {
             // In debug builds, trigger a panic on overflow.
             // This should optimize completely out in release builds.

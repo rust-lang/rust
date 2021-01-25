@@ -1,0 +1,29 @@
+- // MIR for `main` before Inline
++ // MIR for `main` after Inline
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-cycle-generic.rs:8:11: 8:11
+      let _1: ();                          // in scope 0 at $DIR/inline-cycle-generic.rs:9:5: 9:24
++     scope 1 (inlined <C as Call>::call) { // at $DIR/inline-cycle-generic.rs:9:5: 9:24
++         scope 2 (inlined <B<A> as Call>::call) { // at $DIR/inline-cycle-generic.rs:9:5: 9:24
++         }
++     }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/inline-cycle-generic.rs:9:5: 9:24
+-         _1 = <C as Call>::call() -> bb1; // scope 0 at $DIR/inline-cycle-generic.rs:9:5: 9:24
++         _1 = <A as Call>::call() -> bb1; // scope 2 at $DIR/inline-cycle-generic.rs:9:5: 9:24
+                                           // mir::Constant
+-                                          // + span: $DIR/inline-cycle-generic.rs:9:5: 9:22
+-                                          // + literal: Const { ty: fn() {<C as Call>::call}, val: Value(Scalar(<ZST>)) }
++                                          // + span: $DIR/inline-cycle-generic.rs:9:5: 9:24
++                                          // + literal: Const { ty: fn() {<A as Call>::call}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          StorageDead(_1);                 // scope 0 at $DIR/inline-cycle-generic.rs:9:24: 9:25
+          _0 = const ();                   // scope 0 at $DIR/inline-cycle-generic.rs:8:11: 10:2
+          return;                          // scope 0 at $DIR/inline-cycle-generic.rs:10:2: 10:2
+      }
+  }
+  

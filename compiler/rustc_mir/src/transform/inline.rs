@@ -17,6 +17,8 @@ use crate::transform::MirPass;
 use std::iter;
 use std::ops::{Range, RangeFrom};
 
+crate mod cycle;
+
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
 const LANDINGPAD_PENALTY: usize = 50;
@@ -37,6 +39,9 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // If you change this optimization level, also change the level in
+        // `mir_drops_elaborated_and_const_checked` for the call to `mir_inliner_callees`.
+        // Otherwise you will get an ICE about stolen MIR.
         if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
             return;
         }
@@ -50,6 +55,8 @@ impl<'tcx> MirPass<'tcx> for Inline {
             return;
         }
 
+        let span = trace_span!("inline", body = %tcx.def_path_str(body.source.def_id()));
+        let _guard = span.enter();
         if inline(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
             CfgSimplifier::new(body).simplify();
@@ -90,8 +97,8 @@ struct Inliner<'tcx> {
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
     /// Caller HirID.
     hir_id: hir::HirId,
-    /// Stack of inlined instances.
-    history: Vec<Instance<'tcx>>,
+    /// Stack of inlined Instances.
+    history: Vec<ty::Instance<'tcx>>,
     /// Indicates that the caller body has been modified.
     changed: bool,
 }
@@ -103,13 +110,28 @@ impl Inliner<'tcx> {
                 None => continue,
                 Some(it) => it,
             };
+            let span = trace_span!("process_blocks", %callsite.callee, ?bb);
+            let _guard = span.enter();
 
-            if !self.is_mir_available(&callsite.callee, caller_body) {
+            trace!(
+                "checking for self recursion ({:?} vs body_source: {:?})",
+                callsite.callee.def_id(),
+                caller_body.source.def_id()
+            );
+            if callsite.callee.def_id() == caller_body.source.def_id() {
+                debug!("Not inlining a function into itself");
+                continue;
+            }
+
+            if !self.is_mir_available(callsite.callee, caller_body) {
                 debug!("MIR unavailable {}", callsite.callee);
                 continue;
             }
 
+            let span = trace_span!("instance_mir", %callsite.callee);
+            let instance_mir_guard = span.enter();
             let callee_body = self.tcx.instance_mir(callsite.callee.def);
+            drop(instance_mir_guard);
             if !self.should_inline(callsite, callee_body) {
                 continue;
             }
@@ -137,28 +159,61 @@ impl Inliner<'tcx> {
         }
     }
 
-    fn is_mir_available(&self, callee: &Instance<'tcx>, caller_body: &Body<'tcx>) -> bool {
-        if let InstanceDef::Item(_) = callee.def {
-            if !self.tcx.is_mir_available(callee.def_id()) {
-                return false;
+    #[instrument(skip(self, caller_body))]
+    fn is_mir_available(&self, callee: Instance<'tcx>, caller_body: &Body<'tcx>) -> bool {
+        match callee.def {
+            InstanceDef::Item(_) => {
+                // If there is no MIR available (either because it was not in metadata or
+                // because it has no MIR because it's an extern function), then the inliner
+                // won't cause cycles on this.
+                if !self.tcx.is_mir_available(callee.def_id()) {
+                    return false;
+                }
             }
+            // These have no own callable MIR.
+            InstanceDef::Intrinsic(_) | InstanceDef::Virtual(..) => return false,
+            // This cannot result in an immediate cycle since the callee MIR is a shim, which does
+            // not get any optimizations run on it. Any subsequent inlining may cause cycles, but we
+            // do not need to catch this here, we can wait until the inliner decides to continue
+            // inlining a second time.
+            InstanceDef::VtableShim(_)
+            | InstanceDef::ReifyShim(_)
+            | InstanceDef::FnPtrShim(..)
+            | InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::DropGlue(..)
+            | InstanceDef::CloneShim(..) => return true,
+        }
+
+        if self.tcx.is_constructor(callee.def_id()) {
+            trace!("constructors always have MIR");
+            // Constructor functions cannot cause a query cycle.
+            return true;
         }
 
         if let Some(callee_def_id) = callee.def_id().as_local() {
             let callee_hir_id = self.tcx.hir().local_def_id_to_hir_id(callee_def_id);
-            // Avoid a cycle here by only using `instance_mir` only if we have
-            // a lower `HirId` than the callee. This ensures that the callee will
-            // not inline us. This trick only works without incremental compilation.
-            // So don't do it if that is enabled. Also avoid inlining into generators,
+            // Avoid inlining into generators,
             // since their `optimized_mir` is used for layout computation, which can
             // create a cycle, even when no attempt is made to inline the function
             // in the other direction.
-            !self.tcx.dep_graph.is_fully_enabled()
+            caller_body.generator_kind.is_none()
+                && (
+                    // Avoid a cycle here by only using `instance_mir` only if we have
+                    // a lower `HirId` than the callee. This ensures that the callee will
+                    // not inline us. This trick only works without incremental compilation.
+                    // So don't do it if that is enabled.
+                    !self.tcx.dep_graph.is_fully_enabled()
                 && self.hir_id < callee_hir_id
-                && caller_body.generator_kind.is_none()
+                // If we know for sure that the function we're calling will itself try to
+                // call us, then we avoid inlining that function.
+                || !self.tcx.mir_callgraph_reachable((callee, caller_body.source.def_id().expect_local()))
+                )
         } else {
-            // This cannot result in a cycle since the callee MIR is from another crate
-            // and is already optimized.
+            // This cannot result in an immediate cycle since the callee MIR is from another crate
+            // and is already optimized. Any subsequent inlining may cause cycles, but we do
+            // not need to catch this here, we can wait until the inliner decides to continue
+            // inlining a second time.
+            trace!("functions from other crates always have MIR");
             true
         }
     }
@@ -203,8 +258,8 @@ impl Inliner<'tcx> {
         None
     }
 
+    #[instrument(skip(self, callee_body))]
     fn should_inline(&self, callsite: CallSite<'tcx>, callee_body: &Body<'tcx>) -> bool {
-        debug!("should_inline({:?})", callsite);
         let tcx = self.tcx;
 
         if callsite.fn_sig.c_variadic() {
@@ -333,7 +388,9 @@ impl Inliner<'tcx> {
                         if let Ok(Some(instance)) =
                             Instance::resolve(self.tcx, self.param_env, def_id, substs)
                         {
-                            if callsite.callee == instance || self.history.contains(&instance) {
+                            if callsite.callee.def_id() == instance.def_id()
+                                || self.history.contains(&instance)
+                            {
                                 debug!("`callee is recursive - not inlining");
                                 return false;
                             }

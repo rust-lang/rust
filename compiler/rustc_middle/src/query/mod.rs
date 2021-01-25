@@ -782,6 +782,27 @@ rustc_queries! {
     }
 
     Other {
+        /// Check whether the function has any recursion that could cause the inliner to trigger
+        /// a cycle. Returns the call stack causing the cycle. The call stack does not contain the
+        /// current function, just all intermediate functions.
+        query mir_callgraph_reachable(key: (ty::Instance<'tcx>, LocalDefId)) -> bool {
+            fatal_cycle
+            desc { |tcx|
+                "computing if `{}` (transitively) calls `{}`",
+                key.0,
+                tcx.def_path_str(key.1.to_def_id()),
+            }
+        }
+
+        /// Obtain all the calls into other local functions
+        query mir_inliner_callees(key: ty::InstanceDef<'tcx>) -> &'tcx [(DefId, SubstsRef<'tcx>)] {
+            fatal_cycle
+            desc { |tcx|
+                "computing all local function calls in `{}`",
+                tcx.def_path_str(key.def_id()),
+            }
+        }
+
         /// Evaluates a constant and returns the computed allocation.
         ///
         /// **Do not use this** directly, use the `tcx.eval_static_initializer` wrapper.
