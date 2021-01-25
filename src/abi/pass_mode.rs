@@ -2,6 +2,7 @@
 
 use crate::prelude::*;
 
+use rustc_target::abi::call::{ArgAbi, ArgAttributes, PassMode as RustcPassMode};
 pub(super) use EmptySinglePair::*;
 
 #[derive(Copy, Clone, Debug)]
@@ -83,39 +84,64 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
         // WARNING zst arguments must never be passed, as that will break CastKind::ClosureFnPointer
         PassMode::NoPass
     } else {
-        match &layout.abi {
-            Abi::Uninhabited => PassMode::NoPass,
-            Abi::Scalar(scalar) => PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone())),
-            Abi::ScalarPair(a, b) => {
-                let a = scalar_to_clif_type(tcx, a.clone());
-                let b = scalar_to_clif_type(tcx, b.clone());
-                if a == types::I128 && b == types::I128 {
-                    // Returning (i128, i128) by-val-pair would take 4 regs, while only 3 are
-                    // available on x86_64. Cranelift gets confused when too many return params
-                    // are used.
-                    PassMode::ByRef {
-                        size: Some(layout.size),
-                    }
-                } else {
-                    PassMode::ByValPair(a, b)
-                }
-            }
-
-            // FIXME implement Vector Abi in a cg_llvm compatible way
-            Abi::Vector { .. } => {
-                if let Some(vector_ty) = crate::intrinsics::clif_vector_type(tcx, layout) {
-                    PassMode::ByVal(vector_ty)
-                } else {
-                    PassMode::ByRef {
-                        size: Some(layout.size),
+        let arg_abi = ArgAbi::new(&tcx, layout, |_, _, _| ArgAttributes::new());
+        match arg_abi.mode {
+            RustcPassMode::Ignore => PassMode::NoPass,
+            RustcPassMode::Direct(_) => match &arg_abi.layout.abi {
+                Abi::Scalar(scalar) => PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone())),
+                // FIXME implement Vector Abi in a cg_llvm compatible way
+                Abi::Vector { .. } => {
+                    if let Some(vector_ty) = crate::intrinsics::clif_vector_type(tcx, arg_abi.layout) {
+                        PassMode::ByVal(vector_ty)
+                    } else {
+                        PassMode::ByRef {
+                            size: Some(arg_abi.layout.size),
+                        }
                     }
                 }
-            }
-
-            Abi::Aggregate { sized: true } => PassMode::ByRef {
-                size: Some(layout.size),
+                _ => unreachable!("{:?}", arg_abi.layout.abi)
             },
-            Abi::Aggregate { sized: false } => PassMode::ByRef { size: None },
+            RustcPassMode::Pair(_, _) => match &arg_abi.layout.abi {
+                Abi::ScalarPair(a, b) => {
+                    let a = scalar_to_clif_type(tcx, a.clone());
+                    let b = scalar_to_clif_type(tcx, b.clone());
+                    if a == types::I128 && b == types::I128 {
+                        // Returning (i128, i128) by-val-pair would take 4 regs, while only 3 are
+                        // available on x86_64. Cranelift gets confused when too many return params
+                        // are used.
+                        PassMode::ByRef {
+                            size: Some(arg_abi.layout.size),
+                        }
+                    } else {
+                        PassMode::ByValPair(a, b)
+                    }
+                }
+                _ => unreachable!("{:?}", arg_abi.layout.abi)
+            },
+            RustcPassMode::Cast(_) | RustcPassMode::Indirect {
+                attrs: _,
+                extra_attrs: None,
+                on_stack: false,
+            } => PassMode::ByRef {
+                size: Some(arg_abi.layout.size),
+            },
+            RustcPassMode::Indirect {
+                attrs: _,
+                extra_attrs,
+                on_stack: true,
+            } => {
+                assert!(extra_attrs.is_none());
+                PassMode::ByRef {
+                    size: Some(arg_abi.layout.size)
+                }
+            }
+            RustcPassMode::Indirect {
+                attrs: _,
+                extra_attrs: Some(_),
+                on_stack: false,
+            } => PassMode::ByRef {
+                size: None,
+            },
         }
     }
 }
