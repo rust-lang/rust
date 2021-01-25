@@ -10,8 +10,6 @@
 //!
 //! `ReachedFixedPoint` signals about this.
 
-use std::iter::successors;
-
 use base_db::Edition;
 use hir_expand::name;
 use hir_expand::name::Name;
@@ -131,8 +129,8 @@ impl DefMap {
             result.krate = result.krate.or(new.krate);
             result.segment_index = result.segment_index.min(new.segment_index);
 
-            match &current_map.parent {
-                Some(map) => current_map = map,
+            match &current_map.block {
+                Some(block) => current_map = &block.parent,
                 None => return result,
             }
         }
@@ -193,14 +191,35 @@ impl DefMap {
                 self.resolve_name_in_module(db, original_module, &segment, prefer_module)
             }
             PathKind::Super(lvl) => {
-                let m = successors(Some(original_module), |m| self.modules[*m].parent)
-                    .nth(lvl as usize);
-                if let Some(local_id) = m {
-                    PerNs::types(self.module_id(local_id).into(), Visibility::Public)
-                } else {
-                    log::debug!("super path in root module");
-                    return ResolvePathResult::empty(ReachedFixedPoint::Yes);
+                let mut module = original_module;
+                for i in 0..lvl {
+                    match self.modules[module].parent {
+                        Some(it) => module = it,
+                        None => match &self.block {
+                            Some(block) => {
+                                // Look up remaining path in parent `DefMap`
+                                let new_path = ModPath {
+                                    kind: PathKind::Super(lvl - i),
+                                    segments: path.segments.clone(),
+                                };
+                                log::debug!("`super` path: {} -> {} in parent map", path, new_path);
+                                return block.parent.resolve_path_fp_with_macro(
+                                    db,
+                                    mode,
+                                    block.parent_module,
+                                    &new_path,
+                                    shadow,
+                                );
+                            }
+                            None => {
+                                log::debug!("super path in root module");
+                                return ResolvePathResult::empty(ReachedFixedPoint::Yes);
+                            }
+                        },
+                    }
                 }
+
+                PerNs::types(self.module_id(module).into(), Visibility::Public)
             }
             PathKind::Abs => {
                 // 2018-style absolute path -- only extern prelude

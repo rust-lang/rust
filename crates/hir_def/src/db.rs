@@ -2,9 +2,9 @@
 use std::sync::Arc;
 
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
-use hir_expand::{db::AstDatabase, AstId, HirFileId};
+use hir_expand::{db::AstDatabase, HirFileId};
 use la_arena::ArenaMap;
-use syntax::{ast, SmolStr};
+use syntax::SmolStr;
 
 use crate::{
     adt::{EnumData, StructData},
@@ -16,9 +16,10 @@ use crate::{
     item_tree::ItemTree,
     lang_item::{LangItemTarget, LangItems},
     nameres::DefMap,
-    AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
-    GenericDefId, ImplId, ImplLoc, LocalEnumVariantId, LocalFieldId, StaticId, StaticLoc, StructId,
-    StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VariantId,
+    AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId,
+    FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalEnumVariantId, LocalFieldId, StaticId,
+    StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId,
+    UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -41,6 +42,8 @@ pub trait InternDatabase: SourceDatabase {
     fn intern_type_alias(&self, loc: TypeAliasLoc) -> TypeAliasId;
     #[salsa::interned]
     fn intern_impl(&self, loc: ImplLoc) -> ImplId;
+    #[salsa::interned]
+    fn intern_block(&self, loc: BlockLoc) -> BlockId;
 }
 
 #[salsa::query_group(DefDatabaseStorage)]
@@ -56,7 +59,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     fn crate_def_map_query(&self, krate: CrateId) -> Arc<DefMap>;
 
     #[salsa::invoke(DefMap::block_def_map_query)]
-    fn block_def_map(&self, krate: CrateId, block: AstId<ast::BlockExpr>) -> Arc<DefMap>;
+    fn block_def_map(&self, block: BlockId) -> Arc<DefMap>;
 
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
