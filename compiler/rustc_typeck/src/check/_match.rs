@@ -134,7 +134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::Guard::If(e) => {
                         self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {});
                     }
-                    hir::Guard::IfLet(pat, e) => {
+                    hir::Guard::IfLet(pat, e, _) => {
                         let scrutinee_ty = self.demand_scrutinee_type(
                             e,
                             pat.contains_explicit_ref_binding(),

@@ -2043,7 +2043,7 @@ impl<'a> State<'a> {
                     self.print_expr(&e);
                     self.s.space();
                 }
-                hir::Guard::IfLet(pat, e) => {
+                hir::Guard::IfLet(pat, e, _) => {
                     self.word_nbsp("if");
                     self.word_nbsp("let");
                     self.print_pat(&pat);

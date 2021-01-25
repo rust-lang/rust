@@ -248,7 +248,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 Guard::If(ref e) => {
                     self.visit_expr(e);
                 }
-                Guard::IfLet(ref pat, ref e) => {
+                Guard::IfLet(ref pat, ref e, _) => {
                     self.visit_pat(pat);
                     self.visit_expr(e);
                 }

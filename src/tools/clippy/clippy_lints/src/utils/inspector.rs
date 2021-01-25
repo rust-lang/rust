@@ -568,7 +568,7 @@ fn print_guard(cx: &LateContext<'_>, guard: &hir::Guard<'_>, indent: usize) {
             println!("{}If", ind);
             print_expr(cx, expr, indent + 1);
         },
-        hir::Guard::IfLet(pat, expr) => {
+        hir::Guard::IfLet(pat, expr, _) => {
             println!("{}IfLet", ind);
             print_pat(cx, pat, indent + 1);
             print_expr(cx, expr, indent + 1);

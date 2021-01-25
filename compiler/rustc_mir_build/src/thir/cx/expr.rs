@@ -781,7 +781,9 @@ fn convert_arm<'tcx>(cx: &mut Cx<'_, 'tcx>, arm: &'tcx hir::Arm<'tcx>) -> Arm<'t
         pattern: cx.pattern_from_hir(&arm.pat),
         guard: arm.guard.as_ref().map(|g| match g {
             hir::Guard::If(ref e) => Guard::If(e.to_ref()),
-            hir::Guard::IfLet(ref pat, ref e) => Guard::IfLet(cx.pattern_from_hir(pat), e.to_ref()),
+            hir::Guard::IfLet(ref pat, ref e, _) => {
+                Guard::IfLet(cx.pattern_from_hir(pat), e.to_ref())
+            }
         }),
         body: arm.body.to_ref(),
         lint_level: LintLevel::Explicit(arm.hir_id),
