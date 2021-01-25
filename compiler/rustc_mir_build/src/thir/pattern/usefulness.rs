@@ -562,6 +562,14 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
     }
 }
 
+#[derive(Clone, Copy)]
+#[allow(dead_code)]
+enum Origin {
+    Pushed,
+    Specialized { col: usize, row: usize, seq_id: usize },
+    OrPat { col: usize, row: usize, alt_id: usize, alt_count: usize },
+}
+
 #[derive(Clone)]
 struct MatrixEntry<'p, 'tcx> {
     pat: &'p Pat<'tcx>,
@@ -570,6 +578,8 @@ struct MatrixEntry<'p, 'tcx> {
     next_row_id: usize,
     /// Cache the constructor for this pattern.
     ctor: OnceCell<Constructor<'tcx>>,
+    /// Where this pattern came from.
+    origin: Origin,
 }
 
 #[derive(Clone, Debug)]
@@ -606,6 +616,8 @@ enum UndoKind<'p, 'tcx> {
         pat: &'p Pat<'tcx>,
     },
 }
+
+// type RowId = usize;
 
 /// A 2D matrix.
 #[derive(Clone, Default)]
@@ -660,6 +672,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 pat: row.pats[row.len() - 1 - i],
                 next_row_id: *next_row_id,
                 ctor: OnceCell::new(),
+                origin: Origin::Pushed,
             });
             *next_row_id = self.columns[i].len() - 1;
         }
@@ -762,7 +775,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
         // For each row that we want to specialize.
         for row_id in self.selected_rows.iter_mut() {
-            let head_entry = &old_last_col[*row_id];
+            let origin_row_id = *row_id;
+            let head_entry = &old_last_col[origin_row_id];
             // Extract fields from the arguments of the head of each row.
             let new_fields = ctor_wild_subpatterns
                 .replace_with_pattern_arguments(head_entry.pat)
@@ -771,8 +785,19 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             *row_id = head_entry.next_row_id;
             // Note: the fields are in the natural left-to-right order but the columns are not.
             // We need to start from the last field to get the `next_row_id`s right.
-            for (col, &pat) in new_columns.iter_mut().zip(new_fields.iter().rev()) {
-                col.push(MatrixEntry { pat, next_row_id: *row_id, ctor: OnceCell::new() });
+            for (col, (seq_id, &pat)) in
+                new_columns.iter_mut().zip(new_fields.iter().enumerate().rev())
+            {
+                col.push(MatrixEntry {
+                    pat,
+                    next_row_id: *row_id,
+                    ctor: OnceCell::new(),
+                    origin: Origin::Specialized {
+                        col: self.last_col_history.len() - 1,
+                        row: origin_row_id,
+                        seq_id,
+                    },
+                });
                 // Make `row_id` point to the entry just added.
                 *row_id = col.len() - 1;
             }
@@ -802,10 +827,21 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         for &row_id in &self.selected_rows {
             let entry = &old_last_col[row_id];
             if entry.pat.is_or_pat() {
-                for pat in entry.pat.expand_or_pat() {
+                let subpats = entry.pat.expand_or_pat();
+                let alt_count = subpats.len();
+                for (alt_id, pat) in subpats.into_iter().enumerate() {
                     // All subpatterns point to the same row in the next column.
-                    let entry =
-                        MatrixEntry { pat, next_row_id: entry.next_row_id, ctor: OnceCell::new() };
+                    let entry = MatrixEntry {
+                        pat,
+                        next_row_id: entry.next_row_id,
+                        ctor: OnceCell::new(),
+                        origin: Origin::OrPat {
+                            col: self.last_col_history.len() - 1,
+                            row: row_id,
+                            alt_id,
+                            alt_count,
+                        },
+                    };
                     new_last_col.push(entry);
                 }
             } else {
@@ -813,6 +849,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                     pat: entry.pat,
                     next_row_id: entry.next_row_id,
                     ctor: OnceCell::new(),
+                    origin: entry.origin,
                 };
                 new_last_col.push(entry);
             }
