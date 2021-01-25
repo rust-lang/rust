@@ -20,7 +20,9 @@ error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
    |
 LL |     let f = || {
    |         - help: consider changing this to be mutable: `mut f`
-...
+LL |         let y = &raw mut x;
+   |                          - calling `f` requires mutable binding due to mutable borrow of `x`
+LL |     };
 LL |     f();
    |     ^ cannot borrow as mutable
 
