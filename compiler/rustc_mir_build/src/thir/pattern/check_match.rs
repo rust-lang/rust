@@ -373,7 +373,7 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, source: hir::
             diag.help("consider replacing the `if let` with a `let`");
             diag.emit()
         }
-        hir::MatchSource::WhileLetDesugar => {
+        hir::MatchSource::WhileLetDesugar { .. } => {
             let mut diag = lint.build("irrefutable `while let` pattern");
             diag.note("this pattern will always match, so the loop will never exit");
             diag.help("consider instead using a `loop { ... }` with a `let` inside it");
@@ -423,13 +423,14 @@ fn report_arm_reachability<'p, 'tcx>(
                 match source {
                     hir::MatchSource::WhileDesugar => bug!(),
 
-                    hir::MatchSource::IfLetDesugar { .. } | hir::MatchSource::WhileLetDesugar => {
+                    hir::MatchSource::IfLetDesugar { let_span, .. }
+                    | hir::MatchSource::WhileLetDesugar { let_span } => {
                         // Check which arm we're on.
                         match arm_index {
                             // The arm with the user-specified pattern.
-                            0 => unreachable_pattern(cx.tcx, arm.pat.span, arm.hir_id, None),
+                            0 => unreachable_pattern(cx.tcx, let_span, arm.hir_id, None),
                             // The arm with the wildcard pattern.
-                            1 => irrefutable_let_pattern(cx.tcx, arm.pat.span, arm.hir_id, source),
+                            1 => irrefutable_let_pattern(cx.tcx, let_span, arm.hir_id, source),
                             _ => bug!(),
                         }
                     }

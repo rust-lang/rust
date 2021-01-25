@@ -97,7 +97,7 @@ impl QuestionMark {
     fn check_if_let_some_and_early_return_none(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::Match(subject, arms, source) = &expr.kind;
-            if *source == MatchSource::IfLetDesugar { contains_else_clause: true };
+            if let MatchSource::IfLetDesugar { contains_else_clause: true, .. } = source;
             if Self::is_option(cx, subject);
 
             if let PatKind::TupleStruct(path1, fields, None) = &arms[0].pat.kind;

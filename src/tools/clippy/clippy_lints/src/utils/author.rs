@@ -729,9 +729,9 @@ fn desugaring_name(des: hir::MatchSource) -> String {
         hir::MatchSource::ForLoopDesugar => "MatchSource::ForLoopDesugar".to_string(),
         hir::MatchSource::TryDesugar => "MatchSource::TryDesugar".to_string(),
         hir::MatchSource::WhileDesugar => "MatchSource::WhileDesugar".to_string(),
-        hir::MatchSource::WhileLetDesugar => "MatchSource::WhileLetDesugar".to_string(),
+        hir::MatchSource::WhileLetDesugar { .. } => "MatchSource::WhileLetDesugar".to_string(),
         hir::MatchSource::Normal => "MatchSource::Normal".to_string(),
-        hir::MatchSource::IfLetDesugar { contains_else_clause } => format!(
+        hir::MatchSource::IfLetDesugar { contains_else_clause, .. } => format!(
             "MatchSource::IfLetDesugar {{ contains_else_clause: {} }}",
             contains_else_clause
         ),

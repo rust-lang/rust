@@ -17,22 +17,22 @@ LL |         Some(_x) => (),
    |         ^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:61:15
+  --> $DIR/patterns_same_crate.rs:61:11
    |
 LL |     while let PartiallyInhabitedVariants::Struct { x } = partially_inhabited_variant() {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:65:15
+  --> $DIR/patterns_same_crate.rs:65:11
    |
 LL |     while let Some(_x) = uninhabited_struct() {
-   |               ^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:68:15
+  --> $DIR/patterns_same_crate.rs:68:11
    |
 LL |     while let Some(_x) = uninhabited_tuple_struct() {
-   |               ^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

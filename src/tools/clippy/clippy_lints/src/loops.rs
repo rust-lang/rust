@@ -629,7 +629,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
                 }
             }
         }
-        if let ExprKind::Match(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.kind {
+        if let ExprKind::Match(ref match_expr, ref arms, MatchSource::WhileLetDesugar { .. }) = expr.kind {
             let pat = &arms[0].pat.kind;
             if let (
                 &PatKind::TupleStruct(ref qpath, ref pat_args, _),

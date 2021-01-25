@@ -8,13 +8,10 @@ LL | #![feature(capture_disjoint_fields)]
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
 warning: irrefutable `if let` pattern
-  --> $DIR/closure-origin-single-variant-diagnostics.rs:18:9
+  --> $DIR/closure-origin-single-variant-diagnostics.rs:18:12
    |
-LL | /         if let SingleVariant::Point(ref mut x, _) = point {
-LL | |
-LL | |             *x += 1;
-LL | |         }
-   | |_________^
+LL |         if let SingleVariant::Point(ref mut x, _) = point {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(irrefutable_let_patterns)]` on by default
    = note: this pattern will always match, so the `if let` is useless

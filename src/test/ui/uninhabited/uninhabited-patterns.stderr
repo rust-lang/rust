@@ -29,10 +29,10 @@ LL |         Err(Ok(_y)) => (),
    |         ^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/uninhabited-patterns.rs:44:15
+  --> $DIR/uninhabited-patterns.rs:44:11
    |
 LL |     while let Some(_y) = foo() {
-   |               ^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

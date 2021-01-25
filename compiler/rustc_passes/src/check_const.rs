@@ -49,7 +49,9 @@ impl NonConstExpr {
 
             // All other expressions are allowed.
             Self::Loop(Loop | While | WhileLet)
-            | Self::Match(WhileDesugar | WhileLetDesugar | Normal | IfLetDesugar { .. }) => &[],
+            | Self::Match(WhileDesugar | WhileLetDesugar { .. } | Normal | IfLetDesugar { .. }) => {
+                &[]
+            }
         };
 
         Some(gates)
@@ -207,7 +209,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
                 let non_const_expr = match source {
                     // These are handled by `ExprKind::Loop` above.
                     hir::MatchSource::WhileDesugar
-                    | hir::MatchSource::WhileLetDesugar
+                    | hir::MatchSource::WhileLetDesugar { .. }
                     | hir::MatchSource::ForLoopDesugar => None,
 
                     _ => Some(NonConstExpr::Match(*source)),

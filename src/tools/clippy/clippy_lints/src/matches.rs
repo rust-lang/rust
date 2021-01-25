@@ -1627,7 +1627,7 @@ mod redundant_pattern_match {
             match match_source {
                 MatchSource::Normal => find_sugg_for_match(cx, expr, op, arms),
                 MatchSource::IfLetDesugar { .. } => find_sugg_for_if_let(cx, expr, op, arms, "if"),
-                MatchSource::WhileLetDesugar => find_sugg_for_if_let(cx, expr, op, arms, "while"),
+                MatchSource::WhileLetDesugar { .. } => find_sugg_for_if_let(cx, expr, op, arms, "while"),
                 _ => {},
             }
         }

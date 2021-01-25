@@ -1879,14 +1879,14 @@ pub enum MatchSource {
     /// A `match _ { .. }`.
     Normal,
     /// An `if let _ = _ { .. }` (optionally with `else { .. }`).
-    IfLetDesugar { contains_else_clause: bool },
+    IfLetDesugar { contains_else_clause: bool, let_span: Span },
     /// An `if let _ = _ => { .. }` match guard.
     IfLetGuardDesugar,
     /// A `while _ { .. }` (which was desugared to a `loop { match _ { .. } }`).
     WhileDesugar,
     /// A `while let _ = _ { .. }` (which was desugared to a
     /// `loop { match _ { .. } }`).
-    WhileLetDesugar,
+    WhileLetDesugar { let_span: Span },
     /// A desugared `for _ in _ { .. }` loop.
     ForLoopDesugar,
     /// A desugared `?` operator.
@@ -1901,7 +1901,7 @@ impl MatchSource {
         match self {
             Normal => "match",
             IfLetDesugar { .. } | IfLetGuardDesugar => "if",
-            WhileDesugar | WhileLetDesugar => "while",
+            WhileDesugar | WhileLetDesugar { .. } => "while",
             ForLoopDesugar => "for",
             TryDesugar => "?",
             AwaitDesugar => ".await",

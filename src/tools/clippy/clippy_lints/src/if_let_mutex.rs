@@ -57,6 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
             ref arms,
             MatchSource::IfLetDesugar {
                 contains_else_clause: true,
+                ..
             },
         ) = ex.kind
         {

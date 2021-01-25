@@ -92,6 +92,7 @@ fn expr_match(cx: &LateContext<'_>, expr: &Expr<'_>) {
             let check_all_arms = match source {
                 MatchSource::IfLetDesugar {
                     contains_else_clause: has_else,
+                    ..
                 } => has_else,
                 _ => true,
             };

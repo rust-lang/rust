@@ -213,6 +213,7 @@ fn check_final_expr<'tcx>(
             },
             MatchSource::IfLetDesugar {
                 contains_else_clause: true,
+                ..
             } => {
                 if let ExprKind::Block(ref ifblock, _) = arms[0].body.kind {
                     check_block_return(cx, ifblock);

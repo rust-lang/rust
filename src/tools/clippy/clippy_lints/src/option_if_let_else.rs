@@ -118,6 +118,7 @@ fn should_wrap_in_braces(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                     arms,
                     MatchSource::IfLetDesugar {
                         contains_else_clause: true,
+                        ..
                     },
                 ),
             ..
@@ -159,7 +160,7 @@ fn detect_option_if_let_else<'tcx>(
 ) -> Option<OptionIfLetElseOccurence> {
     if_chain! {
         if !utils::in_macro(expr.span); // Don't lint macros, because it behaves weirdly
-        if let ExprKind::Match(cond_expr, arms, MatchSource::IfLetDesugar{contains_else_clause: true}) = &expr.kind;
+        if let ExprKind::Match(cond_expr, arms, MatchSource::IfLetDesugar{ contains_else_clause: true, .. }) = &expr.kind;
         if arms.len() == 2;
         if !is_result_ok(cx, cond_expr); // Don't lint on Result::ok because a different lint does it already
         if let PatKind::TupleStruct(struct_qpath, &[inner_pat], _) = &arms[0].pat.kind;

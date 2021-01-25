@@ -88,9 +88,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_let(e.span, pat, scrutinee)
                 }
                 ExprKind::If(ref cond, ref then, ref else_opt) => match cond.kind {
-                    ExprKind::Let(ref pat, ref scrutinee) => {
-                        self.lower_expr_if_let(e.span, pat, scrutinee, then, else_opt.as_deref())
-                    }
+                    ExprKind::Let(ref pat, ref scrutinee) => self.lower_expr_if_let(
+                        e.span,
+                        pat,
+                        scrutinee,
+                        then,
+                        else_opt.as_deref(),
+                        cond.span,
+                    ),
                     _ => self.lower_expr_if(cond, then, else_opt.as_deref()),
                 },
                 ExprKind::While(ref cond, ref body, opt_label) => self
@@ -366,6 +371,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         scrutinee: &Expr,
         then: &Block,
         else_opt: Option<&Expr>,
+        let_span: Span,
     ) -> hir::ExprKind<'hir> {
         // FIXME(#53667): handle lowering of && and parens.
 
@@ -384,7 +390,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let then_expr = self.lower_block_expr(then);
         let then_arm = self.arm(then_pat, self.arena.alloc(then_expr));
 
-        let desugar = hir::MatchSource::IfLetDesugar { contains_else_clause };
+        let desugar = hir::MatchSource::IfLetDesugar { contains_else_clause, let_span };
         hir::ExprKind::Match(scrutinee, arena_vec![self; then_arm, else_arm], desugar)
     }
 
@@ -420,7 +426,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 //   }
                 let scrutinee = self.with_loop_condition_scope(|t| t.lower_expr(scrutinee));
                 let pat = self.lower_pat(pat);
-                (pat, scrutinee, hir::MatchSource::WhileLetDesugar, hir::LoopSource::WhileLet)
+                (
+                    pat,
+                    scrutinee,
+                    hir::MatchSource::WhileLetDesugar { let_span: cond.span },
+                    hir::LoopSource::WhileLet,
+                )
             }
             _ => {
                 // We desugar: `'label: while $cond $body` into:

@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Match(ref expr, arms, source) = expr.kind {
             match source {
-                MatchSource::Normal | MatchSource::IfLetDesugar { .. } | MatchSource::WhileLetDesugar => {
+                MatchSource::Normal | MatchSource::IfLetDesugar { .. } | MatchSource::WhileLetDesugar { .. }=> {
                     if let Some(expr_ty) = cx.typeck_results().node_type_opt(expr.hir_id) {
                         'pattern_checks: for arm in arms {
                             let pat = &arm.pat;
