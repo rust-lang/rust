@@ -10,11 +10,10 @@ use syntax::SmolStr;
 
 use crate::{ExpandError, ExpandResult};
 
-pub(crate) fn expand(rules: &crate::MacroRules, input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
-    expand_rules(&rules.rules, input)
-}
-
-fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+pub(crate) fn expand_rules(
+    rules: &[crate::Rule],
+    input: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
     let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
     for rule in rules {
         let new_match = match matcher::match_(&rule.lhs, input) {

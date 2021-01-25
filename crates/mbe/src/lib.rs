@@ -14,6 +14,7 @@ mod tests;
 
 use std::fmt;
 
+use test_utils::mark;
 pub use tt::{Delimiter, DelimiterKind, Punct};
 
 use crate::{
@@ -71,6 +72,14 @@ pub use crate::syntax_bridge::{
 /// and `$()*` have special meaning (see `Var` and `Repeat` data structures)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MacroRules {
+    rules: Vec<Rule>,
+    /// Highest id of the token we have in TokenMap
+    shift: Shift,
+}
+
+/// For Macro 2.0
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MacroDef {
     rules: Vec<Rule>,
     /// Highest id of the token we have in TokenMap
     shift: Shift,
@@ -179,7 +188,7 @@ impl MacroRules {
         let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
         while src.len() > 0 {
-            let rule = Rule::parse(&mut src)?;
+            let rule = Rule::parse(&mut src, true)?;
             rules.push(rule);
             if let Err(()) = src.expect_char(';') {
                 if src.len() > 0 {
@@ -200,7 +209,58 @@ impl MacroRules {
         // apply shift
         let mut tt = tt.clone();
         self.shift.shift_all(&mut tt);
-        mbe_expander::expand(self, &tt)
+        mbe_expander::expand_rules(&self.rules, &tt)
+    }
+
+    pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
+        self.shift.shift(id)
+    }
+
+    pub fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, Origin) {
+        match self.shift.unshift(id) {
+            Some(id) => (id, Origin::Call),
+            None => (id, Origin::Def),
+        }
+    }
+}
+
+impl MacroDef {
+    pub fn parse(tt: &tt::Subtree) -> Result<MacroDef, ParseError> {
+        let mut src = TtIter::new(tt);
+        let mut rules = Vec::new();
+
+        if Some(tt::DelimiterKind::Brace) == tt.delimiter_kind() {
+            mark::hit!(parse_macro_def_rules);
+            while src.len() > 0 {
+                let rule = Rule::parse(&mut src, true)?;
+                rules.push(rule);
+                if let Err(()) = src.expect_char(';') {
+                    if src.len() > 0 {
+                        return Err(ParseError::Expected("expected `;`".to_string()));
+                    }
+                    break;
+                }
+            }
+        } else {
+            mark::hit!(parse_macro_def_simple);
+            let rule = Rule::parse(&mut src, false)?;
+            if src.len() != 0 {
+                return Err(ParseError::Expected("remain tokens in macro def".to_string()));
+            }
+            rules.push(rule);
+        }
+        for rule in rules.iter() {
+            validate(&rule.lhs)?;
+        }
+
+        Ok(MacroDef { rules, shift: Shift::new(tt) })
+    }
+
+    pub fn expand(&self, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+        // apply shift
+        let mut tt = tt.clone();
+        self.shift.shift_all(&mut tt);
+        mbe_expander::expand_rules(&self.rules, &tt)
     }
 
     pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
@@ -216,12 +276,14 @@ impl MacroRules {
 }
 
 impl Rule {
-    fn parse(src: &mut TtIter) -> Result<Rule, ParseError> {
+    fn parse(src: &mut TtIter, expect_arrow: bool) -> Result<Rule, ParseError> {
         let lhs = src
             .expect_subtree()
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?;
-        src.expect_char('=').map_err(|()| ParseError::Expected("expected `=`".to_string()))?;
-        src.expect_char('>').map_err(|()| ParseError::Expected("expected `>`".to_string()))?;
+        if expect_arrow {
+            src.expect_char('=').map_err(|()| ParseError::Expected("expected `=`".to_string()))?;
+            src.expect_char('>').map_err(|()| ParseError::Expected("expected `>`".to_string()))?;
+        }
         let rhs = src
             .expect_subtree()
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?;
