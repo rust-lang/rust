@@ -104,34 +104,39 @@ where
     }
 }
 
-/// Equivalent to `range_search(k, v, ..)` but without the `Ord` bound.
-fn full_range<BorrowType, K, V>(
-    root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-) -> (
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-) {
-    let mut min_node = root1;
-    let mut max_node = root2;
-    loop {
-        let front = min_node.first_edge();
-        let back = max_node.last_edge();
-        match (front.force(), back.force()) {
-            (Leaf(f), Leaf(b)) => {
-                return (f, b);
+/// Equivalent to `range_search(self, self, ..)` but without the `Ord` bound.
+/// Equivalent to `(self.first_leaf_edge(), self.last_leaf_edge())` but
+/// duplicating `self` and more efficient.
+/// # Safety
+/// - Do not expose for `BorrowType` `Mut`, because one handle could destroy the
+///   edge or node referred to by the other.
+/// - Unless `BorrowType` is `Immut`, do not use the two handles to visit the
+///   same KV twice.
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+    unsafe fn find_leaf_edges_spanning_tree(
+        self,
+    ) -> (
+        Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+        Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+    ) {
+        match self.force() {
+            Leaf(root1) => {
+                let root2 = unsafe { ptr::read(&root1) };
+                return (root1.first_edge(), root2.last_edge());
             }
-            (Internal(min_int), Internal(max_int)) => {
-                min_node = min_int.descend();
-                max_node = max_int.descend();
+            Internal(root1) => {
+                let root2 = unsafe { ptr::read(&root1) };
+                // Read both ends of the edges array jointly.
+                let first_child = root1.first_edge().descend();
+                let last_child = root2.last_edge().descend();
+                (first_child.first_leaf_edge(), last_child.last_leaf_edge())
             }
-            _ => unreachable!("BTreeMap has different depths"),
-        };
+        }
     }
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
-    /// Creates a pair of leaf edges delimiting a specified range in or underneath a node.
+    /// Finds the pair of leaf edges delimiting a specified range in the tree.
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
@@ -150,14 +155,15 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
         range_search(self, self, range)
     }
 
-    /// Returns (self.first_leaf_edge(), self.last_leaf_edge()), but more efficiently.
+    /// Finds the pair of leaf edges delimiting the entire tree.
     pub fn full_range(
         self,
     ) -> (
         Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
         Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
     ) {
-        full_range(self, self)
+        // SAFETY: our borrow type is `Immut`.
+        unsafe { self.find_leaf_edges_spanning_tree() }
     }
 }
 
@@ -195,10 +201,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
         Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
         Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
     ) {
-        // We duplicate the root NodeRef here -- we will never visit the same KV
-        // twice, and never end up with overlapping value references.
-        let self2 = unsafe { ptr::read(&self) };
-        full_range(self, self2)
+        // SAFETY: we will never visit the same KV twice,
+        // and never end up with overlapping value references.
+        unsafe { self.find_leaf_edges_spanning_tree() }
     }
 }
 
@@ -212,10 +217,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
         Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
     ) {
-        // We duplicate the root NodeRef here -- we will never access it in a way
-        // that overlaps references obtained from the root.
-        let self2 = unsafe { ptr::read(&self) };
-        full_range(self, self2)
+        // SAFETY: we will never visit the same KV twice,
+        // because we only visit any KV to drop it.
+        unsafe { self.find_leaf_edges_spanning_tree() }
     }
 }
 
