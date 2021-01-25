@@ -827,7 +827,9 @@ impl<T, E> Result<T, E> {
     ///
     /// # Safety
     ///
-    /// Undefined behavior if the value is an [`Err`].
+    /// Calling this method on an [`Err`] is *[undefined behavior]*.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
     ///
@@ -859,7 +861,9 @@ impl<T, E> Result<T, E> {
     ///
     /// # Safety
     ///
-    /// Undefined behavior if the value is an [`Ok`].
+    /// Calling this method on an [`Ok`] is *[undefined behavior]*.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
     ///

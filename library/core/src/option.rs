@@ -433,7 +433,9 @@ impl<T> Option<T> {
     ///
     /// # Safety
     ///
-    /// Undefined behavior if the value is [`None`].
+    /// Calling this method on [`None`] is *[undefined behavior]*.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
     ///
