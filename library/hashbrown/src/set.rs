@@ -452,8 +452,6 @@ impl<T, S> HashSet<T, S, Global> {
 
 impl<T, S, A> HashSet<T, S, A>
 where
-    T: Eq + Hash,
-    S: BuildHasher,
     A: Allocator + Clone,
 {
     /// Creates a new empty hash set which will use the given hasher to hash

@@ -86,7 +86,7 @@ macro_rules! bench_insert {
             b.iter(|| {
                 m.clear();
                 for i in ($keydist).take(SIZE) {
-                    m.insert(i, DropType(i));
+                    m.insert(i, (DropType(i), [i; 20]));
                 }
                 black_box(&mut m);
             });
@@ -103,6 +103,31 @@ bench_suite!(
     insert_std_highbits,
     insert_ahash_random,
     insert_std_random
+);
+
+macro_rules! bench_grow_insert {
+    ($name:ident, $maptype:ident, $keydist:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            b.iter(|| {
+                let mut m = $maptype::default();
+                for i in ($keydist).take(SIZE) {
+                    m.insert(i, DropType(i));
+                }
+                black_box(&mut m);
+            })
+        }
+    };
+}
+
+bench_suite!(
+    bench_grow_insert,
+    grow_insert_ahash_serial,
+    grow_insert_std_serial,
+    grow_insert_ahash_highbits,
+    grow_insert_std_highbits,
+    grow_insert_ahash_random,
+    grow_insert_std_random
 );
 
 macro_rules! bench_insert_erase {
