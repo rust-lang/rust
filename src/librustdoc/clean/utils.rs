@@ -487,12 +487,16 @@ crate fn get_auto_trait_and_blanket_impls(
     ty: Ty<'tcx>,
     param_env_def_id: DefId,
 ) -> impl Iterator<Item = Item> {
-    let auto_impls = cx.sess().time("get_auto_trait_impls", || {
-        AutoTraitFinder::new(cx).get_auto_trait_impls(ty, param_env_def_id)
-    });
-    let blanket_impls = cx.sess().time("get_blanket_impls", || {
-        BlanketImplFinder::new(cx).get_blanket_impls(ty, param_env_def_id)
-    });
+    let auto_impls = cx
+        .sess()
+        .prof
+        .generic_activity("get_auto_trait_impls")
+        .run(|| AutoTraitFinder::new(cx).get_auto_trait_impls(ty, param_env_def_id));
+    let blanket_impls = cx
+        .sess()
+        .prof
+        .generic_activity("get_blanket_impls")
+        .run(|| BlanketImplFinder::new(cx).get_blanket_impls(ty, param_env_def_id));
     auto_impls.into_iter().chain(blanket_impls)
 }
 
