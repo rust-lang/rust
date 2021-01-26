@@ -23,7 +23,7 @@ fn test1_all_need_migration() {
 
     let c = || {
     //~^ERROR: Drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: let (t, t1, t2) = (t, t1, t2);
+    //~| NOTE: drop(&(t, t1, t2));
         let _t = t.0;
         let _t1 = t1.0;
         let _t2 = t2.0;
@@ -41,7 +41,7 @@ fn test2_only_precise_paths_need_migration() {
 
     let c = || {
     //~^ERROR: Drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: let (t, t1) = (t, t1);
+    //~| NOTE: drop(&(t, t1));
         let _t = t.0;
         let _t1 = t1.0;
         let _t2 = t2;
@@ -57,7 +57,7 @@ fn test3_only_by_value_need_migration() {
     let t1 = (Foo(0), Foo(0));
     let c = || {
     //~^ERROR: Drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: let (t) = (t);
+    //~| NOTE: drop(&(t));
         let _t = t.0;
         println!("{:?}", t1.1);
     };
@@ -74,7 +74,7 @@ fn test4_type_contains_drop_need_migration() {
 
     let c = || {
     //~^ERROR: Drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: let (t) = (t);
+    //~| NOTE: drop(&(t));
         let _t = t.0;
     };
 
@@ -89,7 +89,7 @@ fn test5_drop_non_drop_aggregate_need_migration() {
 
     let c = || {
     //~^ERROR: Drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: let (t) = (t);
+    //~| NOTE: drop(&(t));
         let _t = t.0;
     };
 
@@ -104,7 +104,7 @@ fn test6_significant_insignificant_drop_aggregate_need_migration() {
 
     let c = || {
     //~^ERROR: Drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: let (t) = (t);
+    //~| NOTE: drop(&(t));
         let _t = t.1;
     };
 
@@ -119,7 +119,7 @@ fn test7_move_closures_non_copy_types_might_need_migration() {
 
     let c = move || {
     //~^ERROR: Drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: let (t1, t) = (t1, t);
+    //~| NOTE: drop(&(t1, t));
         println!("{:?} {:?}", t1.1, t.1);
     };
 

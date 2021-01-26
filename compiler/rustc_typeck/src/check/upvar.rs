@@ -1173,7 +1173,7 @@ fn migration_suggestion_for_2229(tcx: TyCtxt<'_>, need_migrations: &Vec<hir::Hir
         need_migrations.iter().map(|v| format!("{}", var_name(tcx, *v))).collect::<Vec<_>>();
     let migrations_list_concat = need_migrations_strings.join(", ");
 
-    format!("let ({}) = ({});", migrations_list_concat, migrations_list_concat)
+    format!("drop(&({}));", migrations_list_concat)
 }
 
 /// Helper function to determine if we need to escalate CaptureKind from
