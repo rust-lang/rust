@@ -50,7 +50,8 @@ FLAGS:
     -q,  --quiet      Set verbosity
 
     --log-file <PATH> Log to the specified file instead of stderr
-    --no-buffering    Flush log records to the file immediately
+    --no-log-buffering
+                      Flush log records to the file immediately
 
     --wait-dbg        Wait until a debugger is attached to.
                       The flag is valid for debug builds only
@@ -139,7 +140,7 @@ impl Args {
             (false, true, true) => bail!("Invalid flags: -q conflicts with -v"),
         };
         let log_file = matches.opt_value_from_str("--log-file")?;
-        let no_buffering = matches.contains("--no-buffering");
+        let no_buffering = matches.contains("--no-log-buffering");
         let wait_dbg = matches.contains("--wait-dbg");
 
         if matches.contains(["-h", "--help"]) {

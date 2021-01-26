@@ -47,7 +47,8 @@ impl Log for Logger {
         if !self.filter.matches(record) {
             return;
         }
-        match &self.file {
+
+        let should_flush = match &self.file {
             Some(w) => {
                 let _ = writeln!(
                     w.lock(),
@@ -56,16 +57,20 @@ impl Log for Logger {
                     record.module_path().unwrap_or_default(),
                     record.args(),
                 );
+                self.no_buffering
             }
-            None => eprintln!(
-                "[{} {}] {}",
-                record.level(),
-                record.module_path().unwrap_or_default(),
-                record.args(),
-            ),
-        }
+            None => {
+                eprintln!(
+                    "[{} {}] {}",
+                    record.level(),
+                    record.module_path().unwrap_or_default(),
+                    record.args(),
+                );
+                true // flush stderr unconditionally
+            }
+        };
 
-        if self.no_buffering {
+        if should_flush {
             self.flush();
         }
     }
