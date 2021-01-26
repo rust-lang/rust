@@ -1310,12 +1310,15 @@ crate trait GetDefId {
     /// Use [`Self::def_id_full`] if you want to include primitives.
     ///
     /// [`clean`]: crate::clean
+    /// [`clean::Type`]: crate::clean::Type
     // FIXME: get rid of this function and always use `def_id_full`
     fn def_id(&self) -> Option<DefId>;
 
     /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
     ///
     /// See [`Self::def_id`] for more.
+    ///
+    /// [clean]: crate::clean
     fn def_id_full(&self, cache: &Cache) -> Option<DefId>;
 }
 
