@@ -29,17 +29,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
             navigate::Position::Leaf(leaf) => {
                 let depth = self.height();
                 let indent = "  ".repeat(depth);
-                result += &format!("\n{}", indent);
-                if leaf.len() == 0 {
-                    result += "(empty node)";
-                } else {
-                    for idx in 0..leaf.len() {
-                        if idx > 0 {
-                            result += ", ";
-                        }
-                        result += &format!("{:?}", unsafe { leaf.key_at(idx) });
-                    }
-                }
+                result += &format!("\n{}{:?}", indent, leaf.keys());
             }
             navigate::Position::Internal(_) => {}
             navigate::Position::InternalKV(kv) => {
