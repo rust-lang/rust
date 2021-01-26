@@ -224,6 +224,7 @@ use rustc_middle::middle::cstore::{CrateSource, MetadataLoader};
 use rustc_session::config::{self, CrateType};
 use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
 use rustc_session::search_paths::PathKind;
+use rustc_session::utils::CanonicalizedPath;
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -244,7 +245,7 @@ crate struct CrateLocator<'a> {
 
     // Immutable per-search configuration.
     crate_name: Symbol,
-    exact_paths: Vec<PathBuf>,
+    exact_paths: Vec<CanonicalizedPath>,
     pub hash: Option<Svh>,
     pub host_hash: Option<Svh>,
     extra_filename: Option<&'a str>,
@@ -315,7 +316,7 @@ impl<'a> CrateLocator<'a> {
                     .into_iter()
                     .filter_map(|entry| entry.files())
                     .flatten()
-                    .map(PathBuf::from)
+                    .cloned()
                     .collect()
             } else {
                 // SVH being specified means this is a transitive dependency,
@@ -664,13 +665,19 @@ impl<'a> CrateLocator<'a> {
         let mut rmetas = FxHashMap::default();
         let mut dylibs = FxHashMap::default();
         for loc in &self.exact_paths {
-            if !loc.exists() {
-                return Err(CrateError::ExternLocationNotExist(self.crate_name, loc.clone()));
+            if !loc.canonicalized().exists() {
+                return Err(CrateError::ExternLocationNotExist(
+                    self.crate_name,
+                    loc.original().clone(),
+                ));
             }
-            let file = match loc.file_name().and_then(|s| s.to_str()) {
+            let file = match loc.original().file_name().and_then(|s| s.to_str()) {
                 Some(file) => file,
                 None => {
-                    return Err(CrateError::ExternLocationNotFile(self.crate_name, loc.clone()));
+                    return Err(CrateError::ExternLocationNotFile(
+                        self.crate_name,
+                        loc.original().clone(),
+                    ));
                 }
             };
 
@@ -685,7 +692,8 @@ impl<'a> CrateLocator<'a> {
                 // e.g. symbolic links. If we canonicalize too early, we resolve
                 // the symlink, the file type is lost and we might treat rlibs and
                 // rmetas as dylibs.
-                let loc_canon = fs::canonicalize(&loc).unwrap_or_else(|_| loc.clone());
+                let loc_canon = loc.canonicalized().clone();
+                let loc = loc.original();
                 if loc.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
                     rlibs.insert(loc_canon, PathKind::ExternFlag);
                 } else if loc.file_name().unwrap().to_str().unwrap().ends_with(".rmeta") {
@@ -695,7 +703,7 @@ impl<'a> CrateLocator<'a> {
                 }
             } else {
                 self.rejected_via_filename
-                    .push(CrateMismatch { path: loc.clone(), got: String::new() });
+                    .push(CrateMismatch { path: loc.original().clone(), got: String::new() });
             }
         }
 
