@@ -1989,8 +1989,7 @@ impl<T, A: Allocator + Clone> Drop for RawIntoIter<T, A> {
 
             // Free the table
             if let Some((ptr, layout)) = self.allocation {
-                self.alloc
-                    .deallocate(NonNull::new_unchecked(ptr.as_ptr()), layout);
+                self.alloc.deallocate(ptr, layout);
             }
         }
     }
