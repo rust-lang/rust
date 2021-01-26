@@ -52,7 +52,8 @@ FLAGS:
     --log-file <PATH> Log to the specified file instead of stderr
     --no-buffering    Flush log records to the file immediately
 
-    --wait-dbg        Wait until a debugger is attached to
+    --wait-dbg        Wait until a debugger is attached to.
+                      The flag is valid for debug builds only
 
 ENVIRONMENTAL VARIABLES:
     RA_LOG            Set log filter in env_logger format
