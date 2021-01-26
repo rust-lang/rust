@@ -839,7 +839,7 @@ impl<T> MaybeUninit<T> {
         // * MaybeUnint does not drop, so there are no double-frees
         // And thus the conversion is safe
         unsafe {
-            intrinsics::assert_inhabited::<T>();
+            intrinsics::assert_inhabited::<[T; N]>();
             (&array as *const _ as *const [T; N]).read()
         }
     }

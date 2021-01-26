@@ -152,6 +152,8 @@ fn uninit_array_assume_init() {
     let array = unsafe { MaybeUninit::array_assume_init(array) };
 
     assert_eq!(array, [3, 1, 4, 1, 5]);
+
+    let [] = unsafe { MaybeUninit::<!>::array_assume_init([]) };
 }
 
 #[test]
