@@ -1,5 +1,7 @@
 //! This module is used to store stuff from Rust's AST in a more convenient
 //! manner (and with prettier names) before cleaning.
+crate use self::StructType::*;
+
 use rustc_span::{self, Span, Symbol};
 
 use rustc_hir as hir;
@@ -30,5 +32,23 @@ impl Module<'hir> {
             macros: Vec::new(),
             is_crate: false,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+crate enum StructType {
+    /// A braced struct
+    Plain,
+    /// A tuple struct
+    Tuple,
+    /// A unit struct
+    Unit,
+}
+
+crate fn struct_type_from_def(vdata: &hir::VariantData<'_>) -> StructType {
+    match *vdata {
+        hir::VariantData::Struct(..) => Plain,
+        hir::VariantData::Tuple(..) => Tuple,
+        hir::VariantData::Unit(..) => Unit,
     }
 }

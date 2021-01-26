@@ -1,6 +1,4 @@
-use crate::spec::{
-    LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, RelroLevel, StackProbeType, TargetOptions,
-};
+use crate::spec::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
@@ -13,7 +11,7 @@ pub fn opts() -> TargetOptions {
         env: "gnu".to_string(),
         disable_redzone: true,
         panic_strategy: PanicStrategy::Abort,
-        stack_probes: StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) },
+        stack_probes: true,
         eliminate_frame_pointer: false,
         linker_is_gnu: true,
         position_independent_executables: true,

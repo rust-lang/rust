@@ -2,27 +2,42 @@
 //! specified.
 
 use crate::transform::MirPass;
+use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_target::spec::PanicStrategy;
 
-pub struct NoLandingPads;
+pub struct NoLandingPads<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
 
-impl<'tcx> MirPass<'tcx> for NoLandingPads {
+impl<'tcx> NoLandingPads<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+        NoLandingPads { tcx }
+    }
+}
+
+impl<'tcx> MirPass<'tcx> for NoLandingPads<'tcx> {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         no_landing_pads(tcx, body)
     }
 }
 
 pub fn no_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    if tcx.sess.panic_strategy() != PanicStrategy::Abort {
-        return;
+    if tcx.sess.panic_strategy() == PanicStrategy::Abort {
+        NoLandingPads::new(tcx).visit_body(body);
+    }
+}
+
+impl<'tcx> MutVisitor<'tcx> for NoLandingPads<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 
-    for block in body.basic_blocks_mut() {
-        let terminator = block.terminator_mut();
+    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
         if let Some(unwind) = terminator.kind.unwind_mut() {
             unwind.take();
         }
+        self.super_terminator(terminator, location);
     }
 }

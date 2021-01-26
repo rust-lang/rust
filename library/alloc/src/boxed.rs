@@ -178,10 +178,8 @@ impl<T> Box<T> {
     /// ```
     /// let five = Box::new(5);
     /// ```
-    #[inline(always)]
-    #[doc(alias = "alloc")]
-    #[doc(alias = "malloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline(always)]
     pub fn new(x: T) -> Self {
         box x
     }
@@ -228,9 +226,8 @@ impl<T> Box<T> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
-    #[inline]
-    #[doc(alias = "calloc")]
     #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
         Self::new_zeroed_in(Global)
     }

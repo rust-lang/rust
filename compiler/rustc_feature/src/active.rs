@@ -36,7 +36,7 @@ macro_rules! declare_features {
             ),+];
 
         /// A set of features to be used by later passes.
-        #[derive(Clone, Default, Debug)]
+        #[derive(Clone, Default)]
         pub struct Features {
             /// `#![feature]` attrs for language features, for error reporting.
             pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,

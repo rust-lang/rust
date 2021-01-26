@@ -151,14 +151,16 @@ where
 {
     let (lo, hi) = iter.size_hint();
     let next_is_elem = !needs_sep;
-    (
-        lo.saturating_sub(next_is_elem as usize).saturating_add(lo),
-        hi.and_then(|hi| hi.saturating_sub(next_is_elem as usize).checked_add(hi)),
-    )
+    let lo = lo.saturating_sub(next_is_elem as usize).saturating_add(lo);
+    let hi = match hi {
+        Some(hi) => hi.saturating_sub(next_is_elem as usize).checked_add(hi),
+        None => None,
+    };
+    (lo, hi)
 }
 
 fn intersperse_fold<I, B, F, G>(
-    mut iter: I,
+    mut iter: Peekable<I>,
     init: B,
     mut f: F,
     mut separator: G,
@@ -171,11 +173,10 @@ where
 {
     let mut accum = init;
 
-    if !needs_sep {
+    // Use `peek()` first to avoid calling `next()` on an empty iterator.
+    if !needs_sep || iter.peek().is_some() {
         if let Some(x) = iter.next() {
             accum = f(accum, x);
-        } else {
-            return accum;
         }
     }
 

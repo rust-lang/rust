@@ -1,9 +1,3 @@
-#[cfg(version(42))] //~ ERROR: expected a version literal
-//~^ ERROR `cfg(version)` is experimental and subject to change
-fn foo() {}
-#[cfg(version(1.20))] //~ ERROR: expected a version literal
-//~^ ERROR `cfg(version)` is experimental and subject to change
-fn foo() -> bool { true }
 #[cfg(version("1.44"))]
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn foo() -> bool { true }
@@ -17,32 +11,30 @@ fn bar() -> bool  { false }
 #[cfg(version(false))] //~ ERROR: expected a version literal
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn bar() -> bool  { false }
-#[cfg(version("foo"))] //~ WARNING: unknown version literal format
+#[cfg(version("foo"))] //~ ERROR: invalid version literal
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn bar() -> bool  { false }
-#[cfg(version("999"))] //~ WARNING: unknown version literal format
+#[cfg(version("999"))]
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn bar() -> bool  { false }
-#[cfg(version("-1"))] //~ WARNING: unknown version literal format
+#[cfg(version("-1"))] //~ ERROR: invalid version literal
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn bar() -> bool  { false }
-#[cfg(version("65536"))] //~ WARNING: unknown version literal format
+#[cfg(version("65536"))] //~ ERROR: invalid version literal
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn bar() -> bool  { false }
-#[cfg(version("0"))] //~ WARNING: unknown version literal format
+#[cfg(version("0"))]
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn bar() -> bool { true }
-#[cfg(version("1.0"))]
+
+#[cfg(version("1.65536.2"))]
 //~^ ERROR `cfg(version)` is experimental and subject to change
-fn bar() -> bool { true }
-#[cfg(version("1.65536.2"))] //~ WARNING: unknown version literal format
-//~^ ERROR `cfg(version)` is experimental and subject to change
-fn bar() -> bool  { false }
-#[cfg(version("1.20.0-stable"))] //~ WARNING: unknown version literal format
-//~^ ERROR `cfg(version)` is experimental and subject to change
-fn bar() {}
+fn version_check_bug() {}
 
 fn main() {
+    // This should fail but due to a bug in version_check `1.65536.2` is interpreted as `1.2`.
+    // See https://github.com/SergioBenitez/version_check/issues/11
+    version_check_bug();
     assert!(foo());
     assert!(bar());
     assert!(cfg!(version("1.42"))); //~ ERROR `cfg(version)` is experimental and subject to change

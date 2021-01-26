@@ -39,14 +39,11 @@ error[E0015]: calls in constants are limited to constant functions, tuple struct
 LL |     [(); { for _ in 0usize.. {}; 0}];
    |                     ^^^^^^^^
 
-error[E0658]: mutable references are not allowed in constants
+error[E0764]: mutable references are not allowed in constants
   --> $DIR/issue-52443.rs:9:21
    |
 LL |     [(); { for _ in 0usize.. {}; 0}];
-   |                     ^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   |                     ^^^^^^^^ `&mut` is only allowed in `const fn`
 
 error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
   --> $DIR/issue-52443.rs:9:21
@@ -56,5 +53,5 @@ LL |     [(); { for _ in 0usize.. {}; 0}];
 
 error: aborting due to 6 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0015, E0308, E0658, E0744.
+Some errors have detailed explanations: E0015, E0308, E0744, E0764.
 For more information about an error, try `rustc --explain E0015`.

@@ -18,7 +18,6 @@
 #![feature(str_split_once)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
-#![deny(rustc::internal)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -66,7 +65,7 @@ use std::process;
 use rustc_driver::abort_on_err;
 use rustc_errors::ErrorReported;
 use rustc_interface::interface;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
 use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
@@ -167,14 +166,6 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("test", |o| o.optflag("", "test", "run code examples as tests")),
         stable("test-args", |o| {
             o.optmulti("", "test-args", "arguments to pass to the test runner", "ARGS")
-        }),
-        unstable("test-run-directory", |o| {
-            o.optopt(
-                "",
-                "test-run-directory",
-                "The working directory in which to run tests",
-                "PATH",
-            )
         }),
         stable("target", |o| o.optopt("", "target", "target triple to document", "TRIPLE")),
         stable("markdown-css", |o| {
@@ -480,7 +471,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     render_info: config::RenderInfo,
     diag: &rustc_errors::Handler,
     edition: rustc_span::edition::Edition,
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
 ) -> MainResult {
     match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition, tcx) {
         Ok(_) => Ok(()),
@@ -548,7 +539,7 @@ fn main_options(options: config::Options) -> MainResult {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 
-            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).peek_mut();
+            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
             global_ctxt.enter(|tcx| {
                 let (mut krate, render_info, render_opts) = sess.time("run_global_ctxt", || {

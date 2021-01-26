@@ -311,7 +311,8 @@ impl<'s> LintLevelsBuilder<'s> {
                                     |lint| {
                                         let msg = format!(
                                             "lint name `{}` is deprecated \
-                                             and may not have an effect in the future.",
+                                             and may not have an effect in the future. \
+                                             Also `cfg_attr(cargo-clippy)` won't be necessary anymore",
                                             name
                                         );
                                         lint.build(&msg)

@@ -266,7 +266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
-            ExprKind::Loop(ref body, _, source, _) => {
+            ExprKind::Loop(ref body, _, source) => {
                 self.check_expr_loop(body, source, expected, expr)
             }
             ExprKind::Match(ref discrim, ref arms, match_src) => {
@@ -680,14 +680,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.ret_coercion.is_none() {
             self.tcx.sess.emit_err(ReturnStmtOutsideOfFnBody { span: expr.span });
         } else if let Some(ref e) = expr_opt {
-            if self.ret_coercion_span.get().is_none() {
-                self.ret_coercion_span.set(Some(e.span));
+            if self.ret_coercion_span.borrow().is_none() {
+                *self.ret_coercion_span.borrow_mut() = Some(e.span);
             }
             self.check_return_expr(e);
         } else {
             let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
-            if self.ret_coercion_span.get().is_none() {
-                self.ret_coercion_span.set(Some(expr.span));
+            if self.ret_coercion_span.borrow().is_none() {
+                *self.ret_coercion_span.borrow_mut() = Some(expr.span);
             }
             let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
             if let Some((fn_decl, _)) = self.get_fn_decl(expr.hir_id) {

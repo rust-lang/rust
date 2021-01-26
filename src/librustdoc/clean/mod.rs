@@ -1096,10 +1096,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     AssocTypeItem(bounds.clean(cx), default.clean(cx))
                 }
             };
-            let what_rustc_thinks =
-                Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-            // Trait items always inherit the trait's visibility -- we don't want to show `pub`.
-            Item { visibility: Inherited, ..what_rustc_thinks }
+            Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
         })
     }
 }
@@ -1134,21 +1131,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
                     )
                 }
             };
-
-            let what_rustc_thinks =
-                Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-            let parent_item = cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(self.hir_id));
-            if let hir::ItemKind::Impl(impl_) = &parent_item.kind {
-                if impl_.of_trait.is_some() {
-                    // Trait impl items always inherit the impl's visibility --
-                    // we don't want to show `pub`.
-                    Item { visibility: Inherited, ..what_rustc_thinks }
-                } else {
-                    what_rustc_thinks
-                }
-            } else {
-                panic!("found impl item with non-impl parent {:?}", parent_item);
-            }
+            Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
         })
     }
 }
@@ -1844,7 +1827,7 @@ impl Clean<Visibility> for ty::Visibility {
 impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> VariantStruct {
         VariantStruct {
-            struct_type: CtorKind::from_hir(self),
+            struct_type: doctree::struct_type_from_def(self),
             fields: self.fields().iter().map(|x| x.clean(cx)).collect(),
             fields_stripped: false,
         }
@@ -1859,7 +1842,7 @@ impl Clean<Item> for ty::VariantDef {
                 self.fields.iter().map(|f| cx.tcx.type_of(f.did).clean(cx)).collect(),
             ),
             CtorKind::Fictive => Variant::Struct(VariantStruct {
-                struct_type: CtorKind::Fictive,
+                struct_type: doctree::Plain,
                 fields_stripped: false,
                 fields: self
                     .fields
@@ -2013,12 +1996,13 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                     bounds: bounds.clean(cx),
                 }),
                 ItemKind::Union(ref variant_data, ref generics) => UnionItem(Union {
+                    struct_type: doctree::struct_type_from_def(&variant_data),
                     generics: generics.clean(cx),
                     fields: variant_data.fields().clean(cx),
                     fields_stripped: false,
                 }),
                 ItemKind::Struct(ref variant_data, ref generics) => StructItem(Struct {
-                    struct_type: CtorKind::from_hir(variant_data),
+                    struct_type: doctree::struct_type_from_def(&variant_data),
                     generics: generics.clean(cx),
                     fields: variant_data.fields().clean(cx),
                     fields_stripped: false,

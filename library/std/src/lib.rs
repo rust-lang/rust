@@ -406,31 +406,23 @@ pub use core::cmp;
 pub use core::convert;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::default;
-#[stable(feature = "futures_api", since = "1.36.0")]
-pub use core::future;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::hash;
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::i16;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::i64;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::i8;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::intrinsics;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::isize;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::iter;
@@ -451,22 +443,16 @@ pub use core::raw;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::u128;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::u16;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::u64;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::u8;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::usize;
 
 pub mod f32;
@@ -506,6 +492,9 @@ pub mod task {
     #[unstable(feature = "wake_trait", issue = "69912")]
     pub use alloc::task::*;
 }
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+pub mod future;
 
 // Platform-abstraction modules
 #[macro_use]

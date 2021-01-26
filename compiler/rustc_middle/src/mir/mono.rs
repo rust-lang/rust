@@ -216,7 +216,6 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
     }
 }
 
-#[derive(Debug)]
 pub struct CodegenUnit<'tcx> {
     /// A name for this CGU. Incremental compilation requires that
     /// name be unique amongst **all** crates. Therefore, it should

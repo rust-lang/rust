@@ -285,27 +285,6 @@ mod spec_extend;
 /// you would see if you coerced it to a slice), followed by [`capacity`]` -
 /// `[`len`] logically uninitialized, contiguous elements.
 ///
-/// A vector containing the elements `'a'` and `'b'` with capacity 4 can be
-/// visualized as below. The top part is the `Vec` struct, it contains a
-/// pointer to the head of the allocation in the heap, length and capacity.
-/// The bottom part is the allocation on the heap, a contiguous memory block.
-///
-/// ```text
-///             ptr      len  capacity
-///        +--------+--------+--------+
-///        | 0x0123 |      2 |      4 |
-///        +--------+--------+--------+
-///             |
-///             v
-/// Heap   +--------+--------+--------+--------+
-///        |    'a' |    'b' | uninit | uninit |
-///        +--------+--------+--------+--------+
-/// ```
-///
-/// - **uninit** represents memory that is not initialized, see [`MaybeUninit`].
-/// - Note: the ABI is not stable and `Vec` makes no guarantees about its memory
-///   layout (including the order of fields).
-///
 /// `Vec` will never perform a "small optimization" where elements are actually
 /// stored on the stack for two reasons:
 ///
@@ -366,7 +345,6 @@ mod spec_extend;
 /// [`push`]: Vec::push
 /// [`insert`]: Vec::insert
 /// [`reserve`]: Vec::reserve
-/// [`MaybeUninit`]: core::mem::MaybeUninit
 /// [owned slice]: Box
 /// [slice]: ../../std/primitive.slice.html
 /// [`&`]: ../../std/primitive.reference.html
@@ -433,7 +411,6 @@ impl<T> Vec<T> {
     /// assert!(vec.capacity() >= 11);
     /// ```
     #[inline]
-    #[doc(alias = "malloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
@@ -767,7 +744,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.reserve(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
-    #[doc(alias = "realloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
@@ -793,7 +769,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.reserve_exact(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
-    #[doc(alias = "realloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.buf.reserve_exact(self.len, additional);
@@ -831,7 +806,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// }
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
-    #[doc(alias = "realloc")]
     #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.buf.try_reserve(self.len, additional)
@@ -873,7 +847,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// }
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
-    #[doc(alias = "realloc")]
     #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.buf.try_reserve_exact(self.len, additional)
@@ -893,7 +866,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.shrink_to_fit();
     /// assert!(vec.capacity() >= 3);
     /// ```
-    #[doc(alias = "realloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         // The capacity is never less than the length, and there's nothing to do when
@@ -926,7 +898,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.shrink_to(0);
     /// assert!(vec.capacity() >= 3);
     /// ```
-    #[doc(alias = "realloc")]
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));

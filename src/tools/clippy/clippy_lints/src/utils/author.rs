@@ -317,7 +317,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = cast_pat;
                 self.visit_expr(expr);
             },
-            ExprKind::Loop(ref body, _, desugaring, _) => {
+            ExprKind::Loop(ref body, _, desugaring) => {
                 let body_pat = self.next("body");
                 let des = loop_desugaring_name(desugaring);
                 let label_pat = self.next("label");

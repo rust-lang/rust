@@ -1,13 +1,12 @@
-//! Constants specific to the `f64` double-precision floating point type.
+//! This module provides constants which are specific to the implementation
+//! of the `f64` floating point data type.
 //!
 //! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 //!
-//! For the constants defined directly in this module
-//! (as distinct from those defined in the `consts` sub-module),
-//! new code should instead use the associated constants
-//! defined directly on the `f64` type.
+//! Although using these constants won’t cause compilation warnings,
+//! new code should use the associated constants directly on the primitive type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -24,14 +23,12 @@ use crate::num::FpCategory;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let r = std::f64::RADIX;
 ///
 /// // intended way
 /// let r = f64::RADIX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `RADIX` associated constant on `f64`")]
 pub const RADIX: u32 = f64::RADIX;
 
 /// Number of significant digits in base 2.
@@ -41,17 +38,12 @@ pub const RADIX: u32 = f64::RADIX;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let d = std::f64::MANTISSA_DIGITS;
 ///
 /// // intended way
 /// let d = f64::MANTISSA_DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MANTISSA_DIGITS` associated constant on `f64`"
-)]
 pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 
 /// Approximate number of significant digits in base 10.
@@ -61,14 +53,12 @@ pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let d = std::f64::DIGITS;
 ///
 /// // intended way
 /// let d = f64::DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `DIGITS` associated constant on `f64`")]
 pub const DIGITS: u32 = f64::DIGITS;
 
 /// [Machine epsilon] value for `f64`.
@@ -82,17 +72,12 @@ pub const DIGITS: u32 = f64::DIGITS;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let e = std::f64::EPSILON;
 ///
 /// // intended way
 /// let e = f64::EPSILON;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `EPSILON` associated constant on `f64`"
-)]
 pub const EPSILON: f64 = f64::EPSILON;
 
 /// Smallest finite `f64` value.
@@ -102,14 +87,12 @@ pub const EPSILON: f64 = f64::EPSILON;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f64::MIN;
 ///
 /// // intended way
 /// let min = f64::MIN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `MIN` associated constant on `f64`")]
 pub const MIN: f64 = f64::MIN;
 
 /// Smallest positive normal `f64` value.
@@ -119,17 +102,12 @@ pub const MIN: f64 = f64::MIN;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f64::MIN_POSITIVE;
 ///
 /// // intended way
 /// let min = f64::MIN_POSITIVE;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MIN_POSITIVE` associated constant on `f64`"
-)]
 pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 
 /// Largest finite `f64` value.
@@ -139,14 +117,12 @@ pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f64::MAX;
 ///
 /// // intended way
 /// let max = f64::MAX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `MAX` associated constant on `f64`")]
 pub const MAX: f64 = f64::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
@@ -156,17 +132,12 @@ pub const MAX: f64 = f64::MAX;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f64::MIN_EXP;
 ///
 /// // intended way
 /// let min = f64::MIN_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MIN_EXP` associated constant on `f64`"
-)]
 pub const MIN_EXP: i32 = f64::MIN_EXP;
 
 /// Maximum possible power of 2 exponent.
@@ -176,17 +147,12 @@ pub const MIN_EXP: i32 = f64::MIN_EXP;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f64::MAX_EXP;
 ///
 /// // intended way
 /// let max = f64::MAX_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MAX_EXP` associated constant on `f64`"
-)]
 pub const MAX_EXP: i32 = f64::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
@@ -196,17 +162,12 @@ pub const MAX_EXP: i32 = f64::MAX_EXP;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f64::MIN_10_EXP;
 ///
 /// // intended way
 /// let min = f64::MIN_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MIN_10_EXP` associated constant on `f64`"
-)]
 pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 
 /// Maximum possible power of 10 exponent.
@@ -216,17 +177,12 @@ pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f64::MAX_10_EXP;
 ///
 /// // intended way
 /// let max = f64::MAX_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MAX_10_EXP` associated constant on `f64`"
-)]
 pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 
 /// Not a Number (NaN).
@@ -236,14 +192,12 @@ pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let nan = std::f64::NAN;
 ///
 /// // intended way
 /// let nan = f64::NAN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `NAN` associated constant on `f64`")]
 pub const NAN: f64 = f64::NAN;
 
 /// Infinity (∞).
@@ -253,17 +207,12 @@ pub const NAN: f64 = f64::NAN;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let inf = std::f64::INFINITY;
 ///
 /// // intended way
 /// let inf = f64::INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `INFINITY` associated constant on `f64`"
-)]
 pub const INFINITY: f64 = f64::INFINITY;
 
 /// Negative infinity (−∞).
@@ -273,17 +222,12 @@ pub const INFINITY: f64 = f64::INFINITY;
 ///
 /// ```rust
 /// // deprecated way
-/// # #[allow(deprecated, deprecated_in_future)]
 /// let ninf = std::f64::NEG_INFINITY;
 ///
 /// // intended way
 /// let ninf = f64::NEG_INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `NEG_INFINITY` associated constant on `f64`"
-)]
 pub const NEG_INFINITY: f64 = f64::NEG_INFINITY;
 
 /// Basic mathematical constants.

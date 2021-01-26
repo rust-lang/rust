@@ -307,7 +307,6 @@ impl<'tcx> ReachableContext<'tcx> {
             | Node::Ctor(..)
             | Node::Field(_)
             | Node::Ty(_)
-            | Node::Crate(_)
             | Node::MacroDef(_) => {}
             _ => {
                 bug!(

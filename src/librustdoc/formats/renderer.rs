@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty;
 use rustc_span::edition::Edition;
 
 use crate::clean;
@@ -12,9 +12,6 @@ use crate::formats::cache::{Cache, CACHE_KEY};
 /// backend renderer has hooks for initialization, documenting an item, entering and exiting a
 /// module, and cleanup/finalizing output.
 crate trait FormatRenderer<'tcx>: Clone {
-    /// Gives a description of the renderer. Used for performance profiling.
-    fn descr() -> &'static str;
-
     /// Sets up any state required for the renderer. When this is called the cache has already been
     /// populated.
     fn init(
@@ -23,7 +20,7 @@ crate trait FormatRenderer<'tcx>: Clone {
         render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
-        tcx: TyCtxt<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error>;
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
@@ -41,14 +38,10 @@ crate trait FormatRenderer<'tcx>: Clone {
     fn mod_item_out(&mut self, item_name: &str) -> Result<(), Error>;
 
     /// Post processing hook for cleanup and dumping output to files.
-    ///
-    /// A handler is available if the renderer wants to report errors.
-    fn after_krate(
-        &mut self,
-        krate: &clean::Crate,
-        cache: &Cache,
-        diag: &rustc_errors::Handler,
-    ) -> Result<(), Error>;
+    fn after_krate(&mut self, krate: &clean::Crate, cache: &Cache) -> Result<(), Error>;
+
+    /// Called after everything else to write out errors.
+    fn after_run(&mut self, diag: &rustc_errors::Handler) -> Result<(), Error>;
 }
 
 /// Main method for rendering a crate.
@@ -58,22 +51,18 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     render_info: RenderInfo,
     diag: &rustc_errors::Handler,
     edition: Edition,
-    tcx: TyCtxt<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
 ) -> Result<(), Error> {
-    let (krate, mut cache) = tcx.sess.time("create_format_cache", || {
-        Cache::from_krate(
-            render_info.clone(),
-            options.document_private,
-            &options.extern_html_root_urls,
-            &options.output,
-            krate,
-        )
-    });
-    let prof = &tcx.sess.prof;
+    let (krate, mut cache) = Cache::from_krate(
+        render_info.clone(),
+        options.document_private,
+        &options.extern_html_root_urls,
+        &options.output,
+        krate,
+    );
 
-    let (mut format_renderer, mut krate) = prof
-        .extra_verbose_generic_activity("create_renderer", T::descr())
-        .run(|| T::init(krate, options, render_info, edition, &mut cache, tcx))?;
+    let (mut format_renderer, mut krate) =
+        T::init(krate, options, render_info, edition, &mut cache, tcx)?;
 
     let cache = Arc::new(cache);
     // Freeze the cache now that the index has been built. Put an Arc into TLS for future
@@ -90,7 +79,6 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     // Render the crate documentation
     let mut work = vec![(format_renderer.clone(), item)];
 
-    let unknown = rustc_span::Symbol::intern("<unknown item>");
     while let Some((mut cx, item)) = work.pop() {
         if item.is_mod() {
             // modules are special because they add a namespace. We also need to
@@ -99,7 +87,6 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             if name.is_empty() {
                 panic!("Unexpected module with empty name");
             }
-            let _timer = prof.generic_activity_with_arg("render_mod_item", name.as_str());
 
             cx.mod_item_in(&item, &name, &cache)?;
             let module = match *item.kind {
@@ -113,10 +100,10 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
 
             cx.mod_item_out(&name)?;
         } else if item.name.is_some() {
-            prof.generic_activity_with_arg("render_item", &*item.name.unwrap_or(unknown).as_str())
-                .run(|| cx.item(item, &cache))?;
+            cx.item(item, &cache)?;
         }
     }
-    prof.extra_verbose_generic_activity("renderer_after_krate", T::descr())
-        .run(|| format_renderer.after_krate(&krate, &cache, diag))
+
+    format_renderer.after_krate(&krate, &cache)?;
+    format_renderer.after_run(diag)
 }

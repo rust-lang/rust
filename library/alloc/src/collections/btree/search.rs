@@ -71,15 +71,18 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         Q: Ord,
         K: Borrow<Q>,
     {
-        let node = self.reborrow();
-        let keys = node.keys();
-        for (i, k) in keys.iter().enumerate() {
+        // This function is defined over all borrow types (immutable, mutable, owned).
+        // Using `keys_at()` is fine here even if BorrowType is mutable, as all we return
+        // is an index -- not a reference.
+        let len = self.len();
+        for i in 0..len {
+            let k = unsafe { self.reborrow().key_at(i) };
             match key.cmp(k.borrow()) {
                 Ordering::Greater => {}
                 Ordering::Equal => return IndexResult::KV(i),
                 Ordering::Less => return IndexResult::Edge(i),
             }
         }
-        IndexResult::Edge(keys.len())
+        IndexResult::Edge(len)
     }
 }

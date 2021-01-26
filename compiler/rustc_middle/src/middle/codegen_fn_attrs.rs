@@ -3,7 +3,7 @@ use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_session::config::SanitizerSet;
 use rustc_span::symbol::Symbol;
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable)]
 pub struct CodegenFnAttrs {
     pub flags: CodegenFnAttrFlags,
     /// Parsed representation of the `#[inline]` attribute

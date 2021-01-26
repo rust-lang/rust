@@ -238,22 +238,41 @@ declare_lint! {
     ///
     /// ```rust,compile_fail
     /// #![allow(unconditional_panic)]
-    /// const C: i32 = 1/0;
+    /// let x: &'static i32 = &(1 / 0);
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// This lint detects constants that fail to evaluate. Allowing the lint will accept the
-    /// constant declaration, but any use of this constant will still lead to a hard error. This is
-    /// a future incompatibility lint; the plan is to eventually entirely forbid even declaring
-    /// constants that cannot be evaluated.  See [issue #71800] for more details.
+    /// This lint detects code that is very likely incorrect. If this lint is
+    /// allowed, then the code will not be evaluated at compile-time, and
+    /// instead continue to generate code to evaluate at runtime, which may
+    /// panic during runtime.
     ///
-    /// [issue #71800]: https://github.com/rust-lang/rust/issues/71800
+    /// Note that this lint may trigger in either inside or outside of a
+    /// [const context]. Outside of a [const context], the compiler can
+    /// sometimes evaluate an expression at compile-time in order to generate
+    /// more efficient code. As the compiler becomes better at doing this, it
+    /// needs to decide what to do when it encounters code that it knows for
+    /// certain will panic or is otherwise incorrect. Making this a hard error
+    /// would prevent existing code that exhibited this behavior from
+    /// compiling, breaking backwards-compatibility. However, this is almost
+    /// certainly incorrect code, so this is a deny-by-default lint. For more
+    /// details, see [RFC 1229] and [issue #28238].
+    ///
+    /// Note that there are several other more specific lints associated with
+    /// compile-time evaluation, such as [`arithmetic_overflow`],
+    /// [`unconditional_panic`].
+    ///
+    /// [const context]: https://doc.rust-lang.org/reference/const_eval.html#const-context
+    /// [RFC 1229]: https://github.com/rust-lang/rfcs/blob/master/text/1229-compile-time-asserts.md
+    /// [issue #28238]: https://github.com/rust-lang/rust/issues/28238
+    /// [`arithmetic_overflow`]: deny-by-default.html#arithmetic-overflow
+    /// [`unconditional_panic`]: deny-by-default.html#unconditional-panic
     pub CONST_ERR,
     Deny,
-    "constant evaluation encountered erroneous expression",
+    "constant evaluation detected erroneous expression",
     report_in_external_macro
 }
 

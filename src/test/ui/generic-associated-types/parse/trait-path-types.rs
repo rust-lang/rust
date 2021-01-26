@@ -7,17 +7,17 @@ trait X {
 
 const _: () = {
   fn f<'a>(arg : Box<dyn X< [u8; 1] = u32>>) {}
-      //~^ ERROR: expected one of
+      //~^ ERROR: only path types can be used in associated type constraints
 };
 
 const _: () = {
   fn f1<'a>(arg : Box<dyn X<(Y<'a>) = &'a ()>>) {}
-      //~^ ERROR: expected one of
+      //~^ ERROR: only path types can be used in associated type constraints
 };
 
 const _: () = {
   fn f1<'a>(arg : Box<dyn X< 'a = u32 >>) {}
-      //~^ ERROR: expected one of
+      //~^ ERROR: only types can be used in associated type constraints
 };
 
 fn main() {}

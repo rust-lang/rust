@@ -52,10 +52,10 @@ use rustc_attr::{Deprecation, StabilityLevel};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
+use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -68,6 +68,7 @@ use serde::{Serialize, Serializer};
 use crate::clean::{self, AttributesExt, GetDefId, RenderedLink, SelfTy, TypeKind};
 use crate::config::{RenderInfo, RenderOptions};
 use crate::docfs::{DocFS, PathError};
+use crate::doctree;
 use crate::error::Error;
 use crate::formats::cache::{cache, Cache};
 use crate::formats::item_type::ItemType;
@@ -383,17 +384,13 @@ crate fn initial_ids() -> Vec<String> {
 
 /// Generates the documentation for `crate` into the directory `dst`
 impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
-    fn descr() -> &'static str {
-        "html"
-    }
-
     fn init(
         mut krate: clean::Crate,
         options: RenderOptions,
         _render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
-        tcx: TyCtxt<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
@@ -526,12 +523,17 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         Ok((cx, krate))
     }
 
-    fn after_krate(
-        &mut self,
-        krate: &clean::Crate,
-        cache: &Cache,
-        diag: &rustc_errors::Handler,
-    ) -> Result<(), Error> {
+    fn after_run(&mut self, diag: &rustc_errors::Handler) -> Result<(), Error> {
+        Arc::get_mut(&mut self.shared).unwrap().fs.close();
+        let nb_errors = self.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
+        if nb_errors > 0 {
+            Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn after_krate(&mut self, krate: &clean::Crate, cache: &Cache) -> Result<(), Error> {
         let final_file = self.dst.join(&*krate.name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
         let crate_name = krate.name;
@@ -594,15 +596,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             &style_files,
         );
         self.shared.fs.write(&settings_file, v.as_bytes())?;
-
-        // Flush pending errors.
-        Arc::get_mut(&mut self.shared).unwrap().fs.close();
-        let nb_errors = self.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
-        if nb_errors > 0 {
-            Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 
     fn mod_item_in(
@@ -2474,7 +2468,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
 fn render_implementor(
     cx: &Context<'_>,
     implementor: &Impl,
-    trait_: &clean::Item,
+    parent: &clean::Item,
     w: &mut Buffer,
     implementor_dups: &FxHashMap<Symbol, (DefId, bool)>,
     aliases: &[String],
@@ -2494,11 +2488,11 @@ fn render_implementor(
         w,
         cx,
         implementor,
-        trait_,
+        parent,
         AssocItemLink::Anchor(None),
         RenderMode::Normal,
-        trait_.stable_since(cx.tcx()).as_deref(),
-        trait_.const_stable_since(cx.tcx()).as_deref(),
+        implementor.impl_item.stable_since(cx.tcx()).as_deref(),
+        implementor.impl_item.const_stable_since(cx.tcx()).as_deref(),
         false,
         Some(use_absolute),
         false,
@@ -2937,25 +2931,34 @@ fn render_stability_since_raw(
     containing_ver: Option<&str>,
     containing_const_ver: Option<&str>,
 ) {
-    let ver = ver.filter(|inner| !inner.is_empty());
-    let const_ver = const_ver.filter(|inner| !inner.is_empty());
+    let ver = ver.and_then(|inner| if !inner.is_empty() { Some(inner) } else { None });
 
-    match (ver, const_ver) {
-        (Some(v), Some(cv)) if const_ver != containing_const_ver => {
-            write!(
-                w,
-                "<span class=\"since\" title=\"Stable since Rust version {0}, const since {1}\">{0} (const: {1})</span>",
-                v, cv
-            );
+    let const_ver = const_ver.and_then(|inner| if !inner.is_empty() { Some(inner) } else { None });
+
+    if let Some(v) = ver {
+        if let Some(cv) = const_ver {
+            if const_ver != containing_const_ver {
+                write!(
+                    w,
+                    "<span class=\"since\" title=\"Stable since Rust version {0}, const since {1}\">{0} (const: {1})</span>",
+                    v, cv
+                );
+            } else if ver != containing_ver {
+                write!(
+                    w,
+                    "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
+                    v
+                );
+            }
+        } else {
+            if ver != containing_ver {
+                write!(
+                    w,
+                    "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
+                    v
+                );
+            }
         }
-        (Some(v), _) if ver != containing_ver => {
-            write!(
-                w,
-                "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
-                v
-            );
-        }
-        _ => {}
     }
 }
 
@@ -3098,7 +3101,7 @@ fn item_struct(
             _ => None,
         })
         .peekable();
-    if let CtorKind::Fictive = s.struct_type {
+    if let doctree::Plain = s.struct_type {
         if fields.peek().is_some() {
             write!(
                 w,
@@ -3348,7 +3351,7 @@ fn render_struct(
     w: &mut Buffer,
     it: &clean::Item,
     g: Option<&clean::Generics>,
-    ty: CtorKind,
+    ty: doctree::StructType,
     fields: &[clean::Item],
     tab: &str,
     structhead: bool,
@@ -3365,7 +3368,7 @@ fn render_struct(
         write!(w, "{}", g.print())
     }
     match ty {
-        CtorKind::Fictive => {
+        doctree::Plain => {
             if let Some(g) = g {
                 write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: true })
             }
@@ -3397,7 +3400,7 @@ fn render_struct(
             }
             write!(w, "}}");
         }
-        CtorKind::Fn => {
+        doctree::Tuple => {
             write!(w, "(");
             for (i, field) in fields.iter().enumerate() {
                 if i > 0 {
@@ -3422,7 +3425,7 @@ fn render_struct(
             }
             write!(w, ";");
         }
-        CtorKind::Const => {
+        doctree::Unit => {
             // Needed for PhantomData.
             if let Some(g) = g {
                 write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: false })
@@ -4457,7 +4460,7 @@ fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clea
     let fields = get_struct_fields_name(&s.fields);
 
     if !fields.is_empty() {
-        if let CtorKind::Fictive = s.struct_type {
+        if let doctree::Plain = s.struct_type {
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
                  <div class=\"sidebar-links\">{}</div>",

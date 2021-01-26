@@ -419,20 +419,6 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         tcx.ensure().mir_borrowck(def.did);
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-    use rustc_middle::hir::map::blocks::FnLikeNode;
-    let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
-    if is_fn_like {
-        let did = def.did.to_def_id();
-        let def = ty::WithOptConstParam::unknown(did);
-
-        // Do not compute the mir call graph without said call graph actually being used.
-        // Keep this in sync with the mir inliner's optimization level.
-        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
-            let _ = tcx.mir_inliner_callees(ty::InstanceDef::Item(def));
-        }
-    }
-
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
 
@@ -447,7 +433,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
 
     let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
         // Remove all things only needed by analysis
-        &no_landing_pads::NoLandingPads,
+        &no_landing_pads::NoLandingPads::new(tcx),
         &simplify_branches::SimplifyBranches::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &cleanup_post_borrowck::CleanupNonCodegenStatements,
@@ -455,7 +441,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
-        &no_landing_pads::NoLandingPads,
+        &no_landing_pads::NoLandingPads::new(tcx),
         // AddMovesForPackedDrops needs to run after drop
         // elaboration.
         &add_moves_for_packed_drops::AddMovesForPackedDrops,

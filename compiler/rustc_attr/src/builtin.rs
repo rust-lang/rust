@@ -10,6 +10,7 @@ use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
 use std::num::NonZeroU32;
+use version_check::Version;
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
@@ -66,7 +67,7 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -74,13 +75,13 @@ pub enum InlineAttr {
     Never,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable)]
 pub enum InstructionSetAttr {
     ArmA32,
     ArmT32,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable)]
 pub enum OptimizeAttr {
     None,
     Speed,
@@ -525,26 +526,6 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &F
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Version {
-    major: u16,
-    minor: u16,
-    patch: u16,
-}
-
-fn parse_version(s: &str, allow_appendix: bool) -> Option<Version> {
-    let mut components = s.split('-');
-    let d = components.next()?;
-    if !allow_appendix && components.next().is_some() {
-        return None;
-    }
-    let mut digits = d.splitn(3, '.');
-    let major = digits.next()?.parse().ok()?;
-    let minor = digits.next()?.parse().ok()?;
-    let patch = digits.next().unwrap_or("0").parse().ok()?;
-    Some(Version { major, minor, patch })
-}
-
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
 pub fn eval_condition(
@@ -574,21 +555,16 @@ pub fn eval_condition(
                     return false;
                 }
             };
-            let min_version = match parse_version(&min_version.as_str(), false) {
+            let min_version = match Version::parse(&min_version.as_str()) {
                 Some(ver) => ver,
                 None => {
-                    sess.span_diagnostic
-                        .struct_span_warn(
-                            *span,
-                            "unknown version literal format, assuming it refers to a future version",
-                        )
-                        .emit();
+                    sess.span_diagnostic.struct_span_err(*span, "invalid version literal").emit();
                     return false;
                 }
             };
             let channel = env!("CFG_RELEASE_CHANNEL");
             let nightly = channel == "nightly" || channel == "dev";
-            let rustc_version = parse_version(env!("CFG_RELEASE"), true).unwrap();
+            let rustc_version = Version::parse(env!("CFG_RELEASE")).unwrap();
 
             // See https://github.com/rust-lang/rust/issues/64796#issuecomment-625474439 for details
             if nightly { rustc_version > min_version } else { rustc_version >= min_version }

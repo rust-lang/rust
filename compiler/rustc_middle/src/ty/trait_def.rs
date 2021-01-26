@@ -63,7 +63,7 @@ pub enum TraitSpecializationKind {
     AlwaysApplicable,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct TraitImpls {
     blanket_impls: Vec<DefId>,
     /// Impls indexed by their simplified self type, for fast lookup.

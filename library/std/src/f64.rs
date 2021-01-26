@@ -1,13 +1,12 @@
-//! Constants specific to the `f64` double-precision floating point type.
+//! This module provides constants which are specific to the implementation
+//! of the `f64` floating point data type.
 //!
 //! *[See also the `f64` primitive type](primitive@f64).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 //!
-//! For the constants defined directly in this module
-//! (as distinct from those defined in the `consts` sub-module),
-//! new code should instead use the associated constants
-//! defined directly on the `f64` type.
+//! Although using these constants won’t cause compilation warnings,
+//! new code should use the associated constants directly on the primitive type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
@@ -21,11 +20,15 @@ use crate::intrinsics;
 use crate::sys::cmath;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
-pub use core::f64::{
-    consts, DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP,
-    MIN_EXP, MIN_POSITIVE, NAN, NEG_INFINITY, RADIX,
-};
+pub use core::f64::consts;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f64::{DIGITS, EPSILON, MANTISSA_DIGITS, RADIX};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f64::{INFINITY, MAX_10_EXP, NAN, NEG_INFINITY};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f64::{MAX, MIN, MIN_POSITIVE};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f64::{MAX_EXP, MIN_10_EXP, MIN_EXP};
 
 #[cfg(not(test))]
 #[lang = "f64_runtime"]

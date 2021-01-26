@@ -427,7 +427,6 @@ dependencies = [
  "remove_dir_all",
  "serde_json",
  "tar",
- "toml",
  "url 2.1.1",
 ]
 
@@ -3551,6 +3550,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_ast",
  "rustc_span",
+ "rustc_target",
  "tracing",
 ]
 
@@ -3568,6 +3568,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "version_check",
 ]
 
 [[package]]
