@@ -47,7 +47,7 @@ impl<'a> Iterator for Chars<'a> {
     #[inline]
     fn count(self) -> usize {
         // length in `char` is equal to the number of non-continuation bytes
-        self.iter.map(|&byte| !utf8_is_cont_byte(byte) as usize).sum()
+        self.iter.filter(|&&byte| !utf8_is_cont_byte(byte)).count()
     }
 
     #[inline]
