@@ -777,7 +777,7 @@ fn test_range_backwards_4() {
 
 #[test]
 #[should_panic]
-fn test_range_backwards_5() {
+fn test_range_finding_ill_order_in_map() {
     let mut map = BTreeMap::new();
     map.insert(Cyclic3::B, ());
     // Lacking static_assert, call `range` conditionally, to emphasise that
@@ -786,6 +786,47 @@ fn test_range_backwards_5() {
     if Cyclic3::C < Cyclic3::A {
         map.range(Cyclic3::C..=Cyclic3::A);
     }
+}
+
+#[test]
+#[should_panic]
+fn test_range_finding_ill_order_in_range_ord() {
+    // Has proper order the first time asked, then flips around.
+    struct EvilTwin(i32);
+
+    impl PartialOrd for EvilTwin {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    static COMPARES: AtomicUsize = AtomicUsize::new(0);
+    impl Ord for EvilTwin {
+        fn cmp(&self, other: &Self) -> Ordering {
+            let ord = self.0.cmp(&other.0);
+            if COMPARES.fetch_add(1, SeqCst) > 0 { ord.reverse() } else { ord }
+        }
+    }
+
+    impl PartialEq for EvilTwin {
+        fn eq(&self, other: &Self) -> bool {
+            self.0.eq(&other.0)
+        }
+    }
+
+    impl Eq for EvilTwin {}
+
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
+    struct CompositeKey(i32, EvilTwin);
+
+    impl Borrow<EvilTwin> for CompositeKey {
+        fn borrow(&self) -> &EvilTwin {
+            &self.1
+        }
+    }
+
+    let map = (0..12).map(|i| (CompositeKey(i, EvilTwin(i)), ())).collect::<BTreeMap<_, _>>();
+    map.range(EvilTwin(5)..=EvilTwin(7));
 }
 
 #[test]
@@ -1221,6 +1262,51 @@ fn test_borrow() {
         let mut map = BTreeMap::new();
         map.insert(Rc::new(0), 1);
         assert_eq!(map[&0], 1);
+    }
+
+    #[allow(dead_code)]
+    fn get<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
+        v.get(t);
+    }
+
+    #[allow(dead_code)]
+    fn get_mut<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
+        v.get_mut(t);
+    }
+
+    #[allow(dead_code)]
+    fn get_key_value<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
+        v.get_key_value(t);
+    }
+
+    #[allow(dead_code)]
+    fn contains_key<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
+        v.contains_key(t);
+    }
+
+    #[allow(dead_code)]
+    fn range<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: T) {
+        v.range(t..);
+    }
+
+    #[allow(dead_code)]
+    fn range_mut<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: T) {
+        v.range_mut(t..);
+    }
+
+    #[allow(dead_code)]
+    fn remove<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
+        v.remove(t);
+    }
+
+    #[allow(dead_code)]
+    fn remove_entry<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
+        v.remove_entry(t);
+    }
+
+    #[allow(dead_code)]
+    fn split_off<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
+        v.split_off(t);
     }
 }
 
