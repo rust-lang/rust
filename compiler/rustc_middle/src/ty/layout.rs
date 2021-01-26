@@ -2752,7 +2752,7 @@ where
                 attrs
             });
 
-            if call::use_wasm_bindgen_compat_abi(target) {
+            if target.arch == "wasm32" && target.os == "unknown" {
                 // wasm-bindgen depends on ABI details and is incompatible with the
                 // correct C ABI, so this is being kept around until wasm-bindgen
                 // can be fixed to work with the correct ABI. See #63649 for further
