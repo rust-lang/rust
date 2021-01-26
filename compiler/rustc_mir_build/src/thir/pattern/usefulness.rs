@@ -582,6 +582,13 @@ struct MatrixEntry<'p, 'tcx> {
     origin: Origin,
 }
 
+#[derive(Clone, Copy)]
+struct SelectedRow {
+    id: usize,
+    /// Where this pattern came from.
+    origin: Origin,
+}
+
 #[derive(Clone, Debug)]
 struct RowData {
     is_under_guard: bool,
@@ -628,14 +635,14 @@ struct Matrix<'p, 'tcx> {
     /// rows have been filtered out. The actual contents of the first column are those indices in
     /// `selected_rows`, and the contents in subsequent columns can be found by following
     /// `next_row_id`s.
-    selected_rows: Vec<usize>,
+    selected_rows: Vec<SelectedRow>,
     /// Stores data for each of the original rows. The rightmost column's `next_row_id` points into
     /// this.
     row_data: Vec<RowData>,
     /// Stores the history of operations done on this matrix, so that we can undo them in-place.
     history: Vec<UndoKind<'p, 'tcx>>,
     last_col_history: VecVec<MatrixEntry<'p, 'tcx>>,
-    selected_rows_history: VecVec<usize>,
+    selected_rows_history: VecVec<SelectedRow>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -655,8 +662,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Returns the type of the first column, if any.
     fn ty_of_last_col(&self) -> Option<Ty<'tcx>> {
         let last_col = self.columns.last()?;
-        let row_id = self.selected_rows.first()?;
-        Some(last_col[*row_id].pat.ty)
+        let row = self.selected_rows.first()?;
+        Some(last_col[row.id].pat.ty)
     }
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
@@ -664,8 +671,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     fn push(&mut self, mut row: PatStack<'p, 'tcx>) {
         assert_eq!(row.len(), self.column_count());
 
-        self.selected_rows.push(self.row_data.len());
-        let next_row_id = self.selected_rows.last_mut().unwrap();
+        self.selected_rows.push(SelectedRow { id: self.row_data.len(), origin: Origin::Pushed });
+        let next_row_id = &mut self.selected_rows.last_mut().unwrap().id;
         for i in 0..row.len() {
             self.columns[i].push(MatrixEntry {
                 // Patterns are stored in the reverse order in `PatStack`.
@@ -692,7 +699,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Iterate over the last column; panics if no columns.
     fn last_col<'a>(&'a self) -> impl Iterator<Item = &'a MatrixEntry<'p, 'tcx>> + Clone {
         let last_col = self.columns.last().unwrap();
-        self.selected_rows.iter().map(move |&row_id| &last_col[row_id])
+        self.selected_rows.iter().map(move |row| &last_col[row.id])
     }
 
     /// Iterate over the first constructor of each row.
@@ -709,8 +716,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
     ) -> impl Iterator<Item = (&'a Constructor<'tcx>, Span)> + Captures<'p> + Clone {
         let last_col = self.columns.last().unwrap();
-        self.selected_rows.iter().map(move |&row_id| {
-            let first_entry = &last_col[row_id];
+        self.selected_rows.iter().map(move |row| {
+            let first_entry = &last_col[row.id];
             // // Go through the row to get to the row data.
             // // TODO: lol so slow.
             // let last_entry = self.row(row_id).last().unwrap();
@@ -771,18 +778,20 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
         // Keep only rows that match this ctor.
         self.selected_rows
-            .retain(|&row_id| ctor.is_covered_by(pcx, old_last_col[row_id].head_ctor(pcx.cx)));
+            .retain(|row| ctor.is_covered_by(pcx, old_last_col[row.id].head_ctor(pcx.cx)));
 
         // For each row that we want to specialize.
-        for row_id in self.selected_rows.iter_mut() {
-            let origin_row_id = *row_id;
+        for row in self.selected_rows.iter_mut() {
+            let origin_row_id = row.id;
+            let origin_col_id = self.last_col_history.len() - 1;
+            row.origin = Origin::Specialized { col: origin_col_id, row: origin_row_id, seq_id: 0 };
             let head_entry = &old_last_col[origin_row_id];
             // Extract fields from the arguments of the head of each row.
             let new_fields = ctor_wild_subpatterns
                 .replace_with_pattern_arguments(head_entry.pat)
                 .into_patterns();
             // The rest of the row starts at `row_id`.
-            *row_id = head_entry.next_row_id;
+            row.id = head_entry.next_row_id;
             // Note: the fields are in the natural left-to-right order but the columns are not.
             // We need to start from the last field to get the `next_row_id`s right.
             for (col, (seq_id, &pat)) in
@@ -790,16 +799,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             {
                 col.push(MatrixEntry {
                     pat,
-                    next_row_id: *row_id,
+                    next_row_id: row.id,
                     ctor: OnceCell::new(),
-                    origin: Origin::Specialized {
-                        col: self.last_col_history.len() - 1,
-                        row: origin_row_id,
-                        seq_id,
-                    },
+                    origin: Origin::Specialized { col: origin_col_id, row: origin_row_id, seq_id },
                 });
                 // Make `row_id` point to the entry just added.
-                *row_id = col.len() - 1;
+                row.id = col.len() - 1;
             }
         }
 
@@ -824,8 +829,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.save_last_col();
         let old_last_col = self.last_col_history.last().unwrap();
         let mut new_last_col = Vec::new();
-        for &row_id in &self.selected_rows {
-            let entry = &old_last_col[row_id];
+        for row in &self.selected_rows {
+            let entry = &old_last_col[row.id];
             if entry.pat.is_or_pat() {
                 let subpats = entry.pat.expand_or_pat();
                 let alt_count = subpats.len();
@@ -837,7 +842,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                         ctor: OnceCell::new(),
                         origin: Origin::OrPat {
                             col: self.last_col_history.len() - 1,
-                            row: row_id,
+                            row: row.id,
                             alt_id,
                             alt_count,
                         },
@@ -855,7 +860,9 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             }
         }
         self.selected_rows.clear();
-        self.selected_rows.extend(0..new_last_col.len());
+        self.selected_rows.extend(
+            new_last_col.iter().enumerate().map(|(id, e)| SelectedRow { id, origin: e.origin }),
+        );
         self.columns.push(new_last_col);
     }
 
@@ -902,7 +909,7 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
         let pretty_printed_matrix: Vec<Vec<String>> = self
             .selected_rows
             .iter()
-            .map(|&row_id| self.row(row_id).map(|e| format!("{}", e.pat)).collect())
+            .map(|row| self.row(row.id).map(|e| format!("{}", e.pat)).collect())
             .collect();
 
         let column_count = self.column_count();
@@ -1357,7 +1364,7 @@ fn is_useful<'p, 'tcx>(
     // the type of the tuple we're checking is inhabited or not.
     if matrix.column_count() == 0 {
         let is_covered =
-            matrix.selected_rows.iter().any(|row_id| !matrix.row_data[*row_id].is_under_guard);
+            matrix.selected_rows.iter().any(|row| !matrix.row_data[row.id].is_under_guard);
         let u = match (v.row_data.witness_preference, is_covered) {
             (_, true) => Usefulness::new_not_useful(v.row_data.witness_preference),
             (ConstructWitness, false) => {
@@ -1377,7 +1384,7 @@ fn is_useful<'p, 'tcx>(
                             let column = &matrix.last_col_history[hist_col_id];
                             let selected_rows = &matrix.selected_rows_history[hist_col_id];
                             let head_ctors =
-                                selected_rows.iter().map(|&row_id| column[row_id].head_ctor(cx));
+                                selected_rows.iter().map(|row| column[row.id].head_ctor(cx));
                             let pcx = PatCtxt { cx, ty, span, is_top_level };
                             u = u.apply_constructor(pcx, ctor, ctor_wild_subpatterns, head_ctors);
                             hist_col_id -= 1;
