@@ -16,6 +16,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2a4ec343196209d6594e19543ae87a39f96d5534d7174822a3ad825dd6ed7e"
 
 [[package]]
+name = "always-assert"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "727786f78c5bc0cda8011831616589f72084cb16b7df4213a997b78749b55a60"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1415,6 +1424,7 @@ dependencies = [
 name = "rust-analyzer"
 version = "0.0.0"
 dependencies = [
+ "always-assert",
  "anyhow",
  "cfg",
  "crossbeam-channel 0.5.0",
@@ -1658,6 +1668,7 @@ dependencies = [
 name = "stdx"
 version = "0.0.0"
 dependencies = [
+ "always-assert",
  "backtrace",
 ]
 

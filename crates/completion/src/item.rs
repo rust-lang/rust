@@ -10,7 +10,7 @@ use ide_db::{
     },
     SymbolKind,
 };
-use stdx::{assert_never, impl_from};
+use stdx::{impl_from, never};
 use syntax::{algo, TextRange};
 use text_edit::TextEdit;
 
@@ -404,7 +404,7 @@ impl Builder {
     pub(crate) fn set_detail(mut self, detail: Option<impl Into<String>>) -> Builder {
         self.detail = detail.map(Into::into);
         if let Some(detail) = &self.detail {
-            if assert_never!(detail.contains('\n'), "multiline detail:\n{}", detail) {
+            if never!(detail.contains('\n'), "multiline detail:\n{}", detail) {
                 self.detail = Some(detail.splitn(2, '\n').next().unwrap().to_string());
             }
         }

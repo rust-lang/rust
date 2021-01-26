@@ -232,7 +232,7 @@ if idx >= len {
 ## Assertions
 
 Assert liberally.
-Prefer `stdx::assert_never!` to standard `assert!`.
+Prefer `stdx::never!` to standard `assert!`.
 
 ## Getters & Setters
 

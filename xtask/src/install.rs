@@ -180,7 +180,7 @@ fn install_server(opts: ServerOpt) -> Result<()> {
         Malloc::Jemalloc => &["--features", "jemalloc"],
     };
 
-    let cmd = cmd!("cargo install --path crates/rust-analyzer --locked --force {features...}");
+    let cmd = cmd!("cargo install --path crates/rust-analyzer --locked --force --features force-always-assert {features...}");
     let res = cmd.run();
 
     if res.is_err() && old_rust {
