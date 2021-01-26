@@ -17,7 +17,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
@@ -45,7 +45,7 @@ use self::ItemKind::*;
 use self::SelfTy::*;
 use self::Type::*;
 
-thread_local!(crate static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = Default::default());
+thread_local!(crate static MAX_DEF_IDX: RefCell<FxHashMap<CrateNum, DefIndex>> = Default::default());
 
 #[derive(Clone, Debug)]
 crate struct Crate {
@@ -293,8 +293,8 @@ impl Item {
     ///
     /// [`next_def_id()`]: DocContext::next_def_id()
     crate fn is_fake(&self) -> bool {
-        MAX_DEF_ID.with(|m| {
-            m.borrow().get(&self.def_id.krate).map(|id| self.def_id >= *id).unwrap_or(false)
+        MAX_DEF_IDX.with(|m| {
+            m.borrow().get(&self.def_id.krate).map(|&idx| idx <= self.def_id.index).unwrap_or(false)
         })
     }
 }

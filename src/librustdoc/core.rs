@@ -32,7 +32,7 @@ use std::{
 };
 
 use crate::clean;
-use crate::clean::{AttributesExt, MAX_DEF_ID};
+use crate::clean::{AttributesExt, MAX_DEF_IDX};
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::config::{OutputFormat, RenderInfo};
 use crate::formats::cache::Cache;
@@ -66,7 +66,7 @@ crate struct DocContext<'tcx> {
     crate ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     crate impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
-    crate fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
+    crate fake_def_ids: RefCell<FxHashMap<CrateNum, DefIndex>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     crate generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
@@ -142,35 +142,35 @@ impl<'tcx> DocContext<'tcx> {
     crate fn next_def_id(&self, crate_num: CrateNum) -> DefId {
         let mut fake_ids = self.fake_def_ids.borrow_mut();
 
-        let def_id = match fake_ids.entry(crate_num) {
+        let def_index = match fake_ids.entry(crate_num) {
             Entry::Vacant(e) => {
-                let start_def_id = {
-                    let num_def_ids = if crate_num == LOCAL_CRATE {
+                let num_def_idx = {
+                    let num_def_idx = if crate_num == LOCAL_CRATE {
                         self.tcx.hir().definitions().def_path_table().num_def_ids()
                     } else {
                         self.enter_resolver(|r| r.cstore().num_def_ids(crate_num))
                     };
 
-                    DefId { krate: crate_num, index: DefIndex::from_usize(num_def_ids) }
+                    DefIndex::from_usize(num_def_idx)
                 };
 
-                MAX_DEF_ID.with(|m| {
-                    m.borrow_mut().insert(crate_num, start_def_id);
+                MAX_DEF_IDX.with(|m| {
+                    m.borrow_mut().insert(crate_num, num_def_idx);
                 });
-                e.insert(start_def_id)
+                e.insert(num_def_idx)
             }
             Entry::Occupied(e) => e.into_mut(),
         };
-        *def_id = DefId { krate: crate_num, index: DefIndex::from(def_id.index.index() + 1) };
+        *def_index = DefIndex::from(*def_index + 1);
 
-        *def_id
+        DefId { krate: crate_num, index: *def_index }
     }
 
     /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
     crate fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
-        if MAX_DEF_ID.with(|m| {
-            m.borrow().get(&def_id.krate).map(|id| id.index <= def_id.index).unwrap_or(false)
+        if MAX_DEF_IDX.with(|m| {
+            m.borrow().get(&def_id.krate).map(|&idx| idx <= def_id.index).unwrap_or(false)
         }) {
             None
         } else {
