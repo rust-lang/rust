@@ -59,9 +59,9 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     let mut extra_attrs = Vec::new();
     for &trait_did in cx.tcx.all_traits(LOCAL_CRATE).iter() {
         for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
-            let impl_did = cx.tcx.hir().local_def_id(impl_node);
+            let impl_did = cx.tcx.hir().local_def_id(impl_node).to_def_id();
             cx.tcx.sess.prof.generic_activity("build_local_trait_impl").run(|| {
-                let mut parent = cx.tcx.parent(impl_did.to_def_id());
+                let mut parent = cx.tcx.parent(impl_did);
                 while let Some(did) = parent {
                     extra_attrs.extend(
                         cx.tcx
@@ -79,13 +79,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
                     );
                     parent = cx.tcx.parent(did);
                 }
-                inline::build_impl(
-                    cx,
-                    None,
-                    impl_did.to_def_id(),
-                    Some(&extra_attrs),
-                    &mut new_items,
-                );
+                inline::build_impl(cx, None, impl_did, Some(&extra_attrs), &mut new_items);
                 extra_attrs.clear();
             });
         }
