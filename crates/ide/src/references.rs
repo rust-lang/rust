@@ -1098,4 +1098,20 @@ fn foo<const FOO$0: usize>() -> usize {
             "#]],
         );
     }
+
+    #[test]
+    fn test_find_self_ty_in_trait_def() {
+        check(
+            r#"
+trait Foo {
+    fn f() -> Self$0;
+}
+"#,
+            expect![[r#"
+                Self TypeParam FileId(0) 6..9 6..9 Other
+
+                FileId(0) 26..30 Other
+            "#]],
+        );
+    }
 }
