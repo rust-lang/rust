@@ -1,4 +1,5 @@
 #![feature(stmt_expr_attributes, test)]
+#![allow(arithmetic_overflow)]
 use std::fmt::Debug;
 use std::hint::black_box;
 
