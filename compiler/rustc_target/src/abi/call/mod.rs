@@ -53,8 +53,6 @@ pub enum PassMode {
 // Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
 // of this module
 pub use attr_impl::ArgAttribute;
-use rustc_data_structures::stable_set::FxHashSet;
-use rustc_span::Symbol;
 
 #[allow(non_upper_case_globals)]
 #[allow(unused)]
@@ -594,12 +592,7 @@ pub struct FnAbi<'a, Ty> {
 }
 
 impl<'a, Ty> FnAbi<'a, Ty> {
-    pub fn adjust_for_cabi<C>(
-        &mut self,
-        cx: &C,
-        target_features: &FxHashSet<Symbol>,
-        abi: spec::abi::Abi,
-    ) -> Result<(), String>
+    pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
     where
         Ty: TyAndLayoutMethods<'a, C> + Copy,
         C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
@@ -640,7 +633,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
             "wasm32" => match cx.target_spec().os.as_str() {
                 "emscripten" | "wasi" => wasm32::compute_abi_info(cx, self),
-                _ => wasm32_bindgen_compat::compute_abi_info(cx, target_features, self),
+                _ => wasm32_bindgen_compat::compute_abi_info(self),
             },
             "asmjs" => wasm32::compute_abi_info(cx, self),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
