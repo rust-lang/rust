@@ -67,7 +67,6 @@ crate struct DocContext<'tcx> {
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     crate impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
     crate fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
-    crate all_fake_def_ids: RefCell<FxHashSet<DefId>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     crate generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
@@ -163,17 +162,16 @@ impl<'tcx> DocContext<'tcx> {
             Entry::Occupied(e) => e.into_mut(),
         };
         *def_id = DefId { krate: crate_num, index: DefIndex::from(def_id.index.index() + 1) };
-        let def_id = *def_id;
 
-        self.all_fake_def_ids.borrow_mut().insert(def_id);
-
-        def_id
+        *def_id
     }
 
     /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
     crate fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
-        if self.all_fake_def_ids.borrow().contains(&def_id) {
+        if MAX_DEF_ID.with(|m| {
+            m.borrow().get(&def_id.krate).map(|id| id.index <= def_id.index).unwrap_or(false)
+        }) {
             None
         } else {
             def_id.as_local().map(|def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
@@ -522,7 +520,6 @@ crate fn run_global_ctxt(
         ct_substs: Default::default(),
         impl_trait_bounds: Default::default(),
         fake_def_ids: Default::default(),
-        all_fake_def_ids: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits: tcx
             .all_traits(LOCAL_CRATE)
