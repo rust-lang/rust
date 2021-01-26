@@ -7,7 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{convert::TryFrom, ffi::OsString, iter, path::PathBuf};
+use std::{ffi::OsString, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use hir::PrefixKind;
@@ -468,11 +468,7 @@ impl Config {
         self.data.cargo_autoreload
     }
     pub fn cargo(&self) -> CargoConfig {
-        let rustc_source = self.data.rustcSource.clone().and_then(|it| {
-            AbsPathBuf::try_from(it)
-                .map_err(|_| log::error!("rustc source directory must be an absolute path"))
-                .ok()
-        });
+        let rustc_source = self.data.rustcSource.as_ref().map(|it| self.root_path.join(&it));
 
         CargoConfig {
             no_default_features: self.data.cargo_noDefaultFeatures,
