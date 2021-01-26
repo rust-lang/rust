@@ -50,7 +50,8 @@ fn predefine_mono_items<'tcx>(
         for &(mono_item, (linkage, visibility)) in mono_items {
             match mono_item {
                 MonoItem::Fn(instance) => {
-                    let (name, sig) = get_function_name_and_sig(
+                    let name = cx.tcx.symbol_name(instance).name.to_string();
+                    let sig= get_function_sig(
                         cx.tcx,
                         cx.module.isa().triple(),
                         instance,

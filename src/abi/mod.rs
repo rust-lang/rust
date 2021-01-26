@@ -179,12 +179,12 @@ fn clif_sig_from_fn_sig<'tcx>(
     }
 }
 
-pub(crate) fn get_function_name_and_sig<'tcx>(
+pub(crate) fn get_function_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     triple: &target_lexicon::Triple,
     inst: Instance<'tcx>,
     support_vararg: bool,
-) -> (String, Signature) {
+) -> Signature {
     assert!(!inst.substs.needs_infer());
     let fn_sig = tcx
         .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), fn_sig_for_fn_abi(tcx, inst));
@@ -194,14 +194,13 @@ pub(crate) fn get_function_name_and_sig<'tcx>(
             "Variadic function definitions are not yet supported",
         );
     }
-    let sig = clif_sig_from_fn_sig(
+    clif_sig_from_fn_sig(
         tcx,
         triple,
         fn_sig,
         false,
         inst.def.requires_caller_location(tcx),
-    );
-    (tcx.symbol_name(inst).name.to_string(), sig)
+    )
 }
 
 /// Instance must be monomorphized
@@ -210,7 +209,8 @@ pub(crate) fn import_function<'tcx>(
     module: &mut impl Module,
     inst: Instance<'tcx>,
 ) -> FuncId {
-    let (name, sig) = get_function_name_and_sig(tcx, module.isa().triple(), inst, true);
+    let name = tcx.symbol_name(inst).name.to_string();
+    let sig = get_function_sig(tcx, module.isa().triple(), inst, true);
     module
         .declare_function(&name, Linkage::Import, &sig)
         .unwrap()

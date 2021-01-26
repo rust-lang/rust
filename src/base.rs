@@ -19,7 +19,8 @@ pub(crate) fn codegen_fn<'tcx>(
     let mir = tcx.instance_mir(instance.def);
 
     // Declare function
-    let (name, sig) = get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
+    let name = tcx.symbol_name(instance).name.to_string();
+    let sig = get_function_sig(tcx, cx.module.isa().triple(), instance, false);
     let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
 
     cx.cached_context.clear();
