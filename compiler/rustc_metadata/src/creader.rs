@@ -253,8 +253,9 @@ impl<'a> CrateLoader<'a> {
                 if let Some(mut files) = entry.files() {
                     if files.any(|l| {
                         let l = fs::canonicalize(l).unwrap_or(l.clone().into());
-                        source.dylib.as_ref().map(|p| &p.0) == Some(&l)
-                            || source.rlib.as_ref().map(|p| &p.0) == Some(&l)
+                        source.dylib.as_ref().map(|(p, _)| p) == Some(&l)
+                            || source.rlib.as_ref().map(|(p, _)| p) == Some(&l)
+                            || source.rmeta.as_ref().map(|(p, _)| p) == Some(&l)
                     }) {
                         ret = Some(cnum);
                     }
