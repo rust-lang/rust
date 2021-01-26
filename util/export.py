@@ -22,7 +22,10 @@ def parse_code_block(match):
     lines = []
 
     for line in match.group(0).split('\n'):
-        if not line.startswith('# '):
+        # fix syntax highlighting for headers like ```rust,ignore
+        if line.startswith('```rust'):
+            lines.append('```rust')
+        elif not line.startswith('# '):
             lines.append(line)
 
     return '\n'.join(lines)
