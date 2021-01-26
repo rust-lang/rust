@@ -140,20 +140,20 @@ impl<'tcx> DocContext<'tcx> {
     /// [`Debug`]: std::fmt::Debug
     /// [`clean::Item`]: crate::clean::types::Item
     crate fn next_def_id(&self, crate_num: CrateNum) -> DefId {
-        let start_def_id = {
-            let num_def_ids = if crate_num == LOCAL_CRATE {
-                self.tcx.hir().definitions().def_path_table().num_def_ids()
-            } else {
-                self.enter_resolver(|r| r.cstore().num_def_ids(crate_num))
-            };
-
-            DefId { krate: crate_num, index: DefIndex::from_usize(num_def_ids) }
-        };
-
         let mut fake_ids = self.fake_def_ids.borrow_mut();
 
         let def_id = match fake_ids.entry(crate_num) {
             Entry::Vacant(e) => {
+                let start_def_id = {
+                    let num_def_ids = if crate_num == LOCAL_CRATE {
+                        self.tcx.hir().definitions().def_path_table().num_def_ids()
+                    } else {
+                        self.enter_resolver(|r| r.cstore().num_def_ids(crate_num))
+                    };
+
+                    DefId { krate: crate_num, index: DefIndex::from_usize(num_def_ids) }
+                };
+
                 MAX_DEF_ID.with(|m| {
                     m.borrow_mut().insert(crate_num, start_def_id);
                 });
