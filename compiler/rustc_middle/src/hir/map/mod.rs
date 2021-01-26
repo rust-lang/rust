@@ -566,6 +566,17 @@ impl<'hir> Map<'hir> {
         )
     }
 
+    /// Checks if the node is left-hand side of an assignment.
+    pub fn is_lhs(&self, id: HirId) -> bool {
+        match self.find(self.get_parent_node(id)) {
+            Some(Node::Expr(expr)) => match expr.kind {
+                ExprKind::Assign(lhs, _rhs, _span) => lhs.hir_id == id,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
     /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
     pub fn is_inside_const_context(&self, hir_id: HirId) -> bool {

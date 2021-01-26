@@ -49,10 +49,6 @@ fn main() {
     style::check(&compiler_path, &mut bad);
     style::check(&library_path, &mut bad);
 
-    cargo::check(&src_path, &mut bad);
-    cargo::check(&compiler_path, &mut bad);
-    cargo::check(&library_path, &mut bad);
-
     edition::check(&src_path, &mut bad);
     edition::check(&compiler_path, &mut bad);
     edition::check(&library_path, &mut bad);

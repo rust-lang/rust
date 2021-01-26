@@ -428,6 +428,40 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns the contained [`Some`] value, consuming the `self` value,
+    /// without checking that the value is not [`None`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method on [`None`] is *[undefined behavior]*.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x = Some("air");
+    /// assert_eq!(unsafe { x.unwrap_unchecked() }, "air");
+    /// ```
+    ///
+    /// ```no_run
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x: Option<&str> = None;
+    /// assert_eq!(unsafe { x.unwrap_unchecked() }, "air"); // Undefined behavior!
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
+    pub unsafe fn unwrap_unchecked(self) -> T {
+        debug_assert!(self.is_some());
+        match self {
+            Some(val) => val,
+            // SAFETY: the safety contract must be upheld by the caller.
+            None => unsafe { hint::unreachable_unchecked() },
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Transforming contained values
     /////////////////////////////////////////////////////////////////////////

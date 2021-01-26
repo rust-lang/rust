@@ -286,21 +286,32 @@ fn suggest_restriction(
         );
     } else {
         // Trivial case: `T` needs an extra bound: `T: Bound`.
-        let (sp, suggestion) = match super_traits {
-            None => predicate_constraint(
+        let (sp, suggestion) = match (
+            generics
+                .params
+                .iter()
+                .filter(
+                    |p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), ..}),
+                )
+                .next(),
+            super_traits,
+        ) {
+            (_, None) => predicate_constraint(
                 generics,
                 trait_ref.without_const().to_predicate(tcx).to_string(),
             ),
-            Some((ident, bounds)) => match bounds {
-                [.., bound] => (
-                    bound.span().shrink_to_hi(),
-                    format!(" + {}", trait_ref.print_only_trait_path().to_string()),
-                ),
-                [] => (
-                    ident.span.shrink_to_hi(),
-                    format!(": {}", trait_ref.print_only_trait_path().to_string()),
-                ),
-            },
+            (None, Some((ident, []))) => (
+                ident.span.shrink_to_hi(),
+                format!(": {}", trait_ref.print_only_trait_path().to_string()),
+            ),
+            (_, Some((_, [.., bounds]))) => (
+                bounds.span().shrink_to_hi(),
+                format!(" + {}", trait_ref.print_only_trait_path().to_string()),
+            ),
+            (Some(_), Some((_, []))) => (
+                generics.span.shrink_to_hi(),
+                format!(": {}", trait_ref.print_only_trait_path().to_string()),
+            ),
         };
 
         err.span_suggestion_verbose(
@@ -888,8 +899,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // no return, suggest removal of semicolon on last statement.
                     // Once that is added, close #54771.
                     if let Some(ref stmt) = blk.stmts.last() {
-                        let sp = self.tcx.sess.source_map().end_point(stmt.span);
-                        err.span_label(sp, "consider removing this semicolon");
+                        if let hir::StmtKind::Semi(_) = stmt.kind {
+                            let sp = self.tcx.sess.source_map().end_point(stmt.span);
+                            err.span_label(sp, "consider removing this semicolon");
+                        }
                     }
                 }
             }

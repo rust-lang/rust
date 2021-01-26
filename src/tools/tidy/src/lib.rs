@@ -40,7 +40,6 @@ macro_rules! tidy_error {
 }
 
 pub mod bins;
-pub mod cargo;
 pub mod debug_artifacts;
 pub mod deps;
 pub mod edition;
