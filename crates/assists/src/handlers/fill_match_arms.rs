@@ -272,6 +272,34 @@ mod tests {
     }
 
     #[test]
+    fn partial_fill_option() {
+        check_assist(
+            fill_match_arms,
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn main() {
+    match None$0 {
+        None => {}
+    }
+}
+            "#,
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn main() {
+    match None {
+        None => {}
+        Some(${0:_}) => {}
+    }
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn partial_fill_or_pat() {
         check_assist(
             fill_match_arms,
