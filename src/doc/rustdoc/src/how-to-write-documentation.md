@@ -153,11 +153,73 @@ and finally provides a code example.
 
 ## Markdown
 
-`rustdoc` uses the [commonmark markdown specification]. You might be
+`rustdoc` uses the [CommonMark markdown specification]. You might be
 interested into taking a look at their website to see what's possible to do.
  - [commonmark quick reference]
  - [current spec]
 
+In addition to the standard CommonMark syntax, `rustdoc` supports several
+extensions:
+
+### Strikethrough
+
+Text may be rendered with a horizontal line through the center by wrapping the
+text with two tilde characters on each side:
+
+```text
+An example of ~~strikethrough text~~.
+```
+
+This example will render as:
+
+> An example of ~~strikethrough text~~.
+
+This follows the [GitHub Strikethrough extension][strikethrough].
+
+### Footnotes
+
+A footnote generates a small numbered link in the text which when clicked
+takes the reader to the footnote text at the bottom of the item. The footnote
+label is written similarly to a link reference with a caret at the front. The
+footnote text is written like a link reference definition, with the text
+following the label. Example:
+
+```text
+This is an example of a footnote[^note].
+
+[^note]: This text is the contents of the footnote, which will be rendered
+    towards the bottom.
+```
+
+This example will render as:
+
+> This is an example of a footnote[^note].
+>
+> [^note]: This text is the contents of the footnote, which will be rendered
+>     towards the bottom.
+
+The footnotes are automatically numbered based on the order the footnotes are
+written.
+
+### Tables
+
+Tables can be written using pipes and dashes to draw the rows and columns of
+the table. These will be translated to HTML table matching the shape. Example:
+
+```text
+| Header1 | Header2 |
+|---------|---------|
+| abc     | def     |
+```
+
+This example will render similarly to this:
+
+> | Header1 | Header2 |
+> |---------|---------|
+> | abc     | def     |
+
+See the specification for the [GitHub Tables extension][tables] for more
+details on the exact syntax supported.
 
 [`backtrace`]: https://docs.rs/backtrace/0.3.50/backtrace/
 [commonmark markdown specification]: https://commonmark.org/
@@ -170,3 +232,5 @@ interested into taking a look at their website to see what's possible to do.
 [standard library]: https://doc.rust-lang.org/stable/std/index.html
 [current spec]: https://spec.commonmark.org/current/
 [`std::env`]: https://doc.rust-lang.org/stable/std/env/index.html#functions
+[strikethrough]: https://github.github.com/gfm/#strikethrough-extension-
+[tables]: https://github.github.com/gfm/#tables-extension-
