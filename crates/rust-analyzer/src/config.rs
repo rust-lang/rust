@@ -105,6 +105,8 @@ config_data! {
 
         /// Controls file watching implementation.
         files_watcher: String = "\"client\"",
+        /// These directories will be ignored by rust-analyzer.
+        files_excludeDirs: Vec<PathBuf> = "[]",
 
         /// Whether to show `Debug` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
@@ -248,7 +250,7 @@ impl LensConfig {
 #[derive(Debug, Clone)]
 pub struct FilesConfig {
     pub watcher: FilesWatcher,
-    pub exclude: Vec<String>,
+    pub exclude: Vec<AbsPathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -458,7 +460,7 @@ impl Config {
                 "notify" => FilesWatcher::Notify,
                 "client" | _ => FilesWatcher::Client,
             },
-            exclude: Vec::new(),
+            exclude: self.data.files_excludeDirs.iter().map(|it| self.root_path.join(it)).collect(),
         }
     }
     pub fn notifications(&self) -> NotificationsConfig {
@@ -760,6 +762,10 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "bool" => set!("type": "boolean"),
         "String" => set!("type": "string"),
         "Vec<String>" => set! {
+            "type": "array",
+            "items": { "type": "string" },
+        },
+        "Vec<PathBuf>" => set! {
             "type": "array",
             "items": { "type": "string" },
         },

@@ -214,7 +214,8 @@ impl GlobalState {
 
         let mut change = Change::new();
 
-        let project_folders = ProjectFolders::new(&workspaces);
+        let files_config = self.config.files();
+        let project_folders = ProjectFolders::new(&workspaces, &files_config.exclude);
 
         self.proc_macro_client = match self.config.proc_macro_srv() {
             None => None,
@@ -231,7 +232,7 @@ impl GlobalState {
             },
         };
 
-        let watch = match self.config.files().watcher {
+        let watch = match files_config.watcher {
             FilesWatcher::Client => vec![],
             FilesWatcher::Notify => project_folders.watch,
         };
@@ -319,7 +320,10 @@ pub(crate) struct ProjectFolders {
 }
 
 impl ProjectFolders {
-    pub(crate) fn new(workspaces: &[ProjectWorkspace]) -> ProjectFolders {
+    pub(crate) fn new(
+        workspaces: &[ProjectWorkspace],
+        global_excludes: &[AbsPathBuf],
+    ) -> ProjectFolders {
         let mut res = ProjectFolders::default();
         let mut fsc = FileSetConfig::builder();
         let mut local_filesets = vec![];
@@ -333,6 +337,12 @@ impl ProjectFolders {
                 dirs.extensions.push("rs".into());
                 dirs.include.extend(root.include);
                 dirs.exclude.extend(root.exclude);
+                for excl in global_excludes {
+                    if dirs.include.iter().any(|incl| incl.starts_with(excl)) {
+                        dirs.exclude.push(excl.clone());
+                    }
+                }
+
                 vfs::loader::Entry::Directories(dirs)
             };
 
