@@ -134,3 +134,12 @@ pub enum TryReserveError {
 #[cfg(feature = "bumpalo")]
 #[derive(Clone, Copy, Debug)]
 pub struct BumpWrapper<'a>(&'a bumpalo::Bump);
+
+#[cfg(feature = "bumpalo")]
+#[test]
+fn test_bumpalo() {
+    use bumpalo::Bump;
+    let bump = Bump::new();
+    let mut map = HashMap::new_in(BumpWrapper(&bump));
+    map.insert(0, 1);
+}
