@@ -20,6 +20,7 @@ use rustc_errors::{Diagnostic, FatalError};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::num::NonZeroU32;
@@ -478,7 +479,7 @@ where
     result
 }
 
-fn load_from_disk_and_cache_in_memory<CTX, K, V>(
+fn load_from_disk_and_cache_in_memory<CTX, K, V: Debug>(
     tcx: CTX,
     key: K,
     prev_dep_node_index: SerializedDepNodeIndex,
@@ -539,7 +540,7 @@ where
 
 #[inline(never)]
 #[cold]
-fn incremental_verify_ich<CTX, K, V>(
+fn incremental_verify_ich<CTX, K, V: Debug>(
     tcx: CTX,
     result: &V,
     dep_node: &DepNode<CTX::DepKind>,

@@ -67,7 +67,7 @@ macro_rules! language_item_table {
             }
         }
 
-        #[derive(HashStable_Generic)]
+        #[derive(HashStable_Generic, Debug)]
         pub struct LanguageItems {
             /// Mappings from lang items to their possibly found `DefId`s.
             /// The index corresponds to the order in `LangItem`.

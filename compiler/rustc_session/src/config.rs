@@ -361,7 +361,7 @@ impl Default for TrimmedDefPaths {
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
 /// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
 /// dependency tracking for command-line arguments.
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
 
 impl_stable_hash_via_hash!(OutputTypes);
@@ -552,7 +552,7 @@ impl Input {
     }
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
     filestem: String,

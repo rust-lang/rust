@@ -17,7 +17,7 @@ use std::fmt::{self, Debug};
 
 use super::{Field, SourceInfo};
 
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationKind {
     /// Only permitted in regular `fn`s, prohibited in `const fn`s.
     General,
@@ -36,7 +36,7 @@ pub enum UnsafetyViolationKind {
     UnsafeFnBorrowPacked,
 }
 
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationDetails {
     CallToUnsafeFunction,
     UseOfInlineAssembly,
@@ -121,7 +121,7 @@ impl UnsafetyViolationDetails {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
     pub lint_root: hir::HirId,
@@ -129,7 +129,7 @@ pub struct UnsafetyViolation {
     pub details: UnsafetyViolationDetails,
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct UnsafetyCheckResult {
     /// Violations that are propagated *upwards* from this function.
     pub violations: Lrc<[UnsafetyViolation]>,

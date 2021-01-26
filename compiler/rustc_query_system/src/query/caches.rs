@@ -15,7 +15,7 @@ pub trait CacheSelector<K, V> {
 }
 
 pub trait QueryStorage: Default {
-    type Value;
+    type Value: Debug;
     type Stored: Clone;
 
     /// Store a value without putting it in the cache.
@@ -75,7 +75,7 @@ impl<K, V> Default for DefaultCache<K, V> {
     }
 }
 
-impl<K: Eq + Hash, V: Clone> QueryStorage for DefaultCache<K, V> {
+impl<K: Eq + Hash, V: Clone + Debug> QueryStorage for DefaultCache<K, V> {
     type Value = V;
     type Stored = V;
 
@@ -89,7 +89,7 @@ impl<K: Eq + Hash, V: Clone> QueryStorage for DefaultCache<K, V> {
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
     K: Eq + Hash + Clone + Debug,
-    V: Clone,
+    V: Clone + Debug,
 {
     type Key = K;
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
@@ -156,7 +156,7 @@ impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
     }
 }
 
-impl<'tcx, K: Eq + Hash, V: 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
+impl<'tcx, K: Eq + Hash, V: Debug + 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
     type Value = V;
     type Stored = &'tcx V;
 
@@ -171,6 +171,7 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
 impl<'tcx, K, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V>
 where
     K: Eq + Hash + Clone + Debug,
+    V: Debug,
 {
     type Key = K;
     type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;

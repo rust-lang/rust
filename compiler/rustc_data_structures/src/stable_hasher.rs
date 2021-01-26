@@ -552,6 +552,7 @@ pub fn hash_stable_hashmap<HCX, K, V, R, SK, F>(
 
 /// A vector container that makes sure that its items are hashed in a stable
 /// order.
+#[derive(Debug)]
 pub struct StableVec<T>(Vec<T>);
 
 impl<T> StableVec<T> {
