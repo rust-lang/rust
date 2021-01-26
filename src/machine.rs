@@ -135,6 +135,9 @@ pub struct MemoryExtra {
 
     /// Controls whether alignment of memory accesses is being checked.
     pub(crate) check_alignment: AlignmentCheck,
+
+    /// Failure rate of compare_exchange_weak, between 0.0 and 1.0
+    pub(crate) cmpxchg_weak_failure_rate: f64,
 }
 
 impl MemoryExtra {
@@ -162,6 +165,7 @@ impl MemoryExtra {
             rng: RefCell::new(rng),
             tracked_alloc_id: config.tracked_alloc_id,
             check_alignment: config.check_alignment,
+            cmpxchg_weak_failure_rate: config.cmpxchg_weak_failure_rate,
         }
     }
 
