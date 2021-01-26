@@ -1,0 +1,13 @@
+error: expected `;`, found `,`
+  --> $DIR/issue-81097.rs:2:15
+   |
+LL |     drop::<[(), 0]>([]);
+   |               ^
+   |
+help: use `;` to separate the array length from the type
+   |
+LL |     drop::<[(); 0]>([]);
+   |               ^
+
+error: aborting due to previous error
+

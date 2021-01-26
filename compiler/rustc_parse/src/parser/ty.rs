@@ -60,6 +60,27 @@ pub(super) enum RecoverReturnSign {
     No,
 }
 
+/// Signals whether to recover from invalid separator in array syntax `[<ty>; <const>]` (the
+/// semicolon)
+///
+/// We don't want this recovery when parsing pre-2018-edition trait method arguments, which don't
+/// allow names or patterns in the arguments. Example:
+///
+/// ```
+/// trait T {
+///     fn foo([a, b]: [i32; 2]) {}
+/// }
+/// ```
+///
+/// Here `[a, b]` is parsed as a type and we need to fail without recovery/errors so that we can
+/// check (after type parsing fails) whteher it looks like a pattern, and give a more helpful
+/// message if it is. ui/issues/issue-50571.rs tests this.
+#[derive(Copy, Clone, PartialEq)]
+enum RecoverArrayType {
+    Yes,
+    No,
+}
+
 impl RecoverReturnSign {
     /// [RecoverReturnSign::Yes] allows for recovering `fn foo() => u8` and `fn foo(): u8`,
     /// [RecoverReturnSign::OnlyFatArrow] allows for recovering only `fn foo() => u8` (recovering
@@ -98,6 +119,7 @@ impl<'a> Parser<'a> {
             AllowCVariadic::No,
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
+            RecoverArrayType::Yes,
         )
     }
 
@@ -110,6 +132,7 @@ impl<'a> Parser<'a> {
             AllowCVariadic::Yes,
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
+            RecoverArrayType::No, // see type documentation
         )
     }
 
@@ -125,6 +148,7 @@ impl<'a> Parser<'a> {
             AllowCVariadic::No,
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
+            RecoverArrayType::Yes,
         )
     }
 
@@ -135,6 +159,7 @@ impl<'a> Parser<'a> {
             AllowCVariadic::Yes,
             RecoverQPath::Yes,
             RecoverReturnSign::OnlyFatArrow,
+            RecoverArrayType::Yes,
         )
     }
 
@@ -152,6 +177,7 @@ impl<'a> Parser<'a> {
                 AllowCVariadic::No,
                 recover_qpath,
                 recover_return_sign,
+                RecoverArrayType::Yes,
             )?;
             FnRetTy::Ty(ty)
         } else if recover_return_sign.can_recover(&self.token.kind) {
@@ -171,6 +197,7 @@ impl<'a> Parser<'a> {
                 AllowCVariadic::No,
                 recover_qpath,
                 recover_return_sign,
+                RecoverArrayType::Yes,
             )?;
             FnRetTy::Ty(ty)
         } else {
@@ -184,6 +211,7 @@ impl<'a> Parser<'a> {
         allow_c_variadic: AllowCVariadic,
         recover_qpath: RecoverQPath,
         recover_return_sign: RecoverReturnSign,
+        recover_array_type: RecoverArrayType,
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
@@ -199,7 +227,7 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::BinOp(token::Star)) {
             self.parse_ty_ptr()?
         } else if self.eat(&token::OpenDelim(token::Bracket)) {
-            self.parse_array_or_slice_ty()?
+            self.parse_array_or_slice_ty(recover_array_type)?
         } else if self.check(&token::BinOp(token::And)) || self.check(&token::AndAnd) {
             // Reference
             self.expect_and()?;
@@ -346,7 +374,10 @@ impl<'a> Parser<'a> {
 
     /// Parses an array (`[TYPE; EXPR]`) or slice (`[TYPE]`) type.
     /// The opening `[` bracket is already eaten.
-    fn parse_array_or_slice_ty(&mut self) -> PResult<'a, TyKind> {
+    fn parse_array_or_slice_ty(
+        &mut self,
+        recover_array_type: RecoverArrayType,
+    ) -> PResult<'a, TyKind> {
         let elt_ty = match self.parse_ty() {
             Ok(ty) => ty,
             Err(mut err)
@@ -360,13 +391,59 @@ impl<'a> Parser<'a> {
             }
             Err(err) => return Err(err),
         };
-        let ty = if self.eat(&token::Semi) {
-            TyKind::Array(elt_ty, self.parse_anon_const_expr()?)
-        } else {
-            TyKind::Slice(elt_ty)
-        };
-        self.expect(&token::CloseDelim(token::Bracket))?;
-        Ok(ty)
+
+        match self.token.kind {
+            token::Semi => {
+                self.bump(); // consume ';'
+                let size_const = self.parse_anon_const_expr()?;
+                self.expect(&token::CloseDelim(token::Bracket))?;
+                Ok(TyKind::Array(elt_ty, size_const))
+            }
+            token::CloseDelim(token::Bracket) => {
+                self.bump(); // consume ']'
+                Ok(TyKind::Slice(elt_ty))
+            }
+            token::Comma if recover_array_type == RecoverArrayType::Yes => {
+                // Possibly used ',' instead of ';' in slice type syntax, try to recover
+                let comma_span = self.token.span;
+                self.bump(); // consume ','
+                let snapshot = self.clone();
+                match self.parse_anon_const_expr() {
+                    Ok(array_size) => {
+                        // Recovery successful, generate help at the position of `,`
+                        let mut comma_err =
+                            self.struct_span_err(comma_span, "expected `;`, found `,`");
+                        comma_err.span_suggestion_short(
+                            comma_span,
+                            "use `;` to separate the array length from the type",
+                            ";".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                        comma_err.emit();
+                        self.expect(&token::CloseDelim(token::Bracket))?;
+                        Ok(TyKind::Array(elt_ty, array_size))
+                    }
+                    Err(mut const_expr_err) => {
+                        // Recovery failed, restore parser state, emit an error for the ','
+                        const_expr_err.cancel();
+                        *self = snapshot;
+                        let comma_err = self
+                            .struct_span_err(comma_span, "expected one of `;` or `]`, found `,`");
+                        Err(comma_err)
+                    }
+                }
+            }
+            _ => {
+                let err = self.struct_span_err(
+                    self.token.span,
+                    &format!(
+                        "expected one of ';' or ']', found {}",
+                        super::token_descr(&self.token)
+                    ),
+                );
+                Err(err)
+            }
+        }
     }
 
     fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
