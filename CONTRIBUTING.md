@@ -46,11 +46,11 @@ first read the [Basics docs](doc/basics.md).**
 
 ### Finding something to fix/improve
 
-All issues on Clippy are mentored, if you want help with a bug just ask
-@Manishearth, @flip1995, @phansch or @yaahc.
+All issues on Clippy are mentored, if you want help simply ask @Manishearth, @flip1995, @phansch
+or @yaahc directly by mentioning them in the issue or over on [Zulip].
 
-Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy issues.
-If you want to work on an issue, please leave a comment so that we can assign it to you!
+Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy
+issues. You can use `@rustbot claim` to assign the issue to yourself.
 
 There are also some abandoned PRs, marked with [`S-inactive-closed`].
 Pretty often these PRs are nearly completed and just need some extra steps
