@@ -15,8 +15,8 @@ For example, `Box` pointers require two lang items, one for allocation
 and one for deallocation. A freestanding program that uses the `Box`
 sugar for dynamic allocations via `malloc` and `free`:
 
-```rust,ignore
-#![feature(lang_items, box_syntax, start, libc, core_intrinsics)]
+```rust,ignore (libc-is-finicky)
+#![feature(lang_items, box_syntax, start, libc, core_intrinsics, rustc_private)]
 #![no_std]
 use core::intrinsics;
 use core::panic::PanicInfo;
@@ -105,8 +105,8 @@ or overriding the default shim for the C `main` function with your own.
 The function marked `#[start]` is passed the command line parameters
 in the same format as C:
 
-```rust,ignore
-#![feature(lang_items, core_intrinsics)]
+```rust,ignore (libc-is-finicky)
+#![feature(lang_items, core_intrinsics, rustc_private)]
 #![feature(start)]
 #![no_std]
 use core::intrinsics;
@@ -141,8 +141,8 @@ with `#![no_main]` and then create the appropriate symbol with the
 correct ABI and the correct name, which requires overriding the
 compiler's name mangling too:
 
-```rust,ignore
-#![feature(lang_items, core_intrinsics)]
+```rust,ignore (libc-is-finicky)
+#![feature(lang_items, core_intrinsics, rustc_private)]
 #![feature(start)]
 #![no_std]
 #![no_main]

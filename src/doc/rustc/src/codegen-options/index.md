@@ -499,7 +499,7 @@ This instructs `rustc` to generate code specifically for a particular processor.
 You can run `rustc --print target-cpus` to see the valid options to pass
 here. Each target has a default base CPU. Special values include:
 
-* `native` can be passed to use the processor of the host machine. 
+* `native` can be passed to use the processor of the host machine.
 * `generic` refers to an LLVM target with minimal features but modern tuning.
 
 ## target-feature
