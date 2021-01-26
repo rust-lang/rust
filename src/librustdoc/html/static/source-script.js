@@ -113,6 +113,8 @@ function createSidebarToggle() {
     return sidebarToggle;
 }
 
+// This function is called from "source-files.js", generated in `html/render/mod.rs`.
+// eslint-disable-next-line no-unused-vars
 function createSourceSidebar() {
     if (window.rootPath.endsWith("/") === false) {
         window.rootPath += "/";

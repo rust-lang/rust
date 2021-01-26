@@ -1,5 +1,5 @@
 // From rust:
-/* global resourcesSuffix, getSettingValue */
+/* global resourcesSuffix */
 
 var darkThemes = ["dark", "ayu"];
 var currentTheme = document.getElementById("themeStyle");
@@ -35,10 +35,12 @@ var localStoredTheme = getSettingValue("theme");
 
 var savedHref = [];
 
+// eslint-disable-next-line no-unused-vars
 function hasClass(elem, className) {
     return elem && elem.classList && elem.classList.contains(className);
 }
 
+// eslint-disable-next-line no-unused-vars
 function addClass(elem, className) {
     if (!elem || !elem.classList) {
         return;
@@ -46,6 +48,7 @@ function addClass(elem, className) {
     elem.classList.add(className);
 }
 
+// eslint-disable-next-line no-unused-vars
 function removeClass(elem, className) {
     if (!elem || !elem.classList) {
         return;
@@ -81,6 +84,7 @@ function onEachLazy(lazyArray, func, reversed) {
         reversed);
 }
 
+// eslint-disable-next-line no-unused-vars
 function hasOwnProperty(obj, property) {
     return Object.prototype.hasOwnProperty.call(obj, property);
 }
@@ -148,6 +152,8 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     }
 }
 
+// This function is called from "theme.js", generated in `html/render/mod.rs`.
+// eslint-disable-next-line no-unused-vars
 function useSystemTheme(value) {
     if (value === undefined) {
         value = true;
@@ -172,7 +178,7 @@ var updateSystemTheme = (function() {
             switchTheme(
                 currentTheme,
                 mainTheme,
-                JSON.parse(cssTheme) || light,
+                JSON.parse(cssTheme) || "light",
                 true
             );
         };
