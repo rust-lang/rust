@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Foo<String>: Copy` is not satisfied
-  --> $DIR/trait-error.rs:7:5
+  --> $DIR/trait-error.rs:5:5
    |
 LL |     [Foo(String::new()); 4];
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Foo<String>`

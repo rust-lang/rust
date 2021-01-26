@@ -43,10 +43,6 @@ use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligations}
 use crate::dataflow::impls::MaybeInitializedPlaces;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::ResultsCursor;
-use crate::transform::{
-    check_consts::ConstCx,
-    promote_consts::should_suggest_const_in_array_repeat_expressions_attribute,
-};
 
 use crate::borrow_check::{
     borrow_set::BorrowSet,
@@ -1997,22 +1993,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             let span = body.source_info(location).span;
                             let ty = operand.ty(body, tcx);
                             if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
-                                let ccx = ConstCx::new_with_param_env(tcx, body, self.param_env);
-                                // To determine if `const_in_array_repeat_expressions` feature gate should
-                                // be mentioned, need to check if the rvalue is promotable.
-                                let should_suggest =
-                                    should_suggest_const_in_array_repeat_expressions_attribute(
-                                        &ccx, operand,
-                                    );
-                                debug!("check_rvalue: should_suggest={:?}", should_suggest);
-
                                 let def_id = body.source.def_id().expect_local();
                                 self.infcx.report_selection_error(
                                     &traits::Obligation::new(
                                         ObligationCause::new(
                                             span,
                                             self.tcx().hir().local_def_id_to_hir_id(def_id),
-                                            traits::ObligationCauseCode::RepeatVec(should_suggest),
+                                            traits::ObligationCauseCode::RepeatVec,
                                         ),
                                         self.param_env,
                                         ty::Binder::bind(ty::TraitRef::new(

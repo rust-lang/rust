@@ -102,9 +102,6 @@ pub enum Candidate {
     /// Borrow of a constant temporary, candidate for lifetime extension.
     Ref(Location),
 
-    /// Promotion of the `x` in `[x; 32]`.
-    Repeat(Location),
-
     /// Currently applied to function calls where the callee has the unstable
     /// `#[rustc_args_required_const]` attribute as well as the SIMD shuffle
     /// intrinsic. The intrinsic requires the arguments are indeed constant and
@@ -120,14 +117,14 @@ impl Candidate {
     /// Returns `true` if we should use the "explicit" rules for promotability for this `Candidate`.
     fn forces_explicit_promotion(&self) -> bool {
         match self {
-            Candidate::Ref(_) | Candidate::Repeat(_) => false,
+            Candidate::Ref(_) => false,
             Candidate::Argument { .. } | Candidate::InlineAsm { .. } => true,
         }
     }
 
     fn source_info(&self, body: &Body<'_>) -> SourceInfo {
         match self {
-            Candidate::Ref(location) | Candidate::Repeat(location) => *body.source_info(*location),
+            Candidate::Ref(location) => *body.source_info(*location),
             Candidate::Argument { bb, .. } | Candidate::InlineAsm { bb, .. } => {
                 *body.source_info(body.terminator_loc(*bb))
             }
@@ -212,11 +209,6 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         match *rvalue {
             Rvalue::Ref(..) => {
                 self.candidates.push(Candidate::Ref(location));
-            }
-            Rvalue::Repeat(..) if self.ccx.tcx.features().const_in_array_repeat_expressions => {
-                // FIXME(#49147) only promote the element when it isn't `Copy`
-                // (so that code that can copy it at runtime is unaffected).
-                self.candidates.push(Candidate::Repeat(location));
             }
             _ => {}
         }
@@ -330,21 +322,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                         }
 
                         Ok(())
-                    }
-                    _ => bug!(),
-                }
-            }
-            Candidate::Repeat(loc) => {
-                assert!(!self.explicit);
-
-                let statement = &self.body[loc.block].statements[loc.statement_index];
-                match &statement.kind {
-                    StatementKind::Assign(box (_, Rvalue::Repeat(ref operand, _))) => {
-                        if !self.tcx.features().const_in_array_repeat_expressions {
-                            return Err(Unpromotable);
-                        }
-
-                        self.validate_operand(operand)
                     }
                     _ => bug!(),
                 }
@@ -1090,18 +1067,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         _ => bug!(),
                     }
                 }
-                Candidate::Repeat(loc) => {
-                    let statement = &mut blocks[loc.block].statements[loc.statement_index];
-                    match statement.kind {
-                        StatementKind::Assign(box (_, Rvalue::Repeat(ref mut operand, _))) => {
-                            let ty = operand.ty(local_decls, self.tcx);
-                            let span = statement.source_info.span;
-
-                            Rvalue::Use(mem::replace(operand, promoted_operand(ty, span)))
-                        }
-                        _ => bug!(),
-                    }
-                }
                 Candidate::Argument { bb, index } => {
                     let terminator = blocks[bb].terminator_mut();
                     match terminator.kind {
@@ -1182,8 +1147,7 @@ pub fn promote_candidates<'tcx>(
     let mut extra_statements = vec![];
     for candidate in candidates.into_iter().rev() {
         match candidate {
-            Candidate::Repeat(Location { block, statement_index })
-            | Candidate::Ref(Location { block, statement_index }) => {
+            Candidate::Ref(Location { block, statement_index }) => {
                 if let StatementKind::Assign(box (place, _)) =
                     &body[block].statements[statement_index].kind
                 {
@@ -1266,28 +1230,4 @@ pub fn promote_candidates<'tcx>(
     }
 
     promotions
-}
-
-/// This function returns `true` if the `const_in_array_repeat_expressions` feature attribute should
-/// be suggested. This function is probably quite expensive, it shouldn't be run in the happy path.
-/// Feature attribute should be suggested if `operand` can be promoted and the feature is not
-/// enabled.
-crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
-    ccx: &ConstCx<'_, 'tcx>,
-    operand: &Operand<'tcx>,
-) -> bool {
-    let mut rpo = traversal::reverse_postorder(&ccx.body);
-    let (temps, _) = collect_temps_and_candidates(&ccx, &mut rpo);
-    let validator = Validator { ccx, temps: &temps, explicit: false };
-
-    let should_promote = validator.validate_operand(operand).is_ok();
-    let feature_flag = validator.ccx.tcx.features().const_in_array_repeat_expressions;
-    debug!(
-        "should_suggest_const_in_array_repeat_expressions_flag: def_id={:?} \
-            should_promote={:?} feature_flag={:?}",
-        validator.ccx.def_id(),
-        should_promote,
-        feature_flag
-    );
-    should_promote && !feature_flag
 }

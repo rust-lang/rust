@@ -89,7 +89,6 @@
 #![feature(coerce_unsized)]
 #![feature(const_btree_new)]
 #![feature(const_fn)]
-#![feature(const_in_array_repeat_expressions)]
 #![feature(cow_is_borrowed)]
 #![feature(const_cow_is_borrowed)]
 #![feature(dispatch_from_dyn)]

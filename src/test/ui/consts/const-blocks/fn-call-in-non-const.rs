@@ -1,5 +1,3 @@
-#![feature(const_in_array_repeat_expressions)]
-
 // Some type that is not copyable.
 struct Bar;
 

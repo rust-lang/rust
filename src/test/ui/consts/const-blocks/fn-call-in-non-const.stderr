@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Option<Bar>: Copy` is not satisfied
-  --> $DIR/fn-call-in-non-const.rs:16:31
+  --> $DIR/fn-call-in-non-const.rs:14:31
    |
 LL |     let _: [Option<Bar>; 2] = [no_copy(); 2];
    |                               ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Option<Bar>`
