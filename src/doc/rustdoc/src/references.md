@@ -3,7 +3,7 @@
 There are many great `rustdoc` references out there.
 If you know of other great resources, please submit a pull request!
 
-## Official 
+## Official
 
 - [Learn Rust]
 - [Rust By Example]
@@ -11,7 +11,7 @@ If you know of other great resources, please submit a pull request!
 - [RFC 1574: More API Documentation Conventions]
 - [RFC 1946: Intra Rustdoc Links]
 
-## Community 
+## Community
 - [API Guidelines]
 - [Github tagged RFCs]
 - [Github tagged issues]

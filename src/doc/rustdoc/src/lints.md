@@ -3,10 +3,11 @@
 `rustdoc` provides lints to help you writing and testing your documentation. You
 can use them like any other lints by doing this:
 
-```rust,ignore
+```rust
 #![allow(missing_docs)] // allows the lint, no diagnostics will be reported
 #![warn(missing_docs)] // warn if there are missing docs
 #![deny(missing_docs)] // error if there are missing docs
+# //! Crate docs.
 ```
 
 Here is the list of the lints provided by `rustdoc`:
