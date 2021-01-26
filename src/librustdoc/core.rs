@@ -150,11 +150,9 @@ impl<'tcx> DocContext<'tcx> {
 
         let mut fake_ids = self.fake_def_ids.borrow_mut();
 
-        let def_id = *fake_ids.entry(crate_num).or_insert(start_def_id);
-        fake_ids.insert(
-            crate_num,
-            DefId { krate: crate_num, index: DefIndex::from(def_id.index.index() + 1) },
-        );
+        let def_id = fake_ids.entry(crate_num).or_insert(start_def_id);
+        *def_id = DefId { krate: crate_num, index: DefIndex::from(def_id.index.index() + 1) };
+        let def_id = *def_id;
 
         MAX_DEF_ID.with(|m| {
             m.borrow_mut().entry(def_id.krate).or_insert(start_def_id);
