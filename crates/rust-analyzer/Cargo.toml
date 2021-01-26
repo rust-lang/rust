@@ -37,6 +37,7 @@ lsp-server = "0.5.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry"] }
 tracing-tree = { version = "0.1.4" }
+always-assert = "0.1"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 flycheck = { path = "../flycheck", version = "0.0.0" }
@@ -72,3 +73,4 @@ tt = { path = "../tt" }
 
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
+force-always-assert = ["always-assert/force"]

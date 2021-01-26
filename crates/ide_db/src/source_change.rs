@@ -10,7 +10,7 @@ use std::{
 
 use base_db::{AnchoredPathBuf, FileId};
 use rustc_hash::FxHashMap;
-use stdx::assert_never;
+use stdx::never;
 use text_edit::TextEdit;
 
 #[derive(Default, Debug, Clone)]
@@ -40,10 +40,7 @@ impl SourceChange {
     pub fn insert_source_edit(&mut self, file_id: FileId, edit: TextEdit) {
         match self.source_file_edits.entry(file_id) {
             Entry::Occupied(mut entry) => {
-                assert_never!(
-                    entry.get_mut().union(edit).is_err(),
-                    "overlapping edits for same file"
-                );
+                never!(entry.get_mut().union(edit).is_err(), "overlapping edits for same file");
             }
             Entry::Vacant(entry) => {
                 entry.insert(edit);

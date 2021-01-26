@@ -4,7 +4,7 @@ use std::{cmp::Ordering, ops, process, time::Instant};
 mod macros;
 pub mod panic_context;
 
-pub use crate::macros::{on_assert_failure, set_assert_hook};
+pub use always_assert::{always, never};
 
 #[inline(always)]
 pub fn is_ci() -> bool {

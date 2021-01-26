@@ -9,7 +9,7 @@ use ide_db::{
     search::FileReference,
     RootDatabase,
 };
-use stdx::assert_never;
+use stdx::never;
 use syntax::{
     ast::{self, NameOwner},
     lex_single_syntax_kind, AstNode, SyntaxKind, SyntaxNode, T,
@@ -285,7 +285,7 @@ fn rename_mod(
 }
 
 fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameResult<SourceChange> {
-    if assert_never!(local.is_self(sema.db)) {
+    if never!(local.is_self(sema.db)) {
         bail!("rename_to_self invoked on self");
     }
 
@@ -388,7 +388,7 @@ fn rename_self_to_param(
     let (file_id, self_param) = match local.source(sema.db) {
         InFile { file_id, value: Either::Right(self_param) } => (file_id, self_param),
         _ => {
-            assert_never!(true, "rename_self_to_param invoked on a non-self local");
+            never!(true, "rename_self_to_param invoked on a non-self local");
             bail!("rename_self_to_param invoked on a non-self local");
         }
     };
