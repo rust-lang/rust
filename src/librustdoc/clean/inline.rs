@@ -133,10 +133,7 @@ crate fn try_inline_glob(
     res: Res,
     visited: &mut FxHashSet<DefId>,
 ) -> Option<Vec<clean::Item>> {
-    if res == Res::Err {
-        return None;
-    }
-    let did = res.def_id();
+    let did = res.opt_def_id()?;
     if did.is_local() {
         return None;
     }
