@@ -24,9 +24,12 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 
-use std::cell::{Cell, RefCell};
 use std::mem;
 use std::rc::Rc;
+use std::{
+    cell::{Cell, RefCell},
+    collections::hash_map::Entry,
+};
 
 use crate::clean;
 use crate::clean::{AttributesExt, MAX_DEF_ID};
@@ -150,13 +153,17 @@ impl<'tcx> DocContext<'tcx> {
 
         let mut fake_ids = self.fake_def_ids.borrow_mut();
 
-        let def_id = fake_ids.entry(crate_num).or_insert(start_def_id);
+        let def_id = match fake_ids.entry(crate_num) {
+            Entry::Vacant(e) => {
+                MAX_DEF_ID.with(|m| {
+                    m.borrow_mut().insert(crate_num, start_def_id);
+                });
+                e.insert(start_def_id)
+            }
+            Entry::Occupied(e) => e.into_mut(),
+        };
         *def_id = DefId { krate: crate_num, index: DefIndex::from(def_id.index.index() + 1) };
         let def_id = *def_id;
-
-        MAX_DEF_ID.with(|m| {
-            m.borrow_mut().entry(def_id.krate).or_insert(start_def_id);
-        });
 
         self.all_fake_def_ids.borrow_mut().insert(def_id);
 
