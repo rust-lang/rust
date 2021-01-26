@@ -515,7 +515,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 Ok(true)
             }
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
-                let value = self.ecx.read_scalar(value)?;
+                let value = try_validation!(
+                    self.ecx.read_scalar(value),
+                    self.path,
+                    err_unsup!(ReadPointerAsBytes) => { "read of part of a pointer" },
+                );
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
                 if self.ctfe_mode.is_some() {
