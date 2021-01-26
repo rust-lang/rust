@@ -588,7 +588,7 @@ impl<'a> Parser<'a> {
     fn parse_item_list<T>(
         &mut self,
         attrs: &mut Vec<Attribute>,
-        mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
+        mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<T>>,
     ) -> PResult<'a, Vec<T>> {
         let open_brace_span = self.token.span;
         self.expect(&token::OpenDelim(token::Brace))?;
@@ -611,7 +611,7 @@ impl<'a> Parser<'a> {
                         .emit();
                     break;
                 }
-                Ok(Some(item)) => items.extend(item),
+                Ok(item) => items.extend(item),
                 Err(mut err) => {
                     self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
                     err.span_label(open_brace_span, "while parsing this item list starting here")
@@ -722,17 +722,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_impl_item(&mut self) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+    pub fn parse_impl_item(&mut self) -> PResult<'a, Option<P<AssocItem>>> {
         self.parse_assoc_item(|_| true)
     }
 
-    pub fn parse_trait_item(&mut self) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+    pub fn parse_trait_item(&mut self) -> PResult<'a, Option<P<AssocItem>>> {
         self.parse_assoc_item(|edition| edition >= Edition::Edition2018)
     }
 
     /// Parses associated items.
-    fn parse_assoc_item(&mut self, req_name: ReqName) -> PResult<'a, Option<Option<P<AssocItem>>>> {
-        Ok(self.parse_item_(req_name, ForceCollect::No)?.map(
+    fn parse_assoc_item(&mut self, req_name: ReqName) -> PResult<'a, Option<P<AssocItem>>> {
+        Ok(self.parse_item_(req_name, ForceCollect::No)?.and_then(
             |Item { attrs, id, span, vis, ident, kind, tokens }| {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
@@ -923,8 +923,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).
-    pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
-        Ok(self.parse_item_(|_| true, ForceCollect::No)?.map(
+    pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<P<ForeignItem>>> {
+        Ok(self.parse_item_(|_| true, ForceCollect::No)?.and_then(
             |Item { attrs, id, span, vis, ident, kind, tokens }| {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,

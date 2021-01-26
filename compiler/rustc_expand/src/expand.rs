@@ -912,32 +912,16 @@ pub fn parse_ast_fragment<'a>(
 ) -> PResult<'a, AstFragment> {
     Ok(match kind {
         AstFragmentKind::Items => {
-            let mut items = SmallVec::new();
-            while let Some(item) = this.parse_item(ForceCollect::No)? {
-                items.push(item);
-            }
-            AstFragment::Items(items)
+            AstFragment::Items(this.parse_item(ForceCollect::No)?.into_iter().collect())
         }
         AstFragmentKind::TraitItems => {
-            let mut items = SmallVec::new();
-            while let Some(item) = this.parse_trait_item()? {
-                items.extend(item);
-            }
-            AstFragment::TraitItems(items)
+            AstFragment::TraitItems(this.parse_trait_item()?.into_iter().collect())
         }
         AstFragmentKind::ImplItems => {
-            let mut items = SmallVec::new();
-            while let Some(item) = this.parse_impl_item()? {
-                items.extend(item);
-            }
-            AstFragment::ImplItems(items)
+            AstFragment::ImplItems(this.parse_impl_item()?.into_iter().collect())
         }
         AstFragmentKind::ForeignItems => {
-            let mut items = SmallVec::new();
-            while let Some(item) = this.parse_foreign_item()? {
-                items.extend(item);
-            }
-            AstFragment::ForeignItems(items)
+            AstFragment::ForeignItems(this.parse_foreign_item()?.into_iter().collect())
         }
         AstFragmentKind::Stmts => {
             let mut stmts = SmallVec::new();
