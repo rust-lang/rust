@@ -1,4 +1,4 @@
-use crate::utils::{qpath_res, snippet, span_lint_and_then, visitors::LocalUsedVisitor};
+use crate::utils::{snippet, span_lint_and_then, visitors::LocalUsedVisitor};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -145,7 +145,7 @@ fn check_assign<'tcx>(
         if let hir::StmtKind::Semi(ref expr) = expr.kind;
         if let hir::ExprKind::Assign(ref var, ref value, _) = expr.kind;
         if let hir::ExprKind::Path(ref qpath) = var.kind;
-        if let Res::Local(local_id) = qpath_res(cx, qpath, var.hir_id);
+        if let Res::Local(local_id) = cx.qpath_res(qpath, var.hir_id);
         if decl == local_id;
         then {
             let mut v = LocalUsedVisitor::new(decl);
