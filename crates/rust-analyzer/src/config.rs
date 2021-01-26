@@ -39,7 +39,7 @@ config_data! {
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` changes.
         cargo_autoreload: bool           = "true",
-        /// Activate all available features.
+        /// Activate all available features (`--all-features`).
         cargo_allFeatures: bool          = "false",
         /// List of features to activate.
         cargo_features: Vec<String>      = "[]",
@@ -55,10 +55,10 @@ config_data! {
 
         /// Run specified `cargo check` command for diagnostics on save.
         checkOnSave_enable: bool                         = "true",
-        /// Check with all features (will be passed as `--all-features`).
+        /// Check with all features (`--all-features`).
         /// Defaults to `#rust-analyzer.cargo.allFeatures#`.
         checkOnSave_allFeatures: Option<bool>            = "null",
-        /// Check all targets and tests (will be passed as `--all-targets`).
+        /// Check all targets and tests (`--all-targets`).
         checkOnSave_allTargets: bool                     = "true",
         /// Cargo command to use for `cargo check`.
         checkOnSave_command: String                      = "\"check\"",
@@ -156,7 +156,7 @@ config_data! {
         /// `rust-project.json`, or JSON objects in `rust-project.json` format.
         linkedProjects: Vec<ManifestOrProjectJson> = "[]",
 
-        /// Number of syntax trees rust-analyzer keeps in memory.  Defaults to 128.
+        /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
         lruCapacity: Option<usize>                 = "null",
 
         /// Whether to show `can't find Cargo.toml` error message.
@@ -844,15 +844,32 @@ mod tests {
     fn schema_in_sync_with_package_json() {
         let s = Config::json_schema();
         let schema = format!("{:#}", s);
-        let schema = schema.trim_start_matches('{').trim_end_matches('}');
+        let mut schema = schema
+            .trim_start_matches('{')
+            .trim_end_matches('}')
+            .replace("  ", "    ")
+            .replace("\n", "\n            ")
+            .trim_start_matches('\n')
+            .trim_end()
+            .to_string();
+        schema.push_str(",\n");
 
-        let package_json = project_dir().join("editors/code/package.json");
-        let package_json = fs::read_to_string(&package_json).unwrap();
+        let package_json_path = project_dir().join("editors/code/package.json");
+        let mut package_json = fs::read_to_string(&package_json_path).unwrap();
 
-        let p = remove_ws(&package_json);
+        let start_marker = "                \"$generated-start\": false,\n";
+        let end_marker = "                \"$generated-end\": false\n";
+
+        let start = package_json.find(start_marker).unwrap() + start_marker.len();
+        let end = package_json.find(end_marker).unwrap();
+        let p = remove_ws(&package_json[start..end]);
         let s = remove_ws(&schema);
 
-        assert!(p.contains(&s), "update config in package.json. New config:\n{:#}", schema);
+        if !p.contains(&s) {
+            package_json.replace_range(start..end, &schema);
+            fs::write(&package_json_path, &mut package_json).unwrap();
+            panic!("new config, updating package.json")
+        }
     }
 
     #[test]
