@@ -64,6 +64,7 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
+#![feature(option_result_unwrap_unchecked)]
 #![feature(option_unwrap_none)]
 #![feature(peekable_next_if)]
 #![feature(peekable_peek_mut)]
