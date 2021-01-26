@@ -3,21 +3,55 @@
 use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
-use rustc_target::abi::call::PassMode as RustcPassMode;
-
-fn return_layout<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Module>) -> TyAndLayout<'tcx> {
-    fx.layout_of(fx.monomorphize(&fx.mir.local_decls[RETURN_PLACE].ty))
-}
+use rustc_middle::ty::layout::FnAbiExt;
+use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 
 /// Can the given type be returned into an ssa var or does it need to be returned on the stack.
 pub(crate) fn can_return_to_ssa_var<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    dest_layout: TyAndLayout<'tcx>,
+    fx: &FunctionCx<'_, 'tcx, impl Module>,
+    func: &mir::Operand<'tcx>,
+    args: &[mir::Operand<'tcx>],
 ) -> bool {
-    match get_arg_abi(tcx, dest_layout).mode {
-        RustcPassMode::Ignore | RustcPassMode::Direct(_) | RustcPassMode::Pair(_, _) => true,
+    let fn_ty = fx.monomorphize(func.ty(fx.mir, fx.tcx));
+    let fn_sig = fx
+        .tcx
+        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), fn_ty.fn_sig(fx.tcx));
+
+    // Handle special calls like instrinsics and empty drop glue.
+    let instance = if let ty::FnDef(def_id, substs) = *fn_ty.kind() {
+        let instance = ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
+            .unwrap()
+            .unwrap()
+            .polymorphize(fx.tcx);
+
+        match instance.def {
+            InstanceDef::Intrinsic(_) | InstanceDef::DropGlue(_, _) => {
+                return true;
+            }
+            _ => Some(instance),
+        }
+    } else {
+        None
+    };
+
+    let extra_args = &args[fn_sig.inputs().len()..];
+    let extra_args = extra_args
+        .iter()
+        .map(|op_arg| fx.monomorphize(op_arg.ty(fx.mir, fx.tcx)))
+        .collect::<Vec<_>>();
+    let fn_abi = if let Some(instance) = instance {
+        FnAbi::of_instance(&RevealAllLayoutCx(fx.tcx), instance, &extra_args)
+    } else {
+        FnAbi::of_fn_ptr(
+            &RevealAllLayoutCx(fx.tcx),
+            fn_ty.fn_sig(fx.tcx),
+            &extra_args,
+        )
+    };
+    match fn_abi.ret.mode {
+        PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => true,
         // FIXME Make it possible to return Cast and Indirect to an ssa var.
-        RustcPassMode::Cast(_) | RustcPassMode::Indirect { .. } => false,
+        PassMode::Cast(_) | PassMode::Indirect { .. } => false,
     }
 }
 
@@ -28,30 +62,39 @@ pub(super) fn codegen_return_param<'tcx>(
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
     start_block: Block,
 ) -> CPlace<'tcx> {
-    let ret_layout = return_layout(fx);
-    let ret_arg_abi = get_arg_abi(fx.tcx, ret_layout);
-    let (ret_place, ret_param) = match ret_arg_abi.mode {
-        RustcPassMode::Ignore => (CPlace::no_place(ret_layout), Empty),
-        RustcPassMode::Direct(_) | RustcPassMode::Pair(_, _) => {
+    let (ret_place, ret_param) = match fx.fn_abi.as_ref().unwrap().ret.mode {
+        PassMode::Ignore => (
+            CPlace::no_place(fx.fn_abi.as_ref().unwrap().ret.layout),
+            Empty,
+        ),
+        PassMode::Direct(_) | PassMode::Pair(_, _) => {
             let is_ssa = ssa_analyzed[RETURN_PLACE] == crate::analyze::SsaKind::Ssa;
             (
-                super::make_local_place(fx, RETURN_PLACE, ret_layout, is_ssa),
+                super::make_local_place(
+                    fx,
+                    RETURN_PLACE,
+                    fx.fn_abi.as_ref().unwrap().ret.layout,
+                    is_ssa,
+                ),
                 Empty,
             )
         }
-        RustcPassMode::Cast(_)
-        | RustcPassMode::Indirect {
+        PassMode::Cast(_)
+        | PassMode::Indirect {
             attrs: _,
             extra_attrs: None,
             on_stack: _,
         } => {
             let ret_param = fx.bcx.append_block_param(start_block, fx.pointer_type);
             (
-                CPlace::for_ptr(Pointer::new(ret_param), ret_layout),
+                CPlace::for_ptr(
+                    Pointer::new(ret_param),
+                    fx.fn_abi.as_ref().unwrap().ret.layout,
+                ),
                 Single(ret_param),
             )
         }
-        RustcPassMode::Indirect {
+        PassMode::Indirect {
             attrs: _,
             extra_attrs: Some(_),
             on_stack: _,
@@ -68,7 +111,8 @@ pub(super) fn codegen_return_param<'tcx>(
         Some(RETURN_PLACE),
         None,
         ret_param,
-        &ret_arg_abi,
+        fx.fn_abi.as_ref().unwrap().ret.mode,
+        fx.fn_abi.as_ref().unwrap().ret.layout,
     );
 
     ret_place
@@ -78,17 +122,14 @@ pub(super) fn codegen_return_param<'tcx>(
 /// returns the call return value(s) if any are written to the correct place.
 pub(super) fn codegen_with_call_return_arg<'tcx, M: Module, T>(
     fx: &mut FunctionCx<'_, 'tcx, M>,
-    fn_sig: FnSig<'tcx>,
+    ret_arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     ret_place: Option<CPlace<'tcx>>,
     f: impl FnOnce(&mut FunctionCx<'_, 'tcx, M>, Option<Value>) -> (Inst, T),
 ) -> (Inst, T) {
-    let ret_layout = fx.layout_of(fn_sig.output());
-
-    let output_arg_abi = get_arg_abi(fx.tcx, ret_layout);
-    let return_ptr = match output_arg_abi.mode {
-        RustcPassMode::Ignore => None,
-        RustcPassMode::Cast(_)
-        | RustcPassMode::Indirect {
+    let return_ptr = match ret_arg_abi.mode {
+        PassMode::Ignore => None,
+        PassMode::Cast(_)
+        | PassMode::Indirect {
             attrs: _,
             extra_attrs: None,
             on_stack: _,
@@ -96,38 +137,41 @@ pub(super) fn codegen_with_call_return_arg<'tcx, M: Module, T>(
             Some(ret_place) => Some(ret_place.to_ptr().get_addr(fx)),
             None => Some(fx.bcx.ins().iconst(fx.pointer_type, 43)), // FIXME allocate temp stack slot
         },
-        RustcPassMode::Indirect {
+        PassMode::Indirect {
             attrs: _,
             extra_attrs: Some(_),
             on_stack: _,
         } => unreachable!("unsized return value"),
-        RustcPassMode::Direct(_) | RustcPassMode::Pair(_, _) => None,
+        PassMode::Direct(_) | PassMode::Pair(_, _) => None,
     };
 
     let (call_inst, meta) = f(fx, return_ptr);
 
-    match output_arg_abi.mode {
-        RustcPassMode::Ignore => {}
-        RustcPassMode::Direct(_) => {
+    match ret_arg_abi.mode {
+        PassMode::Ignore => {}
+        PassMode::Direct(_) => {
             if let Some(ret_place) = ret_place {
                 let ret_val = fx.bcx.inst_results(call_inst)[0];
-                ret_place.write_cvalue(fx, CValue::by_val(ret_val, ret_layout));
+                ret_place.write_cvalue(fx, CValue::by_val(ret_val, ret_arg_abi.layout));
             }
         }
-        RustcPassMode::Pair(_, _) => {
+        PassMode::Pair(_, _) => {
             if let Some(ret_place) = ret_place {
                 let ret_val_a = fx.bcx.inst_results(call_inst)[0];
                 let ret_val_b = fx.bcx.inst_results(call_inst)[1];
-                ret_place.write_cvalue(fx, CValue::by_val_pair(ret_val_a, ret_val_b, ret_layout));
+                ret_place.write_cvalue(
+                    fx,
+                    CValue::by_val_pair(ret_val_a, ret_val_b, ret_arg_abi.layout),
+                );
             }
         }
-        RustcPassMode::Cast(_)
-        | RustcPassMode::Indirect {
+        PassMode::Cast(_)
+        | PassMode::Indirect {
             attrs: _,
             extra_attrs: None,
             on_stack: _,
         } => {}
-        RustcPassMode::Indirect {
+        PassMode::Indirect {
             attrs: _,
             extra_attrs: Some(_),
             on_stack: _,
@@ -139,27 +183,27 @@ pub(super) fn codegen_with_call_return_arg<'tcx, M: Module, T>(
 
 /// Codegen a return instruction with the right return value(s) if any.
 pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, impl Module>) {
-    match get_arg_abi(fx.tcx, return_layout(fx)).mode {
-        RustcPassMode::Ignore
-        | RustcPassMode::Cast(_)
-        | RustcPassMode::Indirect {
+    match fx.fn_abi.as_ref().unwrap().ret.mode {
+        PassMode::Ignore
+        | PassMode::Cast(_)
+        | PassMode::Indirect {
             attrs: _,
             extra_attrs: None,
             on_stack: _,
         } => {
             fx.bcx.ins().return_(&[]);
         }
-        RustcPassMode::Indirect {
+        PassMode::Indirect {
             attrs: _,
             extra_attrs: Some(_),
             on_stack: _,
         } => unreachable!("unsized return value"),
-        RustcPassMode::Direct(_) => {
+        PassMode::Direct(_) => {
             let place = fx.get_local_place(RETURN_PLACE);
             let ret_val = place.to_cvalue(fx).load_scalar(fx);
             fx.bcx.ins().return_(&[ret_val]);
         }
-        RustcPassMode::Pair(_, _) => {
+        PassMode::Pair(_, _) => {
             let place = fx.get_local_place(RETURN_PLACE);
             let (ret_val_a, ret_val_b) = place.to_cvalue(fx).load_scalar_pair(fx);
             fx.bcx.ins().return_(&[ret_val_a, ret_val_b]);

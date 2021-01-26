@@ -90,7 +90,7 @@ mod prelude {
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::layout::{self, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
-        self, FnSig, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeAndMut, TypeFoldable,
+        self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeAndMut, TypeFoldable,
     };
     pub(crate) use rustc_target::abi::{Abi, LayoutOf, Scalar, Size, VariantIdx};
 

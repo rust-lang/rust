@@ -6,7 +6,8 @@ mod pass_mode;
 mod returning;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_target::abi::call::PassMode as RustcPassMode;
+use rustc_middle::ty::layout::FnAbiExt;
+use rustc_target::abi::call::{Conv, FnAbi};
 use rustc_target::spec::abi::Abi;
 
 use cranelift_codegen::ir::AbiParam;
@@ -16,6 +17,7 @@ use crate::prelude::*;
 
 pub(crate) use self::returning::{can_return_to_ssa_var, codegen_return};
 
+// FIXME remove
 // Copied from https://github.com/rust-lang/rust/blob/f52c72948aa1dd718cc1f168d21c91c584c0a662/src/librustc_middle/ty/layout.rs#L2301
 #[rustfmt::skip]
 pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
@@ -93,84 +95,38 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
     }
 }
 
-fn clif_sig_from_fn_sig<'tcx>(
+fn clif_sig_from_fn_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     triple: &target_lexicon::Triple,
-    sig: FnSig<'tcx>,
-    is_vtable_fn: bool,
-    requires_caller_location: bool,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> Signature {
-    let abi = match sig.abi {
-        Abi::System => Abi::C,
-        abi => abi,
-    };
-    let (call_conv, inputs, output): (CallConv, Vec<Ty<'tcx>>, Ty<'tcx>) = match abi {
-        Abi::Rust => (
-            CallConv::triple_default(triple),
-            sig.inputs().to_vec(),
-            sig.output(),
-        ),
-        Abi::C | Abi::Unadjusted => (
-            CallConv::triple_default(triple),
-            sig.inputs().to_vec(),
-            sig.output(),
-        ),
-        Abi::SysV64 => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
-        Abi::RustCall => {
-            assert_eq!(sig.inputs().len(), 2);
-            let extra_args = match sig.inputs().last().unwrap().kind() {
-                ty::Tuple(ref tupled_arguments) => tupled_arguments,
-                _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
-            };
-            let mut inputs: Vec<Ty<'tcx>> = vec![sig.inputs()[0]];
-            inputs.extend(extra_args.types());
-            (CallConv::triple_default(triple), inputs, sig.output())
+    let call_conv = match fn_abi.conv {
+        Conv::Rust | Conv::C => CallConv::triple_default(triple),
+        Conv::X86_64SysV => CallConv::SystemV,
+        Conv::X86_64Win64 => CallConv::WindowsFastcall,
+        Conv::ArmAapcs
+        | Conv::Msp430Intr
+        | Conv::PtxKernel
+        | Conv::X86Fastcall
+        | Conv::X86Intr
+        | Conv::X86Stdcall
+        | Conv::X86ThisCall
+        | Conv::X86VectorCall
+        | Conv::AmdGpuKernel
+        | Conv::AvrInterrupt
+        | Conv::AvrNonBlockingInterrupt => {
+            todo!("{:?}", fn_abi.conv)
         }
-        Abi::System => unreachable!(),
-        Abi::RustIntrinsic => (
-            CallConv::triple_default(triple),
-            sig.inputs().to_vec(),
-            sig.output(),
-        ),
-        _ => unimplemented!("unsupported abi {:?}", sig.abi),
     };
-
-    let inputs = inputs
-        .into_iter()
-        .enumerate()
-        .map(|(i, ty)| {
-            let mut layout = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
-            if i == 0 && is_vtable_fn {
-                // Virtual calls turn their self param into a thin pointer.
-                // See https://github.com/rust-lang/rust/blob/37b6a5e5e82497caf5353d9d856e4eb5d14cbe06/src/librustc/ty/layout.rs#L2519-L2572 for more info
-                layout = tcx
-                    .layout_of(ParamEnv::reveal_all().and(tcx.mk_mut_ptr(tcx.mk_unit())))
-                    .unwrap();
-            }
-            let mut arg_abi = get_arg_abi(tcx, layout);
-            if abi != Abi::Rust && abi != Abi::RustCall && abi != Abi::RustIntrinsic {
-                match arg_abi.mode {
-                    RustcPassMode::Indirect {
-                        ref mut on_stack, ..
-                    } => *on_stack = true,
-                    _ => {}
-                }
-            }
-            arg_abi.get_abi_param(tcx).into_iter()
-        })
+    let inputs = fn_abi
+        .args
+        .iter()
+        .map(|arg_abi| arg_abi.get_abi_param(tcx).into_iter())
         .flatten();
 
-    let return_arg_abi = get_arg_abi(
-        tcx,
-        tcx.layout_of(ParamEnv::reveal_all().and(output)).unwrap(),
-    );
-    let (return_ptr, returns) = return_arg_abi.get_abi_return(tcx);
+    let (return_ptr, returns) = fn_abi.ret.get_abi_return(tcx);
     // Sometimes the first param is an pointer to the place where the return value needs to be stored.
-    let mut params: Vec<_> = return_ptr.into_iter().chain(inputs).collect();
-
-    if requires_caller_location {
-        params.push(AbiParam::new(pointer_ty(tcx)));
-    }
+    let params: Vec<_> = return_ptr.into_iter().chain(inputs).collect();
 
     Signature {
         params,
@@ -194,12 +150,11 @@ pub(crate) fn get_function_sig<'tcx>(
             "Variadic function definitions are not yet supported",
         );
     }
-    clif_sig_from_fn_sig(
+
+    clif_sig_from_fn_abi(
         tcx,
         triple,
-        fn_sig,
-        false,
-        inst.def.requires_caller_location(tcx),
+        &FnAbi::of_instance(&RevealAllLayoutCx(tcx), inst, &[]),
     )
 }
 
@@ -337,6 +292,9 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
         Spread(Vec<Option<CValue<'tcx>>>),
     }
 
+    let fn_abi = fx.fn_abi.take().unwrap();
+    let mut arg_abis_iter = fn_abi.args.iter();
+
     let func_params = fx
         .mir
         .args_iter()
@@ -356,14 +314,16 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
                 };
 
                 let mut params = Vec::new();
-                for (i, arg_ty) in tupled_arg_tys.types().enumerate() {
-                    let param = cvalue_for_param(fx, start_block, Some(local), Some(i), arg_ty);
+                for (i, _arg_ty) in tupled_arg_tys.types().enumerate() {
+                    let arg_abi = arg_abis_iter.next().unwrap();
+                    let param = cvalue_for_param(fx, start_block, Some(local), Some(i), arg_abi);
                     params.push(param);
                 }
 
                 (local, ArgKind::Spread(params), arg_ty)
             } else {
-                let param = cvalue_for_param(fx, start_block, Some(local), None, arg_ty);
+                let arg_abi = arg_abis_iter.next().unwrap();
+                let param = cvalue_for_param(fx, start_block, Some(local), None, arg_abi);
                 (local, ArgKind::Normal(param), arg_ty)
             }
         })
@@ -372,10 +332,12 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
     assert!(fx.caller_location.is_none());
     if fx.instance.def.requires_caller_location(fx.tcx) {
         // Store caller location for `#[track_caller]`.
-        fx.caller_location = Some(
-            cvalue_for_param(fx, start_block, None, None, fx.tcx.caller_location_ty()).unwrap(),
-        );
+        let arg_abi = arg_abis_iter.next().unwrap();
+        fx.caller_location = Some(cvalue_for_param(fx, start_block, None, None, arg_abi).unwrap());
     }
+
+    assert!(arg_abis_iter.next().is_none(), "ArgAbi left behind");
+    fx.fn_abi = Some(fn_abi);
 
     fx.bcx.switch_to_block(start_block);
     fx.bcx.ins().nop();
@@ -504,6 +466,21 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         None
     };
 
+    let extra_args = &args[fn_sig.inputs().len()..];
+    let extra_args = extra_args
+        .iter()
+        .map(|op_arg| fx.monomorphize(op_arg.ty(fx.mir, fx.tcx)))
+        .collect::<Vec<_>>();
+    let fn_abi = if let Some(instance) = instance {
+        FnAbi::of_instance(&RevealAllLayoutCx(fx.tcx), instance, &extra_args)
+    } else {
+        FnAbi::of_fn_ptr(
+            &RevealAllLayoutCx(fx.tcx),
+            fn_ty.fn_sig(fx.tcx),
+            &extra_args,
+        )
+    };
+
     let is_cold = instance
         .map(|inst| {
             fx.tcx
@@ -541,8 +518,8 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     //   | indirect call target
     //   |         | the first argument to be passed
-    //   v         v          v virtual calls are special cased below
-    let (func_ref, first_arg, is_virtual_call) = match instance {
+    //   v         v
+    let (func_ref, first_arg) = match instance {
         // Trait object call
         Some(Instance {
             def: InstanceDef::Virtual(_, idx),
@@ -553,23 +530,19 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(
                     nop_inst,
-                    format!(
-                        "virtual call; self arg pass mode: {:?}",
-                        get_arg_abi(fx.tcx, args[0].layout()).mode,
-                    ),
+                    format!("virtual call; self arg pass mode: {:?}", &fn_abi.args[0],),
                 );
             }
             let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0], idx);
-            (Some(method), Single(ptr), true)
+            (Some(method), Single(ptr))
         }
 
         // Normal call
         Some(_) => (
             None,
             args.get(0)
-                .map(|arg| adjust_arg_for_abi(fx, *arg))
+                .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
                 .unwrap_or(Empty),
-            false,
         ),
 
         // Indirect call
@@ -583,23 +556,27 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             (
                 Some(func),
                 args.get(0)
-                    .map(|arg| adjust_arg_for_abi(fx, *arg))
+                    .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
                     .unwrap_or(Empty),
-                false,
             )
         }
     };
 
     let ret_place = destination.map(|(place, _)| place);
-    let (call_inst, call_args) =
-        self::returning::codegen_with_call_return_arg(fx, fn_sig, ret_place, |fx, return_ptr| {
+    let (call_inst, call_args) = self::returning::codegen_with_call_return_arg(
+        fx,
+        &fn_abi.ret,
+        ret_place,
+        |fx, return_ptr| {
+            let regular_args_count = args.len();
             let mut call_args: Vec<Value> = return_ptr
                 .into_iter()
                 .chain(first_arg.into_iter())
                 .chain(
                     args.into_iter()
+                        .enumerate()
                         .skip(1)
-                        .map(|arg| adjust_arg_for_abi(fx, arg).into_iter())
+                        .map(|(i, arg)| adjust_arg_for_abi(fx, arg, &fn_abi.args[i]).into_iter())
                         .flatten(),
                 )
                 .collect::<Vec<_>>();
@@ -610,17 +587,17 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             {
                 // Pass the caller location for `#[track_caller]`.
                 let caller_location = fx.get_caller_location(span);
-                call_args.extend(adjust_arg_for_abi(fx, caller_location).into_iter());
+                call_args.extend(
+                    adjust_arg_for_abi(fx, caller_location, &fn_abi.args[regular_args_count])
+                        .into_iter(),
+                );
+                assert_eq!(fn_abi.args.len(), regular_args_count + 1);
+            } else {
+                assert_eq!(fn_abi.args.len(), regular_args_count);
             }
 
             let call_inst = if let Some(func_ref) = func_ref {
-                let sig = clif_sig_from_fn_sig(
-                    fx.tcx,
-                    fx.triple(),
-                    fn_sig,
-                    is_virtual_call,
-                    false, // calls through function pointers never pass the caller location
-                );
+                let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
                 let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
             } else {
@@ -630,7 +607,8 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             };
 
             (call_inst, call_args)
-        });
+        },
+    );
 
     // FIXME find a cleaner way to support varargs
     if fn_sig.c_variadic {
@@ -671,36 +649,33 @@ pub(crate) fn codegen_drop<'tcx>(
     drop_place: CPlace<'tcx>,
 ) {
     let ty = drop_place.layout().ty;
-    let drop_fn = Instance::resolve_drop_in_place(fx.tcx, ty).polymorphize(fx.tcx);
+    let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty).polymorphize(fx.tcx);
 
-    if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
+    if let ty::InstanceDef::DropGlue(_, None) = drop_instance.def {
         // we don't actually need to drop anything
     } else {
-        let drop_fn_ty = drop_fn.ty(fx.tcx, ParamEnv::reveal_all());
-        let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(
-            ParamEnv::reveal_all(),
-            drop_fn_ty.fn_sig(fx.tcx),
-        );
-        assert_eq!(fn_sig.output(), fx.tcx.mk_unit());
-
         match ty.kind() {
             ty::Dynamic(..) => {
                 let (ptr, vtable) = drop_place.to_ptr_maybe_unsized();
                 let ptr = ptr.get_addr(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
 
-                let sig = clif_sig_from_fn_sig(
-                    fx.tcx,
-                    fx.triple(),
-                    fn_sig,
-                    true,
-                    false, // `drop_in_place` is never `#[track_caller]`
-                );
+                // FIXME(eddyb) perhaps move some of this logic into
+                // `Instance::resolve_drop_in_place`?
+                let virtual_drop = Instance {
+                    def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
+                    substs: drop_instance.substs,
+                };
+                let fn_abi = FnAbi::of_instance(&RevealAllLayoutCx(fx.tcx), virtual_drop, &[]);
+
+                let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
                 let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
             }
             _ => {
-                assert!(!matches!(drop_fn.def, InstanceDef::Virtual(_, _)));
+                assert!(!matches!(drop_instance.def, InstanceDef::Virtual(_, _)));
+
+                let fn_abi = FnAbi::of_instance(&RevealAllLayoutCx(fx.tcx), drop_instance, &[]);
 
                 let arg_value = drop_place.place_ref(
                     fx,
@@ -712,17 +687,19 @@ pub(crate) fn codegen_drop<'tcx>(
                         },
                     )),
                 );
-                let arg_value = adjust_arg_for_abi(fx, arg_value);
+                let arg_value = adjust_arg_for_abi(fx, arg_value, &fn_abi.args[0]);
 
                 let mut call_args: Vec<Value> = arg_value.into_iter().collect::<Vec<_>>();
 
-                if drop_fn.def.requires_caller_location(fx.tcx) {
+                if drop_instance.def.requires_caller_location(fx.tcx) {
                     // Pass the caller location for `#[track_caller]`.
                     let caller_location = fx.get_caller_location(span);
-                    call_args.extend(adjust_arg_for_abi(fx, caller_location).into_iter());
+                    call_args.extend(
+                        adjust_arg_for_abi(fx, caller_location, &fn_abi.args[1]).into_iter(),
+                    );
                 }
 
-                let func_ref = fx.get_function_ref(drop_fn);
+                let func_ref = fx.get_function_ref(drop_instance);
                 fx.bcx.ins().call(func_ref, &call_args);
             }
         }

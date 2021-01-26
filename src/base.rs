@@ -2,6 +2,8 @@
 
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::layout::FnAbiExt;
+use rustc_target::abi::call::FnAbi;
 
 use crate::prelude::*;
 
@@ -51,6 +53,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
         instance,
         mir,
+        fn_abi: Some(FnAbi::of_instance(&RevealAllLayoutCx(tcx), instance, &[])),
 
         bcx,
         block_map,
