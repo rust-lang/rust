@@ -1,0 +1,23 @@
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/issue-81098.rs:3:13
+   |
+LL | fn wat() -> impl core::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ `()` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `()`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/issue-81098.rs:9:12
+   |
+LL | fn ok() -> impl core::fmt::Display {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^ `()` cannot be formatted with the default formatter
+LL |     1;
+   |      - consider removing this semicolon
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `()`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
