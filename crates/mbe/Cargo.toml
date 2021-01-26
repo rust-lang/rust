@@ -17,6 +17,5 @@ log = "0.4.8"
 syntax = { path = "../syntax", version = "0.0.0" }
 parser = { path = "../parser", version = "0.0.0" }
 tt = { path = "../tt", version = "0.0.0" }
-
-[dev-dependencies]
 test_utils = { path = "../test_utils" }
+
