@@ -10,7 +10,10 @@ use syntax::{
     AstNode,
 };
 
-use crate::{utils::unwrap_trivial_block, AssistContext, AssistId, AssistKind, Assists};
+use crate::{
+    utils::{does_pat_match_variant, unwrap_trivial_block},
+    AssistContext, AssistId, AssistKind, Assists,
+};
 
 // Assist: replace_if_let_with_match
 //
@@ -66,7 +69,13 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
                         .sema
                         .type_of_pat(&pat)
                         .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty))
-                        .map(|it| it.sad_pattern())
+                        .map(|it| {
+                            if does_pat_match_variant(&pat, &it.sad_pattern()) {
+                                it.happy_pattern()
+                            } else {
+                                it.sad_pattern()
+                            }
+                        })
                         .unwrap_or_else(|| make::wildcard_pat().into());
                     let else_expr = unwrap_trivial_block(else_block);
                     make::match_arm(vec![pattern], else_expr)
@@ -279,6 +288,36 @@ fn foo(x: Option<i32>) {
     }
 
     #[test]
+    fn special_case_inverted_option() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn foo(x: Option<i32>) {
+    $0if let None = x {
+        println!("none")
+    } else {
+        println!("some")
+    }
+}
+           "#,
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn foo(x: Option<i32>) {
+    match x {
+        None => println!("none"),
+        Some(_) => println!("some"),
+    }
+}
+           "#,
+        );
+    }
+
+    #[test]
     fn special_case_result() {
         check_assist(
             replace_if_let_with_match,
@@ -302,6 +341,36 @@ fn foo(x: Result<i32, ()>) {
     match x {
         Ok(x) => println!("{}", x),
         Err(_) => println!("none"),
+    }
+}
+           "#,
+        );
+    }
+
+    #[test]
+    fn special_case_inverted_result() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+enum Result<T, E> { Ok(T), Err(E) }
+use Result::*;
+
+fn foo(x: Result<i32, ()>) {
+    $0if let Err(x) = x {
+        println!("{}", x)
+    } else {
+        println!("ok")
+    }
+}
+           "#,
+            r#"
+enum Result<T, E> { Ok(T), Err(E) }
+use Result::*;
+
+fn foo(x: Result<i32, ()>) {
+    match x {
+        Err(x) => println!("{}", x),
+        Ok(_) => println!("ok"),
     }
 }
            "#,

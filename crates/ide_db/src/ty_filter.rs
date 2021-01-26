@@ -49,6 +49,21 @@ impl TryEnum {
         }
     }
 
+    pub fn happy_pattern(self) -> ast::Pat {
+        match self {
+            TryEnum::Result => make::tuple_struct_pat(
+                make::path_unqualified(make::path_segment(make::name_ref("Ok"))),
+                iter::once(make::wildcard_pat().into()),
+            )
+            .into(),
+            TryEnum::Option => make::tuple_struct_pat(
+                make::path_unqualified(make::path_segment(make::name_ref("Some"))),
+                iter::once(make::wildcard_pat().into()),
+            )
+            .into(),
+        }
+    }
+
     fn type_name(self) -> &'static str {
         match self {
             TryEnum::Result => "Result",
