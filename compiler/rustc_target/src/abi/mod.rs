@@ -441,14 +441,26 @@ pub struct Align {
 }
 
 impl Align {
+    #[inline]
     pub fn from_bits(bits: u64) -> Result<Align, String> {
         Align::from_bytes(Size::from_bits(bits).bytes())
     }
 
+    #[inline]
     pub fn from_bytes(align: u64) -> Result<Align, String> {
         // Treat an alignment of 0 bytes like 1-byte alignment.
         if align == 0 {
             return Ok(Align { pow2: 0 });
+        }
+
+        #[cold]
+        fn not_power_of_2(align: u64) -> String {
+            format!("`{}` is not a power of 2", align)
+        }
+
+        #[cold]
+        fn too_large(align: u64) -> String {
+            format!("`{}` is too large", align)
         }
 
         let mut bytes = align;
@@ -458,19 +470,21 @@ impl Align {
             bytes >>= 1;
         }
         if bytes != 1 {
-            return Err(format!("`{}` is not a power of 2", align));
+            return Err(not_power_of_2(align));
         }
         if pow2 > 29 {
-            return Err(format!("`{}` is too large", align));
+            return Err(too_large(align));
         }
 
         Ok(Align { pow2 })
     }
 
+    #[inline]
     pub fn bytes(self) -> u64 {
         1 << self.pow2
     }
 
+    #[inline]
     pub fn bits(self) -> u64 {
         self.bytes() * 8
     }
@@ -479,12 +493,14 @@ impl Align {
     /// (the largest power of two that the offset is a multiple of).
     ///
     /// N.B., for an offset of `0`, this happens to return `2^64`.
+    #[inline]
     pub fn max_for_offset(offset: Size) -> Align {
         Align { pow2: offset.bytes().trailing_zeros() as u8 }
     }
 
     /// Lower the alignment, if necessary, such that the given offset
     /// is aligned to it (the offset is a multiple of the alignment).
+    #[inline]
     pub fn restrict_for_offset(self, offset: Size) -> Align {
         self.min(Align::max_for_offset(offset))
     }
