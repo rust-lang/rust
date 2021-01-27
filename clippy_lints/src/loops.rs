@@ -494,6 +494,37 @@ declare_clippy_lint! {
     "there is no reason to have a single element loop"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for iteration of `Option`s with
+    /// a single `if let Some()` expression inside.
+    ///
+    /// **Why is this bad?** It is verbose and can be simplified
+    /// by first calling the `flatten` method on the `Iterator`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let x = vec![Some(1), Some(2), Some(3)];
+    /// for n in x {
+    ///     if let Some(n) = n {
+    ///         println!("{}", n);
+    ///     }
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let x = vec![Some(1), Some(2), Some(3)];
+    /// for n in x.iter().flatten() {
+    ///     println!("{}", n);
+    /// }
+    /// ```
+    pub FOR_LOOPS_OVER_OPTIONS,
+    complexity,
+    "for loops over `Option`s or `Result`s with a single expression can be simplified"
+}
+
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     NEEDLESS_RANGE_LOOP,
@@ -501,6 +532,7 @@ declare_lint_pass!(Loops => [
     EXPLICIT_INTO_ITER_LOOP,
     ITER_NEXT_LOOP,
     FOR_LOOPS_OVER_FALLIBLES,
+    FOR_LOOPS_OVER_OPTIONS,
     WHILE_LET_LOOP,
     NEEDLESS_COLLECT,
     EXPLICIT_COUNTER_LOOP,
@@ -830,6 +862,7 @@ fn check_for_loop<'tcx>(
     check_for_mut_range_bound(cx, arg, body);
     check_for_single_element_loop(cx, pat, arg, body, expr);
     detect_same_item_push(cx, pat, arg, body, expr);
+    check_for_loop_over_options_or_results(cx, pat, arg, body, expr);
 }
 
 // this function assumes the given expression is a `for` loop.
@@ -1949,6 +1982,37 @@ fn check_for_single_element_loop<'tcx>(
                 format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0)), target.name, list_item_name, block_str),
                 Applicability::MachineApplicable
             )
+        }
+    }
+}
+
+/// Check if a for loop loops over `Option`s or `Result`s and contains only
+/// a `if let Some` or `if let Ok` expression.
+fn check_for_loop_over_options_or_results<'tcx>(
+    cx: &LateContext<'tcx>,
+    pat: &'tcx Pat<'_>,
+    arg: &'tcx Expr<'_>,
+    body: &'tcx Expr<'_>,
+    expr: &'tcx Expr<'_>,
+) {
+    if_chain! {
+        if let ExprKind::Block(ref block, _) = body.kind;
+        if block.stmts.is_empty();
+        if let Some(inner_expr) = block.expr;
+        if let ExprKind::Match(ref _match_expr, ref _match_arms, MatchSource::IfLetDesugar{ contains_else_clause }) = inner_expr.kind;
+        if !contains_else_clause;
+        then {
+            // println!("if_let_expr:\n{:?}", snippet(cx, if_let_expr.span, ".."));
+            // println!("pat is:\n {:?}", snippet(cx, pat.span, ".."));
+            // println!("arg is:\n {:?}", snippet(cx, arg.span, ".."));
+            // println!("body is:\n {:?}", snippet(cx, body.span, ".."));
+            // println!("arg kind is: {:?}", arg.kind);
+            // println!("expr is:\n {:?}", snippet(cx, expr.span, ".."));
+            // todo!();
+            let arg_snippet = snippet(cx, arg.span, "..");
+            let msg = "looping over `Option`s or `Result`s with an `if let` expression.";
+            let hint = format!("try turn {} into an `Iterator` and use `flatten`: `{}.iter().flatten()`", arg_snippet, arg_snippet);
+            span_lint_and_help(cx, FOR_LOOPS_OVER_OPTIONS, expr.span, msg, None, &hint);
         }
     }
 }
