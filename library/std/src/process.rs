@@ -507,6 +507,7 @@ impl fmt::Debug for ChildStderr {
 /// assert!(status.success());
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
+#[must_use = "this Command does not do anything unless it is run, eg using `status` or `spawn`"]
 pub struct Command {
     inner: imp::Command,
 }
