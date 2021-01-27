@@ -30,3 +30,22 @@ fn test_matches_os() {
     assert!(matches_os("nvptx64-nvidia-cuda", "cuda"));
     assert!(matches_os("x86_64-fortanix-unknown-sgx", "sgx"));
 }
+
+#[test]
+fn is_big_endian_test() {
+    assert!(!is_big_endian("no"));
+    assert!(is_big_endian("sparc-unknown-unknown"));
+}
+
+#[test]
+fn path_buf_with_extra_extension_test() {
+    assert_eq!(
+        PathBuf::from("foo.rs.stderr"),
+        PathBuf::from("foo.rs").with_extra_extension("stderr")
+    );
+    assert_eq!(
+        PathBuf::from("foo.rs.stderr"),
+        PathBuf::from("foo.rs").with_extra_extension(".stderr")
+    );
+    assert_eq!(PathBuf::from("foo.rs"), PathBuf::from("foo.rs").with_extra_extension(""));
+}
