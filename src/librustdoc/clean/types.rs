@@ -11,7 +11,6 @@ use std::{slice, vec};
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
-use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
@@ -21,7 +20,7 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
@@ -1456,6 +1455,7 @@ impl GetDefId for Type {
 
 impl PrimitiveType {
     crate fn from_hir(prim: hir::PrimTy) -> PrimitiveType {
+        use ast::{FloatTy, IntTy, UintTy};
         match prim {
             hir::PrimTy::Int(IntTy::Isize) => PrimitiveType::Isize,
             hir::PrimTy::Int(IntTy::I8) => PrimitiveType::I8,
@@ -1686,6 +1686,41 @@ impl From<ast::FloatTy> for PrimitiveType {
         match float_ty {
             ast::FloatTy::F32 => PrimitiveType::F32,
             ast::FloatTy::F64 => PrimitiveType::F64,
+        }
+    }
+}
+
+impl From<ty::IntTy> for PrimitiveType {
+    fn from(int_ty: ty::IntTy) -> PrimitiveType {
+        match int_ty {
+            ty::IntTy::Isize => PrimitiveType::Isize,
+            ty::IntTy::I8 => PrimitiveType::I8,
+            ty::IntTy::I16 => PrimitiveType::I16,
+            ty::IntTy::I32 => PrimitiveType::I32,
+            ty::IntTy::I64 => PrimitiveType::I64,
+            ty::IntTy::I128 => PrimitiveType::I128,
+        }
+    }
+}
+
+impl From<ty::UintTy> for PrimitiveType {
+    fn from(uint_ty: ty::UintTy) -> PrimitiveType {
+        match uint_ty {
+            ty::UintTy::Usize => PrimitiveType::Usize,
+            ty::UintTy::U8 => PrimitiveType::U8,
+            ty::UintTy::U16 => PrimitiveType::U16,
+            ty::UintTy::U32 => PrimitiveType::U32,
+            ty::UintTy::U64 => PrimitiveType::U64,
+            ty::UintTy::U128 => PrimitiveType::U128,
+        }
+    }
+}
+
+impl From<ty::FloatTy> for PrimitiveType {
+    fn from(float_ty: ty::FloatTy) -> PrimitiveType {
+        match float_ty {
+            ty::FloatTy::F32 => PrimitiveType::F32,
+            ty::FloatTy::F64 => PrimitiveType::F64,
         }
     }
 }
