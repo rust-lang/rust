@@ -410,7 +410,6 @@ impl<R: Seek> Seek for BufReader<R> {
     /// # Example
     ///
     /// ```no_run
-    /// #![feature(seek_convenience)]
     /// use std::{
     ///     io::{self, BufRead, BufReader, Seek},
     ///     fs::File,
