@@ -3332,6 +3332,16 @@ fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
                 None
             }
         })
+        // This whole `map` is to correctly print the "cut" strings in attributes arguments like:
+        //
+        // #[x = "string with \
+        //   backline"]
+        .map(|a| {
+            a.split("\\\n").fold(String::new(), |mut acc, a| {
+                acc.push_str(a.trim_start());
+                acc
+            })
+        })
         .join("\n");
 
     if !attrs.is_empty() {
