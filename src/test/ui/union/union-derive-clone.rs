@@ -32,5 +32,5 @@ struct CloneNoCopy;
 
 fn main() {
     let u = U5 { a: ManuallyDrop::new(CloneNoCopy) };
-    let w = u.clone(); //~ ERROR no method named `clone` found for union `U5<CloneNoCopy>`
+    let w = u.clone(); //~ ERROR the method
 }
