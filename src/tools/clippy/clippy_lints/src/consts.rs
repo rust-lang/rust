@@ -2,14 +2,14 @@
 
 use crate::utils::{clip, sext, unsext};
 use if_chain::if_chain;
-use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
+use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
@@ -167,8 +167,8 @@ pub fn lit_to_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
-            FloatTy::F32 => Constant::F32(is.as_str().parse().unwrap()),
-            FloatTy::F64 => Constant::F64(is.as_str().parse().unwrap()),
+            ast::FloatTy::F32 => Constant::F32(is.as_str().parse().unwrap()),
+            ast::FloatTy::F64 => Constant::F64(is.as_str().parse().unwrap()),
         },
         LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.expect("type of float is known").kind() {
             ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),

@@ -18,7 +18,6 @@ use crate::llvm::debuginfo::{
 };
 use crate::value::Value;
 
-use rustc_ast as ast;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -830,37 +829,37 @@ trait MsvcBasicName {
     fn msvc_basic_name(self) -> &'static str;
 }
 
-impl MsvcBasicName for ast::IntTy {
+impl MsvcBasicName for ty::IntTy {
     fn msvc_basic_name(self) -> &'static str {
         match self {
-            ast::IntTy::Isize => "ptrdiff_t",
-            ast::IntTy::I8 => "__int8",
-            ast::IntTy::I16 => "__int16",
-            ast::IntTy::I32 => "__int32",
-            ast::IntTy::I64 => "__int64",
-            ast::IntTy::I128 => "__int128",
+            ty::IntTy::Isize => "ptrdiff_t",
+            ty::IntTy::I8 => "__int8",
+            ty::IntTy::I16 => "__int16",
+            ty::IntTy::I32 => "__int32",
+            ty::IntTy::I64 => "__int64",
+            ty::IntTy::I128 => "__int128",
         }
     }
 }
 
-impl MsvcBasicName for ast::UintTy {
+impl MsvcBasicName for ty::UintTy {
     fn msvc_basic_name(self) -> &'static str {
         match self {
-            ast::UintTy::Usize => "size_t",
-            ast::UintTy::U8 => "unsigned __int8",
-            ast::UintTy::U16 => "unsigned __int16",
-            ast::UintTy::U32 => "unsigned __int32",
-            ast::UintTy::U64 => "unsigned __int64",
-            ast::UintTy::U128 => "unsigned __int128",
+            ty::UintTy::Usize => "size_t",
+            ty::UintTy::U8 => "unsigned __int8",
+            ty::UintTy::U16 => "unsigned __int16",
+            ty::UintTy::U32 => "unsigned __int32",
+            ty::UintTy::U64 => "unsigned __int64",
+            ty::UintTy::U128 => "unsigned __int128",
         }
     }
 }
 
-impl MsvcBasicName for ast::FloatTy {
+impl MsvcBasicName for ty::FloatTy {
     fn msvc_basic_name(self) -> &'static str {
         match self {
-            ast::FloatTy::F32 => "float",
-            ast::FloatTy::F64 => "double",
+            ty::FloatTy::F32 => "float",
+            ty::FloatTy::F64 => "double",
         }
     }
 }

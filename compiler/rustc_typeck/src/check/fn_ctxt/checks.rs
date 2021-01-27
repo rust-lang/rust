@@ -372,13 +372,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // in C but we just error out instead and require explicit casts.
                 let arg_ty = self.structurally_resolved_type(arg.span, arg_ty);
                 match arg_ty.kind() {
-                    ty::Float(ast::FloatTy::F32) => {
+                    ty::Float(ty::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
                     }
-                    ty::Int(ast::IntTy::I8 | ast::IntTy::I16) | ty::Bool => {
+                    ty::Int(ty::IntTy::I8 | ty::IntTy::I16) | ty::Bool => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_int");
                     }
-                    ty::Uint(ast::UintTy::U8 | ast::UintTy::U16) => {
+                    ty::Uint(ty::UintTy::U8 | ty::UintTy::U16) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
                     ty::FnDef(..) => {
@@ -407,8 +407,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ast::LitKind::Byte(_) => tcx.types.u8,
             ast::LitKind::Char(_) => tcx.types.char,
-            ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(t),
-            ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(t),
+            ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(ty::int_ty(t)),
+            ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(ty::uint_ty(t)),
             ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
@@ -419,7 +419,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 opt_ty.unwrap_or_else(|| self.next_int_var())
             }
-            ast::LitKind::Float(_, ast::LitFloatType::Suffixed(t)) => tcx.mk_mach_float(t),
+            ast::LitKind::Float(_, ast::LitFloatType::Suffixed(t)) => {
+                tcx.mk_mach_float(ty::float_ty(t))
+            }
             ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Float(_) => Some(ty),
