@@ -1671,7 +1671,7 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// #![feature(seek_convenience)]
+    /// #![feature(seek_stream_len)]
     /// use std::{
     ///     io::{self, Seek},
     ///     fs::File,
@@ -1685,7 +1685,7 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "seek_convenience", issue = "59359")]
+    #[unstable(feature = "seek_stream_len", issue = "59359")]
     fn stream_len(&mut self) -> Result<u64> {
         let old_pos = self.stream_position()?;
         let len = self.seek(SeekFrom::End(0))?;
@@ -1706,7 +1706,6 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// #![feature(seek_convenience)]
     /// use std::{
     ///     io::{self, BufRead, BufReader, Seek},
     ///     fs::File,
@@ -1723,7 +1722,7 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "seek_convenience", issue = "59359")]
+    #[stable(feature = "seek_convenience", since = "1.51.0")]
     fn stream_position(&mut self) -> Result<u64> {
         self.seek(SeekFrom::Current(0))
     }
