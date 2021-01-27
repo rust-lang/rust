@@ -2015,10 +2015,10 @@ impl<'test> TestCx<'test> {
                 rustc.args(&["-Zchalk"]);
             }
             Some(CompareMode::SplitDwarf) => {
-                rustc.args(&["-Zsplit-dwarf=split"]);
+                rustc.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);
             }
             Some(CompareMode::SplitDwarfSingle) => {
-                rustc.args(&["-Zsplit-dwarf=single"]);
+                rustc.args(&["-Csplit-debuginfo=packed", "-Zunstable-options"]);
             }
             None => {}
         }
