@@ -832,6 +832,9 @@ impl Command {
     ///
     /// By default, stdin, stdout and stderr are inherited from the parent.
     ///
+    /// If you just want to run the command and wait for it to complete, consider using
+    /// [`Command::status`] instead.
+    ///
     /// # Examples
     ///
     /// Basic usage:
