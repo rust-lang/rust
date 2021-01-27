@@ -265,7 +265,13 @@ where
                 }
             }
             match self.iter.next() {
-                None => return self.backiter.as_mut()?.next(),
+                None => match self.backiter.as_mut()?.next() {
+                    None => {
+                        self.backiter = None;
+                        return None;
+                    }
+                    elt @ Some(_) => return elt,
+                },
                 Some(inner) => self.frontiter = Some(inner.into_iter()),
             }
         }
@@ -353,7 +359,13 @@ where
                 }
             }
             match self.iter.next_back() {
-                None => return self.frontiter.as_mut()?.next_back(),
+                None => match self.frontiter.as_mut()?.next_back() {
+                    None => {
+                        self.frontiter = None;
+                        return None;
+                    }
+                    elt @ Some(_) => return elt,
+                },
                 next => self.backiter = next.map(IntoIterator::into_iter),
             }
         }
