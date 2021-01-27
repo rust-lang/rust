@@ -20,15 +20,11 @@ note: the lint level is defined here
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
 
-error[E0080]: evaluation of constant expression failed
-  --> $DIR/const_unsafe_unreachable_ub.rs:17:3
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_unsafe_unreachable_ub.rs:17:14
    |
 LL |   assert_eq!(BAR, true);
-   |   ^^^^^^^^^^^---^^^^^^^^
-   |              |
-   |              referenced constant has errors
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   |              ^^^ referenced constant has errors
 
 error: erroneous constant used
   --> $DIR/const_unsafe_unreachable_ub.rs:17:3
