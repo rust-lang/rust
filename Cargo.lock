@@ -4391,10 +4391,18 @@ dependencies = [
  "pulldown-cmark 0.8.0",
  "regex",
  "rustc-rayon",
+ "rustdoc-json-types",
  "serde",
  "serde_json",
  "smallvec 1.4.2",
  "tempfile",
+]
+
+[[package]]
+name = "rustdoc-json-types"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
