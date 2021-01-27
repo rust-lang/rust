@@ -10,6 +10,7 @@ use hir_expand::{
     ExpandError, HirFileId, MacroDefId, MacroDefKind,
 };
 use la_arena::Arena;
+use profile::Count;
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{
@@ -77,6 +78,7 @@ pub(super) fn lower(
             params: Vec::new(),
             body_expr: dummy_expr_id(),
             item_scope: Default::default(),
+            _c: Count::new(),
         },
         item_trees: {
             let mut map = FxHashMap::default();

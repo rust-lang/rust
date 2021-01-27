@@ -284,9 +284,9 @@ checksum = "28b9d6de7f49e22cf97ad17fc4036ece69300032f45f78f30b4a4482cdc3f4a6"
 
 [[package]]
 name = "countme"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f8038ded86523aa26c1321dfe8bb432707d0a3e2608f9d0108803727546e089"
+checksum = "1aa2b26822354da8572983762d79a7ba55981b3fbbc612164a0dbbd0213df7fe"
 dependencies = [
  "dashmap",
  "once_cell",

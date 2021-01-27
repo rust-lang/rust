@@ -13,6 +13,7 @@ use std::{
 };
 
 use la_arena::{Arena, Idx};
+use profile::Count;
 use syntax::{ast, match_ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
@@ -62,12 +63,13 @@ type ErasedFileAstId = Idx<SyntaxNodePtr>;
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct AstIdMap {
     arena: Arena<SyntaxNodePtr>,
+    _c: Count<Self>,
 }
 
 impl AstIdMap {
     pub(crate) fn from_source(node: &SyntaxNode) -> AstIdMap {
         assert!(node.parent().is_none());
-        let mut res = AstIdMap { arena: Arena::default() };
+        let mut res = AstIdMap::default();
         // By walking the tree in breadth-first order we make sure that parents
         // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
