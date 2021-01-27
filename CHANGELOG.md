@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.4.33] 2021-??-??
+
+### Fixed
+- Fix erroneous removal of `const` keyword on const trait impl ([#4084](https://github.com/rust-lang/rustfmt/issues/4084))
+- Fix incorrect span usage wit const generics in supertraits ([#4204](https://github.com/rust-lang/rustfmt/issues/4204))
+- Use correct span for const generic params ([#4263](https://github.com/rust-lang/rustfmt/issues/4263))
+- Correct span on const generics to include type bounds ([#4310](https://github.com/rust-lang/rustfmt/issues/4310))
+
+### Install/Download Options
+- **crates.io package** - *pending*
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.33](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.33)
+- **Build from source** - [Tag v1.4.33](https://github.com/rust-lang/rustfmt/tree/v1.4.33), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.32] 2021-01-16
 
 ### Fixed
@@ -9,7 +23,7 @@
 
 ### Install/Download Options
 - **crates.io package** - *pending*
-- **rustup (nightly)** - *pending*
+- **rustup (nightly)** - Starting in `2021-01-18`
 - **GitHub Release Binaries** - [Release v1.4.32](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.32)
 - **Build from source** - [Tag v1.4.32](https://github.com/rust-lang/rustfmt/tree/v1.4.32), see instructions for how to [install rustfmt from source][install-from-source]
 
