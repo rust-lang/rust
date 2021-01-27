@@ -8,13 +8,11 @@ LL |     const MAX: u8 = A::MAX + B::MAX;
    |
    = note: `#[deny(const_err)]` on by default
 
-error[E0080]: evaluation of constant expression failed
-  --> $DIR/issue-50814.rs:20:5
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-50814.rs:20:6
    |
 LL |     &Sum::<U8,U8>::MAX
-   |     ^-----------------
-   |      |
-   |      referenced constant has errors
+   |      ^^^^^^^^^^^^^^^^^ referenced constant has errors
 
 error: aborting due to 2 previous errors
 

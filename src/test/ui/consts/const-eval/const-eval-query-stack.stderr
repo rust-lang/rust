@@ -12,13 +12,11 @@ note: the lint level is defined here
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
 
-error[E0080]: evaluation of constant expression failed
-  --> $DIR/const-eval-query-stack.rs:23:27
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-eval-query-stack.rs:23:28
    |
 LL |     let x: &'static i32 = &X;
-   |                           ^-
-   |                            |
-   |                            referenced constant has errors
+   |                            ^ referenced constant has errors
 query stack during panic:
 #0 [normalize_generic_arg_after_erasing_regions] normalizing `main::promoted[1]`
 #1 [optimized_mir] optimizing MIR for `main`
