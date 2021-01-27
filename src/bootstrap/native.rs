@@ -556,6 +556,9 @@ impl Step for Lld {
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
+        if let Some(ref linker) = builder.config.llvm_use_linker {
+            cfg.define("LLVM_USE_LINKER", linker);
+        }
         configure_cmake(builder, target, &mut cfg, true);
 
         // This is an awful, awful hack. Discovered when we migrated to using

@@ -68,11 +68,11 @@ RUN ./build-binutils.sh
 COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
 RUN ./build-gcc.sh && apt-get remove -y gcc g++
 
-# Debian 6 has Python 2.6 by default, but LLVM needs 2.7+
+# Debian 6 has Python 2.6 by default, but LLVM >= 12 needs Python 3
 COPY host-x86_64/dist-x86_64-linux/build-python.sh /tmp/
 RUN ./build-python.sh
 
-# LLVM needs cmake 3.4.3 or higher, and is planning to raise to 3.13.4.
+# LLVM needs cmake 3.13.4 or higher
 COPY host-x86_64/dist-x86_64-linux/build-cmake.sh /tmp/
 RUN ./build-cmake.sh
 
@@ -99,8 +99,10 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
+      --set llvm.use-linker=lld \
+      --set rust.use-lld=true \
       --set rust.jemalloc
-ENV SCRIPT ../src/ci/pgo.sh python2.7 ../x.py dist \
+ENV SCRIPT ../src/ci/pgo.sh python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
     src/tools/build-manifest
