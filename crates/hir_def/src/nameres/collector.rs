@@ -1443,7 +1443,10 @@ impl ModCollector<'_, '_> {
         if let Some(macro_call_id) =
             ast_id.as_call_id(self.def_collector.db, self.def_collector.def_map.krate, |path| {
                 path.as_ident().and_then(|name| {
-                    self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
+                    self.def_collector
+                        .def_map
+                        .ancestor_maps(self.module_id)
+                        .find_map(|(map, module)| map[module].scope.get_legacy_macro(&name))
                 })
             })
         {
