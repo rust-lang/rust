@@ -133,7 +133,15 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtPath, |path| {
             if style == PathStyle::Mod && path.segments.iter().any(|segment| segment.args.is_some())
             {
-                self.struct_span_err(path.span, "unexpected generic arguments in path").emit();
+                self.struct_span_err(
+                    path.segments
+                        .iter()
+                        .filter_map(|segment| segment.args.as_ref())
+                        .map(|arg| arg.span())
+                        .collect::<Vec<_>>(),
+                    "unexpected generic arguments in path",
+                )
+                .emit();
             }
             path
         });
