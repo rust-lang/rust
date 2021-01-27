@@ -188,8 +188,10 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut bx);
 
+    let mut all_consts_ok = true;
     for const_ in &mir.required_consts {
         if let Err(err) = fx.eval_mir_constant(const_) {
+            all_consts_ok = false;
             match err {
                 // errored or at least linted
                 ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {}
@@ -198,6 +200,25 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 }
             }
         }
+    }
+    if !all_consts_ok {
+        // There is no delay_span_bug here, we just have to rely on a hard error actually having
+        // been raised.
+        bx.abort();
+        // `abort` does not terminate the block, so we still need to generate
+        // an `unreachable` terminator after it.
+        bx.unreachable();
+        // We also have to delete all the other basic blocks again...
+        for bb in mir.basic_blocks().indices() {
+            if bb != mir::START_BLOCK {
+                unsafe {
+                    bx.delete_basic_block(fx.blocks[bb]);
+                }
+            }
+        }
+        // FIXME: Can we somehow avoid all this by evaluating the consts before creating the basic
+        // blocks? The tricky part is doing that without duplicating `fx.eval_mir_constant`.
+        return;
     }
 
     let memory_locals = analyze::non_ssa_locals(&fx);
