@@ -17,6 +17,7 @@ use hir_expand::{
     HirFileId, InFile, MacroDefId,
 };
 use la_arena::{Arena, ArenaMap};
+use profile::Count;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
 use test_utils::mark;
@@ -237,6 +238,7 @@ pub struct Body {
     /// The `ExprId` of the actual body expression.
     pub body_expr: ExprId,
     pub item_scope: ItemScope,
+    _c: Count<Self>,
 }
 
 pub type ExprPtr = AstPtr<ast::Expr>;
