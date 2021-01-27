@@ -493,7 +493,8 @@ impl fmt::Debug for ChildStderr {
 /// let mut list_dir = Command::new("ls");
 ///
 /// // Execute `ls` in the current directory of the program.
-/// list_dir.status().expect("process failed to execute");
+/// let status = list_dir.status().expect("process failed to execute");
+/// assert!(status.success());
 ///
 /// println!();
 ///
@@ -501,7 +502,8 @@ impl fmt::Debug for ChildStderr {
 /// list_dir.current_dir("/");
 ///
 /// // And then execute `ls` again but in the root directory.
-/// list_dir.status().expect("process failed to execute");
+/// let status = list_dir.status().expect("process failed to execute");
+/// assert!(status.success());
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Command {
@@ -1596,8 +1598,8 @@ impl Child {
     ///
     /// let mut command = Command::new("ls");
     /// if let Ok(mut child) = command.spawn() {
-    ///     child.wait().expect("command wasn't running");
-    ///     println!("Child has finished its execution!");
+    ///     let status = child.wait().expect("command wasn't running");
+    ///     println!("Child has finished its execution, status = {}!", status);
     /// } else {
     ///     println!("ls command didn't start");
     /// }
