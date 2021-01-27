@@ -25,4 +25,5 @@ fn main() {
     assert_eq!(substs3::<2>().0, [0; 2]);
 }
 
-// Test that the implicit ``{ (L) }`` bound on ``substs3`` satisfies the ``{ (N) }`` bound on ``Substs1``
+// Test that the implicit ``{ (L) }`` bound on ``substs3`` satisfies the
+// ``{ (N) }`` bound on ``Substs1``
