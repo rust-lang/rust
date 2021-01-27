@@ -652,7 +652,7 @@ impl<T: Ord> BTreeSet<T> {
     /// use std::collections::BTreeSet;
     ///
     /// let mut map = BTreeSet::new();
-    /// assert_eq!(map.first(), None);
+    /// assert_eq!(map.last(), None);
     /// map.insert(1);
     /// assert_eq!(map.last(), Some(&1));
     /// map.insert(2);
