@@ -416,8 +416,11 @@ fn get_string_representation(expr: &ast::Expr) -> Option<String> {
                 name_ref => Some(name_ref.to_owned()),
             }
         }
+        ast::Expr::FieldExpr(field_expr) => Some(field_expr.name_ref()?.to_string()),
+        ast::Expr::PathExpr(path_expr) => Some(path_expr.to_string()),
+        ast::Expr::PrefixExpr(prefix_expr) => get_string_representation(&prefix_expr.expr()?),
         ast::Expr::RefExpr(ref_expr) => get_string_representation(&ref_expr.expr()?),
-        _ => Some(expr.to_string()),
+        _ => None,
     }
 }
 
@@ -1436,6 +1439,21 @@ fn main() {
      // ^^^ *const (impl Fn(f64, f64) -> u32 + Sized)
 }
 "#,
+        )
+    }
+
+    #[test]
+    fn param_name_hints_show_for_literals() {
+        check(
+            r#"pub fn test(a: i32, b: i32) -> [i32; 2] { [a, b] }
+fn main() {
+    test(
+        0x0fab272b,
+      //^^^^^^^^^^ a
+        0x0fab272b
+      //^^^^^^^^^^ b
+    );
+}"#,
         )
     }
 }
