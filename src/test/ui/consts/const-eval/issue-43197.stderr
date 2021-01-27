@@ -20,7 +20,7 @@ LL |     const Y: u32 = foo(0 - 1);
    |                        |
    |                        attempt to compute `0_u32 - 1_u32`, which would overflow
 
-error[E0080]: evaluation of constant expression failed
+error[E0080]: evaluation of constant value failed
   --> $DIR/issue-43197.rs:14:23
    |
 LL |     println!("{} {}", X, Y);
@@ -32,7 +32,7 @@ warning: erroneous constant used
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
-error[E0080]: evaluation of constant expression failed
+error[E0080]: evaluation of constant value failed
   --> $DIR/issue-43197.rs:14:26
    |
 LL |     println!("{} {}", X, Y);

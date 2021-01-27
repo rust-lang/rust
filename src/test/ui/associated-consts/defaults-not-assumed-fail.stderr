@@ -8,15 +8,11 @@ LL |     const B: u8 = Self::A + 1;
    |
    = note: `#[deny(const_err)]` on by default
 
-error[E0080]: evaluation of constant expression failed
-  --> $DIR/defaults-not-assumed-fail.rs:33:5
+error[E0080]: evaluation of constant value failed
+  --> $DIR/defaults-not-assumed-fail.rs:33:16
    |
 LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
-   |     ^^^^^^^^^^^-------------^^^^^
-   |                |
-   |                referenced constant has errors
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                ^^^^^^^^^^^^^ referenced constant has errors
 
 error: erroneous constant used
   --> $DIR/defaults-not-assumed-fail.rs:33:5
