@@ -64,6 +64,14 @@ fn test_flatten_non_fused_outer() {
     assert_eq!(iter.next_back(), Some(1));
     assert_eq!(iter.next(), Some(0));
     assert_eq!(iter.next(), None);
+    assert_eq!(iter.next(), None);
+
+    let mut iter = NonFused::new(once(0..2)).flatten();
+
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next_back(), Some(1));
+    assert_eq!(iter.next_back(), None);
+    assert_eq!(iter.next_back(), None);
 }
 
 #[test]
@@ -74,6 +82,15 @@ fn test_flatten_non_fused_inner() {
     assert_eq!(iter.next(), Some(0));
     assert_eq!(iter.next(), Some(1));
     assert_eq!(iter.next(), None);
+    assert_eq!(iter.next(), None);
+
+    let mut iter = once(0..1).chain(once(1..3)).flat_map(NonFused::new);
+
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next_back(), Some(2));
+    assert_eq!(iter.next_back(), Some(1));
+    assert_eq!(iter.next_back(), None);
+    assert_eq!(iter.next_back(), None);
 }
 
 #[test]
