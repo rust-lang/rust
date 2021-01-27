@@ -46,7 +46,7 @@ pub fn load_cargo(
         vfs.file_id(&path)
     });
 
-    let project_folders = ProjectFolders::new(&[ws]);
+    let project_folders = ProjectFolders::new(&[ws], &[]);
     loader.set_config(vfs::loader::Config { load: project_folders.load, watch: vec![] });
 
     log::debug!("crate graph: {:?}", crate_graph);

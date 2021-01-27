@@ -555,6 +555,14 @@
                     "default": "client",
                     "type": "string"
                 },
+                "rust-analyzer.files.excludeDirs": {
+                    "markdownDescription": "These directories will be ignored by rust-analyzer.",
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "rust-analyzer.hoverActions.debug": {
                     "markdownDescription": "Whether to show `Debug` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
                     "default": true,

@@ -56,6 +56,8 @@
  List of warnings that should be displayed with hint severity.\n\nThe  warnings will be indicated by faded text or three dots in code and  will not show up in the `Problems Panel`.
 [[rust-analyzer.files.watcher]]rust-analyzer.files.watcher (default: `"client"`)::
  Controls file watching implementation.
+[[rust-analyzer.files.excludeDirs]]rust-analyzer.files.excludeDirs (default: `[]`)::
+ These directories will be ignored by rust-analyzer.
 [[rust-analyzer.hoverActions.debug]]rust-analyzer.hoverActions.debug (default: `true`)::
  Whether to show `Debug` action. Only applies when  `#rust-analyzer.hoverActions.enable#` is set.
 [[rust-analyzer.hoverActions.enable]]rust-analyzer.hoverActions.enable (default: `true`)::
