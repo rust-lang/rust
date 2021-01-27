@@ -241,7 +241,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline(always)]
-    pub fn capacity(&self) -> usize {
+    pub const fn capacity(&self) -> usize {
         if mem::size_of::<T>() == 0 { usize::MAX } else { self.cap }
     }
 
