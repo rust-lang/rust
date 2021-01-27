@@ -1,10 +1,10 @@
 //! Return value handling
 
-use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
 use rustc_middle::ty::layout::FnAbiExt;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use smallvec::{SmallVec, smallvec};
 
 /// Can the given type be returned into an ssa var or does it need to be returned on the stack.
 pub(crate) fn can_return_to_ssa_var<'tcx>(
@@ -62,10 +62,10 @@ pub(super) fn codegen_return_param<'tcx>(
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
     start_block: Block,
 ) -> CPlace<'tcx> {
-    let (ret_place, ret_param) = match fx.fn_abi.as_ref().unwrap().ret.mode {
+    let (ret_place, ret_param): (_, SmallVec<[_; 2]>) = match fx.fn_abi.as_ref().unwrap().ret.mode {
         PassMode::Ignore => (
             CPlace::no_place(fx.fn_abi.as_ref().unwrap().ret.layout),
-            Empty,
+            smallvec![],
         ),
         PassMode::Direct(_) | PassMode::Pair(_, _) => {
             let is_ssa = ssa_analyzed[RETURN_PLACE] == crate::analyze::SsaKind::Ssa;
@@ -76,7 +76,7 @@ pub(super) fn codegen_return_param<'tcx>(
                     fx.fn_abi.as_ref().unwrap().ret.layout,
                     is_ssa,
                 ),
-                Empty,
+                smallvec![],
             )
         }
         PassMode::Cast(_)
@@ -91,7 +91,7 @@ pub(super) fn codegen_return_param<'tcx>(
                     Pointer::new(ret_param),
                     fx.fn_abi.as_ref().unwrap().ret.layout,
                 ),
-                Single(ret_param),
+                smallvec![ret_param],
             )
         }
         PassMode::Indirect {
@@ -110,7 +110,7 @@ pub(super) fn codegen_return_param<'tcx>(
         "ret",
         Some(RETURN_PLACE),
         None,
-        ret_param,
+        &ret_param,
         fx.fn_abi.as_ref().unwrap().ret.mode,
         fx.fn_abi.as_ref().unwrap().ret.layout,
     );

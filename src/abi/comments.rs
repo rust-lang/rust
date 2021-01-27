@@ -8,7 +8,6 @@ use rustc_target::abi::call::PassMode;
 
 use cranelift_codegen::entity::EntityRef;
 
-use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
 pub(super) fn add_args_header_comment(fx: &mut FunctionCx<'_, '_, impl Module>) {
@@ -22,7 +21,7 @@ pub(super) fn add_arg_comment<'tcx>(
     kind: &str,
     local: Option<mir::Local>,
     local_field: Option<usize>,
-    params: EmptySinglePair<Value>,
+    params: &[Value],
     arg_abi_mode: PassMode,
     arg_layout: TyAndLayout<'tcx>,
 ) {
@@ -38,9 +37,17 @@ pub(super) fn add_arg_comment<'tcx>(
     };
 
     let params = match params {
-        Empty => Cow::Borrowed("-"),
-        Single(param) => Cow::Owned(format!("= {:?}", param)),
-        Pair(param_a, param_b) => Cow::Owned(format!("= {:?}, {:?}", param_a, param_b)),
+        [] => Cow::Borrowed("-"),
+        [param] => Cow::Owned(format!("= {:?}", param)),
+        [param_a, param_b] => Cow::Owned(format!("= {:?},{:?}", param_a, param_b)),
+        params => Cow::Owned(format!(
+            "= {}",
+            params
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(",")
+        )),
     };
 
     let pass_mode = format!("{:?}", arg_abi_mode);

@@ -11,6 +11,7 @@ use rustc_target::abi::call::{Conv, FnAbi};
 use rustc_target::spec::abi::Abi;
 
 use cranelift_codegen::ir::AbiParam;
+use smallvec::smallvec;
 
 use self::pass_mode::*;
 use crate::prelude::*;
@@ -534,7 +535,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 );
             }
             let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0], idx);
-            (Some(method), Single(ptr))
+            (Some(method), smallvec![ptr])
         }
 
         // Normal call
@@ -542,7 +543,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             None,
             args.get(0)
                 .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
-                .unwrap_or(Empty),
+                .unwrap_or(smallvec![]),
         ),
 
         // Indirect call
@@ -557,7 +558,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 Some(func),
                 args.get(0)
                     .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
-                    .unwrap_or(Empty),
+                    .unwrap_or(smallvec![]),
             )
         }
     };
