@@ -2250,4 +2250,24 @@ mod test_set {
         set.insert(19);
         assert!(set.contains(&19));
     }
+
+    #[test]
+    fn rehash_in_place() {
+        let mut set = HashSet::new();
+
+        for i in 0..224 {
+            set.insert(i);
+        }
+
+        assert_eq!(
+            set.capacity(),
+            224,
+            "The set must be at or close to capacity to trigger a re hashing"
+        );
+
+        for i in 100..1400 {
+            set.remove(&(i - 100));
+            set.insert(i);
+        }
+    }
 }
