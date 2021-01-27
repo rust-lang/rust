@@ -329,7 +329,7 @@ crate fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut
             }
         } else if let ResolvedPath { did, .. } = *target {
             if !did.is_local() {
-                ret.extend(inline::build_impls(cx, None, did, None));
+                inline::build_impls(cx, None, did, None, ret);
             }
         }
     }
