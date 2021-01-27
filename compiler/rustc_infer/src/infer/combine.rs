@@ -542,10 +542,6 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         true
     }
 
-    fn visit_ct_substs(&self) -> bool {
-        true
-    }
-
     fn binders<T>(
         &mut self,
         a: ty::Binder<T>,
@@ -736,6 +732,16 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
+            ty::ConstKind::Unevaluated(def, substs, promoted)
+                if self.tcx().lazy_normalization() =>
+            {
+                assert_eq!(promoted, None);
+                let substs = self.relate_with_variance(ty::Variance::Invariant, substs, substs)?;
+                Ok(self.tcx().mk_const(ty::Const {
+                    ty: c.ty,
+                    val: ty::ConstKind::Unevaluated(def, substs, promoted),
+                }))
+            }
             _ => relate::super_relate_consts(self, c, c),
         }
     }
@@ -818,10 +824,6 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
     }
 
     fn a_is_expected(&self) -> bool {
-        true
-    }
-
-    fn visit_ct_substs(&self) -> bool {
         true
     }
 
@@ -957,6 +959,16 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                         }
                     }
                 }
+            }
+            ty::ConstKind::Unevaluated(def, substs, promoted)
+                if self.tcx().lazy_normalization() =>
+            {
+                assert_eq!(promoted, None);
+                let substs = self.relate_with_variance(ty::Variance::Invariant, substs, substs)?;
+                Ok(self.tcx().mk_const(ty::Const {
+                    ty: c.ty,
+                    val: ty::ConstKind::Unevaluated(def, substs, promoted),
+                }))
             }
             _ => relate::super_relate_consts(self, c, c),
         }
