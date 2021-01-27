@@ -67,30 +67,30 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
     let mut crate_paths = vec![];
 
-    let Cache { ref mut search_index, ref orphan_impl_items, ref paths, ref mut aliases, .. } =
-        *cache;
-
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
-    for &(did, ref item) in orphan_impl_items {
-        if let Some(&(ref fqp, _)) = paths.get(&did) {
-            search_index.push(IndexItem {
+    for &(did, ref item) in &cache.orphan_impl_items {
+        if let Some(&(ref fqp, _)) = cache.paths.get(&did) {
+            cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap().to_string(),
                 path: fqp[..fqp.len() - 1].join("::"),
                 desc: item.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)),
                 parent: Some(did),
                 parent_idx: None,
-                search_type: get_index_search_type(&item),
+                search_type: get_index_search_type(&item, None),
             });
             for alias in item.attrs.get_doc_aliases() {
-                aliases
+                cache
+                    .aliases
                     .entry(alias.to_lowercase())
                     .or_insert(Vec::new())
-                    .push(search_index.len() - 1);
+                    .push(cache.search_index.len() - 1);
             }
         }
     }
+
+    let Cache { ref mut search_index, ref paths, ref mut aliases, .. } = *cache;
 
     // Reduce `DefId` in paths into smaller sequential numbers,
     // and prune the paths that do not appear in the index.
@@ -164,7 +164,10 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     )
 }
 
-crate fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
+crate fn get_index_search_type(
+    item: &clean::Item,
+    cache: Option<&Cache>,
+) -> Option<IndexItemFunctionType> {
     let (all_types, ret_types) = match *item.kind {
         clean::FunctionItem(ref f) => (&f.all_types, &f.ret_types),
         clean::MethodItem(ref m, _) => (&m.all_types, &m.ret_types),
@@ -174,12 +177,12 @@ crate fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionTy
 
     let inputs = all_types
         .iter()
-        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty), *kind)))
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty, &cache), *kind)))
         .filter(|a| a.ty.name.is_some())
         .collect();
     let output = ret_types
         .iter()
-        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty), *kind)))
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty, &cache), *kind)))
         .filter(|a| a.ty.name.is_some())
         .collect::<Vec<_>>();
     let output = if output.is_empty() { None } else { Some(output) };
@@ -187,12 +190,12 @@ crate fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionTy
     Some(IndexItemFunctionType { inputs, output })
 }
 
-fn get_index_type(clean_type: &clean::Type) -> RenderType {
+fn get_index_type(clean_type: &clean::Type, cache: &Option<&Cache>) -> RenderType {
     RenderType {
-        ty: clean_type.def_id(),
+        ty: cache.map_or_else(|| clean_type.def_id(), |cache| clean_type.def_id_full(cache)),
         idx: None,
         name: get_index_type_name(clean_type, true).map(|s| s.as_str().to_ascii_lowercase()),
-        generics: get_generics(clean_type),
+        generics: get_generics(clean_type, cache),
     }
 }
 
@@ -216,14 +219,14 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
     }
 }
 
-fn get_generics(clean_type: &clean::Type) -> Option<Vec<Generic>> {
+fn get_generics(clean_type: &clean::Type, cache: &Option<&Cache>) -> Option<Vec<Generic>> {
     clean_type.generics().and_then(|types| {
         let r = types
             .iter()
             .filter_map(|t| {
                 get_index_type_name(t, false).map(|name| Generic {
                     name: name.as_str().to_ascii_lowercase(),
-                    defid: t.def_id(),
+                    defid: cache.map_or_else(|| t.def_id(), |cache| t.def_id_full(cache)),
                     idx: None,
                 })
             })

@@ -261,7 +261,7 @@ crate struct RenderOptions {
 }
 
 /// Temporary storage for data obtained during `RustdocVisitor::clean()`.
-/// Later on moved into `CACHE_KEY`.
+/// Later on moved into `cache`.
 #[derive(Default, Clone)]
 crate struct RenderInfo {
     crate inlined: FxHashSet<DefId>,

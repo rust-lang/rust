@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use rustc_middle::ty::TyCtxt;
 use rustc_span::edition::Edition;
 
 use crate::clean;
 use crate::config::{RenderInfo, RenderOptions};
 use crate::error::Error;
-use crate::formats::cache::{Cache, CACHE_KEY};
+use crate::formats::cache::Cache;
 
 /// Allows for different backends to rustdoc to be used with the `run_format()` function. Each
 /// backend renderer has hooks for initialization, documenting an item, entering and exiting a
@@ -22,20 +20,15 @@ crate trait FormatRenderer<'tcx>: Clone {
         options: RenderOptions,
         render_info: RenderInfo,
         edition: Edition,
-        cache: &mut Cache,
+        cache: Cache,
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error>;
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
-    fn item(&mut self, item: clean::Item, cache: &Cache) -> Result<(), Error>;
+    fn item(&mut self, item: clean::Item) -> Result<(), Error>;
 
     /// Renders a module (should not handle recursing into children).
-    fn mod_item_in(
-        &mut self,
-        item: &clean::Item,
-        item_name: &str,
-        cache: &Cache,
-    ) -> Result<(), Error>;
+    fn mod_item_in(&mut self, item: &clean::Item, item_name: &str) -> Result<(), Error>;
 
     /// Runs after recursively rendering all sub-items of a module.
     fn mod_item_out(&mut self, item_name: &str) -> Result<(), Error>;
@@ -46,9 +39,10 @@ crate trait FormatRenderer<'tcx>: Clone {
     fn after_krate(
         &mut self,
         krate: &clean::Crate,
-        cache: &Cache,
         diag: &rustc_errors::Handler,
     ) -> Result<(), Error>;
+
+    fn cache(&self) -> &Cache;
 }
 
 /// Main method for rendering a crate.
@@ -60,7 +54,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     edition: Edition,
     tcx: TyCtxt<'tcx>,
 ) -> Result<(), Error> {
-    let (krate, mut cache) = tcx.sess.time("create_format_cache", || {
+    let (krate, cache) = tcx.sess.time("create_format_cache", || {
         Cache::from_krate(
             render_info.clone(),
             options.document_private,
@@ -73,12 +67,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
 
     let (mut format_renderer, mut krate) = prof
         .extra_verbose_generic_activity("create_renderer", T::descr())
-        .run(|| T::init(krate, options, render_info, edition, &mut cache, tcx))?;
-
-    let cache = Arc::new(cache);
-    // Freeze the cache now that the index has been built. Put an Arc into TLS for future
-    // parallelization opportunities
-    CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
+        .run(|| T::init(krate, options, render_info, edition, cache, tcx))?;
 
     let mut item = match krate.module.take() {
         Some(i) => i,
@@ -101,7 +90,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             }
             let _timer = prof.generic_activity_with_arg("render_mod_item", name.as_str());
 
-            cx.mod_item_in(&item, &name, &cache)?;
+            cx.mod_item_in(&item, &name)?;
             let module = match *item.kind {
                 clean::StrippedItem(box clean::ModuleItem(m)) | clean::ModuleItem(m) => m,
                 _ => unreachable!(),
@@ -114,9 +103,9 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             cx.mod_item_out(&name)?;
         } else if item.name.is_some() {
             prof.generic_activity_with_arg("render_item", &*item.name.unwrap_or(unknown).as_str())
-                .run(|| cx.item(item, &cache))?;
+                .run(|| cx.item(item))?;
         }
     }
     prof.extra_verbose_generic_activity("renderer_after_krate", T::descr())
-        .run(|| format_renderer.after_krate(&krate, &cache, diag))
+        .run(|| format_renderer.after_krate(&krate, diag))
 }

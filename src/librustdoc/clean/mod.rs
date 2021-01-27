@@ -2329,14 +2329,14 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
             if matchers.len() <= 1 {
                 format!(
                     "{}macro {}{} {{\n    ...\n}}",
-                    vis.print_with_space(cx.tcx, def_id),
+                    vis.print_with_space(cx.tcx, def_id, &cx.cache),
                     name,
                     matchers.iter().map(|span| span.to_src(cx)).collect::<String>(),
                 )
             } else {
                 format!(
                     "{}macro {} {{\n{}}}",
-                    vis.print_with_space(cx.tcx, def_id),
+                    vis.print_with_space(cx.tcx, def_id, &cx.cache),
                     name,
                     matchers
                         .iter()

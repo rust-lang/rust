@@ -177,7 +177,7 @@ crate fn get_real_types(
         return res;
     }
     if arg.is_full_generic() {
-        let arg_s = Symbol::intern(&arg.print().to_string());
+        let arg_s = Symbol::intern(&arg.print(&cx.cache).to_string());
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
             WherePredicate::BoundPredicate { ty, .. } => ty.def_id() == arg.def_id(),
             _ => false,
@@ -473,7 +473,7 @@ crate fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
             return Generic(kw::SelfUpper);
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
-            return Generic(Symbol::intern(&format!("{:#}", path.print())));
+            return Generic(Symbol::intern(&format!("{:#}", path.print(&cx.cache))));
         }
         Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
         _ => false,

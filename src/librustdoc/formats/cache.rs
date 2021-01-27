@@ -1,8 +1,6 @@
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::mem;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
@@ -18,8 +16,6 @@ use crate::formats::Impl;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::cache::{extern_location, get_index_search_type, ExternalLocation};
 use crate::html::render::IndexItem;
-
-thread_local!(crate static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
@@ -197,6 +193,7 @@ impl Cache {
         }
 
         cache.stack.push(krate.name.to_string());
+
         krate = cache.fold_crate(krate);
 
         for (trait_did, dids, impl_) in cache.orphan_trait_impls.drain(..) {
@@ -319,7 +316,7 @@ impl DocFolder for Cache {
                                 .map_or_else(String::new, |x| short_markdown_summary(&x.as_str())),
                             parent,
                             parent_idx: None,
-                            search_type: get_index_search_type(&item),
+                            search_type: get_index_search_type(&item, None),
                         });
 
                         for alias in item.attrs.get_doc_aliases() {
@@ -476,8 +473,4 @@ impl DocFolder for Cache {
         self.parent_is_trait_impl = orig_parent_is_trait_impl;
         ret
     }
-}
-
-crate fn cache() -> Arc<Cache> {
-    CACHE_KEY.with(|c| c.borrow().clone())
 }

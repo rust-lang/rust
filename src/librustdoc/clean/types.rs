@@ -37,7 +37,7 @@ use crate::clean::inline;
 use crate::clean::types::Type::{QPath, ResolvedPath};
 use crate::clean::Clean;
 use crate::core::DocContext;
-use crate::formats::cache::cache;
+use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::render::cache::ExternalLocation;
 
@@ -169,8 +169,8 @@ impl Item {
         self.attrs.collapsed_doc_value()
     }
 
-    crate fn links(&self) -> Vec<RenderedLink> {
-        self.attrs.links(&self.def_id.krate)
+    crate fn links(&self, cache: &Cache) -> Vec<RenderedLink> {
+        self.attrs.links(&self.def_id.krate, cache)
     }
 
     crate fn is_crate(&self) -> bool {
@@ -826,7 +826,7 @@ impl Attributes {
     /// Gets links as a vector
     ///
     /// Cache must be populated before call
-    crate fn links(&self, krate: &CrateNum) -> Vec<RenderedLink> {
+    crate fn links(&self, krate: &CrateNum, cache: &Cache) -> Vec<RenderedLink> {
         use crate::html::format::href;
         use crate::html::render::CURRENT_DEPTH;
 
@@ -835,7 +835,7 @@ impl Attributes {
             .filter_map(|ItemLink { link: s, link_text, did, fragment }| {
                 match *did {
                     Some(did) => {
-                        if let Some((mut href, ..)) = href(did) {
+                        if let Some((mut href, ..)) = href(did, cache) {
                             if let Some(ref fragment) = *fragment {
                                 href.push('#');
                                 href.push_str(fragment);
@@ -851,7 +851,6 @@ impl Attributes {
                     }
                     None => {
                         if let Some(ref fragment) = *fragment {
-                            let cache = cache();
                             let url = match cache.extern_locations.get(krate) {
                                 Some(&(_, _, ExternalLocation::Local)) => {
                                     let depth = CURRENT_DEPTH.with(|l| l.get());
@@ -1177,6 +1176,13 @@ impl GetDefId for FnRetTy {
             DefaultReturn => None,
         }
     }
+
+    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+        match *self {
+            Return(ref ty) => ty.def_id_full(cache),
+            DefaultReturn => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1299,12 +1305,30 @@ crate enum TypeKind {
 }
 
 crate trait GetDefId {
+    /// Use this method to get the [`DefId`] of a [`clean`] AST node.
+    /// This will return [`None`] when called on a primitive [`clean::Type`].
+    /// Use [`Self::def_id_full`] if you want to include primitives.
+    ///
+    /// [`clean`]: crate::clean
+    /// [`clean::Type`]: crate::clean::Type
+    // FIXME: get rid of this function and always use `def_id_full`
     fn def_id(&self) -> Option<DefId>;
+
+    /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
+    ///
+    /// See [`Self::def_id`] for more.
+    ///
+    /// [clean]: crate::clean
+    fn def_id_full(&self, cache: &Cache) -> Option<DefId>;
 }
 
 impl<T: GetDefId> GetDefId for Option<T> {
     fn def_id(&self) -> Option<DefId> {
         self.as_ref().and_then(|d| d.def_id())
+    }
+
+    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+        self.as_ref().and_then(|d| d.def_id_full(cache))
     }
 }
 
@@ -1393,30 +1417,40 @@ impl Type {
     }
 }
 
-impl GetDefId for Type {
-    fn def_id(&self) -> Option<DefId> {
-        match *self {
-            ResolvedPath { did, .. } => Some(did),
-            Primitive(p) => cache().primitive_locations.get(&p).cloned(),
-            BorrowedRef { type_: box Generic(..), .. } => {
-                Primitive(PrimitiveType::Reference).def_id()
-            }
-            BorrowedRef { ref type_, .. } => type_.def_id(),
+impl Type {
+    fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
+        let t: PrimitiveType = match *self {
+            ResolvedPath { did, .. } => return Some(did),
+            Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
+            BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
+            BorrowedRef { ref type_, .. } => return type_.inner_def_id(cache),
             Tuple(ref tys) => {
                 if tys.is_empty() {
-                    Primitive(PrimitiveType::Unit).def_id()
+                    PrimitiveType::Unit
                 } else {
-                    Primitive(PrimitiveType::Tuple).def_id()
+                    PrimitiveType::Tuple
                 }
             }
-            BareFunction(..) => Primitive(PrimitiveType::Fn).def_id(),
-            Never => Primitive(PrimitiveType::Never).def_id(),
-            Slice(..) => Primitive(PrimitiveType::Slice).def_id(),
-            Array(..) => Primitive(PrimitiveType::Array).def_id(),
-            RawPointer(..) => Primitive(PrimitiveType::RawPointer).def_id(),
-            QPath { ref self_type, .. } => self_type.def_id(),
-            _ => None,
-        }
+            BareFunction(..) => PrimitiveType::Fn,
+            Never => PrimitiveType::Never,
+            Slice(..) => PrimitiveType::Slice,
+            Array(..) => PrimitiveType::Array,
+            RawPointer(..) => PrimitiveType::RawPointer,
+            QPath { ref self_type, .. } => return self_type.inner_def_id(cache),
+            // FIXME: remove this wildcard
+            _ => return None,
+        };
+        cache.and_then(|c| Primitive(t).def_id_full(c))
+    }
+}
+
+impl GetDefId for Type {
+    fn def_id(&self) -> Option<DefId> {
+        self.inner_def_id(None)
+    }
+
+    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+        self.inner_def_id(Some(cache))
     }
 }
 
@@ -1816,6 +1850,10 @@ crate struct Typedef {
 impl GetDefId for Typedef {
     fn def_id(&self) -> Option<DefId> {
         self.type_.def_id()
+    }
+
+    fn def_id_full(&self, cache: &Cache) -> Option<DefId> {
+        self.type_.def_id_full(cache)
     }
 }
 

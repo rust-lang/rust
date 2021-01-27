@@ -218,7 +218,12 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
             clean::ImplItem(ref impl_) => {
                 let filename = i.source.filename(self.ctx.sess());
                 if let Some(ref tr) = impl_.trait_ {
-                    debug!("impl {:#} for {:#} in {}", tr.print(), impl_.for_.print(), filename,);
+                    debug!(
+                        "impl {:#} for {:#} in {}",
+                        tr.print(&self.ctx.cache),
+                        impl_.for_.print(&self.ctx.cache),
+                        filename,
+                    );
 
                     // don't count trait impls, the missing-docs lint doesn't so we shouldn't
                     // either
@@ -227,7 +232,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                     // inherent impls *can* be documented, and those docs show up, but in most
                     // cases it doesn't make sense, as all methods on a type are in one single
                     // impl block
-                    debug!("impl {:#} in {}", impl_.for_.print(), filename);
+                    debug!("impl {:#} in {}", impl_.for_.print(&self.ctx.cache), filename);
                 }
             }
             _ => {

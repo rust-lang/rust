@@ -32,6 +32,7 @@ use crate::clean;
 use crate::clean::{AttributesExt, MAX_DEF_ID};
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::config::{OutputFormat, RenderInfo};
+use crate::formats::cache::Cache;
 use crate::passes::{self, Condition::*, ConditionalPass};
 
 crate use rustc_session::config::{DebuggingOptions, Input, Options};
@@ -45,9 +46,9 @@ crate struct DocContext<'tcx> {
     ///
     /// Most of this logic is copied from rustc_lint::late.
     crate param_env: Cell<ParamEnv<'tcx>>,
-    /// Later on moved into `CACHE_KEY`
+    /// Later on moved into `cache`
     crate renderinfo: RefCell<RenderInfo>,
-    /// Later on moved through `clean::Crate` into `CACHE_KEY`
+    /// Later on moved through `clean::Crate` into `cache`
     crate external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
@@ -75,6 +76,8 @@ crate struct DocContext<'tcx> {
     /// See `collect_intra_doc_links::traits_implemented_by` for more details.
     /// `map<module, set<trait>>`
     crate module_trait_cache: RefCell<FxHashMap<DefId, FxHashSet<DefId>>>,
+    /// Fake empty cache used when cache is required as parameter.
+    crate cache: Cache,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -524,6 +527,7 @@ crate fn run_global_ctxt(
             .collect(),
         render_options,
         module_trait_cache: RefCell::new(FxHashMap::default()),
+        cache: Cache::default(),
     };
     debug!("crate: {:?}", tcx.hir().krate());
 
