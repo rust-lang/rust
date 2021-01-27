@@ -1,7 +1,4 @@
-use crate::utils::paths::FROM_TRAIT;
-use crate::utils::{
-    is_expn_of, is_type_diagnostic_item, match_def_path, match_panic_def_id, method_chain_args, span_lint_and_then,
-};
+use crate::utils::{is_expn_of, is_type_diagnostic_item, match_panic_def_id, method_chain_args, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -59,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
         if_chain! {
             if let hir::ItemKind::Impl(impl_) = &item.kind;
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id);
-            if match_def_path(cx, impl_trait_ref.def_id, &FROM_TRAIT);
+            if cx.tcx.is_diagnostic_item(sym::from_trait, impl_trait_ref.def_id);
             then {
                 lint_impl_body(cx, item.span, impl_.items);
             }
