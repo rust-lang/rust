@@ -175,13 +175,16 @@ fn is_dylib(path: &Path) -> bool {
 /// Should be synced with <https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates>
 fn inject_cargo_env(package: &cargo_metadata::Package, env: &mut Vec<(String, String)>) {
     // FIXME: Missing variables:
-    // CARGO, CARGO_PKG_HOMEPAGE, CARGO_CRATE_NAME, CARGO_BIN_NAME, CARGO_BIN_EXE_<name>
+    // CARGO_PKG_HOMEPAGE, CARGO_CRATE_NAME, CARGO_BIN_NAME, CARGO_BIN_EXE_<name>
 
     let mut manifest_dir = package.manifest_path.clone();
     manifest_dir.pop();
     if let Some(cargo_manifest_dir) = manifest_dir.to_str() {
         env.push(("CARGO_MANIFEST_DIR".into(), cargo_manifest_dir.into()));
     }
+
+    // Not always right, but works for common cases.
+    env.push(("CARGO".into(), "cargo".into()));
 
     env.push(("CARGO_PKG_VERSION".into(), package.version.to_string()));
     env.push(("CARGO_PKG_VERSION_MAJOR".into(), package.version.major.to_string()));
