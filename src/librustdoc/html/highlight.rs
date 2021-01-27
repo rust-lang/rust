@@ -17,7 +17,7 @@ use rustc_span::with_default_session_globals;
 
 /// Highlights `src`, returning the HTML output.
 crate fn render_with_highlighting(
-    src: String,
+    src: &str,
     class: Option<&str>,
     playground_button: Option<&str>,
     tooltip: Option<(Option<Edition>, &str)>,

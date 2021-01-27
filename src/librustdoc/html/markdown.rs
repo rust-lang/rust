@@ -299,7 +299,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         };
 
         s.push_str(&highlight::render_with_highlighting(
-            text,
+            &text,
             Some(&format!(
                 "rust-example-rendered{}",
                 if let Some((_, class)) = tooltip { format!(" {}", class) } else { String::new() }
