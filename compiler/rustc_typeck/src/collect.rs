@@ -50,8 +50,6 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 
-use std::ops::ControlFlow;
-
 mod item_bounds;
 mod type_of;
 
@@ -2079,38 +2077,6 @@ fn const_evaluatable_predicates_of<'tcx>(
                     span,
                 ));
             }
-        }
-
-        // Look into `TyAlias`.
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-            use ty::fold::{TypeFoldable, TypeVisitor};
-            struct TyAliasVisitor<'a, 'tcx> {
-                tcx: TyCtxt<'tcx>,
-                preds: &'a mut FxIndexSet<(ty::Predicate<'tcx>, Span)>,
-                span: Span,
-            }
-
-            impl<'a, 'tcx> TypeVisitor<'tcx> for TyAliasVisitor<'a, 'tcx> {
-                fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-                    if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
-                        self.preds.insert((
-                            ty::PredicateKind::ConstEvaluatable(def, substs).to_predicate(self.tcx),
-                            self.span,
-                        ));
-                    }
-                    ControlFlow::CONTINUE
-                }
-            }
-
-            if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ty.kind {
-                if let Res::Def(DefKind::TyAlias, def_id) = path.res {
-                    let mut visitor =
-                        TyAliasVisitor { tcx: self.tcx, preds: &mut self.preds, span: path.span };
-                    self.tcx.type_of(def_id).visit_with(&mut visitor);
-                }
-            }
-
-            intravisit::walk_ty(self, ty)
         }
     }
 
