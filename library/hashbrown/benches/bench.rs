@@ -9,7 +9,7 @@ extern crate test;
 use test::{black_box, Bencher};
 
 use hashbrown::hash_map::DefaultHashBuilder;
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use std::{
     collections::hash_map::RandomState,
     sync::atomic::{self, AtomicUsize},
@@ -302,4 +302,30 @@ fn clone_from_large(b: &mut Bencher) {
         m2.clone_from(&m);
         black_box(&mut m2);
     })
+}
+
+#[bench]
+fn rehash_in_place(b: &mut Bencher) {
+    b.iter(|| {
+        let mut set = HashSet::new();
+
+        // Each loop triggers one rehash
+        for _ in 0..10 {
+            for i in 0..224 {
+                set.insert(i);
+            }
+
+            assert_eq!(
+                set.capacity(),
+                224,
+                "The set must be at or close to capacity to trigger a re hashing"
+            );
+
+            for i in 100..1400 {
+                set.remove(&(i - 100));
+                set.insert(i);
+            }
+            set.clear();
+        }
+    });
 }
