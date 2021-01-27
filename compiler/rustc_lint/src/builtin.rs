@@ -2607,7 +2607,7 @@ pub struct ClashingExternDeclarations {
     /// the symbol should be reported as a clashing declaration.
     // FIXME: Technically, we could just store a &'tcx str here without issue; however, the
     // `impl_lint_pass` macro doesn't currently support lints parametric over a lifetime.
-    seen_decls: FxHashMap<String, HirId>,
+    seen_decls: FxHashMap<Symbol, HirId>,
 }
 
 /// Differentiate between whether the name for an extern decl came from the link_name attribute or
@@ -2641,14 +2641,14 @@ impl ClashingExternDeclarations {
         let local_did = tcx.hir().local_def_id(fi.hir_id);
         let did = local_did.to_def_id();
         let instance = Instance::new(did, ty::List::identity_for_item(tcx, did));
-        let name = tcx.symbol_name(instance).name;
-        if let Some(&hir_id) = self.seen_decls.get(name) {
+        let name = Symbol::intern(tcx.symbol_name(instance).name);
+        if let Some(&hir_id) = self.seen_decls.get(&name) {
             // Avoid updating the map with the new entry when we do find a collision. We want to
             // make sure we're always pointing to the first definition as the previous declaration.
             // This lets us avoid emitting "knock-on" diagnostics.
             Some(hir_id)
         } else {
-            self.seen_decls.insert(name.to_owned(), hid)
+            self.seen_decls.insert(name, hid)
         }
     }
 
