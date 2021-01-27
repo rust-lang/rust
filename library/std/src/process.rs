@@ -170,6 +170,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 ///
 /// [`wait`]: Child::wait
 #[stable(feature = "process", since = "1.0.0")]
+#[must_use = "this Child should probably be `wait`ed, or `status` used instead of `spawn`"]
 pub struct Child {
     handle: imp::Process,
 
