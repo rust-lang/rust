@@ -1416,6 +1416,7 @@ impl From<fs::File> for Stdio {
 /// [`wait`]: Child::wait
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
+#[must_use = "this ExitStatus might represent an error that should be checked and handled"]
 pub struct ExitStatus(imp::ExitStatus);
 
 impl ExitStatus {
