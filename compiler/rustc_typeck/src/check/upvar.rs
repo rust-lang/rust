@@ -42,7 +42,7 @@ use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, ProjectionKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_span::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{MultiSpan, Span, Symbol};
 
 /// Describe the relationship between the paths of two places
 /// eg:
@@ -135,7 +135,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let upvar_id = ty::UpvarId::new(var_hir_id, local_def_id);
                     let capture_kind = self.init_capture_kind(capture_clause, upvar_id, span);
-                    let info = ty::CaptureInfo { expr_id: None, capture_kind };
+                    let info = ty::CaptureInfo {
+                        capture_kind_expr_id: None,
+                        path_expr_id: None,
+                        capture_kind,
+                    };
 
                     capture_information.insert(place, info);
                 }
@@ -308,8 +312,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(capture_kind) = upvar_capture_map.get(&upvar_id) {
                             // upvar_capture_map only stores the UpvarCapture (CaptureKind),
                             // so we create a fake capture info with no expression.
-                            let fake_capture_info =
-                                ty::CaptureInfo { expr_id: None, capture_kind: *capture_kind };
+                            let fake_capture_info = ty::CaptureInfo {
+                                capture_kind_expr_id: None,
+                                path_expr_id: None,
+                                capture_kind: *capture_kind,
+                            };
                             determine_capture_info(fake_capture_info, capture_info).capture_kind
                         } else {
                             capture_info.capture_kind
@@ -359,20 +366,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// ```
     /// {
-    ///       Place(base: hir_id_s, projections: [], ....) -> (hir_id_L5, ByValue),
-    ///       Place(base: hir_id_p, projections: [Field(0, 0)], ...) -> (hir_id_L2, ByRef(MutBorrow))
-    ///       Place(base: hir_id_p, projections: [Field(1, 0)], ...) -> (hir_id_L3, ByRef(ImmutBorrow))
-    ///       Place(base: hir_id_p, projections: [], ...) -> (hir_id_L4, ByRef(ImmutBorrow))
+    ///       Place(base: hir_id_s, projections: [], ....) -> {
+    ///                                                            capture_kind_expr: hir_id_L5,
+    ///                                                            path_expr_id: hir_id_L5,
+    ///                                                            capture_kind: ByValue
+    ///                                                       },
+    ///       Place(base: hir_id_p, projections: [Field(0, 0)], ...) -> {
+    ///                                                                     capture_kind_expr: hir_id_L2,
+    ///                                                                     path_expr_id: hir_id_L2,
+    ///                                                                     capture_kind: ByValue
+    ///                                                                 },
+    ///       Place(base: hir_id_p, projections: [Field(1, 0)], ...) -> {
+    ///                                                                     capture_kind_expr: hir_id_L3,
+    ///                                                                     path_expr_id: hir_id_L3,
+    ///                                                                     capture_kind: ByValue
+    ///                                                                 },
+    ///       Place(base: hir_id_p, projections: [], ...) -> {
+    ///                                                          capture_kind_expr: hir_id_L4,
+    ///                                                          path_expr_id: hir_id_L4,
+    ///                                                          capture_kind: ByValue
+    ///                                                      },
     /// ```
     ///
     /// After the min capture analysis, we get:
     /// ```
     /// {
     ///       hir_id_s -> [
-    ///            Place(base: hir_id_s, projections: [], ....) -> (hir_id_L4, ByValue)
+    ///            Place(base: hir_id_s, projections: [], ....) -> {
+    ///                                                                capture_kind_expr: hir_id_L5,
+    ///                                                                path_expr_id: hir_id_L5,
+    ///                                                                capture_kind: ByValue
+    ///                                                            },
     ///       ],
     ///       hir_id_p -> [
-    ///            Place(base: hir_id_p, projections: [], ...) -> (hir_id_L2, ByRef(MutBorrow)),
+    ///            Place(base: hir_id_p, projections: [], ...) -> {
+    ///                                                               capture_kind_expr: hir_id_L2,
+    ///                                                               path_expr_id: hir_id_L4,
+    ///                                                               capture_kind: ByValue
+    ///                                                           },
     ///       ],
     /// ```
     fn compute_min_captures(
@@ -425,8 +456,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // current place is ancestor of possible_descendant
                     PlaceAncestryRelation::Ancestor => {
                         descendant_found = true;
+                        let backup_path_expr_id = updated_capture_info.path_expr_id;
+
                         updated_capture_info =
                             determine_capture_info(updated_capture_info, possible_descendant.info);
+
+                        // we need to keep the ancestor's `path_expr_id`
+                        updated_capture_info.path_expr_id = backup_path_expr_id;
                         false
                     }
 
@@ -441,8 +477,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // current place is descendant of possible_ancestor
                         PlaceAncestryRelation::Descendant => {
                             ancestor_found = true;
+                            let backup_path_expr_id = possible_ancestor.info.path_expr_id;
                             possible_ancestor.info =
                                 determine_capture_info(possible_ancestor.info, capture_info);
+
+                            // we need to keep the ancestor's `path_expr_id`
+                            possible_ancestor.info.path_expr_id = backup_path_expr_id;
 
                             // Only one ancestor of the current place will be in the list.
                             break;
@@ -518,7 +558,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let capture_str = construct_capture_info_string(self.tcx, place, capture_info);
                 let output_str = format!("Capturing {}", capture_str);
 
-                let span = capture_info.expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
+                let span =
+                    capture_info.path_expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
                 diag.span_note(span, &output_str);
             }
             diag.emit();
@@ -542,9 +583,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             construct_capture_info_string(self.tcx, place, capture_info);
                         let output_str = format!("Min Capture {}", capture_str);
 
-                        let span =
-                            capture_info.expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
-                        diag.span_note(span, &output_str);
+                        if capture.info.path_expr_id != capture.info.capture_kind_expr_id {
+                            let path_span = capture_info
+                                .path_expr_id
+                                .map_or(closure_span, |e| self.tcx.hir().span(e));
+                            let capture_kind_span = capture_info
+                                .capture_kind_expr_id
+                                .map_or(closure_span, |e| self.tcx.hir().span(e));
+
+                            let mut multi_span: MultiSpan =
+                                MultiSpan::from_spans(vec![path_span, capture_kind_span]);
+
+                            let capture_kind_label =
+                                construct_capture_kind_reason_string(self.tcx, place, capture_info);
+                            let path_label = construct_path_string(self.tcx, place);
+
+                            multi_span.push_span_label(path_span, path_label);
+                            multi_span.push_span_label(capture_kind_span, capture_kind_label);
+
+                            diag.span_note(multi_span, &output_str);
+                        } else {
+                            let span = capture_info
+                                .path_expr_id
+                                .map_or(closure_span, |e| self.tcx.hir().span(e));
+
+                            diag.span_note(span, &output_str);
+                        };
                     }
                 }
                 diag.emit();
@@ -642,7 +706,8 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         );
 
         let capture_info = ty::CaptureInfo {
-            expr_id: Some(diag_expr_id),
+            capture_kind_expr_id: Some(diag_expr_id),
+            path_expr_id: Some(diag_expr_id),
             capture_kind: ty::UpvarCapture::ByValue(Some(usage_span)),
         };
 
@@ -762,7 +827,8 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             let new_upvar_borrow = ty::UpvarBorrow { kind, region: curr_upvar_borrow.region };
 
             let capture_info = ty::CaptureInfo {
-                expr_id: Some(diag_expr_id),
+                capture_kind_expr_id: Some(diag_expr_id),
+                path_expr_id: Some(diag_expr_id),
                 capture_kind: ty::UpvarCapture::ByRef(new_upvar_borrow),
             };
             let updated_info = determine_capture_info(curr_capture_info, capture_info);
@@ -824,7 +890,11 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
                 self.fcx.init_capture_kind(self.capture_clause, upvar_id, self.closure_span);
 
             let expr_id = Some(diag_expr_id);
-            let capture_info = ty::CaptureInfo { expr_id, capture_kind };
+            let capture_info = ty::CaptureInfo {
+                capture_kind_expr_id: expr_id,
+                path_expr_id: expr_id,
+                capture_kind,
+            };
 
             debug!("Capturing new place {:?}, capture_info={:?}", place_with_id, capture_info);
 
@@ -890,11 +960,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
     }
 }
 
-fn construct_capture_info_string(
-    tcx: TyCtxt<'_>,
-    place: &Place<'tcx>,
-    capture_info: &ty::CaptureInfo<'tcx>,
-) -> String {
+fn construct_place_string(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
     let variable_name = match place.base {
         PlaceBase::Upvar(upvar_id) => var_name(tcx, upvar_id.var_path.hir_id).to_string(),
         _ => bug!("Capture_information should only contain upvars"),
@@ -914,11 +980,42 @@ fn construct_capture_info_string(
         projections_str.push_str(proj.as_str());
     }
 
+    format!("{}[{}]", variable_name, projections_str)
+}
+
+fn construct_capture_kind_reason_string(
+    tcx: TyCtxt<'_>,
+    place: &Place<'tcx>,
+    capture_info: &ty::CaptureInfo<'tcx>,
+) -> String {
+    let place_str = construct_place_string(tcx, &place);
+
     let capture_kind_str = match capture_info.capture_kind {
         ty::UpvarCapture::ByValue(_) => "ByValue".into(),
         ty::UpvarCapture::ByRef(borrow) => format!("{:?}", borrow.kind),
     };
-    format!("{}[{}] -> {}", variable_name, projections_str, capture_kind_str)
+
+    format!("{} captured as {} here", place_str, capture_kind_str)
+}
+
+fn construct_path_string(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
+    let place_str = construct_place_string(tcx, &place);
+
+    format!("{} used here", place_str)
+}
+
+fn construct_capture_info_string(
+    tcx: TyCtxt<'_>,
+    place: &Place<'tcx>,
+    capture_info: &ty::CaptureInfo<'tcx>,
+) -> String {
+    let place_str = construct_place_string(tcx, &place);
+
+    let capture_kind_str = match capture_info.capture_kind {
+        ty::UpvarCapture::ByValue(_) => "ByValue".into(),
+        ty::UpvarCapture::ByRef(borrow) => format!("{:?}", borrow.kind),
+    };
+    format!("{} -> {}", place_str, capture_kind_str)
 }
 
 fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
@@ -930,7 +1027,9 @@ fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
 /// (Note: CaptureInfo contains CaptureKind and an expression that led to capture it in that way)
 ///
 /// If both `CaptureKind`s are considered equivalent, then the CaptureInfo is selected based
-/// on the `CaptureInfo` containing an associated expression id.
+/// on the `CaptureInfo` containing an associated `capture_kind_expr_id`.
+///
+/// It is the caller's duty to figure out which path_expr_id to use.
 ///
 /// If both the CaptureKind and Expression are considered to be equivalent,
 /// then `CaptureInfo` A is preferred. This can be useful in cases where we want to priortize
@@ -981,7 +1080,7 @@ fn determine_capture_info(
     };
 
     if eq_capture_kind {
-        match (capture_info_a.expr_id, capture_info_b.expr_id) {
+        match (capture_info_a.capture_kind_expr_id, capture_info_b.capture_kind_expr_id) {
             (Some(_), _) | (None, None) => capture_info_a,
             (None, Some(_)) => capture_info_b,
         }
