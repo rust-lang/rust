@@ -1,4 +1,4 @@
-use crate::utils::{has_drop, qpath_res, snippet_opt, span_lint, span_lint_and_sugg};
+use crate::utils::{has_drop, snippet_opt, span_lint, span_lint_and_sugg};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
@@ -67,7 +67,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         },
         ExprKind::Call(ref callee, ref args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {
-                let res = qpath_res(cx, qpath, callee.hir_id);
+                let res = cx.qpath_res(qpath, callee.hir_id);
                 match res {
                     Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..) => {
                         !has_drop(cx, cx.typeck_results().expr_ty(expr))
@@ -146,7 +146,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
         },
         ExprKind::Call(ref callee, ref args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {
-                let res = qpath_res(cx, qpath, callee.hir_id);
+                let res = cx.qpath_res(qpath, callee.hir_id);
                 match res {
                     Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..)
                         if !has_drop(cx, cx.typeck_results().expr_ty(expr)) =>
