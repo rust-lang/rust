@@ -975,6 +975,7 @@ extern "system" {
     pub fn freeaddrinfo(res: *mut ADDRINFOA);
 
     pub fn GetProcAddress(handle: HMODULE, name: LPCSTR) -> *mut c_void;
+    pub fn GetModuleHandleA(lpModuleName: LPCSTR) -> HMODULE;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
 
     pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);

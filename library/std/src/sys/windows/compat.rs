@@ -11,22 +11,6 @@
 //! manner we pay a semi-large one-time cost up front for detecting whether a
 //! function is available but afterwards it's just a load and a jump.
 
-use crate::ffi::CString;
-use crate::sys::c;
-
-pub fn lookup(module: &str, symbol: &str) -> Option<usize> {
-    let mut module: Vec<u16> = module.encode_utf16().collect();
-    module.push(0);
-    let symbol = CString::new(symbol).unwrap();
-    unsafe {
-        let handle = c::GetModuleHandleW(module.as_ptr());
-        match c::GetProcAddress(handle, symbol.as_ptr()) as usize {
-            0 => None,
-            n => Some(n),
-        }
-    }
-}
-
 macro_rules! compat_fn {
     ($module:literal: $(
         $(#[$meta:meta])*
@@ -36,17 +20,16 @@ macro_rules! compat_fn {
         pub mod $symbol {
             #[allow(unused_imports)]
             use super::*;
-            use crate::sync::atomic::{AtomicUsize, Ordering};
             use crate::mem;
 
             type F = unsafe extern "system" fn($($argtype),*) -> $rettype;
 
-            static PTR: AtomicUsize = AtomicUsize::new(0);
+            static mut PTR: F = fallback;
 
             #[allow(unused_variables)]
             unsafe extern "system" fn fallback($($argname: $argtype),*) -> $rettype $body
 
-            /// This address is stored in `PTR` to incidate an unavailable API.
+            /// This address is stored in `PTR` to indicate an unavailable API.
             ///
             /// This way, call() will end up calling fallback() if it is unavailable.
             ///
@@ -61,33 +44,36 @@ macro_rules! compat_fn {
             /// an address from GetProcAddress from an external dll.
             static FALLBACK: F = fallback;
 
-            #[cold]
-            fn load() -> usize {
-                // There is no locking here. It's okay if this is executed by multiple threads in
-                // parallel. `lookup` will result in the same value, and it's okay if they overwrite
-                // eachothers result as long as they do so atomically. We don't need any guarantees
-                // about memory ordering, as this involves just a single atomic variable which is
-                // not used to protect or order anything else.
-                let addr = crate::sys::compat::lookup($module, stringify!($symbol))
-                    .unwrap_or(FALLBACK as usize);
-                PTR.store(addr, Ordering::Relaxed);
-                addr
-            }
+            #[used]
+            #[link_section = ".CRT$XCU"]
+            static XCU_ENTRY: fn() = init_me;
 
-            fn addr() -> usize {
-                match PTR.load(Ordering::Relaxed) {
-                    0 => load(),
-                    addr => addr,
+            #[cold]
+            fn init_me() {
+                // There is no locking here. This code is executed before main() is entered, and
+                // is guaranteed to be single-threaded.
+                unsafe {
+                    let module_name: *const u8 = concat!($module, "\0").as_ptr();
+                    let symbol_name: *const u8 = concat!(stringify!($symbol), "\0").as_ptr();
+                    let module_handle = $crate::sys::c::GetModuleHandleA(module_name as *const i8);
+                    if !module_handle.is_null() {
+                        match $crate::sys::c::GetProcAddress(module_handle, symbol_name as *const i8) as usize {
+                            0 => {}
+                            n => {
+                                PTR = mem::transmute::<usize, F>(n);
+                            }
+                        }
+                    }
                 }
             }
 
             #[allow(dead_code)]
             pub fn is_available() -> bool {
-                addr() != FALLBACK as usize
+                unsafe { PTR as usize != FALLBACK as usize }
             }
 
             pub unsafe fn call($($argname: $argtype),*) -> $rettype {
-                mem::transmute::<usize, F>(addr())($($argname),*)
+                (PTR)($($argname),*)
             }
         }
 
