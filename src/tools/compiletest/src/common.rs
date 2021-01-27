@@ -174,7 +174,7 @@ impl fmt::Display for Debugger {
 /// Configuration for compiletest
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// `true` to to overwrite stderr/stdout files instead of complaining about changes in output.
+    /// `true` to overwrite stderr/stdout files instead of complaining about changes in output.
     pub bless: bool,
 
     /// The library paths required for running the compiler.
