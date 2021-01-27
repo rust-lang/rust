@@ -746,6 +746,14 @@ impl<'tcx> LateContext<'tcx> {
             hir::QPath::Resolved(_, ref path) => path.res,
             hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
                 .maybe_typeck_results()
+                .filter(|typeck_results| typeck_results.hir_owner == id.owner)
+                .or_else(|| {
+                    if self.tcx.has_typeck_results(id.owner.to_def_id()) {
+                        Some(self.tcx.typeck(id.owner))
+                    } else {
+                        None
+                    }
+                })
                 .and_then(|typeck_results| typeck_results.type_dependent_def(id))
                 .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
         }
