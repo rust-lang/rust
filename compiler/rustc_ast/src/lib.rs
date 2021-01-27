@@ -41,7 +41,6 @@ pub mod util {
 
 pub mod ast;
 pub mod attr;
-pub mod crate_disambiguator;
 pub mod entry;
 pub mod expand;
 pub mod mut_visit;

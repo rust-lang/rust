@@ -635,6 +635,10 @@ impl CrateRoot<'_> {
         self.hash
     }
 
+    crate fn stable_crate_id(&self) -> StableCrateId {
+        self.stable_crate_id
+    }
+
     crate fn triple(&self) -> &TargetTriple {
         &self.triple
     }
