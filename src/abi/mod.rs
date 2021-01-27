@@ -140,18 +140,8 @@ pub(crate) fn get_function_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     triple: &target_lexicon::Triple,
     inst: Instance<'tcx>,
-    support_vararg: bool,
 ) -> Signature {
     assert!(!inst.substs.needs_infer());
-    let fn_sig = tcx
-        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), fn_sig_for_fn_abi(tcx, inst));
-    if fn_sig.c_variadic && !support_vararg {
-        tcx.sess.span_fatal(
-            tcx.def_span(inst.def_id()),
-            "Variadic function definitions are not yet supported",
-        );
-    }
-
     clif_sig_from_fn_abi(
         tcx,
         triple,
@@ -166,7 +156,7 @@ pub(crate) fn import_function<'tcx>(
     inst: Instance<'tcx>,
 ) -> FuncId {
     let name = tcx.symbol_name(inst).name.to_string();
-    let sig = get_function_sig(tcx, module.isa().triple(), inst, true);
+    let sig = get_function_sig(tcx, module.isa().triple(), inst);
     module
         .declare_function(&name, Linkage::Import, &sig)
         .unwrap()
