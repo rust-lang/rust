@@ -233,8 +233,6 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::AliasEq<RustInterner<'tcx>>>
 
 impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::Ty<RustInterner<'tcx>> {
-        use rustc_ast as ast;
-
         let int = |i| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Int(i));
         let uint = |i| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(i));
         let float = |f| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Float(f));
@@ -243,24 +241,24 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             ty::Bool => chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Bool),
             ty::Char => chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Char),
             ty::Int(ty) => match ty {
-                ast::IntTy::Isize => int(chalk_ir::IntTy::Isize),
-                ast::IntTy::I8 => int(chalk_ir::IntTy::I8),
-                ast::IntTy::I16 => int(chalk_ir::IntTy::I16),
-                ast::IntTy::I32 => int(chalk_ir::IntTy::I32),
-                ast::IntTy::I64 => int(chalk_ir::IntTy::I64),
-                ast::IntTy::I128 => int(chalk_ir::IntTy::I128),
+                ty::IntTy::Isize => int(chalk_ir::IntTy::Isize),
+                ty::IntTy::I8 => int(chalk_ir::IntTy::I8),
+                ty::IntTy::I16 => int(chalk_ir::IntTy::I16),
+                ty::IntTy::I32 => int(chalk_ir::IntTy::I32),
+                ty::IntTy::I64 => int(chalk_ir::IntTy::I64),
+                ty::IntTy::I128 => int(chalk_ir::IntTy::I128),
             },
             ty::Uint(ty) => match ty {
-                ast::UintTy::Usize => uint(chalk_ir::UintTy::Usize),
-                ast::UintTy::U8 => uint(chalk_ir::UintTy::U8),
-                ast::UintTy::U16 => uint(chalk_ir::UintTy::U16),
-                ast::UintTy::U32 => uint(chalk_ir::UintTy::U32),
-                ast::UintTy::U64 => uint(chalk_ir::UintTy::U64),
-                ast::UintTy::U128 => uint(chalk_ir::UintTy::U128),
+                ty::UintTy::Usize => uint(chalk_ir::UintTy::Usize),
+                ty::UintTy::U8 => uint(chalk_ir::UintTy::U8),
+                ty::UintTy::U16 => uint(chalk_ir::UintTy::U16),
+                ty::UintTy::U32 => uint(chalk_ir::UintTy::U32),
+                ty::UintTy::U64 => uint(chalk_ir::UintTy::U64),
+                ty::UintTy::U128 => uint(chalk_ir::UintTy::U128),
             },
             ty::Float(ty) => match ty {
-                ast::FloatTy::F32 => float(chalk_ir::FloatTy::F32),
-                ast::FloatTy::F64 => float(chalk_ir::FloatTy::F64),
+                ty::FloatTy::F32 => float(chalk_ir::FloatTy::F32),
+                ty::FloatTy::F64 => float(chalk_ir::FloatTy::F64),
             },
             ty::Adt(def, substs) => {
                 chalk_ir::TyKind::Adt(chalk_ir::AdtId(def), substs.lower_into(interner))
@@ -347,24 +345,24 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 chalk_ir::Scalar::Bool => ty::Bool,
                 chalk_ir::Scalar::Char => ty::Char,
                 chalk_ir::Scalar::Int(int_ty) => match int_ty {
-                    chalk_ir::IntTy::Isize => ty::Int(ast::IntTy::Isize),
-                    chalk_ir::IntTy::I8 => ty::Int(ast::IntTy::I8),
-                    chalk_ir::IntTy::I16 => ty::Int(ast::IntTy::I16),
-                    chalk_ir::IntTy::I32 => ty::Int(ast::IntTy::I32),
-                    chalk_ir::IntTy::I64 => ty::Int(ast::IntTy::I64),
-                    chalk_ir::IntTy::I128 => ty::Int(ast::IntTy::I128),
+                    chalk_ir::IntTy::Isize => ty::Int(ty::IntTy::Isize),
+                    chalk_ir::IntTy::I8 => ty::Int(ty::IntTy::I8),
+                    chalk_ir::IntTy::I16 => ty::Int(ty::IntTy::I16),
+                    chalk_ir::IntTy::I32 => ty::Int(ty::IntTy::I32),
+                    chalk_ir::IntTy::I64 => ty::Int(ty::IntTy::I64),
+                    chalk_ir::IntTy::I128 => ty::Int(ty::IntTy::I128),
                 },
                 chalk_ir::Scalar::Uint(int_ty) => match int_ty {
-                    chalk_ir::UintTy::Usize => ty::Uint(ast::UintTy::Usize),
-                    chalk_ir::UintTy::U8 => ty::Uint(ast::UintTy::U8),
-                    chalk_ir::UintTy::U16 => ty::Uint(ast::UintTy::U16),
-                    chalk_ir::UintTy::U32 => ty::Uint(ast::UintTy::U32),
-                    chalk_ir::UintTy::U64 => ty::Uint(ast::UintTy::U64),
-                    chalk_ir::UintTy::U128 => ty::Uint(ast::UintTy::U128),
+                    chalk_ir::UintTy::Usize => ty::Uint(ty::UintTy::Usize),
+                    chalk_ir::UintTy::U8 => ty::Uint(ty::UintTy::U8),
+                    chalk_ir::UintTy::U16 => ty::Uint(ty::UintTy::U16),
+                    chalk_ir::UintTy::U32 => ty::Uint(ty::UintTy::U32),
+                    chalk_ir::UintTy::U64 => ty::Uint(ty::UintTy::U64),
+                    chalk_ir::UintTy::U128 => ty::Uint(ty::UintTy::U128),
                 },
                 chalk_ir::Scalar::Float(float_ty) => match float_ty {
-                    chalk_ir::FloatTy::F32 => ty::Float(ast::FloatTy::F32),
-                    chalk_ir::FloatTy::F64 => ty::Float(ast::FloatTy::F64),
+                    chalk_ir::FloatTy::F32 => ty::Float(ty::FloatTy::F32),
+                    chalk_ir::FloatTy::F64 => ty::Float(ty::FloatTy::F64),
                 },
             },
             TyKind::Array(ty, c) => {

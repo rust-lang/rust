@@ -39,7 +39,7 @@ crate fn lit_to_const<'tcx>(
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::Ptr(id.into()))
         }
-        (ast::LitKind::Byte(n), ty::Uint(ast::UintTy::U8)) => {
+        (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
         }
         (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
@@ -56,11 +56,11 @@ crate fn lit_to_const<'tcx>(
     Ok(ty::Const::from_value(tcx, lit, ty))
 }
 
-fn parse_float<'tcx>(num: Symbol, fty: ast::FloatTy, neg: bool) -> Result<ConstValue<'tcx>, ()> {
+fn parse_float<'tcx>(num: Symbol, fty: ty::FloatTy, neg: bool) -> Result<ConstValue<'tcx>, ()> {
     let num = num.as_str();
     use rustc_apfloat::ieee::{Double, Single};
     let scalar = match fty {
-        ast::FloatTy::F32 => {
+        ty::FloatTy::F32 => {
             num.parse::<f32>().map_err(|_| ())?;
             let mut f = num.parse::<Single>().unwrap_or_else(|e| {
                 panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
@@ -70,7 +70,7 @@ fn parse_float<'tcx>(num: Symbol, fty: ast::FloatTy, neg: bool) -> Result<ConstV
             }
             Scalar::from_f32(f)
         }
-        ast::FloatTy::F64 => {
+        ty::FloatTy::F64 => {
             num.parse::<f64>().map_err(|_| ())?;
             let mut f = num.parse::<Double>().unwrap_or_else(|e| {
                 panic!("apfloat::ieee::Double failed to parse `{}`: {:?}", num, e)

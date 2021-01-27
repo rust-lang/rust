@@ -168,25 +168,25 @@ fn lint_overflowing_range_endpoint<'tcx>(
 
 // For `isize` & `usize`, be conservative with the warnings, so that the
 // warnings are consistent between 32- and 64-bit platforms.
-fn int_ty_range(int_ty: ast::IntTy) -> (i128, i128) {
+fn int_ty_range(int_ty: ty::IntTy) -> (i128, i128) {
     match int_ty {
-        ast::IntTy::Isize => (i64::MIN.into(), i64::MAX.into()),
-        ast::IntTy::I8 => (i8::MIN.into(), i8::MAX.into()),
-        ast::IntTy::I16 => (i16::MIN.into(), i16::MAX.into()),
-        ast::IntTy::I32 => (i32::MIN.into(), i32::MAX.into()),
-        ast::IntTy::I64 => (i64::MIN.into(), i64::MAX.into()),
-        ast::IntTy::I128 => (i128::MIN, i128::MAX),
+        ty::IntTy::Isize => (i64::MIN.into(), i64::MAX.into()),
+        ty::IntTy::I8 => (i8::MIN.into(), i8::MAX.into()),
+        ty::IntTy::I16 => (i16::MIN.into(), i16::MAX.into()),
+        ty::IntTy::I32 => (i32::MIN.into(), i32::MAX.into()),
+        ty::IntTy::I64 => (i64::MIN.into(), i64::MAX.into()),
+        ty::IntTy::I128 => (i128::MIN, i128::MAX),
     }
 }
 
-fn uint_ty_range(uint_ty: ast::UintTy) -> (u128, u128) {
+fn uint_ty_range(uint_ty: ty::UintTy) -> (u128, u128) {
     let max = match uint_ty {
-        ast::UintTy::Usize => u64::MAX.into(),
-        ast::UintTy::U8 => u8::MAX.into(),
-        ast::UintTy::U16 => u16::MAX.into(),
-        ast::UintTy::U32 => u32::MAX.into(),
-        ast::UintTy::U64 => u64::MAX.into(),
-        ast::UintTy::U128 => u128::MAX,
+        ty::UintTy::Usize => u64::MAX.into(),
+        ty::UintTy::U8 => u8::MAX.into(),
+        ty::UintTy::U16 => u16::MAX.into(),
+        ty::UintTy::U32 => u32::MAX.into(),
+        ty::UintTy::U64 => u64::MAX.into(),
+        ty::UintTy::U128 => u128::MAX,
     };
     (0, max)
 }
@@ -258,8 +258,8 @@ fn report_bin_hex_error(
 //
 // No suggestion for: `isize`, `usize`.
 fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static str> {
-    use rustc_ast::IntTy::*;
-    use rustc_ast::UintTy::*;
+    use ty::IntTy::*;
+    use ty::UintTy::*;
     macro_rules! find_fit {
         ($ty:expr, $val:expr, $negative:expr,
          $($type:ident => [$($utypes:expr),*] => [$($itypes:expr),*]),+) => {
@@ -302,7 +302,7 @@ fn lint_int_literal<'tcx>(
     type_limits: &TypeLimits,
     e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
-    t: ast::IntTy,
+    t: ty::IntTy,
     v: u128,
 ) {
     let int_type = t.normalize(cx.sess().target.pointer_width);
@@ -314,7 +314,14 @@ fn lint_int_literal<'tcx>(
     // avoiding use of -min to prevent overflow/panic
     if (negative && v > max + 1) || (!negative && v > max) {
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
-            report_bin_hex_error(cx, e, attr::IntType::SignedInt(t), repr_str, v, negative);
+            report_bin_hex_error(
+                cx,
+                e,
+                attr::IntType::SignedInt(ty::ast_int_ty(t)),
+                repr_str,
+                v,
+                negative,
+            );
             return;
         }
 
@@ -351,7 +358,7 @@ fn lint_uint_literal<'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
-    t: ast::UintTy,
+    t: ty::UintTy,
 ) {
     let uint_type = t.normalize(cx.sess().target.pointer_width);
     let (min, max) = uint_ty_range(uint_type);
@@ -391,7 +398,14 @@ fn lint_uint_literal<'tcx>(
             }
         }
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
-            report_bin_hex_error(cx, e, attr::IntType::UnsignedInt(t), repr_str, lit_val, false);
+            report_bin_hex_error(
+                cx,
+                e,
+                attr::IntType::UnsignedInt(ty::ast_uint_ty(t)),
+                repr_str,
+                lit_val,
+                false,
+            );
             return;
         }
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
@@ -430,8 +444,8 @@ fn lint_literal<'tcx>(
         ty::Float(t) => {
             let is_infinite = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
-                    ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
-                    ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
+                    ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
+                    ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
                 },
                 _ => bug!(),
             };
@@ -984,7 +998,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some("consider using `u32` or `libc::wchar_t` instead".into()),
             },
 
-            ty::Int(ast::IntTy::I128) | ty::Uint(ast::UintTy::U128) => FfiUnsafe {
+            ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => FfiUnsafe {
                 ty,
                 reason: "128-bit integers don't currently have a known stable ABI".into(),
                 help: None,
