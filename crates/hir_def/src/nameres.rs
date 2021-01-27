@@ -289,6 +289,17 @@ impl DefMap {
         (res.resolved_def, res.segment_index)
     }
 
+    /// Iterates over the containing `DefMap`s, if `self` is a `DefMap` corresponding to a block
+    /// expression.
+    fn ancestor_maps(
+        &self,
+        local_mod: LocalModuleId,
+    ) -> impl Iterator<Item = (&DefMap, LocalModuleId)> {
+        std::iter::successors(Some((self, local_mod)), |(map, _)| {
+            map.block.as_ref().map(|block| (&*block.parent, block.parent_module))
+        })
+    }
+
     // FIXME: this can use some more human-readable format (ideally, an IR
     // even), as this should be a great debugging aid.
     pub fn dump(&self) -> String {
