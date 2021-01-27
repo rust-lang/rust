@@ -16,6 +16,7 @@ pub(crate) struct Args {
     pub(crate) log_file: Option<PathBuf>,
     pub(crate) no_buffering: bool,
     pub(crate) command: Command,
+    #[allow(unused)]
     pub(crate) wait_dbg: bool,
 }
 
