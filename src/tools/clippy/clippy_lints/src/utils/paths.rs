@@ -48,7 +48,6 @@ pub const FN_MUT: [&str; 3] = ["core", "ops", "FnMut"];
 pub const FN_ONCE: [&str; 3] = ["core", "ops", "FnOnce"];
 pub const FROM_FROM: [&str; 4] = ["core", "convert", "From", "from"];
 pub const FROM_ITERATOR: [&str; 5] = ["core", "iter", "traits", "collect", "FromIterator"];
-pub const FROM_TRAIT: [&str; 3] = ["core", "convert", "From"];
 pub const FUTURE_FROM_GENERATOR: [&str; 3] = ["core", "future", "from_generator"];
 pub const HASH: [&str; 3] = ["core", "hash", "Hash"];
 pub const HASHMAP: [&str; 5] = ["std", "collections", "hash", "map", "HashMap"];
