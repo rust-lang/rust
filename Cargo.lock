@@ -184,9 +184,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.50.0"
+version = "0.51.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac605cf409013573e971d7292d4bec6f5495b19d5f98fc9d8b1a12270c3888e0"
+checksum = "f1a2ad10b964771ffc53ce7a8d6fce4bde3da0da82a1bc7a72668548db1c56ee"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -196,9 +196,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.50.0"
+version = "0.51.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa1dbfb3c2c8b67edb5cd981f720550e43579090574f786145731f90c5d401ff"
+checksum = "17b14b40a09687aa5f0973721841d83a8a0e12a6b3ada1d2e01f0a694bb800ee"
 dependencies = [
  "bitflags",
  "chalk-derive",
@@ -207,9 +207,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.50.0"
+version = "0.51.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0882e2a3ba66901717a64f8bb0655e809f800ac6abed05cb605e7a41d4bf8999"
+checksum = "1c7297bb1683f63a4b334b53cfdd81a721e8adde3441514e1126d24aaafe2552"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -220,9 +220,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.50.0"
+version = "0.51.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d43cce07150eac39771ff4b198537cefef744734b2218a89c682295b54cd8d0"
+checksum = "82765c1a19e801d53fc9d145449701ddf79f394e6519f1e9c01fca1ee95d0ba7"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -284,9 +284,9 @@ checksum = "28b9d6de7f49e22cf97ad17fc4036ece69300032f45f78f30b4a4482cdc3f4a6"
 
 [[package]]
 name = "countme"
-version = "2.0.1"
+version = "2.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1aa2b26822354da8572983762d79a7ba55981b3fbbc612164a0dbbd0213df7fe"
+checksum = "be0bdf97802dfc074a4cf9a1f087f7f8d6478ee039a46eba1644690bcc854d61"
 dependencies = [
  "dashmap",
  "once_cell",
@@ -887,11 +887,11 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.13"
+version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcf3805d4480bb5b86070dcfeb9e2cb2ebc148adb753c5cca5f884d1d65a42b2"
+checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
 ]
 
 [[package]]
@@ -1474,9 +1474,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "700.0.0"
+version = "701.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ed36784376b69c941d7aa36e960a52ac712e2663960357121a4d9f2cc58e225"
+checksum = "3601c20fc378d11e965fb1f670cf8bad1ef5164fe4ec8cbb7c57fa9d656f2541"
 dependencies = [
  "unicode-xid",
 ]
@@ -1570,18 +1570,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.120"
+version = "1.0.123"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "166b2349061381baf54a58e4b13c89369feb0ef2eaa57198899e2312aac30aab"
+checksum = "92d5161132722baa40d802cc70b15262b98258453e85e5d1d365c757c73869ae"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.120"
+version = "1.0.123"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ca2a8cb5805ce9e3b95435e3765b7b553cecc762d938d409434338386cb5775"
+checksum = "9391c295d64fc0abb2c556bad848f33cb8296276b1ad2677d1ae1ace4f258f31"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1674,9 +1674,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.59"
+version = "1.0.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07cb8b1b4ebf86a89ee88cbd201b022b94138c623644d035185c84d3f41b7e66"
+checksum = "c700597eca8a5a762beb35753ef6b94df201c81cca676604f547495a0d7f0081"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1753,9 +1753,9 @@ dependencies = [
 
 [[package]]
 name = "thread_local"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "301bdd13d23c49672926be451130892d274d3ba0b410c18e00daa7990ff38d99"
+checksum = "d8208a331e1cb318dd5bd76951d2b8fc48ca38a69f5f4e4af1b6a9f8c6236915"
 dependencies = [
  "once_cell",
 ]
@@ -1782,9 +1782,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccf8dbc19eb42fba10e8feaaec282fb50e2c14b2726d6301dbfeed0f73306a6f"
+checksum = "317cca572a0e89c3ce0ca1f1bdc9369547fe318a683418e42ac8f59d14701023"
 dependencies = [
  "tinyvec_macros",
 ]
