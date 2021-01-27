@@ -761,8 +761,7 @@ impl<T> VecDeque<T> {
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
     ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
+    /// If the current capacity is less than the lower limit, this is a no-op.
     ///
     /// # Examples
     ///
@@ -780,10 +779,9 @@ impl<T> VecDeque<T> {
     /// ```
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        assert!(self.capacity() >= min_capacity, "Tried to shrink to a larger capacity");
-
-        // +1 since the ringbuffer always leaves one space empty
-        // len + 1 can't overflow for an existing, well-formed ringbuffer.
+        let min_capacity = cmp::min(min_capacity, self.capacity());
+        // We don't have to worry about an overflow as neither `self.len()` nor `self.capacity()`
+        // can ever be `usize::MAX`. +1 as the ringbuffer always leaves one space empty.
         let target_cap = cmp::max(cmp::max(min_capacity, self.len()) + 1, MINIMUM_CAPACITY + 1)
             .next_power_of_two();
 
