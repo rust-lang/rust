@@ -30,3 +30,5 @@ where
 fn main() {
     assert_eq!((Generic::<10>).bar(), 11);
 }
+
+// Test that the ``ConstU64<{ K + 1 - 1}>`` bound on ``bar``'s impl block satisfies the ``ConstU64<{K - 1}>`` bound on ``foo``'s impl block

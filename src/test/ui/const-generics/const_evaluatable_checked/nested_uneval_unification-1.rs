@@ -30,3 +30,5 @@ where
 fn main() {
     assert_eq!(substs3::<2>().0, [0; 3]);
 }
+
+// Test that the ``{ (L - 1) * 2 + 1 }`` bound on ``substs3`` satisfies the ``{ N + 1 }`` bound on ``Substs1``

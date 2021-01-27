@@ -20,3 +20,5 @@ where
 fn main() {
     assert_eq!(caller::<4>(), 5);
 }
+
+// Test that the ``(N1 + 1) + 1`` bound on ``caller`` satisfies the ``M2 + 1`` bound on ``callee``

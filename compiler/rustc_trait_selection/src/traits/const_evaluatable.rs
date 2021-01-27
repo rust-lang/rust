@@ -612,6 +612,9 @@ pub(super) fn try_unify<'tcx>(
     mut a: AbstractConst<'tcx>,
     mut b: AbstractConst<'tcx>,
 ) -> bool {
+    // We substitute generics repeatedly to allow AbstractConsts to unify where a
+    // ConstKind::Unevalated could be turned into an AbstractConst that would unify e.g.
+    // Param(N) should unify with Param(T), substs: [Unevaluated("T2", [Unevaluated("T3", [Param(N)])])]
     while let Node::Leaf(a_ct) = a.root() {
         let a_ct = a_ct.subst(tcx, a.substs);
         match AbstractConst::from_const(tcx, a_ct) {
@@ -620,7 +623,6 @@ pub(super) fn try_unify<'tcx>(
             Err(_) => return true,
         }
     }
-
     while let Node::Leaf(b_ct) = b.root() {
         let b_ct = b_ct.subst(tcx, b.substs);
         match AbstractConst::from_const(tcx, b_ct) {
