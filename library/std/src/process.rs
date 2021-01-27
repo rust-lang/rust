@@ -839,9 +839,13 @@ impl Command {
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// Command::new("ls")
+    /// let status = Command::new("ls")
     ///         .spawn()
-    ///         .expect("ls command failed to start");
+    ///         .expect("ls command failed to start")
+    ///         .wait()
+    ///         .expect("failed to wait for child");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn spawn(&mut self) -> io::Result<Child> {
