@@ -37,7 +37,7 @@ use crate::{
 // }
 // ```
 pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let match_expr = ctx.find_node_at_offset::<ast::MatchExpr>()?;
+    let match_expr = ctx.find_node_at_offset_with_descend::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
 
     let expr = match_expr.expr()?;
@@ -103,7 +103,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
         return None;
     }
 
-    let target = match_expr.syntax().text_range();
+    let target = ctx.sema.original_range(match_expr.syntax()).range;
     acc.add(
         AssistId("fill_match_arms", AssistKind::QuickFix),
         "Fill match arms",
@@ -113,7 +113,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             let n_old_arms = new_arm_list.arms().count();
             let new_arm_list = new_arm_list.append_arms(missing_arms);
             let first_new_arm = new_arm_list.arms().nth(n_old_arms);
-            let old_range = match_arm_list.syntax().text_range();
+            let old_range = ctx.sema.original_range(match_arm_list.syntax()).range;
             match (first_new_arm, ctx.config.snippet_cap) {
                 (Some(first_new_arm), Some(cap)) => {
                     let extend_lifetime;
@@ -750,6 +750,38 @@ fn foo(opt: Option<i32>) {
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn works_inside_macro_call() {
+        check_assist(
+            fill_match_arms,
+            r#"
+macro_rules! m { ($expr:expr) => {$expr}}
+enum Test {
+    A,
+    B,
+    C,
+}
+
+fn foo(t: Test) {
+    m!(match t$0 {});
+}"#,
+            r#"macro_rules! m { ($expr:expr) => {$expr}}
+enum Test {
+    A,
+    B,
+    C,
+}
+
+fn foo(t: Test) {
+    m!(match t {
+    $0Test::A => {}
+    Test::B => {}
+    Test::C => {}
+});
+}"#,
         );
     }
 }
