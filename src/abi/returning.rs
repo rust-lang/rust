@@ -4,7 +4,7 @@ use crate::prelude::*;
 
 use rustc_middle::ty::layout::FnAbiExt;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 
 /// Can the given type be returned into an ssa var or does it need to be returned on the stack.
 pub(crate) fn can_return_to_ssa_var<'tcx>(
