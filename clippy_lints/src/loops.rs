@@ -520,7 +520,7 @@ declare_clippy_lint! {
     ///     println!("{}", n);
     /// }
     /// ```
-    pub FOR_LOOPS_OVER_OPTIONS,
+    pub FOR_LOOPS_OVER_OPTIONS_OR_RESULTS,
     complexity,
     "for loops over `Option`s or `Result`s with a single expression can be simplified"
 }
@@ -532,7 +532,7 @@ declare_lint_pass!(Loops => [
     EXPLICIT_INTO_ITER_LOOP,
     ITER_NEXT_LOOP,
     FOR_LOOPS_OVER_FALLIBLES,
-    FOR_LOOPS_OVER_OPTIONS,
+    FOR_LOOPS_OVER_OPTIONS_OR_RESULTS,
     WHILE_LET_LOOP,
     NEEDLESS_COLLECT,
     EXPLICIT_COUNTER_LOOP,
@@ -2012,7 +2012,7 @@ fn check_for_loop_over_options_or_results<'tcx>(
             let arg_snippet = snippet(cx, arg.span, "..");
             let msg = "looping over `Option`s or `Result`s with an `if let` expression.";
             let hint = format!("try turn {} into an `Iterator` and use `flatten`: `{}.iter().flatten()`", arg_snippet, arg_snippet);
-            span_lint_and_help(cx, FOR_LOOPS_OVER_OPTIONS, expr.span, msg, None, &hint);
+            span_lint_and_help(cx, FOR_LOOPS_OVER_OPTIONS_OR_RESULTS, expr.span, msg, None, &hint);
         }
     }
 }

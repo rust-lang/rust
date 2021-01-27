@@ -1,4 +1,4 @@
-#![warn(clippy::for_loops_over_options)]
+#![warn(clippy::for_loops_over_options_or_results)]
 
 fn main() {
     let x = vec![Some(1), Some(2), Some(3)];
