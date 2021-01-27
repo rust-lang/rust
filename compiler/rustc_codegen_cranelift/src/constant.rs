@@ -134,11 +134,9 @@ pub(crate) fn codegen_constant<'tcx>(
             {
                 Ok(const_val) => const_val,
                 Err(_) => {
-                    if promoted.is_none() {
-                        fx.tcx
-                            .sess
-                            .span_err(constant.span, "erroneous constant encountered");
-                    }
+                    fx.tcx
+                        .sess
+                        .span_err(constant.span, "erroneous constant encountered");
                     return crate::trap::trap_unreachable_ret_value(
                         fx,
                         fx.layout_of(const_.ty),
