@@ -1,0 +1,14 @@
+error[E0596]: cannot borrow `callback` as mutable, as it is not declared as mutable
+  --> $DIR/issue-80313-mutation-in-move-closure.rs:6:5
+   |
+LL |     let callback = move || {
+   |         -------- help: consider changing this to be mutable: `mut callback`
+LL |         my_var = true;
+   |         ------ calling `callback` requires mutable binding due to possible mutation of `my_var`
+LL |     };
+LL |     callback();
+   |     ^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.
