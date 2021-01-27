@@ -132,15 +132,25 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 ///
 /// # Warning
 ///
+/// A `Child` which is simply dropped may continue running in parallel,
+/// possibly even after the program which launched it exits.
+/// If it inherited stdin/stdout, it may still read and write to them
+/// later, causing confusion and disruption.
+///
 /// On some systems, calling [`wait`] or similar is necessary for the OS to
 /// release resources. A process that terminated but has not been waited on is
 /// still around as a "zombie". Leaving too many zombies around may exhaust
 /// global resources (for example process IDs).
 ///
+/// Unless [`wait`] is called, any failure of the child will not be
+/// visible.
+///
 /// The standard library does *not* automatically wait on child processes (not
 /// even if the `Child` is dropped), it is up to the application developer to do
-/// so. As a consequence, dropping `Child` handles without waiting on them first
-/// is not recommended in long-running applications.
+/// so.
+///
+/// For these reasons, dropping `Child` handles without waiting on them first
+/// is usually incorrect.
 ///
 /// # Examples
 ///
