@@ -525,9 +525,11 @@ impl Command {
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// Command::new("sh")
-    ///         .spawn()
+    /// let status = Command::new("sh")
+    ///         .status()
     ///         .expect("sh command failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Command {
@@ -569,11 +571,13 @@ impl Command {
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// Command::new("ls")
+    /// let status = Command::new("ls")
     ///         .arg("-l")
     ///         .arg("-a")
-    ///         .spawn()
+    ///         .status()
     ///         .expect("ls command failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Command {
@@ -599,10 +603,12 @@ impl Command {
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// Command::new("ls")
+    /// let status = Command::new("ls")
     ///         .args(&["-l", "-a"])
-    ///         .spawn()
+    ///         .status()
     ///         .expect("ls command failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn args<I, S>(&mut self, args: I) -> &mut Command
@@ -628,10 +634,12 @@ impl Command {
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// Command::new("ls")
+    /// let status = Command::new("ls")
     ///         .env("PATH", "/bin")
-    ///         .spawn()
+    ///         .status()
     ///         .expect("ls command failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env<K, V>(&mut self, key: K, val: V) -> &mut Command
@@ -659,13 +667,15 @@ impl Command {
     ///         k == "TERM" || k == "TZ" || k == "LANG" || k == "PATH"
     ///     ).collect();
     ///
-    /// Command::new("printenv")
+    /// let status = Command::new("printenv")
     ///         .stdin(Stdio::null())
     ///         .stdout(Stdio::inherit())
     ///         .env_clear()
     ///         .envs(&filtered_env)
-    ///         .spawn()
+    ///         .status()
     ///         .expect("printenv failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "command_envs", since = "1.19.0")]
     pub fn envs<I, K, V>(&mut self, vars: I) -> &mut Command
@@ -689,10 +699,12 @@ impl Command {
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// Command::new("ls")
+    /// let status = Command::new("ls")
     ///         .env_remove("PATH")
-    ///         .spawn()
+    ///         .status()
     ///         .expect("ls command failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env_remove<K: AsRef<OsStr>>(&mut self, key: K) -> &mut Command {
@@ -709,10 +721,12 @@ impl Command {
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// Command::new("ls")
+    /// let status = Command::new("ls")
     ///         .env_clear()
-    ///         .spawn()
+    ///         .status()
     ///         .expect("ls command failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env_clear(&mut self) -> &mut Command {
@@ -737,10 +751,12 @@ impl Command {
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// Command::new("ls")
+    /// let status = Command::new("ls")
     ///         .current_dir("/bin")
-    ///         .spawn()
+    ///         .status()
     ///         .expect("ls command failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     ///
     /// [`canonicalize`]: crate::fs::canonicalize
@@ -765,10 +781,12 @@ impl Command {
     /// ```no_run
     /// use std::process::{Command, Stdio};
     ///
-    /// Command::new("ls")
+    /// let status = Command::new("ls")
     ///         .stdin(Stdio::null())
-    ///         .spawn()
+    ///         .status()
     ///         .expect("ls command failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdin<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
@@ -791,10 +809,12 @@ impl Command {
     /// ```no_run
     /// use std::process::{Command, Stdio};
     ///
-    /// Command::new("ls")
+    /// let status = Command::new("ls")
     ///         .stdout(Stdio::null())
-    ///         .spawn()
+    ///         .status()
     ///         .expect("ls command failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdout<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
@@ -817,10 +837,12 @@ impl Command {
     /// ```no_run
     /// use std::process::{Command, Stdio};
     ///
-    /// Command::new("ls")
+    /// let status = Command::new("ls")
     ///         .stderr(Stdio::null())
-    ///         .spawn()
+    ///         .status()
     ///         .expect("ls command failed to start");
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stderr<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
