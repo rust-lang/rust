@@ -140,6 +140,8 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = it.kind.generics();
+        let old_cached_typeck_results = self.context.cached_typeck_results.take();
+        let old_enclosing_body = self.context.enclosing_body.take();
         self.with_lint_attrs(it.hir_id, &it.attrs, |cx| {
             cx.with_param_env(it.hir_id, |cx| {
                 lint_callback!(cx, check_item, it);
@@ -147,6 +149,8 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
                 lint_callback!(cx, check_item_post, it);
             });
         });
+        self.context.enclosing_body = old_enclosing_body;
+        self.context.cached_typeck_results.set(old_cached_typeck_results);
         self.context.generics = generics;
     }
 
