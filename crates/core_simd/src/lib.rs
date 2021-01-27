@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(repr_simd, platform_intrinsics, link_llvm_intrinsics, simd_ffi, min_const_generics)]
+#![feature(repr_simd, platform_intrinsics, link_llvm_intrinsics, simd_ffi)]
 #![warn(missing_docs)]
 //! Portable SIMD module.
 
