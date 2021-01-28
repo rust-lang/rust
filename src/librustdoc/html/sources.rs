@@ -178,10 +178,10 @@ fn print_src(buf: &mut Buffer, s: &str, edition: Edition) {
         cols += 1;
         tmp /= 10;
     }
-    write!(buf, "<pre class=\"line-numbers\">");
+    buf.write_str("<pre class=\"line-numbers\">");
     for i in 1..=lines {
         write!(buf, "<span id=\"{0}\">{0:1$}</span>\n", i, cols);
     }
-    write!(buf, "</pre>");
-    write!(buf, "{}", highlight::render_with_highlighting(s, None, None, None, edition));
+    buf.write_str("</pre>");
+    highlight::render_with_highlighting(s, buf, None, None, None, edition);
 }
