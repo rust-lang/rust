@@ -138,6 +138,8 @@ pub struct ParseSess {
     pub env_depinfo: Lock<FxHashSet<(Symbol, Option<Symbol>)>>,
     /// All the type ascriptions expressions that have had a suggestion for likely path typo.
     pub type_ascription_path_suggestions: Lock<FxHashSet<Span>>,
+    /// Whether cfg(version) should treat the current release as incomplete
+    pub assume_incomplete_release: bool,
 }
 
 impl ParseSess {
@@ -164,6 +166,7 @@ impl ParseSess {
             reached_eof: Lock::new(false),
             env_depinfo: Default::default(),
             type_ascription_path_suggestions: Default::default(),
+            assume_incomplete_release: false,
         }
     }
 
