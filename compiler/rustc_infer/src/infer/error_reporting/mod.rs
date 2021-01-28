@@ -1661,6 +1661,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("exp_found {:?} terr {:?}", exp_found, terr);
         if let Some(exp_found) = exp_found {
             self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
+            self.suggest_field_where_appropriate(cause, &exp_found, diag);
             self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
         }
 
@@ -1816,6 +1817,46 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
             }
             _ => {}
+        }
+    }
+
+    fn suggest_field_where_appropriate(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut DiagnosticBuilder<'tcx>,
+    ) {
+        debug!("suggest_field_where_appropriate(cause={:?}, exp_found={:?})", cause, exp_found);
+        if let ty::Adt(expected_def, expected_substs) = exp_found.expected.kind() {
+            if expected_def.is_enum() {
+                return;
+            }
+
+            if let Some((name, ty)) = expected_def
+                .non_enum_variant()
+                .fields
+                .iter()
+                .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
+                .map(|field| (field.ident.name, field.ty(self.tcx, expected_substs)))
+                .inspect(|(name, ty)| {
+                    debug!("suggest_field_where_appropriate: name={:?}, ty={:?}", name, ty)
+                })
+                .find(|(_, ty)| ty::TyS::same_type(ty, exp_found.found))
+            {
+                if let ObligationCauseCode::Pattern { span: Some(span), .. } = cause.code {
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        diag.span_suggestion(
+                            span,
+                            &format!(
+                                "you might have meant to use field `{}` of type `{}`",
+                                name, ty
+                            ),
+                            format!("{}.{}", snippet, name),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
         }
     }
 
