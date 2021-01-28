@@ -48,7 +48,7 @@ const FIXED_POINT_LIMIT: usize = 8192;
 pub(super) fn collect_defs(
     db: &dyn DefDatabase,
     mut def_map: DefMap,
-    block: Option<FileAstId<ast::BlockExpr>>,
+    block: Option<AstId<ast::BlockExpr>>,
 ) -> DefMap {
     let crate_graph = db.crate_graph();
 
@@ -261,11 +261,10 @@ impl DefCollector<'_> {
         }
     }
 
-    fn seed_with_inner(&mut self, block: FileAstId<ast::BlockExpr>) {
-        let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
-        let item_tree = self.db.item_tree(file_id.into());
+    fn seed_with_inner(&mut self, block: AstId<ast::BlockExpr>) {
+        let item_tree = self.db.item_tree(block.file_id);
         let module_id = self.def_map.root;
-        self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
+        self.def_map.modules[module_id].origin = ModuleOrigin::BlockExpr { block };
         if item_tree
             .top_level_attrs(self.db, self.def_map.krate)
             .cfg()
@@ -275,11 +274,11 @@ impl DefCollector<'_> {
                 def_collector: &mut *self,
                 macro_depth: 0,
                 module_id,
-                file_id: file_id.into(),
+                file_id: block.file_id,
                 item_tree: &item_tree,
                 mod_dir: ModDir::root(),
             }
-            .collect(item_tree.inner_items_of_block(block));
+            .collect(item_tree.inner_items_of_block(block.value));
         }
     }
 
