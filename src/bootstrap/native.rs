@@ -201,7 +201,7 @@ impl Step for Llvm {
         if builder.config.llvm_thin_lto {
             cfg.define("LLVM_ENABLE_LTO", "Thin");
             if !target.contains("apple") {
-                cfg.define("LLVM_ENABLE_LLD", "ON");
+                cfg.define("LLVM_USE_LINKER", "lld");
             }
         }
 
