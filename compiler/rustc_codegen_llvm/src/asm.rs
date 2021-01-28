@@ -198,34 +198,6 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
 
-        /// Gets a LLVM label from a &str if it exists
-        /// Uses this as reference: https://llvm.org/docs/AMDGPUOperandSyntax.html#symbols
-        fn get_label(s: &str) -> Option<&str> {
-            if let Some(colon_idx) = s.find(':') {
-                let substr = &s[..colon_idx];
-                let mut chars = substr.chars();
-                if let Some(c) = chars.next() {
-                    // First char is [a-zA-Z_.]
-                    if ('a'..='z').contains(&c) || ('A'..='Z').contains(&c) || '_' == c || '.' == c
-                    {
-                        // All subsequent chars are [a-zA-Z0-9_$.@]
-                        if chars.all(|c| {
-                            ('a'..='z').contains(&c)
-                                || ('A'..='Z').contains(&c)
-                                || '_' == c
-                                || '$' == c
-                                || '.' == c
-                                || '@' == c
-                        }) {
-                            return Some(substr);
-                        }
-                    }
-                }
-            }
-
-            None
-        }
-
         // Build the template string
         let mut template_str = String::new();
         let mut labels = vec![];
@@ -244,7 +216,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         let mut ts = s.to_owned();
                         // Labels should be made local to prevent issues with inlined `asm!` and duplicate labels
                         // Fixes https://github.com/rust-lang/rust/issues/74262
-                        if let Some(label) = get_label(&ts) {
+                        if let Some(label) = get_llvm_label_from_str(&ts) {
                             labels.push(label.to_owned());
                         }
 
@@ -916,4 +888,31 @@ fn llvm_fixup_output_type(
         },
         _ => layout.llvm_type(cx),
     }
+}
+
+/// Gets a LLVM label from a &str if it exists
+/// Uses this as reference: https://llvm.org/docs/AMDGPUOperandSyntax.html#symbols
+fn get_llvm_label_from_str(s: &str) -> Option<&str> {
+    if let Some(colon_idx) = s.find(':') {
+        let substr = &s[..colon_idx];
+        let mut chars = substr.chars();
+        if let Some(c) = chars.next() {
+            // First char is [a-zA-Z_.]
+            if ('a'..='z').contains(&c) || ('A'..='Z').contains(&c) || '_' == c || '.' == c {
+                // All subsequent chars are [a-zA-Z0-9_$.@]
+                if chars.all(|c| {
+                    ('a'..='z').contains(&c)
+                        || ('A'..='Z').contains(&c)
+                        || '_' == c
+                        || '$' == c
+                        || '.' == c
+                        || '@' == c
+                }) {
+                    return Some(substr);
+                }
+            }
+        }
+    }
+
+    None
 }
