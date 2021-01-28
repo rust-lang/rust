@@ -78,14 +78,14 @@ For revisions in Pull Requests (PR):
 18:5-18:74: @0[20]: FakeRead(ForMatchedPlace, _13)
 18:5-18:74: @0[22]: _15 = (_13.0: &amp;T)
 18:5-18:74: @0[25]: _17 = &amp;(*_15)
-18:5-18:74: @0[27]: _18 = &lt;T as Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r T, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-18:5-18:74: @0.Call: _16 = ArgumentV1::new::&lt;T&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb5]
+18:5-18:74: @0[27]: _18 = &lt;T as std::fmt::Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r T, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+18:5-18:74: @0.Call: _16 = std::fmt::ArgumentV1::new::&lt;T&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb5]
 18:5-18:74: @1[2]: _12 = [move _16]
 18:5-18:74: @1[5]: _11 = &amp;_12
 18:5-18:74: @1[6]: _10 = &amp;(*_11)
 18:5-18:74: @1[7]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-18:5-18:74: @1.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb5]
-18:5-18:74: @2.Call: _3 = _print(move _4) -&gt; [return: bb3, unwind: bb5]
+18:5-18:74: @1.Call: _4 = std::fmt::Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb5]
+18:5-18:74: @2.Call: _3 = std::io::_print(move _4) -&gt; [return: bb3, unwind: bb5]
 18:5-18:74: @3[6]: _2 = const ()
 17:68-19:2: @3[8]: _0 = const ()
 19:2-19:2: @4.Return: return"><span class="annotation">@0,1,2,3,4⦊</span>pub fn used_only_from_bin_crate_generic_function&lt;T: Debug&gt;(arg: T) {</span></span>
@@ -98,14 +98,14 @@ For revisions in Pull Requests (PR):
 18:5-18:74: @0[20]: FakeRead(ForMatchedPlace, _13)
 18:5-18:74: @0[22]: _15 = (_13.0: &amp;T)
 18:5-18:74: @0[25]: _17 = &amp;(*_15)
-18:5-18:74: @0[27]: _18 = &lt;T as Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r T, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-18:5-18:74: @0.Call: _16 = ArgumentV1::new::&lt;T&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb5]
+18:5-18:74: @0[27]: _18 = &lt;T as std::fmt::Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r T, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+18:5-18:74: @0.Call: _16 = std::fmt::ArgumentV1::new::&lt;T&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb5]
 18:5-18:74: @1[2]: _12 = [move _16]
 18:5-18:74: @1[5]: _11 = &amp;_12
 18:5-18:74: @1[6]: _10 = &amp;(*_11)
 18:5-18:74: @1[7]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-18:5-18:74: @1.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb5]
-18:5-18:74: @2.Call: _3 = _print(move _4) -&gt; [return: bb3, unwind: bb5]
+18:5-18:74: @1.Call: _4 = std::fmt::Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb5]
+18:5-18:74: @2.Call: _3 = std::io::_print(move _4) -&gt; [return: bb3, unwind: bb5]
 18:5-18:74: @3[6]: _2 = const ()
 17:68-19:2: @3[8]: _0 = const ()
 19:2-19:2: @4.Return: return">    println!("used_only_from_bin_crate_generic_function with {:?}", arg);</span></span>
@@ -118,14 +118,14 @@ For revisions in Pull Requests (PR):
 18:5-18:74: @0[20]: FakeRead(ForMatchedPlace, _13)
 18:5-18:74: @0[22]: _15 = (_13.0: &amp;T)
 18:5-18:74: @0[25]: _17 = &amp;(*_15)
-18:5-18:74: @0[27]: _18 = &lt;T as Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r T, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-18:5-18:74: @0.Call: _16 = ArgumentV1::new::&lt;T&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb5]
+18:5-18:74: @0[27]: _18 = &lt;T as std::fmt::Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r T, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+18:5-18:74: @0.Call: _16 = std::fmt::ArgumentV1::new::&lt;T&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb5]
 18:5-18:74: @1[2]: _12 = [move _16]
 18:5-18:74: @1[5]: _11 = &amp;_12
 18:5-18:74: @1[6]: _10 = &amp;(*_11)
 18:5-18:74: @1[7]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-18:5-18:74: @1.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb5]
-18:5-18:74: @2.Call: _3 = _print(move _4) -&gt; [return: bb3, unwind: bb5]
+18:5-18:74: @1.Call: _4 = std::fmt::Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb5]
+18:5-18:74: @2.Call: _3 = std::io::_print(move _4) -&gt; [return: bb3, unwind: bb5]
 18:5-18:74: @3[6]: _2 = const ()
 17:68-19:2: @3[8]: _0 = const ()
 19:2-19:2: @4.Return: return">}<span class="annotation">⦉@0,1,2,3,4</span></span></span></span></div>

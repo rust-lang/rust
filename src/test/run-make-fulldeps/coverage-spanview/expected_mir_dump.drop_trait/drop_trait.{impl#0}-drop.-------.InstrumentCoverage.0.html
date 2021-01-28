@@ -69,7 +69,7 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 8"><span class="line">    <span><span class="code even" style="--layer: 1" title="10:18-10:36: @0[6]: _19 = const &lt;Firework as Drop&gt;::drop::promoted[0]
+<div class="code" style="counter-reset: line 8"><span class="line">    <span><span class="code even" style="--layer: 1" title="10:18-10:36: @0[6]: _19 = const &lt;Firework as std::ops::Drop&gt;::drop::promoted[0]
 10:18-10:36: @0[7]: _7 = &amp;(*_19)
 10:18-10:36: @0[8]: _6 = &amp;(*_7)
 10:18-10:36: @0[9]: _5 = move _6 as &amp;[&amp;str] (Pointer(Unsize))
@@ -79,17 +79,17 @@ For revisions in Pull Requests (PR):
 10:9-10:53: @0[22]: _15 = (_13.0: &amp;i32)
 10:9-10:53: @0[25]: _17 = &amp;(*_15)
 10:9-10:53: @0[27]: _18 = &lt;i32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-10:9-10:53: @0.Call: _16 = ArgumentV1::new::&lt;i32&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb4]
+10:9-10:53: @0.Call: _16 = std::fmt::ArgumentV1::new::&lt;i32&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb4]
 10:9-10:53: @1[2]: _12 = [move _16]
 10:9-10:53: @1[5]: _11 = &amp;_12
 10:9-10:53: @1[6]: _10 = &amp;(*_11)
 10:9-10:53: @1[7]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-10:9-10:53: @1.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb4]
-10:9-10:53: @2.Call: _3 = _print(move _4) -&gt; [return: bb3, unwind: bb4]
+10:9-10:53: @1.Call: _4 = std::fmt::Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb4]
+10:9-10:53: @2.Call: _3 = std::io::_print(move _4) -&gt; [return: bb3, unwind: bb4]
 10:9-10:53: @3[6]: _2 = const ()
 9:24-11:6: @3[8]: _0 = const ()
 11:6-11:6: @3.Return: return"><span class="annotation">@0,1,2,3⦊</span>fn drop(&amp;mut self) {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="10:18-10:36: @0[6]: _19 = const &lt;Firework as Drop&gt;::drop::promoted[0]
+<span class="line"><span class="code even" style="--layer: 1" title="10:18-10:36: @0[6]: _19 = const &lt;Firework as std::ops::Drop&gt;::drop::promoted[0]
 10:18-10:36: @0[7]: _7 = &amp;(*_19)
 10:18-10:36: @0[8]: _6 = &amp;(*_7)
 10:18-10:36: @0[9]: _5 = move _6 as &amp;[&amp;str] (Pointer(Unsize))
@@ -99,17 +99,17 @@ For revisions in Pull Requests (PR):
 10:9-10:53: @0[22]: _15 = (_13.0: &amp;i32)
 10:9-10:53: @0[25]: _17 = &amp;(*_15)
 10:9-10:53: @0[27]: _18 = &lt;i32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-10:9-10:53: @0.Call: _16 = ArgumentV1::new::&lt;i32&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb4]
+10:9-10:53: @0.Call: _16 = std::fmt::ArgumentV1::new::&lt;i32&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb4]
 10:9-10:53: @1[2]: _12 = [move _16]
 10:9-10:53: @1[5]: _11 = &amp;_12
 10:9-10:53: @1[6]: _10 = &amp;(*_11)
 10:9-10:53: @1[7]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-10:9-10:53: @1.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb4]
-10:9-10:53: @2.Call: _3 = _print(move _4) -&gt; [return: bb3, unwind: bb4]
+10:9-10:53: @1.Call: _4 = std::fmt::Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb4]
+10:9-10:53: @2.Call: _3 = std::io::_print(move _4) -&gt; [return: bb3, unwind: bb4]
 10:9-10:53: @3[6]: _2 = const ()
 9:24-11:6: @3[8]: _0 = const ()
 11:6-11:6: @3.Return: return">        println!("BOOM times {}!!!", self.strength);</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="10:18-10:36: @0[6]: _19 = const &lt;Firework as Drop&gt;::drop::promoted[0]
+<span class="line"><span class="code even" style="--layer: 1" title="10:18-10:36: @0[6]: _19 = const &lt;Firework as std::ops::Drop&gt;::drop::promoted[0]
 10:18-10:36: @0[7]: _7 = &amp;(*_19)
 10:18-10:36: @0[8]: _6 = &amp;(*_7)
 10:18-10:36: @0[9]: _5 = move _6 as &amp;[&amp;str] (Pointer(Unsize))
@@ -119,13 +119,13 @@ For revisions in Pull Requests (PR):
 10:9-10:53: @0[22]: _15 = (_13.0: &amp;i32)
 10:9-10:53: @0[25]: _17 = &amp;(*_15)
 10:9-10:53: @0[27]: _18 = &lt;i32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-10:9-10:53: @0.Call: _16 = ArgumentV1::new::&lt;i32&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb4]
+10:9-10:53: @0.Call: _16 = std::fmt::ArgumentV1::new::&lt;i32&gt;(move _17, move _18) -&gt; [return: bb1, unwind: bb4]
 10:9-10:53: @1[2]: _12 = [move _16]
 10:9-10:53: @1[5]: _11 = &amp;_12
 10:9-10:53: @1[6]: _10 = &amp;(*_11)
 10:9-10:53: @1[7]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-10:9-10:53: @1.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb4]
-10:9-10:53: @2.Call: _3 = _print(move _4) -&gt; [return: bb3, unwind: bb4]
+10:9-10:53: @1.Call: _4 = std::fmt::Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb4]
+10:9-10:53: @2.Call: _3 = std::io::_print(move _4) -&gt; [return: bb3, unwind: bb4]
 10:9-10:53: @3[6]: _2 = const ()
 9:24-11:6: @3[8]: _0 = const ()
 11:6-11:6: @3.Return: return">    }<span class="annotation">⦉@0,1,2,3</span></span></span></span></div>

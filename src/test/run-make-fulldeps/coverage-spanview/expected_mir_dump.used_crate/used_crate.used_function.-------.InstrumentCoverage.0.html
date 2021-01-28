@@ -73,25 +73,25 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">    // Initialize test constants in a way that cannot be determined at compile time, to ensure</span></span>
 <span class="line"><span class="code" style="--layer: 0">    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from</span></span>
 <span class="line"><span class="code" style="--layer: 0">    // dependent conditions.</span></span>
-<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="9:19-9:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb9]
+<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="9:19-9:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb9]
 9:19-9:35: @1[0]: _3 = &amp;_4
-9:19-9:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]
+9:19-9:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]
 9:19-9:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 9:9-9:16: @2[3]: FakeRead(ForLet, _1)
 10:25-10:26: @3[2]: _5 = const 0_i32
 10:9-10:22: @3[3]: FakeRead(ForLet, _5)
 11:8-11:15: @3[6]: _7 = _1"><span class="annotation">@0,1,2,3⦊</span>is_true = std::env::args().len() == 1;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="9:19-9:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb9]
+<span class="line"><span class="code even" style="--layer: 1" title="9:19-9:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb9]
 9:19-9:35: @1[0]: _3 = &amp;_4
-9:19-9:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]
+9:19-9:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]
 9:19-9:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 9:9-9:16: @2[3]: FakeRead(ForLet, _1)
 10:25-10:26: @3[2]: _5 = const 0_i32
 10:9-10:22: @3[3]: FakeRead(ForLet, _5)
 11:8-11:15: @3[6]: _7 = _1">    let mut countdown = 0;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="9:19-9:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb9]
+<span class="line"><span class="code even" style="--layer: 1" title="9:19-9:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb9]
 9:19-9:35: @1[0]: _3 = &amp;_4
-9:19-9:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]
+9:19-9:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]
 9:19-9:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 9:9-9:16: @2[3]: FakeRead(ForLet, _1)
 10:25-10:26: @3[2]: _5 = const 0_i32
