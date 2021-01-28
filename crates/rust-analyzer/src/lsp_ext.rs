@@ -234,6 +234,7 @@ pub enum StatusNotification {}
 #[derive(Serialize, Deserialize)]
 pub enum Status {
     Loading,
+    ReadyPartial,
     Ready,
     NeedsReload,
     Invalid,

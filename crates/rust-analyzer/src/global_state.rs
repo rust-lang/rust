@@ -11,7 +11,9 @@ use ide::{Analysis, AnalysisHost, Change, FileId};
 use ide_db::base_db::{CrateId, VfsPath};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
-use project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
+use project_model::{
+    BuildDataCollector, BuildDataResult, CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target,
+};
 use rustc_hash::FxHashMap;
 use vfs::AnchoredPathBuf;
 
@@ -33,7 +35,7 @@ use crate::{
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum Status {
     Loading,
-    Ready,
+    Ready { partial: bool },
     Invalid,
     NeedsReload,
 }
@@ -79,7 +81,9 @@ pub(crate) struct GlobalState {
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_client: Option<ProcMacroClient>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) fetch_workspaces_queue: OpQueue,
+    pub(crate) fetch_workspaces_queue: OpQueue<()>,
+    pub(crate) workspace_build_data: Option<BuildDataResult>,
+    pub(crate) fetch_build_data_queue: OpQueue<BuildDataCollector>,
     latest_requests: Arc<RwLock<LatestRequests>>,
 }
 
@@ -133,6 +137,8 @@ impl GlobalState {
             proc_macro_client: None,
             workspaces: Arc::new(Vec::new()),
             fetch_workspaces_queue: OpQueue::default(),
+            workspace_build_data: None,
+            fetch_build_data_queue: OpQueue::default(),
             latest_requests: Default::default(),
         }
     }

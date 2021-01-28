@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 91f2c62457e0a20f
+lsp_ext.rs hash: 7609fd6d7b4ab231
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this  issue:
@@ -423,7 +423,7 @@ Reloads project information (that is, re-executes `cargo metadata`).
 
 ```typescript
 interface StatusParams {
-    status: "loading" | "ready" | "invalid" | "needsReload",
+    status: "loading" | "readyPartial" | "ready" | "invalid" | "needsReload",
 }
 ```
 

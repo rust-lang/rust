@@ -469,6 +469,9 @@ impl Config {
     pub fn cargo_autoreload(&self) -> bool {
         self.data.cargo_autoreload
     }
+    pub fn load_out_dirs_from_check(&self) -> bool {
+        self.data.cargo_loadOutDirsFromCheck
+    }
     pub fn cargo(&self) -> CargoConfig {
         let rustc_source = self.data.rustcSource.as_ref().map(|it| self.root_path.join(&it));
 
@@ -476,7 +479,6 @@ impl Config {
             no_default_features: self.data.cargo_noDefaultFeatures,
             all_features: self.data.cargo_allFeatures,
             features: self.data.cargo_features.clone(),
-            load_out_dirs_from_check: self.data.cargo_loadOutDirsFromCheck,
             target: self.data.cargo_target.clone(),
             rustc_source,
             no_sysroot: self.data.cargo_noSysroot,
