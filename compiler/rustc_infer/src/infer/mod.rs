@@ -458,11 +458,11 @@ pub enum RegionVariableOrigin {
 
     /// This origin is used for the inference variables that we create
     /// during NLL region processing.
-    NLL(NLLRegionVariableOrigin),
+    Nll(NllRegionVariableOrigin),
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum NLLRegionVariableOrigin {
+pub enum NllRegionVariableOrigin {
     /// During NLL region processing, we create variables for free
     /// regions that we encounter in the function signature and
     /// elsewhere. This origin indices we've got one of those.
@@ -1078,17 +1078,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
-    pub fn next_nll_region_var(&self, origin: NLLRegionVariableOrigin) -> ty::Region<'tcx> {
-        self.next_region_var(RegionVariableOrigin::NLL(origin))
+    pub fn next_nll_region_var(&self, origin: NllRegionVariableOrigin) -> ty::Region<'tcx> {
+        self.next_region_var(RegionVariableOrigin::Nll(origin))
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
     pub fn next_nll_region_var_in_universe(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         universe: ty::UniverseIndex,
     ) -> ty::Region<'tcx> {
-        self.next_region_var_in_universe(RegionVariableOrigin::NLL(origin), universe)
+        self.next_region_var_in_universe(RegionVariableOrigin::Nll(origin), universe)
     }
 
     pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
@@ -1770,7 +1770,7 @@ impl RegionVariableOrigin {
             | LateBoundRegion(a, ..)
             | UpvarRegion(_, a) => a,
             BoundRegionInCoherence(_) => rustc_span::DUMMY_SP,
-            NLL(..) => bug!("NLL variable used with `span`"),
+            Nll(..) => bug!("NLL variable used with `span`"),
         }
     }
 }

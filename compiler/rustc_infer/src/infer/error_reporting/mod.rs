@@ -2342,7 +2342,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 format!(" for capture of `{}` by closure", var_name)
             }
-            infer::NLL(..) => bug!("NLL variable found in lexical phase"),
+            infer::Nll(..) => bug!("NLL variable found in lexical phase"),
         };
 
         struct_span_err!(
