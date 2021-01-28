@@ -153,6 +153,7 @@ impl<Tag> MemPlace<Tag> {
         }
     }
 
+    #[inline]
     pub fn offset(
         self,
         offset: Size,
