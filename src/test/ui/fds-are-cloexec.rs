@@ -66,7 +66,9 @@ fn parent() {
                         .status()
                         .unwrap();
     assert!(status.success());
-    child.wait().unwrap();
+
+    let status = child.wait().unwrap();
+    assert!(status.success());
 }
 
 fn child(args: &[String]) {
