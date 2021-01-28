@@ -1345,6 +1345,7 @@ impl AllTypes {
         write!(
             f,
             "<h1 class=\"fqn\">\
+                 <span class=\"in-band\">List of all items</span>\
                  <span class=\"out-of-band\">\
                      <span id=\"render-detail\">\
                          <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
@@ -1353,7 +1354,6 @@ impl AllTypes {
                          </a>\
                      </span>
                  </span>
-                 <span class=\"in-band\">List of all items</span>\
              </h1>"
         );
         print_entries(f, &self.structs, "Structs", "structs");
@@ -1711,36 +1711,7 @@ where
 fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     debug_assert!(!item.is_stripped());
     // Write the breadcrumb trail header for the top
-    write!(buf, "<h1 class=\"fqn\"><span class=\"out-of-band\">");
-    render_stability_since_raw(
-        buf,
-        item.stable_since(cx.tcx()).as_deref(),
-        item.const_stable_since(cx.tcx()).as_deref(),
-        None,
-        None,
-    );
-    write!(
-        buf,
-        "<span id=\"render-detail\">\
-                <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
-                    title=\"collapse all docs\">\
-                    [<span class=\"inner\">&#x2212;</span>]\
-                </a>\
-            </span>"
-    );
-
-    // Write `src` tag
-    //
-    // When this item is part of a `crate use` in a downstream crate, the
-    // [src] link in the downstream documentation will actually come back to
-    // this page, and this link will be auto-clicked. The `id` attribute is
-    // used to find the link to auto-click.
-    if cx.shared.include_sources && !item.is_primitive() {
-        write_srclink(cx, item, buf);
-    }
-
-    write!(buf, "</span>"); // out-of-band
-    write!(buf, "<span class=\"in-band\">");
+    write!(buf, "<h1 class=\"fqn\"><span class=\"in-band\">");
     let name = match *item.kind {
         clean::ModuleItem(ref m) => {
             if m.is_crate {
@@ -1788,7 +1759,36 @@ fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     }
     write!(buf, "<a class=\"{}\" href=\"\">{}</a>", item.type_(), item.name.as_ref().unwrap());
 
-    write!(buf, "</span></h1>"); // in-band
+    write!(buf, "</span>"); // in-band
+    write!(buf, "<span class=\"out-of-band\">");
+    render_stability_since_raw(
+        buf,
+        item.stable_since(cx.tcx()).as_deref(),
+        item.const_stable_since(cx.tcx()).as_deref(),
+        None,
+        None,
+    );
+    write!(
+        buf,
+        "<span id=\"render-detail\">\
+                <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
+                    title=\"collapse all docs\">\
+                    [<span class=\"inner\">&#x2212;</span>]\
+                </a>\
+            </span>"
+    );
+
+    // Write `src` tag
+    //
+    // When this item is part of a `crate use` in a downstream crate, the
+    // [src] link in the downstream documentation will actually come back to
+    // this page, and this link will be auto-clicked. The `id` attribute is
+    // used to find the link to auto-click.
+    if cx.shared.include_sources && !item.is_primitive() {
+        write_srclink(cx, item, buf);
+    }
+
+    write!(buf, "</span></h1>"); // out-of-band
 
     match *item.kind {
         clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
