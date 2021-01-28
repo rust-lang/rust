@@ -31,7 +31,8 @@ fn main() {
     assert!(maybe_status.is_none());
 
     me.kill().unwrap();
-    me.wait().unwrap();
+    let status = me.wait().unwrap();
+    assert!(!status.success());
 
     let status = me.try_wait().unwrap().unwrap();
     assert!(!status.success());
