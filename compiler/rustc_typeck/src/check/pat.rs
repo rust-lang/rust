@@ -1525,24 +1525,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => return err,
             },
             [.., field] => {
-                // if last field has a trailing comma, use the comma
-                // as the span to avoid trailing comma in ultimate
-                // suggestion (Issue #78511)
-                let tail = field.span.shrink_to_hi().until(pat.span.shrink_to_hi());
-                let tail_through_comma = self.tcx.sess.source_map().span_through_char(tail, ',');
-                let sp = if tail_through_comma == tail {
-                    field.span.shrink_to_hi()
-                } else {
-                    tail_through_comma
-                };
-                (
-                    match pat.kind {
-                        PatKind::Struct(_, [_, ..], _) => ", ",
-                        _ => "",
-                    },
-                    "",
-                    sp,
-                )
+                // Account for last field having a trailing comma or parse recovery at the tail of
+                // the pattern to avoid invalid suggestion (#78511).
+                let tail = field.span.shrink_to_hi().with_hi(pat.span.hi());
+                match &pat.kind {
+                    PatKind::Struct(..) => (", ", " }", tail),
+                    _ => return err,
+                }
             }
         };
         err.span_suggestion(
