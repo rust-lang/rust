@@ -84,7 +84,7 @@ impl JsonRenderer<'tcx> {
         Rc::clone(&self.cache)
             .traits
             .iter()
-            .filter_map(|(&id, trait_item)| {
+            .filter_map(|(&id, (trait_item, _))| {
                 // only need to synthesize items for external traits
                 if !id.is_local() {
                     trait_item.items.clone().into_iter().for_each(|i| self.item(i).unwrap());

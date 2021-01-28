@@ -7,13 +7,14 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 
+use rustc_attr::list_contains_name;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{self, Attributes, DefIdTree, Ty, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
@@ -519,4 +520,19 @@ crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<De
         }
         None
     }
+}
+
+/// Checks that one attribute is `doc`. For example:
+///
+/// ```text
+/// #[doc(spotlight)]
+/// ```
+///
+/// This function has to exists because it runs on `hir::Attributes` whereas the other runs on
+/// `clean::Attributes`.
+crate fn has_doc_flag(attrs: Attributes<'_>, flag: Symbol) -> bool {
+    attrs.iter().any(|attr| {
+        attr.has_name(sym::doc)
+            && attr.meta_item_list().map_or(false, |l| list_contains_name(&l, flag))
+    })
 }

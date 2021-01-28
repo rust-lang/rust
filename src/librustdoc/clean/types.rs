@@ -57,7 +57,7 @@ crate struct Crate {
     crate primitives: Vec<(DefId, PrimitiveType)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    crate external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
+    crate external_traits: Rc<RefCell<FxHashMap<DefId, (Trait, bool)>>>,
     crate masked_crates: FxHashSet<CrateNum>,
     crate collapsed: bool,
 }
@@ -1185,7 +1185,6 @@ crate struct Trait {
     crate items: Vec<Item>,
     crate generics: Generics,
     crate bounds: Vec<GenericBound>,
-    crate is_spotlight: bool,
     crate is_auto: bool,
 }
 
