@@ -3518,6 +3518,7 @@ fn render_assoc_items(
                     "deref-methods-{:#}",
                     type_.print(cx.cache())
                 )));
+                debug!("Adding {} to deref id map", type_.print(cx.cache()));
                 cx.deref_id_map
                     .borrow_mut()
                     .insert(type_.def_id_full(cx.cache()).unwrap(), id.clone());
@@ -3636,6 +3637,7 @@ fn render_deref_methods(
             _ => None,
         })
         .expect("Expected associated type binding");
+    debug!("Render deref methods for {:#?}, target {:#?}", impl_.inner_impl().for_, target);
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
     if let Some(did) = target.def_id_full(cx.cache()) {
@@ -4396,6 +4398,15 @@ fn sidebar_deref_methods(cx: &Context<'_>, impl_: &Impl, v: &Vec<Impl>) -> Strin
         })
     {
         debug!("found target, real_target: {:?} {:?}", target, real_target);
+        if let Some(did) = target.def_id_full(cx.cache()) {
+            if let Some(type_did) = impl_.inner_impl().for_.def_id_full(cx.cache()) {
+                // `impl Deref<Target = S> for S`
+                if did == type_did {
+                    // Avoid infinite cycles
+                    return out;
+                }
+            }
+        }
         let deref_mut = v
             .iter()
             .filter(|i| i.inner_impl().trait_.is_some())
@@ -4439,13 +4450,6 @@ fn sidebar_deref_methods(cx: &Context<'_>, impl_: &Impl, v: &Vec<Impl>) -> Strin
                     .filter(|i| i.inner_impl().trait_.is_some())
                     .find(|i| i.inner_impl().trait_.def_id_full(cx.cache()) == c.deref_trait_did)
                 {
-                    if let Some(type_did) = impl_.inner_impl().for_.def_id_full(cx.cache()) {
-                        // `impl Deref<Target = S> for S`
-                        if target_did == type_did {
-                            // Avoid infinite cycles
-                            return out;
-                        }
-                    }
                     out.push_str(&sidebar_deref_methods(cx, target_deref_impl, target_impls));
                 }
             }
