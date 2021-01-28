@@ -310,7 +310,7 @@ impl GlobalState {
             };
             for ws in workspaces.iter() {
                 crate_graph.extend(ws.to_crate_graph(
-                    self.workspace_build_data.as_ref(),
+                    workspace_build_data.as_ref(),
                     self.proc_macro_client.as_ref(),
                     &mut load,
                 ));
