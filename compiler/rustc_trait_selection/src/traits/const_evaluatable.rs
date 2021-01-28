@@ -609,9 +609,29 @@ where
 /// Tries to unify two abstract constants using structural equality.
 pub(super) fn try_unify<'tcx>(
     tcx: TyCtxt<'tcx>,
-    a: AbstractConst<'tcx>,
-    b: AbstractConst<'tcx>,
+    mut a: AbstractConst<'tcx>,
+    mut b: AbstractConst<'tcx>,
 ) -> bool {
+    // We substitute generics repeatedly to allow AbstractConsts to unify where a
+    // ConstKind::Unevalated could be turned into an AbstractConst that would unify e.g.
+    // Param(N) should unify with Param(T), substs: [Unevaluated("T2", [Unevaluated("T3", [Param(N)])])]
+    while let Node::Leaf(a_ct) = a.root() {
+        let a_ct = a_ct.subst(tcx, a.substs);
+        match AbstractConst::from_const(tcx, a_ct) {
+            Ok(Some(a_act)) => a = a_act,
+            Ok(None) => break,
+            Err(_) => return true,
+        }
+    }
+    while let Node::Leaf(b_ct) = b.root() {
+        let b_ct = b_ct.subst(tcx, b.substs);
+        match AbstractConst::from_const(tcx, b_ct) {
+            Ok(Some(b_act)) => b = b_act,
+            Ok(None) => break,
+            Err(_) => return true,
+        }
+    }
+
     match (a.root(), b.root()) {
         (Node::Leaf(a_ct), Node::Leaf(b_ct)) => {
             let a_ct = a_ct.subst(tcx, a.substs);
@@ -632,8 +652,6 @@ pub(super) fn try_unify<'tcx>(
                 // we do not want to use `assert_eq!(a(), b())` to infer that `N` and `M` have to be `1`. This
                 // means that we only allow inference variables if they are equal.
                 (ty::ConstKind::Infer(a_val), ty::ConstKind::Infer(b_val)) => a_val == b_val,
-                // We may want to instead recurse into unevaluated constants here. That may require some
-                // care to prevent infinite recursion, so let's just ignore this for now.
                 (
                     ty::ConstKind::Unevaluated(a_def, a_substs, None),
                     ty::ConstKind::Unevaluated(b_def, b_substs, None),
