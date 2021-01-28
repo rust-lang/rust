@@ -113,13 +113,12 @@ where
             // of `next_back` does this, otherwise we will break the restriction
             // on calls to `self.next_back()` after calling `get_unchecked()`.
             if sz_a != sz_b {
-                let sz_a = self.a.size();
                 if a_side_effect && sz_a > self.len {
                     for _ in 0..sz_a - cmp::max(self.len, self.index) {
                         self.a.next_back();
                     }
                 }
-                let sz_b = self.b.size();
+
                 if b_side_effect && sz_b > self.len {
                     for _ in 0..sz_b - self.len {
                         self.b.next_back();
