@@ -4267,8 +4267,8 @@ fn get_methods(
 fn small_url_encode(s: String) -> String {
     let mut st = String::new();
     let mut last_match = 0;
-    for (idx, c) in s.char_indices() {
-        let escaped = match c {
+    for (idx, c) in s.bytes().enumerate() {
+        let escaped = match c as char {
             '<' => "%3C",
             '>' => "%3E",
             ' ' => "%20",
@@ -4286,7 +4286,7 @@ fn small_url_encode(s: String) -> String {
 
         st += &s[last_match..idx];
         st += escaped;
-        last_match = idx + c.len_utf8();
+        last_match = idx + 1;
     }
 
     if last_match != 0 {

@@ -17,22 +17,17 @@ impl<'a> fmt::Display for Escape<'a> {
         let pile_o_bits = s;
         let mut last = 0;
         for (i, ch) in s.bytes().enumerate() {
-            match ch as char {
-                '<' | '>' | '&' | '\'' | '"' => {
-                    fmt.write_str(&pile_o_bits[last..i])?;
-                    let s = match ch as char {
-                        '>' => "&gt;",
-                        '<' => "&lt;",
-                        '&' => "&amp;",
-                        '\'' => "&#39;",
-                        '"' => "&quot;",
-                        _ => unreachable!(),
-                    };
-                    fmt.write_str(s)?;
-                    last = i + 1;
-                }
-                _ => {}
-            }
+            let s = match ch as char {
+                '>' => "&gt;",
+                '<' => "&lt;",
+                '&' => "&amp;",
+                '\'' => "&#39;",
+                '"' => "&quot;",
+                _ => continue,
+            };
+            fmt.write_str(&pile_o_bits[last..i])?;
+            fmt.write_str(s)?;
+            last = i + 1;
         }
 
         if last < s.len() {
