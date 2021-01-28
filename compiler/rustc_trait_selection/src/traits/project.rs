@@ -736,14 +736,9 @@ fn project_type<'cx, 'tcx>(
 
     if !selcx.tcx().sess.recursion_limit().value_within_limit(obligation.recursion_depth) {
         debug!("project: overflow!");
-        match selcx.query_mode() {
-            super::TraitQueryMode::Standard => {
-                selcx.infcx().report_overflow_error(&obligation, true);
-            }
-            super::TraitQueryMode::Canonical => {
-                return Err(ProjectionTyError::TraitSelectionError(SelectionError::Overflow));
-            }
-        }
+        // This should really be an immediate error, but some existing code
+        // relies on being able to recover from this.
+        return Err(ProjectionTyError::TraitSelectionError(SelectionError::Overflow));
     }
 
     let obligation_trait_ref = &obligation.predicate.trait_ref(selcx.tcx());
