@@ -179,7 +179,10 @@ fn main() {
     }
 
     if let Some(mut on_fail) = on_fail {
-        on_fail.status().expect("Could not run the on_fail command");
+        let status = on_fail.status().expect("Could not run the on_fail command");
+        if !status.success() {
+            eprintln!("\nwarning: the on-fail command also failed: {}\n", status);
+        }
     }
 
     // Preserve the exit code. In case of signal, exit with 0xfe since it's
