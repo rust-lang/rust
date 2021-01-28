@@ -51,6 +51,7 @@ pub enum ProjectWorkspace {
 
 impl fmt::Debug for ProjectWorkspace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Make sure this isn't too verbose.
         match self {
             ProjectWorkspace::Cargo { cargo, sysroot, rustc, rustc_cfg } => f
                 .debug_struct("Cargo")
@@ -60,7 +61,7 @@ impl fmt::Debug for ProjectWorkspace {
                     "n_rustc_compiler_crates",
                     &rustc.as_ref().map_or(0, |rc| rc.packages().len()),
                 )
-                .field("rustc_cfg", rustc_cfg)
+                .field("n_rustc_cfg", &rustc_cfg.len())
                 .finish(),
             ProjectWorkspace::Json { project, sysroot, rustc_cfg } => {
                 let mut debug_struct = f.debug_struct("Json");
@@ -68,7 +69,7 @@ impl fmt::Debug for ProjectWorkspace {
                 if let Some(sysroot) = sysroot {
                     debug_struct.field("n_sysroot_crates", &sysroot.crates().len());
                 }
-                debug_struct.field("rustc_cfg", rustc_cfg);
+                debug_struct.field("n_rustc_cfg", &rustc_cfg.len());
                 debug_struct.finish()
             }
         }

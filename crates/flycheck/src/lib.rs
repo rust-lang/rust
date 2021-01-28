@@ -76,7 +76,6 @@ impl FlycheckHandle {
     }
 }
 
-#[derive(Debug)]
 pub enum Message {
     /// Request adding a diagnostic with fixes included to a file
     AddDiagnostic { workspace_root: PathBuf, diagnostic: Diagnostic },
@@ -87,6 +86,21 @@ pub enum Message {
         id: usize,
         progress: Progress,
     },
+}
+
+impl fmt::Debug for Message {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Message::AddDiagnostic { workspace_root, diagnostic } => f
+                .debug_struct("AddDiagnostic")
+                .field("workspace_root", workspace_root)
+                .field("diagnostic_code", &diagnostic.code.as_ref().map(|it| &it.code))
+                .finish(),
+            Message::Progress { id, progress } => {
+                f.debug_struct("Progress").field("id", id).field("progress", progress).finish()
+            }
+        }
+    }
 }
 
 #[derive(Debug)]

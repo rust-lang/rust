@@ -103,10 +103,10 @@ impl GlobalState {
         self.fetch_workspaces_queue.request_op()
     }
     pub(crate) fn fetch_workspaces_if_needed(&mut self) {
-        log::info!("will fetch workspaces");
         if !self.fetch_workspaces_queue.should_start_op() {
             return;
         }
+        log::info!("will fetch workspaces");
 
         self.task_pool.handle.spawn_with_sender({
             let linked_projects = self.config.linked_projects();
