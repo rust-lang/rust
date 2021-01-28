@@ -1,7 +1,7 @@
 use crate::utils::{
     attr_by_name, attrs::is_proc_macro, is_must_use_ty, is_trait_impl_item, is_type_diagnostic_item, iter_input_pats,
-    last_path_segment, match_def_path, must_use_attr, qpath_res, return_ty, snippet, snippet_opt, span_lint,
-    span_lint_and_help, span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
+    last_path_segment, match_def_path, must_use_attr, return_ty, snippet, snippet_opt, span_lint, span_lint_and_help,
+    span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
@@ -659,7 +659,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
 impl<'a, 'tcx> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr<'_>) {
         if let hir::ExprKind::Path(ref qpath) = ptr.kind {
-            if let Res::Local(id) = qpath_res(self.cx, qpath, ptr.hir_id) {
+            if let Res::Local(id) = self.cx.qpath_res(qpath, ptr.hir_id) {
                 if self.ptrs.contains(&id) {
                     span_lint(
                         self.cx,
@@ -722,7 +722,7 @@ fn is_mutated_static(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
     use hir::ExprKind::{Field, Index, Path};
 
     match e.kind {
-        Path(ref qpath) => !matches!(qpath_res(cx, qpath, e.hir_id), Res::Local(_)),
+        Path(ref qpath) => !matches!(cx.qpath_res(qpath, e.hir_id), Res::Local(_)),
         Field(ref inner, _) | Index(ref inner, _) => is_mutated_static(cx, inner),
         _ => false,
     }
