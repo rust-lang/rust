@@ -2,13 +2,25 @@
 
 ## [Unreleased]
 
-## [1.4.33] 2021-??-??
+## [1.4.33] 2021-01-27
+
+### Changed
+- `merge_imports` configuration has been deprecated in favor of the new `imports_granularity` option. Any existing usage of `merge_imports` will be automatically mapped to the corresponding value on `imports_granularity` with a warning message printed to encourage users to update their config files.
+
+### Added
+- New `imports_granularity` option has been added which succeeds `merge_imports`. This new option supports several additional variants which allow users to merge imports at different levels (crate or module), and even flatten imports to have a single use statement per item. ([PR #4634](https://github.com/rust-lang/rustfmt/pull/4634), [PR #4639](https://github.com/rust-lang/rustfmt/pull/4639))
+
+See the section on the configuration site for more information
+https://rust-lang.github.io/rustfmt/?version=v1.4.33&search=#imports_granularity
 
 ### Fixed
 - Fix erroneous removal of `const` keyword on const trait impl ([#4084](https://github.com/rust-lang/rustfmt/issues/4084))
 - Fix incorrect span usage wit const generics in supertraits ([#4204](https://github.com/rust-lang/rustfmt/issues/4204))
 - Use correct span for const generic params ([#4263](https://github.com/rust-lang/rustfmt/issues/4263))
 - Correct span on const generics to include type bounds ([#4310](https://github.com/rust-lang/rustfmt/issues/4310))
+- Idempotence issue on blocks containing only empty statements ([#4627](https://github.com/rust-lang/rustfmt/issues/4627) and [#3868](https://github.com/rust-lang/rustfmt/issues/3868))
+- Fix issue with semicolon placement on required functions that have a trailing comment that ends in a line-style comment before the semicolon ([#4646](https://github.com/rust-lang/rustfmt/issues/4646))
+- Avoid shared interned cfg_if symbol since rustfmt can re-initialize the rustc_ast globals on multiple inputs ([#4656](https://github.com/rust-lang/rustfmt/issues/4656))
 
 ### Install/Download Options
 - **crates.io package** - *pending*
