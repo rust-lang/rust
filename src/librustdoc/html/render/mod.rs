@@ -1018,8 +1018,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                     break;
                 } else {
                     let e = cur_elem.clone();
-                    h.children.entry(cur_elem.clone()).or_insert_with(|| Hierarchy::new(e));
-                    h = h.children.get_mut(&cur_elem).expect("not found child");
+                    h = h.children.entry(cur_elem.clone()).or_insert_with(|| Hierarchy::new(e));
                 }
             }
         }
