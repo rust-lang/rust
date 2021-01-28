@@ -359,28 +359,24 @@ crate struct StylePath {
 
 thread_local!(crate static CURRENT_DEPTH: Cell<usize> = Cell::new(0));
 
-crate fn initial_ids() -> Vec<String> {
-    [
-        "main",
-        "search",
-        "help",
-        "TOC",
-        "render-detail",
-        "associated-types",
-        "associated-const",
-        "required-methods",
-        "provided-methods",
-        "implementors",
-        "synthetic-implementors",
-        "implementors-list",
-        "synthetic-implementors-list",
-        "methods",
-        "implementations",
-    ]
-    .iter()
-    .map(|id| (String::from(*id)))
-    .collect()
-}
+// FIXME: make this work
+crate const INITIAL_IDS: [&'static str; 15] = [
+    "main",
+    "search",
+    "help",
+    "TOC",
+    "render-detail",
+    "associated-types",
+    "associated-const",
+    "required-methods",
+    "provided-methods",
+    "implementors",
+    "synthetic-implementors",
+    "implementors-list",
+    "synthetic-implementors-list",
+    "methods",
+    "implementations",
+];
 
 /// Generates the documentation for `crate` into the directory `dst`
 impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
@@ -1581,7 +1577,7 @@ impl Context<'_> {
 
         {
             self.id_map.borrow_mut().reset();
-            self.id_map.borrow_mut().populate(initial_ids());
+            self.id_map.borrow_mut().populate(&INITIAL_IDS);
         }
 
         if !self.render_redirect_pages {

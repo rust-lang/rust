@@ -1332,7 +1332,7 @@ impl IdMap {
         IdMap { map: init_id_map() }
     }
 
-    crate fn populate<I: IntoIterator<Item = String>>(&mut self, ids: I) {
+    crate fn populate<I: IntoIterator<Item = S>, S: AsRef<str> + ToString>(&mut self, ids: I) {
         for id in ids {
             let _ = self.derive(id);
         }
@@ -1342,11 +1342,11 @@ impl IdMap {
         self.map = init_id_map();
     }
 
-    crate fn derive(&mut self, candidate: String) -> String {
-        let id = match self.map.get_mut(&candidate) {
-            None => candidate,
+    crate fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
+        let id = match self.map.get_mut(candidate.as_ref()) {
+            None => candidate.to_string(),
             Some(a) => {
-                let id = format!("{}-{}", candidate, *a);
+                let id = format!("{}-{}", candidate.as_ref(), *a);
                 *a += 1;
                 id
             }
