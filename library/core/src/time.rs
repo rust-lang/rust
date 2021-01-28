@@ -48,6 +48,17 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 ///
 /// let ten_millis = Duration::from_millis(10);
 /// ```
+///
+/// # Formatting `Duration` values
+///
+/// `Duration` intentionally does not have a `Display` impl, as there are a
+/// variety of ways to format spans of time for human readability. `Duration`
+/// provides a `Debug` impl that shows the full precision of the value.
+///
+/// The `Debug` output uses the non-ASCII "µs" suffix for microseconds. If your
+/// program output may appear in contexts that cannot rely on full Unicode
+/// compatibility, you may wish to format `Duration` objects yourself or use a
+/// crate to do so.
 #[stable(feature = "duration", since = "1.3.0")]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Duration {
