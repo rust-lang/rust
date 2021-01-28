@@ -7,11 +7,11 @@ LL |         .cloned()
    = note:   expected type `u8`
            found reference `&_`
 
-error[E0599]: no method named `collect` found for struct `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>` in the current scope
+error[E0599]: the method `collect` exists for struct `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>`, but its trait bounds were not satisfied
   --> $DIR/issue-31173.rs:14:10
    |
 LL |         .collect();
-   |          ^^^^^^^ method not found in `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>`
+   |          ^^^^^^^ method cannot be called on `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>` due to unsatisfied trait bounds
    | 
   ::: $SRC_DIR/core/src/iter/adapters/cloned.rs:LL:COL
    |
@@ -23,7 +23,7 @@ LL | pub struct Cloned<I> {
 LL | pub struct TakeWhile<I, P> {
    | -------------------------- doesn't satisfy `<_ as Iterator>::Item = &_`
    |
-   = note: the method `collect` exists but the following trait bounds were not satisfied:
+   = note: the following trait bounds were not satisfied:
            `<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]> as Iterator>::Item = &_`
            which is required by `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>: Iterator`
            `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>: Iterator`

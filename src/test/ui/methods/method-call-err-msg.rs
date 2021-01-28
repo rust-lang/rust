@@ -16,7 +16,7 @@ fn main() {
 
     let y = Foo;
     y.zero()
-     .take()    //~ ERROR no method named `take` found
+     .take()    //~ ERROR the method
      .one(0);
     y.three::<usize>(); //~ ERROR this function takes 3 arguments but 0 arguments were supplied
 }
