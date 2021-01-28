@@ -631,6 +631,10 @@ declare_features! (
 
     /// Allows using `pointer` and `reference` in intra-doc links
     (active, intra_doc_pointers, "1.51.0", Some(80896), None),
+
+    /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
+    (active, c_unwind, "1.51.0", Some(74990), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

@@ -101,7 +101,7 @@ fn clif_sig_from_fn_sig<'tcx>(
     requires_caller_location: bool,
 ) -> Signature {
     let abi = match sig.abi {
-        Abi::System => Abi::C,
+        Abi::System { unwind: false } => Abi::C { unwind: false },
         abi => abi,
     };
     let (call_conv, inputs, output): (CallConv, Vec<Ty<'tcx>>, Ty<'tcx>) = match abi {
@@ -110,7 +110,7 @@ fn clif_sig_from_fn_sig<'tcx>(
             sig.inputs().to_vec(),
             sig.output(),
         ),
-        Abi::C | Abi::Unadjusted => (
+        Abi::C { unwind: false } | Abi::Unadjusted => (
             CallConv::triple_default(triple),
             sig.inputs().to_vec(),
             sig.output(),
@@ -126,7 +126,7 @@ fn clif_sig_from_fn_sig<'tcx>(
             inputs.extend(extra_args.types());
             (CallConv::triple_default(triple), inputs, sig.output())
         }
-        Abi::System => unreachable!(),
+        Abi::System { .. } => unreachable!(),
         Abi::RustIntrinsic => (
             CallConv::triple_default(triple),
             sig.inputs().to_vec(),
@@ -664,7 +664,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     // FIXME find a cleaner way to support varargs
     if fn_sig.c_variadic {
-        if fn_sig.abi != Abi::C {
+        if !matches!(fn_sig.abi, Abi::C { .. }) {
             fx.tcx.sess.span_fatal(
                 span,
                 &format!("Variadic call for non-C abi {:?}", fn_sig.abi),
