@@ -103,7 +103,7 @@ impl DefMap {
         &self,
         db: &dyn DefDatabase,
         mode: ResolveMode,
-        original_module: LocalModuleId,
+        mut original_module: LocalModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
@@ -130,7 +130,10 @@ impl DefMap {
             result.segment_index = result.segment_index.min(new.segment_index);
 
             match &current_map.block {
-                Some(block) => current_map = &block.parent,
+                Some(block) => {
+                    current_map = &block.parent;
+                    original_module = block.parent_module;
+                }
                 None => return result,
             }
         }
