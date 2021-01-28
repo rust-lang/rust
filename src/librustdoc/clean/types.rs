@@ -1408,14 +1408,14 @@ impl Type {
         }
     }
 
-    crate fn generics(&self) -> Option<Vec<Type>> {
+    crate fn generics(&self) -> Option<Vec<&Type>> {
         match *self {
             ResolvedPath { ref path, .. } => path.segments.last().and_then(|seg| {
                 if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
                     Some(
                         args.iter()
                             .filter_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty.clone()),
+                                GenericArg::Type(ty) => Some(ty),
                                 _ => None,
                             })
                             .collect(),
