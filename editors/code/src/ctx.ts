@@ -74,6 +74,12 @@ export class Ctx {
                 this.statusBar.command = undefined;
                 this.statusBar.color = undefined;
                 break;
+            case "readyPartial":
+                this.statusBar.text = "rust-analyzer";
+                this.statusBar.tooltip = "Ready (Partial)";
+                this.statusBar.command = undefined;
+                this.statusBar.color = undefined;
+                break;
             case "ready":
                 this.statusBar.text = "rust-analyzer";
                 this.statusBar.tooltip = "Ready";

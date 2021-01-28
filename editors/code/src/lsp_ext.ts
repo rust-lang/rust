@@ -10,7 +10,7 @@ export interface AnalyzerStatusParams {
 export const analyzerStatus = new lc.RequestType<AnalyzerStatusParams, string, void>("rust-analyzer/analyzerStatus");
 export const memoryUsage = new lc.RequestType0<string, void>("rust-analyzer/memoryUsage");
 
-export type Status = "loading" | "ready" | "invalid" | "needsReload";
+export type Status = "loading" | "ready" | "readyPartial" | "invalid" | "needsReload";
 export interface StatusParams {
     status: Status;
 }
