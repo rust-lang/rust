@@ -121,3 +121,66 @@ struct Struct {}
         "#]],
     );
 }
+
+#[test]
+fn legacy_macro_items() {
+    // Checks that legacy-scoped `macro_rules!` from parent namespaces are resolved and expanded
+    // correctly.
+    check_at(
+        r#"
+macro_rules! hit {
+    () => {
+        struct Hit {}
+    }
+}
+
+fn f() {
+    hit!();
+    $0
+}
+"#,
+        expect![[r#"
+            block scope
+            Hit: t
+            crate
+            f: v
+        "#]],
+    );
+}
+
+#[test]
+fn macro_resolve() {
+    check_at(
+        r#"
+//- /lib.rs crate:lib deps:core
+use core::mark;
+
+fn f() {
+    fn nested() {
+        mark::hit!(Hit);
+        $0
+    }
+}
+//- /core.rs crate:core
+pub mod mark {
+    #[macro_export]
+    macro_rules! _hit {
+        ($name:ident) => {
+            struct $name {}
+        }
+    }
+
+    pub use crate::_hit as hit;
+}
+"#,
+        expect![[r#"
+            block scope
+            Hit: t
+            block scope
+            nested: v
+            crate
+            f: v
+            mark: t
+        "#]],
+    );
+}
