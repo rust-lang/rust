@@ -61,6 +61,32 @@ impl Ctx {
         self.tree
     }
 
+    pub(super) fn lower_macro_stmts(mut self, stmts: ast::MacroStmts) -> ItemTree {
+        self.tree.top_level = stmts
+            .statements()
+            .filter_map(|stmt| match stmt {
+                ast::Stmt::Item(item) => Some(item),
+                _ => None,
+            })
+            .flat_map(|item| self.lower_mod_item(&item, false))
+            .flat_map(|items| items.0)
+            .collect();
+
+        // Non-items need to have their inner items collected.
+        for stmt in stmts.statements() {
+            match stmt {
+                ast::Stmt::ExprStmt(_) | ast::Stmt::LetStmt(_) => {
+                    self.collect_inner_items(stmt.syntax())
+                }
+                _ => {}
+            }
+        }
+        if let Some(expr) = stmts.expr() {
+            self.collect_inner_items(expr.syntax());
+        }
+        self.tree
+    }
+
     pub(super) fn lower_inner_items(mut self, within: &SyntaxNode) -> ItemTree {
         self.collect_inner_items(within);
         self.tree

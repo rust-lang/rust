@@ -98,15 +98,17 @@ impl ItemTree {
                     ctx.lower_module_items(&items)
                 },
                 ast::MacroStmts(stmts) => {
-                    ctx.lower_inner_items(stmts.syntax())
+                    // The produced statements can include items, which should be added as top-level
+                    // items.
+                    ctx.lower_macro_stmts(stmts)
                 },
-                // Macros can expand to expressions. We return an empty item tree in this case, but
-                // still need to collect inner items.
                 ast::Expr(e) => {
+                    // Macros can expand to expressions. We return an empty item tree in this case, but
+                    // still need to collect inner items.
                     ctx.lower_inner_items(e.syntax())
                 },
                 _ => {
-                    panic!("cannot create item tree from {:?}", syntax);
+                    panic!("cannot create item tree from {:?} {}", syntax, syntax);
                 },
             }
         };
