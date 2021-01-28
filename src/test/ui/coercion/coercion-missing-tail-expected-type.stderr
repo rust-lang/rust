@@ -12,13 +12,13 @@ error[E0308]: mismatched types
   --> $DIR/coercion-missing-tail-expected-type.rs:8:13
    |
 LL | fn foo() -> Result<u8, u64> {
-   |    ---      ^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found `()`
+   |    ---      ^^^^^^^^^^^^^^^ expected enum `Result`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     Ok(1);
    |          - help: consider removing this semicolon
    |
-   = note:   expected enum `std::result::Result<u8, u64>`
+   = note:   expected enum `Result<u8, u64>`
            found unit type `()`
 
 error: aborting due to 2 previous errors
