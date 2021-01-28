@@ -4515,81 +4515,73 @@ fn extract_for_impl_name(item: &clean::Item, cache: &Cache) -> Option<(String, S
 }
 
 fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
-    let mut sidebar = String::new();
+    write!(buf, "<div class=\"block items\">");
 
-    let mut types = t
-        .items
-        .iter()
-        .filter_map(|m| match m.name {
-            Some(ref name) if m.is_associated_type() => {
-                Some(format!("<a href=\"#associatedtype.{name}\">{name}</a>", name = name))
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    let mut consts = t
-        .items
-        .iter()
-        .filter_map(|m| match m.name {
-            Some(ref name) if m.is_associated_const() => {
-                Some(format!("<a href=\"#associatedconstant.{name}\">{name}</a>", name = name))
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    let mut required = t
-        .items
-        .iter()
-        .filter_map(|m| match m.name {
-            Some(ref name) if m.is_ty_method() => {
-                Some(format!("<a href=\"#tymethod.{name}\">{name}</a>", name = name))
-            }
-            _ => None,
-        })
-        .collect::<Vec<String>>();
-    let mut provided = t
-        .items
-        .iter()
-        .filter_map(|m| match m.name {
-            Some(ref name) if m.is_method() => {
-                Some(format!("<a href=\"#method.{0}\">{0}</a>", name))
-            }
-            _ => None,
-        })
-        .collect::<Vec<String>>();
+    fn print_sidebar_section(
+        out: &mut Buffer,
+        items: &[clean::Item],
+        before: &str,
+        filter: impl Fn(&clean::Item) -> bool,
+        write: impl Fn(&mut Buffer, &Symbol),
+        after: &str,
+    ) {
+        let mut items = items
+            .iter()
+            .filter_map(|m| match m.name {
+                Some(ref name) if filter(m) => Some(name),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
 
-    if !types.is_empty() {
-        types.sort();
-        sidebar.push_str(&format!(
-            "<a class=\"sidebar-title\" href=\"#associated-types\">\
-                Associated Types</a><div class=\"sidebar-links\">{}</div>",
-            types.join("")
-        ));
+        if !items.is_empty() {
+            items.sort();
+            out.push_str(before);
+            for item in items.into_iter() {
+                write(out, item);
+            }
+            out.push_str(after);
+        }
     }
-    if !consts.is_empty() {
-        consts.sort();
-        sidebar.push_str(&format!(
-            "<a class=\"sidebar-title\" href=\"#associated-const\">\
-                Associated Constants</a><div class=\"sidebar-links\">{}</div>",
-            consts.join("")
-        ));
-    }
-    if !required.is_empty() {
-        required.sort();
-        sidebar.push_str(&format!(
-            "<a class=\"sidebar-title\" href=\"#required-methods\">\
-                Required Methods</a><div class=\"sidebar-links\">{}</div>",
-            required.join("")
-        ));
-    }
-    if !provided.is_empty() {
-        provided.sort();
-        sidebar.push_str(&format!(
-            "<a class=\"sidebar-title\" href=\"#provided-methods\">\
-                Provided Methods</a><div class=\"sidebar-links\">{}</div>",
-            provided.join("")
-        ));
-    }
+
+    print_sidebar_section(
+        buf,
+        &t.items,
+        "<a class=\"sidebar-title\" href=\"#associated-types\">\
+            Associated Types</a><div class=\"sidebar-links\">",
+        |m| m.is_associated_type(),
+        |out, sym| write!(out, "<a href=\"#associatedtype.{0}\">{0}</a>", sym),
+        "</div>",
+    );
+
+    print_sidebar_section(
+        buf,
+        &t.items,
+        "<a class=\"sidebar-title\" href=\"#associated-const\">\
+            Associated Constants</a><div class=\"sidebar-links\">",
+        |m| m.is_associated_const(),
+        |out, sym| write!(out, "<a href=\"#associatedconstant.{0}\">{0}</a>", sym),
+        "</div>",
+    );
+
+    print_sidebar_section(
+        buf,
+        &t.items,
+        "<a class=\"sidebar-title\" href=\"#required-methods\">\
+            Required Methods</a><div class=\"sidebar-links\">",
+        |m| m.is_ty_method(),
+        |out, sym| write!(out, "<a href=\"#tymethod.{0}\">{0}</a>", sym),
+        "</div>",
+    );
+
+    print_sidebar_section(
+        buf,
+        &t.items,
+        "<a class=\"sidebar-title\" href=\"#provided-methods\">\
+            Provided Methods</a><div class=\"sidebar-links\">",
+        |m| m.is_method(),
+        |out, sym| write!(out, "<a href=\"#method.{0}\">{0}</a>", sym),
+        "</div>",
+    );
 
     if let Some(implementors) = cx.cache.implementors.get(&it.def_id) {
         let mut res = implementors
@@ -4605,29 +4597,29 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
 
         if !res.is_empty() {
             res.sort();
-            sidebar.push_str(&format!(
+            buf.push_str(
                 "<a class=\"sidebar-title\" href=\"#foreign-impls\">\
                     Implementations on Foreign Types</a>\
-                 <div class=\"sidebar-links\">{}</div>",
-                res.into_iter()
-                    .map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name)))
-                    .collect::<Vec<_>>()
-                    .join("")
-            ));
+                 <div class=\"sidebar-links\">",
+            );
+            for (name, id) in res.into_iter() {
+                buf.push_str(&format!("<a href=\"#{}\">{}</a>", id, Escape(&name)));
+            }
+            buf.push_str("</div>");
         }
     }
 
-    sidebar.push_str(&sidebar_assoc_items(cx, it));
+    buf.push_str(&sidebar_assoc_items(cx, it));
 
-    sidebar.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
+    buf.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
     if t.is_auto {
-        sidebar.push_str(
+        buf.push_str(
             "<a class=\"sidebar-title\" \
                 href=\"#synthetic-implementors\">Auto Implementors</a>",
         );
     }
 
-    write!(buf, "<div class=\"block items\">{}</div>", sidebar)
+    write!(buf, "</div>")
 }
 
 fn sidebar_primitive(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
@@ -4743,11 +4735,7 @@ fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
     if items.iter().any(|it| {
         it.type_() == ItemType::ExternCrate || (it.type_() == ItemType::Import && !it.is_stripped())
     }) {
-        sidebar.push_str(&format!(
-            "<li><a href=\"#{id}\">{name}</a></li>",
-            id = "reexports",
-            name = "Re-exports"
-        ));
+        sidebar.push_str("<li><a href=\"#reexports\">Re-exports</a></li>");
     }
 
     // ordering taken from item_module, reorder, where it prioritized elements in a certain order
