@@ -32,7 +32,7 @@ pub enum PassMode {
     Ignore,
     /// Pass the argument directly.
     ///
-    /// The argument has a layout abi of `Scalar` or `Vector`.
+    /// The argument has a layout abi of `Scalar`, `Vector` or in rare cases `Aggregate`.
     Direct(ArgAttributes),
     /// Pass a pair's elements directly in two arguments.
     ///
@@ -453,7 +453,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
                 scalar_attrs(&layout, b, a.value.size(cx).align_to(b.value.align(cx).abi)),
             ),
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
-            Abi::Aggregate { .. } => Self::indirect_pass_mode(&layout),
+            Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
         };
         ArgAbi { layout, pad: None, mode }
     }

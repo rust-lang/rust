@@ -2866,10 +2866,9 @@ where
                 let max_by_val_size = Pointer.size(cx) * 2;
                 let size = arg.layout.size;
 
-                let is_indirect_not_on_stack =
-                    matches!(arg.mode, PassMode::Indirect { on_stack: false, .. });
-                assert!(is_indirect_not_on_stack, "{:?}", arg);
-                if !arg.layout.is_unsized() && size <= max_by_val_size {
+                if arg.layout.is_unsized() || size > max_by_val_size {
+                    arg.make_indirect();
+                } else {
                     // We want to pass small aggregates as immediates, but using
                     // a LLVM aggregate type for this leads to bad optimizations,
                     // so we pick an appropriately sized integer type instead.
