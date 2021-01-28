@@ -251,6 +251,10 @@ environment variable:
   can recognize false positives by "<untagged>" occurring in the message -- this
   indicates a pointer that was cast from an integer, so Miri was unable to track
   this pointer.
+* `-Zmiri-compare-exchange-weak-failure-rate=<rate>` changes the failure rate of
+  weak atomic operations. The default is `0.8` (so 4 out of 5 weak ops will fail.
+  You can change it to any value between `0.0` and `1.0`, where `1.0` means it
+  will always fail and `0.0` means it will never fail.
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 
