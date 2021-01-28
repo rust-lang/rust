@@ -1407,7 +1407,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         proc_macros: vec![],
                     };
                     if let Some(extern_mod_loaded) = self.cx.extern_mod_loaded {
-                        extern_mod_loaded(&krate);
+                        extern_mod_loaded(&krate, ident);
                     }
 
                     *old_mod = krate.module;
