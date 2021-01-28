@@ -8,14 +8,11 @@ use std::{
 
 use crossbeam_channel::{after, select, Receiver};
 use lsp_server::{Connection, Message, Notification, Request};
-use lsp_types::{
-    notification::Exit, request::Shutdown, TextDocumentIdentifier, Url, WorkDoneProgress,
-};
-use lsp_types::{ProgressParams, ProgressParamsValue};
+use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
 use project_model::ProjectManifest;
-use rust_analyzer::{config::Config, main_loop};
+use rust_analyzer::{config::Config, lsp_ext, main_loop};
 use serde::Serialize;
-use serde_json::{to_string_pretty, Value};
+use serde_json::{json, to_string_pretty, Value};
 use test_utils::{find_mismatch, Fixture};
 use vfs::AbsPathBuf;
 
@@ -106,9 +103,12 @@ impl<'a> Project<'a> {
                     ..Default::default()
                 }),
                 window: Some(lsp_types::WindowClientCapabilities {
-                    work_done_progress: Some(true),
+                    work_done_progress: Some(false),
                     ..Default::default()
                 }),
+                experimental: Some(json!({
+                    "statusNotification": true,
+                })),
                 ..Default::default()
             },
         );
@@ -192,9 +192,6 @@ impl Server {
         while let Some(msg) = self.recv().unwrap_or_else(|Timeout| panic!("timeout: {:?}", r)) {
             match msg {
                 Message::Request(req) => {
-                    if req.method == "window/workDoneProgress/create" {
-                        continue;
-                    }
                     if req.method == "client/registerCapability" {
                         let params = req.params.to_string();
                         if ["workspace/didChangeWatchedFiles", "textDocument/didSave"]
@@ -220,14 +217,13 @@ impl Server {
     }
     pub(crate) fn wait_until_workspace_is_loaded(self) -> Server {
         self.wait_for_message_cond(1, &|msg: &Message| match msg {
-            Message::Notification(n) if n.method == "$/progress" => {
-                match n.clone().extract::<ProgressParams>("$/progress").unwrap() {
-                    ProgressParams {
-                        token: lsp_types::ProgressToken::String(ref token),
-                        value: ProgressParamsValue::WorkDone(WorkDoneProgress::End(_)),
-                    } if token == "rustAnalyzer/roots scanned" => true,
-                    _ => false,
-                }
+            Message::Notification(n) if n.method == "rust-analyzer/status" => {
+                let status = n
+                    .clone()
+                    .extract::<lsp_ext::StatusParams>("rust-analyzer/status")
+                    .unwrap()
+                    .status;
+                matches!(status, lsp_ext::Status::Ready)
             }
             _ => false,
         })
