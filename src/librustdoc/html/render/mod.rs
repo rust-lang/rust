@@ -1211,11 +1211,7 @@ fn write_minify(
 
 fn write_srclink(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     if let Some(l) = cx.src_href(item) {
-        write!(
-            buf,
-            "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
-            l, "goto source code"
-        )
+        write!(buf, "<a class=\"srclink\" href=\"{}\" title=\"goto source code\">[src]</a>", l)
     }
 }
 
