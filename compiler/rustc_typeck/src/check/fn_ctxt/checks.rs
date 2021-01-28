@@ -539,7 +539,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.overwrite_local_ty_if_err(local, ty, pat_ty);
     }
 
-    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
+    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>, is_last: bool) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,
@@ -567,7 +567,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
             }
             hir::StmtKind::Semi(ref expr) => {
-                self.check_expr(&expr);
+                // All of this is equivalent to calling `check_expr`, but it is inlined out here
+                // in order to capture the fact that this `match` is the last statement in its
+                // function. This is done for better suggestions to remove the `;`.
+                let expectation = match expr.kind {
+                    hir::ExprKind::Match(..) if is_last => IsLast(stmt.span),
+                    _ => NoExpectation,
+                };
+                self.check_expr_with_expectation(expr, expectation);
             }
         }
 
@@ -626,8 +633,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ctxt = BreakableCtxt { coerce: Some(coerce), may_break: false };
 
         let (ctxt, ()) = self.with_breakable_ctxt(blk.hir_id, ctxt, || {
-            for s in blk.stmts {
-                self.check_stmt(s);
+            for (pos, s) in blk.stmts.iter().enumerate() {
+                self.check_stmt(s, blk.stmts.len() - 1 == pos);
             }
 
             // check the tail expression **without** holding the

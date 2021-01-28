@@ -21,6 +21,8 @@ pub enum Expectation<'tcx> {
     /// This rvalue expression will be wrapped in `&` or `Box` and coerced
     /// to `&Ty` or `Box<Ty>`, respectively. `Ty` is `[A]` or `Trait`.
     ExpectRvalueLikeUnsized(Ty<'tcx>),
+
+    IsLast(Span),
 }
 
 impl<'a, 'tcx> Expectation<'tcx> {
@@ -79,19 +81,20 @@ impl<'a, 'tcx> Expectation<'tcx> {
 
     // Resolves `expected` by a single level if it is a variable. If
     // there is no expected type or resolution is not possible (e.g.,
-    // no constraints yet present), just returns `None`.
+    // no constraints yet present), just returns `self`.
     fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
         match self {
             NoExpectation => NoExpectation,
             ExpectCastableToType(t) => ExpectCastableToType(fcx.resolve_vars_if_possible(t)),
             ExpectHasType(t) => ExpectHasType(fcx.resolve_vars_if_possible(t)),
             ExpectRvalueLikeUnsized(t) => ExpectRvalueLikeUnsized(fcx.resolve_vars_if_possible(t)),
+            IsLast(sp) => IsLast(sp),
         }
     }
 
     pub(super) fn to_option(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
-            NoExpectation => None,
+            NoExpectation | IsLast(_) => None,
             ExpectCastableToType(ty) | ExpectHasType(ty) | ExpectRvalueLikeUnsized(ty) => Some(ty),
         }
     }
@@ -103,7 +106,9 @@ impl<'a, 'tcx> Expectation<'tcx> {
     pub(super) fn only_has_type(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             ExpectHasType(ty) => Some(ty),
-            NoExpectation | ExpectCastableToType(_) | ExpectRvalueLikeUnsized(_) => None,
+            NoExpectation | ExpectCastableToType(_) | ExpectRvalueLikeUnsized(_) | IsLast(_) => {
+                None
+            }
         }
     }
 
