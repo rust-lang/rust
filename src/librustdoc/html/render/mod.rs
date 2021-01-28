@@ -1321,23 +1321,22 @@ impl AllTypes {
     }
 }
 
-fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, title: &str, class: &str) {
-    if !e.is_empty() {
-        let mut e: Vec<&ItemEntry> = e.iter().collect();
-        e.sort();
-        write!(
-            f,
-            "<h3 id=\"{}\">{}</h3><ul class=\"{} docblock\">{}</ul>",
-            title,
-            Escape(title),
-            class,
-            e.iter().map(|s| format!("<li>{}</li>", s.print())).collect::<String>()
-        );
-    }
-}
-
 impl AllTypes {
     fn print(self, f: &mut Buffer) {
+        fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, title: &str, class: &str) {
+            if !e.is_empty() {
+                let mut e: Vec<&ItemEntry> = e.iter().collect();
+                e.sort();
+                write!(f, "<h3 id=\"{}\">{}</h3><ul class=\"{} docblock\">", title, title, class);
+
+                for s in e.iter() {
+                    write!(f, "<li>{}</li>", s.print());
+                }
+
+                write!(f, "</ul>");
+            }
+        }
+
         write!(
             f,
             "<h1 class=\"fqn\">\
@@ -1352,6 +1351,8 @@ impl AllTypes {
                  </span>
              </h1>"
         );
+        // Note: print_entries does not escape the title, because we know the current set of titles
+        // don't require escaping.
         print_entries(f, &self.structs, "Structs", "structs");
         print_entries(f, &self.enums, "Enums", "enums");
         print_entries(f, &self.unions, "Unions", "unions");
