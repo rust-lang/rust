@@ -3510,7 +3510,7 @@ fn render_assoc_items(
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
-                let id = cx.derive_id(small_url_encode(&format!(
+                let id = cx.derive_id(small_url_encode(format!(
                     "deref-methods-{:#}",
                     type_.print(cx.cache())
                 )));
@@ -3761,7 +3761,7 @@ fn render_impl(
                 if is_on_foreign_type {
                     get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t, cx.cache())
                 } else {
-                    format!("impl-{}", small_url_encode(&format!("{:#}", t.print(cx.cache()))))
+                    format!("impl-{}", small_url_encode(format!("{:#}", t.print(cx.cache()))))
                 }
             }
             None => "impl".to_string(),
@@ -4264,19 +4264,37 @@ fn get_methods(
 }
 
 // The point is to url encode any potential character from a type with genericity.
-fn small_url_encode(s: &str) -> String {
-    s.replace("<", "%3C")
-        .replace(">", "%3E")
-        .replace(" ", "%20")
-        .replace("?", "%3F")
-        .replace("'", "%27")
-        .replace("&", "%26")
-        .replace(",", "%2C")
-        .replace(":", "%3A")
-        .replace(";", "%3B")
-        .replace("[", "%5B")
-        .replace("]", "%5D")
-        .replace("\"", "%22")
+fn small_url_encode(s: String) -> String {
+    let mut st = String::new();
+    let mut last_match = 0;
+    for (idx, c) in s.char_indices() {
+        let escaped = match c {
+            '<' => "%3C",
+            '>' => "%3E",
+            ' ' => "%20",
+            '?' => "%3F",
+            '\'' => "%27",
+            '&' => "%26",
+            ',' => "%2C",
+            ':' => "%3A",
+            ';' => "%3B",
+            '[' => "%5B",
+            ']' => "%5D",
+            '"' => "%22",
+            _ => continue,
+        };
+
+        st += &s[last_match..idx];
+        st += escaped;
+        last_match = idx + c.len_utf8();
+    }
+
+    if last_match != 0 {
+        st += &s[last_match..];
+        st
+    } else {
+        s
+    }
 }
 
 fn sidebar_assoc_items(cx: &Context<'_>, it: &clean::Item) -> String {
@@ -4321,7 +4339,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, it: &clean::Item) -> String {
                         if let Some(ref i) = it.inner_impl().trait_ {
                             let i_display = format!("{:#}", i.print(cx.cache()));
                             let out = Escape(&i_display);
-                            let encoded = small_url_encode(&format!("{:#}", i.print(cx.cache())));
+                            let encoded = small_url_encode(format!("{:#}", i.print(cx.cache())));
                             let generated = format!(
                                 "<a href=\"#impl-{}\">{}{}</a>",
                                 encoded,
@@ -4477,7 +4495,7 @@ fn get_id_for_impl_on_foreign_type(
     trait_: &clean::Type,
     cache: &Cache,
 ) -> String {
-    small_url_encode(&format!("impl-{:#}-for-{:#}", trait_.print(cache), for_.print(cache)))
+    small_url_encode(format!("impl-{:#}-for-{:#}", trait_.print(cache), for_.print(cache)))
 }
 
 fn extract_for_impl_name(item: &clean::Item, cache: &Cache) -> Option<(String, String)> {
