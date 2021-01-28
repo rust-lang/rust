@@ -423,7 +423,7 @@ Reloads project information (that is, re-executes `cargo metadata`).
 
 ```typescript
 interface StatusParams {
-    status: "loading" | "ready" | "invalid" | "needsReload",
+    status: "loading" | "readyPartial" | "ready" | "invalid" | "needsReload",
 }
 ```
 
