@@ -8,7 +8,7 @@ relevant to your desired goal.
 
 For very new targets, you may need to use a different fork of LLVM
 than what is currently shipped with Rust. In that case, navigate to
-the `src/llvm_project` git submodule (you might need to run `x.py
+the `src/llvm-project` git submodule (you might need to run `x.py
 check` at least once so the submodule is updated), check out the
 appropriate commit for your fork, then commit that new submodule
 reference in the main Rust repository.
@@ -16,19 +16,13 @@ reference in the main Rust repository.
 An example would be:
 
 ```
-cd src/llvm_project
+cd src/llvm-project
 git remote add my-target-llvm some-llvm-repository
 git checkout my-target-llvm/my-branch
 cd ..
 git add llvm_target
 git commit -m 'Use my custom LLVM'
 ```
-
-If you have a local LLVM checkout that is already built, you *may* be
-able to configure Rust to treat your build as the [system
-LLVM][sysllvm] to avoid redundant builds.
-
-[sysllvm]: ./suggested.md#skipping-llvm-build
 
 ## Creating a target specification
 

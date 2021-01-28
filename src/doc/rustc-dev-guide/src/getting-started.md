@@ -79,7 +79,7 @@ recommend trying to build on a Raspberry Pi :P
 
 Building the compiler takes more than half an hour on my moderately powerful
 laptop. The first time you build the compiler, LLVM will also be built unless
-you use your system's LLVM ([see below][configsec]).
+you use CI-built LLVM ([see below][configsec]).
 
 [configsec]: #configuring-the-compiler
 
@@ -123,17 +123,17 @@ The compiler has a configuration file which contains a ton of settings. We will
 provide some recommendations here that should work for most, but [check out
 this chapter for more info][config].
 
-[config]: ./building/how-to-build-and-run.html#create-a-configtoml
+[config]: ./building/how-to-build-and-run.md#create-a-configtoml
 
 In the top level of the repo:
 
-```sh
+```console
 $ x.py setup
 ```
 
 This will walk you through an interactive setup for x.py that looks like this:
 
-```
+```console
 $ x.py setup
 Welcome to the Rust project! What do you want to do with x.py?
 a) Contribute to the standard library
@@ -150,11 +150,15 @@ To get started, try one of the following commands:
 For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html
 ```
 
-You may also want to set up [system LLVM][sysllvm] to avoid building LLVM from source.
+Note that by default, `x.py setup` will use CI-built LLVM if available for your
+platform so that you don't need to build LLVM in addition to building the
+compiler. In some circumstances, such as when updating the version of LLVM used
+by `rustc`, you may want to temporarily disable this feature. See the ["Updating
+LLVM"] for more.
 
-[sysllvm]: ./building/suggested.html#skipping-llvm-build
+["Updating LLVM"]: https://rustc-dev-guide.rust-lang.org/backend/updating-llvm.html?highlight=download-ci-llvm#feature-updates
 
-### `./x.py` Intro
+### x.py Intro
 
 `rustc` is a _bootstrapping_ compiler, which means that it is written in Rust
 and thus needs to be compiled by itself. So where do you
