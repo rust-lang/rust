@@ -3,7 +3,7 @@
 
 #![crate_name = "foo"]
 
-extern crate extern_links;
+pub extern crate extern_links;
 
 // @!has foo/index.html '//a' 'extern_links'
 #[doc(no_inline)]
