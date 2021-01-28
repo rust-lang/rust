@@ -429,7 +429,7 @@ fn rewrite_empty_block(
     prefix: &str,
     shape: Shape,
 ) -> Option<String> {
-    if !block.stmts.is_empty() {
+    if block_has_statements(&block) {
         return None;
     }
 
