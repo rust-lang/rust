@@ -61,6 +61,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             &options.extern_html_root_urls,
             &options.output,
             krate,
+            tcx,
         )
     });
     let prof = &tcx.sess.prof;
