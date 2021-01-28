@@ -1,7 +1,7 @@
 - // MIR for `id_result` before SimplifyBranchSame
 + // MIR for `id_result` after SimplifyBranchSame
   
-  fn id_result(_1: std::result::Result<u8, i32>) -> std::result::Result<u8, i32> {
+  fn id_result(_1: Result<u8, i32>) -> Result<u8, i32> {
       debug r => _1;                       // in scope 0 at $DIR/simplify-arm.rs:16:14: 16:15
       let mut _0: std::result::Result<u8, i32>; // return place in scope 0 at $DIR/simplify-arm.rs:16:37: 16:52
       let mut _2: isize;                   // in scope 0 at $DIR/simplify-arm.rs:18:9: 18:14
