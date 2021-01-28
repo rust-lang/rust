@@ -1,4 +1,4 @@
-use crate::ty::{self, FloatVarValue, InferConst, IntVarValue, Ty, TyCtxt};
+use crate::ty::{self, InferConst, Ty, TyCtxt};
 use rustc_data_structures::snapshot_vec;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify::{
@@ -14,36 +14,6 @@ use std::marker::PhantomData;
 pub trait ToType {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
 }
-
-/// Raw `TyVid` are used as the unification key for `sub_relations`;
-/// they carry no values.
-impl UnifyKey for ty::TyVid {
-    type Value = ();
-    fn index(&self) -> u32 {
-        self.index
-    }
-    fn from_index(i: u32) -> ty::TyVid {
-        ty::TyVid { index: i }
-    }
-    fn tag() -> &'static str {
-        "TyVid"
-    }
-}
-
-impl UnifyKey for ty::IntVid {
-    type Value = Option<IntVarValue>;
-    fn index(&self) -> u32 {
-        self.index
-    }
-    fn from_index(i: u32) -> ty::IntVid {
-        ty::IntVid { index: i }
-    }
-    fn tag() -> &'static str {
-        "IntVid"
-    }
-}
-
-impl EqUnifyValue for IntVarValue {}
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RegionVidKey {
@@ -80,7 +50,7 @@ impl UnifyKey for ty::RegionVid {
     }
 }
 
-impl ToType for IntVarValue {
+impl ToType for ty::IntVarValue {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             ty::IntType(i) => tcx.mk_mach_int(i),
@@ -89,24 +59,7 @@ impl ToType for IntVarValue {
     }
 }
 
-// Floating point type keys
-
-impl UnifyKey for ty::FloatVid {
-    type Value = Option<FloatVarValue>;
-    fn index(&self) -> u32 {
-        self.index
-    }
-    fn from_index(i: u32) -> ty::FloatVid {
-        ty::FloatVid { index: i }
-    }
-    fn tag() -> &'static str {
-        "FloatVid"
-    }
-}
-
-impl EqUnifyValue for FloatVarValue {}
-
-impl ToType for FloatVarValue {
+impl ToType for ty::FloatVarValue {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.mk_mach_float(self.0)
     }

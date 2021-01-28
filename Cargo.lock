@@ -770,7 +770,7 @@ checksum = "8aebca1129a03dc6dc2b127edd729435bbc4a37e1d5f4d7513165089ceb02634"
 
 [[package]]
 name = "crates-io"
-version = "0.31.1"
+version = "0.33.0"
 dependencies = [
  "anyhow",
  "curl",
@@ -1337,9 +1337,9 @@ dependencies = [
 
 [[package]]
 name = "git2"
-version = "0.13.14"
+version = "0.13.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "186dd99cc77576e58344ad614fa9bb27bad9d048f85de3ca850c1f4e8b048260"
+checksum = "1d250f5f82326884bd39c2853577e70a121775db76818ffa452ed1e80de12986"
 dependencies = [
  "bitflags",
  "libc",
@@ -1792,9 +1792,9 @@ dependencies = [
 
 [[package]]
 name = "libgit2-sys"
-version = "0.12.16+1.1.0"
+version = "0.12.18+1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f91b2f931ee975a98155195be8cd82d02e8e029d7d793d2bac1b8181ac97020"
+checksum = "3da6a42da88fc37ee1ecda212ffa254c25713532980005d5f7c0b0fbe7e6e885"
 dependencies = [
  "cc",
  "libc",
@@ -4345,6 +4345,7 @@ dependencies = [
  "bitflags",
  "rustc_data_structures",
  "rustc_index",
+ "rustc_macros",
  "rustc_serialize",
 ]
 

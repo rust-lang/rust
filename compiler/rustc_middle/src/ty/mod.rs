@@ -65,7 +65,6 @@ use std::ptr;
 use std::str;
 
 pub use self::sty::BoundRegionKind::*;
-pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind;
 pub use self::sty::RegionKind::*;
 pub use self::sty::TyKind::*;
@@ -74,13 +73,14 @@ pub use self::sty::{BoundRegion, BoundRegionKind, EarlyBoundRegion, FreeRegion, 
 pub use self::sty::{CanonicalPolyFnSig, FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, TypeAndMut, UpvarSubsts};
 pub use self::sty::{ClosureSubstsParts, GeneratorSubstsParts};
-pub use self::sty::{ConstVid, FloatVid, IntVid, RegionVid, TyVid};
-pub use self::sty::{ExistentialPredicate, InferTy, ParamConst, ParamTy, ProjectionTy};
+pub use self::sty::{ConstVid, RegionVid};
+pub use self::sty::{ExistentialPredicate, ParamConst, ParamTy, ProjectionTy};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{PolyTraitRef, TraitRef, TyKind};
 pub use crate::ty::diagnostics::*;
-pub use rustc_type_ir::{DebruijnIndex, TypeFlags, INNERMOST};
+pub use rustc_type_ir::InferTy::*;
+pub use rustc_type_ir::*;
 
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
@@ -421,14 +421,6 @@ impl Visibility {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, TyDecodable, TyEncodable, HashStable)]
-pub enum Variance {
-    Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
-    Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
-    Contravariant, // T<A> <: T<B> iff B <: A -- e.g., function param type
-    Bivariant,     // T<A> <: T<B>            -- e.g., unused type parameter
-}
-
 /// The crate variances map is computed during typeck and contains the
 /// variance of every item in the local crate. You should not use it
 /// directly, because to do so will make your pass dependent on the
@@ -441,66 +433,6 @@ pub struct CrateVariancesMap<'tcx> {
     /// of its generics. If an item has no generics, it will have no
     /// entry.
     pub variances: FxHashMap<DefId, &'tcx [ty::Variance]>,
-}
-
-impl Variance {
-    /// `a.xform(b)` combines the variance of a context with the
-    /// variance of a type with the following meaning. If we are in a
-    /// context with variance `a`, and we encounter a type argument in
-    /// a position with variance `b`, then `a.xform(b)` is the new
-    /// variance with which the argument appears.
-    ///
-    /// Example 1:
-    ///
-    ///     *mut Vec<i32>
-    ///
-    /// Here, the "ambient" variance starts as covariant. `*mut T` is
-    /// invariant with respect to `T`, so the variance in which the
-    /// `Vec<i32>` appears is `Covariant.xform(Invariant)`, which
-    /// yields `Invariant`. Now, the type `Vec<T>` is covariant with
-    /// respect to its type argument `T`, and hence the variance of
-    /// the `i32` here is `Invariant.xform(Covariant)`, which results
-    /// (again) in `Invariant`.
-    ///
-    /// Example 2:
-    ///
-    ///     fn(*const Vec<i32>, *mut Vec<i32)
-    ///
-    /// The ambient variance is covariant. A `fn` type is
-    /// contravariant with respect to its parameters, so the variance
-    /// within which both pointer types appear is
-    /// `Covariant.xform(Contravariant)`, or `Contravariant`. `*const
-    /// T` is covariant with respect to `T`, so the variance within
-    /// which the first `Vec<i32>` appears is
-    /// `Contravariant.xform(Covariant)` or `Contravariant`. The same
-    /// is true for its `i32` argument. In the `*mut T` case, the
-    /// variance of `Vec<i32>` is `Contravariant.xform(Invariant)`,
-    /// and hence the outermost type is `Invariant` with respect to
-    /// `Vec<i32>` (and its `i32` argument).
-    ///
-    /// Source: Figure 1 of "Taming the Wildcards:
-    /// Combining Definition- and Use-Site Variance" published in PLDI'11.
-    pub fn xform(self, v: ty::Variance) -> ty::Variance {
-        match (self, v) {
-            // Figure 1, column 1.
-            (ty::Covariant, ty::Covariant) => ty::Covariant,
-            (ty::Covariant, ty::Contravariant) => ty::Contravariant,
-            (ty::Covariant, ty::Invariant) => ty::Invariant,
-            (ty::Covariant, ty::Bivariant) => ty::Bivariant,
-
-            // Figure 1, column 2.
-            (ty::Contravariant, ty::Covariant) => ty::Contravariant,
-            (ty::Contravariant, ty::Contravariant) => ty::Covariant,
-            (ty::Contravariant, ty::Invariant) => ty::Invariant,
-            (ty::Contravariant, ty::Bivariant) => ty::Bivariant,
-
-            // Figure 1, column 3.
-            (ty::Invariant, _) => ty::Invariant,
-
-            // Figure 1, column 4.
-            (ty::Bivariant, _) => ty::Bivariant,
-        }
-    }
 }
 
 // Contains information needed to resolve types and (in the future) look up
@@ -780,8 +712,20 @@ pub fn place_to_string_for_capture(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) ->
 pub struct CaptureInfo<'tcx> {
     /// Expr Id pointing to use that resulted in selecting the current capture kind
     ///
+    /// Eg:
+    /// ```rust,no_run
+    /// let mut t = (0,1);
+    ///
+    /// let c = || {
+    ///     println!("{}",t); // L1
+    ///     t.1 = 4; // L2
+    /// };
+    /// ```
+    /// `capture_kind_expr_id` will point to the use on L2 and `path_expr_id` will point to the
+    /// use on L1.
+    ///
     /// If the user doesn't enable feature `capture_disjoint_fields` (RFC 2229) then, it is
-    /// possible that we don't see the use of a particular place resulting in expr_id being
+    /// possible that we don't see the use of a particular place resulting in capture_kind_expr_id being
     /// None. In such case we fallback on uvpars_mentioned for span.
     ///
     /// Eg:
@@ -795,7 +739,12 @@ pub struct CaptureInfo<'tcx> {
     ///
     /// In this example, if `capture_disjoint_fields` is **not** set, then x will be captured,
     /// but we won't see it being used during capture analysis, since it's essentially a discard.
-    pub expr_id: Option<hir::HirId>,
+    pub capture_kind_expr_id: Option<hir::HirId>,
+    /// Expr Id pointing to use that resulted the corresponding place being captured
+    ///
+    /// See `capture_kind_expr_id` for example.
+    ///
+    pub path_expr_id: Option<hir::HirId>,
 
     /// Capture mode that was selected
     pub capture_kind: UpvarCapture<'tcx>,
@@ -803,15 +752,6 @@ pub struct CaptureInfo<'tcx> {
 
 pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum IntVarValue {
-    IntType(ast::IntTy),
-    UintType(ast::UintTy),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct FloatVarValue(pub ast::FloatTy);
 
 impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
@@ -3120,6 +3060,57 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
         }
     }
     None
+}
+
+pub fn int_ty(ity: ast::IntTy) -> IntTy {
+    match ity {
+        ast::IntTy::Isize => IntTy::Isize,
+        ast::IntTy::I8 => IntTy::I8,
+        ast::IntTy::I16 => IntTy::I16,
+        ast::IntTy::I32 => IntTy::I32,
+        ast::IntTy::I64 => IntTy::I64,
+        ast::IntTy::I128 => IntTy::I128,
+    }
+}
+
+pub fn uint_ty(uty: ast::UintTy) -> UintTy {
+    match uty {
+        ast::UintTy::Usize => UintTy::Usize,
+        ast::UintTy::U8 => UintTy::U8,
+        ast::UintTy::U16 => UintTy::U16,
+        ast::UintTy::U32 => UintTy::U32,
+        ast::UintTy::U64 => UintTy::U64,
+        ast::UintTy::U128 => UintTy::U128,
+    }
+}
+
+pub fn float_ty(fty: ast::FloatTy) -> FloatTy {
+    match fty {
+        ast::FloatTy::F32 => FloatTy::F32,
+        ast::FloatTy::F64 => FloatTy::F64,
+    }
+}
+
+pub fn ast_int_ty(ity: IntTy) -> ast::IntTy {
+    match ity {
+        IntTy::Isize => ast::IntTy::Isize,
+        IntTy::I8 => ast::IntTy::I8,
+        IntTy::I16 => ast::IntTy::I16,
+        IntTy::I32 => ast::IntTy::I32,
+        IntTy::I64 => ast::IntTy::I64,
+        IntTy::I128 => ast::IntTy::I128,
+    }
+}
+
+pub fn ast_uint_ty(uty: UintTy) -> ast::UintTy {
+    match uty {
+        UintTy::Usize => ast::UintTy::Usize,
+        UintTy::U8 => ast::UintTy::U8,
+        UintTy::U16 => ast::UintTy::U16,
+        UintTy::U32 => ast::UintTy::U32,
+        UintTy::U64 => ast::UintTy::U64,
+        UintTy::U128 => ast::UintTy::U128,
+    }
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

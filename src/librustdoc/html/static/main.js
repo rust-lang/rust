@@ -91,6 +91,11 @@ function getThemePickerElement() {
     return document.getElementById("theme-picker");
 }
 
+// Returns the current URL without any query parameter or hash.
+function getNakedUrl() {
+    return window.location.href.split("?")[0].split("#")[0];
+}
+
 // Sets the focus on the search bar at the top of the page
 function focusSearchBar() {
     getSearchInput().focus();
@@ -252,7 +257,9 @@ function defocusSearchBar() {
             hideSearchResults(search);
             var hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
             if (browserSupportsHistoryApi()) {
-                history.replaceState(hash, "", "?search=#" + hash);
+                // `window.location.search`` contains all the query parameters, not just `search`.
+                history.replaceState(hash, "",
+                    getNakedUrl() + window.location.search + "#" + hash);
             }
             elem = document.getElementById(hash);
             if (elem) {
@@ -1810,10 +1817,12 @@ function defocusSearchBar() {
             // Because searching is incremental by character, only the most
             // recent search query is added to the browser history.
             if (browserSupportsHistoryApi()) {
+                var newURL = getNakedUrl() + "?search=" + encodeURIComponent(query.raw) +
+                    window.location.hash;
                 if (!history.state && !params.search) {
-                    history.pushState(query, "", "?search=" + encodeURIComponent(query.raw));
+                    history.pushState(query, "", newURL);
                 } else {
-                    history.replaceState(query, "", "?search=" + encodeURIComponent(query.raw));
+                    history.replaceState(query, "", newURL);
                 }
             }
 
@@ -1922,7 +1931,8 @@ function defocusSearchBar() {
                 clearInputTimeout();
                 if (search_input.value.length === 0) {
                     if (browserSupportsHistoryApi()) {
-                        history.replaceState("", window.currentCrate + " - Rust", "?search=");
+                        history.replaceState("", window.currentCrate + " - Rust",
+                            getNakedUrl() + window.location.hash);
                     }
                     hideSearchResults();
                 } else {
@@ -2779,9 +2789,9 @@ function defocusSearchBar() {
         if (search_input.value !== "" && hasClass(search, "hidden")) {
             showSearchResults(search);
             if (browserSupportsHistoryApi()) {
-                history.replaceState(search_input.value,
-                                     "",
-                                     "?search=" + encodeURIComponent(search_input.value));
+                var extra = "?search=" + encodeURIComponent(search_input.value);
+                history.replaceState(search_input.value, "",
+                    getNakedUrl() + extra + window.location.hash);
             }
             document.title = searchTitle;
         }

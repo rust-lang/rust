@@ -929,7 +929,9 @@ pub struct ExtCtxt<'a> {
     pub force_mode: bool,
     pub expansions: FxHashMap<Span, Vec<String>>,
     /// Called directly after having parsed an external `mod foo;` in expansion.
-    pub(super) extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
+    ///
+    /// `Ident` is the module name.
+    pub(super) extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate, Ident)>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -937,7 +939,7 @@ impl<'a> ExtCtxt<'a> {
         sess: &'a Session,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn ResolverExpand,
-        extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
+        extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate, Ident)>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
             sess,
