@@ -68,7 +68,10 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     if !ctx.config.enable_imports_on_the_fly {
         return None;
     }
-    if ctx.attribute_under_caret.is_some() || ctx.mod_declaration_under_caret.is_some() {
+    if ctx.use_item_syntax.is_some()
+        || ctx.attribute_under_caret.is_some()
+        || ctx.mod_declaration_under_caret.is_some()
+    {
         return None;
     }
     let potential_import_name = {
@@ -662,6 +665,24 @@ fn main() {
                 ct SPECIAL_CONST (dep::test_mod::TestTrait) DEPRECATED
                 fn weird_function() (dep::test_mod::TestTrait) -> () DEPRECATED
             "#]],
+        );
+    }
+
+    #[test]
+    fn no_completions_in_use_statements() {
+        check(
+            r#"
+//- /lib.rs crate:dep
+pub mod io {
+    pub fn stdin() {}
+};
+
+//- /main.rs crate:main deps:dep
+use stdi$0
+
+fn main() {}
+"#,
+            expect![[]],
         );
     }
 }
