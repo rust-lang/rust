@@ -89,7 +89,7 @@ crate type NameDoc = (String, Option<String>);
 
 crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
-        if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { write!(f, "{}", v) }
+        if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { f.write_str(v) }
     })
 }
 
@@ -904,12 +904,13 @@ themePicker.onblur = handleThemeButtonsBlur;
         let mut krates = Vec::new();
 
         if path.exists() {
+            let prefix = format!(r#"{}["{}"]"#, key, krate);
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
                 if !line.starts_with(key) {
                     continue;
                 }
-                if line.starts_with(&format!(r#"{}["{}"]"#, key, krate)) {
+                if line.starts_with(&prefix) {
                     continue;
                 }
                 ret.push(line.to_string());
@@ -930,12 +931,13 @@ themePicker.onblur = handleThemeButtonsBlur;
         let mut krates = Vec::new();
 
         if path.exists() {
+            let prefix = format!("\"{}\"", krate);
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
                 if !line.starts_with('"') {
                     continue;
                 }
-                if line.starts_with(&format!("\"{}\"", krate)) {
+                if line.starts_with(&prefix) {
                     continue;
                 }
                 if line.ends_with(",\\") {
@@ -1920,12 +1922,13 @@ fn document_full(
         debug!("Doc block: =====\n{}\n=====", s);
         render_markdown(w, cx, &*s, item.links(&cx.cache), prefix, is_hidden);
     } else if !prefix.is_empty() {
-        write!(
-            w,
-            "<div class=\"docblock{}\">{}</div>",
-            if is_hidden { " hidden" } else { "" },
-            prefix
-        );
+        if is_hidden {
+            w.write_str("<div class=\"docblock hidden\">");
+        } else {
+            w.write_str("<div class=\"docblock\">");
+        }
+        w.write_str(prefix);
+        w.write_str("</div");
     }
 }
 
@@ -1943,11 +1946,15 @@ fn document_item_info(
 ) {
     let item_infos = short_item_info(item, cx, parent);
     if !item_infos.is_empty() {
-        write!(w, "<div class=\"item-info{}\">", if is_hidden { " hidden" } else { "" });
-        for info in item_infos {
-            write!(w, "{}", info);
+        if is_hidden {
+            w.write_str("<div class=\"item-info hidden\">");
+        } else {
+            w.write_str("<div class=\"item-info\">");
         }
-        write!(w, "</div>");
+        for info in item_infos {
+            w.write_str(&info);
+        }
+        w.write_str("</div>");
     }
 }
 
@@ -1970,36 +1977,32 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
         });
 
         if item.is_struct() {
-            write!(
-                w,
+            w.write_str(
                 "Non-exhaustive structs could have additional fields added in future. \
                  Therefore, non-exhaustive structs cannot be constructed in external crates \
                  using the traditional <code>Struct {{ .. }}</code> syntax; cannot be \
                  matched against without a wildcard <code>..</code>; and \
-                 struct update syntax will not work."
+                 struct update syntax will not work.",
             );
         } else if item.is_enum() {
-            write!(
-                w,
+            w.write_str(
                 "Non-exhaustive enums could have additional variants added in future. \
                  Therefore, when matching against variants of non-exhaustive enums, an \
-                 extra wildcard arm must be added to account for any future variants."
+                 extra wildcard arm must be added to account for any future variants.",
             );
         } else if item.is_variant() {
-            write!(
-                w,
+            w.write_str(
                 "Non-exhaustive enum variants could have additional fields added in future. \
                  Therefore, non-exhaustive enum variants cannot be constructed in external \
-                 crates and cannot be matched against."
+                 crates and cannot be matched against.",
             );
         } else {
-            write!(
-                w,
-                "This type will require a wildcard arm in any match statements or constructors."
+            w.write_str(
+                "This type will require a wildcard arm in any match statements or constructors.",
             );
         }
 
-        write!(w, "</div>");
+        w.write_str("</div>");
     }
 }
 
@@ -2136,7 +2139,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             curty = myty;
         } else if myty != curty {
             if curty.is_some() {
-                write!(w, "</table>");
+                w.write_str("</table>");
             }
             curty = myty;
             let (short, name) = item_ty_to_strs(&myty.unwrap());
@@ -2168,7 +2171,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         anchor(myitem.def_id, &*name.as_str(), cx.cache())
                     ),
                 }
-                write!(w, "</code></td></tr>");
+                w.write_str("</code></td></tr>");
             }
 
             clean::ImportItem(ref import) => {
