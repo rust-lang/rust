@@ -37,7 +37,7 @@ fn should_explore(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
     )
 }
 
-fn base_expr<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a>
+fn base_expr<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     loop {
         match expr.kind {
             hir::ExprKind::Field(base, ..) => expr = base,
