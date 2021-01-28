@@ -224,13 +224,17 @@ impl SourceAnalyzer {
     ) -> Option<PathResolution> {
         if let Some(path_expr) = path.syntax().parent().and_then(ast::PathExpr::cast) {
             let expr_id = self.expr_id(db, &path_expr.into())?;
-            if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_expr(expr_id) {
+            let infer = self.infer.as_ref()?;
+            if let Some(assoc) = infer.assoc_resolutions_for_expr(expr_id) {
                 return Some(PathResolution::AssocItem(assoc.into()));
             }
             if let Some(VariantId::EnumVariantId(variant)) =
-                self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
+                infer.variant_resolution_for_expr(expr_id)
             {
                 return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
+            }
+            if let Some(func) = infer[expr_id].as_fn_def() {
+                return Some(PathResolution::Def(ModuleDef::Function(func.into())));
             }
         }
 

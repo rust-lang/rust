@@ -81,6 +81,10 @@ impl FooCopy {
     }
 }
 
+fn str() {
+    str();
+}
+
 static mut STATIC_MUT: i32 = 0;
 
 fn foo<'a, T>() -> T {
