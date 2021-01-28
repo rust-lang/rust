@@ -3,19 +3,14 @@
 
 #![feature(asm)]
 
-fn asm1() {
+#[inline(always)]
+fn asm() {
     unsafe {
         asm!("duplabel: nop",);
     }
 }
 
-fn asm2() {
-    unsafe {
-        asm!("nop", "duplabel: nop",);
-    }
-}
-
 fn main() {
-    asm1();
-    asm2();
+    asm();
+    asm();
 }
