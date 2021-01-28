@@ -83,7 +83,8 @@ mod doctree;
 mod error;
 mod doctest;
 mod fold;
-crate mod formats;
+mod formats;
+// used by the error-index generator, so it needs to be public
 pub mod html;
 mod json;
 mod markdown;
