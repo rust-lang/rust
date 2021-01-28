@@ -36,6 +36,7 @@ use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
+use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{AdtKind, Visibility};
@@ -45,8 +46,6 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
-
-use std::fmt::Display;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_eq_type(&self, expr: &'tcx hir::Expr<'tcx>, expected: Ty<'tcx>) {
@@ -1585,11 +1584,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &'tcx hir::Expr<'tcx>,
         field: Ident,
     ) -> Ty<'tcx> {
+        debug!("check_field(expr: {:?}, base: {:?}, field: {:?})", expr, base, field);
         let expr_t = self.check_expr(base);
         let expr_t = self.structurally_resolved_type(base.span, expr_t);
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, expr_t);
         while let Some((base_t, _)) = autoderef.next() {
+            debug!("base_t: {:?}", base_t);
             match base_t.kind() {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
                     debug!("struct named {:?}", base_t);
@@ -1706,7 +1707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "ban_nonexisting_field: field={:?}, base={:?}, expr={:?}, expr_ty={:?}",
             field, base, expr, expr_t
         );
-        let mut err = self.no_such_field_err(field.span, field, expr_t);
+        let mut err = self.no_such_field_err(field, expr_t);
 
         match *expr_t.peel_refs().kind() {
             ty::Array(_, len) => {
@@ -1880,21 +1881,120 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn no_such_field_err<T: Display>(
+    fn no_such_field_err(
         &self,
-        span: Span,
-        field: T,
-        expr_t: &ty::TyS<'_>,
+        field: Ident,
+        expr_t: &'tcx ty::TyS<'tcx>,
     ) -> DiagnosticBuilder<'_> {
-        type_error_struct!(
+        let span = field.span;
+        debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
+
+        let mut err = type_error_struct!(
             self.tcx().sess,
-            span,
+            field.span,
             expr_t,
             E0609,
             "no field `{}` on type `{}`",
             field,
             expr_t
-        )
+        );
+
+        // try to add a suggestion in case the field is a nested field of a field of the Adt
+        if let Some((fields, substs)) = self.get_field_candidates(span, &expr_t) {
+            for candidate_field in fields.iter() {
+                if let Some(field_path) =
+                    self.check_for_nested_field(span, field, candidate_field, substs, vec![])
+                {
+                    let field_path_str = field_path
+                        .iter()
+                        .map(|id| id.name.to_ident_string())
+                        .collect::<Vec<String>>()
+                        .join(".");
+                    debug!("field_path_str: {:?}", field_path_str);
+
+                    err.span_suggestion_verbose(
+                        field.span.shrink_to_lo(),
+                        "one of the expressions' fields has a field of the same name",
+                        format!("{}.", field_path_str),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
+        err
+    }
+
+    fn get_field_candidates(
+        &self,
+        span: Span,
+        base_t: Ty<'tcx>,
+    ) -> Option<(&Vec<ty::FieldDef>, SubstsRef<'tcx>)> {
+        debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_t);
+
+        let mut autoderef = self.autoderef(span, base_t);
+        while let Some((base_t, _)) = autoderef.next() {
+            match base_t.kind() {
+                ty::Adt(base_def, substs) if !base_def.is_enum() => {
+                    let fields = &base_def.non_enum_variant().fields;
+                    // For compile-time reasons put a limit on number of fields we search
+                    if fields.len() > 100 {
+                        return None;
+                    }
+                    return Some((fields, substs));
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
+    /// This method is called after we have encountered a missing field error to recursively
+    /// search for the field
+    fn check_for_nested_field(
+        &self,
+        span: Span,
+        target_field: Ident,
+        candidate_field: &ty::FieldDef,
+        subst: SubstsRef<'tcx>,
+        mut field_path: Vec<Ident>,
+    ) -> Option<Vec<Ident>> {
+        debug!(
+            "check_for_nested_field(span: {:?}, candidate_field: {:?}, field_path: {:?}",
+            span, candidate_field, field_path
+        );
+
+        if candidate_field.ident == target_field {
+            Some(field_path)
+        } else if field_path.len() > 3 {
+            // For compile-time reasons and to avoid infinite recursion we only check for fields
+            // up to a depth of three
+            None
+        } else {
+            // recursively search fields of `candidate_field` if it's a ty::Adt
+
+            field_path.push(candidate_field.ident.normalize_to_macros_2_0());
+            let field_ty = candidate_field.ty(self.tcx, subst);
+            if let Some((nested_fields, _)) = self.get_field_candidates(span, &field_ty) {
+                for field in nested_fields.iter() {
+                    let ident = field.ident.normalize_to_macros_2_0();
+                    if ident == target_field {
+                        return Some(field_path);
+                    } else {
+                        let field_path = field_path.clone();
+                        if let Some(path) = self.check_for_nested_field(
+                            span,
+                            target_field,
+                            field,
+                            subst,
+                            field_path,
+                        ) {
+                            return Some(path);
+                        }
+                    }
+                }
+            }
+            None
+        }
     }
 
     fn check_expr_index(
