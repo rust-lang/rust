@@ -83,7 +83,6 @@ mod vtable;
 mod prelude {
     pub(crate) use std::convert::{TryFrom, TryInto};
 
-    pub(crate) use rustc_ast::ast::{FloatTy, IntTy, UintTy};
     pub(crate) use rustc_span::Span;
 
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -91,7 +90,7 @@ mod prelude {
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::layout::{self, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
-        self, FnSig, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeAndMut, TypeFoldable,
+        self, FloatTy, FnSig, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut, TypeFoldable, UintTy,
     };
     pub(crate) use rustc_target::abi::{Abi, LayoutOf, Scalar, Size, VariantIdx};
 

@@ -1,10 +1,10 @@
 use crate::utils::{numeric_literal, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
+use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, FloatTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::fmt;
 
@@ -75,8 +75,8 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 let digits = count_digits(&sym_str);
                 let max = max_digits(fty);
                 let type_suffix = match lit_float_ty {
-                    LitFloatType::Suffixed(FloatTy::F32) => Some("f32"),
-                    LitFloatType::Suffixed(FloatTy::F64) => Some("f64"),
+                    LitFloatType::Suffixed(ast::FloatTy::F32) => Some("f32"),
+                    LitFloatType::Suffixed(ast::FloatTy::F64) => Some("f64"),
                     LitFloatType::Unsuffixed => None
                 };
                 let (is_whole, mut float_str) = match fty {

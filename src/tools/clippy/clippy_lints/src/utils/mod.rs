@@ -35,7 +35,6 @@ use std::mem;
 
 use if_chain::if_chain;
 use rustc_ast::ast::{self, Attribute, LitKind};
-use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -1224,27 +1223,27 @@ pub fn get_arg_name(pat: &Pat<'_>) -> Option<Symbol> {
     }
 }
 
-pub fn int_bits(tcx: TyCtxt<'_>, ity: ast::IntTy) -> u64 {
-    Integer::from_attr(&tcx, attr::IntType::SignedInt(ity)).size().bits()
+pub fn int_bits(tcx: TyCtxt<'_>, ity: ty::IntTy) -> u64 {
+    Integer::from_int_ty(&tcx, ity).size().bits()
 }
 
 #[allow(clippy::cast_possible_wrap)]
 /// Turn a constant int byte representation into an i128
-pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: ast::IntTy) -> i128 {
+pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: ty::IntTy) -> i128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as i128) << amt) >> amt
 }
 
 #[allow(clippy::cast_sign_loss)]
 /// clip unused bytes
-pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: ast::IntTy) -> u128 {
+pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: ty::IntTy) -> u128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as u128) << amt) >> amt
 }
 
 /// clip unused bytes
-pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: ast::UintTy) -> u128 {
-    let bits = Integer::from_attr(&tcx, attr::IntType::UnsignedInt(ity)).size().bits();
+pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: ty::UintTy) -> u128 {
+    let bits = Integer::from_uint_ty(&tcx, ity).size().bits();
     let amt = 128 - bits;
     (u << amt) >> amt
 }

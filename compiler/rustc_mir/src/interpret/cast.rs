@@ -2,13 +2,11 @@ use std::convert::TryFrom;
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_ast::FloatTy;
-use rustc_attr as attr;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, Ty, TypeAndMut};
+use rustc_middle::ty::{self, FloatTy, Ty, TypeAndMut};
 use rustc_span::symbol::sym;
 use rustc_target::abi::{Integer, LayoutOf, Variants};
 
@@ -203,8 +201,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match *cast_ty.kind() {
             Int(_) | Uint(_) | RawPtr(_) => {
                 let size = match *cast_ty.kind() {
-                    Int(t) => Integer::from_attr(self, attr::IntType::SignedInt(t)).size(),
-                    Uint(t) => Integer::from_attr(self, attr::IntType::UnsignedInt(t)).size(),
+                    Int(t) => Integer::from_int_ty(self, t).size(),
+                    Uint(t) => Integer::from_uint_ty(self, t).size(),
                     RawPtr(_) => self.pointer_size(),
                     _ => bug!(),
                 };
@@ -235,7 +233,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match *dest_ty.kind() {
             // float -> uint
             Uint(t) => {
-                let size = Integer::from_attr(self, attr::IntType::UnsignedInt(t)).size();
+                let size = Integer::from_uint_ty(self, t).size();
                 // `to_u128` is a saturating cast, which is what we need
                 // (https://doc.rust-lang.org/nightly/nightly-rustc/rustc_apfloat/trait.Float.html#method.to_i128_r).
                 let v = f.to_u128(size.bits_usize()).value;
@@ -244,7 +242,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             // float -> int
             Int(t) => {
-                let size = Integer::from_attr(self, attr::IntType::SignedInt(t)).size();
+                let size = Integer::from_int_ty(self, t).size();
                 // `to_i128` is a saturating cast, which is what we need
                 // (https://doc.rust-lang.org/nightly/nightly-rustc/rustc_apfloat/trait.Float.html#method.to_i128_r).
                 let v = f.to_i128(size.bits_usize()).value;
