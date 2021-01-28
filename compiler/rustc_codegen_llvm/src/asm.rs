@@ -213,18 +213,11 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             }
                         }
                     } else {
-                        let mut ts = s.to_owned();
+                        let ts = s.to_owned();
                         // Labels should be made local to prevent issues with inlined `asm!` and duplicate labels
                         // Fixes https://github.com/rust-lang/rust/issues/74262
                         if let Some(label) = get_llvm_label_from_str(&ts) {
                             labels.push(label.to_owned());
-                        }
-
-                        for label in &labels {
-                            ts = ts.replace(
-                                label,
-                                format!("${{:private}}{}${{:uid}}", label).as_ref(),
-                            );
                         }
 
                         template_str.push_str(&ts)
@@ -257,6 +250,11 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     }
                 }
             }
+        }
+
+        for label in &labels {
+            template_str =
+                template_str.replace(label, format!("${{:private}}{}${{:uid}}", label).as_ref());
         }
 
         if !options.contains(InlineAsmOptions::PRESERVES_FLAGS) {
