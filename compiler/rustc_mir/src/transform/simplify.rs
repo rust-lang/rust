@@ -28,7 +28,6 @@
 //! return.
 
 use crate::transform::MirPass;
-use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -288,17 +287,17 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 }
 
 pub fn remove_dead_blocks(body: &mut Body<'_>) {
-    let mut seen = BitSet::new_empty(body.basic_blocks().len());
-    for (bb, _) in traversal::preorder(body) {
-        seen.insert(bb.index());
+    let reachable = traversal::reachable_as_bitset(body);
+    let num_blocks = body.basic_blocks().len();
+    if num_blocks == reachable.count() {
+        return;
     }
 
     let basic_blocks = body.basic_blocks_mut();
-
-    let num_blocks = basic_blocks.len();
     let mut replacements: Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
     let mut used_blocks = 0;
-    for alive_index in seen.iter() {
+    for alive_index in reachable.iter() {
+        let alive_index = alive_index.index();
         replacements[alive_index] = BasicBlock::new(used_blocks);
         if alive_index != used_blocks {
             // Swap the next alive block data with the current available slot. Since
