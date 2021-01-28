@@ -37,17 +37,13 @@ fn should_explore(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
     )
 }
 
-fn base_expr<'a>(expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
-    let mut current = expr;
+fn base_expr<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a>
     loop {
-        match current.kind {
-            hir::ExprKind::Field(base, ..) => {
-                current = base;
-            }
-            _ => break,
+        match expr.kind {
+            hir::ExprKind::Field(base, ..) => expr = base,
+            _ => return expr,
         }
     }
-    current
 }
 
 struct MarkSymbolVisitor<'tcx> {
