@@ -188,8 +188,8 @@ impl Server {
     }
     fn send_request_(&self, r: Request) -> Value {
         let id = r.id.clone();
-        self.client.sender.send(r.into()).unwrap();
-        while let Some(msg) = self.recv() {
+        self.client.sender.send(r.clone().into()).unwrap();
+        while let Some(msg) = self.recv().unwrap_or_else(|Timeout| panic!("timeout: {:?}", r)) {
             match msg {
                 Message::Request(req) => {
                     if req.method == "window/workDoneProgress/create" {
@@ -216,7 +216,7 @@ impl Server {
                 }
             }
         }
-        panic!("no response");
+        panic!("no response for {:?}", r);
     }
     pub(crate) fn wait_until_workspace_is_loaded(self) -> Server {
         self.wait_for_message_cond(1, &|msg: &Message| match msg {
@@ -230,10 +230,15 @@ impl Server {
                 }
             }
             _ => false,
-        });
+        })
+        .unwrap_or_else(|Timeout| panic!("timeout while waiting for ws to load"));
         self
     }
-    fn wait_for_message_cond(&self, n: usize, cond: &dyn Fn(&Message) -> bool) {
+    fn wait_for_message_cond(
+        &self,
+        n: usize,
+        cond: &dyn Fn(&Message) -> bool,
+    ) -> Result<(), Timeout> {
         let mut total = 0;
         for msg in self.messages.borrow().iter() {
             if cond(msg) {
@@ -241,17 +246,20 @@ impl Server {
             }
         }
         while total < n {
-            let msg = self.recv().expect("no response");
+            let msg = self.recv()?.expect("no response");
             if cond(&msg) {
                 total += 1;
             }
         }
+        Ok(())
     }
-    fn recv(&self) -> Option<Message> {
-        recv_timeout(&self.client.receiver).map(|msg| {
+    fn recv(&self) -> Result<Option<Message>, Timeout> {
+        let msg = recv_timeout(&self.client.receiver)?;
+        let msg = msg.map(|msg| {
             self.messages.borrow_mut().push(msg.clone());
             msg
-        })
+        });
+        Ok(msg)
     }
     fn send_notification(&self, not: Notification) {
         self.client.sender.send(Message::Notification(not)).unwrap();
@@ -269,11 +277,13 @@ impl Drop for Server {
     }
 }
 
-fn recv_timeout(receiver: &Receiver<Message>) -> Option<Message> {
+struct Timeout;
+
+fn recv_timeout(receiver: &Receiver<Message>) -> Result<Option<Message>, Timeout> {
     let timeout =
         if cfg!(target_os = "macos") { Duration::from_secs(300) } else { Duration::from_secs(120) };
     select! {
-        recv(receiver) -> msg => msg.ok(),
-        recv(after(timeout)) -> _ => panic!("timed out"),
+        recv(receiver) -> msg => Ok(msg.ok()),
+        recv(after(timeout)) -> _ => Err(Timeout),
     }
 }
