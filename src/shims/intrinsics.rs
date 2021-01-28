@@ -2,9 +2,7 @@ use std::iter;
 
 use log::trace;
 
-use rustc_attr as attr;
-use rustc_ast::ast::FloatTy;
-use rustc_middle::{mir, mir::BinOp, ty};
+use rustc_middle::{mir, mir::BinOp, ty, ty::FloatTy};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_apfloat::{Float, Round};
 use rustc_target::abi::{Align, Integer, LayoutOf};
@@ -578,7 +576,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(match dest_ty.kind() {
             // Unsigned
             ty::Uint(t) => {
-                let size = Integer::from_attr(this, attr::IntType::UnsignedInt(*t)).size();
+                let size = Integer::from_uint_ty(this, *t).size();
                 let res = f.to_u128(size.bits_usize());
                 if res.status.is_empty() {
                     // No status flags means there was no further rounding or other loss of precision.
@@ -593,7 +591,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             // Signed
             ty::Int(t) => {
-                let size = Integer::from_attr(this, attr::IntType::SignedInt(*t)).size();
+                let size = Integer::from_int_ty(this, *t).size();
                 let res = f.to_i128(size.bits_usize());
                 if res.status.is_empty() {
                     // No status flags means there was no further rounding or other loss of precision.
