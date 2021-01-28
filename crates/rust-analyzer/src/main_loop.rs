@@ -21,7 +21,7 @@ use crate::{
     global_state::{file_id_to_url, url_to_file_id, GlobalState, Status},
     handlers, lsp_ext,
     lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
-    reload::ProjectWorkspaceProgress,
+    reload::{BuildDataProgress, ProjectWorkspaceProgress},
     Result,
 };
 
@@ -63,6 +63,7 @@ pub(crate) enum Task {
     Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
+    FetchBuildData(BuildDataProgress),
 }
 
 impl fmt::Debug for Event {
@@ -226,11 +227,32 @@ impl GlobalState {
                                 }
                                 ProjectWorkspaceProgress::End(workspaces) => {
                                     self.fetch_workspaces_completed();
-                                    self.switch_workspaces(workspaces);
+                                    self.switch_workspaces(workspaces, None);
                                     (Progress::End, None)
                                 }
                             };
                             self.report_progress("fetching", state, msg, None);
+                        }
+                        Task::FetchBuildData(progress) => {
+                            let (state, msg) = match progress {
+                                BuildDataProgress::Begin => (Some(Progress::Begin), None),
+                                BuildDataProgress::Report(msg) => {
+                                    (Some(Progress::Report), Some(msg))
+                                }
+                                BuildDataProgress::End(collector) => {
+                                    self.fetch_build_data_completed();
+                                    let workspaces = (*self.workspaces)
+                                        .clone()
+                                        .into_iter()
+                                        .map(|it| Ok(it))
+                                        .collect();
+                                    self.switch_workspaces(workspaces, Some(collector));
+                                    (Some(Progress::End), None)
+                                }
+                            };
+                            if let Some(state) = state {
+                                self.report_progress("loading", state, msg, None);
+                            }
                         }
                     }
                     // Coalesce multiple task events into one loop turn
@@ -287,7 +309,11 @@ impl GlobalState {
                                     Progress::Report
                                 } else {
                                     assert_eq!(n_done, n_total);
-                                    self.transition(Status::Ready);
+                                    let status = Status::Ready {
+                                        partial: self.config.load_out_dirs_from_check()
+                                            && self.workspace_build_data.is_none(),
+                                    };
+                                    self.transition(status);
                                     Progress::End
                                 };
                                 self.report_progress(
@@ -372,13 +398,14 @@ impl GlobalState {
         }
 
         let state_changed = self.process_changes();
-        if prev_status == Status::Loading && self.status == Status::Ready {
+        let is_ready = matches!(self.status, Status::Ready { .. } );
+        if prev_status == Status::Loading && is_ready {
             for flycheck in &self.flycheck {
                 flycheck.update();
             }
         }
 
-        if self.status == Status::Ready && (state_changed || prev_status == Status::Loading) {
+        if is_ready && (state_changed || prev_status == Status::Loading) {
             self.update_file_notifications_on_threadpool();
 
             // Refresh semantic tokens if the client supports it.
@@ -408,6 +435,7 @@ impl GlobalState {
         }
 
         self.fetch_workspaces_if_needed();
+        self.fetch_build_data_if_needed();
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) {

@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use std::{convert::TryInto, ops, process::Command};
+use std::{convert::TryInto, ops, process::Command, sync::Arc};
 
 use anyhow::{Context, Result};
 use base_db::Edition;
@@ -9,7 +9,7 @@ use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 
-use crate::build_data::{BuildData, BuildDataMap};
+use crate::build_data::BuildDataConfig;
 use crate::utf8_stdout;
 
 /// `CargoWorkspace` represents the logical structure of, well, a Cargo
@@ -27,6 +27,7 @@ pub struct CargoWorkspace {
     packages: Arena<PackageData>,
     targets: Arena<TargetData>,
     workspace_root: AbsPathBuf,
+    build_data_config: BuildDataConfig,
 }
 
 impl ops::Index<Package> for CargoWorkspace {
@@ -54,9 +55,6 @@ pub struct CargoConfig {
     /// List of features to activate.
     /// This will be ignored if `cargo_all_features` is true.
     pub features: Vec<String>,
-
-    /// Runs cargo check on launch to figure out the correct values of OUT_DIR
-    pub load_out_dirs_from_check: bool,
 
     /// rustc target
     pub target: Option<String>,
@@ -94,8 +92,8 @@ pub struct PackageData {
     pub features: FxHashMap<String, Vec<String>>,
     /// List of features enabled on this package
     pub active_features: Vec<String>,
-    /// Build script related data for this package
-    pub build_data: BuildData,
+    // String representation of package id
+    pub id: String,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -228,12 +226,6 @@ impl CargoWorkspace {
             )
         })?;
 
-        let resources = if config.load_out_dirs_from_check {
-            BuildDataMap::new(cargo_toml, config, &meta.packages, progress)?
-        } else {
-            BuildDataMap::with_cargo_env(&meta.packages)
-        };
-
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
         let mut targets = Arena::default();
@@ -241,10 +233,7 @@ impl CargoWorkspace {
         let ws_members = &meta.workspace_members;
 
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
-        for meta_pkg in meta.packages {
-            let id = meta_pkg.id.clone();
-            let build_data = resources.get(&id).cloned().unwrap_or_default();
-
+        for meta_pkg in &meta.packages {
             let cargo_metadata::Package { id, edition, name, manifest_path, version, .. } =
                 meta_pkg;
             let is_member = ws_members.contains(&id);
@@ -252,24 +241,24 @@ impl CargoWorkspace {
                 .parse::<Edition>()
                 .with_context(|| format!("Failed to parse edition {}", edition))?;
             let pkg = packages.alloc(PackageData {
-                name,
+                id: id.repr.clone(),
+                name: name.clone(),
                 version: version.to_string(),
-                manifest: AbsPathBuf::assert(manifest_path),
+                manifest: AbsPathBuf::assert(manifest_path.clone()),
                 targets: Vec::new(),
                 is_member,
                 edition,
                 dependencies: Vec::new(),
-                features: meta_pkg.features.into_iter().collect(),
+                features: meta_pkg.features.clone().into_iter().collect(),
                 active_features: Vec::new(),
-                build_data,
             });
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(id, pkg);
-            for meta_tgt in meta_pkg.targets {
+            for meta_tgt in &meta_pkg.targets {
                 let is_proc_macro = meta_tgt.kind.as_slice() == ["proc-macro"];
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
-                    name: meta_tgt.name,
+                    name: meta_tgt.name.clone(),
                     root: AbsPathBuf::assert(meta_tgt.src_path.clone()),
                     kind: TargetKind::new(meta_tgt.kind.as_slice()),
                     is_proc_macro,
@@ -308,7 +297,13 @@ impl CargoWorkspace {
         }
 
         let workspace_root = AbsPathBuf::assert(meta.workspace_root);
-        Ok(CargoWorkspace { packages, targets, workspace_root: workspace_root })
+        let build_data_config = BuildDataConfig::new(
+            cargo_toml.to_path_buf(),
+            config.clone(),
+            Arc::new(meta.packages.clone()),
+        );
+
+        Ok(CargoWorkspace { packages, targets, workspace_root, build_data_config })
     }
 
     pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + ExactSizeIterator + 'a {
@@ -332,6 +327,10 @@ impl CargoWorkspace {
         } else {
             format!("{}:{}", package.name, package.version)
         }
+    }
+
+    pub(crate) fn build_data_config(&self) -> &BuildDataConfig {
+        &self.build_data_config
     }
 
     fn is_unique(&self, name: &str) -> bool {

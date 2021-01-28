@@ -19,6 +19,7 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashSet;
 
 pub use crate::{
+    build_data::{BuildDataCollector, BuildDataResult},
     cargo_workspace::{
         CargoConfig, CargoWorkspace, Package, PackageData, PackageDependency, Target, TargetData,
         TargetKind,
