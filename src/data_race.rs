@@ -75,7 +75,7 @@ use rustc_target::abi::Size;
 
 use crate::{
     ImmTy, Immediate, InterpResult, MPlaceTy, MemPlaceMeta, MiriEvalContext, MiriEvalContextExt,
-    OpTy, Pointer, RangeMap, ScalarMaybeUninit, Tag, ThreadId, VClock, VTimestamp,
+    OpTy, Pointer, RangeMap, Scalar, ScalarMaybeUninit, Tag, ThreadId, VClock, VTimestamp,
     VectorIdx, MemoryKind, MiriMemoryKind
 };
 
@@ -544,7 +544,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
     /// Perform an atomic compare and exchange at a given memory location.
     /// On success an atomic RMW operation is performed and on failure
-    /// only an atomic read occurs.
+    /// only an atomic read occurs. If `can_fail_spuriously` is true,
+    /// then we treat it as a "compare_exchange_weak" operation, and
+    /// some portion of the time fail even when the values are actually
+    /// identical.
     fn atomic_compare_exchange_scalar(
         &mut self,
         place: MPlaceTy<'tcx, Tag>,
@@ -552,7 +555,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         new: ScalarMaybeUninit<Tag>,
         success: AtomicRwOp,
         fail: AtomicReadOp,
+        can_fail_spuriously: bool,
     ) -> InterpResult<'tcx, Immediate<Tag>> {
+        use rand::Rng as _;
         let this = self.eval_context_mut();
 
         // Failure ordering cannot be stronger than success ordering, therefore first attempt
@@ -560,15 +565,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         // read ordering and write in the success case.
         // Read as immediate for the sake of `binary_op()`
         let old = this.allow_data_races_mut(|this| this.read_immediate(place.into()))?;
-
         // `binary_op` will bail if either of them is not a scalar.
         let eq = this.overflowing_binary_op(mir::BinOp::Eq, old, expect_old)?.0;
-        let res = Immediate::ScalarPair(old.to_scalar_or_uninit(), eq.into());
+        // If the operation would succeed, but is "weak", fail some portion
+        // of the time, based on `rate`.
+        let rate = this.memory.extra.cmpxchg_weak_failure_rate;
+        let cmpxchg_success = eq.to_bool()?
+            && (!can_fail_spuriously || this.memory.extra.rng.borrow_mut().gen::<f64>() < rate);
+        let res = Immediate::ScalarPair(
+            old.to_scalar_or_uninit(),
+            Scalar::from_bool(cmpxchg_success).into(),
+        );
 
         // Update ptr depending on comparison.
         // if successful, perform a full rw-atomic validation
         // otherwise treat this as an atomic load with the fail ordering.
-        if eq.to_bool()? {
+        if cmpxchg_success {
             this.allow_data_races_mut(|this| this.write_scalar(new, place.into()))?;
             this.validate_atomic_rmw(place, success)?;
         } else {

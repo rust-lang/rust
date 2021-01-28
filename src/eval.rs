@@ -50,6 +50,9 @@ pub struct MiriConfig {
     pub track_raw: bool,
     /// Determine if data race detection should be enabled
     pub data_race_detector: bool,
+    /// Rate of spurious failures for compare_exchange_weak atomic operations,
+    /// between 0.0 and 1.0, defaulting to 0.8 (80% chance of failure).
+    pub cmpxchg_weak_failure_rate: f64,
 }
 
 impl Default for MiriConfig {
@@ -68,6 +71,7 @@ impl Default for MiriConfig {
             tracked_alloc_id: None,
             track_raw: false,
             data_race_detector: true,
+            cmpxchg_weak_failure_rate: 0.8,
         }
     }
 }

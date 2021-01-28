@@ -518,9 +518,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    fn atomic_compare_exchange(
+    fn atomic_compare_exchange_impl(
         &mut self, args: &[OpTy<'tcx, Tag>], dest: PlaceTy<'tcx, Tag>,
-        success: AtomicRwOp, fail: AtomicReadOp
+        success: AtomicRwOp, fail: AtomicReadOp, can_fail_spuriously: bool
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -538,7 +538,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         
         let old = this.atomic_compare_exchange_scalar(
-            place, expect_old, new, success, fail
+            place, expect_old, new, success, fail, can_fail_spuriously
         )?;
 
         // Return old value.
@@ -546,14 +546,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
+    fn atomic_compare_exchange(
+        &mut self, args: &[OpTy<'tcx, Tag>], dest: PlaceTy<'tcx, Tag>,
+        success: AtomicRwOp, fail: AtomicReadOp
+    ) -> InterpResult<'tcx> {
+        self.atomic_compare_exchange_impl(args, dest, success, fail, false)
+    }
+
     fn atomic_compare_exchange_weak(
         &mut self, args: &[OpTy<'tcx, Tag>], dest: PlaceTy<'tcx, Tag>,
         success: AtomicRwOp, fail: AtomicReadOp
     ) -> InterpResult<'tcx> {
-
-        // FIXME: the weak part of this is currently not modelled,
-        //  it is assumed to always succeed unconditionally.
-        self.atomic_compare_exchange(args, dest, success, fail)
+        self.atomic_compare_exchange_impl(args, dest, success, fail, true)
     }
 
     fn float_to_int_unchecked<F>(
