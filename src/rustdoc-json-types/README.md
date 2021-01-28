@@ -9,4 +9,4 @@ follow semver guarantees about the version of the format. JSON format X will alw
 compatible with rustdoc-json-types version N.
 
 Currently, this crate is only used by rustdoc itself. Upon the stabilization of
-rustdoc-json, it may be start to be distributed separately for consumers of the API.
+rustdoc-json, it may be distributed separately for consumers of the API.
