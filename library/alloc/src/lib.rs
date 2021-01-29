@@ -111,6 +111,7 @@
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(auto_traits)]
+#![feature(option_result_unwrap_unchecked)]
 #![feature(or_patterns)]
 #![feature(pattern)]
 #![feature(ptr_internals)]

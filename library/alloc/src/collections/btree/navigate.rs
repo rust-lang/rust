@@ -6,7 +6,6 @@ use core::ptr;
 
 use super::node::{marker, ForceResult::*, Handle, NodeRef};
 use super::search::SearchResult;
-use super::unwrap_unchecked;
 
 /// Finds the leaf edges delimiting a specified range in or underneath a node.
 ///
@@ -310,7 +309,7 @@ macro_rules! def_next_kv_uncheched_dealloc {
                     Err(last_edge) => {
                         unsafe {
                             let parent_edge = last_edge.into_node().deallocate_and_ascend();
-                            unwrap_unchecked(parent_edge).forget_node_type()
+                            parent_edge.unwrap_unchecked().forget_node_type()
                         }
                     }
                 }
@@ -331,7 +330,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
         super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_kv();
-            let kv = unsafe { unwrap_unchecked(kv.ok()) };
+            let kv = unsafe { kv.ok().unwrap_unchecked() };
             (kv.next_leaf_edge(), kv.into_kv())
         })
     }
@@ -344,7 +343,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
         super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_back_kv();
-            let kv = unsafe { unwrap_unchecked(kv.ok()) };
+            let kv = unsafe { kv.ok().unwrap_unchecked() };
             (kv.next_back_leaf_edge(), kv.into_kv())
         })
     }
@@ -359,7 +358,7 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
         let kv = super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_kv();
-            let kv = unsafe { unwrap_unchecked(kv.ok()) };
+            let kv = unsafe { kv.ok().unwrap_unchecked() };
             (unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)
         });
         // Doing this last is faster, according to benchmarks.
@@ -374,7 +373,7 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
         let kv = super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_back_kv();
-            let kv = unsafe { unwrap_unchecked(kv.ok()) };
+            let kv = unsafe { kv.ok().unwrap_unchecked() };
             (unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)
         });
         // Doing this last is faster, according to benchmarks.
