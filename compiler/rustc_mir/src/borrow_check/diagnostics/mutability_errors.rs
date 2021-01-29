@@ -510,7 +510,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err.span_label(
             *span,
             format!(
-                "calling `{}` requires mutable binding due to {}",
+                "calling `{}` requires mutable access due to {}",
                 self.describe_place(the_place_err).unwrap(),
                 reason
             ),

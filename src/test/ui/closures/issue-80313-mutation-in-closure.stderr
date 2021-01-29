@@ -4,7 +4,7 @@ error[E0596]: cannot borrow `callback` as mutable, as it is not declared as muta
 LL |     let callback = || {
    |         -------- help: consider changing this to be mutable: `mut callback`
 LL |         my_var = true;
-   |         ------ calling `callback` requires mutable binding due to mutable borrow of `my_var`
+   |         ------ calling `callback` requires mutable access due to mutable borrow of `my_var`
 LL |     };
 LL |     callback();
    |     ^^^^^^^^ cannot borrow as mutable
