@@ -11,7 +11,7 @@ use rustc_session::config::{
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
-use rustc_session::utils::NativeLibKind;
+use rustc_session::utils::{CanonicalizedPath, NativeLibKind};
 use rustc_session::{build_session, getopts, DiagnosticOutput, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
@@ -20,7 +20,7 @@ use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy}
 use rustc_target::spec::{RelocModel, RelroLevel, SplitDebuginfo, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 type CfgSpecs = FxHashSet<(String, Option<String>)>;
 
@@ -50,7 +50,8 @@ where
     S: Into<String>,
     I: IntoIterator<Item = S>,
 {
-    let locations: BTreeSet<_> = locations.into_iter().map(|s| s.into()).collect();
+    let locations: BTreeSet<CanonicalizedPath> =
+        locations.into_iter().map(|s| CanonicalizedPath::new(Path::new(&s.into()))).collect();
 
     ExternEntry {
         location: ExternLocation::ExactPaths(locations),

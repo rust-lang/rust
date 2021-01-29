@@ -5,7 +5,7 @@ pub use crate::options::*;
 
 use crate::lint;
 use crate::search_paths::SearchPath;
-use crate::utils::NativeLibKind;
+use crate::utils::{CanonicalizedPath, NativeLibKind};
 use crate::{early_error, early_warn, Session};
 
 use rustc_data_structures::fx::FxHashSet;
@@ -436,7 +436,7 @@ pub enum ExternLocation {
     /// which one to use.
     ///
     /// Added via `--extern prelude_name=some_file.rlib`
-    ExactPaths(BTreeSet<String>),
+    ExactPaths(BTreeSet<CanonicalizedPath>),
 }
 
 impl Externs {
@@ -458,7 +458,7 @@ impl ExternEntry {
         ExternEntry { location, is_private_dep: false, add_prelude: false }
     }
 
-    pub fn files(&self) -> Option<impl Iterator<Item = &String>> {
+    pub fn files(&self) -> Option<impl Iterator<Item = &CanonicalizedPath>> {
         match &self.location {
             ExternLocation::ExactPaths(set) => Some(set.iter()),
             _ => None,
@@ -1639,12 +1639,14 @@ pub fn parse_externs(
     for arg in matches.opt_strs("extern") {
         let (name, path) = match arg.split_once('=') {
             None => (arg, None),
-            Some((name, path)) => (name.to_string(), Some(path.to_string())),
+            Some((name, path)) => (name.to_string(), Some(Path::new(path))),
         };
         let (options, name) = match name.split_once(':') {
             None => (None, name),
             Some((opts, name)) => (Some(opts), name.to_string()),
         };
+
+        let path = path.map(|p| CanonicalizedPath::new(p));
 
         let entry = externs.entry(name.to_owned());
 

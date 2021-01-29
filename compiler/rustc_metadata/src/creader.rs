@@ -28,7 +28,7 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::path::Path;
-use std::{cmp, env, fs};
+use std::{cmp, env};
 use tracing::{debug, info};
 
 #[derive(Clone)]
@@ -252,10 +252,10 @@ impl<'a> CrateLoader<'a> {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
                 if let Some(mut files) = entry.files() {
                     if files.any(|l| {
-                        let l = fs::canonicalize(l).unwrap_or(l.clone().into());
-                        source.dylib.as_ref().map(|(p, _)| p) == Some(&l)
-                            || source.rlib.as_ref().map(|(p, _)| p) == Some(&l)
-                            || source.rmeta.as_ref().map(|(p, _)| p) == Some(&l)
+                        let l = l.canonicalized();
+                        source.dylib.as_ref().map(|(p, _)| p) == Some(l)
+                            || source.rlib.as_ref().map(|(p, _)| p) == Some(l)
+                            || source.rmeta.as_ref().map(|(p, _)| p) == Some(l)
                     }) {
                         ret = Some(cnum);
                     }
