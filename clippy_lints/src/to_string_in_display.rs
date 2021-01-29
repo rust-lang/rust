@@ -1,4 +1,4 @@
-use crate::utils::{match_def_path, match_trait_method, paths, qpath_res, span_lint};
+use crate::utils::{match_def_path, match_trait_method, paths, span_lint};
 use if_chain::if_chain;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind};
@@ -94,7 +94,7 @@ impl LateLintPass<'_> for ToStringInDisplay {
             if match_trait_method(cx, expr, &paths::TO_STRING);
             if self.in_display_impl;
             if let ExprKind::Path(ref qpath) = args[0].kind;
-            if let Res::Local(hir_id) = qpath_res(cx, qpath, args[0].hir_id);
+            if let Res::Local(hir_id) = cx.qpath_res(qpath, args[0].hir_id);
             if let Some(self_hir_id) = self.self_hir_id;
             if hir_id == self_hir_id;
             then {
