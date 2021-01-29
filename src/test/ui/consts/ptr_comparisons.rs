@@ -9,8 +9,7 @@
     core_intrinsics,
     const_raw_ptr_comparison,
     const_ptr_offset,
-    const_raw_ptr_deref,
-    raw_ref_macros
+    const_raw_ptr_deref
 )]
 
 const FOO: &usize = &42;
@@ -64,7 +63,7 @@ const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
 
 const _: *const u8 =
 //~^ NOTE
-    unsafe { std::ptr::raw_const!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
+    unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
 //~^ ERROR any use of this value will cause an error
 //~| NOTE
 
