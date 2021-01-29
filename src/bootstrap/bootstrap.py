@@ -1085,10 +1085,10 @@ def bootstrap(help_triggered):
     else:
         build.set_normal_environment()
 
+    build.build = args.build or build.build_triple()
     build.update_submodules()
 
     # Fetch/build the bootstrap
-    build.build = args.build or build.build_triple()
     build.download_stage0()
     sys.stdout.flush()
     build.ensure_vendored()
