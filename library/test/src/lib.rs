@@ -506,7 +506,18 @@ pub fn run_test(
         let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_arch = "wasm32");
         if concurrency == Concurrent::Yes && supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
-            Some(cfg.spawn(runtest).unwrap())
+            let mut runtest = Arc::new(Mutex::new(Some(runtest)));
+            let runtest2 = runtest.clone();
+            match cfg.spawn(move || runtest2.lock().unwrap().take().unwrap()()) {
+                Ok(handle) => Some(handle),
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    // `ErrorKind::WouldBlock` means hitting the thread limit on some
+                    // platforms, so run the test synchronously here instead.
+                    Arc::get_mut(&mut runtest).unwrap().get_mut().unwrap().take().unwrap()();
+                    None
+                }
+                Err(e) => panic!("failed to spawn thread to run test: {}", e),
+            }
         } else {
             runtest();
             None
