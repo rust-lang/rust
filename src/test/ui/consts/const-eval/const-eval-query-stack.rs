@@ -21,6 +21,6 @@ const X: i32 = 1 / 0; //~WARN any use of this value will cause an error
 
 fn main() {
     let x: &'static i32 = &X;
-    //~^ ERROR evaluation of constant expression failed
+    //~^ ERROR evaluation of constant value failed
     println!("x={}", x);
 }
