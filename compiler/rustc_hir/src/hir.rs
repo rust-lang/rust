@@ -1413,10 +1413,6 @@ pub struct Expr<'hir> {
     pub span: Span,
 }
 
-// `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr<'static>, 72);
-
 impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
@@ -2896,4 +2892,19 @@ impl<'hir> Node<'hir> {
             Node::Crate(_) | Node::Visibility(_) => None,
         }
     }
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+mod size_asserts {
+    rustc_data_structures::static_assert_size!(super::Block<'static>, 48);
+    rustc_data_structures::static_assert_size!(super::Expr<'static>, 72);
+    rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
+    rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
+    rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
+
+    rustc_data_structures::static_assert_size!(super::Item<'static>, 208);
+    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 152);
+    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 168);
+    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 160);
 }
