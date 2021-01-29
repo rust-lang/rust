@@ -14,6 +14,39 @@ help: you might have meant to use field `b` of type `B`
 LL |     if let B::Fst = a.b {};
    |                     ^^^
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/field-access.rs:16:9
+   |
+LL |     Fst,
+   |     --- unit variant defined here
+...
+LL |     match a {
+   |           - this expression has type `A`
+LL |         B::Fst => (),
+   |         ^^^^^^ expected struct `A`, found enum `B`
+   |
+help: you might have meant to use field `b` of type `B`
+   |
+LL |     match a.b {
+   |           ^^^
+
+error[E0308]: mismatched types
+  --> $DIR/field-access.rs:17:9
+   |
+LL |     Snd,
+   |     --- unit variant defined here
+...
+LL |     match a {
+   |           - this expression has type `A`
+LL |         B::Fst => (),
+LL |         B::Snd => (),
+   |         ^^^^^^ expected struct `A`, found enum `B`
+   |
+help: you might have meant to use field `b` of type `B`
+   |
+LL |     match a.b {
+   |           ^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
