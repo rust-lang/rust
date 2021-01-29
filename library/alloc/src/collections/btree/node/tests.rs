@@ -95,8 +95,8 @@ fn test_partial_cmp_eq() {
     assert_eq!(top_edge_1.partial_cmp(&top_edge_2), None);
 
     root1.pop_internal_level();
-    unsafe { root1.deallocate_and_ascend() };
-    unsafe { root2.deallocate_and_ascend() };
+    unsafe { root1.into_dying().deallocate_and_ascend() };
+    unsafe { root2.into_dying().deallocate_and_ascend() };
 }
 
 #[test]
