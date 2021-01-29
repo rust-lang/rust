@@ -1501,7 +1501,6 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 /// # Example
 ///
 /// ```
-/// #![feature(raw_ref_macros)]
 /// use std::ptr;
 ///
 /// #[repr(packed)]
@@ -1512,14 +1511,14 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 ///
 /// let packed = Packed { f1: 1, f2: 2 };
 /// // `&packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
-/// let raw_f2 = ptr::raw_const!(packed.f2);
+/// let raw_f2 = ptr::addr_of!(packed.f2);
 /// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
 /// ```
-#[unstable(feature = "raw_ref_macros", issue = "73394")]
+#[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
-pub macro raw_const($e:expr) {
-    &raw const $e
+pub macro addr_of($place:expr) {
+    &raw const $place
 }
 
 /// Create a `mut` raw pointer to a place, without creating an intermediate reference.
@@ -1534,7 +1533,6 @@ pub macro raw_const($e:expr) {
 /// # Example
 ///
 /// ```
-/// #![feature(raw_ref_macros)]
 /// use std::ptr;
 ///
 /// #[repr(packed)]
@@ -1545,13 +1543,13 @@ pub macro raw_const($e:expr) {
 ///
 /// let mut packed = Packed { f1: 1, f2: 2 };
 /// // `&mut packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
-/// let raw_f2 = ptr::raw_mut!(packed.f2);
+/// let raw_f2 = ptr::addr_of_mut!(packed.f2);
 /// unsafe { raw_f2.write_unaligned(42); }
 /// assert_eq!({packed.f2}, 42); // `{...}` forces copying the field instead of creating a reference.
 /// ```
-#[unstable(feature = "raw_ref_macros", issue = "73394")]
+#[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
-pub macro raw_mut($e:expr) {
-    &raw mut $e
+pub macro addr_of_mut($place:expr) {
+    &raw mut $place
 }
