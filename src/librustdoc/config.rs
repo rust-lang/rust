@@ -35,6 +35,12 @@ crate enum OutputFormat {
     Html,
 }
 
+impl Default for OutputFormat {
+    fn default() -> OutputFormat {
+        OutputFormat::Html
+    }
+}
+
 impl OutputFormat {
     crate fn is_json(&self) -> bool {
         matches!(self, OutputFormat::Json)
@@ -118,7 +124,7 @@ crate struct Options {
     crate enable_per_target_ignores: bool,
 
     /// The path to a rustc-like binary to build tests with. If not set, we
-    /// default to loading from $sysroot/bin/rustc.
+    /// default to loading from `$sysroot/bin/rustc`.
     crate test_builder: Option<PathBuf>,
 
     // Options that affect the documentation process
@@ -142,8 +148,10 @@ crate struct Options {
     crate crate_version: Option<String>,
     /// Collected options specific to outputting final pages.
     crate render_options: RenderOptions,
-    /// Output format rendering (used only for "show-coverage" option for the moment)
-    crate output_format: Option<OutputFormat>,
+    /// The format that we output when rendering.
+    ///
+    /// Currently used only for the `--show-coverage` option.
+    crate output_format: OutputFormat,
     /// If this option is set to `true`, rustdoc will only run checks and not generate
     /// documentation.
     crate run_check: bool,
@@ -271,7 +279,7 @@ crate struct RenderInfo {
     crate deref_trait_did: Option<DefId>,
     crate deref_mut_trait_did: Option<DefId>,
     crate owned_box_did: Option<DefId>,
-    crate output_format: Option<OutputFormat>,
+    crate output_format: OutputFormat,
 }
 
 impl Options {
@@ -537,28 +545,28 @@ impl Options {
 
         let output_format = match matches.opt_str("output-format") {
             Some(s) => match OutputFormat::try_from(s.as_str()) {
-                Ok(o) => {
-                    if o.is_json()
+                Ok(out_fmt) => {
+                    if out_fmt.is_json()
                         && !(show_coverage || nightly_options::match_is_nightly_build(matches))
                     {
                         diag.struct_err("json output format isn't supported for doc generation")
                             .emit();
                         return Err(1);
-                    } else if !o.is_json() && show_coverage {
+                    } else if !out_fmt.is_json() && show_coverage {
                         diag.struct_err(
                             "html output format isn't supported for the --show-coverage option",
                         )
                         .emit();
                         return Err(1);
                     }
-                    Some(o)
+                    out_fmt
                 }
                 Err(e) => {
                     diag.struct_err(&e).emit();
                     return Err(1);
                 }
             },
-            None => None,
+            None => OutputFormat::default(),
         };
         let crate_name = matches.opt_str("crate-name");
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
