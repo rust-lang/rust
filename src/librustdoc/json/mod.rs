@@ -5,7 +5,6 @@
 //! docs for usage and details.
 
 mod conversions;
-pub mod types;
 
 use std::cell::RefCell;
 use std::fs::File;
@@ -17,12 +16,15 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 
+use rustdoc_json_types as types;
+
 use crate::clean;
 use crate::config::{RenderInfo, RenderOptions};
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
 use crate::html::render::cache::ExternalLocation;
+use crate::json::conversions::from_def_id;
 
 #[derive(Clone)]
 crate struct JsonRenderer<'tcx> {
@@ -50,7 +52,7 @@ impl JsonRenderer<'_> {
                     .map(|i| {
                         let item = &i.impl_item;
                         self.item(item.clone()).unwrap();
-                        item.def_id.into()
+                        from_def_id(item.def_id)
                     })
                     .collect()
             })
@@ -68,7 +70,7 @@ impl JsonRenderer<'_> {
                         let item = &i.impl_item;
                         if item.def_id.is_local() {
                             self.item(item.clone()).unwrap();
-                            Some(item.def_id.into())
+                            Some(from_def_id(item.def_id))
                         } else {
                             None
                         }
@@ -87,9 +89,9 @@ impl JsonRenderer<'_> {
                 if !id.is_local() {
                     trait_item.items.clone().into_iter().for_each(|i| self.item(i).unwrap());
                     Some((
-                        id.into(),
+                        from_def_id(id),
                         types::Item {
-                            id: id.into(),
+                            id: from_def_id(id),
                             crate_id: id.krate.as_u32(),
                             name: self
                                 .cache
@@ -163,7 +165,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             } else if let types::ItemEnum::EnumItem(ref mut e) = new_item.inner {
                 e.impls = self.get_impls(id)
             }
-            let removed = self.index.borrow_mut().insert(id.into(), new_item.clone());
+            let removed = self.index.borrow_mut().insert(from_def_id(id), new_item.clone());
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
             // to make sure the items are unique.
             if let Some(old_item) = removed {
@@ -203,11 +205,14 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         debug!("Done with crate");
         let mut index = (*self.index).clone().into_inner();
         index.extend(self.get_trait_items());
+        // This needs to be the default HashMap for compatibility with the public interface for
+        // rustdoc-json
+        #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(String::from("0:0")),
             crate_version: krate.version.clone(),
             includes_private: self.cache.document_private,
-            index,
+            index: index.into_iter().collect(),
             paths: self
                 .cache
                 .paths
@@ -216,7 +221,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .chain(self.cache.external_paths.clone().into_iter())
                 .map(|(k, (path, kind))| {
                     (
-                        k.into(),
+                        from_def_id(k),
                         types::ItemSummary { crate_id: k.krate.as_u32(), path, kind: kind.into() },
                     )
                 })

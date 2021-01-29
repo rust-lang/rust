@@ -11,12 +11,14 @@ use crate::mbe::transcribe::transcribe;
 use rustc_ast as ast;
 use rustc_ast::token::{self, NonterminalKind, NtTT, Token, TokenKind::*};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
+use rustc_ast::NodeId;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::Features;
+use rustc_lint_defs::builtin::SEMICOLON_IN_EXPRESSIONS_FROM_MACROS;
 use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
@@ -37,6 +39,7 @@ crate struct ParserAnyMacro<'a> {
     site_span: Span,
     /// The ident of the macro we're parsing
     macro_ident: Ident,
+    lint_node_id: NodeId,
     arm_span: Span,
 }
 
@@ -110,7 +113,8 @@ fn emit_frag_parse_err(
 
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
-        let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
+        let ParserAnyMacro { site_span, macro_ident, ref mut parser, lint_node_id, arm_span } =
+            *self;
         let snapshot = &mut parser.clone();
         let fragment = match parse_ast_fragment(parser, kind) {
             Ok(f) => f,
@@ -124,6 +128,12 @@ impl<'a> ParserAnyMacro<'a> {
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
         // but `m!()` is allowed in expression positions (cf. issue #34706).
         if kind == AstFragmentKind::Expr && parser.token == token::Semi {
+            parser.sess.buffer_lint(
+                SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+                parser.token.span,
+                lint_node_id,
+                "trailing semicolon in macro used in expression position",
+            );
             parser.bump();
         }
 
@@ -276,6 +286,7 @@ fn generic_extension<'cx>(
 
                 let mut p = Parser::new(sess, tts, false, None);
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
+                let lint_node_id = cx.resolver.lint_node_id(cx.current_expansion.id);
 
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
@@ -287,6 +298,7 @@ fn generic_extension<'cx>(
                     // macro leaves unparsed tokens.
                     site_span: sp,
                     macro_ident: name,
+                    lint_node_id,
                     arm_span,
                 });
             }

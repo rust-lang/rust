@@ -995,10 +995,13 @@ pub fn compile_unit_metadata(
     let flags = "\0";
 
     let out_dir = &tcx.output_filenames(LOCAL_CRATE).out_directory;
-    let split_name = tcx
-        .output_filenames(LOCAL_CRATE)
-        .split_dwarf_filename(tcx.sess.opts.debugging_opts.split_dwarf, Some(codegen_unit_name))
-        .unwrap_or_default();
+    let split_name = if tcx.sess.target_can_use_split_dwarf() {
+        tcx.output_filenames(LOCAL_CRATE)
+            .split_dwarf_filename(tcx.sess.split_debuginfo(), Some(codegen_unit_name))
+    } else {
+        None
+    }
+    .unwrap_or_default();
     let out_dir = out_dir.to_str().unwrap();
     let split_name = split_name.to_str().unwrap();
 

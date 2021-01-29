@@ -4,6 +4,7 @@ members = [
   "compiler/rustc",
   "library/std",
   "library/test",
+  "src/rustdoc-json-types",
   "src/tools/cargotest",
   "src/tools/clippy",
   "src/tools/compiletest",

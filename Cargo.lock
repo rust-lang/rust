@@ -3746,6 +3746,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_lexer",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_parse",
  "rustc_serialize",
@@ -4391,10 +4392,18 @@ dependencies = [
  "pulldown-cmark 0.8.0",
  "regex",
  "rustc-rayon",
+ "rustdoc-json-types",
  "serde",
  "serde_json",
  "smallvec 1.4.2",
  "tempfile",
+]
+
+[[package]]
+name = "rustdoc-json-types"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

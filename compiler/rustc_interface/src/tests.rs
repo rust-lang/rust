@@ -17,7 +17,7 @@ use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::SourceFileHashAlgorithm;
 use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy};
-use rustc_target::spec::{RelocModel, RelroLevel, TlsModel};
+use rustc_target::spec::{RelocModel, RelroLevel, SplitDebuginfo, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::PathBuf;
@@ -446,6 +446,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(profile_use, Some(PathBuf::from("abc")));
     tracked!(relocation_model, Some(RelocModel::Pic));
     tracked!(soft_float, true);
+    tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));
     tracked!(target_cpu, Some(String::from("abc")));
     tracked!(target_feature, String::from("all the features, all of them"));
 }
@@ -579,7 +580,6 @@ fn test_debugging_options_tracking_hash() {
     tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(report_delayed_bugs, true);
-    tracked!(run_dsymutil, false);
     tracked!(sanitizer, SanitizerSet::ADDRESS);
     tracked!(sanitizer_memory_track_origins, 2);
     tracked!(sanitizer_recover, SanitizerSet::ADDRESS);

@@ -12,8 +12,8 @@ fn main() {
     const Y: u32 = foo(0 - 1);
     //~^ WARN any use of this value will cause
     println!("{} {}", X, Y);
-    //~^ ERROR evaluation of constant expression failed
-    //~| ERROR evaluation of constant expression failed
+    //~^ ERROR evaluation of constant value failed
+    //~| ERROR evaluation of constant value failed
     //~| WARN erroneous constant used [const_err]
     //~| WARN erroneous constant used [const_err]
 }

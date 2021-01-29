@@ -1139,10 +1139,18 @@ impl<'a> Builder<'a> {
         // itself, we skip it by default since we know it's safe to do so in that case.
         // See https://github.com/rust-lang/rust/issues/79361 for more info on this flag.
         if target.contains("apple") {
-            if self.config.rust_run_dsymutil {
-                rustflags.arg("-Zrun-dsymutil=yes");
+            if stage == 0 {
+                if self.config.rust_run_dsymutil {
+                    rustflags.arg("-Zrun-dsymutil=yes");
+                } else {
+                    rustflags.arg("-Zrun-dsymutil=no");
+                }
             } else {
-                rustflags.arg("-Zrun-dsymutil=no");
+                if self.config.rust_run_dsymutil {
+                    rustflags.arg("-Csplit-debuginfo=packed");
+                } else {
+                    rustflags.arg("-Csplit-debuginfo=unpacked");
+                }
             }
         }
 
@@ -1250,6 +1258,12 @@ impl<'a> Builder<'a> {
             // some code doesn't go through this `rustc` wrapper.
             lint_flags.push("-Wrust_2018_idioms");
             lint_flags.push("-Wunused_lifetimes");
+            // cfg(bootstrap): unconditionally enable this warning after the next beta bump
+            // This is currently disabled for the stage1 libstd, since build scripts
+            // will end up using the bootstrap compiler (which doesn't yet support this lint)
+            if compiler.stage != 0 && mode != Mode::Std {
+                lint_flags.push("-Wsemicolon_in_expressions_from_macros");
+            }
 
             if self.config.deny_warnings {
                 lint_flags.push("-Dwarnings");

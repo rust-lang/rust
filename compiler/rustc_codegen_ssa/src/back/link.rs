@@ -14,7 +14,7 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
-use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor};
+use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target};
 
 use super::archive::ArchiveBuilder;
@@ -99,9 +99,6 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                         path.as_ref(),
                         target_cpu,
                     );
-                    if sess.opts.debugging_opts.split_dwarf == config::SplitDwarfKind::Split {
-                        link_dwarf_object(sess, &out_filename);
-                    }
                 }
             }
             if sess.opts.json_artifact_notifications {
@@ -828,29 +825,43 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         }
     }
 
-    // On macOS, debuggers need this utility to get run to do some munging of
-    // the symbols. Note, though, that if the object files are being preserved
-    // for their debug information there's no need for us to run dsymutil.
-    if sess.target.is_like_osx
-        && sess.opts.debuginfo != DebugInfo::None
-        && !preserve_objects_for_their_debuginfo(sess)
-    {
-        let prog = Command::new("dsymutil").arg(out_filename).output();
-        match prog {
-            Ok(prog) => {
-                if !prog.status.success() {
-                    let mut output = prog.stderr.clone();
-                    output.extend_from_slice(&prog.stdout);
-                    sess.struct_warn(&format!(
-                        "processing debug info with `dsymutil` failed: {}",
-                        prog.status
-                    ))
-                    .note(&escape_string(&output))
-                    .emit();
+    match sess.split_debuginfo() {
+        // If split debug information is disabled or located in individual files
+        // there's nothing to do here.
+        SplitDebuginfo::Off | SplitDebuginfo::Unpacked => {}
+
+        // If packed split-debuginfo is requested, but the final compilation
+        // doesn't actually have any debug information, then we skip this step.
+        SplitDebuginfo::Packed if sess.opts.debuginfo == DebugInfo::None => {}
+
+        // On macOS the external `dsymutil` tool is used to create the packed
+        // debug information. Note that this will read debug information from
+        // the objects on the filesystem which we'll clean up later.
+        SplitDebuginfo::Packed if sess.target.is_like_osx => {
+            let prog = Command::new("dsymutil").arg(out_filename).output();
+            match prog {
+                Ok(prog) => {
+                    if !prog.status.success() {
+                        let mut output = prog.stderr.clone();
+                        output.extend_from_slice(&prog.stdout);
+                        sess.struct_warn(&format!(
+                            "processing debug info with `dsymutil` failed: {}",
+                            prog.status
+                        ))
+                        .note(&escape_string(&output))
+                        .emit();
+                    }
                 }
+                Err(e) => sess.fatal(&format!("unable to run `dsymutil`: {}", e)),
             }
-            Err(e) => sess.fatal(&format!("unable to run `dsymutil`: {}", e)),
         }
+
+        // On MSVC packed debug information is produced by the linker itself so
+        // there's no need to do anything else here.
+        SplitDebuginfo::Packed if sess.target.is_like_msvc => {}
+
+        // ... and otherwise we're processing a `*.dwp` packed dwarf file.
+        SplitDebuginfo::Packed => link_dwarf_object(sess, &out_filename),
     }
 }
 
@@ -1050,28 +1061,9 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
         return false;
     }
 
-    // Single mode keeps debuginfo in the same object file, but in such a way that it it skipped
-    // by the linker - so it's expected that when codegen units are linked together that this
-    // debuginfo would be lost without keeping around the temps.
-    if sess.opts.debugging_opts.split_dwarf == config::SplitDwarfKind::Single {
-        return true;
-    }
-
-    // If we're on OSX then the equivalent of split dwarf is turned on by
-    // default. The final executable won't actually have any debug information
-    // except it'll have pointers to elsewhere. Historically we've always run
-    // `dsymutil` to "link all the dwarf together" but this is actually sort of
-    // a bummer for incremental compilation! (the whole point of split dwarf is
-    // that you don't do this sort of dwarf link).
-    //
-    // Basically as a result this just means that if we're on OSX and we're
-    // *not* running dsymutil then the object files are the only source of truth
-    // for debug information, so we must preserve them.
-    if sess.target.is_like_osx {
-        return !sess.opts.debugging_opts.run_dsymutil;
-    }
-
-    false
+    // "unpacked" split debuginfo means that we leave object files as the
+    // debuginfo is found in the original object files themselves
+    sess.split_debuginfo() == SplitDebuginfo::Unpacked
 }
 
 pub fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
@@ -2211,8 +2203,13 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
             return;
         }
     };
-    let arch_name = llvm_target.split('-').next().expect("LLVM target must have a hyphen");
-    cmd.args(&["-arch", arch_name, "-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
+    if llvm_target.contains("macabi") {
+        cmd.args(&["-target", llvm_target])
+    } else {
+        let arch_name = llvm_target.split('-').next().expect("LLVM target must have a hyphen");
+        cmd.args(&["-arch", arch_name])
+    }
+    cmd.args(&["-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
 }
 
 fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
