@@ -32,7 +32,7 @@ use std::slice;
 
 #[inline(never)]
 #[cold]
-pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
+fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
     f()
 }
 
