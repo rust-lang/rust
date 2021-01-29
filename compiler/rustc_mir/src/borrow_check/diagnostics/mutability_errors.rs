@@ -1,9 +1,12 @@
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::{self, ClearCrossCrate, Local, LocalDecl, LocalInfo, Location};
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{
+    hir::place::PlaceBase,
+    mir::{self, ClearCrossCrate, Local, LocalDecl, LocalInfo, Location},
+};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
@@ -241,6 +244,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     format!("mut {}", self.local_names[local].unwrap()),
                     Applicability::MachineApplicable,
                 );
+                let tcx = self.infcx.tcx;
+                if let ty::Closure(id, _) = the_place_err.ty(self.body, tcx).ty.kind() {
+                    self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
+                }
             }
 
             // Also suggest adding mut for upvars
@@ -269,6 +276,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             format!("mut {}", upvar_ident.name),
                             Applicability::MachineApplicable,
                         );
+                    }
+                }
+
+                let tcx = self.infcx.tcx;
+                if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
+                {
+                    if let ty::Closure(id, _) = ty.kind() {
+                        self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
                     }
                 }
             }
@@ -461,6 +476,45 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         err.buffer(&mut self.errors_buffer);
+    }
+
+    // point to span of upvar making closure call require mutable borrow
+    fn show_mutating_upvar(
+        &self,
+        tcx: TyCtxt<'_>,
+        id: &hir::def_id::DefId,
+        the_place_err: PlaceRef<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
+    ) {
+        let id = id.expect_local();
+        let tables = tcx.typeck(id);
+        let hir_id = tcx.hir().local_def_id_to_hir_id(id);
+        let (span, place) = &tables.closure_kind_origins()[hir_id];
+        let reason = if let PlaceBase::Upvar(upvar_id) = place.base {
+            let upvar = ty::place_to_string_for_capture(tcx, place);
+            match tables.upvar_capture(upvar_id) {
+                ty::UpvarCapture::ByRef(ty::UpvarBorrow {
+                    kind: ty::BorrowKind::MutBorrow,
+                    ..
+                }) => {
+                    format!("mutable borrow of `{}`", upvar)
+                }
+                ty::UpvarCapture::ByValue(_) => {
+                    format!("possible mutation of `{}`", upvar)
+                }
+                _ => bug!("upvar `{}` borrowed, but not mutably", upvar),
+            }
+        } else {
+            bug!("not an upvar")
+        };
+        err.span_label(
+            *span,
+            format!(
+                "calling `{}` requires mutable binding due to {}",
+                self.describe_place(the_place_err).unwrap(),
+                reason
+            ),
+        );
     }
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
