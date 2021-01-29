@@ -1436,8 +1436,7 @@ impl Type {
             Array(..) => PrimitiveType::Array,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath { ref self_type, .. } => return self_type.inner_def_id(cache),
-            // FIXME: remove this wildcard
-            _ => return None,
+            Generic(_) | Infer | ImplTrait(_) => return None,
         };
         cache.and_then(|c| Primitive(t).def_id_full(c))
     }
