@@ -304,7 +304,7 @@ crate fn get_real_types<'tcx>(
             }
         }
         if let Some(bound) = generics.params.iter().find(|g| g.is_type() && g.name == arg_s) {
-            for bound in bound.get_bounds().unwrap_or_else(|| &[]) {
+            for bound in bound.get_bounds().unwrap_or(&[]) {
                 if let Some(ty) = bound.get_trait_type() {
                     let adds = get_real_types(generics, &ty, tcx, recurse + 1, cache, res);
                     nb_added += adds;

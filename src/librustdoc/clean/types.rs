@@ -1320,10 +1320,10 @@ impl From<hir::def::DefKind> for TypeKind {
             hir::def::DefKind::Union => Self::Union,
             hir::def::DefKind::Trait => Self::Trait,
             hir::def::DefKind::TyAlias => Self::Typedef,
-            hir::def::DefKind::ForeignTy => Self::Foreign,
             hir::def::DefKind::TraitAlias => Self::TraitAlias,
             hir::def::DefKind::Macro(_) => Self::Macro,
-            hir::def::DefKind::Variant
+            hir::def::DefKind::ForeignTy
+            | hir::def::DefKind::Variant
             | hir::def::DefKind::AssocTy
             | hir::def::DefKind::TyParam
             | hir::def::DefKind::ConstParam
