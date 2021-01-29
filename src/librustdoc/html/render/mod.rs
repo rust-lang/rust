@@ -359,7 +359,6 @@ crate struct StylePath {
 
 thread_local!(crate static CURRENT_DEPTH: Cell<usize> = Cell::new(0));
 
-// FIXME: make this work
 crate const INITIAL_IDS: [&'static str; 15] = [
     "main",
     "search",
@@ -4101,7 +4100,7 @@ fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::T
 }
 
 fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
-    w.write_str("<pre class=\"rust foreigntype\">extern {");
+    w.write_str("<pre class=\"rust foreigntype\">extern {\n");
     render_attributes(w, it, false);
     write!(
         w,
@@ -4264,8 +4263,8 @@ fn get_methods(
 fn small_url_encode(s: String) -> String {
     let mut st = String::new();
     let mut last_match = 0;
-    for (idx, c) in s.bytes().enumerate() {
-        let escaped = match c as char {
+    for (idx, c) in s.char_indices() {
+        let escaped = match c {
             '<' => "%3C",
             '>' => "%3E",
             ' ' => "%20",
@@ -4283,6 +4282,8 @@ fn small_url_encode(s: String) -> String {
 
         st += &s[last_match..idx];
         st += escaped;
+        // NOTE: we only expect single byte characters here - which is fine as long as we
+        // only match single byte characters
         last_match = idx + 1;
     }
 
@@ -4834,12 +4835,12 @@ fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean
             w.push_str("<pre class=\"rust derive\">");
             write!(w, "#[derive({})]", name);
             if !m.helpers.is_empty() {
-                w.push_str("\n{");
-                w.push_str("    // Attributes available to this derive:");
+                w.push_str("\n{\n");
+                w.push_str("    // Attributes available to this derive:\n");
                 for attr in &m.helpers {
                     writeln!(w, "    #[{}]", attr);
                 }
-                w.push_str("}");
+                w.push_str("}\n");
             }
             w.push_str("</pre>");
         }

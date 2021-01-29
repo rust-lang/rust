@@ -94,8 +94,7 @@ impl SourceCollector<'_, '_> {
         };
 
         // Remove the utf-8 BOM if any
-        let contents =
-            if contents.starts_with('\u{feff}') { &contents[3..] } else { &contents[..] };
+        let contents = if contents.starts_with('\u{feff}') { &contents[3..] } else { &contents };
 
         // Create the intermediate directories
         let mut cur = self.dst.clone();
