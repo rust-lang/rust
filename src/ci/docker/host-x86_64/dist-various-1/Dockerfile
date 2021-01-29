@@ -1,6 +1,6 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   g++ \
   automake \
   bison \
@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   g++-aarch64-linux-gnu \
   g++-mips64-linux-gnuabi64 \
   g++-mips64el-linux-gnuabi64 \
+  gcc-arm-none-eabi \
   gcc-sparc64-linux-gnu \
   libc6-dev-sparc64-cross \
   bzip2 \
@@ -42,11 +43,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   software-properties-common
 
 WORKDIR /build
-
-# Use the team-gcc-arm-embedded PPA for a newer version of Arm GCC
-RUN add-apt-repository ppa:team-gcc-arm-embedded/ppa && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends gcc-arm-embedded
 
 COPY host-x86_64/dist-various-1/build-rumprun.sh /build
 RUN ./build-rumprun.sh

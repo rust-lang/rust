@@ -20,9 +20,10 @@ exit 1
 
 git clone https://github.com/rumpkernel/rumprun
 cd rumprun
-git reset --hard 39a97f37a85e44c69b662f6b97b688fbe892603b
+git reset --hard b04d42225a12a6fae57a78a9c1cf23642e46cd00
 git submodule update --init
 
-CC=cc hide_output ./build-rr.sh -d /usr/local hw
+# Disable -Werror, to avoid breaking the build with newer compilers.
+CC=cc NOGCCERROR=1 hide_output ./build-rr.sh -d /usr/local hw
 cd ..
 rm -rf rumprun

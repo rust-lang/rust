@@ -7,7 +7,7 @@ ARCH=$1
 LIB_ARCH=$2
 APT_ARCH=$3
 BINUTILS=2.28.1
-GCC=6.4.0
+GCC=6.5.0
 
 # First up, build binutils
 mkdir binutils
