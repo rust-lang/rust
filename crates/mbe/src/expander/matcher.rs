@@ -77,35 +77,26 @@ impl Match {
     }
 }
 
-// General note: These functions have two channels to return errors, a `Result`
-// return value and the `&mut Match`. The returned Result is for pattern parsing
-// errors; if a branch of the macro definition doesn't parse, it doesn't make
-// sense to try using it. Matching errors are added to the `Match`. It might
-// make sense to make pattern parsing a separate step?
-
-pub(super) fn match_(pattern: &MetaTemplate, src: &tt::Subtree) -> Result<Match, ExpandError> {
+/// Matching errors are added to the `Match`.
+pub(super) fn match_(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
     assert!(pattern.delimiter == None);
 
     let mut res = Match::default();
     let mut src = TtIter::new(src);
 
-    match_subtree(&mut res, pattern, &mut src)?;
+    match_subtree(&mut res, pattern, &mut src);
 
     if src.len() > 0 {
         res.unmatched_tts += src.len();
         res.add_err(err!("leftover tokens"));
     }
 
-    Ok(res)
+    res
 }
 
-fn match_subtree(
-    res: &mut Match,
-    pattern: &MetaTemplate,
-    src: &mut TtIter,
-) -> Result<(), ExpandError> {
+fn match_subtree(res: &mut Match, pattern: &MetaTemplate, src: &mut TtIter) {
     for op in pattern.iter() {
-        match op.as_ref().map_err(|err| err.clone())? {
+        match op {
             Op::Leaf(lhs) => {
                 let rhs = match src.expect_leaf() {
                     Ok(l) => l,
@@ -145,7 +136,7 @@ fn match_subtree(
                     continue;
                 }
                 let mut src = TtIter::new(rhs);
-                match_subtree(res, lhs, &mut src)?;
+                match_subtree(res, lhs, &mut src);
                 if src.len() > 0 {
                     res.add_err(err!("leftover tokens"));
                 }
@@ -172,11 +163,139 @@ fn match_subtree(
                 }
             }
             Op::Repeat { subtree, kind, separator } => {
-                match_repeat(res, subtree, *kind, separator, src)?;
+                match_repeat(res, subtree, *kind, separator, src);
             }
         }
     }
-    Ok(())
+}
+
+pub(super) fn match_repeat(
+    res: &mut Match,
+    pattern: &MetaTemplate,
+    kind: RepeatKind,
+    separator: &Option<Separator>,
+    src: &mut TtIter,
+) {
+    // Dirty hack to make macro-expansion terminate.
+    // This should be replaced by a proper macro-by-example implementation
+    let mut limit = 65536;
+    let mut counter = 0;
+
+    for i in 0.. {
+        let mut fork = src.clone();
+
+        if let Some(separator) = &separator {
+            if i != 0 && !fork.eat_separator(separator) {
+                break;
+            }
+        }
+
+        let mut nested = Match::default();
+        match_subtree(&mut nested, pattern, &mut fork);
+        if nested.err.is_none() {
+            limit -= 1;
+            if limit == 0 {
+                log::warn!(
+                    "match_lhs exceeded repeat pattern limit => {:#?}\n{:#?}\n{:#?}\n{:#?}",
+                    pattern,
+                    src,
+                    kind,
+                    separator
+                );
+                break;
+            }
+            *src = fork;
+
+            if let Err(err) = res.bindings.push_nested(counter, nested.bindings) {
+                res.add_err(err);
+            }
+            counter += 1;
+            if counter == 1 {
+                if let RepeatKind::ZeroOrOne = kind {
+                    break;
+                }
+            }
+        } else {
+            break;
+        }
+    }
+
+    match (kind, counter) {
+        (RepeatKind::OneOrMore, 0) => {
+            res.add_err(ExpandError::UnexpectedToken);
+        }
+        (_, 0) => {
+            // Collect all empty variables in subtrees
+            let mut vars = Vec::new();
+            collect_vars(&mut vars, pattern);
+            for var in vars {
+                res.bindings.push_empty(&var)
+            }
+        }
+        _ => (),
+    }
+}
+
+fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragment>> {
+    let fragment = match kind {
+        "path" => Path,
+        "expr" => Expr,
+        "ty" => Type,
+        "pat" => Pattern,
+        "stmt" => Statement,
+        "block" => Block,
+        "meta" => MetaItem,
+        "item" => Item,
+        _ => {
+            let tt_result = match kind {
+                "ident" => input
+                    .expect_ident()
+                    .map(|ident| Some(tt::Leaf::from(ident.clone()).into()))
+                    .map_err(|()| err!("expected ident")),
+                "tt" => input.expect_tt().map(Some).map_err(|()| err!()),
+                "lifetime" => input
+                    .expect_lifetime()
+                    .map(|tt| Some(tt))
+                    .map_err(|()| err!("expected lifetime")),
+                "literal" => {
+                    let neg = input.eat_char('-');
+                    input
+                        .expect_literal()
+                        .map(|literal| {
+                            let lit = tt::Leaf::from(literal.clone());
+                            match neg {
+                                None => Some(lit.into()),
+                                Some(neg) => Some(tt::TokenTree::Subtree(tt::Subtree {
+                                    delimiter: None,
+                                    token_trees: vec![neg, lit.into()],
+                                })),
+                            }
+                        })
+                        .map_err(|()| err!())
+                }
+                // `vis` is optional
+                "vis" => match input.eat_vis() {
+                    Some(vis) => Ok(Some(vis)),
+                    None => Ok(None),
+                },
+                _ => Err(ExpandError::UnexpectedToken),
+            };
+            return tt_result.map(|it| it.map(Fragment::Tokens)).into();
+        }
+    };
+    let result = input.expect_fragment(fragment);
+    result.map(|tt| if kind == "expr" { tt.map(Fragment::Ast) } else { tt.map(Fragment::Tokens) })
+}
+
+fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &MetaTemplate) {
+    for op in pattern.iter() {
+        match op {
+            Op::Var { name, .. } => buf.push(name.clone()),
+            Op::Leaf(_) => (),
+            Op::Subtree(subtree) => collect_vars(buf, subtree),
+            Op::Repeat { subtree, .. } => collect_vars(buf, subtree),
+        }
+    }
 }
 
 impl<'a> TtIter<'a> {
@@ -368,135 +487,4 @@ impl<'a> TtIter<'a> {
             Err(_) => None,
         }
     }
-}
-
-pub(super) fn match_repeat(
-    res: &mut Match,
-    pattern: &MetaTemplate,
-    kind: RepeatKind,
-    separator: &Option<Separator>,
-    src: &mut TtIter,
-) -> Result<(), ExpandError> {
-    // Dirty hack to make macro-expansion terminate.
-    // This should be replaced by a proper macro-by-example implementation
-    let mut limit = 65536;
-    let mut counter = 0;
-
-    for i in 0.. {
-        let mut fork = src.clone();
-
-        if let Some(separator) = &separator {
-            if i != 0 && !fork.eat_separator(separator) {
-                break;
-            }
-        }
-
-        let mut nested = Match::default();
-        match_subtree(&mut nested, pattern, &mut fork)?;
-        if nested.err.is_none() {
-            limit -= 1;
-            if limit == 0 {
-                log::warn!(
-                    "match_lhs exceeded repeat pattern limit => {:#?}\n{:#?}\n{:#?}\n{:#?}",
-                    pattern,
-                    src,
-                    kind,
-                    separator
-                );
-                break;
-            }
-            *src = fork;
-
-            if let Err(err) = res.bindings.push_nested(counter, nested.bindings) {
-                res.add_err(err);
-            }
-            counter += 1;
-            if counter == 1 {
-                if let RepeatKind::ZeroOrOne = kind {
-                    break;
-                }
-            }
-        } else {
-            break;
-        }
-    }
-
-    match (kind, counter) {
-        (RepeatKind::OneOrMore, 0) => {
-            res.add_err(ExpandError::UnexpectedToken);
-        }
-        (_, 0) => {
-            // Collect all empty variables in subtrees
-            let mut vars = Vec::new();
-            collect_vars(&mut vars, pattern)?;
-            for var in vars {
-                res.bindings.push_empty(&var)
-            }
-        }
-        _ => (),
-    }
-    Ok(())
-}
-
-fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragment>> {
-    let fragment = match kind {
-        "path" => Path,
-        "expr" => Expr,
-        "ty" => Type,
-        "pat" => Pattern,
-        "stmt" => Statement,
-        "block" => Block,
-        "meta" => MetaItem,
-        "item" => Item,
-        _ => {
-            let tt_result = match kind {
-                "ident" => input
-                    .expect_ident()
-                    .map(|ident| Some(tt::Leaf::from(ident.clone()).into()))
-                    .map_err(|()| err!("expected ident")),
-                "tt" => input.expect_tt().map(Some).map_err(|()| err!()),
-                "lifetime" => input
-                    .expect_lifetime()
-                    .map(|tt| Some(tt))
-                    .map_err(|()| err!("expected lifetime")),
-                "literal" => {
-                    let neg = input.eat_char('-');
-                    input
-                        .expect_literal()
-                        .map(|literal| {
-                            let lit = tt::Leaf::from(literal.clone());
-                            match neg {
-                                None => Some(lit.into()),
-                                Some(neg) => Some(tt::TokenTree::Subtree(tt::Subtree {
-                                    delimiter: None,
-                                    token_trees: vec![neg, lit.into()],
-                                })),
-                            }
-                        })
-                        .map_err(|()| err!())
-                }
-                // `vis` is optional
-                "vis" => match input.eat_vis() {
-                    Some(vis) => Ok(Some(vis)),
-                    None => Ok(None),
-                },
-                _ => Err(ExpandError::UnexpectedToken),
-            };
-            return tt_result.map(|it| it.map(Fragment::Tokens)).into();
-        }
-    };
-    let result = input.expect_fragment(fragment);
-    result.map(|tt| if kind == "expr" { tt.map(Fragment::Ast) } else { tt.map(Fragment::Tokens) })
-}
-
-fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &MetaTemplate) -> Result<(), ExpandError> {
-    for op in pattern.iter() {
-        match op.as_ref().map_err(|e| e.clone())? {
-            Op::Var { name, .. } => buf.push(name.clone()),
-            Op::Leaf(_) => (),
-            Op::Subtree(subtree) => collect_vars(buf, subtree)?,
-            Op::Repeat { subtree, .. } => collect_vars(buf, subtree)?,
-        }
-    }
-    Ok(())
 }

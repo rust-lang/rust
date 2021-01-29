@@ -33,19 +33,18 @@ mod rule_parsing {
 
     #[test]
     fn test_invalid_arms() {
-        fn check(macro_body: &str, err: &str) {
+        fn check(macro_body: &str, err: ParseError) {
             let m = parse_macro_arm(macro_body);
-            assert_eq!(m, Err(ParseError::Expected(String::from(err))));
+            assert_eq!(m, Err(err.into()));
         }
+        check("invalid", ParseError::Expected("expected subtree".into()));
 
-        check("invalid", "expected subtree");
+        check("$i:ident => ()", ParseError::Expected("expected subtree".into()));
+        check("($i:ident) ()", ParseError::Expected("expected `=`".into()));
+        check("($($i:ident)_) => ()", ParseError::InvalidRepeat);
 
-        check("$i:ident => ()", "expected subtree");
-        check("($i:ident) ()", "expected `=`");
-        check("($($i:ident)_) => ()", "invalid repeat");
-
-        check("($i) => ($i)", "invalid macro definition");
-        check("($i:) => ($i)", "invalid macro definition");
+        check("($i) => ($i)", ParseError::UnexpectedToken("bad fragment specifier 1".into()));
+        check("($i:) => ($i)", ParseError::UnexpectedToken("bad fragment specifier 1".into()));
     }
 
     fn parse_macro_arm(arm_definition: &str) -> Result<crate::MacroRules, ParseError> {
