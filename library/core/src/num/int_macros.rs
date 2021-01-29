@@ -1158,12 +1158,12 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(unsigned_abs)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".unsigned_abs(), 100", stringify!($UnsignedT), ");")]
         #[doc = concat!("assert_eq!((-100", stringify!($SelfT), ").unsigned_abs(), 100", stringify!($UnsignedT), ");")]
         /// assert_eq!((-128i8).unsigned_abs(), 128u8);
         /// ```
-        #[unstable(feature = "unsigned_abs", issue = "74913")]
+        #[stable(feature = "unsigned_abs", since = "1.51.0")]
+        #[rustc_const_stable(feature = "unsigned_abs", since = "1.51.0")]
         #[inline]
         pub const fn unsigned_abs(self) -> $UnsignedT {
              self.wrapping_abs() as $UnsignedT

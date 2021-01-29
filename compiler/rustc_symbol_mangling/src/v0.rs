@@ -530,7 +530,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                     if val < 0 {
                         neg = true;
                     }
-                    Some(val.wrapping_abs() as u128)
+                    Some(val.unsigned_abs())
                 })
             }
             _ => {
