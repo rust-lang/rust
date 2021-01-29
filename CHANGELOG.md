@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.4.34] 2021-01-28
+
+### Fixed
+- Don't insert trailing comma on (base-less) rest in struct literals within macros ([#4675](https://github.com/rust-lang/rustfmt/issues/4675))
+
+### Install/Download Options
+- **crates.io package** - *pending*
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.34](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.34)
+- **Build from source** - [Tag v1.4.34](https://github.com/rust-lang/rustfmt/tree/v1.4.34), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.33] 2021-01-27
 
 ### Changed
@@ -24,7 +35,7 @@ https://rust-lang.github.io/rustfmt/?version=v1.4.33&search=#imports_granularity
 
 ### Install/Download Options
 - **crates.io package** - *pending*
-- **rustup (nightly)** - *pending*
+- **rustup (nightly)** - n/a (superseded by [v1.4.34](#1434-2021-01-28))
 - **GitHub Release Binaries** - [Release v1.4.33](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.33)
 - **Build from source** - [Tag v1.4.33](https://github.com/rust-lang/rustfmt/tree/v1.4.33), see instructions for how to [install rustfmt from source][install-from-source]
 
