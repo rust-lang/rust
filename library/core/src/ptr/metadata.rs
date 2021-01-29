@@ -1,4 +1,4 @@
-#![unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+#![unstable(feature = "ptr_metadata", issue = "81513")]
 
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
@@ -72,7 +72,7 @@ pub trait Pointee {
 ///     assert_eq!(std::mem::size_of::<&T>(), std::mem::size_of::<usize>())
 /// }
 /// ```
-#[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+#[unstable(feature = "ptr_metadata", issue = "81513")]
 // NOTE: don’t stabilize this before trait aliases are stable in the language?
 pub trait Thin = Pointee<Metadata = ()>;
 
@@ -88,7 +88,7 @@ pub trait Thin = Pointee<Metadata = ()>;
 ///
 /// assert_eq!(std::ptr::metadata("foo"), 3_usize);
 /// ```
-#[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[inline]
 pub const fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
     // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
@@ -104,8 +104,8 @@ pub const fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
 /// For trait objects, the metadata must come from a pointer to the same underlying ereased type.
 ///
 /// [`slice::from_raw_parts`]: crate::slice::from_raw_parts
-#[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
-#[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+#[unstable(feature = "ptr_metadata", issue = "81513")]
+#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[inline]
 pub const fn from_raw_parts<T: ?Sized>(
     data_address: *const (),
@@ -121,8 +121,8 @@ pub const fn from_raw_parts<T: ?Sized>(
 /// raw `*mut` pointer is returned, as opposed to a raw `*const` pointer.
 ///
 /// See the documentation of [`from_raw_parts`] for more details.
-#[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
-#[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+#[unstable(feature = "ptr_metadata", issue = "81513")]
+#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[inline]
 pub const fn from_raw_parts_mut<T: ?Sized>(
     data_address: *mut (),

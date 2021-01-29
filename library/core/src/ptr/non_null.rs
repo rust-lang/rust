@@ -182,8 +182,8 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// [`std::ptr::from_raw_parts`]: crate::ptr::from_raw_parts
     #[cfg(not(bootstrap))]
-    #[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
-    #[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+    #[unstable(feature = "ptr_metadata", issue = "81513")]
+    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
     pub const fn from_raw_parts(
         data_address: NonNull<()>,
@@ -199,8 +199,8 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// The pointer can be later reconstructed with [`NonNull::from_raw_parts`].
     #[cfg(not(bootstrap))]
-    #[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
-    #[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+    #[unstable(feature = "ptr_metadata", issue = "81513")]
+    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
     pub const fn to_raw_parts(self) -> (NonNull<()>, <T as super::Pointee>::Metadata) {
         (self.cast(), super::metadata(self.as_ptr()))

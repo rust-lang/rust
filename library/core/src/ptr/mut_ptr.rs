@@ -51,8 +51,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts_mut`].
     #[cfg(not(bootstrap))]
-    #[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
-    #[rustc_const_unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+    #[unstable(feature = "ptr_metadata", issue = "81513")]
+    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
     pub const fn to_raw_parts(self) -> (*mut (), <T as super::Pointee>::Metadata) {
         (self.cast(), super::metadata(self))
