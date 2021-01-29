@@ -1629,7 +1629,10 @@ fn rewrite_struct_lit<'a>(
             nested_shape,
             tactic,
             context,
-            force_no_trailing_comma || has_base || !context.use_block_indent(),
+            force_no_trailing_comma
+                || has_base
+                || !context.use_block_indent()
+                || matches!(struct_rest, ast::StructRest::Rest(_)),
         );
 
         write_list(&item_vec, &fmt)?
