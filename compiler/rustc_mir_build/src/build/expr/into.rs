@@ -296,7 +296,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let field_names = this.hir.all_fields(adt_def, variant_index);
 
                 let fields: Vec<_> = if let Some(FruInfo { base, field_types }) = base {
-                    let base = unpack!(block = this.as_place(block, base));
+                    let place_builder = unpack!(block = this.as_place_builder(block, base));
 
                     // MIR does not natively support FRU, so for each
                     // base-supplied field, generate an operand that
@@ -306,9 +306,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .zip(field_types.into_iter())
                         .map(|(n, ty)| match fields_map.get(&n) {
                             Some(v) => v.clone(),
-                            None => this.consume_by_copy_or_move(
-                                this.hir.tcx().mk_place_field(base, n, ty),
-                            ),
+                            None => {
+                                let place_builder = place_builder.clone();
+                                this.consume_by_copy_or_move(
+                                    place_builder
+                                        .field(n, ty)
+                                        .into_place(this.hir.tcx(), this.hir.typeck_results()),
+                                )
+                            },
                         })
                         .collect()
                 } else {
