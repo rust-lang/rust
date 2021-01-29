@@ -191,12 +191,24 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     start_block: Block,
 ) {
+    fx.bcx.append_block_params_for_function_params(start_block);
+
+    fx.bcx.switch_to_block(start_block);
+    fx.bcx.ins().nop();
+
     let ssa_analyzed = crate::analyze::analyze(fx);
 
     #[cfg(debug_assertions)]
     self::comments::add_args_header_comment(fx);
 
-    let ret_place = self::returning::codegen_return_param(fx, &ssa_analyzed, start_block);
+    let mut block_params_iter = fx
+        .bcx
+        .func
+        .dfg
+        .block_params(start_block)
+        .to_vec()
+        .into_iter();
+    let ret_place = self::returning::codegen_return_param(fx, &ssa_analyzed, &mut block_params_iter);
     assert_eq!(fx.local_map.push(ret_place), RETURN_PLACE);
 
     // None means pass_mode == NoPass
@@ -229,14 +241,14 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
                 let mut params = Vec::new();
                 for (i, _arg_ty) in tupled_arg_tys.types().enumerate() {
                     let arg_abi = arg_abis_iter.next().unwrap();
-                    let param = cvalue_for_param(fx, start_block, Some(local), Some(i), arg_abi);
+                    let param = cvalue_for_param(fx, Some(local), Some(i), arg_abi, &mut block_params_iter);
                     params.push(param);
                 }
 
                 (local, ArgKind::Spread(params), arg_ty)
             } else {
                 let arg_abi = arg_abis_iter.next().unwrap();
-                let param = cvalue_for_param(fx, start_block, Some(local), None, arg_abi);
+                let param = cvalue_for_param(fx, Some(local), None, arg_abi, &mut block_params_iter);
                 (local, ArgKind::Normal(param), arg_ty)
             }
         })
@@ -246,14 +258,13 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
     if fx.instance.def.requires_caller_location(fx.tcx) {
         // Store caller location for `#[track_caller]`.
         let arg_abi = arg_abis_iter.next().unwrap();
-        fx.caller_location = Some(cvalue_for_param(fx, start_block, None, None, arg_abi).unwrap());
+        fx.caller_location =
+            Some(cvalue_for_param(fx, None, None, arg_abi, &mut block_params_iter).unwrap());
     }
 
     assert!(arg_abis_iter.next().is_none(), "ArgAbi left behind");
     fx.fn_abi = Some(fn_abi);
-
-    fx.bcx.switch_to_block(start_block);
-    fx.bcx.ins().nop();
+    assert!(block_params_iter.next().is_none(), "arg_value left behind");
 
     #[cfg(debug_assertions)]
     self::comments::add_locals_header_comment(fx);

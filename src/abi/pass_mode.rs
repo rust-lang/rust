@@ -4,13 +4,85 @@ use crate::prelude::*;
 use crate::value_and_place::assert_assignable;
 
 use cranelift_codegen::ir::ArgumentPurpose;
-use rustc_target::abi::call::{ArgAbi, PassMode};
+use rustc_target::abi::call::{ArgAbi, CastTarget, PassMode, Reg, RegKind};
 use smallvec::{smallvec, SmallVec};
 
 pub(super) trait ArgAbiExt<'tcx> {
     fn get_abi_param(&self, tcx: TyCtxt<'tcx>) -> SmallVec<[AbiParam; 2]>;
     fn get_abi_return(&self, tcx: TyCtxt<'tcx>) -> (Option<AbiParam>, Vec<AbiParam>);
 }
+
+fn reg_to_abi_param(reg: Reg) -> AbiParam {
+    let clif_ty = match (reg.kind, reg.size.bytes()) {
+        (RegKind::Integer, 1) => types::I8,
+        (RegKind::Integer, 2) => types::I16,
+        (RegKind::Integer, 4) => types::I32,
+        (RegKind::Integer, 8) => types::I64,
+        (RegKind::Integer, 16) => types::I128,
+        (RegKind::Float, 4) => types::F32,
+        (RegKind::Float, 8) => types::F64,
+        (RegKind::Vector, size) => types::I8.by(u16::try_from(size).unwrap()).unwrap(),
+        _ => unreachable!("{:?}", reg),
+    };
+    AbiParam::new(clif_ty)
+}
+
+fn cast_target_to_abi_params(cast: CastTarget) -> SmallVec<[AbiParam; 2]> {
+    let (rest_count, rem_bytes) = if cast.rest.unit.size.bytes() == 0 {
+        (0, 0)
+    } else {
+        (
+            cast.rest.total.bytes() / cast.rest.unit.size.bytes(),
+            cast.rest.total.bytes() % cast.rest.unit.size.bytes(),
+        )
+    };
+
+    if cast.prefix.iter().all(|x| x.is_none()) {
+        // Simplify to a single unit when there is no prefix and size <= unit size
+        if cast.rest.total <= cast.rest.unit.size {
+            let clif_ty = match (cast.rest.unit.kind, cast.rest.unit.size.bytes()) {
+                (RegKind::Integer, 1) => types::I8,
+                (RegKind::Integer, 2) => types::I16,
+                (RegKind::Integer, 3..=4) => types::I32,
+                (RegKind::Integer, 5..=8) => types::I64,
+                (RegKind::Integer, 9..=16) => types::I128,
+                (RegKind::Float, 4) => types::F32,
+                (RegKind::Float, 8) => types::F64,
+                (RegKind::Vector, size) => types::I8.by(u16::try_from(size).unwrap()).unwrap(),
+                _ => unreachable!("{:?}", cast.rest.unit),
+            };
+            return smallvec![AbiParam::new(clif_ty)];
+        }
+    }
+
+    // Create list of fields in the main structure
+    let mut args = cast
+        .prefix
+        .iter()
+        .flatten()
+        .map(|&kind| {
+            reg_to_abi_param(Reg {
+                kind,
+                size: cast.prefix_chunk_size,
+            })
+        })
+        .chain((0..rest_count).map(|_| reg_to_abi_param(cast.rest.unit)))
+        .collect::<SmallVec<_>>();
+
+    // Append final integer
+    if rem_bytes != 0 {
+        // Only integers can be really split further.
+        assert_eq!(cast.rest.unit.kind, RegKind::Integer);
+        args.push(reg_to_abi_param(Reg {
+            kind: RegKind::Integer,
+            size: Size::from_bytes(rem_bytes),
+        }));
+    }
+
+    args
+}
+
+// FIXME respect argument extension mode
 
 impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     fn get_abi_param(&self, tcx: TyCtxt<'tcx>) -> SmallVec<[AbiParam; 2]> {
@@ -34,7 +106,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
-            PassMode::Cast(_) => smallvec![AbiParam::new(pointer_ty(tcx))],
+            PassMode::Cast(cast) => cast_target_to_abi_params(cast),
             PassMode::Indirect {
                 attrs: _,
                 extra_attrs: None,
@@ -87,13 +159,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
-            PassMode::Cast(_) => (
-                Some(AbiParam::special(
-                    pointer_ty(tcx),
-                    ArgumentPurpose::StructReturn,
-                )),
-                vec![],
-            ),
+            PassMode::Cast(cast) => (None, cast_target_to_abi_params(cast).into_iter().collect()),
             PassMode::Indirect {
                 attrs: _,
                 extra_attrs: None,
@@ -117,6 +183,60 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     }
 }
 
+pub(super) fn to_casted_value<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    arg: CValue<'tcx>,
+    cast: CastTarget,
+) -> SmallVec<[Value; 2]> {
+    let (ptr, meta) = arg.force_stack(fx);
+    assert!(meta.is_none());
+    let mut offset = 0;
+    cast_target_to_abi_params(cast)
+        .into_iter()
+        .map(|param| {
+            let val = ptr
+                .offset_i64(fx, offset)
+                .load(fx, param.value_type, MemFlags::new());
+            offset += i64::from(param.value_type.bytes());
+            val
+        })
+        .collect()
+}
+
+pub(super) fn from_casted_value<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    block_params: &[Value],
+    layout: TyAndLayout<'tcx>,
+    cast: CastTarget,
+) -> CValue<'tcx> {
+    let abi_params = cast_target_to_abi_params(cast);
+    let size = abi_params
+        .iter()
+        .map(|param| param.value_type.bytes())
+        .sum();
+    // Stack slot size may be bigger for for example `[u8; 3]` which is packed into an `i32`.
+    assert!(u64::from(size) >= layout.size.bytes());
+    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+        kind: StackSlotKind::ExplicitSlot,
+        size,
+        offset: None,
+    });
+    let ptr = Pointer::new(fx.bcx.ins().stack_addr(pointer_ty(fx.tcx), stack_slot, 0));
+    let mut offset = 0;
+    let mut block_params_iter = block_params.into_iter().copied();
+    for param in abi_params {
+        let val = ptr.offset_i64(fx, offset).store(
+            fx,
+            block_params_iter.next().unwrap(),
+            MemFlags::new(),
+        );
+        offset += i64::from(param.value_type.bytes());
+        val
+    }
+    assert_eq!(block_params_iter.next(), None, "Leftover block param");
+    CValue::by_ref(ptr, layout)
+}
+
 /// Get a set of values to be passed as function arguments.
 pub(super) fn adjust_arg_for_abi<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
@@ -131,7 +251,8 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
             let (a, b) = arg.load_scalar_pair(fx);
             smallvec![a, b]
         }
-        PassMode::Cast(_) | PassMode::Indirect { .. } => match arg.force_stack(fx) {
+        PassMode::Cast(cast) => to_casted_value(fx, arg, cast),
+        PassMode::Indirect { .. } => match arg.force_stack(fx) {
             (ptr, None) => smallvec![ptr.get_addr(fx)],
             (ptr, Some(meta)) => smallvec![ptr.get_addr(fx), meta],
         },
@@ -142,15 +263,22 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
 /// as necessary.
 pub(super) fn cvalue_for_param<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
-    start_block: Block,
     #[cfg_attr(not(debug_assertions), allow(unused_variables))] local: Option<mir::Local>,
     #[cfg_attr(not(debug_assertions), allow(unused_variables))] local_field: Option<usize>,
     arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+    block_params_iter: &mut impl Iterator<Item = Value>,
 ) -> Option<CValue<'tcx>> {
-    let clif_types = arg_abi.get_abi_param(fx.tcx);
-    let block_params = clif_types
+    let block_params = arg_abi
+        .get_abi_param(fx.tcx)
         .into_iter()
-        .map(|abi_param| fx.bcx.append_block_param(start_block, abi_param.value_type))
+        .map(|abi_param| {
+            let block_param = block_params_iter.next().unwrap();
+            assert_eq!(
+                fx.bcx.func.dfg.value_type(block_param),
+                abi_param.value_type
+            );
+            block_param
+        })
         .collect::<SmallVec<[_; 2]>>();
 
     #[cfg(debug_assertions)]
@@ -178,8 +306,10 @@ pub(super) fn cvalue_for_param<'tcx>(
                 arg_abi.layout,
             ))
         }
-        PassMode::Cast(_)
-        | PassMode::Indirect {
+        PassMode::Cast(cast) => {
+            Some(from_casted_value(fx, &block_params, arg_abi.layout, cast))
+        }
+        PassMode::Indirect {
             attrs: _,
             extra_attrs: None,
             on_stack: _,
