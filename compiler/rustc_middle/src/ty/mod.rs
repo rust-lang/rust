@@ -675,6 +675,8 @@ pub struct CapturedPlace<'tcx> {
 }
 
 impl CapturedPlace<'tcx> {
+    /// Returns the hir-id of the root variable for the captured place.
+    /// e.g., if `a.b.c` was captured, would return the hir-id for `a`.
     pub fn get_root_variable(&self) -> hir::HirId {
         match self.place.base {
             HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,

@@ -1358,10 +1358,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn propagate_closure_used_mut_upvar(&mut self, operand: &Operand<'tcx>) {
         let propagate_closure_used_mut_place = |this: &mut Self, place: Place<'tcx>| {
-            // We have three possiblities here:
+            // We have three possibilities here:
             // a. We are modifying something through a mut-ref
             // b. We are modifying something that is local to our parent
-            // c. Current body is a nested clsoure, and we are modifying path starting from
+            // c. Current body is a nested closure, and we are modifying path starting from
             //    a Place captured by our parent closure.
 
             // Handle (c), the path being modified is exactly the path captured by our parent
