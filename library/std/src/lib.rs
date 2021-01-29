@@ -290,6 +290,7 @@
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(once_cell)]
 #![feature(auto_traits)]
+#![feature(option_result_unwrap_unchecked)]
 #![feature(or_patterns)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
