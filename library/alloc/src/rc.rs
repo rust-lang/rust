@@ -398,7 +398,7 @@ impl<T> Rc<T> {
 
         unsafe {
             let inner = init_ptr.as_ptr();
-            ptr::write(&raw mut (*inner).value, data);
+            ptr::write(ptr::addr_of_mut!((*inner).value), data);
 
             let prev_value = (*inner).strong.get();
             debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
@@ -804,7 +804,7 @@ impl<T: ?Sized> Rc<T> {
         // SAFETY: This cannot go through Deref::deref or Rc::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
         // write through the pointer after the Rc is recovered through `from_raw`.
-        unsafe { &raw const (*ptr).value }
+        unsafe { ptr::addr_of_mut!((*ptr).value) }
     }
 
     /// Constructs an `Rc<T>` from a raw pointer.
@@ -1917,7 +1917,7 @@ impl<T: ?Sized> Weak<T> {
             // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
             // The payload may be dropped at this point, and we have to maintain provenance,
             // so use raw pointer manipulation.
-            unsafe { &raw const (*ptr).value }
+            unsafe { ptr::addr_of_mut!((*ptr).value) }
         }
     }
 
