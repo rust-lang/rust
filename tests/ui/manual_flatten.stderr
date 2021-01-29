@@ -1,0 +1,51 @@
+error: Unnecessary `if let` since only the `Some` variant of the iterator element is used.
+  --> $DIR/manual_flatten.rs:5:5
+   |
+LL | /     for n in x {
+LL | |         if let Some(n) = n {
+LL | |             println!("{}", n);
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::manual-flatten` implied by `-D warnings`
+help: try: `x.into_iter().flatten()`
+  --> $DIR/manual_flatten.rs:5:14
+   |
+LL |     for n in x {
+   |              ^
+
+error: Unnecessary `if let` since only the `Ok` variant of the iterator element is used.
+  --> $DIR/manual_flatten.rs:12:5
+   |
+LL | /     for n in y.clone() {
+LL | |         if let Ok(n) = n {
+LL | |             println!("{}", n);
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: try: `y.clone().into_iter().flatten()`
+  --> $DIR/manual_flatten.rs:12:14
+   |
+LL |     for n in y.clone() {
+   |              ^^^^^^^^^
+
+error: Unnecessary `if let` since only the `Some` variant of the iterator element is used.
+  --> $DIR/manual_flatten.rs:20:5
+   |
+LL | /     for n in z {
+LL | |         if let Some(n) = n {
+LL | |             println!("{}", n);
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: try: `z.flatten()`
+  --> $DIR/manual_flatten.rs:20:14
+   |
+LL |     for n in z {
+   |              ^
+
+error: aborting due to 3 previous errors
+

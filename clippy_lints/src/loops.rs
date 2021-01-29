@@ -5,10 +5,10 @@ use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    indent_of, is_in_panic_handler, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item,
-    last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, single_segment_path, snippet,
-    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
-    span_lint_and_then, sugg, SpanlessEq,
+    indent_of, is_in_panic_handler, is_integer_const, is_no_std_crate, is_ok_ctor, is_refutable, is_some_ctor,
+    is_type_diagnostic_item, last_path_segment, match_trait_method, match_type, match_var, multispan_sugg,
+    single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
+    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -495,8 +495,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for iteration of `Option`s with
-    /// a single `if let Some()` expression inside.
+    /// **What it does:** Check for unnecessary `if let` usage in a for loop
+    /// where only the `Some` or `Ok` variant of the iterator element is used.
     ///
     /// **Why is this bad?** It is verbose and can be simplified
     /// by first calling the `flatten` method on the `Iterator`.
@@ -516,23 +516,23 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```rust
     /// let x = vec![Some(1), Some(2), Some(3)];
-    /// for n in x.iter().flatten() {
+    /// for n in x.into_iter().flatten() {
     ///     println!("{}", n);
     /// }
     /// ```
-    pub FOR_LOOPS_OVER_OPTIONS_OR_RESULTS,
+    pub MANUAL_FLATTEN,
     complexity,
     "for loops over `Option`s or `Result`s with a single expression can be simplified"
 }
 
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
+    MANUAL_FLATTEN,
     NEEDLESS_RANGE_LOOP,
     EXPLICIT_ITER_LOOP,
     EXPLICIT_INTO_ITER_LOOP,
     ITER_NEXT_LOOP,
     FOR_LOOPS_OVER_FALLIBLES,
-    FOR_LOOPS_OVER_OPTIONS_OR_RESULTS,
     WHILE_LET_LOOP,
     NEEDLESS_COLLECT,
     EXPLICIT_COUNTER_LOOP,
@@ -549,14 +549,14 @@ declare_lint_pass!(Loops => [
 impl<'tcx> LateLintPass<'tcx> for Loops {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some((pat, arg, body)) = higher::for_loop(expr) {
+        if let Some((pat, arg, body, span)) = higher::for_loop(expr) {
             // we don't want to check expanded macros
             // this check is not at the top of the function
             // since higher::for_loop expressions are marked as expansions
             if body.span.from_expansion() {
                 return;
             }
-            check_for_loop(cx, pat, arg, body, expr);
+            check_for_loop(cx, pat, arg, body, expr, span);
         }
 
         // we don't want to check expanded macros
@@ -851,6 +851,7 @@ fn check_for_loop<'tcx>(
     arg: &'tcx Expr<'_>,
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
+    span: Span,
 ) {
     let is_manual_memcpy_triggered = detect_manual_memcpy(cx, pat, arg, body, expr);
     if !is_manual_memcpy_triggered {
@@ -862,7 +863,7 @@ fn check_for_loop<'tcx>(
     check_for_mut_range_bound(cx, arg, body);
     check_for_single_element_loop(cx, pat, arg, body, expr);
     detect_same_item_push(cx, pat, arg, body, expr);
-    check_for_loop_over_options_or_results(cx, pat, arg, body, expr);
+    check_manual_flatten(cx, pat, arg, body, span);
 }
 
 // this function assumes the given expression is a `for` loop.
@@ -1986,33 +1987,61 @@ fn check_for_single_element_loop<'tcx>(
     }
 }
 
-/// Check if a for loop loops over `Option`s or `Result`s and contains only
-/// a `if let Some` or `if let Ok` expression.
-fn check_for_loop_over_options_or_results<'tcx>(
+/// Check for unnecessary `if let` usage in a for loop where only the `Some` or `Ok` variant of the
+/// iterator element is used.
+fn check_manual_flatten<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
     arg: &'tcx Expr<'_>,
     body: &'tcx Expr<'_>,
-    expr: &'tcx Expr<'_>,
+    span: Span,
 ) {
     if_chain! {
+        // Ensure the `if let` statement is the only expression in the for-loop
         if let ExprKind::Block(ref block, _) = body.kind;
         if block.stmts.is_empty();
         if let Some(inner_expr) = block.expr;
-        if let ExprKind::Match(ref _match_expr, ref _match_arms, MatchSource::IfLetDesugar{ contains_else_clause }) = inner_expr.kind;
-        if !contains_else_clause;
+        if let ExprKind::Match(
+            ref match_expr, ref match_arms, MatchSource::IfLetDesugar{ contains_else_clause: false }
+        ) = inner_expr.kind;
+        // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
+        if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
+        if let ExprKind::Path(QPath::Resolved(None, match_expr_path)) = match_expr.kind;
+        if let Res::Local(match_expr_path_id) = match_expr_path.res;
+        if pat_hir_id == match_expr_path_id;
+        // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
+        if let PatKind::TupleStruct(QPath::Resolved(None, path), _, _) = match_arms[0].pat.kind;
+        if is_some_ctor(cx, path.res) || is_ok_ctor(cx, path.res);
+        let if_let_type = if is_some_ctor(cx, path.res) {
+            "Some"
+        } else {
+            "Ok"
+        };
+        // Determine if `arg` is `Iterator` or implicitly calls `into_iter`
+        let arg_ty = cx.typeck_results().expr_ty(arg);
+        if let Some(id) = get_trait_def_id(cx, &paths::ITERATOR);
+        if let is_iterator = implements_trait(cx, arg_ty, id, &[]);
+
         then {
-            // println!("if_let_expr:\n{:?}", snippet(cx, if_let_expr.span, ".."));
-            // println!("pat is:\n {:?}", snippet(cx, pat.span, ".."));
-            // println!("arg is:\n {:?}", snippet(cx, arg.span, ".."));
-            // println!("body is:\n {:?}", snippet(cx, body.span, ".."));
-            // println!("arg kind is: {:?}", arg.kind);
-            // println!("expr is:\n {:?}", snippet(cx, expr.span, ".."));
-            // todo!();
+            // Prepare the error message
+            let msg = format!("Unnecessary `if let` since only the `{}` variant of the iterator element is used.", if_let_type);
+
+            // Prepare the help message
             let arg_snippet = snippet(cx, arg.span, "..");
-            let msg = "looping over `Option`s or `Result`s with an `if let` expression.";
-            let hint = format!("try turn {} into an `Iterator` and use `flatten`: `{}.iter().flatten()`", arg_snippet, arg_snippet);
-            span_lint_and_help(cx, FOR_LOOPS_OVER_OPTIONS_OR_RESULTS, expr.span, msg, None, &hint);
+            let hint = if is_iterator {
+                format!("try: `{}.flatten()`", arg_snippet)
+            } else {
+                format!("try: `{}.into_iter().flatten()`", arg_snippet)
+            };
+
+            span_lint_and_help(
+                cx,
+                MANUAL_FLATTEN,
+                span,
+                &msg,
+                Some(arg.span),
+                &hint,
+            );
         }
     }
 }

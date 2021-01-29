@@ -37,7 +37,7 @@ use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
@@ -50,7 +50,7 @@ use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, layout::IntegerExt, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -1698,6 +1698,30 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
             false
         }
     }
+}
+
+/// Check if the resolution of a given path is an `Ok` variant of `Result`.
+pub fn is_ok_ctor(cx: &LateContext<'_>, res: Res) -> bool {
+    if let Some(ok_id) = cx.tcx.lang_items().result_ok_variant() {
+        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
+            if let Some(variant_id) = cx.tcx.parent(id) {
+                return variant_id == ok_id;
+            }
+        }
+    }
+    false
+}
+
+/// Check if the resolution of a given path is a `Some` variant of `Option`.
+pub fn is_some_ctor(cx: &LateContext<'_>, res: Res) -> bool {
+    if let Some(some_id) = cx.tcx.lang_items().option_some_variant() {
+        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
+            if let Some(variant_id) = cx.tcx.parent(id) {
+                return variant_id == some_id;
+            }
+        }
+    }
+    false
 }
 
 #[cfg(test)]
