@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use crate::{
-    mbe_expander::{Binding, Bindings, Fragment},
+    expander::{Binding, Bindings, Fragment},
     parser::{Op, RepeatKind, Separator},
     subtree_source::SubtreeTokenSource,
     tt_iter::TtIter,

@@ -5,7 +5,7 @@ use syntax::SmolStr;
 
 use super::ExpandResult;
 use crate::{
-    mbe_expander::{Binding, Bindings, Fragment},
+    expander::{Binding, Bindings, Fragment},
     parser::{Op, RepeatKind, Separator},
     ExpandError, MetaTemplate,
 };

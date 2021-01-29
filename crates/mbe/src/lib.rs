@@ -4,7 +4,7 @@
 //! `TokenTree`s as well!
 
 mod parser;
-mod mbe_expander;
+mod expander;
 mod syntax_bridge;
 mod tt_iter;
 mod subtree_source;
@@ -209,7 +209,7 @@ impl MacroRules {
         // apply shift
         let mut tt = tt.clone();
         self.shift.shift_all(&mut tt);
-        mbe_expander::expand_rules(&self.rules, &tt)
+        expander::expand_rules(&self.rules, &tt)
     }
 
     pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
@@ -260,7 +260,7 @@ impl MacroDef {
         // apply shift
         let mut tt = tt.clone();
         self.shift.shift_all(&mut tt);
-        mbe_expander::expand_rules(&self.rules, &tt)
+        expander::expand_rules(&self.rules, &tt)
     }
 
     pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
