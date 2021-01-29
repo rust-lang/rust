@@ -68,7 +68,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_generics(self, g)
     }
-    fn visit_fn(&mut self, fk: FnKind<'_>, s: Span, _: NodeId) {
+    fn visit_fn(&mut self, fk: visit::FnKind<'_>, s: Span, _: NodeId) {
         self.count += 1;
         walk_fn(self, fk, s)
     }

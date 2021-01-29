@@ -527,12 +527,12 @@ impl<'a> TraitDef<'a> {
                     tokens: None,
                 },
                 attrs: Vec::new(),
-                kind: ast::AssocItemKind::TyAlias(
+                kind: ast::AssocItemKind::TyAlias(box ast::TyAliasKind(
                     ast::Defaultness::Final,
                     Generics::default(),
                     Vec::new(),
                     Some(type_def.to_ty(cx, self.span, type_ident, generics)),
-                ),
+                )),
                 tokens: None,
             })
         });
@@ -687,7 +687,7 @@ impl<'a> TraitDef<'a> {
             self.span,
             Ident::invalid(),
             a,
-            ast::ItemKind::Impl {
+            ast::ItemKind::Impl(box ast::ImplKind {
                 unsafety,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
@@ -696,7 +696,7 @@ impl<'a> TraitDef<'a> {
                 of_trait: opt_trait_ref,
                 self_ty: self_type,
                 items: methods.into_iter().chain(associated_types).collect(),
-            },
+            }),
         )
     }
 
@@ -929,7 +929,7 @@ impl<'a> MethodDef<'a> {
                 tokens: None,
             },
             ident: method_ident,
-            kind: ast::AssocItemKind::Fn(def, sig, fn_generics, Some(body_block)),
+            kind: ast::AssocItemKind::Fn(box ast::FnKind(def, sig, fn_generics, Some(body_block))),
             tokens: None,
         })
     }

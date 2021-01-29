@@ -912,7 +912,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_ty(ty);
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
-        ItemKind::Fn(_, sig, generics, body) => {
+        ItemKind::Fn(box FnKind(_, sig, generics, body)) => {
             visit_fn_sig(sig, vis);
             vis.visit_generics(generics);
             visit_opt(body, |body| vis.visit_block(body));
@@ -920,7 +920,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         ItemKind::Mod(m) => vis.visit_mod(m),
         ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
         ItemKind::GlobalAsm(_ga) => {}
-        ItemKind::TyAlias(_, generics, bounds, ty) => {
+        ItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             vis.visit_generics(generics);
             visit_bounds(bounds, vis);
             visit_opt(ty, |ty| vis.visit_ty(ty));
@@ -933,7 +933,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_variant_data(variant_data);
             vis.visit_generics(generics);
         }
-        ItemKind::Impl {
+        ItemKind::Impl(box ImplKind {
             unsafety: _,
             polarity: _,
             defaultness: _,
@@ -942,13 +942,13 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             of_trait,
             self_ty,
             items,
-        } => {
+        }) => {
             vis.visit_generics(generics);
             visit_opt(of_trait, |trait_ref| vis.visit_trait_ref(trait_ref));
             vis.visit_ty(self_ty);
             items.flat_map_in_place(|item| vis.flat_map_impl_item(item));
         }
-        ItemKind::Trait(_is_auto, _unsafety, generics, bounds, items) => {
+        ItemKind::Trait(box TraitKind(.., generics, bounds, items)) => {
             vis.visit_generics(generics);
             visit_bounds(bounds, vis);
             items.flat_map_in_place(|item| vis.flat_map_trait_item(item));
@@ -976,12 +976,12 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
-        AssocItemKind::Fn(_, sig, generics, body) => {
+        AssocItemKind::Fn(box FnKind(_, sig, generics, body)) => {
             visitor.visit_generics(generics);
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        AssocItemKind::TyAlias(_, generics, bounds, ty) => {
+        AssocItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             visitor.visit_generics(generics);
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));
@@ -1066,12 +1066,12 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
-        ForeignItemKind::Fn(_, sig, generics, body) => {
+        ForeignItemKind::Fn(box FnKind(_, sig, generics, body)) => {
             visitor.visit_generics(generics);
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        ForeignItemKind::TyAlias(_, generics, bounds, ty) => {
+        ForeignItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             visitor.visit_generics(generics);
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));

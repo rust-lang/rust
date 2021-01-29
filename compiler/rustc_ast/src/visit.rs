@@ -292,7 +292,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_expr, expr);
         }
-        ItemKind::Fn(_, ref sig, ref generics, ref body) => {
+        ItemKind::Fn(box FnKind(_, ref sig, ref generics, ref body)) => {
             visitor.visit_generics(generics);
             let kind = FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, body.as_deref());
             visitor.visit_fn(kind, item.span, item.id)
@@ -302,7 +302,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
         ItemKind::GlobalAsm(ref ga) => visitor.visit_global_asm(ga),
-        ItemKind::TyAlias(_, ref generics, ref bounds, ref ty) => {
+        ItemKind::TyAlias(box TyAliasKind(_, ref generics, ref bounds, ref ty)) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, ty);
@@ -311,7 +311,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_generics(generics);
             visitor.visit_enum_def(enum_definition, generics, item.id, item.span)
         }
-        ItemKind::Impl {
+        ItemKind::Impl(box ImplKind {
             unsafety: _,
             polarity: _,
             defaultness: _,
@@ -320,7 +320,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             ref of_trait,
             ref self_ty,
             ref items,
-        } => {
+        }) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_trait_ref, of_trait);
             visitor.visit_ty(self_ty);
@@ -331,7 +331,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_generics(generics);
             visitor.visit_variant_data(struct_definition);
         }
-        ItemKind::Trait(.., ref generics, ref bounds, ref items) => {
+        ItemKind::Trait(box TraitKind(.., ref generics, ref bounds, ref items)) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Trait);
@@ -543,12 +543,12 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignI
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
-        ForeignItemKind::Fn(_, sig, generics, body) => {
+        ForeignItemKind::Fn(box FnKind(_, sig, generics, body)) => {
             visitor.visit_generics(generics);
             let kind = FnKind::Fn(FnCtxt::Foreign, ident, sig, vis, body.as_deref());
             visitor.visit_fn(kind, span, id);
         }
-        ForeignItemKind::TyAlias(_, generics, bounds, ty) => {
+        ForeignItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, ty);
@@ -653,12 +653,12 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
-        AssocItemKind::Fn(_, sig, generics, body) => {
+        AssocItemKind::Fn(box FnKind(_, sig, generics, body)) => {
             visitor.visit_generics(generics);
             let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, body.as_deref());
             visitor.visit_fn(kind, span, id);
         }
-        AssocItemKind::TyAlias(_, generics, bounds, ty) => {
+        AssocItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, ty);

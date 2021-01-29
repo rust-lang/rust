@@ -30,6 +30,7 @@
 #![feature(array_windows)]
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
+#![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(iter_order_by)]
 #![feature(never_type)]
