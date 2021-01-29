@@ -9,6 +9,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, List, TyCtxt, layout::TyAndLayout};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_target::abi::{LayoutOf, Size, FieldsShape, Variants};
+use rustc_target::spec::abi::Abi;
 
 use rand::RngCore;
 
@@ -551,6 +552,15 @@ pub fn check_arg_count<'a, 'tcx, const N: usize>(args: &'a [OpTy<'tcx, Tag>]) ->
         return Ok(ops);
     }
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
+}
+
+/// Check that the ABI is what we expect.
+pub fn check_abi<'a>(abi: Abi, exp_abi: Abi) -> InterpResult<'a, ()> {
+    if abi == exp_abi {
+        Ok(())
+    } else {
+        throw_ub_format!("calling a function with ABI {:?} using caller ABI {:?}", exp_abi, abi)
+    }
 }
 
 pub fn isolation_error(name: &str) -> InterpResult<'static> {

@@ -1,9 +1,10 @@
 use rustc_middle::mir;
+use rustc_target::spec::abi::Abi;
 
 use log::trace;
 
 use crate::*;
-use helpers::check_arg_count;
+use helpers::{check_abi, check_arg_count};
 use shims::windows::sync::EvalContextExt as _;
 
 #[derive(Debug, Copy, Clone)]
@@ -38,12 +39,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn call_dlsym(
         &mut self,
         dlsym: Dlsym,
+        abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let (dest, ret) = ret.expect("we don't support any diverging dlsym");
         assert!(this.tcx.sess.target.os == "windows");
+
+        check_abi(abi, Abi::System)?;
 
         match dlsym {
             Dlsym::AcquireSRWLockExclusive => {

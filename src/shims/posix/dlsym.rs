@@ -1,6 +1,8 @@
 use rustc_middle::mir;
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
+use helpers::check_abi;
 use shims::posix::linux::dlsym as linux;
 use shims::posix::macos::dlsym as macos;
 
@@ -27,10 +29,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn call_dlsym(
         &mut self,
         dlsym: Dlsym,
+        abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        check_abi(abi, Abi::C)?;
         match dlsym {
             Dlsym::Linux(dlsym) => linux::EvalContextExt::call_dlsym(this, dlsym, args, ret),
             Dlsym::MacOs(dlsym) => macos::EvalContextExt::call_dlsym(this, dlsym, args, ret),

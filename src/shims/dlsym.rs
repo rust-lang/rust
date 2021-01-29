@@ -1,4 +1,5 @@
 use rustc_middle::mir;
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use shims::posix::dlsym as posix;
@@ -29,13 +30,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn call_dlsym(
         &mut self,
         dlsym: Dlsym,
+        abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         match dlsym {
-            Dlsym::Posix(dlsym) => posix::EvalContextExt::call_dlsym(this, dlsym, args, ret),
-            Dlsym::Windows(dlsym) => windows::EvalContextExt::call_dlsym(this, dlsym, args, ret),
+            Dlsym::Posix(dlsym) => posix::EvalContextExt::call_dlsym(this, dlsym, abi, args, ret),
+            Dlsym::Windows(dlsym) => windows::EvalContextExt::call_dlsym(this, dlsym, abi, args, ret),
         }
     }
 }

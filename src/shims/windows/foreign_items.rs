@@ -2,9 +2,10 @@ use std::iter;
 
 use rustc_middle::mir;
 use rustc_target::abi::Size;
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use helpers::check_arg_count;
+use helpers::{check_abi, check_arg_count};
 use shims::windows::sync::EvalContextExt as _;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -12,11 +13,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn emulate_foreign_item_by_name(
         &mut self,
         link_name: &str,
+        abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
         _ret: mir::BasicBlock,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
+
+        check_abi(abi, Abi::System)?;
 
         // Windows API stubs.
         // HANDLE = isize

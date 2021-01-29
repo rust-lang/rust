@@ -2,9 +2,10 @@ use log::trace;
 
 use rustc_middle::mir;
 use rustc_target::abi::{Align, LayoutOf, Size};
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use helpers::check_arg_count;
+use helpers::{check_abi, check_arg_count};
 use shims::posix::fs::EvalContextExt as _;
 use shims::posix::sync::EvalContextExt as _;
 use shims::posix::thread::EvalContextExt as _;
@@ -14,11 +15,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn emulate_foreign_item_by_name(
         &mut self,
         link_name: &str,
+        abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
         ret: mir::BasicBlock,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
+
+        check_abi(abi, Abi::C)?;
 
         match link_name {
             // Environment related shims
