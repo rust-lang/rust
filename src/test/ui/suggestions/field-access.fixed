@@ -12,10 +12,10 @@ enum B {
 
 fn main() {
     let a = A { b: B::Fst };
-    if let B::Fst = a {};
+    if let B::Fst = a.b {};
     //~^ ERROR mismatched types [E0308]
     // note: you might have meant to use field `b` of type `B`
-    match a {
+    match a.b {
         B::Fst => (),
         B::Snd => (),
     }
