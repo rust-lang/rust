@@ -184,10 +184,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let origin = if self.tcx.features().capture_disjoint_fields {
                     origin
                 } else {
-                    // FIXME(project-rfc-2229#26): Once rust-lang#80092 is merged, we should restrict the
-                    // precision of origin as well. Otherwise, this will cause issues when project-rfc-2229#26
-                    // is fixed as we might see Index projections in the origin, which we can't print because
-                    // we don't store enough information.
+                    // FIXME(project-rfc-2229#31): Once the changes to support reborrowing are
+                    //                             made, make sure we are selecting and restricting
+                    //                             the origin correctly.
                     (origin.0, Place { projections: vec![], ..origin.1 })
                 };
 
