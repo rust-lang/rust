@@ -6,9 +6,9 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  |
    |                  inbounds test failed: pointer must be in-bounds at offset $TWO_WORDS, but is outside bounds of alloc2 which has size $WORD
    |                  inside `ptr::const_ptr::<impl *const usize>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |                  inside `_` at $DIR/ptr_comparisons.rs:62:34
+   |                  inside `_` at $DIR/ptr_comparisons.rs:61:34
    | 
-  ::: $DIR/ptr_comparisons.rs:62:1
+  ::: $DIR/ptr_comparisons.rs:61:1
    |
 LL | const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
    | -------------------------------------------------------------------
@@ -16,17 +16,17 @@ LL | const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
    = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:67:35
+  --> $DIR/ptr_comparisons.rs:66:33
    |
 LL | / const _: *const u8 =
 LL | |
-LL | |     unsafe { std::ptr::raw_const!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
-   | |___________________________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^___-
-   |                                     |
-   |                                     memory access failed: pointer must be in-bounds at offset 1000, but is outside bounds of alloc2 which has size $WORD
+LL | |     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
+   | |_________________________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^___-
+   |                                   |
+   |                                   memory access failed: pointer must be in-bounds at offset 1000, but is outside bounds of alloc2 which has size $WORD
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:71:27
+  --> $DIR/ptr_comparisons.rs:70:27
    |
 LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -34,7 +34,7 @@ LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) +
    |                           "pointer-to-integer cast" needs an rfc before being allowed inside constants
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:76:27
+  --> $DIR/ptr_comparisons.rs:75:27
    |
 LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
