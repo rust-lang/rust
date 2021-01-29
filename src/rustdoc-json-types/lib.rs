@@ -294,6 +294,7 @@ pub struct Method {
     pub decl: FnDecl,
     pub generics: Generics,
     pub header: String,
+    pub abi: String,
     pub has_body: bool,
 }
 
