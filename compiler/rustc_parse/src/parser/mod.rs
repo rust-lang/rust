@@ -1254,15 +1254,7 @@ impl<'a> Parser<'a> {
         f: impl FnOnce(&mut Self) -> PResult<'a, (R, TrailingToken)>,
     ) -> PResult<'a, R> {
         let start_token = (self.token.clone(), self.token_spacing);
-        let cursor_snapshot = TokenCursor {
-            frame: self.token_cursor.frame.clone(),
-            // We only ever capture tokens within our current frame,
-            // so we can just use an empty frame stack
-            stack: vec![],
-            desugar_doc_comments: self.token_cursor.desugar_doc_comments,
-            num_next_calls: self.token_cursor.num_next_calls,
-            append_unglued_token: self.token_cursor.append_unglued_token.clone(),
-        };
+        let cursor_snapshot = self.token_cursor.clone();
 
         let (mut ret, trailing_token) = f(self)?;
 
