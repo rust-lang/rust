@@ -13,13 +13,13 @@ LL |         Err("")?;
            and 2 others
    = note: required by `from`
 
-error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as Try>::Ok == &str`
+error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Ok == &str`
   --> $DIR/try-block-bad-type.rs:12:9
    |
 LL |         ""
    |         ^^ expected `i32`, found `&str`
 
-error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as Try>::Ok == ()`
+error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Ok == ()`
   --> $DIR/try-block-bad-type.rs:15:39
    |
 LL |     let res: Result<i32, i32> = try { };
