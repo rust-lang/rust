@@ -1231,3 +1231,38 @@ pub fn promote_candidates<'tcx>(
 
     promotions
 }
+
+/// This function returns `true` if the function being called in the array
+/// repeat expression is a `const` function.
+crate fn is_const_fn_in_array_repeat_expression<'tcx>(
+    ccx: &ConstCx<'_, 'tcx>,
+    place: &Place<'tcx>,
+    body: &Body<'tcx>,
+) -> bool {
+    match place.as_local() {
+        // rule out cases such as: `let my_var = some_fn(); [my_var; N]`
+        Some(local) if body.local_decls[local].is_user_variable() => return false,
+        None => return false,
+        _ => {}
+    }
+
+    for block in body.basic_blocks() {
+        if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
+            &block.terminator
+        {
+            if let Operand::Constant(box Constant { literal: ty::Const { ty, .. }, .. }) = func {
+                if let ty::FnDef(def_id, _) = *ty.kind() {
+                    if let Some((destination_place, _)) = destination {
+                        if destination_place == place {
+                            if is_const_fn(ccx.tcx, def_id) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    false
+}

@@ -7,6 +7,7 @@ LL |     let _: [Option<Bar>; 2] = [no_copy(); 2];
    = help: the following implementations were found:
              <Option<T> as Copy>
    = note: the `Copy` trait is required because the repeated element will be copied
+   = help: create an inline `const` block, see PR #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
 
 error: aborting due to previous error
 

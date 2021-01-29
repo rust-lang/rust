@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/const-fn-in-vec.rs:4:32
+   |
+LL |     let strings: [String; 5] = [String::new(); 5];
+   |                                ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+   = note: the `Copy` trait is required because the repeated element will be copied
+   = help: create an inline `const` block, see PR #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
