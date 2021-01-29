@@ -4,5 +4,5 @@ fn main() {
     3 * (); //~ ERROR cannot multiply `{integer}` by `()`
     4 / ""; //~ ERROR cannot divide `{integer}` by `&str`
     5 < String::new(); //~ ERROR can't compare `{integer}` with `String`
-    6 == Ok(1); //~ ERROR can't compare `{integer}` with `std::result::Result<{integer}, _>`
+    6 == Ok(1); //~ ERROR can't compare `{integer}` with `Result<{integer}, _>`
 }
