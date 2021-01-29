@@ -2143,6 +2143,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 
             match child.res {
                 def::Res::Def(DefKind::AssocTy, _) => {}
+                def::Res::Def(DefKind::TyAlias, _) => {}
                 def::Res::Def(defkind, def_id) => {
                     if let Some(ns) = defkind.ns() {
                         collect_fn(&child.ident, ns, def_id);

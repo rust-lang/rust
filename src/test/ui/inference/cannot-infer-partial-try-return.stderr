@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for the closure `fn() -> std::result::Result<(), QualifiedError<_>>`
+error[E0282]: type annotations needed for the closure `fn() -> Result<(), QualifiedError<_>>`
   --> $DIR/cannot-infer-partial-try-return.rs:19:9
    |
 LL |         infallible()?;
@@ -7,8 +7,8 @@ LL |         infallible()?;
    = note: `?` implicitly converts the error value into `QualifiedError<_>` using its implementation of `From<Infallible>`
 help: give this closure an explicit return type without `_` placeholders
    |
-LL |     let x = || -> std::result::Result<(), QualifiedError<_>> {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let x = || -> Result<(), QualifiedError<_>> {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
