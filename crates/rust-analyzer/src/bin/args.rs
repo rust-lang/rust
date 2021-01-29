@@ -50,6 +50,8 @@ FLAGS:
     -vv, --spammy
     -q,  --quiet      Set verbosity
 
+    --print-config-schema
+                      Dump a LSP config JSON schema
     --log-file <PATH> Log to the specified file instead of stderr
     --no-log-buffering
                       Flush log records to the file immediately
