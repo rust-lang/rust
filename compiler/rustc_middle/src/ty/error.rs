@@ -264,7 +264,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 }
             }
             ty::Closure(..) => "closure".into(),
-            ty::Generator(..) => "generator".into(),
+            ty::Generator(def_id, ..) => tcx.generator_kind(def_id).unwrap().descr().into(),
             ty::GeneratorWitness(..) => "generator witness".into(),
             ty::Tuple(..) => "tuple".into(),
             ty::Infer(ty::TyVar(_)) => "inferred type".into(),
@@ -282,7 +282,7 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
-    pub fn prefix_string(&self) -> Cow<'static, str> {
+    pub fn prefix_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match *self.kind() {
             ty::Infer(_)
             | ty::Error(_)
@@ -308,7 +308,7 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
-            ty::Generator(..) => "generator".into(),
+            ty::Generator(def_id, ..) => tcx.generator_kind(def_id).unwrap().descr().into(),
             ty::GeneratorWitness(..) => "generator witness".into(),
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),

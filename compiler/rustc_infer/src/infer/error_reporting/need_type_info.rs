@@ -383,7 +383,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 InferenceDiagnosticsData {
                     name: s,
                     span: None,
-                    kind: UnderspecifiedArgKind::Type { prefix: ty.prefix_string() },
+                    kind: UnderspecifiedArgKind::Type { prefix: ty.prefix_string(self.tcx) },
                     parent: None,
                 }
             }

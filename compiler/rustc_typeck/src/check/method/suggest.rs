@@ -390,7 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "no {} named `{}` found for {} `{}` in the current scope",
                             item_kind,
                             item_name,
-                            actual.prefix_string(),
+                            actual.prefix_string(self.tcx),
                             ty_str,
                         );
                         if let Mode::MethodCall = mode {
@@ -728,7 +728,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .map(|(_, path)| path)
                             .collect::<Vec<_>>()
                             .join("\n");
-                        let actual_prefix = actual.prefix_string();
+                        let actual_prefix = actual.prefix_string(self.tcx);
                         err.set_primary_message(&format!(
                             "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, but its trait bounds were not satisfied"
                         ));
