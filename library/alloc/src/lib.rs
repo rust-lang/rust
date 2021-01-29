@@ -82,6 +82,7 @@
 #![feature(array_windows)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
+#![feature(async_stream)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(cfg_sanitize)]
