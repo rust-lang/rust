@@ -80,32 +80,34 @@ impl LateLintPass<'_> for CargoCommonMetadata {
         let metadata = unwrap_cargo_metadata!(cx, CARGO_COMMON_METADATA, false);
 
         for package in metadata.packages {
-            if is_empty_vec(&package.authors) {
-                missing_warning(cx, &package, "package.authors");
-            }
+            if package.publish.as_ref().filter(|publish| publish.is_empty()).is_none() {
+                if is_empty_vec(&package.authors) {
+                    missing_warning(cx, &package, "package.authors");
+                }
 
-            if is_empty_str(&package.description) {
-                missing_warning(cx, &package, "package.description");
-            }
+                if is_empty_str(&package.description) {
+                    missing_warning(cx, &package, "package.description");
+                }
 
-            if is_empty_str(&package.license) && is_empty_path(&package.license_file) {
-                missing_warning(cx, &package, "either package.license or package.license_file");
-            }
+                if is_empty_str(&package.license) && is_empty_path(&package.license_file) {
+                    missing_warning(cx, &package, "either package.license or package.license_file");
+                }
 
-            if is_empty_str(&package.repository) {
-                missing_warning(cx, &package, "package.repository");
-            }
+                if is_empty_str(&package.repository) {
+                    missing_warning(cx, &package, "package.repository");
+                }
 
-            if is_empty_path(&package.readme) {
-                missing_warning(cx, &package, "package.readme");
-            }
+                if is_empty_path(&package.readme) {
+                    missing_warning(cx, &package, "package.readme");
+                }
 
-            if is_empty_vec(&package.keywords) {
-                missing_warning(cx, &package, "package.keywords");
-            }
+                if is_empty_vec(&package.keywords) {
+                    missing_warning(cx, &package, "package.keywords");
+                }
 
-            if is_empty_vec(&package.categories) {
-                missing_warning(cx, &package, "package.categories");
+                if is_empty_vec(&package.categories) {
+                    missing_warning(cx, &package, "package.categories");
+                }
             }
         }
     }
