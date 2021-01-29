@@ -588,12 +588,3 @@ pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, i
     debug_assert!(source.len() == 0); // We should have consumed the source buffer.
     uint
 }
-
-/// Computes the unsigned absolute value without wrapping or panicking.
-#[inline]
-pub fn uabs(value: i64) -> u64 {
-    // The only tricky part here is if value == i64::MIN. In that case,
-    // wrapping_abs() returns i64::MIN == -2^63. Casting this value to a u64
-    // gives 2^63, the correct value.
-    value.wrapping_abs() as u64
-}
