@@ -86,13 +86,6 @@ fn expand_subtree(
     let start_elements = arena.len();
     let mut err = None;
     for op in template.iter() {
-        let op = match op {
-            Ok(op) => op,
-            Err(e) => {
-                err = Some(e.clone());
-                break;
-            }
-        };
         match op {
             Op::Leaf(tt) => arena.push(tt.clone().into()),
             Op::Subtree(tt) => {

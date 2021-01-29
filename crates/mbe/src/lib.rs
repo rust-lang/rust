@@ -24,7 +24,9 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
+    UnexpectedToken(String),
     Expected(String),
+    InvalidRepeat,
     RepetitionEmptyTokenTree,
 }
 
@@ -34,7 +36,6 @@ pub enum ExpandError {
     UnexpectedToken,
     BindingError(String),
     ConversionError,
-    InvalidRepeat,
     ProcMacroError(tt::ExpansionError),
     UnresolvedProcMacro,
     Other(String),
@@ -53,7 +54,6 @@ impl fmt::Display for ExpandError {
             ExpandError::UnexpectedToken => f.write_str("unexpected token in input"),
             ExpandError::BindingError(e) => f.write_str(e),
             ExpandError::ConversionError => f.write_str("could not convert tokens"),
-            ExpandError::InvalidRepeat => f.write_str("invalid repeat expression"),
             ExpandError::ProcMacroError(e) => e.fmt(f),
             ExpandError::UnresolvedProcMacro => f.write_str("unresolved proc macro"),
             ExpandError::Other(e) => f.write_str(e),
@@ -94,11 +94,11 @@ struct Rule {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct MetaTemplate {
     delimiter: Option<Delimiter>,
-    tokens: Vec<Result<Op, ExpandError>>,
+    tokens: Vec<Op>,
 }
 
 impl<'a> MetaTemplate {
-    fn iter(&self) -> impl Iterator<Item = &Result<Op, ExpandError>> {
+    fn iter(&self) -> impl Iterator<Item = &Op> {
         self.tokens.iter()
     }
 
@@ -288,25 +288,15 @@ impl Rule {
             .expect_subtree()
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?;
 
-        let lhs = MetaTemplate { tokens: parse_pattern(&lhs), delimiter: None };
-        let rhs = MetaTemplate { tokens: parse_template(&rhs), delimiter: None };
+        let lhs = MetaTemplate { tokens: parse_pattern(&lhs)?, delimiter: None };
+        let rhs = MetaTemplate { tokens: parse_template(&rhs)?, delimiter: None };
 
         Ok(crate::Rule { lhs, rhs })
     }
 }
 
-fn to_parse_error(e: &ExpandError) -> ParseError {
-    let msg = match e {
-        ExpandError::InvalidRepeat => "invalid repeat".to_string(),
-        _ => "invalid macro definition".to_string(),
-    };
-    ParseError::Expected(msg)
-}
-
 fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
     for op in pattern.iter() {
-        let op = op.as_ref().map_err(|e| to_parse_error(&e))?;
-
         match op {
             Op::Subtree(subtree) => validate(&subtree)?,
             Op::Repeat { subtree, separator, .. } => {
@@ -315,20 +305,21 @@ fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
 
                 if separator.is_none() {
                     if subtree.iter().all(|child_op| {
-                        match child_op.as_ref().map_err(to_parse_error) {
-                            Ok(Op::Var { kind, .. }) => {
+                        match child_op {
+                            Op::Var { kind, .. } => {
                                 // vis is optional
                                 if kind.as_ref().map_or(false, |it| it == "vis") {
                                     return true;
                                 }
                             }
-                            Ok(Op::Repeat { kind, .. }) => {
+                            Op::Repeat { kind, .. } => {
                                 return matches!(
                                     kind,
                                     parser::RepeatKind::ZeroOrMore | parser::RepeatKind::ZeroOrOne
                                 )
                             }
-                            _ => {}
+                            Op::Leaf(_) => {}
+                            Op::Subtree(_) => {}
                         }
                         false
                     }) {

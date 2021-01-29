@@ -4,7 +4,7 @@
 use smallvec::SmallVec;
 use syntax::SmolStr;
 
-use crate::{tt_iter::TtIter, ExpandError, MetaTemplate};
+use crate::{tt_iter::TtIter, MetaTemplate, ParseError};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Op {
@@ -46,12 +46,12 @@ impl PartialEq for Separator {
     }
 }
 
-pub(crate) fn parse_template(template: &tt::Subtree) -> Vec<Result<Op, ExpandError>> {
-    parse_inner(&template, Mode::Template)
+pub(crate) fn parse_template(template: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
+    parse_inner(&template, Mode::Template).into_iter().collect()
 }
 
-pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Vec<Result<Op, ExpandError>> {
-    parse_inner(&pattern, Mode::Pattern)
+pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
+    parse_inner(&pattern, Mode::Pattern).into_iter().collect()
 }
 
 #[derive(Clone, Copy)]
@@ -60,7 +60,7 @@ enum Mode {
     Template,
 }
 
-fn parse_inner(tt: &tt::Subtree, mode: Mode) -> Vec<Result<Op, ExpandError>> {
+fn parse_inner(tt: &tt::Subtree, mode: Mode) -> Vec<Result<Op, ParseError>> {
     let mut src = TtIter::new(&tt);
     std::iter::from_fn(move || {
         let first = src.next()?;
@@ -71,7 +71,7 @@ fn parse_inner(tt: &tt::Subtree, mode: Mode) -> Vec<Result<Op, ExpandError>> {
 
 macro_rules! err {
     ($($tt:tt)*) => {
-        ExpandError::UnexpectedToken
+        ParseError::UnexpectedToken(($($tt)*).to_string())
     };
 }
 
@@ -81,7 +81,7 @@ macro_rules! bail {
     };
 }
 
-fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Result<Op, ExpandError> {
+fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Result<Op, ParseError> {
     let res = match first {
         tt::TokenTree::Leaf(leaf @ tt::Leaf::Punct(tt::Punct { char: '$', .. })) => {
             // Note that the '$' itself is a valid token inside macro_rules.
@@ -93,7 +93,9 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
                 tt::TokenTree::Subtree(subtree) => {
                     let (separator, kind) = parse_repeat(src)?;
                     let delimiter = subtree.delimiter;
-                    let tokens = parse_inner(&subtree, mode);
+                    let tokens = parse_inner(&subtree, mode)
+                        .into_iter()
+                        .collect::<Result<Vec<Op>, ParseError>>()?;
                     let subtree = MetaTemplate { tokens, delimiter };
                     Op::Repeat { subtree, separator, kind }
                 }
@@ -102,7 +104,7 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
                         static UNDERSCORE: SmolStr = SmolStr::new_inline("_");
 
                         if punct.char != '_' {
-                            return Err(ExpandError::UnexpectedToken);
+                            return Err(ParseError::Expected("_".to_string()));
                         }
                         let name = UNDERSCORE.clone();
                         let kind = eat_fragment_kind(src, mode)?;
@@ -135,7 +137,9 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
         tt::TokenTree::Leaf(tt) => Op::Leaf(tt.clone()),
         tt::TokenTree::Subtree(subtree) => {
             let delimiter = subtree.delimiter;
-            let tokens = parse_inner(&subtree, mode);
+            let tokens =
+                parse_inner(&subtree, mode).into_iter().collect::<Result<Vec<Op>, ParseError>>()?;
+
             let subtree = MetaTemplate { tokens, delimiter };
             Op::Subtree(subtree)
         }
@@ -143,7 +147,7 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
     Ok(res)
 }
 
-fn eat_fragment_kind<'a>(src: &mut TtIter<'a>, mode: Mode) -> Result<Option<SmolStr>, ExpandError> {
+fn eat_fragment_kind<'a>(src: &mut TtIter<'a>, mode: Mode) -> Result<Option<SmolStr>, ParseError> {
     if let Mode::Pattern = mode {
         src.expect_char(':').map_err(|()| err!("bad fragment specifier 1"))?;
         let ident = src.expect_ident().map_err(|()| err!("bad fragment specifier 1"))?;
@@ -156,12 +160,12 @@ fn is_boolean_literal(lit: &tt::Literal) -> bool {
     matches!(lit.text.as_str(), "true" | "false")
 }
 
-fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), ExpandError> {
+fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), ParseError> {
     let mut separator = Separator::Puncts(SmallVec::new());
     for tt in src {
         let tt = match tt {
             tt::TokenTree::Leaf(leaf) => leaf,
-            tt::TokenTree::Subtree(_) => return Err(ExpandError::InvalidRepeat),
+            tt::TokenTree::Subtree(_) => return Err(ParseError::InvalidRepeat),
         };
         let has_sep = match &separator {
             Separator::Puncts(puncts) => !puncts.is_empty(),
@@ -169,7 +173,7 @@ fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), Exp
         };
         match tt {
             tt::Leaf::Ident(_) | tt::Leaf::Literal(_) if has_sep => {
-                return Err(ExpandError::InvalidRepeat)
+                return Err(ParseError::InvalidRepeat)
             }
             tt::Leaf::Ident(ident) => separator = Separator::Ident(ident.clone()),
             tt::Leaf::Literal(lit) => separator = Separator::Literal(lit.clone()),
@@ -182,11 +186,11 @@ fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), Exp
                         match &mut separator {
                             Separator::Puncts(puncts) => {
                                 if puncts.len() == 3 {
-                                    return Err(ExpandError::InvalidRepeat);
+                                    return Err(ParseError::InvalidRepeat);
                                 }
                                 puncts.push(punct.clone())
                             }
-                            _ => return Err(ExpandError::InvalidRepeat),
+                            _ => return Err(ParseError::InvalidRepeat),
                         }
                         continue;
                     }
@@ -196,5 +200,5 @@ fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), Exp
             }
         }
     }
-    Err(ExpandError::InvalidRepeat)
+    Err(ParseError::InvalidRepeat)
 }

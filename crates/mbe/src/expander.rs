@@ -16,13 +16,8 @@ pub(crate) fn expand_rules(
 ) -> ExpandResult<tt::Subtree> {
     let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
     for rule in rules {
-        let new_match = match matcher::match_(&rule.lhs, input) {
-            Ok(m) => m,
-            Err(_e) => {
-                // error in pattern parsing
-                continue;
-            }
-        };
+        let new_match = matcher::match_(&rule.lhs, input);
+
         if new_match.err.is_none() {
             // If we find a rule that applies without errors, we're done.
             // Unconditionally returning the transcription here makes the
