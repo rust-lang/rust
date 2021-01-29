@@ -1543,10 +1543,10 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
             **qpath,
             QPath::LangItem(
                 LangItem::Range
-                | LangItem::RangeTo
-                | LangItem::RangeFrom
-                | LangItem::RangeFull
-                | LangItem::RangeToInclusive,
+                    | LangItem::RangeTo
+                    | LangItem::RangeFrom
+                    | LangItem::RangeFull
+                    | LangItem::RangeToInclusive,
                 _,
             )
         ),

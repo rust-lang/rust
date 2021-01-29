@@ -2,9 +2,9 @@
 
 use rustc_index::vec::Idx;
 
+use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::build::expr::as_place::PlaceBase;
 use crate::thir::*;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind;
@@ -274,7 +274,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ValueTypeAscription { .. } => {
                 // these do not have corresponding `Rvalue` variants,
                 // so make an operand and then return that
-                debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Rvalue(RvalueFunc::AsRvalue))));
+                debug_assert!(!matches!(
+                    Category::of(&expr.kind),
+                    Some(Category::Rvalue(RvalueFunc::AsRvalue))
+                ));
                 let operand = unpack!(block = this.as_operand(block, scope, expr));
                 block.and(Rvalue::Use(operand))
             }
@@ -401,34 +404,39 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // We are capturing a path that starts off a local variable in the parent.
             // The mutability of the current capture is same as the mutability
             // of the local declaration in the parent.
-            PlaceBase::Local(local) =>  this.local_decls[local].mutability,
+            PlaceBase::Local(local) => this.local_decls[local].mutability,
             // Parent is a closure and we are capturing a path that is captured
             // by the parent itself. The mutability of the current capture
             // is same as that of the capture in the parent closure.
             PlaceBase::Upvar { .. } => {
-                let enclosing_upvars_resolved = arg_place_builder.clone().into_place(
-                    this.hir.tcx(),
-                    this.hir.typeck_results());
+                let enclosing_upvars_resolved =
+                    arg_place_builder.clone().into_place(this.hir.tcx(), this.hir.typeck_results());
 
                 match enclosing_upvars_resolved.as_ref() {
-                    PlaceRef { local, projection: &[ProjectionElem::Field(upvar_index, _), ..] }
+                    PlaceRef {
+                        local,
+                        projection: &[ProjectionElem::Field(upvar_index, _), ..],
+                    }
                     | PlaceRef {
                         local,
-                        projection: &[ProjectionElem::Deref, ProjectionElem::Field(upvar_index, _), ..] } => {
-                            // Not in a closure
-                            debug_assert!(
-                                local == Local::new(1),
-                                "Expected local to be Local(1), found {:?}",
-                                local
-                            );
-                            // Not in a closure
-                            debug_assert!(
-                                this.upvar_mutbls.len() > upvar_index.index(),
-                                "Unexpected capture place, upvar_mutbls={:#?}, upvar_index={:?}",
-                                this.upvar_mutbls, upvar_index
-                            );
-                            this.upvar_mutbls[upvar_index.index()]
-                        }
+                        projection:
+                            &[ProjectionElem::Deref, ProjectionElem::Field(upvar_index, _), ..],
+                    } => {
+                        // Not in a closure
+                        debug_assert!(
+                            local == Local::new(1),
+                            "Expected local to be Local(1), found {:?}",
+                            local
+                        );
+                        // Not in a closure
+                        debug_assert!(
+                            this.upvar_mutbls.len() > upvar_index.index(),
+                            "Unexpected capture place, upvar_mutbls={:#?}, upvar_index={:?}",
+                            this.upvar_mutbls,
+                            upvar_index
+                        );
+                        this.upvar_mutbls[upvar_index.index()]
+                    }
                     _ => bug!("Unexpected capture place"),
                 }
             }
@@ -439,9 +447,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
         };
 
-        let arg_place = arg_place_builder.into_place(
-                    this.hir.tcx(),
-                    this.hir.typeck_results());
+        let arg_place = arg_place_builder.into_place(this.hir.tcx(), this.hir.typeck_results());
 
         this.cfg.push_assign(
             block,
