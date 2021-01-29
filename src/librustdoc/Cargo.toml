@@ -17,6 +17,7 @@ smallvec = "1.0"
 tempfile = "3"
 itertools = "0.9"
 regex = "1"
+rustdoc-json-types = { path = "../rustdoc-json-types" }
 
 [dev-dependencies]
 expect-test = "1.0"
