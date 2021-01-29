@@ -448,6 +448,69 @@ impl fmt::Display for LinkOutputKind {
 
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
 
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
+pub enum SplitDebuginfo {
+    /// Split debug-information is disabled, meaning that on supported platforms
+    /// you can find all debug information in the executable itself. This is
+    /// only supported for ELF effectively.
+    ///
+    /// * Windows - not supported
+    /// * macOS - don't run `dsymutil`
+    /// * ELF - `.dwarf_*` sections
+    Off,
+
+    /// Split debug-information can be found in a "packed" location separate
+    /// from the final artifact. This is supported on all platforms.
+    ///
+    /// * Windows - `*.pdb`
+    /// * macOS - `*.dSYM` (run `dsymutil`)
+    /// * ELF - `*.dwp` (run `rust-llvm-dwp`)
+    Packed,
+
+    /// Split debug-information can be found in individual object files on the
+    /// filesystem. The main executable may point to the object files.
+    ///
+    /// * Windows - not supported
+    /// * macOS - supported, scattered object files
+    /// * ELF - supported, scattered `*.dwo` files
+    Unpacked,
+}
+
+impl SplitDebuginfo {
+    fn as_str(&self) -> &'static str {
+        match self {
+            SplitDebuginfo::Off => "off",
+            SplitDebuginfo::Packed => "packed",
+            SplitDebuginfo::Unpacked => "unpacked",
+        }
+    }
+}
+
+impl FromStr for SplitDebuginfo {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<SplitDebuginfo, ()> {
+        Ok(match s {
+            "off" => SplitDebuginfo::Off,
+            "unpacked" => SplitDebuginfo::Unpacked,
+            "packed" => SplitDebuginfo::Packed,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl ToJson for SplitDebuginfo {
+    fn to_json(&self) -> Json {
+        self.as_str().to_json()
+    }
+}
+
+impl fmt::Display for SplitDebuginfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 macro_rules! supported_targets {
     ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
         $(mod $module;)+
@@ -1085,6 +1148,10 @@ pub struct TargetOptions {
     /// Is true if the target is an ARM architecture using thumb v1 which allows for
     /// thumb and arm interworking.
     pub has_thumb_interworking: bool,
+
+    /// How to handle split debug information, if at all. Specifying `None` has
+    /// target-specific meaning.
+    pub split_debuginfo: SplitDebuginfo,
 }
 
 impl Default for TargetOptions {
@@ -1184,6 +1251,7 @@ impl Default for TargetOptions {
             use_ctors_section: false,
             eh_frame_header: true,
             has_thumb_interworking: false,
+            split_debuginfo: SplitDebuginfo::Off,
         }
     }
 }
@@ -1377,6 +1445,18 @@ impl Target {
                         Ok(level) => base.$key_name = level,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
                                                       relro-level. Use 'full', 'partial, or 'off'.",
+                                                      s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
+            ($key_name:ident, SplitDebuginfo) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match s.parse::<SplitDebuginfo>() {
+                        Ok(level) => base.$key_name = level,
+                        _ => return Some(Err(format!("'{}' is not a valid value for \
+                                                      split-debuginfo. Use 'off' or 'dsymutil'.",
                                                       s))),
                     }
                     Some(Ok(()))
@@ -1627,6 +1707,7 @@ impl Target {
         key!(use_ctors_section, bool);
         key!(eh_frame_header, bool);
         key!(has_thumb_interworking, bool);
+        key!(split_debuginfo, SplitDebuginfo)?;
 
         // NB: The old name is deprecated, but support for it is retained for
         // compatibility.
@@ -1862,6 +1943,7 @@ impl ToJson for Target {
         target_option_val!(use_ctors_section);
         target_option_val!(eh_frame_header);
         target_option_val!(has_thumb_interworking);
+        target_option_val!(split_debuginfo);
 
         if default.unsupported_abis != self.unsupported_abis {
             d.insert(
