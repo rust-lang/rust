@@ -578,7 +578,7 @@ fn main_options(options: config::Options) -> MainResult {
                 let (error_format, edition, debugging_options) = diag_opts;
                 let diag = core::new_handler(error_format, None, &debugging_options);
                 match output_format {
-                    None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
+                    config::OutputFormat::Html => sess.time("render_html", || {
                         run_renderer::<html::render::Context<'_>>(
                             krate,
                             render_opts,
@@ -588,7 +588,7 @@ fn main_options(options: config::Options) -> MainResult {
                             tcx,
                         )
                     }),
-                    Some(config::OutputFormat::Json) => sess.time("render_json", || {
+                    config::OutputFormat::Json => sess.time("render_json", || {
                         run_renderer::<json::JsonRenderer<'_>>(
                             krate,
                             render_opts,
