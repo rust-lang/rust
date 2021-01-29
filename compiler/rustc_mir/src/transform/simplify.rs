@@ -50,9 +50,6 @@ impl SimplifyCfg {
 pub fn simplify_cfg(body: &mut Body<'_>) {
     CfgSimplifier::new(body).simplify();
     remove_dead_blocks(body);
-
-    // FIXME: Should probably be moved into some kind of pass manager
-    body.basic_blocks_mut().raw.shrink_to_fit();
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
@@ -340,8 +337,6 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
             // Update references to all vars and tmps now
             let mut updater = LocalUpdater { map, tcx };
             updater.visit_body(body);
-
-            body.local_decls.shrink_to_fit();
         }
     }
 }

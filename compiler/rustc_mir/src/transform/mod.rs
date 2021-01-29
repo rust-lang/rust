@@ -470,6 +470,8 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
     ];
 
     run_passes(tcx, body, MirPhase::DropLowering, &[post_borrowck_cleanup]);
+
+    body.basic_blocks_mut().shrink_to_fit();
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -583,6 +585,9 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     run_optimization_passes(tcx, &mut body);
 
     debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
+
+    body.basic_blocks_mut().shrink_to_fit();
+    body.local_decls.shrink_to_fit();
 
     body
 }
