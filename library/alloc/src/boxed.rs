@@ -149,6 +149,7 @@ use core::ops::{
 };
 use core::pin::Pin;
 use core::ptr::{self, Unique};
+use core::stream::Stream;
 use core::task::{Context, Poll};
 
 use crate::alloc::{handle_alloc_error, AllocError, Allocator, Global, Layout, WriteCloneIntoRaw};
@@ -1619,5 +1620,18 @@ where
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         F::poll(Pin::new(&mut *self), cx)
+    }
+}
+
+#[unstable(feature = "async_stream", issue = "79024")]
+impl<S: ?Sized + Stream + Unpin> Stream for Box<S> {
+    type Item = S::Item;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut **self).poll_next(cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
     }
 }
