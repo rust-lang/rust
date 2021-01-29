@@ -659,6 +659,8 @@ fn fmt_type(
     use_absolute: bool,
     cache: &Cache,
 ) -> fmt::Result {
+    debug!("fmt_type(t = {:?})", t);
+
     match *t {
         clean::Generic(name) => write!(f, "{}", name),
         clean::ResolvedPath { did, ref param_names, ref path, is_generic } => {
@@ -675,21 +677,22 @@ fn fmt_type(
             if f.alternate() {
                 write!(
                     f,
-                    "{}{:#}fn{:#}{:#}",
+                    "{:#}{}{:#}fn{:#}",
+                    decl.print_hrtb_with_space(cache),
                     decl.unsafety.print_with_space(),
                     print_abi_with_space(decl.abi),
-                    decl.print_generic_params(cache),
                     decl.decl.print(cache)
                 )
             } else {
                 write!(
                     f,
-                    "{}{}",
+                    "{}{}{}",
+                    decl.print_hrtb_with_space(cache),
                     decl.unsafety.print_with_space(),
                     print_abi_with_space(decl.abi)
                 )?;
                 primitive_link(f, PrimitiveType::Fn, "fn", cache)?;
-                write!(f, "{}{}", decl.print_generic_params(cache), decl.decl.print(cache))
+                write!(f, "{}", decl.decl.print(cache))
             }
         }
         clean::Tuple(ref typs) => {
@@ -992,8 +995,14 @@ impl clean::FnRetTy {
 }
 
 impl clean::BareFunctionDecl {
-    fn print_generic_params<'a>(&'a self, cache: &'a Cache) -> impl fmt::Display + 'a {
-        comma_sep(self.generic_params.iter().map(move |g| g.print(cache)))
+    fn print_hrtb_with_space<'a>(&'a self, cache: &'a Cache) -> impl fmt::Display + 'a {
+        display_fn(move |f| {
+            if !self.generic_params.is_empty() {
+                write!(f, "for<{}> ", comma_sep(self.generic_params.iter().map(|g| g.print(cache))))
+            } else {
+                Ok(())
+            }
+        })
     }
 }
 
