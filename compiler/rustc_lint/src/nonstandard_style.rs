@@ -57,7 +57,7 @@ declare_lint! {
 declare_lint_pass!(NonCamelCaseTypes => [NON_CAMEL_CASE_TYPES]);
 
 fn char_has_case(c: char) -> bool {
-    c.is_lowercase() || c.is_uppercase()
+    c.to_lowercase().to_string() != c.to_uppercase().to_string()
 }
 
 fn is_camel_case(name: &str) -> bool {
@@ -138,6 +138,8 @@ impl NonCamelCaseTypes {
                         to_camel_case(name),
                         Applicability::MaybeIncorrect,
                     );
+                } else {
+                    err.span_label(ident.span, "should have an UpperCamelCase name");
                 }
 
                 err.emit();
@@ -299,6 +301,8 @@ impl NonSnakeCase {
                     } else {
                         err.help(&format!("convert the identifier to snake case: `{}`", sc));
                     }
+                } else {
+                    err.span_label(ident.span, "should have a snake_case name");
                 }
 
                 err.emit();
@@ -477,6 +481,8 @@ impl NonUpperCaseGlobals {
                         uc,
                         Applicability::MaybeIncorrect,
                     );
+                } else {
+                    err.span_label(ident.span, "should have an UPPER_CASE name");
                 }
 
                 err.emit();
