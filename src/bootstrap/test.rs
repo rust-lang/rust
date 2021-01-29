@@ -14,7 +14,7 @@ use std::process::Command;
 use build_helper::{self, output, t};
 
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
-use crate::cache::{Interned, INTERNER};
+use crate::cache::Interned;
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::dist;
@@ -1609,55 +1609,6 @@ impl Step for CrateLibrustc {
             mode: Mode::Rustc,
             test_kind: self.test_kind,
             krate: self.krate,
-        });
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct CrateNotDefault {
-    compiler: Compiler,
-    target: TargetSelection,
-    test_kind: TestKind,
-    krate: &'static str,
-}
-
-impl Step for CrateNotDefault {
-    type Output = ();
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/librustc_asan")
-            .path("src/librustc_lsan")
-            .path("src/librustc_msan")
-            .path("src/librustc_tsan")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        let builder = run.builder;
-        let compiler = builder.compiler(builder.top_stage, run.build_triple());
-
-        let test_kind = builder.kind.into();
-
-        builder.ensure(CrateNotDefault {
-            compiler,
-            target: run.target,
-            test_kind,
-            krate: match run.path {
-                _ if run.path.ends_with("src/librustc_asan") => "rustc_asan",
-                _ if run.path.ends_with("src/librustc_lsan") => "rustc_lsan",
-                _ if run.path.ends_with("src/librustc_msan") => "rustc_msan",
-                _ if run.path.ends_with("src/librustc_tsan") => "rustc_tsan",
-                _ => panic!("unexpected path {:?}", run.path),
-            },
-        });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        builder.ensure(Crate {
-            compiler: self.compiler,
-            target: self.target,
-            mode: Mode::Std,
-            test_kind: self.test_kind,
-            krate: INTERNER.intern_str(self.krate),
         });
     }
 }
