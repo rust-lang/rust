@@ -1546,10 +1546,11 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
         ExprKind::Call(
             Expr {
                 kind: ExprKind::Path(qpath),
+                hir_id: path_hir_id,
                 ..
             },
             ..,
-        ) => cx.typeck_results().qpath_res(qpath, expr.hir_id).opt_def_id(),
+        ) => cx.typeck_results().qpath_res(qpath, *path_hir_id).opt_def_id(),
         _ => None,
     }
 }
