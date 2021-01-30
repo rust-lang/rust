@@ -1004,7 +1004,7 @@ pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_item_ref: 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem<'v>) {
     // N.B., deliberately force a compilation error if/when new fields are added.
     let ImplItem {
-        hir_id: _,
+        def_id: _,
         ident,
         ref vis,
         ref defaultness,
@@ -1021,7 +1021,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
     visitor.visit_generics(generics);
     match *kind {
         ImplItemKind::Const(ref ty, body) => {
-            visitor.visit_id(impl_item.hir_id);
+            visitor.visit_id(impl_item.hir_id());
             visitor.visit_ty(ty);
             visitor.visit_nested_body(body);
         }
@@ -1031,11 +1031,11 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
                 &sig.decl,
                 body_id,
                 impl_item.span,
-                impl_item.hir_id,
+                impl_item.hir_id(),
             );
         }
         ImplItemKind::TyAlias(ref ty) => {
-            visitor.visit_id(impl_item.hir_id);
+            visitor.visit_id(impl_item.hir_id());
             visitor.visit_ty(ty);
         }
     }

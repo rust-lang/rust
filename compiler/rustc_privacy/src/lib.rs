@@ -663,7 +663,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             hir::ItemKind::Impl(ref impl_) => {
                 for impl_item_ref in impl_.items {
                     if impl_.of_trait.is_some() || impl_item_ref.vis.node.is_pub() {
-                        self.update(impl_item_ref.id.hir_id, item_level);
+                        self.update(impl_item_ref.id.hir_id(), item_level);
                     }
                 }
             }
@@ -769,9 +769,9 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.hir_id(), item_level).generics().predicates().ty().trait_ref();
 
                     for impl_item_ref in impl_.items {
-                        let impl_item_level = self.get(impl_item_ref.id.hir_id);
+                        let impl_item_level = self.get(impl_item_ref.id.hir_id());
                         if impl_item_level.is_some() {
-                            self.reach(impl_item_ref.id.hir_id, impl_item_level)
+                            self.reach(impl_item_ref.id.hir_id(), impl_item_level)
                                 .generics()
                                 .predicates()
                                 .ty();
@@ -1526,7 +1526,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                         match impl_item.kind {
                             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..) => {
-                                self.access_levels.is_reachable(impl_item_ref.id.hir_id)
+                                self.access_levels.is_reachable(impl_item_ref.id.hir_id())
                             }
                             hir::ImplItemKind::TyAlias(_) => false,
                         }
@@ -1546,8 +1546,10 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                                 match impl_item.kind {
                                     hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..)
-                                        if self
-                                            .item_is_public(&impl_item.hir_id, &impl_item.vis) =>
+                                        if self.item_is_public(
+                                            &impl_item.hir_id(),
+                                            &impl_item.vis,
+                                        ) =>
                                     {
                                         intravisit::walk_impl_item(self, impl_item)
                                     }
@@ -1588,7 +1590,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     // methods will be visible as `Public::foo`.
                     let mut found_pub_static = false;
                     for impl_item_ref in impl_.items {
-                        if self.item_is_public(&impl_item_ref.id.hir_id, &impl_item_ref.vis) {
+                        if self.item_is_public(&impl_item_ref.id.hir_id(), &impl_item_ref.vis) {
                             let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                             match impl_item_ref.kind {
                                 AssocItemKind::Const => {
@@ -2002,16 +2004,12 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 self.check(item.hir_id(), impl_vis).generics().predicates();
                 for impl_item_ref in impl_.items {
                     let impl_item_vis = if impl_.of_trait.is_none() {
-                        min(
-                            tcx.visibility(tcx.hir().local_def_id(impl_item_ref.id.hir_id)),
-                            impl_vis,
-                            tcx,
-                        )
+                        min(tcx.visibility(impl_item_ref.id.def_id), impl_vis, tcx)
                     } else {
                         impl_vis
                     };
                     self.check_assoc_item(
-                        impl_item_ref.id.hir_id,
+                        impl_item_ref.id.hir_id(),
                         impl_item_ref.kind,
                         impl_item_ref.defaultness,
                         impl_item_vis,

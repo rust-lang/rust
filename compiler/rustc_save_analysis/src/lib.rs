@@ -358,7 +358,7 @@ impl<'tcx> SaveContext<'tcx> {
                                 parent: None,
                                 children: items
                                     .iter()
-                                    .map(|i| id_from_hir_id(i.id.hir_id, self))
+                                    .map(|i| id_from_def_id(i.id.def_id.to_def_id()))
                                     .collect(),
                                 docs: String::new(),
                                 sig: None,

@@ -50,7 +50,7 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
         self.check_for_lang(
             target_from_impl_item(self.tcx, impl_item),
-            impl_item.hir_id,
+            impl_item.hir_id(),
             impl_item.attrs,
         )
     }

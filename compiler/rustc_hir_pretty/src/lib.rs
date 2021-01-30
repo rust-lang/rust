@@ -973,7 +973,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem<'_>) {
-        self.ann.pre(self, AnnNode::SubItem(ii.hir_id));
+        self.ann.pre(self, AnnNode::SubItem(ii.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
         self.print_outer_attributes(&ii.attrs);
@@ -995,7 +995,7 @@ impl<'a> State<'a> {
                 self.print_associated_type(ii.ident, &ii.generics, None, Some(ty));
             }
         }
-        self.ann.post(self, AnnNode::SubItem(ii.hir_id))
+        self.ann.post(self, AnnNode::SubItem(ii.hir_id()))
     }
 
     pub fn print_local(&mut self, init: Option<&hir::Expr<'_>>, decl: impl Fn(&mut Self)) {

@@ -634,7 +634,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 let parent_id = self.tcx.hir().get_parent_node(hir_id);
                                 let parent_item_id =
                                     hir::ItemId { def_id: parent_id.expect_owner() };
-                                let parent_impl_id = hir::ImplItemId { hir_id: parent_id };
+                                let parent_impl_id =
+                                    hir::ImplItemId { def_id: parent_id.expect_owner() };
                                 let parent_trait_id =
                                     hir::TraitItemId { def_id: parent_id.expect_owner() };
                                 let krate = self.tcx.hir().krate();
@@ -803,7 +804,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.missing_named_lifetime_spots.push((&impl_item.generics).into());
                 let tcx = self.tcx;
                 self.visit_early_late(
-                    Some(tcx.hir().get_parent_item(impl_item.hir_id)),
+                    Some(tcx.hir().get_parent_item(impl_item.hir_id())),
                     &sig.decl,
                     &impl_item.generics,
                     |this| intravisit::walk_impl_item(this, impl_item),
@@ -2128,7 +2129,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 {
                     impl_self = Some(self_ty);
                     assoc_item_kind =
-                        items.iter().find(|ii| ii.id.hir_id == parent).map(|ii| ii.kind);
+                        items.iter().find(|ii| ii.id.hir_id() == parent).map(|ii| ii.kind);
                 }
                 Some(body)
             }

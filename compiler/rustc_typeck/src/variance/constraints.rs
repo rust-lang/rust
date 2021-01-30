@@ -104,7 +104,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Fn(..) = impl_item.kind {
-            self.visit_node_helper(impl_item.hir_id);
+            self.visit_node_helper(impl_item.hir_id());
         }
     }
 

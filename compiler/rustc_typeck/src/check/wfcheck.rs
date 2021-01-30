@@ -271,7 +271,7 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         _ => None,
     };
 
-    check_associated_item(tcx, impl_item.hir_id, impl_item.span, method_sig);
+    check_associated_item(tcx, impl_item.hir_id(), impl_item.span, method_sig);
 }
 
 fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
@@ -1360,8 +1360,7 @@ impl Visitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         debug!("visit_impl_item: {:?}", impl_item);
-        let def_id = self.tcx.hir().local_def_id(impl_item.hir_id);
-        self.tcx.ensure().check_impl_item_well_formed(def_id);
+        self.tcx.ensure().check_impl_item_well_formed(impl_item.def_id);
         hir_visit::walk_impl_item(self, impl_item);
     }
 

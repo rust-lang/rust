@@ -286,7 +286,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        convert_impl_item(self.tcx, impl_item.hir_id);
+        convert_impl_item(self.tcx, impl_item.impl_item_id());
         intravisit::walk_impl_item(self, impl_item);
     }
 }
@@ -849,12 +849,12 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     tcx.ensure().predicates_of(trait_item_id.def_id);
 }
 
-fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::HirId) {
-    let def_id = tcx.hir().local_def_id(impl_item_id);
+fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
+    let def_id = impl_item_id.def_id;
     tcx.ensure().generics_of(def_id);
     tcx.ensure().type_of(def_id);
     tcx.ensure().predicates_of(def_id);
-    let impl_item = tcx.hir().expect_impl_item(impl_item_id);
+    let impl_item = tcx.hir().impl_item(impl_item_id);
     match impl_item.kind {
         hir::ImplItemKind::Fn(..) => {
             tcx.ensure().fn_sig(def_id);

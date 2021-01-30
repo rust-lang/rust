@@ -116,10 +116,9 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
             then {
                 // check the body for `begin_panic` or `unwrap`
                 let body = cx.tcx.hir().body(body_id);
-                let impl_item_def_id = cx.tcx.hir().local_def_id(impl_item.id.hir_id);
                 let mut fpu = FindPanicUnwrap {
                     lcx: cx,
-                    typeck_results: cx.tcx.typeck(impl_item_def_id),
+                    typeck_results: cx.tcx.typeck(impl_item.id.def_id),
                     result: Vec::new(),
                 };
                 fpu.visit_expr(&body.value);

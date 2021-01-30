@@ -235,7 +235,7 @@ impl<'a> FnLikeNode<'a> {
             },
             Node::ImplItem(ii) => match ii.kind {
                 hir::ImplItemKind::Fn(ref sig, body) => {
-                    method(ii.hir_id, ii.ident, sig, Some(&ii.vis), body, ii.span, &ii.attrs)
+                    method(ii.hir_id(), ii.ident, sig, Some(&ii.vis), body, ii.span, &ii.attrs)
                 }
                 _ => bug!("impl method FnLikeNode that is not fn-like"),
             },

@@ -1073,7 +1073,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             hir::ImplItemKind::Const(ref ty, body) => {
                 let body = self.tcx.hir().body(body);
                 self.process_assoc_const(
-                    impl_item.hir_id,
+                    impl_item.hir_id(),
                     impl_item.ident,
                     &ty,
                     Some(&body.value),
@@ -1086,7 +1086,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 self.process_method(
                     sig,
                     Some(body),
-                    impl_item.hir_id,
+                    impl_item.hir_id(),
                     impl_item.ident,
                     &impl_item.generics,
                     &impl_item.vis,

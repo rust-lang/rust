@@ -7,9 +7,7 @@ use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, ErasedMap, NestedVisitorMap, Visitor};
-use rustc_hir::{
-    self as hir, GenericBound, ImplItem, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind,
-};
+use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
 use rustc_middle::ty::{self, AssocItemContainer, RegionKind, Ty, TypeFoldable, TypeVisitor};
 use rustc_span::symbol::Ident;
 use rustc_span::{MultiSpan, Span};
@@ -342,12 +340,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     ) -> Option<(Ident, &'tcx hir::Ty<'tcx>)> {
         let tcx = self.tcx();
         match tcx.hir().get_if_local(def_id) {
-            Some(Node::ImplItem(ImplItem { ident, hir_id, .. })) => {
-                match tcx.hir().find(tcx.hir().get_parent_item(*hir_id)) {
+            Some(Node::ImplItem(impl_item)) => {
+                match tcx.hir().find(tcx.hir().get_parent_item(impl_item.hir_id())) {
                     Some(Node::Item(Item {
                         kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
                         ..
-                    })) => Some((*ident, self_ty)),
+                    })) => Some((impl_item.ident, self_ty)),
                     _ => None,
                 }
             }

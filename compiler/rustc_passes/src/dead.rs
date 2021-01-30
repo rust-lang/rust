@@ -420,11 +420,11 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     if of_trait.is_some()
                         || has_allow_dead_code_or_lang_attr(
                             self.tcx,
-                            impl_item.hir_id,
+                            impl_item.hir_id(),
                             &impl_item.attrs,
                         )
                     {
-                        self.worklist.push(impl_item_ref.id.hir_id);
+                        self.worklist.push(impl_item_ref.id.hir_id());
                     }
                 }
             }
@@ -664,9 +664,9 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         match impl_item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
-                if !self.symbol_is_live(impl_item.hir_id) {
+                if !self.symbol_is_live(impl_item.hir_id()) {
                     self.warn_dead_code(
-                        impl_item.hir_id,
+                        impl_item.hir_id(),
                         impl_item.span,
                         impl_item.ident.name,
                         "used",
@@ -675,7 +675,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 self.visit_nested_body(body_id)
             }
             hir::ImplItemKind::Fn(_, body_id) => {
-                if !self.symbol_is_live(impl_item.hir_id) {
+                if !self.symbol_is_live(impl_item.hir_id()) {
                     // FIXME(66095): Because impl_item.span is annotated with things
                     // like expansion data, and ident.span isn't, we use the
                     // def_span method if it's part of a macro invocation
@@ -687,7 +687,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                     } else {
                         impl_item.ident.span
                     };
-                    self.warn_dead_code(impl_item.hir_id, span, impl_item.ident.name, "used");
+                    self.warn_dead_code(impl_item.hir_id(), span, impl_item.ident.name, "used");
                 }
                 self.visit_nested_body(body_id)
             }

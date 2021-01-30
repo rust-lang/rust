@@ -258,14 +258,13 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         }
         if let hir::ImplItemKind::Fn(ref sig, body_id) = item.kind {
             let body = cx.tcx.hir().body(body_id);
-            let impl_item_def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let mut fpu = FindPanicUnwrap {
                 cx,
-                typeck_results: cx.tcx.typeck(impl_item_def_id),
+                typeck_results: cx.tcx.typeck(item.def_id),
                 panic_span: None,
             };
             fpu.visit_expr(&body.value);
-            lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+            lint_for_missing_headers(cx, item.hir_id(), item.span, sig, headers, Some(body_id), fpu.panic_span);
         }
     }
 }

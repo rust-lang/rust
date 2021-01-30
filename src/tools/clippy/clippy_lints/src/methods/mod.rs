@@ -1685,7 +1685,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
         let name = impl_item.ident.name.as_str();
-        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id);
+        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
         let item = cx.tcx.hir().expect_item(parent);
         let self_ty = cx.tcx.type_of(item.def_id);
 
@@ -1698,8 +1698,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind;
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
 
-            let method_def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
-            let method_sig = cx.tcx.fn_sig(method_def_id);
+            let method_sig = cx.tcx.fn_sig(impl_item.def_id);
             let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
 
             let first_arg_ty = &method_sig.inputs().iter().next();
@@ -1708,7 +1707,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if let Some(first_arg_ty) = first_arg_ty;
 
             then {
-                if cx.access_levels.is_exported(impl_item.hir_id) {
+                if cx.access_levels.is_exported(impl_item.hir_id()) {
                     // check missing trait implementations
                     for method_config in &TRAIT_METHODS {
                         if name == method_config.method_name &&
@@ -1750,7 +1749,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
 
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
-            let ret_ty = return_ty(cx, impl_item.hir_id);
+            let ret_ty = return_ty(cx, impl_item.hir_id());
 
             // walk the return type and check for Self (this does not check associated types)
             if contains_ty(ret_ty, self_ty) {

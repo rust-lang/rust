@@ -314,8 +314,8 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = Some(&impl_item.generics);
-        self.with_lint_attrs(impl_item.hir_id, &impl_item.attrs, |cx| {
-            cx.with_param_env(impl_item.hir_id, |cx| {
+        self.with_lint_attrs(impl_item.hir_id(), &impl_item.attrs, |cx| {
+            cx.with_param_env(impl_item.hir_id(), |cx| {
                 lint_callback!(cx, check_impl_item, impl_item);
                 hir_visit::walk_impl_item(cx, impl_item);
                 lint_callback!(cx, check_impl_item_post, impl_item);

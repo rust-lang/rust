@@ -206,17 +206,14 @@ fn check_impl_items(cx: &LateContext<'_>, item: &Item<'_>, impl_items: &[ImplIte
     fn is_named_self(cx: &LateContext<'_>, item: &ImplItemRef<'_>, name: &str) -> bool {
         item.ident.name.as_str() == name
             && if let AssocItemKind::Fn { has_self } = item.kind {
-                has_self && {
-                    let did = cx.tcx.hir().local_def_id(item.id.hir_id);
-                    cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
-                }
+                has_self && cx.tcx.fn_sig(item.id.def_id).inputs().skip_binder().len() == 1
             } else {
                 false
             }
     }
 
     let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, "is_empty")) {
-        if cx.access_levels.is_exported(is_empty.id.hir_id) {
+        if cx.access_levels.is_exported(is_empty.id.hir_id()) {
             return;
         }
         "a private"
@@ -225,7 +222,7 @@ fn check_impl_items(cx: &LateContext<'_>, item: &Item<'_>, impl_items: &[ImplIte
     };
 
     if let Some(i) = impl_items.iter().find(|i| is_named_self(cx, i, "len")) {
-        if cx.access_levels.is_exported(i.id.hir_id) {
+        if cx.access_levels.is_exported(i.id.hir_id()) {
             let ty = cx.tcx.type_of(item.def_id);
 
             span_lint(

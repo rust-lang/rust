@@ -98,7 +98,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
             }
             AssocCtxt::Impl => {
                 let hir_item = lctx.lower_impl_item(item);
-                let id = hir::ImplItemId { hir_id: hir_item.hir_id };
+                let id = hir_item.impl_item_id();
                 lctx.impl_items.insert(id, hir_item);
                 lctx.modules.get_mut(&lctx.current_module).unwrap().impl_items.insert(id);
             }
@@ -931,7 +931,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         hir::ImplItem {
-            hir_id: self.lower_node_id(i.id),
+            def_id: self.lower_node_id(i.id).expect_owner(),
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             generics,
@@ -947,7 +947,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         hir::ImplItemRef {
-            id: hir::ImplItemId { hir_id: self.lower_node_id(i.id) },
+            id: hir::ImplItemId { def_id: self.lower_node_id(i.id).expect_owner() },
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),

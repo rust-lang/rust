@@ -53,11 +53,11 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for TraitItemId {
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ImplItemId {
-    type KeyType = (DefPathHash, ItemLocalId);
+    type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
-        self.hir_id.to_stable_hash_key(hcx)
+    fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
+        hcx.local_def_path_hash(self.def_id)
     }
 }
 
@@ -103,7 +103,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ForeignItemId {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItemId {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_reference_to_item(self.hir_id, hasher)
+        hcx.hash_reference_to_item(self.hir_id(), hasher)
     }
 }
 
@@ -154,7 +154,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItem<'_> {
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItem<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
         let ImplItem {
-            hir_id: _,
+            def_id: _,
             ident,
             ref vis,
             defaultness,

@@ -1068,9 +1068,15 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
-            intravisit::walk_impl_item(this, item);
-        });
+        self.visit_testable(
+            item.ident.to_string(),
+            &item.attrs,
+            item.hir_id(),
+            item.span,
+            |this| {
+                intravisit::walk_impl_item(this, item);
+            },
+        );
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {

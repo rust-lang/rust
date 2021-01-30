@@ -44,10 +44,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
         if impl_item.span.from_expansion() {
             return;
         }
-        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id);
+        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
         let parent_item = cx.tcx.hir().expect_item(parent);
-        let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
-        let assoc_item = cx.tcx.associated_item(def_id);
+        let assoc_item = cx.tcx.associated_item(impl_item.def_id);
         if_chain! {
             if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind;
             if assoc_item.fn_has_self_parameter;

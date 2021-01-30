@@ -600,7 +600,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                     if let Some(Node::Item(item)) = cx.tcx.hir().find(hir_id) {
                         if let hir::VisibilityKind::Inherited = item.vis.node {
                             for impl_item_ref in items {
-                                self.private_traits.insert(impl_item_ref.id.hir_id);
+                                self.private_traits.insert(impl_item_ref.id.hir_id());
                             }
                         }
                     }
@@ -644,15 +644,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
-        if method_context(cx, impl_item.hir_id) == MethodLateContext::TraitImpl {
+        if method_context(cx, impl_item.hir_id()) == MethodLateContext::TraitImpl {
             return;
         }
 
-        let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
         self.check_missing_docs_attrs(
             cx,
-            Some(impl_item.hir_id),
+            Some(impl_item.hir_id()),
             &impl_item.attrs,
             impl_item.span,
             article,
@@ -1378,7 +1377,7 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        self.perform_lint(cx, "item", impl_item.hir_id, &impl_item.vis, impl_item.span, false);
+        self.perform_lint(cx, "item", impl_item.hir_id(), &impl_item.vis, impl_item.span, false);
     }
 }
 

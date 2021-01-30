@@ -1969,20 +1969,38 @@ pub enum TraitItemKind<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ImplItemId {
-    pub hir_id: HirId,
+    pub def_id: LocalDefId,
+}
+
+impl ImplItemId {
+    pub fn hir_id(&self) -> HirId {
+        // Items are always HIR owners.
+        HirId::make_owner(self.def_id)
+    }
 }
 
 /// Represents anything within an `impl` block.
 #[derive(Debug)]
 pub struct ImplItem<'hir> {
     pub ident: Ident,
-    pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub vis: Visibility<'hir>,
     pub defaultness: Defaultness,
     pub attrs: &'hir [Attribute],
     pub generics: Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub span: Span,
+}
+
+impl ImplItem<'_> {
+    pub fn hir_id(&self) -> HirId {
+        // Items are always HIR owners.
+        HirId::make_owner(self.def_id)
+    }
+
+    pub fn impl_item_id(&self) -> ImplItemId {
+        ImplItemId { def_id: self.def_id }
+    }
 }
 
 /// Represents various kinds of content within an `impl`.
@@ -2903,11 +2921,10 @@ impl<'hir> Node<'hir> {
 
     pub fn hir_id(&self) -> Option<HirId> {
         match self {
-            Node::Item(Item { def_id, .. }) | Node::TraitItem(TraitItem { def_id, .. }) => {
-                Some(HirId::make_owner(*def_id))
-            }
+            Node::Item(Item { def_id, .. })
+            | Node::TraitItem(TraitItem { def_id, .. })
+            | Node::ImplItem(ImplItem { def_id, .. }) => Some(HirId::make_owner(*def_id)),
             Node::ForeignItem(ForeignItem { hir_id, .. })
-            | Node::ImplItem(ImplItem { hir_id, .. })
             | Node::Field(StructField { hir_id, .. })
             | Node::AnonConst(AnonConst { hir_id, .. })
             | Node::Expr(Expr { hir_id, .. })

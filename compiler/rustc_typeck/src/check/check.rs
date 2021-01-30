@@ -928,7 +928,7 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
-        let ty_impl_item = tcx.associated_item(tcx.hir().local_def_id(impl_item.hir_id));
+        let ty_impl_item = tcx.associated_item(impl_item.def_id);
 
         let mut items =
             associated_items.filter_by_name(tcx, ty_impl_item.ident, impl_trait_ref.def_id);

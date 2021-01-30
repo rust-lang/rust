@@ -401,14 +401,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_impl_item(&mut self, ii: &'hir ImplItem<'hir>) {
-        debug_assert_eq!(
-            ii.hir_id.owner,
-            self.definitions.opt_hir_id_to_local_def_id(ii.hir_id).unwrap()
-        );
-        self.with_dep_node_owner(ii.hir_id.owner, ii, |this, hash| {
-            this.insert_with_hash(ii.span, ii.hir_id, Node::ImplItem(ii), hash);
+        self.with_dep_node_owner(ii.def_id, ii, |this, hash| {
+            this.insert_with_hash(ii.span, ii.hir_id(), Node::ImplItem(ii), hash);
 
-            this.with_parent(ii.hir_id, |this| {
+            this.with_parent(ii.hir_id(), |this| {
                 intravisit::walk_impl_item(this, ii);
             });
         });

@@ -43,8 +43,8 @@ fn method_might_be_inlined(
     impl_item: &hir::ImplItem<'_>,
     impl_src: LocalDefId,
 ) -> bool {
-    let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner.to_def_id());
-    let generics = tcx.generics_of(tcx.hir().local_def_id(impl_item.hir_id));
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id().owner.to_def_id());
+    let generics = tcx.generics_of(impl_item.def_id);
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true;
     }
@@ -356,8 +356,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
             if !self.access_levels.is_reachable(item.hir_id()) {
                 // FIXME(#53488) remove `let`
                 let tcx = self.tcx;
-                self.worklist
-                    .extend(items.iter().map(|ii_ref| tcx.hir().local_def_id(ii_ref.id.hir_id)));
+                self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
 
                 let trait_def_id = match trait_ref.path.res {
                     Res::Def(DefKind::Trait, def_id) => def_id,

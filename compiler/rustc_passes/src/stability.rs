@@ -405,7 +405,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         let kind =
             if self.in_trait_impl { AnnotationKind::Prohibited } else { AnnotationKind::Required };
         self.annotate(
-            ii.hir_id,
+            ii.hir_id(),
             &ii.attrs,
             ii.span,
             kind,
@@ -576,9 +576,9 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
-        let impl_def_id = self.tcx.hir().local_def_id(self.tcx.hir().get_parent_item(ii.hir_id));
+        let impl_def_id = self.tcx.hir().local_def_id(self.tcx.hir().get_parent_item(ii.hir_id()));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
-            self.check_missing_stability(ii.hir_id, ii.span);
+            self.check_missing_stability(ii.hir_id(), ii.span);
         }
         intravisit::walk_impl_item(self, ii);
     }

@@ -130,13 +130,13 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(ref sig, body_id) = item.kind {
-            let parent_item = cx.tcx.hir().get_parent_item(item.hir_id);
+            let parent_item = cx.tcx.hir().get_parent_item(item.hir_id());
             if let Some(Node::Item(it)) = cx.tcx.hir().find(parent_item) {
                 if let ItemKind::Impl(Impl { of_trait: Some(_), .. }) = it.kind {
                     return; // ignore trait impls
                 }
             }
-            check_fn(cx, &sig.decl, item.hir_id, Some(body_id));
+            check_fn(cx, &sig.decl, item.hir_id(), Some(body_id));
         }
     }
 
