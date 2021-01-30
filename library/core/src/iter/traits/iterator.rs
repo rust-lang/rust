@@ -1312,7 +1312,8 @@ pub trait Iterator {
     ///
     /// On iteration, the closure will be applied to each element of the
     /// iterator and the return value from the closure, an [`Option`], is
-    /// yielded by the iterator.
+    /// yielded by the iterator. A value of `None` indicates that this
+    /// iterator is finished.
     ///
     /// # Examples
     ///
