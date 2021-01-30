@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             } else {
                 None
             };
-            check_fn(cx, &sig.decl, item.hir_id, body_id);
+            check_fn(cx, &sig.decl, item.hir_id(), body_id);
         }
     }
 
