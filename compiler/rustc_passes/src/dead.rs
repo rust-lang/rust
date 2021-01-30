@@ -37,6 +37,15 @@ fn should_explore(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
     )
 }
 
+fn base_expr<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
+    loop {
+        match expr.kind {
+            hir::ExprKind::Field(base, ..) => expr = base,
+            _ => return expr,
+        }
+    }
+}
+
 struct MarkSymbolVisitor<'tcx> {
     worklist: Vec<hir::HirId>,
     tcx: TyCtxt<'tcx>,
@@ -262,6 +271,12 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             hir::ExprKind::MethodCall(..) => {
                 self.lookup_and_handle_method(expr.hir_id);
+            }
+            hir::ExprKind::Assign(ref left, ref right, ..) => {
+                // Ignore write to field
+                self.visit_expr(base_expr(left));
+                self.visit_expr(right);
+                return;
             }
             hir::ExprKind::Field(ref lhs, ..) => {
                 self.handle_field_access(&lhs, expr.hir_id);
