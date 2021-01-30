@@ -376,7 +376,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         }
 
         self.annotate(
-            i.hir_id,
+            i.hir_id(),
             &i.attrs,
             i.span,
             kind,
@@ -556,7 +556,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
             hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })
                 | hir::ItemKind::ForeignMod { .. }
         ) {
-            self.check_missing_stability(i.hir_id, i.span);
+            self.check_missing_stability(i.hir_id(), i.span);
         }
 
         // Ensure `const fn` that are `stable` have one of `rustc_const_unstable` or
@@ -564,7 +564,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         if self.tcx.features().staged_api
             && matches!(&i.kind, hir::ItemKind::Fn(sig, ..) if sig.header.is_const())
         {
-            self.check_missing_const_stability(i.hir_id, i.span);
+            self.check_missing_const_stability(i.hir_id(), i.span);
         }
 
         intravisit::walk_item(self, i)
@@ -712,13 +712,12 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     return;
                 }
 
-                let def_id = self.tcx.hir().local_def_id(item.hir_id);
-                let cnum = match self.tcx.extern_mod_stmt_cnum(def_id) {
+                let cnum = match self.tcx.extern_mod_stmt_cnum(item.def_id) {
                     Some(cnum) => cnum,
                     None => return,
                 };
                 let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-                self.tcx.check_stability(def_id, Some(item.hir_id), item.span);
+                self.tcx.check_stability(def_id, Some(item.hir_id()), item.span);
             }
 
             // For implementations of traits, check the stability of each item
@@ -744,7 +743,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                                 .map_or(item.span, |a| a.span);
                             self.tcx.struct_span_lint_hir(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
-                                item.hir_id,
+                                item.hir_id(),
                                 span,
                                 |lint| lint
                                     .build("an `#[unstable]` annotation here has no effect")
@@ -775,15 +774,14 @@ impl Visitor<'tcx> for Checker<'tcx> {
             // There's no good place to insert stability check for non-Copy unions,
             // so semi-randomly perform it here in stability.rs
             hir::ItemKind::Union(..) if !self.tcx.features().untagged_unions => {
-                let def_id = self.tcx.hir().local_def_id(item.hir_id);
-                let ty = self.tcx.type_of(def_id);
+                let ty = self.tcx.type_of(item.def_id);
                 let (adt_def, substs) = match ty.kind() {
                     ty::Adt(adt_def, substs) => (adt_def, substs),
                     _ => bug!(),
                 };
 
                 // Non-`Copy` fields are unstable, except for `ManuallyDrop`.
-                let param_env = self.tcx.param_env(def_id);
+                let param_env = self.tcx.param_env(item.def_id);
                 for field in &adt_def.non_enum_variant().fields {
                     let field_ty = field.ty(self.tcx, substs);
                     if !field_ty.ty_adt_def().map_or(false, |adt_def| adt_def.is_manually_drop())

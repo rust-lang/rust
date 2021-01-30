@@ -1308,8 +1308,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
-            let item_def_id = cx.tcx.hir().local_def_id(it.hir_id);
-            let t = cx.tcx.type_of(item_def_id);
+            let t = cx.tcx.type_of(it.def_id);
             let ty = cx.tcx.erase_regions(t);
             let layout = match cx.layout_of(ty) {
                 Ok(layout) => layout,

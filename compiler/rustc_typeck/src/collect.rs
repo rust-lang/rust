@@ -247,7 +247,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        convert_item(self.tcx, item.hir_id);
+        convert_item(self.tcx, item.item_id());
         reject_placeholder_type_signatures_in_item(self.tcx, item);
         intravisit::walk_item(self, item);
     }
@@ -714,10 +714,10 @@ fn is_param(tcx: TyCtxt<'_>, ast_ty: &hir::Ty<'_>, param_id: hir::HirId) -> bool
     }
 }
 
-fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
-    let it = tcx.hir().expect_item(item_id);
-    debug!("convert: item {} with id {}", it.ident, it.hir_id);
-    let def_id = tcx.hir().local_def_id(item_id);
+fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
+    let it = tcx.hir().item(item_id);
+    debug!("convert: item {} with id {}", it.ident, it.hir_id());
+    let def_id = item_id.def_id;
 
     match it.kind {
         // These don't define types.
@@ -1122,7 +1122,7 @@ fn super_predicates_that_define_assoc_type(
         let is_trait_alias = tcx.is_trait_alias(trait_def_id);
         let superbounds2 = icx.type_parameter_bounds_in_generics(
             generics,
-            item.hir_id,
+            item.hir_id(),
             self_param_ty,
             OnlySelfBounds(!is_trait_alias),
             assoc_name,
@@ -1446,12 +1446,12 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                     //
                     // Something of a hack: use the node id for the trait, also as
                     // the node id for the Self type parameter.
-                    let param_id = item.hir_id;
+                    let param_id = item.def_id;
 
                     opt_self = Some(ty::GenericParamDef {
                         index: 0,
                         name: kw::SelfUpper,
-                        def_id: tcx.hir().local_def_id(param_id).to_def_id(),
+                        def_id: param_id.to_def_id(),
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
                             has_default: false,

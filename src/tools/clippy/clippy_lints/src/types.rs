@@ -1106,7 +1106,9 @@ fn is_empty_block(expr: &Expr<'_>) -> bool {
         expr.kind,
         ExprKind::Block(
             Block {
-                stmts: &[], expr: None, ..
+                stmts: &[],
+                expr: None,
+                ..
             },
             _,
         )
@@ -2565,7 +2567,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
             }
         }
 
-        if !cx.access_levels.is_exported(item.hir_id) {
+        if !cx.access_levels.is_exported(item.hir_id()) {
             return;
         }
 

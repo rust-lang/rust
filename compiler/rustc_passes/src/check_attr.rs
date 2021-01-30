@@ -1058,7 +1058,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let target = Target::from_item(item);
         self.check_attributes(
-            item.hir_id,
+            item.hir_id(),
             item.attrs,
             &item.span,
             target,

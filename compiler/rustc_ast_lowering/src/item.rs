@@ -197,7 +197,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         node_ids
             .into_iter()
-            .map(|node_id| hir::ItemId { id: self.allocate_hir_id_counter(node_id) })
+            .map(|node_id| hir::ItemId {
+                def_id: self.allocate_hir_id_counter(node_id).expect_owner(),
+            })
             .collect()
     }
 
@@ -250,7 +252,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let kind = self.lower_item_kind(i.span, i.id, &mut ident, attrs, &mut vis, &i.kind);
 
-        Some(hir::Item { hir_id: self.lower_node_id(i.id), ident, attrs, kind, vis, span: i.span })
+        Some(hir::Item {
+            def_id: self.lower_node_id(i.id).expect_owner(),
+            ident,
+            attrs,
+            kind,
+            vis,
+            span: i.span,
+        })
     }
 
     fn lower_item_kind(
@@ -557,7 +566,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let vis = this.rebuild_vis(&vis);
 
                         this.insert_item(hir::Item {
-                            hir_id: new_id,
+                            def_id: new_id.expect_owner(),
                             ident,
                             attrs,
                             kind,
@@ -629,7 +638,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             this.lower_use_tree(use_tree, &prefix, id, &mut vis, &mut ident, attrs);
 
                         this.insert_item(hir::Item {
-                            hir_id: new_hir_id,
+                            def_id: new_hir_id.expect_owner(),
                             ident,
                             attrs,
                             kind,

@@ -36,9 +36,9 @@ use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, Att
 use rustc_feature::{GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet};
 use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
-use rustc_hir::{HirId, HirIdSet, Node};
+use rustc_hir::{HirId, Node};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -173,8 +173,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..) => {
-                let def_id = cx.tcx.hir().local_def_id(it.hir_id);
-                self.check_heap_type(cx, it.span, cx.tcx.type_of(def_id))
+                self.check_heap_type(cx, it.span, cx.tcx.type_of(it.def_id))
             }
             _ => (),
         }
@@ -585,7 +584,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             hir::ItemKind::Trait(.., trait_item_refs) => {
                 // Issue #11592: traits are always considered exported, even when private.
                 if let hir::VisibilityKind::Inherited = it.vis.node {
-                    self.private_traits.insert(it.hir_id);
+                    self.private_traits.insert(it.hir_id());
                     for trait_item_ref in trait_item_refs {
                         self.private_traits.insert(trait_item_ref.id.hir_id);
                     }
@@ -621,10 +620,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             _ => return,
         };
 
-        let def_id = cx.tcx.hir().local_def_id(it.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, Some(it.hir_id), &it.attrs, it.span, article, desc);
+        self.check_missing_docs_attrs(cx, Some(it.hir_id()), &it.attrs, it.span, article, desc);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, trait_item: &hir::TraitItem<'_>) {
@@ -732,7 +730,7 @@ declare_lint_pass!(MissingCopyImplementations => [MISSING_COPY_IMPLEMENTATIONS])
 
 impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.access_levels.is_reachable(item.hir_id) {
+        if !cx.access_levels.is_reachable(item.hir_id()) {
             return;
         }
         let (def, ty) = match item.kind {
@@ -740,21 +738,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.hir_id));
+                let def = cx.tcx.adt_def(item.def_id);
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemKind::Union(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.hir_id));
+                let def = cx.tcx.adt_def(item.def_id);
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemKind::Enum(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.hir_id));
+                let def = cx.tcx.adt_def(item.def_id);
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             _ => return,
@@ -812,14 +810,14 @@ declare_lint! {
 
 #[derive(Default)]
 pub struct MissingDebugImplementations {
-    impling_types: Option<HirIdSet>,
+    impling_types: Option<LocalDefIdSet>,
 }
 
 impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.access_levels.is_reachable(item.hir_id) {
+        if !cx.access_levels.is_reachable(item.hir_id()) {
             return;
         }
 
@@ -834,11 +832,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
         };
 
         if self.impling_types.is_none() {
-            let mut impls = HirIdSet::default();
+            let mut impls = LocalDefIdSet::default();
             cx.tcx.for_each_impl(debug, |d| {
                 if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
                     if let Some(def_id) = ty_def.did.as_local() {
-                        impls.insert(cx.tcx.hir().local_def_id_to_hir_id(def_id));
+                        impls.insert(def_id);
                     }
                 }
             });
@@ -847,7 +845,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             debug!("{:?}", self.impling_types);
         }
 
-        if !self.impling_types.as_ref().unwrap().contains(&item.hir_id) {
+        if !self.impling_types.as_ref().unwrap().contains(&item.def_id) {
             cx.struct_span_lint(MISSING_DEBUG_IMPLEMENTATIONS, item.span, |lint| {
                 lint.build(&format!(
                     "type does not implement `{}`; consider adding `#[derive(Debug)]` \
@@ -1362,7 +1360,7 @@ impl UnreachablePub {
 
 impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        self.perform_lint(cx, "item", item.hir_id, &item.vis, item.span, true);
+        self.perform_lint(cx, "item", item.hir_id(), &item.vis, item.span, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'tcx>) {
@@ -1603,8 +1601,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
         use rustc_middle::ty::PredicateKind::*;
 
         if cx.tcx.features().trivial_bounds {
-            let def_id = cx.tcx.hir().local_def_id(item.hir_id);
-            let predicates = cx.tcx.predicates_of(def_id);
+            let predicates = cx.tcx.predicates_of(item.def_id);
             for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate.kind().skip_binder() {
                     Trait(..) => "Trait",
@@ -1810,7 +1807,7 @@ declare_lint! {
 }
 
 pub struct UnnameableTestItems {
-    boundary: Option<hir::HirId>, // HirId of the item under which things are not nameable
+    boundary: Option<LocalDefId>, // Id of the item under which things are not nameable
     items_nameable: bool,
 }
 
@@ -1828,7 +1825,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
             if let hir::ItemKind::Mod(..) = it.kind {
             } else {
                 self.items_nameable = false;
-                self.boundary = Some(it.hir_id);
+                self.boundary = Some(it.def_id);
             }
             return;
         }
@@ -1841,7 +1838,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
     }
 
     fn check_item_post(&mut self, _cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        if !self.items_nameable && self.boundary == Some(it.hir_id) {
+        if !self.items_nameable && self.boundary == Some(it.def_id) {
             self.items_nameable = true;
         }
     }
@@ -2125,7 +2122,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
         use rustc_middle::middle::resolve_lifetime::Region;
 
         let infer_static = cx.tcx.features().infer_static_outlives_requirements;
-        let def_id = cx.tcx.hir().local_def_id(item.hir_id);
+        let def_id = item.def_id;
         if let hir::ItemKind::Struct(_, ref hir_generics)
         | hir::ItemKind::Enum(_, ref hir_generics)
         | hir::ItemKind::Union(_, ref hir_generics) = item.kind

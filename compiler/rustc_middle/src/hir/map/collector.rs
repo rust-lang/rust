@@ -338,13 +338,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_item(&mut self, i: &'hir Item<'hir>) {
         debug!("visit_item: {:?}", i);
-        debug_assert_eq!(
-            i.hir_id.owner,
-            self.definitions.opt_hir_id_to_local_def_id(i.hir_id).unwrap()
-        );
-        self.with_dep_node_owner(i.hir_id.owner, i, |this, hash| {
-            this.insert_with_hash(i.span, i.hir_id, Node::Item(i), hash);
-            this.with_parent(i.hir_id, |this| {
+        self.with_dep_node_owner(i.def_id, i, |this, hash| {
+            let hir_id = i.hir_id();
+            this.insert_with_hash(i.span, hir_id, Node::Item(i), hash);
+            this.with_parent(hir_id, |this| {
                 if let ItemKind::Struct(ref struct_def, _) = i.kind {
                     // If this is a tuple or unit-like struct, register the constructor.
                     if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {

@@ -283,13 +283,13 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let attr = must_use_attr(&item.attrs);
         if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
-            let is_public = cx.access_levels.is_exported(item.hir_id);
+            let is_public = cx.access_levels.is_exported(item.hir_id());
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
             if is_public {
                 check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
             }
             if let Some(attr) = attr {
-                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
+                check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
                 return;
             }
             if is_public && !is_proc_macro(cx.sess(), &item.attrs) && attr_by_name(&item.attrs, "no_mangle").is_none() {
@@ -298,7 +298,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                     &sig.decl,
                     cx.tcx.hir().body(*body_id),
                     item.span,
-                    item.hir_id,
+                    item.hir_id(),
                     item.span.with_hi(sig.decl.output.span().hi()),
                     "this function could have a `#[must_use]` attribute",
                 );

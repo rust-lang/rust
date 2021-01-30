@@ -35,11 +35,11 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ItemId {
-    type KeyType = (DefPathHash, ItemLocalId);
+    type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
-        self.id.to_stable_hash_key(hcx)
+    fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
+        hcx.local_def_path_hash(self.def_id)
     }
 }
 
@@ -91,7 +91,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for BodyId {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ItemId {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_reference_to_item(self.id, hasher)
+        hcx.hash_reference_to_item(self.hir_id(), hasher)
     }
 }
 
@@ -178,7 +178,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItem<'_> {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Item<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let Item { ident, ref attrs, hir_id: _, ref kind, ref vis, span } = *self;
+        let Item { ident, ref attrs, def_id: _, ref kind, ref vis, span } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);

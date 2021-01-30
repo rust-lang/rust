@@ -167,7 +167,7 @@ impl Visitor<'tcx> for IfThisChanged<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.process_attrs(item.hir_id, &item.attrs);
+        self.process_attrs(item.hir_id(), &item.attrs);
         intravisit::walk_item(self, item);
     }
 

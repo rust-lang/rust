@@ -301,7 +301,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn item(&self, id: ItemId) -> &'hir Item<'hir> {
-        match self.find(id.id).unwrap() {
+        match self.find(id.hir_id()).unwrap() {
             Node::Item(item) => item,
             _ => bug!(),
         }

@@ -128,11 +128,11 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        debug!("add_inferreds for item {}", self.tcx.hir().node_to_string(item.hir_id));
+        debug!("add_inferreds for item {}", self.tcx.hir().node_to_string(item.hir_id()));
 
         match item.kind {
             hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
-                self.add_inferreds_for_item(item.hir_id);
+                self.add_inferreds_for_item(item.hir_id());
 
                 if let hir::VariantData::Tuple(..) = *struct_def {
                     self.add_inferreds_for_item(struct_def.ctor_hir_id().unwrap());
@@ -140,7 +140,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
             }
 
             hir::ItemKind::Enum(ref enum_def, _) => {
-                self.add_inferreds_for_item(item.hir_id);
+                self.add_inferreds_for_item(item.hir_id());
 
                 for variant in enum_def.variants {
                     if let hir::VariantData::Tuple(..) = variant.data {
@@ -150,7 +150,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
             }
 
             hir::ItemKind::Fn(..) => {
-                self.add_inferreds_for_item(item.hir_id);
+                self.add_inferreds_for_item(item.hir_id());
             }
 
             _ => {}

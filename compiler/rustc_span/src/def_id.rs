@@ -227,6 +227,8 @@ pub struct LocalDefId {
     pub local_def_index: DefIndex,
 }
 
+pub const CRATE_DEF_ID: LocalDefId = LocalDefId { local_def_index: CRATE_DEF_INDEX };
+
 impl Idx for LocalDefId {
     #[inline]
     fn new(idx: usize) -> Self {
@@ -267,6 +269,8 @@ impl<D: Decoder> Decodable<D> for LocalDefId {
         DefId::decode(d).map(|d| d.expect_local())
     }
 }
+
+rustc_data_structures::define_id_collections!(LocalDefIdMap, LocalDefIdSet, LocalDefId);
 
 impl<CTX: HashStableContext> HashStable<CTX> for DefId {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {

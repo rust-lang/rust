@@ -23,10 +23,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
         let foreign_items =
             items.iter().map(|it| self.tcx.hir().local_def_id(it.id.hir_id).to_def_id()).collect();
-        self.modules.push(ForeignModule {
-            foreign_items,
-            def_id: self.tcx.hir().local_def_id(it.hir_id).to_def_id(),
-        });
+        self.modules.push(ForeignModule { foreign_items, def_id: it.def_id.to_def_id() });
     }
 
     fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem<'tcx>) {}

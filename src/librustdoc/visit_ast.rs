@@ -270,8 +270,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let name = renamed.unwrap_or(item.ident.name);
 
         if item.vis.node.is_pub() {
-            let def_id = self.cx.tcx.hir().local_def_id(item.hir_id);
-            self.store_path(def_id.to_def_id());
+            self.store_path(item.def_id.to_def_id());
         }
 
         match item.kind {
@@ -305,7 +304,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     });
                     let ident = if is_glob { None } else { Some(name) };
                     if self.maybe_inline_local(
-                        item.hir_id,
+                        item.hir_id(),
                         path.res,
                         ident,
                         is_glob,
@@ -322,7 +321,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.mods.push(self.visit_mod_contents(
                     item.span,
                     &item.vis,
-                    item.hir_id,
+                    item.hir_id(),
                     m,
                     Some(name),
                 ));

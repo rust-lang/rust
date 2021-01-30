@@ -7,7 +7,9 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{
+    CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE,
+};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -431,7 +433,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_info_for_items(&mut self) {
         let krate = self.tcx.hir().krate();
-        self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.item.module);
+        self.encode_info_for_mod(CRATE_DEF_ID, &krate.item.module);
 
         // Proc-macro crates only export proc-macro items, which are looked
         // up using `proc_macro_data`
@@ -932,9 +934,8 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_inferred_outlives(def_id);
     }
 
-    fn encode_info_for_mod(&mut self, id: hir::HirId, md: &hir::Mod<'_>) {
+    fn encode_info_for_mod(&mut self, local_def_id: LocalDefId, md: &hir::Mod<'_>) {
         let tcx = self.tcx;
-        let local_def_id = tcx.hir().local_def_id(id);
         let def_id = local_def_id.to_def_id();
         debug!("EncodeContext::encode_info_for_mod({:?})", def_id);
 
@@ -969,7 +970,7 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.children[def_id] <- &[]);
         } else {
             record!(self.tables.children[def_id] <- md.item_ids.iter().map(|item_id| {
-                tcx.hir().local_def_id(item_id.id).local_def_index
+                item_id.def_id.local_def_index
             }));
         }
     }
@@ -1312,7 +1313,7 @@ impl EncodeContext<'a, 'tcx> {
                 EntryKind::Fn(self.lazy(data))
             }
             hir::ItemKind::Mod(ref m) => {
-                return self.encode_info_for_mod(item.hir_id, m);
+                return self.encode_info_for_mod(item.def_id, m);
             }
             hir::ItemKind::ForeignMod { .. } => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
@@ -1850,10 +1851,9 @@ impl Visitor<'tcx> for EncodeContext<'a, 'tcx> {
     }
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         intravisit::walk_item(self, item);
-        let def_id = self.tcx.hir().local_def_id(item.hir_id);
         match item.kind {
             hir::ItemKind::ExternCrate(_) | hir::ItemKind::Use(..) => {} // ignore these
-            _ => self.encode_info_for_item(def_id.to_def_id(), item),
+            _ => self.encode_info_for_item(item.def_id.to_def_id(), item),
         }
         self.encode_addl_info_for_item(item);
     }
@@ -1920,7 +1920,6 @@ impl EncodeContext<'a, 'tcx> {
     /// so it's easier to do that here then to wait until we would encounter
     /// normally in the visitor walk.
     fn encode_addl_info_for_item(&mut self, item: &hir::Item<'_>) {
-        let def_id = self.tcx.hir().local_def_id(item.hir_id);
         match item.kind {
             hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
@@ -1936,7 +1935,7 @@ impl EncodeContext<'a, 'tcx> {
                 // no sub-item recording needed in these cases
             }
             hir::ItemKind::Enum(..) => {
-                let def = self.tcx.adt_def(def_id.to_def_id());
+                let def = self.tcx.adt_def(item.def_id.to_def_id());
                 self.encode_fields(def);
 
                 for (i, variant) in def.variants.iter_enumerated() {
@@ -1948,7 +1947,7 @@ impl EncodeContext<'a, 'tcx> {
                 }
             }
             hir::ItemKind::Struct(ref struct_def, _) => {
-                let def = self.tcx.adt_def(def_id.to_def_id());
+                let def = self.tcx.adt_def(item.def_id.to_def_id());
                 self.encode_fields(def);
 
                 // If the struct has a constructor, encode it.
@@ -1958,18 +1957,19 @@ impl EncodeContext<'a, 'tcx> {
                 }
             }
             hir::ItemKind::Union(..) => {
-                let def = self.tcx.adt_def(def_id.to_def_id());
+                let def = self.tcx.adt_def(item.def_id.to_def_id());
                 self.encode_fields(def);
             }
             hir::ItemKind::Impl { .. } => {
                 for &trait_item_def_id in
-                    self.tcx.associated_item_def_ids(def_id.to_def_id()).iter()
+                    self.tcx.associated_item_def_ids(item.def_id.to_def_id()).iter()
                 {
                     self.encode_info_for_impl_item(trait_item_def_id);
                 }
             }
             hir::ItemKind::Trait(..) => {
-                for &item_def_id in self.tcx.associated_item_def_ids(def_id.to_def_id()).iter() {
+                for &item_def_id in self.tcx.associated_item_def_ids(item.def_id.to_def_id()).iter()
+                {
                     self.encode_info_for_trait_item(item_def_id);
                 }
             }
@@ -1985,15 +1985,14 @@ struct ImplVisitor<'tcx> {
 impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::Impl { .. } = item.kind {
-            let impl_id = self.tcx.hir().local_def_id(item.hir_id);
-            if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id.to_def_id()) {
+            if let Some(trait_ref) = self.tcx.impl_trait_ref(item.def_id.to_def_id()) {
                 let simplified_self_ty =
                     ty::fast_reject::simplify_type(self.tcx, trait_ref.self_ty(), false);
 
                 self.impls
                     .entry(trait_ref.def_id)
                     .or_default()
-                    .push((impl_id.local_def_index, simplified_self_ty));
+                    .push((item.def_id.local_def_index, simplified_self_ty));
             }
         }
     }

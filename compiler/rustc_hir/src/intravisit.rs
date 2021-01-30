@@ -565,16 +565,16 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
     visitor.visit_ident(item.ident);
     match item.kind {
         ItemKind::ExternCrate(orig_name) => {
-            visitor.visit_id(item.hir_id);
+            visitor.visit_id(item.hir_id());
             if let Some(orig_name) = orig_name {
                 visitor.visit_name(item.span, orig_name);
             }
         }
         ItemKind::Use(ref path, _) => {
-            visitor.visit_use(path, item.hir_id);
+            visitor.visit_use(path, item.hir_id());
         }
         ItemKind::Static(ref typ, _, body) | ItemKind::Const(ref typ, body) => {
-            visitor.visit_id(item.hir_id);
+            visitor.visit_id(item.hir_id());
             visitor.visit_ty(typ);
             visitor.visit_nested_body(body);
         }
@@ -583,33 +583,33 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             &sig.decl,
             body_id,
             item.span,
-            item.hir_id,
+            item.hir_id(),
         ),
         ItemKind::Mod(ref module) => {
             // `visit_mod()` takes care of visiting the `Item`'s `HirId`.
-            visitor.visit_mod(module, item.span, item.hir_id)
+            visitor.visit_mod(module, item.span, item.hir_id())
         }
         ItemKind::ForeignMod { abi: _, items } => {
-            visitor.visit_id(item.hir_id);
+            visitor.visit_id(item.hir_id());
             walk_list!(visitor, visit_foreign_item_ref, items);
         }
         ItemKind::GlobalAsm(_) => {
-            visitor.visit_id(item.hir_id);
+            visitor.visit_id(item.hir_id());
         }
         ItemKind::TyAlias(ref ty, ref generics) => {
-            visitor.visit_id(item.hir_id);
+            visitor.visit_id(item.hir_id());
             visitor.visit_ty(ty);
             visitor.visit_generics(generics)
         }
         ItemKind::OpaqueTy(OpaqueTy { ref generics, bounds, .. }) => {
-            visitor.visit_id(item.hir_id);
+            visitor.visit_id(item.hir_id());
             walk_generics(visitor, generics);
             walk_list!(visitor, visit_param_bound, bounds);
         }
         ItemKind::Enum(ref enum_definition, ref generics) => {
             visitor.visit_generics(generics);
             // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
-            visitor.visit_enum_def(enum_definition, generics, item.hir_id, item.span)
+            visitor.visit_enum_def(enum_definition, generics, item.hir_id(), item.span)
         }
         ItemKind::Impl(Impl {
             unsafety: _,
@@ -622,7 +622,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             ref self_ty,
             items,
         }) => {
-            visitor.visit_id(item.hir_id);
+            visitor.visit_id(item.hir_id());
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_trait_ref, of_trait);
             visitor.visit_ty(self_ty);
@@ -631,23 +631,23 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         ItemKind::Struct(ref struct_definition, ref generics)
         | ItemKind::Union(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
-            visitor.visit_id(item.hir_id);
+            visitor.visit_id(item.hir_id());
             visitor.visit_variant_data(
                 struct_definition,
                 item.ident.name,
                 generics,
-                item.hir_id,
+                item.hir_id(),
                 item.span,
             );
         }
         ItemKind::Trait(.., ref generics, bounds, trait_item_refs) => {
-            visitor.visit_id(item.hir_id);
+            visitor.visit_id(item.hir_id());
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_trait_item_ref, trait_item_refs);
         }
         ItemKind::TraitAlias(ref generics, bounds) => {
-            visitor.visit_id(item.hir_id);
+            visitor.visit_id(item.hir_id());
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
         }

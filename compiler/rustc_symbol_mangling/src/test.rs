@@ -61,7 +61,7 @@ impl SymbolNamesTest<'tcx> {
 
 impl hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.process_attrs(item.hir_id);
+        self.process_attrs(item.hir_id());
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {

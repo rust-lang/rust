@@ -120,7 +120,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_item(&mut self, i: &'v hir::Item<'v>) {
-        self.record("Item", Id::Node(i.hir_id), i);
+        self.record("Item", Id::Node(i.hir_id()), i);
         hir_visit::walk_item(self, i)
     }
 

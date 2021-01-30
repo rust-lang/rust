@@ -169,7 +169,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             ..
         }) = item.kind
         {
-            let ty = cx.tcx.type_of(cx.tcx.hir().local_def_id(item.hir_id));
+            let ty = cx.tcx.type_of(item.def_id);
             let is_automatically_derived = is_automatically_derived(&*item.attrs);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);

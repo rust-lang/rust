@@ -606,10 +606,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn insert_item(&mut self, item: hir::Item<'hir>) -> hir::ItemId {
-        let id = item.hir_id;
-        // FIXME: Use `debug_asset-rt`.
-        assert_eq!(id.local_id, hir::ItemLocalId::from_u32(0));
-        let id = hir::ItemId { id };
+        let id = hir::ItemId { def_id: item.def_id };
         self.items.insert(id, item);
         self.modules.get_mut(&self.current_module).unwrap().items.insert(id);
         id
@@ -1549,11 +1546,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             trace!("lower_opaque_impl_trait: {:#?}", opaque_ty_def_id);
-            let opaque_ty_id =
-                lctx.generate_opaque_type(opaque_ty_node_id, opaque_ty_item, span, opaque_ty_span);
+            lctx.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span);
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-            hir::TyKind::OpaqueDef(hir::ItemId { id: opaque_ty_id }, lifetimes)
+            hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
         })
     }
 
@@ -1561,17 +1557,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// returns the lowered node-ID for the opaque type.
     fn generate_opaque_type(
         &mut self,
-        opaque_ty_node_id: NodeId,
+        opaque_ty_id: LocalDefId,
         opaque_ty_item: hir::OpaqueTy<'hir>,
         span: Span,
         opaque_ty_span: Span,
-    ) -> hir::HirId {
+    ) {
         let opaque_ty_item_kind = hir::ItemKind::OpaqueTy(opaque_ty_item);
-        let opaque_ty_id = self.lower_node_id(opaque_ty_node_id);
         // Generate an `type Foo = impl Trait;` declaration.
         trace!("registering opaque type with id {:#?}", opaque_ty_id);
         let opaque_ty_item = hir::Item {
-            hir_id: opaque_ty_id,
+            def_id: opaque_ty_id,
             ident: Ident::invalid(),
             attrs: Default::default(),
             kind: opaque_ty_item_kind,
@@ -1583,7 +1578,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // automatically for all AST items. But this opaque type item
         // does not actually exist in the AST.
         self.insert_item(opaque_ty_item);
-        opaque_ty_id
     }
 
     fn lifetimes_from_impl_trait_bounds(
@@ -2012,7 +2006,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // grow.
         let input_lifetimes_count = self.in_scope_lifetimes.len() + self.lifetimes_to_define.len();
 
-        let (opaque_ty_id, lifetime_params) = self.with_hir_id_owner(opaque_ty_node_id, |this| {
+        let lifetime_params = self.with_hir_id_owner(opaque_ty_node_id, |this| {
             // We have to be careful to get elision right here. The
             // idea is that we create a lifetime parameter for each
             // lifetime in the return type.  So, given a return type
@@ -2063,10 +2057,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             trace!("exist ty from async fn def id: {:#?}", opaque_ty_def_id);
-            let opaque_ty_id =
-                this.generate_opaque_type(opaque_ty_node_id, opaque_ty_item, span, opaque_ty_span);
+            this.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span);
 
-            (opaque_ty_id, lifetime_params)
+            lifetime_params
         });
 
         // As documented above on the variable
@@ -2109,7 +2102,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Foo = impl Trait` is, internally, created as a child of the
         // async fn, so the *type parameters* are inherited.  It's
         // only the lifetime parameters that we must supply.
-        let opaque_ty_ref = hir::TyKind::OpaqueDef(hir::ItemId { id: opaque_ty_id }, generic_args);
+        let opaque_ty_ref =
+            hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, generic_args);
         let opaque_ty = self.ty(opaque_ty_span, opaque_ty_ref);
         hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
     }
@@ -2434,7 +2428,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let mut ids: SmallVec<[hir::Stmt<'hir>; 1]> = item_ids
                     .into_iter()
                     .map(|item_id| {
-                        let item_id = hir::ItemId { id: self.lower_node_id(item_id) };
+                        let item_id = hir::ItemId {
+                            // All the items that `lower_local` finds are `impl Trait` types.
+                            def_id: self.lower_node_id(item_id).expect_owner(),
+                        };
                         self.stmt(s.span, hir::StmtKind::Item(item_id))
                     })
                     .collect();

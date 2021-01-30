@@ -1050,7 +1050,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
             item.ident.to_string()
         };
 
-        self.visit_testable(name, &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(name, &item.attrs, item.hir_id(), item.span, |this| {
             intravisit::walk_item(this, item);
         });
     }

@@ -632,7 +632,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                                 // Ensure that the parent of the def is an item, not HRTB
                                 let parent_id = self.tcx.hir().get_parent_node(hir_id);
-                                let parent_item_id = hir::ItemId { id: parent_id };
+                                let parent_item_id =
+                                    hir::ItemId { def_id: parent_id.expect_owner() };
                                 let parent_impl_id = hir::ImplItemId { hir_id: parent_id };
                                 let parent_trait_id = hir::TraitItemId { hir_id: parent_id };
                                 let krate = self.tcx.hir().krate();
@@ -1256,7 +1257,7 @@ fn compute_object_lifetime_defaults(tcx: TyCtxt<'_>) -> HirIdMap<Vec<ObjectLifet
                     tcx.sess.span_err(item.span, &object_lifetime_default_reprs);
                 }
 
-                map.insert(item.hir_id, result);
+                map.insert(item.hir_id(), result);
             }
             _ => {}
         }

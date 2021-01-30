@@ -2211,7 +2211,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::OpaqueDef(item_id, ref lifetimes) => {
                 let opaque_ty = tcx.hir().item(item_id);
-                let def_id = tcx.hir().local_def_id(item_id.id).to_def_id();
+                let def_id = item_id.def_id.to_def_id();
 
                 match opaque_ty.kind {
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => {

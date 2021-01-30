@@ -188,8 +188,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         match node {
             Node::Item(item) => match item.kind {
                 hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                    let def_id = self.tcx.hir().local_def_id(item.hir_id);
-                    let def = self.tcx.adt_def(def_id);
+                    let def = self.tcx.adt_def(item.def_id);
                     self.repr_has_repr_c = def.repr.c();
 
                     intravisit::walk_item(self, &item);
@@ -395,9 +394,10 @@ struct LifeSeeder<'k, 'tcx> {
 
 impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        let allow_dead_code = has_allow_dead_code_or_lang_attr(self.tcx, item.hir_id, &item.attrs);
+        let allow_dead_code =
+            has_allow_dead_code_or_lang_attr(self.tcx, item.hir_id(), &item.attrs);
         if allow_dead_code {
-            self.worklist.push(item.hir_id);
+            self.worklist.push(item.hir_id());
         }
         match item.kind {
             hir::ItemKind::Enum(ref enum_def, _) => {
@@ -413,7 +413,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
             }
             hir::ItemKind::Impl(hir::Impl { ref of_trait, items, .. }) => {
                 if of_trait.is_some() {
-                    self.worklist.push(item.hir_id);
+                    self.worklist.push(item.hir_id());
                 }
                 for impl_item_ref in items {
                     let impl_item = self.krate.impl_item(impl_item_ref.id);
@@ -430,7 +430,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
             }
             hir::ItemKind::Struct(ref variant_data, _) => {
                 if let Some(ctor_hir_id) = variant_data.ctor_hir_id() {
-                    self.struct_constructors.insert(ctor_hir_id, item.hir_id);
+                    self.struct_constructors.insert(ctor_hir_id, item.hir_id());
                 }
             }
             _ => (),
@@ -525,7 +525,7 @@ impl DeadVisitor<'tcx> {
                 | hir::ItemKind::Struct(..)
                 | hir::ItemKind::Union(..)
         );
-        should_warn && !self.symbol_is_live(item.hir_id)
+        should_warn && !self.symbol_is_live(item.hir_id())
     }
 
     fn should_warn_about_field(&mut self, field: &hir::StructField<'_>) -> bool {
@@ -627,7 +627,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
                 _ => "used",
             };
-            self.warn_dead_code(item.hir_id, span, item.ident.name, participle);
+            self.warn_dead_code(item.hir_id(), span, item.ident.name, participle);
         } else {
             // Only continue if we didn't warn
             intravisit::walk_item(self, item);

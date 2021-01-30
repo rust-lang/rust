@@ -215,7 +215,7 @@ impl<'a> FnLikeNode<'a> {
         match self.node {
             Node::Item(i) => match i.kind {
                 hir::ItemKind::Fn(ref sig, ref generics, block) => item_fn(ItemFnParts {
-                    id: i.hir_id,
+                    id: i.hir_id(),
                     ident: i.ident,
                     decl: &sig.decl,
                     body: block,

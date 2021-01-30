@@ -72,8 +72,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(item_id) => {
-                let def_id = tcx.hir().local_def_id(item_id.hir_id());
-                SymbolName::new(tcx, &format!("global_asm_{:?}", def_id))
+                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.def_id))
             }
         }
     }

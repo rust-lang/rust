@@ -2543,12 +2543,13 @@ impl VariantData<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug, Hash)]
 pub struct ItemId {
-    pub id: HirId,
+    pub def_id: LocalDefId,
 }
 
 impl ItemId {
     pub fn hir_id(&self) -> HirId {
-        self.id
+        // Items are always HIR owners.
+        HirId::make_owner(self.def_id)
     }
 }
 
@@ -2558,7 +2559,7 @@ impl ItemId {
 #[derive(Debug)]
 pub struct Item<'hir> {
     pub ident: Ident,
-    pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub attrs: &'hir [Attribute],
     pub kind: ItemKind<'hir>,
     pub vis: Visibility<'hir>,
@@ -2566,8 +2567,13 @@ pub struct Item<'hir> {
 }
 
 impl Item<'_> {
+    pub fn hir_id(&self) -> HirId {
+        // Items are always HIR owners.
+        HirId::make_owner(self.def_id)
+    }
+
     pub fn item_id(&self) -> ItemId {
-        ItemId { id: self.hir_id }
+        ItemId { def_id: self.def_id }
     }
 }
 
@@ -2879,8 +2885,8 @@ impl<'hir> Node<'hir> {
 
     pub fn hir_id(&self) -> Option<HirId> {
         match self {
-            Node::Item(Item { hir_id, .. })
-            | Node::ForeignItem(ForeignItem { hir_id, .. })
+            Node::Item(Item { def_id, .. }) => Some(HirId::make_owner(*def_id)),
+            Node::ForeignItem(ForeignItem { hir_id, .. })
             | Node::TraitItem(TraitItem { hir_id, .. })
             | Node::ImplItem(ImplItem { hir_id, .. })
             | Node::Field(StructField { hir_id, .. })
@@ -2915,7 +2921,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
 
-    rustc_data_structures::static_assert_size!(super::Item<'static>, 208);
+    rustc_data_structures::static_assert_size!(super::Item<'static>, 200);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 152);
     rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 168);
     rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 160);

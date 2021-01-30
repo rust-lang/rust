@@ -38,7 +38,7 @@ impl<'tcx> LateLintPass<'tcx> for CopyIterator {
             ..
         }) = item.kind
         {
-            let ty = cx.tcx.type_of(cx.tcx.hir().local_def_id(item.hir_id));
+            let ty = cx.tcx.type_of(item.def_id);
 
             if is_copy(cx, ty) && match_path(&trait_ref.path, &paths::ITERATOR) {
                 span_lint_and_note(
