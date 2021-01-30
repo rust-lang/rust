@@ -1838,9 +1838,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .iter()
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
                 .map(|field| (field.ident.name, field.ty(self.tcx, expected_substs)))
-                .inspect(|(name, ty)| {
-                    debug!("suggest_field_where_appropriate: name={:?}, ty={:?}", name, ty)
-                })
                 .find(|(_, ty)| ty::TyS::same_type(ty, exp_found.found))
             {
                 if let ObligationCauseCode::Pattern { span: Some(span), .. } = cause.code {
