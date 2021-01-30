@@ -1679,7 +1679,7 @@ pub enum Foo {}
 How imports should be grouped into `use` statements. Imports will be merged or split to the configured level of granularity.
 
 - **Default value**: `Preserve`
-- **Possible values**: `Preserve`, `Crate`, `Module`, `Item`
+- **Possible values**: `Preserve`, `Crate`, `Module`, `Item`, `One`
 - **Stable**: No
 
 #### `Preserve` (default):
@@ -1731,6 +1731,23 @@ use foo::c;
 use foo::d::e;
 use qux::h;
 use qux::i;
+```
+
+#### `One`:
+
+Merge all imports into a single `use` statement as long as they have the same visibility.
+
+```rust
+pub use foo::{x, y};
+use {
+    bar::{
+        a,
+        b::{self, f, g},
+        c,
+        d::e,
+    },
+    qux::{h, i},
+};
 ```
 
 ## `merge_imports`

@@ -113,6 +113,7 @@ fn rewrite_reorderable_or_regroupable_items(
                     merge_use_trees(normalized_items, SharedPrefix::Module)
                 }
                 ImportGranularity::Item => flatten_use_trees(normalized_items),
+                ImportGranularity::One => merge_use_trees(normalized_items, SharedPrefix::One),
                 ImportGranularity::Preserve => normalized_items,
             };
 

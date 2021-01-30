@@ -138,6 +138,29 @@ impl UseSegment {
         }
     }
 
+    // Check if self == other with their aliases removed.
+    fn equal_except_alias(&self, other: &Self) -> bool {
+        match (self, other) {
+            (UseSegment::Ident(ref s1, _), UseSegment::Ident(ref s2, _)) => s1 == s2,
+            (UseSegment::Slf(_), UseSegment::Slf(_))
+            | (UseSegment::Super(_), UseSegment::Super(_))
+            | (UseSegment::Crate(_), UseSegment::Crate(_))
+            | (UseSegment::Glob, UseSegment::Glob) => true,
+            (UseSegment::List(ref list1), UseSegment::List(ref list2)) => list1 == list2,
+            _ => false,
+        }
+    }
+
+    fn get_alias(&self) -> Option<&str> {
+        match self {
+            UseSegment::Ident(_, a)
+            | UseSegment::Slf(a)
+            | UseSegment::Super(a)
+            | UseSegment::Crate(a) => a.as_deref(),
+            _ => None,
+        }
+    }
+
     fn from_path_segment(
         context: &RewriteContext<'_>,
         path_seg: &ast::PathSegment,
@@ -558,6 +581,7 @@ impl UseTree {
                 SharedPrefix::Module => {
                     self.path[..self.path.len() - 1] == other.path[..other.path.len() - 1]
                 }
+                SharedPrefix::One => true,
             }
         }
     }
@@ -598,7 +622,7 @@ impl UseTree {
     fn merge(&mut self, other: &UseTree, merge_by: SharedPrefix) {
         let mut prefix = 0;
         for (a, b) in self.path.iter().zip(other.path.iter()) {
-            if *a == *b {
+            if a.equal_except_alias(b) {
                 prefix += 1;
             } else {
                 break;
@@ -633,14 +657,20 @@ fn merge_rest(
             return Some(new_path);
         }
     } else if len == 1 {
-        let rest = if a.len() == len { &b[1..] } else { &a[1..] };
-        return Some(vec![
-            b[0].clone(),
-            UseSegment::List(vec![
-                UseTree::from_path(vec![UseSegment::Slf(None)], DUMMY_SP),
-                UseTree::from_path(rest.to_vec(), DUMMY_SP),
-            ]),
-        ]);
+        let (common, rest) = if a.len() == len {
+            (&a[0], &b[1..])
+        } else {
+            (&b[0], &a[1..])
+        };
+        let mut list = vec![UseTree::from_path(
+            vec![UseSegment::Slf(common.get_alias().map(ToString::to_string))],
+            DUMMY_SP,
+        )];
+        match rest {
+            [UseSegment::List(rest_list)] => list.extend(rest_list.clone()),
+            _ => list.push(UseTree::from_path(rest.to_vec(), DUMMY_SP)),
+        }
+        return Some(vec![b[0].clone(), UseSegment::List(list)]);
     } else {
         len -= 1;
     }
@@ -655,18 +685,54 @@ fn merge_rest(
 }
 
 fn merge_use_trees_inner(trees: &mut Vec<UseTree>, use_tree: UseTree, merge_by: SharedPrefix) {
-    let similar_trees = trees
-        .iter_mut()
-        .filter(|tree| tree.share_prefix(&use_tree, merge_by));
+    struct SimilarTree<'a> {
+        similarity: usize,
+        path_len: usize,
+        tree: &'a mut UseTree,
+    }
+
+    let similar_trees = trees.iter_mut().filter_map(|tree| {
+        if tree.share_prefix(&use_tree, merge_by) {
+            // In the case of `SharedPrefix::One`, `similarity` is used for deciding with which
+            // tree `use_tree` should be merge.
+            // In other cases `similarity` won't be used, so set it to `0` as a dummy value.
+            let similarity = if merge_by == SharedPrefix::One {
+                tree.path
+                    .iter()
+                    .zip(&use_tree.path)
+                    .take_while(|(a, b)| a.equal_except_alias(b))
+                    .count()
+            } else {
+                0
+            };
+
+            let path_len = tree.path.len();
+            Some(SimilarTree {
+                similarity,
+                tree,
+                path_len,
+            })
+        } else {
+            None
+        }
+    });
+
     if use_tree.path.len() == 1 && merge_by == SharedPrefix::Crate {
-        if let Some(tree) = similar_trees.min_by_key(|tree| tree.path.len()) {
-            if tree.path.len() == 1 {
+        if let Some(tree) = similar_trees.min_by_key(|tree| tree.path_len) {
+            if tree.path_len == 1 {
                 return;
             }
         }
-    } else if let Some(tree) = similar_trees.max_by_key(|tree| tree.path.len()) {
-        if tree.path.len() > 1 {
-            tree.merge(&use_tree, merge_by);
+    } else if merge_by == SharedPrefix::One {
+        if let Some(sim_tree) = similar_trees.max_by_key(|tree| tree.similarity) {
+            if sim_tree.similarity > 0 {
+                sim_tree.tree.merge(&use_tree, merge_by);
+                return;
+            }
+        }
+    } else if let Some(sim_tree) = similar_trees.max_by_key(|tree| tree.path_len) {
+        if sim_tree.path_len > 1 {
+            sim_tree.tree.merge(&use_tree, merge_by);
             return;
         }
     }
@@ -880,6 +946,7 @@ impl Rewrite for UseTree {
 pub(crate) enum SharedPrefix {
     Crate,
     Module,
+    One,
 }
 
 #[cfg(test)]
@@ -904,7 +971,7 @@ mod test {
             }
 
             fn eat(&mut self, c: char) {
-                assert!(self.input.next().unwrap() == c);
+                assert_eq!(self.input.next().unwrap(), c);
             }
 
             fn push_segment(
@@ -1091,6 +1158,49 @@ mod test {
             Module,
             ["foo::{a::b, a::c, d::e, d::f}"],
             ["foo::a::{b, c}", "foo::d::{e, f}"]
+        );
+    }
+
+    #[test]
+    fn test_use_tree_merge_one() {
+        test_merge!(One, ["a", "b"], ["{a, b}"]);
+
+        test_merge!(One, ["a::{aa, ab}", "b", "a"], ["{a::{self, aa, ab}, b}"]);
+
+        test_merge!(One, ["a as x", "b as y"], ["{a as x, b as y}"]);
+
+        test_merge!(
+            One,
+            ["a::{aa as xa, ab}", "b", "a"],
+            ["{a::{self, aa as xa, ab}, b}"]
+        );
+
+        test_merge!(
+            One,
+            ["a", "a::{aa, ab::{aba, abb}}"],
+            ["a::{self, aa, ab::{aba, abb}}"]
+        );
+
+        test_merge!(One, ["a", "b::{ba, *}"], ["{a, b::{ba, *}}"]);
+
+        test_merge!(One, ["a", "b", "a::aa"], ["{a::{self, aa}, b}"]);
+
+        test_merge!(
+            One,
+            ["a::aa::aaa", "a::ac::aca", "a::aa::*"],
+            ["a::{aa::{aaa, *}, ac::aca}"]
+        );
+
+        test_merge!(
+            One,
+            ["a", "b::{ba, bb}", "a::{aa::*, ab::aba}"],
+            ["{a::{self, aa::*, ab::aba}, b::{ba, bb}}"]
+        );
+
+        test_merge!(
+            One,
+            ["b", "a::ac::{aca, acb}", "a::{aa::*, ab}"],
+            ["{a::{aa::*, ab, ac::{aca, acb}}, b}"]
         );
     }
 
