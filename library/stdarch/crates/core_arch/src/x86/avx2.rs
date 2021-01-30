@@ -2587,13 +2587,12 @@ pub unsafe fn _mm256_sad_epu8(a: __m256i, b: __m256i) -> __m256i {
 
 /// Shuffles bytes from `a` according to the content of `b`.
 ///
-/// The last 4 bits of each byte of `b` are used as addresses into the 32 bytes
-/// of `a`.
+/// For each of the 128-bit low and high halves of the vectors, the last
+/// 4 bits of each byte of `b` are used as addresses into the respective
+/// low or high 16 bytes of `a`. That is, the halves are shuffled separately.
 ///
 /// In addition, if the highest significant bit of a byte of `b` is set, the
 /// respective destination byte is set to 0.
-///
-/// The low and high halves of the vectors are shuffled separately.
 ///
 /// Picturing `a` and `b` as `[u8; 32]`, `_mm256_shuffle_epi8` is logically
 /// equivalent to:
