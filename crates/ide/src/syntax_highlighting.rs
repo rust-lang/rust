@@ -64,7 +64,7 @@ pub(crate) fn highlight(
             Some(range) => {
                 let node = match source_file.syntax().covering_element(range) {
                     NodeOrToken::Node(it) => it,
-                    NodeOrToken::Token(it) => it.parent(),
+                    NodeOrToken::Token(it) => it.parent().unwrap(),
                 };
                 (node, range)
             }
@@ -167,16 +167,19 @@ fn traverse(
         let element_to_highlight = if current_macro_call.is_some() && element.kind() != COMMENT {
             // Inside a macro -- expand it first
             let token = match element.clone().into_token() {
-                Some(it) if it.parent().kind() == TOKEN_TREE => it,
+                Some(it) if it.parent().map_or(false, |it| it.kind() == TOKEN_TREE) => it,
                 _ => continue,
             };
             let token = sema.descend_into_macros(token.clone());
-            let parent = token.parent();
-
-            // We only care Name and Name_ref
-            match (token.kind(), parent.kind()) {
-                (IDENT, NAME) | (IDENT, NAME_REF) => parent.into(),
-                _ => token.into(),
+            match token.parent() {
+                Some(parent) => {
+                    // We only care Name and Name_ref
+                    match (token.kind(), parent.kind()) {
+                        (IDENT, NAME) | (IDENT, NAME_REF) => parent.into(),
+                        _ => token.into(),
+                    }
+                }
+                None => token.into(),
             }
         } else {
             element.clone()

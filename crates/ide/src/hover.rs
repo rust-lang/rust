@@ -92,7 +92,7 @@ pub(crate) fn hover(
 
     let mut res = HoverResult::default();
 
-    let node = token.parent();
+    let node = token.parent()?;
     let definition = match_ast! {
         match node {
             // we don't use NameClass::referenced_or_defined here as we do not want to resolve
@@ -438,7 +438,7 @@ fn hover_for_keyword(
     if !token.kind().is_keyword() {
         return None;
     }
-    let famous_defs = FamousDefs(&sema, sema.scope(&token.parent()).krate());
+    let famous_defs = FamousDefs(&sema, sema.scope(&token.parent()?).krate());
     // std exposes {}_keyword modules with docstrings on the root to document keywords
     let keyword_mod = format!("{}_keyword", token.text());
     let doc_owner = find_std_module(&famous_defs, &keyword_mod)?;

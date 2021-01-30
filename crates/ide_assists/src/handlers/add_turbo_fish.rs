@@ -38,7 +38,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         cov_mark::hit!(add_turbo_fish_one_fish_is_enough);
         return None;
     }
-    let name_ref = ast::NameRef::cast(ident.parent())?;
+    let name_ref = ast::NameRef::cast(ident.parent()?)?;
     let def = match NameRefClass::classify(&ctx.sema, &name_ref)? {
         NameRefClass::Definition(def) => def,
         NameRefClass::ExternCrate(_) | NameRefClass::FieldShorthand { .. } => return None,

@@ -25,7 +25,7 @@ pub(crate) fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<Text
             Some((node, idx))
         })
         .next()?;
-    let parent = brace_token.parent();
+    let parent = brace_token.parent()?;
     if brace_token.kind() == T![|] && !ast::ParamList::can_cast(parent.kind()) {
         cov_mark::hit!(pipes_not_braces);
         return None;

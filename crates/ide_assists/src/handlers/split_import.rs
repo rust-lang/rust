@@ -17,7 +17,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn split_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let colon_colon = ctx.find_token_syntax_at_offset(T![::])?;
-    let path = ast::Path::cast(colon_colon.parent())?.qualifier()?;
+    let path = ast::Path::cast(colon_colon.parent()?)?.qualifier()?;
     let top_path = successors(Some(path.clone()), |it| it.parent_path()).last()?;
 
     let use_tree = top_path.syntax().ancestors().find_map(ast::UseTree::cast)?;

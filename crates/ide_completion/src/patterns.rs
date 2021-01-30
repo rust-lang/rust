@@ -184,11 +184,7 @@ fn test_has_impl_as_prev_sibling() {
 }
 
 pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
-    let leaf = match element {
-        NodeOrToken::Node(node) => node,
-        NodeOrToken::Token(token) => token.parent(),
-    };
-    for node in leaf.ancestors() {
+    for node in element.ancestors() {
         if node.kind() == FN || node.kind() == CLOSURE_EXPR {
             break;
         }
@@ -201,7 +197,7 @@ pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
             }
         };
         if let Some(body) = loop_body {
-            if body.syntax().text_range().contains_range(leaf.text_range()) {
+            if body.syntax().text_range().contains_range(element.text_range()) {
                 return true;
             }
         }
@@ -235,12 +231,8 @@ fn previous_sibling_or_ancestor_sibling(element: SyntaxElement) -> Option<Syntax
         Some(sibling)
     } else {
         // if not trying to find first ancestor which has such a sibling
-        let node = match element {
-            NodeOrToken::Node(node) => node,
-            NodeOrToken::Token(token) => token.parent(),
-        };
-        let range = node.text_range();
-        let top_node = node.ancestors().take_while(|it| it.text_range() == range).last()?;
+        let range = element.text_range();
+        let top_node = element.ancestors().take_while(|it| it.text_range() == range).last()?;
         let prev_sibling_node = top_node.ancestors().find(|it| {
             non_trivia_sibling(NodeOrToken::Node(it.to_owned()), Direction::Prev).is_some()
         })?;

@@ -109,7 +109,7 @@ fn call_info_impl(
     token: SyntaxToken,
 ) -> Option<(hir::Callable, Option<usize>)> {
     // Find the calling expression and it's NameRef
-    let calling_node = FnCallNode::with_node(&token.parent())?;
+    let calling_node = FnCallNode::with_node(&token.parent()?)?;
 
     let callable = match &calling_node {
         FnCallNode::CallExpr(call) => sema.type_of_expr(&call.expr()?)?.as_callable(sema.db)?,

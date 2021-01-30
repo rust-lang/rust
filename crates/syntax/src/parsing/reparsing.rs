@@ -124,11 +124,7 @@ fn is_contextual_kw(text: &str) -> bool {
 fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(SyntaxNode, Reparser)> {
     let node = node.covering_element(range);
 
-    let mut ancestors = match node {
-        NodeOrToken::Token(it) => it.parent().ancestors(),
-        NodeOrToken::Node(it) => it.ancestors(),
-    };
-    ancestors.find_map(|node| {
+    node.ancestors().find_map(|node| {
         let first_child = node.first_child_or_token().map(|it| it.kind());
         let parent = node.parent().map(|it| it.kind());
         Reparser::for_node(node.kind(), first_child, parent).map(|r| (node, r))

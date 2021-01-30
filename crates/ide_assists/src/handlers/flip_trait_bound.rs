@@ -23,7 +23,7 @@ pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext) -> Option
     let plus = ctx.find_token_syntax_at_offset(T![+])?;
 
     // Make sure we're in a `TypeBoundList`
-    if ast::TypeBoundList::cast(plus.parent()).is_none() {
+    if ast::TypeBoundList::cast(plus.parent()?).is_none() {
         return None;
     }
 

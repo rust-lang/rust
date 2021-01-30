@@ -53,10 +53,8 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
         for (r_range, _) in references {
             let token = file.token_at_offset(r_range.start()).next()?;
             let token = sema.descend_into_macros(token);
-            let syntax = token.parent();
-
             // This target is the containing function
-            if let Some(nav) = syntax.ancestors().find_map(|node| {
+            if let Some(nav) = token.ancestors().find_map(|node| {
                 let fn_ = ast::Fn::cast(node)?;
                 let def = sema.to_def(&fn_)?;
                 def.try_to_nav(sema.db)
@@ -77,12 +75,13 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
     let file = file.syntax();
     let token = file.token_at_offset(position.offset).next()?;
     let token = sema.descend_into_macros(token);
-    let syntax = token.parent();
 
     let mut calls = CallLocations::default();
 
-    syntax
-        .descendants()
+    token
+        .parent()
+        .into_iter()
+        .flat_map(|it| it.descendants())
         .filter_map(|node| FnCallNode::with_node_exact(&node))
         .filter_map(|call_node| {
             let name_ref = call_node.name_ref()?;

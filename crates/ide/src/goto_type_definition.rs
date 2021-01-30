@@ -22,7 +22,7 @@ pub(crate) fn goto_type_definition(
     let token: SyntaxToken = pick_best(file.syntax().token_at_offset(position.offset))?;
     let token: SyntaxToken = sema.descend_into_macros(token);
 
-    let (ty, node) = sema.ancestors_with_macros(token.parent()).find_map(|node| {
+    let (ty, node) = sema.token_ancestors_with_macros(token).find_map(|node| {
         let ty = match_ast! {
             match node {
                 ast::Expr(it) => sema.type_of_expr(&it)?,

@@ -30,7 +30,7 @@ use crate::{
 
 pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let if_keyword = ctx.find_token_syntax_at_offset(T![if])?;
-    let expr = ast::IfExpr::cast(if_keyword.parent())?;
+    let expr = ast::IfExpr::cast(if_keyword.parent()?)?;
     let if_range = if_keyword.text_range();
     let cursor_in_range = if_range.contains_range(ctx.frange.range);
     if !cursor_in_range {

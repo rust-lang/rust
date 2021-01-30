@@ -88,7 +88,7 @@ fn try_extend_selection(
                     return Some(range);
                 }
             }
-            token.parent()
+            token.parent()?
         }
         NodeOrToken::Node(node) => node,
     };
@@ -142,7 +142,8 @@ fn extend_tokens_from_range(
     let extended = {
         let fst_expanded = sema.descend_into_macros(first_token.clone());
         let lst_expanded = sema.descend_into_macros(last_token.clone());
-        let mut lca = algo::least_common_ancestor(&fst_expanded.parent(), &lst_expanded.parent())?;
+        let mut lca =
+            algo::least_common_ancestor(&fst_expanded.parent()?, &lst_expanded.parent()?)?;
         lca = shallowest_node(&lca);
         if lca.first_token() == Some(fst_expanded) && lca.last_token() == Some(lst_expanded) {
             lca = lca.parent()?;
@@ -151,9 +152,13 @@ fn extend_tokens_from_range(
     };
 
     // Compute parent node range
-    let validate = |token: &SyntaxToken| {
+    let validate = |token: &SyntaxToken| -> bool {
         let expanded = sema.descend_into_macros(token.clone());
-        algo::least_common_ancestor(&extended, &expanded.parent()).as_ref() == Some(&extended)
+        let parent = match expanded.parent() {
+            Some(it) => it,
+            None => return false,
+        };
+        algo::least_common_ancestor(&extended, &parent).as_ref() == Some(&extended)
     };
 
     // Find the first and last text range under expanded parent

@@ -30,7 +30,7 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let assist_label = "Unwrap block";
 
     let l_curly_token = ctx.find_token_syntax_at_offset(T!['{'])?;
-    let mut block = ast::BlockExpr::cast(l_curly_token.parent())?;
+    let mut block = ast::BlockExpr::cast(l_curly_token.parent()?)?;
     let target = block.syntax().text_range();
     let mut parent = block.syntax().parent()?;
     if ast::MatchArm::can_cast(parent.kind()) {

@@ -279,7 +279,7 @@ pub(crate) fn external_docs(
     let token = pick_best(file.token_at_offset(position.offset))?;
     let token = sema.descend_into_macros(token);
 
-    let node = token.parent();
+    let node = token.parent()?;
     let definition = match_ast! {
         match node {
             ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db)),

@@ -143,6 +143,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.diagnostics_display_range(diagnostics)
     }
 
+    pub fn token_ancestors_with_macros(
+        &self,
+        token: SyntaxToken,
+    ) -> impl Iterator<Item = SyntaxNode> + '_ {
+        token.parent().into_iter().flat_map(move |it| self.ancestors_with_macros(it))
+    }
     pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
         self.imp.ancestors_with_macros(node)
     }
@@ -270,8 +276,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.scope(node)
     }
 
-    pub fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
-        self.imp.scope_at_offset(node, offset)
+    pub fn scope_at_offset(&self, token: &SyntaxToken, offset: TextSize) -> SemanticsScope<'db> {
+        self.imp.scope_at_offset(&token.parent().unwrap(), offset)
     }
 
     pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
@@ -341,7 +347,10 @@ impl<'db> SemanticsImpl<'db> {
 
     fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
         let _p = profile::span("descend_into_macros");
-        let parent = token.parent();
+        let parent = match token.parent() {
+            Some(it) => it,
+            None => return token,
+        };
         let sa = self.analyze(&parent);
 
         let token = successors(Some(InFile::new(sa.file_id, token)), |token| {
@@ -360,7 +369,9 @@ impl<'db> SemanticsImpl<'db> {
                 .as_ref()?
                 .map_token_down(token.as_ref())?;
 
-            self.cache(find_root(&token.value.parent()), token.file_id);
+            if let Some(parent) = token.value.parent() {
+                self.cache(find_root(&parent), token.file_id);
+            }
 
             Some(token)
         })
@@ -378,7 +389,7 @@ impl<'db> SemanticsImpl<'db> {
         // Handle macro token cases
         node.token_at_offset(offset)
             .map(|token| self.descend_into_macros(token))
-            .map(|it| self.ancestors_with_macros(it.parent()))
+            .map(|it| self.token_ancestors_with_macros(it))
             .flatten()
     }
 
@@ -394,6 +405,13 @@ impl<'db> SemanticsImpl<'db> {
         src.with_value(&node).original_file_range(self.db.upcast())
     }
 
+    fn token_ancestors_with_macros(
+        &self,
+        token: SyntaxToken,
+    ) -> impl Iterator<Item = SyntaxNode> + '_ {
+        token.parent().into_iter().flat_map(move |parent| self.ancestors_with_macros(parent))
+    }
+
     fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
         let node = self.find_file(node);
         node.ancestors_with_macros(self.db.upcast()).map(|it| it.value)
@@ -405,7 +423,7 @@ impl<'db> SemanticsImpl<'db> {
         offset: TextSize,
     ) -> impl Iterator<Item = SyntaxNode> + '_ {
         node.token_at_offset(offset)
-            .map(|token| self.ancestors_with_macros(token.parent()))
+            .map(|token| self.token_ancestors_with_macros(token))
             .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
     }
 

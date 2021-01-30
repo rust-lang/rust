@@ -148,14 +148,15 @@ fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Optio
 
 fn get_name_of_item_declaration(syntax: &SyntaxNode, position: FilePosition) -> Option<ast::Name> {
     let token = syntax.token_at_offset(position.offset).right_biased()?;
+    let token_parent = token.parent()?;
     let kind = token.kind();
     if kind == T![;] {
-        ast::Struct::cast(token.parent())
+        ast::Struct::cast(token_parent)
             .filter(|struct_| struct_.field_list().is_none())
             .and_then(|struct_| struct_.name())
     } else if kind == T!['{'] {
         match_ast! {
-            match (token.parent()) {
+            match token_parent {
                 ast::RecordFieldList(rfl) => match_ast! {
                     match (rfl.syntax().parent()?) {
                         ast::Variant(it) => it.name(),
@@ -169,7 +170,7 @@ fn get_name_of_item_declaration(syntax: &SyntaxNode, position: FilePosition) -> 
             }
         }
     } else if kind == T!['('] {
-        let tfl = ast::TupleFieldList::cast(token.parent())?;
+        let tfl = ast::TupleFieldList::cast(token_parent)?;
         match_ast! {
             match (tfl.syntax().parent()?) {
                 ast::Variant(it) => it.name(),
