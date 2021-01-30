@@ -1,4 +1,5 @@
 use rustc_index::vec::IndexVec;
+use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
@@ -294,6 +295,7 @@ pub(crate) struct FunctionCx<'clif, 'tcx, M: Module> {
 
     pub(crate) instance: Instance<'tcx>,
     pub(crate) mir: &'tcx Body<'tcx>,
+    pub(crate) fn_abi: Option<FnAbi<'tcx, Ty<'tcx>>>,
 
     pub(crate) bcx: FunctionBuilder<'clif>,
     pub(crate) block_map: IndexVec<BasicBlock, Block>,
@@ -319,16 +321,7 @@ impl<'tcx, M: Module> LayoutOf for FunctionCx<'_, 'tcx, M> {
     type TyAndLayout = TyAndLayout<'tcx>;
 
     fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
-        assert!(!ty.still_further_specializable());
-        self.tcx
-            .layout_of(ParamEnv::reveal_all().and(&ty))
-            .unwrap_or_else(|e| {
-                if let layout::LayoutError::SizeOverflow(_) = e {
-                    self.tcx.sess.fatal(&e.to_string())
-                } else {
-                    bug!("failed to get layout for `{}`: {}", ty, e)
-                }
-            })
+        RevealAllLayoutCx(self.tcx).layout_of(ty)
     }
 }
 
@@ -440,5 +433,49 @@ impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
             self.add_comment(local_msg_id, msg);
         }
         self.bcx.ins().global_value(self.pointer_type, local_msg_id)
+    }
+}
+
+pub(crate) struct RevealAllLayoutCx<'tcx>(pub(crate) TyCtxt<'tcx>);
+
+impl<'tcx> LayoutOf for RevealAllLayoutCx<'tcx> {
+    type Ty = Ty<'tcx>;
+    type TyAndLayout = TyAndLayout<'tcx>;
+
+    fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
+        assert!(!ty.still_further_specializable());
+        self.0
+            .layout_of(ParamEnv::reveal_all().and(&ty))
+            .unwrap_or_else(|e| {
+                if let layout::LayoutError::SizeOverflow(_) = e {
+                    self.0.sess.fatal(&e.to_string())
+                } else {
+                    bug!("failed to get layout for `{}`: {}", ty, e)
+                }
+            })
+    }
+}
+
+impl<'tcx> layout::HasTyCtxt<'tcx> for RevealAllLayoutCx<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        self.0
+    }
+}
+
+impl<'tcx> rustc_target::abi::HasDataLayout for RevealAllLayoutCx<'tcx> {
+    fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
+        &self.0.data_layout
+    }
+}
+
+impl<'tcx> layout::HasParamEnv<'tcx> for RevealAllLayoutCx<'tcx> {
+    fn param_env(&self) -> ParamEnv<'tcx> {
+        ParamEnv::reveal_all()
+    }
+}
+
+impl<'tcx> HasTargetSpec for RevealAllLayoutCx<'tcx> {
+    fn target_spec(&self) -> &Target {
+        &self.0.sess.target
     }
 }

@@ -2,6 +2,8 @@
 
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::layout::FnAbiExt;
+use rustc_target::abi::call::FnAbi;
 
 use crate::prelude::*;
 
@@ -19,7 +21,8 @@ pub(crate) fn codegen_fn<'tcx>(
     let mir = tcx.instance_mir(instance.def);
 
     // Declare function
-    let (name, sig) = get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
+    let name = tcx.symbol_name(instance).name.to_string();
+    let sig = get_function_sig(tcx, cx.module.isa().triple(), instance);
     let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
 
     cx.cached_context.clear();
@@ -50,6 +53,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
         instance,
         mir,
+        fn_abi: Some(FnAbi::of_instance(&RevealAllLayoutCx(tcx), instance, &[])),
 
         bcx,
         block_map,
@@ -1056,7 +1060,11 @@ pub(crate) fn codegen_panic_inner<'tcx>(
 
     fx.lib_call(
         &*symbol_name,
-        vec![fx.pointer_type, fx.pointer_type, fx.pointer_type],
+        vec![
+            AbiParam::new(fx.pointer_type),
+            AbiParam::new(fx.pointer_type),
+            AbiParam::new(fx.pointer_type),
+        ],
         vec![],
         args,
     );
