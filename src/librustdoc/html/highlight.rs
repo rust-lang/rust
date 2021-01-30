@@ -7,7 +7,7 @@
 
 use crate::html::escape::Escape;
 
-use std::fmt::{Display, Write};
+use std::fmt::Display;
 use std::iter::Peekable;
 
 use rustc_lexer::{LiteralKind, TokenKind};
@@ -15,16 +15,18 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::with_default_session_globals;
 
+use super::format::Buffer;
+
 /// Highlights `src`, returning the HTML output.
 crate fn render_with_highlighting(
-    src: String,
+    src: &str,
+    out: &mut Buffer,
     class: Option<&str>,
     playground_button: Option<&str>,
     tooltip: Option<(Option<Edition>, &str)>,
     edition: Edition,
-) -> String {
+) {
     debug!("highlighting: ================\n{}\n==============", src);
-    let mut out = String::with_capacity(src.len());
     if let Some((edition_info, class)) = tooltip {
         write!(
             out,
@@ -35,23 +37,19 @@ crate fn render_with_highlighting(
             } else {
                 String::new()
             },
-        )
-        .unwrap();
+        );
     }
 
-    write_header(&mut out, class);
-    write_code(&mut out, &src, edition);
-    write_footer(&mut out, playground_button);
-
-    out
+    write_header(out, class);
+    write_code(out, &src, edition);
+    write_footer(out, playground_button);
 }
 
-fn write_header(out: &mut String, class: Option<&str>) {
-    write!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">\n", class.unwrap_or_default())
-        .unwrap()
+fn write_header(out: &mut Buffer, class: Option<&str>) {
+    write!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">\n", class.unwrap_or_default());
 }
 
-fn write_code(out: &mut String, src: &str, edition: Edition) {
+fn write_code(out: &mut Buffer, src: &str, edition: Edition) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
     Classifier::new(&src, edition).highlight(&mut |highlight| {
@@ -63,8 +61,8 @@ fn write_code(out: &mut String, src: &str, edition: Edition) {
     });
 }
 
-fn write_footer(out: &mut String, playground_button: Option<&str>) {
-    write!(out, "</pre>{}</div>\n", playground_button.unwrap_or_default()).unwrap()
+fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
+    write!(out, "</pre>{}</div>\n", playground_button.unwrap_or_default());
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.
@@ -331,13 +329,13 @@ impl<'a> Classifier<'a> {
 
 /// Called when we start processing a span of text that should be highlighted.
 /// The `Class` argument specifies how it should be highlighted.
-fn enter_span(out: &mut String, klass: Class) {
-    write!(out, "<span class=\"{}\">", klass.as_html()).unwrap()
+fn enter_span(out: &mut Buffer, klass: Class) {
+    write!(out, "<span class=\"{}\">", klass.as_html());
 }
 
 /// Called at the end of a span of highlighted text.
-fn exit_span(out: &mut String) {
-    write!(out, "</span>").unwrap()
+fn exit_span(out: &mut Buffer) {
+    out.write_str("</span>");
 }
 
 /// Called for a span of text. If the text should be highlighted differently
@@ -351,10 +349,10 @@ fn exit_span(out: &mut String) {
 /// ```
 /// The latter can be thought of as a shorthand for the former, which is more
 /// flexible.
-fn string<T: Display>(out: &mut String, text: T, klass: Option<Class>) {
+fn string<T: Display>(out: &mut Buffer, text: T, klass: Option<Class>) {
     match klass {
-        None => write!(out, "{}", text).unwrap(),
-        Some(klass) => write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text).unwrap(),
+        None => write!(out, "{}", text),
+        Some(klass) => write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text),
     }
 }
 

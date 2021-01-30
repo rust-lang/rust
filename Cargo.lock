@@ -4386,6 +4386,7 @@ dependencies = [
 name = "rustdoc"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "expect-test",
  "itertools 0.9.0",
  "minifier",
