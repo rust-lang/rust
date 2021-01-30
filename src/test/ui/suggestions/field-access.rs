@@ -12,15 +12,12 @@ enum B {
 
 fn main() {
     let a = A { b: B::Fst };
-    if let B::Fst = a {};
-    //~^ ERROR mismatched types [E0308]
-    // note: you might have meant to use field `b` of type `B`
+    if let B::Fst = a {}; //~ ERROR mismatched types [E0308]
+    //~^ HELP you might have meant to use field `b` of type `B`
     match a {
-        B::Fst => (),
-        B::Snd => (),
+        //~^ HELP you might have meant to use field `b` of type `B`
+        //~| HELP you might have meant to use field `b` of type `B`
+        B::Fst => (), //~ ERROR mismatched types [E0308]
+        B::Snd => (), //~ ERROR mismatched types [E0308]
     }
-    //~^^^ ERROR mismatched types [E0308]
-    // note: you might have meant to use field `b` of type `B`
-    //~^^^^ ERROR mismatched types [E0308]
-    // note: you might have meant to use field `b` of type `B`
 }
