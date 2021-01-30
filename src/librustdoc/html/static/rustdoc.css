@@ -405,6 +405,9 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
+.docblock-short code {
+	white-space: pre-wrap;
+}
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
 	border-bottom: 1px solid;
