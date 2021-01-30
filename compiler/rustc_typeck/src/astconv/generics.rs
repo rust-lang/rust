@@ -270,13 +270,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         tcx,
                                         arg,
                                         param,
-                                        !args_iter.clone().is_sorted_by_key(|arg| match arg {
-                                            GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
-                                            GenericArg::Type(_) => ParamKindOrd::Type,
-                                            GenericArg::Const(_) => ParamKindOrd::Const {
-                                                unordered: tcx.features().const_generics,
-                                            },
-                                        }),
+                                        !args_iter
+                                            .clone()
+                                            .map(|arg| match arg {
+                                                GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
+                                                GenericArg::Type(_) => ParamKindOrd::Type,
+                                                GenericArg::Const(_) => ParamKindOrd::Const {
+                                                    unordered: tcx.features().const_generics,
+                                                },
+                                            })
+                                            .is_sorted(),
                                         Some(&format!(
                                             "reorder the arguments: {}: `<{}>`",
                                             param_types_present

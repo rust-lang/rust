@@ -3337,34 +3337,6 @@ pub trait Iterator {
         true
     }
 
-    /// Checks if the elements of this iterator are sorted using the given key extraction
-    /// function.
-    ///
-    /// Instead of comparing the iterator's elements directly, this function compares the keys of
-    /// the elements, as determined by `f`. Apart from that, it's equivalent to [`is_sorted`]; see
-    /// its documentation for more information.
-    ///
-    /// [`is_sorted`]: Iterator::is_sorted
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(is_sorted)]
-    ///
-    /// assert!(["c", "bb", "aaa"].iter().is_sorted_by_key(|s| s.len()));
-    /// assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
-    /// ```
-    #[inline]
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
-    fn is_sorted_by_key<F, K>(self, f: F) -> bool
-    where
-        Self: Sized,
-        F: FnMut(Self::Item) -> K,
-        K: PartialOrd,
-    {
-        self.map(f).is_sorted()
-    }
-
     /// See [TrustedRandomAccess]
     // The unusual name is to avoid name collisions in method resolution
     // see #76479.

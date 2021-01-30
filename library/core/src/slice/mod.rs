@@ -3385,7 +3385,7 @@ impl<T> [T] {
         F: FnMut(&T) -> K,
         K: PartialOrd,
     {
-        self.iter().is_sorted_by_key(f)
+        self.iter().map(f).is_sorted()
     }
 
     /// Returns the index of the partition point according to the given predicate

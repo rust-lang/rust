@@ -375,9 +375,7 @@ fn test_is_sorted() {
     assert!(std::iter::empty::<i32>().is_sorted());
     assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     assert!([-2, -1, 0, 3].iter().is_sorted());
-    assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].iter().is_sorted());
-    assert!(["c", "bb", "aaa"].iter().is_sorted_by_key(|s| s.len()));
 }
 
 #[test]
