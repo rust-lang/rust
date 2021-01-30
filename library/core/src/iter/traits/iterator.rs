@@ -3272,9 +3272,6 @@ pub trait Iterator {
     /// That is, for each element `a` and its following element `b`, `a <= b` must hold. If the
     /// iterator yields exactly zero or one element, `true` is returned.
     ///
-    /// Note that if `Self::Item` is only `PartialOrd`, but not `Ord`, the above definition
-    /// implies that this function returns `false` if any two consecutive items are not
-    /// comparable.
     ///
     /// # Examples
     ///
@@ -3285,16 +3282,15 @@ pub trait Iterator {
     /// assert!(![1, 3, 2, 4].iter().is_sorted());
     /// assert!([0].iter().is_sorted());
     /// assert!(std::iter::empty::<i32>().is_sorted());
-    /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     /// ```
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     fn is_sorted(self) -> bool
     where
         Self: Sized,
-        Self::Item: PartialOrd,
+        Self::Item: Ord,
     {
-        self.is_sorted_by(PartialOrd::partial_cmp)
+        self.is_sorted_by(|a, b| Some(a.cmp(b)))
     }
 
     /// Checks if the elements of this iterator are sorted using the given comparator function.

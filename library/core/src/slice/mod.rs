@@ -3322,9 +3322,6 @@ impl<T> [T] {
     /// That is, for each element `a` and its following element `b`, `a <= b` must hold. If the
     /// slice yields exactly zero or one element, `true` is returned.
     ///
-    /// Note that if `Self::Item` is only `PartialOrd`, but not `Ord`, the above definition
-    /// implies that this function returns `false` if any two consecutive items are not
-    /// comparable.
     ///
     /// # Examples
     ///
@@ -3336,15 +3333,14 @@ impl<T> [T] {
     /// assert!(![1, 3, 2, 4].is_sorted());
     /// assert!([0].is_sorted());
     /// assert!(empty.is_sorted());
-    /// assert!(![0.0, 1.0, f32::NAN].is_sorted());
     /// ```
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     pub fn is_sorted(&self) -> bool
     where
-        T: PartialOrd,
+        T: Ord,
     {
-        self.is_sorted_by(|a, b| a.partial_cmp(b))
+        self.is_sorted_by(|a, b| Some(a.cmp(b)))
     }
 
     /// Checks if the elements of this slice are sorted using the given comparator function.
@@ -3383,7 +3379,7 @@ impl<T> [T] {
     pub fn is_sorted_by_key<F, K>(&self, f: F) -> bool
     where
         F: FnMut(&T) -> K,
-        K: PartialOrd,
+        K: Ord,
     {
         self.iter().map(f).is_sorted()
     }
