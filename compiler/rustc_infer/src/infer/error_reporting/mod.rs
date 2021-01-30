@@ -1661,7 +1661,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("exp_found {:?} terr {:?}", exp_found, terr);
         if let Some(exp_found) = exp_found {
             self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
-            self.suggest_field_where_appropriate(cause, &exp_found, diag);
+            self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
             self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
         }
 
@@ -1820,7 +1820,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_field_where_appropriate(
+    fn suggest_accessing_field_where_appropriate(
         &self,
         cause: &ObligationCause<'tcx>,
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
