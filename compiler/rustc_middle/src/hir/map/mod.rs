@@ -994,47 +994,6 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     }
 }
 
-trait Named {
-    fn name(&self) -> Symbol;
-}
-
-impl<T: Named> Named for Spanned<T> {
-    fn name(&self) -> Symbol {
-        self.node.name()
-    }
-}
-
-impl Named for Item<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-impl Named for ForeignItem<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-impl Named for Variant<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-impl Named for StructField<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-impl Named for TraitItem<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-impl Named for ImplItem<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-
 pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx IndexedHir<'tcx> {
     assert_eq!(cnum, LOCAL_CRATE);
 
