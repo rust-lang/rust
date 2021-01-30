@@ -1,5 +1,6 @@
 mod bind_instead_of_map;
 mod inefficient_to_string;
+mod inspect_for_each;
 mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
 mod unnecessary_filter_map;
@@ -14,7 +15,8 @@ use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{TraitItem, TraitItemKind};
+use rustc_hir::def::Res;
+use rustc_hir::{Expr, ExprKind, PatKind, QPath, TraitItem, TraitItemKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
@@ -450,6 +452,58 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `_.filter(_).map(_)` that can be written more simply
+    /// as `filter_map(_)`.
+    ///
+    /// **Why is this bad?** Redundant code in the `filter` and `map` operations is poor style and
+    /// less performant.
+    ///
+    /// **Known problems:** None.
+    ///
+     /// **Example:**
+    /// Bad:
+    /// ```rust
+    /// (0_i32..10)
+    ///     .filter(|n| n.checked_add(1).is_some())
+    ///     .map(|n| n.checked_add(1).unwrap());
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// (0_i32..10).filter_map(|n| n.checked_add(1));
+    /// ```
+    pub MANUAL_FILTER_MAP,
+    complexity,
+    "using `_.filter(_).map(_)` in a way that can be written more simply as `filter_map(_)`"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `_.find(_).map(_)` that can be written more simply
+    /// as `find_map(_)`.
+    ///
+    /// **Why is this bad?** Redundant code in the `find` and `map` operations is poor style and
+    /// less performant.
+    ///
+    /// **Known problems:** None.
+    ///
+     /// **Example:**
+    /// Bad:
+    /// ```rust
+    /// (0_i32..10)
+    ///     .find(|n| n.checked_add(1).is_some())
+    ///     .map(|n| n.checked_add(1).unwrap());
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// (0_i32..10).find_map(|n| n.checked_add(1));
+    /// ```
+    pub MANUAL_FIND_MAP,
+    complexity,
+    "using `_.find(_).map(_)` in a way that can be written more simply as `find_map(_)`"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for usage of `_.filter_map(_).next()`.
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
@@ -491,28 +545,6 @@ declare_clippy_lint! {
     pub FLAT_MAP_IDENTITY,
     complexity,
     "call to `flat_map` where `flatten` is sufficient"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.find(_).map(_)`.
-    ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.find_map(_)`.
-    ///
-    /// **Known problems:** Often requires a condition + Option/Iterator creation
-    /// inside the closure.
-    ///
-    /// **Example:**
-    /// ```rust
-    ///  (0..3).find(|x| *x == 2).map(|x| x * 2);
-    /// ```
-    /// Can be written as
-    /// ```rust
-    ///  (0..3).find_map(|x| if x == 2 { Some(x * 2) } else { None });
-    /// ```
-    pub FIND_MAP,
-    pedantic,
-    "using a combination of `find` and `map` can usually be written as a single method call"
 }
 
 declare_clippy_lint! {
@@ -1405,6 +1437,36 @@ declare_clippy_lint! {
     "use `.collect()` instead of `::from_iter()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `inspect().for_each()`.
+    ///
+    /// **Why is this bad?** It is the same as performing the computation
+    /// inside `inspect` at the beginning of the closure in `for_each`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// [1,2,3,4,5].iter()
+    /// .inspect(|&x| println!("inspect the number: {}", x))
+    /// .for_each(|&x| {
+    ///     assert!(x >= 0);
+    /// });
+    /// ```
+    /// Can be written as
+    /// ```rust
+    /// [1,2,3,4,5].iter()
+    /// .for_each(|&x| {
+    ///     println!("inspect the number: {}", x);
+    ///     assert!(x >= 0);
+    /// });
+    /// ```
+    pub INSPECT_FOR_EACH,
+    complexity,
+    "using `.inspect().for_each()`, which can be replaced with `.for_each()`"
+}
+
 pub struct Methods {
     msrv: Option<RustcVersion>,
 }
@@ -1442,9 +1504,10 @@ impl_lint_pass!(Methods => [
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
     FILTER_MAP,
+    MANUAL_FILTER_MAP,
+    MANUAL_FIND_MAP,
     FILTER_MAP_NEXT,
     FLAT_MAP_IDENTITY,
-    FIND_MAP,
     MAP_FLATTEN,
     ITERATOR_STEP_BY_ZERO,
     ITER_NEXT_SLICE,
@@ -1467,6 +1530,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_LAZY_EVALUATIONS,
     MAP_COLLECT_RESULT_UNIT,
     FROM_ITER_INSTEAD_OF_COLLECT,
+    INSPECT_FOR_EACH,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
@@ -1508,10 +1572,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
             ["next", "skip_while"] => lint_skip_while_next(cx, expr, arg_lists[1]),
             ["next", "iter"] => lint_iter_next(cx, expr, arg_lists[1]),
-            ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["map", "filter"] => lint_filter_map(cx, expr, false),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1], self.msrv.as_ref()),
-            ["map", "find"] => lint_find_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["map", "find"] => lint_filter_map(cx, expr, true),
             ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", ..] => lint_flat_map_identity(cx, expr, arg_lists[0], method_spans[0]),
@@ -1553,6 +1617,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["get_or_insert_with", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "get_or_insert"),
             ["ok_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "ok_or"),
             ["collect", "map"] => lint_map_collect(cx, expr, arg_lists[1], arg_lists[0]),
+            ["for_each", "inspect"] => inspect_for_each::lint(cx, expr, method_spans[1]),
             _ => {},
         }
 
@@ -2955,18 +3020,79 @@ fn lint_skip_while_next<'tcx>(
     }
 }
 
-/// lint use of `filter().map()` for `Iterators`
-fn lint_filter_map<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    _filter_args: &'tcx [hir::Expr<'_>],
-    _map_args: &'tcx [hir::Expr<'_>],
-) {
-    // lint if caller of `.filter().map()` is an Iterator
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(..).map(..)` on an `Iterator`";
-        let hint = "this is more succinctly expressed by calling `.filter_map(..)` instead";
-        span_lint_and_help(cx, FILTER_MAP, expr.span, msg, None, hint);
+/// lint use of `filter().map()` or `find().map()` for `Iterators`
+fn lint_filter_map<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, is_find: bool) {
+    if_chain! {
+        if let ExprKind::MethodCall(_, _, [map_recv, map_arg], map_span) = expr.kind;
+        if let ExprKind::MethodCall(_, _, [_, filter_arg], filter_span) = map_recv.kind;
+        if match_trait_method(cx, map_recv, &paths::ITERATOR);
+
+        // filter(|x| ...is_some())...
+        if let ExprKind::Closure(_, _, filter_body_id, ..) = filter_arg.kind;
+        let filter_body = cx.tcx.hir().body(filter_body_id);
+        if let [filter_param] = filter_body.params;
+        // optional ref pattern: `filter(|&x| ..)`
+        let (filter_pat, is_filter_param_ref) = if let PatKind::Ref(ref_pat, _) = filter_param.pat.kind {
+            (ref_pat, true)
+        } else {
+            (filter_param.pat, false)
+        };
+        // closure ends with is_some() or is_ok()
+        if let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind;
+        if let ExprKind::MethodCall(path, _, [filter_arg], _) = filter_body.value.kind;
+        if let Some(opt_ty) = cx.typeck_results().expr_ty(filter_arg).ty_adt_def();
+        if let Some(is_result) = if cx.tcx.is_diagnostic_item(sym::option_type, opt_ty.did) {
+            Some(false)
+        } else if cx.tcx.is_diagnostic_item(sym::result_type, opt_ty.did) {
+            Some(true)
+        } else {
+            None
+        };
+        if path.ident.name.as_str() == if is_result { "is_ok" } else { "is_some" };
+
+        // ...map(|x| ...unwrap())
+        if let ExprKind::Closure(_, _, map_body_id, ..) = map_arg.kind;
+        let map_body = cx.tcx.hir().body(map_body_id);
+        if let [map_param] = map_body.params;
+        if let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind;
+        // closure ends with expect() or unwrap()
+        if let ExprKind::MethodCall(seg, _, [map_arg, ..], _) = map_body.value.kind;
+        if matches!(seg.ident.name, sym::expect | sym::unwrap | sym::unwrap_or);
+
+        let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {
+            // in `filter(|x| ..)`, replace `*x` with `x`
+            let a_path = if_chain! {
+                if !is_filter_param_ref;
+                if let ExprKind::Unary(UnOp::UnDeref, expr_path) = a.kind;
+                then { expr_path } else { a }
+            };
+            // let the filter closure arg and the map closure arg be equal
+            if_chain! {
+                if let ExprKind::Path(QPath::Resolved(None, a_path)) = a_path.kind;
+                if let ExprKind::Path(QPath::Resolved(None, b_path)) = b.kind;
+                if a_path.res == Res::Local(filter_param_id);
+                if b_path.res == Res::Local(map_param_id);
+                if TyS::same_type(cx.typeck_results().expr_ty_adjusted(a), cx.typeck_results().expr_ty_adjusted(b));
+                then {
+                    return true;
+                }
+            }
+            false
+        };
+        if SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(filter_arg, map_arg);
+        then {
+            let span = filter_span.to(map_span);
+            let (filter_name, lint) = if is_find {
+                ("find", MANUAL_FIND_MAP)
+            } else {
+                ("filter", MANUAL_FILTER_MAP)
+            };
+            let msg = format!("`{}(..).map(..)` can be simplified as `{0}_map(..)`", filter_name);
+            let to_opt = if is_result { ".ok()" } else { "" };
+            let sugg = format!("{}_map(|{}| {}{})", filter_name, map_param_ident,
+                snippet(cx, map_arg.span, ".."), to_opt);
+            span_lint_and_sugg(cx, lint, span, &msg, "try", sugg, Applicability::MachineApplicable);
+        }
     }
 }
 
@@ -3004,21 +3130,6 @@ fn lint_filter_map_next<'tcx>(
     }
 }
 
-/// lint use of `find().map()` for `Iterators`
-fn lint_find_map<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    _find_args: &'tcx [hir::Expr<'_>],
-    map_args: &'tcx [hir::Expr<'_>],
-) {
-    // lint if caller of `.filter().map()` is an Iterator
-    if match_trait_method(cx, &map_args[0], &paths::ITERATOR) {
-        let msg = "called `find(..).map(..)` on an `Iterator`";
-        let hint = "this is more succinctly expressed by calling `.find_map(..)` instead";
-        span_lint_and_help(cx, FIND_MAP, expr.span, msg, None, hint);
-    }
-}
-
 /// lint use of `filter_map().map()` for `Iterators`
 fn lint_filter_map_map<'tcx>(
     cx: &LateContext<'tcx>,
@@ -3026,7 +3137,7 @@ fn lint_filter_map_map<'tcx>(
     _filter_args: &'tcx [hir::Expr<'_>],
     _map_args: &'tcx [hir::Expr<'_>],
 ) {
-    // lint if caller of `.filter().map()` is an Iterator
+    // lint if caller of `.filter_map().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(..).map(..)` on an `Iterator`";
         let hint = "this is more succinctly expressed by only calling `.filter_map(..)` instead";

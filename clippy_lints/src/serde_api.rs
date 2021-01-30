@@ -18,9 +18,9 @@ declare_clippy_lint! {
     "various things that will negatively affect your serde experience"
 }
 
-declare_lint_pass!(SerdeAPI => [SERDE_API_MISUSE]);
+declare_lint_pass!(SerdeApi => [SERDE_API_MISUSE]);
 
-impl<'tcx> LateLintPass<'tcx> for SerdeAPI {
+impl<'tcx> LateLintPass<'tcx> for SerdeApi {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {
             of_trait: Some(ref trait_ref),

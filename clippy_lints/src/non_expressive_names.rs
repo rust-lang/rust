@@ -199,6 +199,10 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             );
             return;
         }
+        if interned_name.starts_with('_') {
+            // these bindings are typically unused or represent an ignored portion of a destructuring pattern
+            return;
+        }
         let count = interned_name.chars().count();
         if count < 3 {
             if count == 1 {
