@@ -171,11 +171,20 @@ crate fn get_real_types(
     cx: &DocContext<'_>,
     recurse: i32,
 ) -> FxHashSet<(Type, TypeKind)> {
+    fn insert(res: &mut FxHashSet<(Type, TypeKind)>, cx: &DocContext<'_>, ty: Type) {
+        if let Some(kind) = ty.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+            res.insert((ty, kind));
+        } else if ty.is_primitive() {
+            // This is a primitive, let's store it as such.
+            res.insert((ty, TypeKind::Primitive));
+        }
+    }
     let mut res = FxHashSet::default();
     if recurse >= 10 {
         // FIXME: remove this whole recurse thing when the recursion bug is fixed
         return res;
     }
+
     if arg.is_full_generic() {
         let arg_s = Symbol::intern(&arg.print(&cx.cache).to_string());
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
@@ -194,11 +203,7 @@ crate fn get_real_types(
                             if !adds.is_empty() {
                                 res.extend(adds);
                             } else if !ty.is_full_generic() {
-                                if let Some(kind) =
-                                    ty.def_id().map(|did| cx.tcx.def_kind(did).clean(cx))
-                                {
-                                    res.insert((ty, kind));
-                                }
+                                insert(&mut res, cx, ty);
                             }
                         }
                     }
@@ -212,17 +217,13 @@ crate fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     } else if !ty.is_full_generic() {
-                        if let Some(kind) = ty.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
-                            res.insert((ty.clone(), kind));
-                        }
+                        insert(&mut res, cx, ty);
                     }
                 }
             }
         }
     } else {
-        if let Some(kind) = arg.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
-            res.insert((arg.clone(), kind));
-        }
+        insert(&mut res, cx, arg.clone());
         if let Some(gens) = arg.generics() {
             for gen in gens.iter() {
                 if gen.is_full_generic() {
@@ -230,8 +231,8 @@ crate fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     }
-                } else if let Some(kind) = gen.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
-                    res.insert((gen.clone(), kind));
+                } else {
+                    insert(&mut res, cx, gen.clone());
                 }
             }
         }
