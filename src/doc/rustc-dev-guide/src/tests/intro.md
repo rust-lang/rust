@@ -29,10 +29,6 @@ details.
 - [`ui`](./adding.html#ui) – tests that check the exact
   stdout/stderr from compilation and/or running the test
 - `run-pass-valgrind` – tests that ought to run with valgrind
-- `run-fail` – tests that are expected to compile but then panic
-  during execution
-- `compile-fail` – tests that are expected to fail compilation.
-- `parse-fail` – tests that are expected to fail to parse
 - `pretty` – tests targeting the Rust "pretty printer", which
   generates valid Rust code from the AST
 - `debuginfo` – tests that run in gdb or lldb and query the debug info
@@ -40,6 +36,8 @@ details.
   code to make sure that the optimizations we want are taking effect.
   See [LLVM docs](https://llvm.org/docs/CommandGuide/FileCheck.html) for how to
   write such tests.
+- `codegen-units` – tests for the [monomorphization](../backend/monomorph.md)
+  collector and CGU partitioning
 - `assembly` – similar to `codegen` tests, but verifies assembly output
   to make sure LLVM target backend can handle provided code.
 - `mir-opt` – tests that check parts of the generated MIR to make
@@ -52,6 +50,9 @@ details.
   ultimate in flexibility but quite annoying to write.
 - `rustdoc` – tests for rustdoc, making sure that the generated files
   contain the expected documentation.
+- `rustfix` – tests for applying [diagnostic
+  suggestions](../diagnostics.md#suggestions) with the
+  [`rustfix`](https://github.com/rust-lang/rustfix/) crate
 - `*-fulldeps` – same as above, but indicates that the test depends
   on things other than `std` (and hence those things must be built)
 
