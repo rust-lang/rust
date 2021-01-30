@@ -69,7 +69,10 @@ where
     default fn next(&mut self) -> Option<Self::Item> {
         let a = self.iter.next()?;
         let i = self.count;
-        // Possible undefined overflow.
+        // Possible undefined overflow. By directly calling the trait method instead of using the
+        // `+=` operator the decision about overflow checking is delayed to the crate that does code
+        // generation, even if overflow checks are disabled for the current crate. This is
+        // especially useful because overflow checks are usually disabled for the standard library.
         AddAssign::add_assign(&mut self.count, 1);
         Some((i, a))
     }
@@ -82,6 +85,7 @@ where
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
         let value = unsafe { try_get_unchecked(&mut self.iter, idx) };
+        // See comment in `next()` for the reason why `Add::add()` is used here instead of `+`.
         (Add::add(self.count, idx), value)
     }
 
@@ -123,7 +127,8 @@ where
             intrinsics::assume(self.count < self.len);
         }
         let i = self.count;
-        // Possible undefined overflow.
+        // See comment in `next()` of the default implementation for the reason why
+        // `AddAssign::add_assign()` is used here instead of `+=`.
         AddAssign::add_assign(&mut self.count, 1);
         Some((i, a))
     }
@@ -136,6 +141,7 @@ where
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
         let value = unsafe { try_get_unchecked(&mut self.iter, idx) };
+        // See comment in `next()` for the reason why `Add::add()` is used here instead of `+`.
         let idx = Add::add(self.count, idx);
         // SAFETY: There must be fewer than `self.len` items because of `TrustedLen`'s API contract
         unsafe {
