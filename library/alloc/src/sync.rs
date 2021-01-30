@@ -885,7 +885,7 @@ impl<T: ?Sized> Arc<T> {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "arc_mutate_strong_count", since = "1.50.0")]
+    #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
     pub unsafe fn increment_strong_count(ptr: *const T) {
         // Retain Arc, but don't touch refcount by wrapping in ManuallyDrop
         let arc = unsafe { mem::ManuallyDrop::new(Arc::<T>::from_raw(ptr)) };
@@ -924,7 +924,7 @@ impl<T: ?Sized> Arc<T> {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "arc_mutate_strong_count", since = "1.50.0")]
+    #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
     pub unsafe fn decrement_strong_count(ptr: *const T) {
         unsafe { mem::drop(Arc::from_raw(ptr)) };
     }
