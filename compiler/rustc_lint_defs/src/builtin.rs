@@ -255,6 +255,10 @@ declare_lint! {
     pub CONST_ERR,
     Deny,
     "constant evaluation encountered erroneous expression",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #71800 <https://github.com/rust-lang/rust/issues/71800>",
+        edition: None,
+    };
     report_in_external_macro
 }
 

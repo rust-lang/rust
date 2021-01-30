@@ -6,15 +6,17 @@ LL |     Some(&mut *(42 as *mut i32))
    |          |
    |          unable to turn bytes into a pointer
    |          inside `helper` at $DIR/mut_ref_in_final_dynamic_check.rs:15:10
-   |          inside `A` at $DIR/mut_ref_in_final_dynamic_check.rs:19:29
+   |          inside `A` at $DIR/mut_ref_in_final_dynamic_check.rs:20:29
 ...
 LL | const A: Option<&mut i32> = helper();
    | -------------------------------------
    |
    = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: encountered dangling pointer in final constant
-  --> $DIR/mut_ref_in_final_dynamic_check.rs:26:1
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:27:1
    |
 LL | const B: Option<&mut i32> = helper2();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
