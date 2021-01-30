@@ -52,13 +52,13 @@ The types of top-level items, which never contain unbound type
 variables, are stored directly into the `tcx` typeck_results.
 
 N.B., a type variable is not the same thing as a type parameter.  A
-type variable is rather an "instance" of a type parameter: that is,
-given a generic function `fn foo<T>(t: T)`: while checking the
+type variable is an instance of a type parameter. That is,
+given a generic function `fn foo<T>(t: T)`, while checking the
 function `foo`, the type `ty_param(0)` refers to the type `T`, which
-is treated in abstract.  When `foo()` is called, however, `T` will be
+is treated in abstract. However, when `foo()` is called, `T` will be
 substituted for a fresh type variable `N`.  This variable will
 eventually be resolved to some concrete type (which might itself be
-type parameter).
+a type parameter).
 
 */
 
