@@ -36,7 +36,7 @@ unamestr=$(uname)
 if [[ "$unamestr" == 'Linux' ]]; then
    export RUSTFLAGS='-Clink-arg=-Wl,-rpath=$ORIGIN/../lib '$RUSTFLAGS
 elif [[ "$unamestr" == 'Darwin' ]]; then
-   export RUSTFLAGS='-Clink-arg=-Wl,-rpath,@loader_path/../lib -Zosx-rpath-install-name '$RUSTFLAGS
+   export RUSTFLAGS='-Csplit-debuginfo=unpacked -Clink-arg=-Wl,-rpath,@loader_path/../lib -Zosx-rpath-install-name '$RUSTFLAGS
    dylib_ext='dylib'
 else
    echo "Unsupported os"
