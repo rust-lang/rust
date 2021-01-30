@@ -322,20 +322,14 @@ crate fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut
             ItemKind::TypedefItem(ref t, true) => &t.type_,
             _ => continue,
         };
-        let primitive = match *target {
-            ResolvedPath { did, .. } if did.is_local() => continue,
-            ResolvedPath { did, .. } => {
-                ret.extend(inline::build_impls(cx, None, did, None));
-                continue;
-            }
-            _ => match target.primitive_type() {
-                Some(prim) => prim,
-                None => continue,
-            },
-        };
-        for &did in primitive.impls(tcx) {
-            if !did.is_local() {
+
+        if let Some(prim) = target.primitive_type() {
+            for &did in prim.impls(tcx).iter().filter(|did| !did.is_local()) {
                 inline::build_impl(cx, None, did, None, ret);
+            }
+        } else if let ResolvedPath { did, .. } = *target {
+            if !did.is_local() {
+                inline::build_impls(cx, None, did, None, ret);
             }
         }
     }

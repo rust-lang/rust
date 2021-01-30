@@ -8,6 +8,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
 
+use arrayvec::ArrayVec;
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
@@ -16,7 +17,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
@@ -28,7 +29,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol, SymbolStr};
 use rustc_span::{self, FileName, Loc};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use smallvec::{smallvec, SmallVec};
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
@@ -45,7 +45,7 @@ use self::ItemKind::*;
 use self::SelfTy::*;
 use self::Type::*;
 
-thread_local!(crate static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = Default::default());
+thread_local!(crate static MAX_DEF_IDX: RefCell<FxHashMap<CrateNum, DefIndex>> = Default::default());
 
 #[derive(Clone, Debug)]
 crate struct Crate {
@@ -293,8 +293,8 @@ impl Item {
     ///
     /// [`next_def_id()`]: DocContext::next_def_id()
     crate fn is_fake(&self) -> bool {
-        MAX_DEF_ID.with(|m| {
-            m.borrow().get(&self.def_id.krate).map(|id| self.def_id >= *id).unwrap_or(false)
+        MAX_DEF_IDX.with(|m| {
+            m.borrow().get(&self.def_id.krate).map(|&idx| idx <= self.def_id.index).unwrap_or(false)
         })
     }
 }
@@ -1539,12 +1539,12 @@ impl PrimitiveType {
         }
     }
 
-    crate fn impls(&self, tcx: TyCtxt<'_>) -> &'static SmallVec<[DefId; 4]> {
+    crate fn impls(&self, tcx: TyCtxt<'_>) -> &'static ArrayVec<[DefId; 4]> {
         Self::all_impls(tcx).get(self).expect("missing impl for primitive type")
     }
 
-    crate fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, SmallVec<[DefId; 4]>> {
-        static CELL: OnceCell<FxHashMap<PrimitiveType, SmallVec<[DefId; 4]>>> = OnceCell::new();
+    crate fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, ArrayVec<[DefId; 4]>> {
+        static CELL: OnceCell<FxHashMap<PrimitiveType, ArrayVec<[DefId; 4]>>> = OnceCell::new();
 
         CELL.get_or_init(move || {
             use self::PrimitiveType::*;
@@ -1568,7 +1568,7 @@ impl PrimitiveType {
             }
 
             let single = |a: Option<DefId>| a.into_iter().collect();
-            let both = |a: Option<DefId>, b: Option<DefId>| -> SmallVec<_> {
+            let both = |a: Option<DefId>, b: Option<DefId>| -> ArrayVec<_> {
                 a.into_iter().chain(b).collect()
             };
 
@@ -1601,8 +1601,8 @@ impl PrimitiveType {
                         .collect()
                 },
                 Array => single(lang_items.array_impl()),
-                Tuple => smallvec![],
-                Unit => smallvec![],
+                Tuple => ArrayVec::new(),
+                Unit => ArrayVec::new(),
                 RawPointer => {
                     lang_items
                         .const_ptr_impl()
@@ -1612,9 +1612,9 @@ impl PrimitiveType {
                         .chain(lang_items.mut_slice_ptr_impl())
                         .collect()
                 },
-                Reference => smallvec![],
-                Fn => smallvec![],
-                Never => smallvec![],
+                Reference => ArrayVec::new(),
+                Fn => ArrayVec::new(),
+                Never => ArrayVec::new(),
             }
         })
     }

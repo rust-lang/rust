@@ -56,12 +56,12 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
 
     // `tcx.crates()` doesn't include the local crate, and `tcx.all_trait_implementations`
     // doesn't work with it anyway, so pull them from the HIR map instead
+    let mut extra_attrs = Vec::new();
     for &trait_did in cx.tcx.all_traits(LOCAL_CRATE).iter() {
         for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
-            let impl_did = cx.tcx.hir().local_def_id(impl_node);
+            let impl_did = cx.tcx.hir().local_def_id(impl_node).to_def_id();
             cx.tcx.sess.prof.generic_activity("build_local_trait_impl").run(|| {
-                let mut extra_attrs = Vec::new();
-                let mut parent = cx.tcx.parent(impl_did.to_def_id());
+                let mut parent = cx.tcx.parent(impl_did);
                 while let Some(did) = parent {
                     extra_attrs.extend(
                         cx.tcx
@@ -79,13 +79,8 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
                     );
                     parent = cx.tcx.parent(did);
                 }
-                inline::build_impl(
-                    cx,
-                    None,
-                    impl_did.to_def_id(),
-                    Some(&extra_attrs),
-                    &mut new_items,
-                );
+                inline::build_impl(cx, None, impl_did, Some(&extra_attrs), &mut new_items);
+                extra_attrs.clear();
             });
         }
     }
@@ -137,25 +132,28 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
         }
     }
 
-    new_items.retain(|it| {
-        if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
-            cleaner.keep_impl(for_)
-                || trait_.as_ref().map_or(false, |t| cleaner.keep_impl(t))
-                || blanket_impl.is_some()
-        } else {
-            true
-        }
-    });
-
-    if let Some(ref mut it) = krate.module {
+    let items = if let Some(ref mut it) = krate.module {
         if let ModuleItem(Module { ref mut items, .. }) = *it.kind {
-            items.extend(synth.impls);
-            items.extend(new_items);
+            items
         } else {
             panic!("collect-trait-impls can't run");
         }
     } else {
         panic!("collect-trait-impls can't run");
+    };
+
+    items.extend(synth.impls);
+    for it in new_items.drain(..) {
+        if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
+            if !(cleaner.keep_impl(for_)
+                || trait_.as_ref().map_or(false, |t| cleaner.keep_impl(t))
+                || blanket_impl.is_some())
+            {
+                continue;
+            }
+        }
+
+        items.push(it);
     }
 
     krate

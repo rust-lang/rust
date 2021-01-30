@@ -114,7 +114,6 @@ crate fn render<T: Print, S: Print>(
     {after_content}\
     <div id=\"rustdoc-vars\" data-root-path=\"{root_path}\" data-current-crate=\"{krate}\"></div>
     <script src=\"{static_root_path}main{suffix}.js\"></script>\
-    {static_extra_scripts}\
     {extra_scripts}\
     <script defer src=\"{root_path}search-index{suffix}.js\"></script>\
 </body>\
@@ -135,22 +134,23 @@ crate fn render<T: Print, S: Print>(
         root_path = page.root_path,
         css_class = page.css_class,
         logo = {
-            let p = format!("{}{}", page.root_path, layout.krate);
-            let p = ensure_trailing_slash(&p);
             if layout.logo.is_empty() {
                 format!(
-                    "<a href='{path}index.html'>\
+                    "<a href='{root}{path}index.html'>\
                      <div class='logo-container rust-logo'>\
                      <img src='{static_root_path}rust-logo{suffix}.png' alt='logo'></div></a>",
-                    path = p,
+                    root = page.root_path,
+                    path = ensure_trailing_slash(&layout.krate),
                     static_root_path = static_root_path,
                     suffix = page.resource_suffix
                 )
             } else {
                 format!(
-                    "<a href='{}index.html'>\
-                     <div class='logo-container'><img src='{}' alt='logo'></div></a>",
-                    p, layout.logo
+                    "<a href='{root}{path}index.html'>\
+                     <div class='logo-container'><img src='{logo}' alt='logo'></div></a>",
+                    root = page.root_path,
+                    path = ensure_trailing_slash(&layout.krate),
+                    logo = layout.logo
                 )
             }
         },
@@ -194,7 +194,7 @@ crate fn render<T: Print, S: Print>(
             ))
             .collect::<String>(),
         suffix = page.resource_suffix,
-        static_extra_scripts = page
+        extra_scripts = page
             .static_extra_scripts
             .iter()
             .map(|e| {
@@ -204,17 +204,13 @@ crate fn render<T: Print, S: Print>(
                     extra_script = e
                 )
             })
-            .collect::<String>(),
-        extra_scripts = page
-            .extra_scripts
-            .iter()
-            .map(|e| {
+            .chain(page.extra_scripts.iter().map(|e| {
                 format!(
                     "<script src=\"{root_path}{extra_script}.js\"></script>",
                     root_path = page.root_path,
                     extra_script = e
                 )
-            })
+            }))
             .collect::<String>(),
         filter_crates = if layout.generate_search_filter {
             "<select id=\"crate-search\">\

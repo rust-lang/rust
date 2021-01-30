@@ -41,6 +41,8 @@ use pulldown_cmark::{
     html, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag,
 };
 
+use super::format::Buffer;
+
 #[cfg(test)]
 mod tests;
 
@@ -235,9 +237,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         }
         let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
         let text = lines.collect::<Vec<Cow<'_, str>>>().join("\n");
-        // insert newline to clearly separate it from the
-        // previous block so we can shorten the html output
-        let mut s = String::from("\n");
+
         let playground_button = self.playground.as_ref().and_then(|playground| {
             let krate = &playground.crate_name;
             let url = &playground.url;
@@ -298,8 +298,13 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             None
         };
 
-        s.push_str(&highlight::render_with_highlighting(
-            text,
+        // insert newline to clearly separate it from the
+        // previous block so we can shorten the html output
+        let mut s = Buffer::new();
+        s.push_str("\n");
+        highlight::render_with_highlighting(
+            &text,
+            &mut s,
             Some(&format!(
                 "rust-example-rendered{}",
                 if let Some((_, class)) = tooltip { format!(" {}", class) } else { String::new() }
@@ -307,8 +312,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             playground_button.as_deref(),
             tooltip,
             edition,
-        ));
-        Some(Event::Html(s.into()))
+        );
+        Some(Event::Html(s.into_inner().into()))
     }
 }
 
@@ -1332,7 +1337,7 @@ impl IdMap {
         IdMap { map: init_id_map() }
     }
 
-    crate fn populate<I: IntoIterator<Item = String>>(&mut self, ids: I) {
+    crate fn populate<I: IntoIterator<Item = S>, S: AsRef<str> + ToString>(&mut self, ids: I) {
         for id in ids {
             let _ = self.derive(id);
         }
@@ -1342,11 +1347,11 @@ impl IdMap {
         self.map = init_id_map();
     }
 
-    crate fn derive(&mut self, candidate: String) -> String {
-        let id = match self.map.get_mut(&candidate) {
-            None => candidate,
+    crate fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
+        let id = match self.map.get_mut(candidate.as_ref()) {
+            None => candidate.to_string(),
             Some(a) => {
-                let id = format!("{}-{}", candidate, *a);
+                let id = format!("{}-{}", candidate.as_ref(), *a);
                 *a += 1;
                 id
             }
