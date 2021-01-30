@@ -3,8 +3,10 @@
 use crate::prelude::*;
 use crate::value_and_place::assert_assignable;
 
-use cranelift_codegen::ir::ArgumentPurpose;
-use rustc_target::abi::call::{ArgAbi, CastTarget, PassMode, Reg, RegKind};
+use cranelift_codegen::ir::{ArgumentExtension, ArgumentPurpose};
+use rustc_target::abi::call::{
+    ArgAbi, ArgAttributes, ArgExtension as RustcArgExtension, CastTarget, PassMode, Reg, RegKind,
+};
 use smallvec::{smallvec, SmallVec};
 
 pub(super) trait ArgAbiExt<'tcx> {
@@ -25,6 +27,15 @@ fn reg_to_abi_param(reg: Reg) -> AbiParam {
         _ => unreachable!("{:?}", reg),
     };
     AbiParam::new(clif_ty)
+}
+
+fn apply_arg_attrs_to_abi_param(mut param: AbiParam, arg_attrs: ArgAttributes) -> AbiParam {
+    match arg_attrs.arg_ext {
+        RustcArgExtension::None => {}
+        RustcArgExtension::Zext => param.extension = ArgumentExtension::Uext,
+        RustcArgExtension::Sext => param.extension = ArgumentExtension::Sext,
+    }
+    param
 }
 
 fn cast_target_to_abi_params(cast: CastTarget) -> SmallVec<[AbiParam; 2]> {
@@ -82,15 +93,16 @@ fn cast_target_to_abi_params(cast: CastTarget) -> SmallVec<[AbiParam; 2]> {
     args
 }
 
-// FIXME respect argument extension mode
-
 impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     fn get_abi_param(&self, tcx: TyCtxt<'tcx>) -> SmallVec<[AbiParam; 2]> {
         match self.mode {
             PassMode::Ignore => smallvec![],
-            PassMode::Direct(_) => match &self.layout.abi {
+            PassMode::Direct(attrs) => match &self.layout.abi {
                 Abi::Scalar(scalar) => {
-                    smallvec![AbiParam::new(scalar_to_clif_type(tcx, scalar.clone()))]
+                    smallvec![apply_arg_attrs_to_abi_param(
+                        AbiParam::new(scalar_to_clif_type(tcx, scalar.clone())),
+                        attrs
+                    )]
                 }
                 Abi::Vector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout).unwrap();
@@ -98,39 +110,45 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
-            PassMode::Pair(_, _) => match &self.layout.abi {
+            PassMode::Pair(attrs_a, attrs_b) => match &self.layout.abi {
                 Abi::ScalarPair(a, b) => {
                     let a = scalar_to_clif_type(tcx, a.clone());
                     let b = scalar_to_clif_type(tcx, b.clone());
-                    smallvec![AbiParam::new(a), AbiParam::new(b)]
+                    smallvec![
+                        apply_arg_attrs_to_abi_param(AbiParam::new(a), attrs_a),
+                        apply_arg_attrs_to_abi_param(AbiParam::new(b), attrs_b),
+                    ]
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
             PassMode::Cast(cast) => cast_target_to_abi_params(cast),
             PassMode::Indirect {
-                attrs: _,
+                attrs,
                 extra_attrs: None,
                 on_stack,
             } => {
                 if on_stack {
                     let size = u32::try_from(self.layout.size.bytes()).unwrap();
-                    smallvec![AbiParam::special(
-                        pointer_ty(tcx),
-                        ArgumentPurpose::StructArgument(size),
+                    smallvec![apply_arg_attrs_to_abi_param(
+                        AbiParam::special(pointer_ty(tcx), ArgumentPurpose::StructArgument(size),),
+                        attrs
                     )]
                 } else {
-                    smallvec![AbiParam::new(pointer_ty(tcx))]
+                    smallvec![apply_arg_attrs_to_abi_param(
+                        AbiParam::new(pointer_ty(tcx)),
+                        attrs
+                    )]
                 }
             }
             PassMode::Indirect {
-                attrs: _,
-                extra_attrs: Some(_),
+                attrs,
+                extra_attrs: Some(extra_attrs),
                 on_stack,
             } => {
                 assert!(!on_stack);
                 smallvec![
-                    AbiParam::new(pointer_ty(tcx)),
-                    AbiParam::new(pointer_ty(tcx)),
+                    apply_arg_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), attrs),
+                    apply_arg_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), extra_attrs),
                 ]
             }
         }
