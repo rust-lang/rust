@@ -540,6 +540,7 @@ fn test_debugging_options_tracking_hash() {
     // This list is in alphabetical order.
     tracked!(allow_features, Some(vec![String::from("lang_items")]));
     tracked!(always_encode_mir, true);
+    tracked!(assume_incomplete_release, true);
     tracked!(asm_comments, true);
     tracked!(binary_dep_depinfo, true);
     tracked!(chalk, true);
