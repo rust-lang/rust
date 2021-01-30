@@ -29,8 +29,8 @@ use base_db::{salsa, CrateId};
 use hir_def::{
     expr::ExprId,
     type_ref::{Mutability, Rawness},
-    AdtId, AssocContainerId, DefWithBodyId, GenericDefId, HasModule, LifetimeParamId, Lookup,
-    TraitId, TypeAliasId, TypeParamId,
+    AdtId, AssocContainerId, DefWithBodyId, FunctionId, GenericDefId, HasModule, LifetimeParamId,
+    Lookup, TraitId, TypeAliasId, TypeParamId,
 };
 use itertools::Itertools;
 
@@ -43,10 +43,9 @@ use crate::{
 
 pub use autoderef::autoderef;
 pub use infer::{InferTy, InferenceResult};
-pub use lower::CallableDefId;
 pub use lower::{
-    associated_type_shorthand_candidates, callable_item_sig, ImplTraitLoweringMode, TyDefId,
-    TyLoweringContext, ValueTyDefId,
+    associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
+    TyDefId, TyLoweringContext, ValueTyDefId,
 };
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
@@ -820,6 +819,16 @@ impl Ty {
                 TypeCtor::RawPtr(..) => Some(Ty::clone(a_ty.parameters.as_single())),
                 _ => None,
             },
+            _ => None,
+        }
+    }
+
+    pub fn as_fn_def(&self) -> Option<FunctionId> {
+        match self {
+            &Ty::Apply(ApplicationTy {
+                ctor: TypeCtor::FnDef(CallableDefId::FunctionId(func)),
+                ..
+            }) => Some(func),
             _ => None,
         }
     }

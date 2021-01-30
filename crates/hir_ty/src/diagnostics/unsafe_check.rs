@@ -12,8 +12,7 @@ use hir_def::{
 use hir_expand::diagnostics::DiagnosticSink;
 
 use crate::{
-    db::HirDatabase, diagnostics::MissingUnsafe, lower::CallableDefId, ApplicationTy,
-    InferenceResult, Ty, TypeCtor,
+    db::HirDatabase, diagnostics::MissingUnsafe, ApplicationTy, InferenceResult, Ty, TypeCtor,
 };
 
 pub(super) struct UnsafeValidator<'a, 'b: 'a> {
@@ -87,13 +86,8 @@ fn walk_unsafe(
 ) {
     let expr = &body.exprs[current];
     match expr {
-        Expr::Call { callee, .. } => {
-            let ty = &infer[*callee];
-            if let &Ty::Apply(ApplicationTy {
-                ctor: TypeCtor::FnDef(CallableDefId::FunctionId(func)),
-                ..
-            }) = ty
-            {
+        &Expr::Call { callee, .. } => {
+            if let Some(func) = infer[callee].as_fn_def() {
                 if db.function_data(func).is_unsafe {
                     unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
                 }
