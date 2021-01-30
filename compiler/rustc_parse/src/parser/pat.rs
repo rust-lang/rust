@@ -240,7 +240,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    /// Parse and throw away a parentesized comma separated
+    /// Parse and throw away a parenthesized comma separated
     /// sequence of patterns until `)` is reached.
     fn skip_pat_list(&mut self) -> PResult<'a, ()> {
         while !self.check(&token::CloseDelim(token::Paren)) {

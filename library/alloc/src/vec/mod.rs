@@ -2211,7 +2211,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// This is optimal if:
     ///
     /// * The tail (elements in the vector after `range`) is empty,
-    /// * or `replace_with` yields fewer elements than `range`’s length
+    /// * or `replace_with` yields fewer or equal elements than `range`’s length
     /// * or the lower bound of its `size_hint()` is exact.
     ///
     /// Otherwise, a temporary vector is allocated and the tail is moved twice.

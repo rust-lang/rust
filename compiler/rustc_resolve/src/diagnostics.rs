@@ -977,7 +977,7 @@ impl<'a> Resolver<'a> {
         });
         if let Some(def_span) = def_span {
             if span.overlaps(def_span) {
-                // Don't suggest typo suggestion for itself like in the followoing:
+                // Don't suggest typo suggestion for itself like in the following:
                 // error[E0423]: expected function, tuple struct or tuple variant, found struct `X`
                 //   --> $DIR/issue-64792-bad-unicode-ctor.rs:3:14
                 //    |

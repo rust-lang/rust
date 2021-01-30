@@ -682,7 +682,7 @@ pub struct Scalar {
 
 impl Scalar {
     pub fn is_bool(&self) -> bool {
-        if let Int(I8, _) = self.value { self.valid_range == (0..=1) } else { false }
+        matches!(self.value, Int(I8, false)) && self.valid_range == (0..=1)
     }
 
     /// Returns the valid range as a `x..y` range.

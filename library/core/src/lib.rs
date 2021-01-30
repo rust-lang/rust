@@ -126,7 +126,6 @@
 #![feature(auto_traits)]
 #![feature(or_patterns)]
 #![feature(prelude_import)]
-#![feature(raw_ref_macros)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]
@@ -254,6 +253,8 @@ pub mod panicking;
 pub mod pin;
 pub mod raw;
 pub mod result;
+#[unstable(feature = "async_stream", issue = "79024")]
+pub mod stream;
 pub mod sync;
 
 pub mod fmt;

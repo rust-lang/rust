@@ -463,7 +463,7 @@ crate fn run_global_ctxt(
     mut default_passes: passes::DefaultPassOption,
     mut manual_passes: Vec<String>,
     render_options: RenderOptions,
-    output_format: Option<OutputFormat>,
+    output_format: OutputFormat,
 ) -> (clean::Crate, RenderInfo, RenderOptions) {
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),

@@ -384,7 +384,7 @@ impl<T> Arc<T> {
         // reference into a strong reference.
         unsafe {
             let inner = init_ptr.as_ptr();
-            ptr::write(&raw mut (*inner).data, data);
+            ptr::write(ptr::addr_of_mut!((*inner).data), data);
 
             // The above write to the data field must be visible to any threads which
             // observe a non-zero strong count. Therefore we need at least "Release" ordering
@@ -800,7 +800,7 @@ impl<T: ?Sized> Arc<T> {
         // SAFETY: This cannot go through Deref::deref or RcBoxPtr::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
         // write through the pointer after the Rc is recovered through `from_raw`.
-        unsafe { &raw const (*ptr).data }
+        unsafe { ptr::addr_of_mut!((*ptr).data) }
     }
 
     /// Constructs an `Arc<T>` from a raw pointer.
@@ -1677,7 +1677,7 @@ impl<T: ?Sized> Weak<T> {
             // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
             // The payload may be dropped at this point, and we have to maintain provenance,
             // so use raw pointer manipulation.
-            unsafe { &raw mut (*ptr).data }
+            unsafe { ptr::addr_of_mut!((*ptr).data) }
         }
     }
 

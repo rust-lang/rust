@@ -1344,7 +1344,8 @@ pub fn build_session(
         None
     };
 
-    let parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
+    let mut parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
+    parse_sess.assume_incomplete_release = sopts.debugging_opts.assume_incomplete_release;
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
         None => filesearch::get_or_default_sysroot(),

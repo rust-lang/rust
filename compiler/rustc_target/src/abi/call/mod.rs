@@ -103,7 +103,12 @@ impl ArgAttributes {
     }
 
     pub fn ext(&mut self, ext: ArgExtension) -> &mut Self {
-        assert!(self.arg_ext == ArgExtension::None || self.arg_ext == ext);
+        assert!(
+            self.arg_ext == ArgExtension::None || self.arg_ext == ext,
+            "cannot set {:?} when {:?} is already set",
+            ext,
+            self.arg_ext
+        );
         self.arg_ext = ext;
         self
     }
