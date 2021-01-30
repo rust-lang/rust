@@ -4,7 +4,7 @@ set -euxo pipefail
 
 rm -rf /tmp/rustc-pgo
 
-python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
+python2.7 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
     --stage 2 library/std --rust-profile-generate=/tmp/rustc-pgo
 
 ./build/$PGO_HOST/stage2/bin/rustc --edition=2018 \
