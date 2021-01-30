@@ -102,13 +102,13 @@ impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
     pub(crate) fn lib_call(
         &mut self,
         name: &str,
-        input_tys: Vec<types::Type>,
-        output_tys: Vec<types::Type>,
+        params: Vec<AbiParam>,
+        returns: Vec<AbiParam>,
         args: &[Value],
     ) -> &[Value] {
         let sig = Signature {
-            params: input_tys.iter().cloned().map(AbiParam::new).collect(),
-            returns: output_tys.iter().cloned().map(AbiParam::new).collect(),
+            params,
+            returns,
             call_conv: CallConv::triple_default(self.triple()),
         };
         let func_id = self
@@ -140,16 +140,18 @@ impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
             .iter()
             .map(|arg| {
                 (
-                    self.clif_type(arg.layout().ty).unwrap(),
+                    AbiParam::new(self.clif_type(arg.layout().ty).unwrap()),
                     arg.load_scalar(self),
                 )
             })
             .unzip();
         let return_layout = self.layout_of(return_ty);
         let return_tys = if let ty::Tuple(tup) = return_ty.kind() {
-            tup.types().map(|ty| self.clif_type(ty).unwrap()).collect()
+            tup.types()
+                .map(|ty| AbiParam::new(self.clif_type(ty).unwrap()))
+                .collect()
         } else {
-            vec![self.clif_type(return_ty).unwrap()]
+            vec![AbiParam::new(self.clif_type(return_ty).unwrap())]
         };
         let ret_vals = self.lib_call(name, input_tys, return_tys, &args);
         match *ret_vals {
@@ -208,7 +210,8 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
         .block_params(start_block)
         .to_vec()
         .into_iter();
-    let ret_place = self::returning::codegen_return_param(fx, &ssa_analyzed, &mut block_params_iter);
+    let ret_place =
+        self::returning::codegen_return_param(fx, &ssa_analyzed, &mut block_params_iter);
     assert_eq!(fx.local_map.push(ret_place), RETURN_PLACE);
 
     // None means pass_mode == NoPass
@@ -241,14 +244,16 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
                 let mut params = Vec::new();
                 for (i, _arg_ty) in tupled_arg_tys.types().enumerate() {
                     let arg_abi = arg_abis_iter.next().unwrap();
-                    let param = cvalue_for_param(fx, Some(local), Some(i), arg_abi, &mut block_params_iter);
+                    let param =
+                        cvalue_for_param(fx, Some(local), Some(i), arg_abi, &mut block_params_iter);
                     params.push(param);
                 }
 
                 (local, ArgKind::Spread(params), arg_ty)
             } else {
                 let arg_abi = arg_abis_iter.next().unwrap();
-                let param = cvalue_for_param(fx, Some(local), None, arg_abi, &mut block_params_iter);
+                let param =
+                    cvalue_for_param(fx, Some(local), None, arg_abi, &mut block_params_iter);
                 (local, ArgKind::Normal(param), arg_ty)
             }
         })

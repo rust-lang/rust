@@ -1060,7 +1060,11 @@ pub(crate) fn codegen_panic_inner<'tcx>(
 
     fx.lib_call(
         &*symbol_name,
-        vec![fx.pointer_type, fx.pointer_type, fx.pointer_type],
+        vec![
+            AbiParam::new(fx.pointer_type),
+            AbiParam::new(fx.pointer_type),
+            AbiParam::new(fx.pointer_type),
+        ],
         vec![],
         args,
     );
