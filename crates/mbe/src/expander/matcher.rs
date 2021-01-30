@@ -70,7 +70,7 @@ pub(super) struct Match {
 }
 
 impl Match {
-    pub(super) fn add_err(&mut self, err: ExpandError) {
+    fn add_err(&mut self, err: ExpandError) {
         let prev_err = self.err.take();
         self.err = prev_err.or(Some(err));
         self.err_count += 1;
@@ -79,12 +79,10 @@ impl Match {
 
 /// Matching errors are added to the `Match`.
 pub(super) fn match_(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
-    assert!(pattern.delimiter == None);
-
     let mut res = Match::default();
     let mut src = TtIter::new(src);
 
-    match_subtree(&mut res, pattern, &mut src);
+    match_tokens(&mut res, pattern, &mut src);
 
     if src.len() > 0 {
         res.unmatched_tts += src.len();
@@ -94,36 +92,16 @@ pub(super) fn match_(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
     res
 }
 
-fn match_subtree(res: &mut Match, pattern: &MetaTemplate, src: &mut TtIter) {
+fn match_tokens(res: &mut Match, pattern: &MetaTemplate, src: &mut TtIter) {
     for op in pattern.iter() {
         match op {
             Op::Leaf(lhs) => {
-                let rhs = match src.expect_leaf() {
-                    Ok(l) => l,
-                    Err(()) => {
-                        res.add_err(err!("expected leaf: `{}`", lhs));
-                        continue;
-                    }
-                };
-                match (lhs, rhs) {
-                    (
-                        tt::Leaf::Punct(tt::Punct { char: lhs, .. }),
-                        tt::Leaf::Punct(tt::Punct { char: rhs, .. }),
-                    ) if lhs == rhs => (),
-                    (
-                        tt::Leaf::Ident(tt::Ident { text: lhs, .. }),
-                        tt::Leaf::Ident(tt::Ident { text: rhs, .. }),
-                    ) if lhs == rhs => (),
-                    (
-                        tt::Leaf::Literal(tt::Literal { text: lhs, .. }),
-                        tt::Leaf::Literal(tt::Literal { text: rhs, .. }),
-                    ) if lhs == rhs => (),
-                    _ => {
-                        res.add_err(ExpandError::UnexpectedToken);
-                    }
+                if let Err(err) = match_leaf(lhs, src) {
+                    res.add_err(err);
+                    continue;
                 }
             }
-            Op::Subtree(lhs) => {
+            Op::Subtree { tokens, delimiter: delim } => {
                 let rhs = match src.expect_subtree() {
                     Ok(s) => s,
                     Err(()) => {
@@ -131,12 +109,12 @@ fn match_subtree(res: &mut Match, pattern: &MetaTemplate, src: &mut TtIter) {
                         continue;
                     }
                 };
-                if lhs.delimiter_kind() != rhs.delimiter_kind() {
+                if delim.map(|it| it.kind) != rhs.delimiter_kind() {
                     res.add_err(err!("mismatched delimiter"));
                     continue;
                 }
                 let mut src = TtIter::new(rhs);
-                match_subtree(res, lhs, &mut src);
+                match_tokens(res, tokens, &mut src);
                 if src.len() > 0 {
                     res.add_err(err!("leftover tokens"));
                 }
@@ -162,14 +140,42 @@ fn match_subtree(res: &mut Match, pattern: &MetaTemplate, src: &mut TtIter) {
                     res.add_err(err);
                 }
             }
-            Op::Repeat { subtree, kind, separator } => {
+            Op::Repeat { tokens: subtree, kind, separator } => {
                 match_repeat(res, subtree, *kind, separator, src);
             }
         }
     }
 }
 
-pub(super) fn match_repeat(
+fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter) -> Result<(), ExpandError> {
+    let rhs = match src.expect_leaf() {
+        Ok(l) => l,
+        Err(()) => {
+            return Err(err!("expected leaf: `{}`", lhs));
+        }
+    };
+    match (lhs, rhs) {
+        (
+            tt::Leaf::Punct(tt::Punct { char: lhs, .. }),
+            tt::Leaf::Punct(tt::Punct { char: rhs, .. }),
+        ) if lhs == rhs => (),
+        (
+            tt::Leaf::Ident(tt::Ident { text: lhs, .. }),
+            tt::Leaf::Ident(tt::Ident { text: rhs, .. }),
+        ) if lhs == rhs => (),
+        (
+            tt::Leaf::Literal(tt::Literal { text: lhs, .. }),
+            tt::Leaf::Literal(tt::Literal { text: rhs, .. }),
+        ) if lhs == rhs => (),
+        _ => {
+            return Err(ExpandError::UnexpectedToken);
+        }
+    }
+
+    Ok(())
+}
+
+fn match_repeat(
     res: &mut Match,
     pattern: &MetaTemplate,
     kind: RepeatKind,
@@ -191,7 +197,7 @@ pub(super) fn match_repeat(
         }
 
         let mut nested = Match::default();
-        match_subtree(&mut nested, pattern, &mut fork);
+        match_tokens(&mut nested, pattern, &mut fork);
         if nested.err.is_none() {
             limit -= 1;
             if limit == 0 {
@@ -292,8 +298,8 @@ fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &MetaTemplate) {
         match op {
             Op::Var { name, .. } => buf.push(name.clone()),
             Op::Leaf(_) => (),
-            Op::Subtree(subtree) => collect_vars(buf, subtree),
-            Op::Repeat { subtree, .. } => collect_vars(buf, subtree),
+            Op::Subtree { tokens, .. } => collect_vars(buf, tokens),
+            Op::Repeat { tokens, .. } => collect_vars(buf, tokens),
         }
     }
 }
@@ -325,7 +331,7 @@ impl<'a> TtIter<'a> {
         ok
     }
 
-    pub(crate) fn expect_tt(&mut self) -> Result<tt::TokenTree, ()> {
+    fn expect_tt(&mut self) -> Result<tt::TokenTree, ()> {
         match self.peek_n(0) {
             Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) if punct.char == '\'' => {
                 return self.expect_lifetime();
@@ -386,7 +392,7 @@ impl<'a> TtIter<'a> {
         }
     }
 
-    pub(crate) fn expect_lifetime(&mut self) -> Result<tt::TokenTree, ()> {
+    fn expect_lifetime(&mut self) -> Result<tt::TokenTree, ()> {
         let punct = self.expect_punct()?;
         if punct.char != '\'' {
             return Err(());
@@ -403,13 +409,13 @@ impl<'a> TtIter<'a> {
         .into())
     }
 
-    pub(crate) fn expect_fragment(
+    fn expect_fragment(
         &mut self,
         fragment_kind: parser::FragmentKind,
     ) -> ExpandResult<Option<tt::TokenTree>> {
-        pub(crate) struct OffsetTokenSink<'a> {
-            pub(crate) cursor: Cursor<'a>,
-            pub(crate) error: bool,
+        struct OffsetTokenSink<'a> {
+            cursor: Cursor<'a>,
+            error: bool,
         }
 
         impl<'a> TreeSink for OffsetTokenSink<'a> {
@@ -465,7 +471,7 @@ impl<'a> TtIter<'a> {
         ExpandResult { value: res, err }
     }
 
-    pub(crate) fn eat_vis(&mut self) -> Option<tt::TokenTree> {
+    fn eat_vis(&mut self) -> Option<tt::TokenTree> {
         let mut fork = self.clone();
         match fork.expect_fragment(Visibility) {
             ExpandResult { value: tt, err: None } => {
@@ -476,7 +482,7 @@ impl<'a> TtIter<'a> {
         }
     }
 
-    pub(crate) fn eat_char(&mut self, c: char) -> Option<tt::TokenTree> {
+    fn eat_char(&mut self, c: char) -> Option<tt::TokenTree> {
         let mut fork = self.clone();
         match fork.expect_char(c) {
             Ok(_) => {
