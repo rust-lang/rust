@@ -3,7 +3,7 @@
 #![feature(or_patterns)]
 #![feature(box_patterns)]
 #![warn(clippy::unnested_or_patterns)]
-#![allow(clippy::cognitive_complexity, clippy::match_ref_pats)]
+#![allow(clippy::cognitive_complexity, clippy::match_ref_pats, clippy::upper_case_acronyms)]
 #![allow(unreachable_patterns, irrefutable_let_patterns, unused_variables)]
 
 fn main() {
