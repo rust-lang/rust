@@ -3,15 +3,16 @@
 
 use smallvec::SmallVec;
 use syntax::SmolStr;
+use tt::Delimiter;
 
 use crate::{tt_iter::TtIter, MetaTemplate, ParseError};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Op {
     Var { name: SmolStr, kind: Option<SmolStr>, id: tt::TokenId },
-    Repeat { subtree: MetaTemplate, kind: RepeatKind, separator: Option<Separator> },
+    Repeat { tokens: MetaTemplate, kind: RepeatKind, separator: Option<Separator> },
     Leaf(tt::Leaf),
-    Subtree(MetaTemplate),
+    Subtree { tokens: MetaTemplate, delimiter: Option<Delimiter> },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -92,12 +93,10 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
             match second {
                 tt::TokenTree::Subtree(subtree) => {
                     let (separator, kind) = parse_repeat(src)?;
-                    let delimiter = subtree.delimiter;
                     let tokens = parse_inner(&subtree, mode)
                         .into_iter()
                         .collect::<Result<Vec<Op>, ParseError>>()?;
-                    let subtree = MetaTemplate { tokens, delimiter };
-                    Op::Repeat { subtree, separator, kind }
+                    Op::Repeat { tokens: MetaTemplate(tokens), separator, kind }
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
                     tt::Leaf::Punct(punct) => {
@@ -136,12 +135,9 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
         }
         tt::TokenTree::Leaf(tt) => Op::Leaf(tt.clone()),
         tt::TokenTree::Subtree(subtree) => {
-            let delimiter = subtree.delimiter;
             let tokens =
                 parse_inner(&subtree, mode).into_iter().collect::<Result<Vec<Op>, ParseError>>()?;
-
-            let subtree = MetaTemplate { tokens, delimiter };
-            Op::Subtree(subtree)
+            Op::Subtree { tokens: MetaTemplate(tokens), delimiter: subtree.delimiter }
         }
     };
     Ok(res)

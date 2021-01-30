@@ -92,18 +92,11 @@ struct Rule {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct MetaTemplate {
-    delimiter: Option<Delimiter>,
-    tokens: Vec<Op>,
-}
+struct MetaTemplate(Vec<Op>);
 
 impl<'a> MetaTemplate {
     fn iter(&self) -> impl Iterator<Item = &Op> {
-        self.tokens.iter()
-    }
-
-    fn delimiter_kind(&self) -> Option<DelimiterKind> {
-        self.delimiter.map(|it| it.kind)
+        self.0.iter()
     }
 }
 
@@ -288,8 +281,8 @@ impl Rule {
             .expect_subtree()
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?;
 
-        let lhs = MetaTemplate { tokens: parse_pattern(&lhs)?, delimiter: None };
-        let rhs = MetaTemplate { tokens: parse_template(&rhs)?, delimiter: None };
+        let lhs = MetaTemplate(parse_pattern(&lhs)?);
+        let rhs = MetaTemplate(parse_template(&rhs)?);
 
         Ok(crate::Rule { lhs, rhs })
     }
@@ -298,8 +291,8 @@ impl Rule {
 fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
     for op in pattern.iter() {
         match op {
-            Op::Subtree(subtree) => validate(&subtree)?,
-            Op::Repeat { subtree, separator, .. } => {
+            Op::Subtree { tokens, .. } => validate(&tokens)?,
+            Op::Repeat { tokens: subtree, separator, .. } => {
                 // Checks that no repetition which could match an empty token
                 // https://github.com/rust-lang/rust/blob/a58b1ed44f5e06976de2bdc4d7dc81c36a96934f/src/librustc_expand/mbe/macro_rules.rs#L558
 
@@ -319,7 +312,7 @@ fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
                                 )
                             }
                             Op::Leaf(_) => {}
-                            Op::Subtree(_) => {}
+                            Op::Subtree { .. } => {}
                         }
                         false
                     }) {

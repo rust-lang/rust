@@ -2,6 +2,7 @@
 //! `$ident => foo`, interpolates variables in the template, to get `fn foo() {}`
 
 use syntax::SmolStr;
+use tt::Delimiter;
 
 use super::ExpandResult;
 use crate::{
@@ -54,10 +55,9 @@ pub(super) fn transcribe(
     template: &MetaTemplate,
     bindings: &Bindings,
 ) -> ExpandResult<tt::Subtree> {
-    assert!(template.delimiter == None);
     let mut ctx = ExpandCtx { bindings: &bindings, nesting: Vec::new() };
     let mut arena: Vec<tt::TokenTree> = Vec::new();
-    expand_subtree(&mut ctx, template, &mut arena)
+    expand_subtree(&mut ctx, template, None, &mut arena)
 }
 
 #[derive(Debug)]
@@ -80,6 +80,7 @@ struct ExpandCtx<'a> {
 fn expand_subtree(
     ctx: &mut ExpandCtx,
     template: &MetaTemplate,
+    delimiter: Option<Delimiter>,
     arena: &mut Vec<tt::TokenTree>,
 ) -> ExpandResult<tt::Subtree> {
     // remember how many elements are in the arena now - when returning, we want to drain exactly how many elements we added. This way, the recursive uses of the arena get their own "view" of the arena, but will reuse the allocation
@@ -88,8 +89,9 @@ fn expand_subtree(
     for op in template.iter() {
         match op {
             Op::Leaf(tt) => arena.push(tt.clone().into()),
-            Op::Subtree(tt) => {
-                let ExpandResult { value: tt, err: e } = expand_subtree(ctx, &tt, arena);
+            Op::Subtree { tokens, delimiter } => {
+                let ExpandResult { value: tt, err: e } =
+                    expand_subtree(ctx, &tokens, *delimiter, arena);
                 err = err.or(e);
                 arena.push(tt.into());
             }
@@ -98,7 +100,7 @@ fn expand_subtree(
                 err = err.or(e);
                 push_fragment(arena, fragment);
             }
-            Op::Repeat { subtree, kind, separator } => {
+            Op::Repeat { tokens: subtree, kind, separator } => {
                 let ExpandResult { value: fragment, err: e } =
                     expand_repeat(ctx, subtree, *kind, separator, arena);
                 err = err.or(e);
@@ -108,7 +110,7 @@ fn expand_subtree(
     }
     // drain the elements added in this instance of expand_subtree
     let tts = arena.drain(start_elements..arena.len()).collect();
-    ExpandResult { value: tt::Subtree { delimiter: template.delimiter, token_trees: tts }, err }
+    ExpandResult { value: tt::Subtree { delimiter, token_trees: tts }, err }
 }
 
 fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr, id: tt::TokenId) -> ExpandResult<Fragment> {
@@ -162,7 +164,7 @@ fn expand_repeat(
     let mut counter = 0;
 
     loop {
-        let ExpandResult { value: mut t, err: e } = expand_subtree(ctx, template, arena);
+        let ExpandResult { value: mut t, err: e } = expand_subtree(ctx, template, None, arena);
         let nesting_state = ctx.nesting.last_mut().unwrap();
         if nesting_state.at_end || !nesting_state.hit {
             break;
