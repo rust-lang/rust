@@ -271,6 +271,32 @@ fn test_any() {
 }
 
 #[test]
+fn test_at_least() {
+    let vec = vec![1, 2, 3, 4, 5];
+    assert!(vec.iter().at_least(0, |i| i % 2 == 0));
+    assert!(vec.iter().at_least(1, |i| i % 2 == 0));
+    assert!(vec.iter().at_least(2, |i| i % 2 == 0));
+    assert!(!vec.iter().at_least(3, |i| i % 2 == 0));
+    assert!(vec.iter().at_least(0, |&i| i > 100));
+    assert!(vec.iter().at_least(5, |&i| i < 100));
+
+    assert!(!&vec[..0].iter().at_least(0, |_| panic!()));
+}
+
+#[test]
+fn test_at_most() {
+    let vec = vec![1, 2, 3, 4, 5];
+    assert!(vec.iter().at_most(0, |&i| i > 100));
+    assert!(vec.iter().at_most(5, |&i| i < 100));
+    assert!(vec.iter().at_most(3, |i| i % 2 == 0));
+    assert!(vec.iter().at_most(2, |i| i % 2 == 0));
+    assert!(!vec.iter().at_most(1, |i| i % 2 == 0));
+    assert!(!vec.iter().at_most(0, |i| i % 2 == 0));
+
+    assert!(&vec[..0].iter().at_most(0, |_| panic!()));
+}
+
+#[test]
 fn test_find() {
     let v: &[isize] = &[1, 3, 9, 27, 103, 14, 11];
     assert_eq!(*v.iter().find(|&&x| x & 1 == 0).unwrap(), 14);
