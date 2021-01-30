@@ -1,8 +1,6 @@
 use crate::utils::paths::STRING;
 use crate::utils::{match_def_path, span_lint_and_help};
 use if_chain::if_chain;
-use lazy_static::lazy_static;
-use regex::Regex;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind, PathSegment};
 use rustc_lint::{LateContext, LateLintPass};
@@ -41,14 +39,14 @@ declare_clippy_lint! {
 declare_lint_pass!(CaseSensitiveFileExtensionComparisons => [CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS]);
 
 fn check_case_sensitive_file_extension_comparison(ctx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Span> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^\.([a-z0-9]{1,5}|[A-Z0-9]{1,5})$").unwrap();
-    }
     if_chain! {
         if let ExprKind::MethodCall(PathSegment { ident, .. }, _, [obj, extension, ..], span) = expr.kind;
         if ident.as_str() == "ends_with";
         if let ExprKind::Lit(Spanned { node: LitKind::Str(ext_literal, ..), ..}) = extension.kind;
-        if RE.is_match(&ext_literal.as_str());
+        if (2..=6).contains(&ext_literal.as_str().len());
+        if ext_literal.as_str().starts_with('.');
+        if ext_literal.as_str().chars().skip(1).all(|c| c.is_uppercase() || c.is_digit(10))
+            || ext_literal.as_str().chars().skip(1).all(|c| c.is_lowercase() || c.is_digit(10));
         then {
             let mut ty = ctx.typeck_results().expr_ty(obj);
             ty = match ty.kind() {
