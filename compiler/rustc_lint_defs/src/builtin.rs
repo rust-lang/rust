@@ -2968,6 +2968,7 @@ declare_lint_pass! {
         UNSUPPORTED_NAKED_FUNCTIONS,
         MISSING_ABI,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+        DISJOINT_CAPTURE_DROP_REORDER,
     ]
 }
 
@@ -2992,6 +2993,51 @@ declare_lint! {
     pub UNUSED_DOC_COMMENTS,
     Warn,
     "detects doc comments that aren't used by rustdoc"
+}
+
+declare_lint! {
+    /// The `disjoint_capture_drop_reorder` lint detects variables that aren't completely
+    /// captured when the feature `capture_disjoint_fields` is enabled and it affects the Drop
+    /// order of at least one path starting at this variable.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// # #![deny(disjoint_capture_drop_reorder)]
+    /// # #![allow(unused)]
+    /// struct FancyInteger(i32);
+    ///
+    /// impl Drop for FancyInteger {
+    ///     fn drop(&mut self) {
+    ///         println!("Just dropped {}", self.0);
+    ///     }
+    /// }
+    ///
+    /// struct Point { x: FancyInteger, y: FancyInteger }
+    ///
+    /// fn main() {
+    ///   let p = Point { x: FancyInteger(10), y: FancyInteger(20) };
+    ///
+    ///   let c = || {
+    ///      let x = p.x;
+    ///   };
+    ///
+    ///   c();
+    ///
+    ///   // ... More code ...
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In the above example `p.y` will be dropped at the end of `f` instead of with `c` if
+    /// the feature `capture_disjoint_fields` is enabled.
+    pub DISJOINT_CAPTURE_DROP_REORDER,
+    Allow,
+    "Drop reorder because of `capture_disjoint_fields`"
+
 }
 
 declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
