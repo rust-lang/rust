@@ -580,6 +580,8 @@ struct MatrixEntry<'p, 'tcx> {
     ctor: OnceCell<Constructor<'tcx>>,
     /// Where this pattern came from.
     origin: Origin,
+    /// Whether this pattern is under a guard and thus should be ignored by patterns below.
+    is_under_guard: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -680,6 +682,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 next_row_id: *next_row_id,
                 ctor: OnceCell::new(),
                 origin: Origin::Pushed,
+                is_under_guard: row.row_data.is_under_guard,
             });
             *next_row_id = self.columns[i].len() - 1;
         }
@@ -715,19 +718,14 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         &'a self,
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
     ) -> impl Iterator<Item = (&'a Constructor<'tcx>, Span)> + Captures<'p> + Clone {
-        let last_col = self.columns.last().unwrap();
-        self.selected_rows.iter().map(move |row| {
-            let first_entry = &last_col[row.id];
-            // // Go through the row to get to the row data.
-            // // TODO: lol so slow.
-            // let last_entry = self.row(row_id).last().unwrap();
-            // let row_data = &self.row_data[last_entry.next_row_id];
-            // if row_data.is_under_guard {
+        self.last_col().map(move |entry| {
+            // // TODO: breaks diagnostics
+            // if entry.is_under_guard {
             //     None
             // } else {
-            //     Some((first_entry.head_ctor(cx), first_entry.pat.span))
+            //     Some((entry.head_ctor(cx), entry.pat.span))
             // }
-            (first_entry.head_ctor(cx), first_entry.pat.span)
+            (entry.head_ctor(cx), entry.pat.span)
         })
     }
 
@@ -802,6 +800,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                     next_row_id: row.id,
                     ctor: OnceCell::new(),
                     origin: Origin::Specialized { col: origin_col_id, row: origin_row_id, seq_id },
+                    is_under_guard: head_entry.is_under_guard,
                 });
                 // Make `row_id` point to the entry just added.
                 row.id = col.len() - 1;
@@ -846,17 +845,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                             alt_id,
                             alt_count,
                         },
+                        is_under_guard: entry.is_under_guard,
                     };
                     new_last_col.push(entry);
                 }
             } else {
-                let entry = MatrixEntry {
-                    pat: entry.pat,
-                    next_row_id: entry.next_row_id,
-                    ctor: OnceCell::new(),
-                    origin: entry.origin,
-                };
-                new_last_col.push(entry);
+                new_last_col.push(entry.clone());
             }
         }
         self.selected_rows.clear();
