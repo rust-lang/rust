@@ -334,7 +334,9 @@ impl<'tcx> CPlace<'tcx> {
 
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
-            size: u32::try_from(layout.size.bytes()).unwrap(),
+            // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
+            // specify stack slot alignment.
+            size: (u32::try_from(layout.size.bytes()).unwrap() + 15) / 16 * 16,
             offset: None,
         });
         CPlace {
@@ -498,7 +500,9 @@ impl<'tcx> CPlace<'tcx> {
                     // FIXME do something more efficient for transmutes between vectors and integers.
                     let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
                         kind: StackSlotKind::ExplicitSlot,
-                        size: src_ty.bytes(),
+                        // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
+                        // specify stack slot alignment.
+                        size: (src_ty.bytes() + 15) / 16 * 16,
                         offset: None,
                     });
                     let ptr = Pointer::stack_slot(stack_slot);

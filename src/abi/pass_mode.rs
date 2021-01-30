@@ -144,7 +144,6 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     None,
                     vec![AbiParam::new(scalar_to_clif_type(tcx, scalar.clone()))],
                 ),
-                // FIXME implement Vector Abi in a cg_llvm compatible way
                 Abi::Vector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout).unwrap();
                     (None, vec![AbiParam::new(vector_ty)])
@@ -210,7 +209,7 @@ pub(super) fn from_casted_value<'tcx>(
     cast: CastTarget,
 ) -> CValue<'tcx> {
     let abi_params = cast_target_to_abi_params(cast);
-    let size = abi_params
+    let size: u32 = abi_params
         .iter()
         .map(|param| param.value_type.bytes())
         .sum();
@@ -218,7 +217,9 @@ pub(super) fn from_casted_value<'tcx>(
     assert!(u64::from(size) >= layout.size.bytes());
     let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
         kind: StackSlotKind::ExplicitSlot,
-        size,
+        // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
+        // specify stack slot alignment.
+        size: (size + 15) / 16 * 16,
         offset: None,
     });
     let ptr = Pointer::new(fx.bcx.ins().stack_addr(pointer_ty(fx.tcx), stack_slot, 0));
@@ -306,9 +307,7 @@ pub(super) fn cvalue_for_param<'tcx>(
                 arg_abi.layout,
             ))
         }
-        PassMode::Cast(cast) => {
-            Some(from_casted_value(fx, &block_params, arg_abi.layout, cast))
-        }
+        PassMode::Cast(cast) => Some(from_casted_value(fx, &block_params, arg_abi.layout, cast)),
         PassMode::Indirect {
             attrs: _,
             extra_attrs: None,
