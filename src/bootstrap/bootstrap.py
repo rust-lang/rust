@@ -194,7 +194,8 @@ def default_build_triple(verbose):
     # being detected as GNU instead of MSVC.
     default_encoding = sys.getdefaultencoding()
     try:
-        version = subprocess.check_output(["rustc", "--version", "--verbose"])
+        version = subprocess.check_output(["rustc", "--version", "--verbose"],
+                stderr=subprocess.DEVNULL)
         version = version.decode(default_encoding)
         host = next(x for x in version.split('\n') if x.startswith("host: "))
         triple = host.split("host: ")[1]
