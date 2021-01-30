@@ -213,8 +213,6 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             }
                         }
                     } else {
-                        // Labels should be made local to prevent issues with inlined `asm!` and duplicate labels
-                        // Fixes https://github.com/rust-lang/rust/issues/74262
                         if let Some(label) = get_llvm_label_from_str(s) {
                             labels.push(label.to_owned());
                         }
@@ -251,23 +249,15 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
 
-        fn valid_ident_continuation(c: char) -> bool {
-            ('a'..='z').contains(&c)
-                || ('A'..='Z').contains(&c)
-                || ('0'..='9').contains(&c)
-                || '_' == c
-                || '$' == c
-                || '.' == c
-                || '@' == c
-        }
-
+        // Labels should be made local to prevent issues with inlined `asm!` and duplicate labels
+        // Fixes https://github.com/rust-lang/rust/issues/74262
         for label in labels.iter() {
             let ranges: Vec<_> = template_str
                 .match_indices(label)
                 .filter_map(|(idx, _)| {
                     let label_end_idx = idx + label.len();
                     let next_char = template_str[label_end_idx..].chars().nth(0);
-                    if next_char.is_none() || !valid_ident_continuation(next_char.unwrap()) {
+                    if next_char.is_none() || !llvm_ident_continuation(next_char.unwrap()) {
                         Some(idx..label_end_idx)
                     } else {
                         None
@@ -914,27 +904,31 @@ fn llvm_fixup_output_type(
     }
 }
 
+// Valid llvm symbols: https://llvm.org/docs/AMDGPUOperandSyntax.html#symbols
+// First char is [a-zA-Z_.]
+fn llvm_ident_start(c: char) -> bool {
+    ('a'..='z').contains(&c) || ('A'..='Z').contains(&c) || '_' == c || '.' == c
+}
+
+// All subsequent chars are [a-zA-Z0-9_$.@]
+fn llvm_ident_continuation(c: char) -> bool {
+    ('a'..='z').contains(&c)
+        || ('A'..='Z').contains(&c)
+        || ('0'..='9').contains(&c)
+        || '_' == c
+        || '$' == c
+        || '.' == c
+        || '@' == c
+}
+
 /// Gets a LLVM label from a &str if it exists
-/// Uses this as reference: https://llvm.org/docs/AMDGPUOperandSyntax.html#symbols
 fn get_llvm_label_from_str(s: &str) -> Option<&str> {
     if let Some(colon_idx) = s.find(':') {
         let substr = &s[..colon_idx];
         let mut chars = substr.chars();
         if let Some(c) = chars.next() {
-            // First char is [a-zA-Z_.]
-            if ('a'..='z').contains(&c) || ('A'..='Z').contains(&c) || '_' == c || '.' == c {
-                // All subsequent chars are [a-zA-Z0-9_$.@]
-                if chars.all(|c| {
-                    ('a'..='z').contains(&c)
-                        || ('A'..='Z').contains(&c)
-                        || ('0'..='9').contains(&c)
-                        || '_' == c
-                        || '$' == c
-                        || '.' == c
-                        || '@' == c
-                }) {
-                    return Some(substr);
-                }
+            if llvm_ident_start(c) && chars.all(llvm_ident_continuation) {
+                return Some(substr);
             }
         }
     }
