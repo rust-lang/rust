@@ -173,7 +173,7 @@ impl ast::String {
             buf.capacity() == 0,
         ) {
             (Ok(c), false) => buf.push(c),
-            (Ok(c), true) if Some(c) == text_iter.next() => (),
+            (Ok(c), true) if char_range.len() == 1 && Some(c) == text_iter.next() => (),
             (Ok(c), true) => {
                 buf.reserve_exact(text.len());
                 buf.push_str(&text[..char_range.start]);
@@ -659,7 +659,7 @@ impl Radix {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{make, FloatNumber, IntNumber};
+    use crate::ast::{self, make, FloatNumber, IntNumber};
 
     fn check_float_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
         assert_eq!(FloatNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
@@ -691,5 +691,22 @@ mod tests {
         check_int_suffix("0b11u32", "u32");
         check_int_suffix("0o11u32", "u32");
         check_int_suffix("0xffu32", "u32");
+    }
+
+    fn check_string_value<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
+        assert_eq!(
+            ast::String { syntax: make::tokens::literal(&format!("\"{}\"", lit)) }
+                .value()
+                .as_deref(),
+            expected.into()
+        );
+    }
+
+    #[test]
+    fn test_string_escape() {
+        check_string_value(r"foobar", "foobar");
+        check_string_value(r"\foobar", None);
+        check_string_value(r"\nfoobar", "\nfoobar");
+        check_string_value(r"C:\\Windows\\System32\\", "C:\\Windows\\System32\\");
     }
 }
