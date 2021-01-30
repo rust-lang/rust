@@ -20,6 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 RUN mkdir -p /config
 RUN echo "[rust]" > /config/nopt-std-config.toml
 RUN echo "optimize = false" >> /config/nopt-std-config.toml

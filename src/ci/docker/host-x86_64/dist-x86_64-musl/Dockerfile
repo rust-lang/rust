@@ -29,6 +29,9 @@ RUN CFLAGS="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none -Wl,--
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 ENV HOSTS=x86_64-unknown-linux-musl
 
 ENV RUST_CONFIGURE_ARGS \

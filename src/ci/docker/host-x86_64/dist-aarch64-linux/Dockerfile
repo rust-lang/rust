@@ -24,6 +24,9 @@ USER root
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 ENV PATH=$PATH:/x-tools/aarch64-unknown-linux-gnueabi/bin
 
 ENV CC_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-gcc \

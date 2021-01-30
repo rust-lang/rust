@@ -30,6 +30,9 @@ RUN CC=gcc CFLAGS="-m32 -Wa,-mrelax-relocations=no" \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-i586=/musl-i586 \
       --musl-root-i686=/musl-i686 \

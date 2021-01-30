@@ -21,6 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 ENV HOSTS=mips-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs

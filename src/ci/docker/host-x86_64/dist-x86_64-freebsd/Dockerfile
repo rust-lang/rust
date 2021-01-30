@@ -23,6 +23,9 @@ RUN /tmp/freebsd-toolchain.sh x86_64
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 ENV \
     AR_x86_64_unknown_freebsd=x86_64-unknown-freebsd11-ar \
     CC_x86_64_unknown_freebsd=x86_64-unknown-freebsd11-clang \
