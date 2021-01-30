@@ -384,7 +384,8 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 ///
 /// # Safety
 ///
-/// The iterator's `size_hint` must be exact and cheap to call.
+/// The iterator's `size_hint` must be exact and cheap to call, which also
+/// means that the number of items must fit into an `usize`.
 ///
 /// `size` may not be overridden.
 ///
