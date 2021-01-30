@@ -58,8 +58,8 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             lctx.without_in_scope_lifetime_defs(|lctx| {
                 if let Some(hir_item) = lctx.lower_item(item) {
-                    item_hir_id = Some(hir_item.hir_id);
-                    lctx.insert_item(hir_item);
+                    let id = lctx.insert_item(hir_item);
+                    item_hir_id = Some(id);
                 }
             })
         });
@@ -128,7 +128,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // only used when lowering a child item of a trait or impl.
     fn with_parent_item_lifetime_defs<T>(
         &mut self,
-        parent_hir_id: hir::HirId,
+        parent_hir_id: hir::ItemId,
         f: impl FnOnce(&mut LoweringContext<'_, '_>) -> T,
     ) -> T {
         let old_len = self.in_scope_lifetimes.len();

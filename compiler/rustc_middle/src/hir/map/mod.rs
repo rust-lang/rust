@@ -300,8 +300,8 @@ impl<'hir> Map<'hir> {
         self.find_entry(id).unwrap()
     }
 
-    pub fn item(&self, id: HirId) -> &'hir Item<'hir> {
-        match self.find(id).unwrap() {
+    pub fn item(&self, id: ItemId) -> &'hir Item<'hir> {
+        match self.find(id.id).unwrap() {
             Node::Item(item) => item,
             _ => bug!(),
         }
@@ -479,19 +479,19 @@ impl<'hir> Map<'hir> {
         let module = self.tcx.hir_module_items(module);
 
         for id in &module.items {
-            visitor.visit_item(self.expect_item(*id));
+            visitor.visit_item(self.item(*id));
         }
 
         for id in &module.trait_items {
-            visitor.visit_trait_item(self.expect_trait_item(id.hir_id));
+            visitor.visit_trait_item(self.trait_item(*id));
         }
 
         for id in &module.impl_items {
-            visitor.visit_impl_item(self.expect_impl_item(id.hir_id));
+            visitor.visit_impl_item(self.impl_item(*id));
         }
 
         for id in &module.foreign_items {
-            visitor.visit_foreign_item(self.expect_foreign_item(id.hir_id));
+            visitor.visit_foreign_item(self.foreign_item(*id));
         }
     }
 
@@ -863,7 +863,7 @@ impl<'hir> Map<'hir> {
             Node::Variant(ref v) => &v.attrs[..],
             Node::Field(ref f) => &f.attrs[..],
             Node::Expr(ref e) => &*e.attrs,
-            Node::Stmt(ref s) => s.kind.attrs(|id| self.item(id.id)),
+            Node::Stmt(ref s) => s.kind.attrs(|id| self.item(id)),
             Node::Arm(ref a) => &*a.attrs,
             Node::GenericParam(param) => &param.attrs[..],
             // Unit/tuple structs/variants take the attributes straight from
@@ -977,7 +977,7 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
         self.body(id)
     }
 
-    fn item(&self, id: HirId) -> &'hir Item<'hir> {
+    fn item(&self, id: ItemId) -> &'hir Item<'hir> {
         self.item(id)
     }
 

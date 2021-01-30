@@ -375,7 +375,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
         match ty.kind {
             TyKind::OpaqueDef(item, _) => {
                 let map = self.cx.tcx.hir();
-                let item = map.expect_item(item.id);
+                let item = map.item(item);
                 walk_item(self, item);
                 walk_ty(self, ty);
             },

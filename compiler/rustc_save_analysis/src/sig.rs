@@ -317,7 +317,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 Ok(replace_text(nested_ty, text))
             }
             hir::TyKind::OpaqueDef(item_id, _) => {
-                let item = scx.tcx.hir().item(item_id.id);
+                let item = scx.tcx.hir().item(item_id);
                 item.make(offset, Some(item_id.id), scx)
             }
             hir::TyKind::Typeof(_) | hir::TyKind::Infer | hir::TyKind::Err => Err("Ty"),

@@ -1382,7 +1382,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 });
             }
             hir::TyKind::OpaqueDef(item_id, _) => {
-                let item = self.tcx.hir().item(item_id.id);
+                let item = self.tcx.hir().item(item_id);
                 self.nest_typeck_results(self.tcx.hir().local_def_id(item_id.id), |v| {
                     v.visit_item(item)
                 });

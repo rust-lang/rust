@@ -133,7 +133,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = cx.tcx.hir().expect_item(id.id);
+                    let item = cx.tcx.hir().item(id);
                     match item.kind {
                         hir::ItemKind::Mod(_) => as_primitive(Res::Def(
                             DefKind::Mod,
@@ -185,7 +185,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = cx.tcx.hir().expect_item(id.id);
+                    let item = cx.tcx.hir().item(id);
                     match item.kind {
                         hir::ItemKind::Mod(_) => as_keyword(Res::Def(
                             DefKind::Mod,
@@ -1475,7 +1475,7 @@ impl Clean<Type> for hir::Ty<'_> {
             }
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
             TyKind::OpaqueDef(item_id, _) => {
-                let item = cx.tcx.hir().expect_item(item_id.id);
+                let item = cx.tcx.hir().item(item_id);
                 if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
                     ImplTrait(ty.bounds.clean(cx))
                 } else {

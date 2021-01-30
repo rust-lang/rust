@@ -178,7 +178,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
-        let get_item = |id: hir::ItemId| self.context.tcx.hir().item(id.id);
+        let get_item = |id: hir::ItemId| self.context.tcx.hir().item(id);
         let attrs = &s.kind.attrs(get_item);
         // See `EarlyContextAndPass::visit_stmt` for an explanation
         // of why we call `walk_stmt` outside of `with_lint_attrs`

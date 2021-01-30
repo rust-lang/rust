@@ -99,7 +99,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     arena: &'hir Arena<'hir>,
 
     /// The items being lowered are collected here.
-    items: BTreeMap<hir::HirId, hir::Item<'hir>>,
+    items: BTreeMap<hir::ItemId, hir::Item<'hir>>,
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem<'hir>>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem<'hir>>,
@@ -605,12 +605,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn insert_item(&mut self, item: hir::Item<'hir>) {
+    fn insert_item(&mut self, item: hir::Item<'hir>) -> hir::ItemId {
         let id = item.hir_id;
         // FIXME: Use `debug_asset-rt`.
         assert_eq!(id.local_id, hir::ItemLocalId::from_u32(0));
+        let id = hir::ItemId { id };
         self.items.insert(id, item);
         self.modules.get_mut(&self.current_module).unwrap().items.insert(id);
+        id
     }
 
     fn allocate_hir_id_counter(&mut self, owner: NodeId) -> hir::HirId {

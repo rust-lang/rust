@@ -2210,7 +2210,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.res_to_ty(opt_self_ty, path, false)
             }
             hir::TyKind::OpaqueDef(item_id, ref lifetimes) => {
-                let opaque_ty = tcx.hir().expect_item(item_id.id);
+                let opaque_ty = tcx.hir().item(item_id);
                 let def_id = tcx.hir().local_def_id(item_id.id).to_def_id();
 
                 match opaque_ty.kind {

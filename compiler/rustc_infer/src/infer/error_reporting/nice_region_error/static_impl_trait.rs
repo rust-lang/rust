@@ -234,7 +234,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
             match fn_return.kind {
                 TyKind::OpaqueDef(item_id, _) => {
-                    let item = tcx.hir().item(item_id.id);
+                    let item = tcx.hir().item(item_id);
                     let opaque = if let ItemKind::OpaqueTy(opaque) = &item.kind {
                         opaque
                     } else {

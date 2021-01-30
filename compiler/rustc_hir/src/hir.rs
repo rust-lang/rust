@@ -619,7 +619,7 @@ pub struct WhereEqPredicate<'hir> {
 pub struct ModuleItems {
     // Use BTreeSets here so items are in the same order as in the
     // list of all items in Crate
-    pub items: BTreeSet<HirId>,
+    pub items: BTreeSet<ItemId>,
     pub trait_items: BTreeSet<TraitItemId>,
     pub impl_items: BTreeSet<ImplItemId>,
     pub foreign_items: BTreeSet<ForeignItemId>,
@@ -652,7 +652,7 @@ pub struct Crate<'hir> {
     // does, because it can affect the order in which errors are
     // detected, which in turn can make UI tests yield
     // slightly different results.
-    pub items: BTreeMap<HirId, Item<'hir>>,
+    pub items: BTreeMap<ItemId, Item<'hir>>,
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem<'hir>>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem<'hir>>,
@@ -677,7 +677,7 @@ pub struct Crate<'hir> {
 }
 
 impl Crate<'hir> {
-    pub fn item(&self, id: HirId) -> &Item<'hir> {
+    pub fn item(&self, id: ItemId) -> &Item<'hir> {
         &self.items[&id]
     }
 
@@ -2541,7 +2541,7 @@ impl VariantData<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ItemId {
     pub id: HirId,
 }

@@ -34,6 +34,15 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
     }
 }
 
+impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ItemId {
+    type KeyType = (DefPathHash, ItemLocalId);
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
+        self.id.to_stable_hash_key(hcx)
+    }
+}
+
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for TraitItemId {
     type KeyType = (DefPathHash, ItemLocalId);
 

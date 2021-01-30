@@ -133,7 +133,7 @@ pub trait Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     fn find(&self, hir_id: HirId) -> Option<Node<'hir>>;
     fn body(&self, id: BodyId) -> &'hir Body<'hir>;
-    fn item(&self, id: HirId) -> &'hir Item<'hir>;
+    fn item(&self, id: ItemId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
     fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
     fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir>;
@@ -150,7 +150,7 @@ impl<'hir> Map<'hir> for ErasedMap<'hir> {
     fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         self.0.body(id)
     }
-    fn item(&self, id: HirId) -> &'hir Item<'hir> {
+    fn item(&self, id: ItemId) -> &'hir Item<'hir> {
         self.0.item(id)
     }
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
@@ -269,7 +269,7 @@ pub trait Visitor<'v>: Sized {
     /// reason to override this method is if you want a nested pattern
     /// but cannot supply a `Map`; see `nested_visit_map` for advice.
     fn visit_nested_item(&mut self, id: ItemId) {
-        let opt_item = self.nested_visit_map().inter().map(|map| map.item(id.id));
+        let opt_item = self.nested_visit_map().inter().map(|map| map.item(id));
         walk_list!(self, visit_item, opt_item);
     }
 
