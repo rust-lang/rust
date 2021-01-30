@@ -15,7 +15,7 @@ fn main() {
 
     // check_version warnings are not printed during setup
     let changelog_suggestion =
-        if matches!(config.cmd, Subcommand::Setup {..}) { None } else { check_version(&config) };
+        if matches!(config.cmd, Subcommand::Setup { .. }) { None } else { check_version(&config) };
 
     // NOTE: Since `./configure` generates a `config.toml`, distro maintainers will see the
     // changelog warning, not the `x.py setup` message.

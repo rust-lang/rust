@@ -32,9 +32,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let tcx = self.hir.tcx();
         let (min_length, exact_size) = match place.ty(&self.local_decls, tcx).ty.kind() {
-            ty::Array(_, length) => {
-                (length.eval_usize(tcx, self.hir.param_env), true)
-            }
+            ty::Array(_, length) => (length.eval_usize(tcx, self.hir.param_env), true),
             _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
         };
 
