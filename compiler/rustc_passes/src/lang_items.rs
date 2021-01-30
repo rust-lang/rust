@@ -42,7 +42,7 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
         self.check_for_lang(
             Target::from_trait_item(trait_item),
-            trait_item.hir_id,
+            trait_item.hir_id(),
             trait_item.attrs,
         )
     }

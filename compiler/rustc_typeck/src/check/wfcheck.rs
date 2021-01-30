@@ -197,7 +197,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         _ => None,
     };
     check_object_unsafe_self_trait_by_name(tcx, &trait_item);
-    check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
+    check_associated_item(tcx, trait_item.hir_id(), trait_item.span, method_sig);
 }
 
 fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
@@ -213,7 +213,7 @@ fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
 /// Detect when an object unsafe trait is referring to itself in one of its associated items.
 /// When this is done, suggest using `Self` instead.
 fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
-    let (trait_name, trait_def_id) = match tcx.hir().get(tcx.hir().get_parent_item(item.hir_id)) {
+    let (trait_name, trait_def_id) = match tcx.hir().get(tcx.hir().get_parent_item(item.hir_id())) {
         hir::Node::Item(item) => match item.kind {
             hir::ItemKind::Trait(..) => (item.ident, item.def_id),
             _ => return,
@@ -1354,8 +1354,7 @@ impl Visitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         debug!("visit_trait_item: {:?}", trait_item);
-        let def_id = self.tcx.hir().local_def_id(trait_item.hir_id);
-        self.tcx.ensure().check_trait_item_well_formed(def_id);
+        self.tcx.ensure().check_trait_item_well_formed(trait_item.def_id);
         hir_visit::walk_trait_item(self, trait_item);
     }
 

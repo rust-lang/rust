@@ -586,7 +586,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 if let hir::VisibilityKind::Inherited = it.vis.node {
                     self.private_traits.insert(it.hir_id());
                     for trait_item_ref in trait_item_refs {
-                        self.private_traits.insert(trait_item_ref.id.hir_id);
+                        self.private_traits.insert(trait_item_ref.id.hir_id());
                     }
                     return;
                 }
@@ -626,16 +626,15 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, trait_item: &hir::TraitItem<'_>) {
-        if self.private_traits.contains(&trait_item.hir_id) {
+        if self.private_traits.contains(&trait_item.hir_id()) {
             return;
         }
 
-        let def_id = cx.tcx.hir().local_def_id(trait_item.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
 
         self.check_missing_docs_attrs(
             cx,
-            Some(trait_item.hir_id),
+            Some(trait_item.hir_id()),
             &trait_item.attrs,
             trait_item.span,
             article,

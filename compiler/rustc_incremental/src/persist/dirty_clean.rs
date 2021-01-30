@@ -454,7 +454,7 @@ impl ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
     }
 
     fn visit_trait_item(&mut self, item: &hir::TraitItem<'_>) {
-        self.check_item(item.hir_id, item.span);
+        self.check_item(item.hir_id(), item.span);
     }
 
     fn visit_impl_item(&mut self, item: &hir::ImplItem<'_>) {

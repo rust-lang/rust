@@ -229,7 +229,7 @@ impl<'a> FnLikeNode<'a> {
             },
             Node::TraitItem(ti) => match ti.kind {
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                    method(ti.hir_id, ti.ident, sig, None, body, ti.span, &ti.attrs)
+                    method(ti.hir_id(), ti.ident, sig, None, body, ti.span, &ti.attrs)
                 }
                 _ => bug!("trait method FnLikeNode that is not fn-like"),
             },

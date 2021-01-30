@@ -1044,7 +1044,7 @@ impl Clean<TypeKind> for hir::def::DefKind {
 
 impl Clean<Item> for hir::TraitItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let local_did = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
+        let local_did = self.def_id.to_def_id();
         cx.with_param_env(local_did, || {
             let inner = match self.kind {
                 hir::TraitItemKind::Const(ref ty, default) => {

@@ -1907,7 +1907,14 @@ pub struct FnSig<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct TraitItemId {
-    pub hir_id: HirId,
+    pub def_id: LocalDefId,
+}
+
+impl TraitItemId {
+    pub fn hir_id(&self) -> HirId {
+        // Items are always HIR owners.
+        HirId::make_owner(self.def_id)
+    }
 }
 
 /// Represents an item declaration within a trait declaration,
@@ -1917,11 +1924,22 @@ pub struct TraitItemId {
 #[derive(Debug)]
 pub struct TraitItem<'hir> {
     pub ident: Ident,
-    pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub attrs: &'hir [Attribute],
     pub generics: Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
+}
+
+impl TraitItem<'_> {
+    pub fn hir_id(&self) -> HirId {
+        // Items are always HIR owners.
+        HirId::make_owner(self.def_id)
+    }
+
+    pub fn trait_item_id(&self) -> TraitItemId {
+        TraitItemId { def_id: self.def_id }
+    }
 }
 
 /// Represents a trait method's body (or just argument names).
@@ -2885,9 +2903,10 @@ impl<'hir> Node<'hir> {
 
     pub fn hir_id(&self) -> Option<HirId> {
         match self {
-            Node::Item(Item { def_id, .. }) => Some(HirId::make_owner(*def_id)),
+            Node::Item(Item { def_id, .. }) | Node::TraitItem(TraitItem { def_id, .. }) => {
+                Some(HirId::make_owner(*def_id))
+            }
             Node::ForeignItem(ForeignItem { hir_id, .. })
-            | Node::TraitItem(TraitItem { hir_id, .. })
             | Node::ImplItem(ImplItem { hir_id, .. })
             | Node::Field(StructField { hir_id, .. })
             | Node::AnonConst(AnonConst { hir_id, .. })
@@ -2922,7 +2941,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
 
     rustc_data_structures::static_assert_size!(super::Item<'static>, 200);
-    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 152);
+    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 144);
     rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 168);
     rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 160);
 }

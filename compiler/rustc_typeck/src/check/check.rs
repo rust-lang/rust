@@ -725,8 +725,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                         fn_maybe_err(tcx, item.ident.span, abi);
                     }
                     hir::TraitItemKind::Type(.., Some(_default)) => {
-                        let item_def_id = tcx.hir().local_def_id(item.hir_id).to_def_id();
-                        let assoc_item = tcx.associated_item(item_def_id);
+                        let assoc_item = tcx.associated_item(item.def_id);
                         let trait_substs =
                             InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
                         let _: Result<_, rustc_errors::ErrorReported> = check_type_bounds(

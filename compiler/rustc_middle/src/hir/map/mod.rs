@@ -308,7 +308,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
-        match self.find(id.hir_id).unwrap() {
+        match self.find(id.hir_id()).unwrap() {
             Node::TraitItem(item) => item,
             _ => bug!(),
         }

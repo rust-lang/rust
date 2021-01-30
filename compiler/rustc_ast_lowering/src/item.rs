@@ -92,7 +92,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         self.lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
             AssocCtxt::Trait => {
                 let hir_item = lctx.lower_trait_item(item);
-                let id = hir::TraitItemId { hir_id: hir_item.hir_id };
+                let id = hir_item.trait_item_id();
                 lctx.trait_items.insert(id, hir_item);
                 lctx.modules.get_mut(&lctx.current_module).unwrap().trait_items.insert(id);
             }
@@ -846,7 +846,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         hir::TraitItem {
-            hir_id: self.lower_node_id(i.id),
+            def_id: trait_item_def_id,
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             generics,
@@ -866,7 +866,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::MacCall(..) => unimplemented!(),
         };
-        let id = hir::TraitItemId { hir_id: self.lower_node_id(i.id) };
+        let id = hir::TraitItemId { def_id: self.lower_node_id(i.id).expect_owner() };
         let defaultness = hir::Defaultness::Default { has_value: has_default };
         hir::TraitItemRef { id, ident: i.ident, span: i.span, defaultness, kind }
     }

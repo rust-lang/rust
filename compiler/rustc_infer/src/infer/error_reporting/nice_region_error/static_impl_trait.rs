@@ -8,8 +8,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorRepor
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, ErasedMap, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    self as hir, GenericBound, ImplItem, Item, ItemKind, Lifetime, LifetimeName, Node, TraitItem,
-    TyKind,
+    self as hir, GenericBound, ImplItem, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind,
 };
 use rustc_middle::ty::{self, AssocItemContainer, RegionKind, Ty, TypeFoldable, TypeVisitor};
 use rustc_span::symbol::Ident;
@@ -352,8 +351,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     _ => None,
                 }
             }
-            Some(Node::TraitItem(TraitItem { ident, hir_id, .. })) => {
-                let parent_id = tcx.hir().get_parent_item(*hir_id);
+            Some(Node::TraitItem(trait_item)) => {
+                let parent_id = tcx.hir().get_parent_item(trait_item.hir_id());
                 match tcx.hir().find(parent_id) {
                     Some(Node::Item(Item { kind: ItemKind::Trait(..), .. })) => {
                         // The method being called is defined in the `trait`, but the `'static`
@@ -389,7 +388,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             })
                             .next()
                         {
-                            Some(self_ty) => Some((*ident, self_ty)),
+                            Some(self_ty) => Some((trait_item.ident, self_ty)),
                             _ => None,
                         }
                     }

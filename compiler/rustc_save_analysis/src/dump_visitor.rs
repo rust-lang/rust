@@ -674,7 +674,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             let id = id_from_def_id(item.def_id.to_def_id());
             let span = self.span_from_span(item.ident.span);
             let children =
-                methods.iter().map(|i| id_from_hir_id(i.id.hir_id, &self.save_ctxt)).collect();
+                methods.iter().map(|i| id_from_def_id(i.id.def_id.to_def_id())).collect();
             self.dumper.dump_def(
                 &access_from!(self.save_ctxt, item, item.hir_id()),
                 Def {
@@ -999,7 +999,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 let body = body.map(|b| &self.tcx.hir().body(b).value);
                 let respan = respan(vis_span, hir::VisibilityKind::Public);
                 self.process_assoc_const(
-                    trait_item.hir_id,
+                    trait_item.hir_id(),
                     trait_item.ident,
                     &ty,
                     body,
@@ -1015,7 +1015,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 self.process_method(
                     sig,
                     body,
-                    trait_item.hir_id,
+                    trait_item.hir_id(),
                     trait_item.ident,
                     &trait_item.generics,
                     &respan,
@@ -1025,15 +1025,12 @@ impl<'tcx> DumpVisitor<'tcx> {
             hir::TraitItemKind::Type(ref bounds, ref default_ty) => {
                 // FIXME do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
-                let qualname = format!(
-                    "::{}",
-                    self.tcx
-                        .def_path_str(self.tcx.hir().local_def_id(trait_item.hir_id).to_def_id())
-                );
+                let qualname =
+                    format!("::{}", self.tcx.def_path_str(trait_item.def_id.to_def_id()));
 
                 if !self.span.filter_generated(trait_item.ident.span) {
                     let span = self.span_from_span(trait_item.ident.span);
-                    let id = id_from_hir_id(trait_item.hir_id, &self.save_ctxt);
+                    let id = id_from_def_id(trait_item.def_id.to_def_id());
 
                     self.dumper.dump_def(
                         &Access { public: true, reachable: true },
@@ -1049,7 +1046,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                             decl_id: None,
                             docs: self.save_ctxt.docs_for_attrs(&trait_item.attrs),
                             sig: sig::assoc_type_signature(
-                                trait_item.hir_id,
+                                trait_item.hir_id(),
                                 trait_item.ident,
                                 Some(bounds),
                                 default_ty.as_ref().map(|ty| &**ty),

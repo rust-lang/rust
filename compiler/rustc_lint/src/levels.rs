@@ -631,7 +631,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        self.with_lint_attrs(trait_item.hir_id, &trait_item.attrs, |builder| {
+        self.with_lint_attrs(trait_item.hir_id(), &trait_item.attrs, |builder| {
             intravisit::walk_trait_item(builder, trait_item);
         });
     }

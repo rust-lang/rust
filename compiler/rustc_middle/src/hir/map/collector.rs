@@ -391,14 +391,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
-        debug_assert_eq!(
-            ti.hir_id.owner,
-            self.definitions.opt_hir_id_to_local_def_id(ti.hir_id).unwrap()
-        );
-        self.with_dep_node_owner(ti.hir_id.owner, ti, |this, hash| {
-            this.insert_with_hash(ti.span, ti.hir_id, Node::TraitItem(ti), hash);
+        self.with_dep_node_owner(ti.def_id, ti, |this, hash| {
+            this.insert_with_hash(ti.span, ti.hir_id(), Node::TraitItem(ti), hash);
 
-            this.with_parent(ti.hir_id, |this| {
+            this.with_parent(ti.hir_id(), |this| {
                 intravisit::walk_trait_item(this, ti);
             });
         });

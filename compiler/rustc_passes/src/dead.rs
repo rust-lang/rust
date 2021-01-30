@@ -440,9 +440,9 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
         use hir::TraitItemKind::{Const, Fn};
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
-            && has_allow_dead_code_or_lang_attr(self.tcx, trait_item.hir_id, &trait_item.attrs)
+            && has_allow_dead_code_or_lang_attr(self.tcx, trait_item.hir_id(), &trait_item.attrs)
         {
-            self.worklist.push(trait_item.hir_id);
+            self.worklist.push(trait_item.hir_id());
         }
     }
 

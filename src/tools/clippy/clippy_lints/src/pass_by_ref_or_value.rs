@@ -206,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         if let hir::TraitItemKind::Fn(method_sig, _) = &item.kind {
-            self.check_poly_fn(cx, item.hir_id, &*method_sig.decl, None);
+            self.check_poly_fn(cx, item.hir_id(), &*method_sig.decl, None);
         }
     }
 

@@ -301,8 +301,8 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = Some(&trait_item.generics);
-        self.with_lint_attrs(trait_item.hir_id, &trait_item.attrs, |cx| {
-            cx.with_param_env(trait_item.hir_id, |cx| {
+        self.with_lint_attrs(trait_item.hir_id(), &trait_item.attrs, |cx| {
+            cx.with_param_env(trait_item.hir_id(), |cx| {
                 lint_callback!(cx, check_trait_item, trait_item);
                 hir_visit::walk_trait_item(cx, trait_item);
                 lint_callback!(cx, check_trait_item_post, trait_item);

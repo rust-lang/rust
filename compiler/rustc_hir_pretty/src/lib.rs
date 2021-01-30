@@ -934,7 +934,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
-        self.ann.pre(self, AnnNode::SubItem(ti.hir_id));
+        self.ann.pre(self, AnnNode::SubItem(ti.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
         self.print_outer_attributes(&ti.attrs);
@@ -969,7 +969,7 @@ impl<'a> State<'a> {
                 );
             }
         }
-        self.ann.post(self, AnnNode::SubItem(ti.hir_id))
+        self.ann.post(self, AnnNode::SubItem(ti.hir_id()))
     }
 
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem<'_>) {

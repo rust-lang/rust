@@ -599,8 +599,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
-            let def_id = self.tcx.hir().local_def_id(it.hir_id);
-            self.check(def_id);
+            self.check(it.def_id);
             intravisit::walk_trait_item(self, it);
         }
     }

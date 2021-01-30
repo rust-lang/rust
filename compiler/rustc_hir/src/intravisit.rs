@@ -964,12 +964,12 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
     visitor.visit_generics(&trait_item.generics);
     match trait_item.kind {
         TraitItemKind::Const(ref ty, default) => {
-            visitor.visit_id(trait_item.hir_id);
+            visitor.visit_id(trait_item.hir_id());
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_nested_body, default);
         }
         TraitItemKind::Fn(ref sig, TraitFn::Required(param_names)) => {
-            visitor.visit_id(trait_item.hir_id);
+            visitor.visit_id(trait_item.hir_id());
             visitor.visit_fn_decl(&sig.decl);
             for &param_name in param_names {
                 visitor.visit_ident(param_name);
@@ -981,11 +981,11 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
                 &sig.decl,
                 body_id,
                 trait_item.span,
-                trait_item.hir_id,
+                trait_item.hir_id(),
             );
         }
         TraitItemKind::Type(bounds, ref default) => {
-            visitor.visit_id(trait_item.hir_id);
+            visitor.visit_id(trait_item.hir_id());
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
         }

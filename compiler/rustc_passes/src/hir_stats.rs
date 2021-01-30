@@ -187,7 +187,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_trait_item(&mut self, ti: &'v hir::TraitItem<'v>) {
-        self.record("TraitItem", Id::Node(ti.hir_id), ti);
+        self.record("TraitItem", Id::Node(ti.hir_id()), ti);
         hir_visit::walk_trait_item(self, ti)
     }
 
