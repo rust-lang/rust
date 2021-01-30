@@ -1707,6 +1707,34 @@ fn test_send() {
 }
 
 #[allow(dead_code)]
+fn test_ord_absence() {
+    fn map<K>(mut map: BTreeMap<K, ()>) {
+        map.is_empty();
+        map.len();
+        map.iter();
+        map.iter_mut();
+        map.keys();
+        map.values();
+        map.values_mut();
+        map.into_iter();
+    }
+
+    fn map_debug<K: Debug>(mut map: BTreeMap<K, ()>) {
+        format!("{:?}", map);
+        format!("{:?}", map.iter());
+        format!("{:?}", map.iter_mut());
+        format!("{:?}", map.keys());
+        format!("{:?}", map.values());
+        format!("{:?}", map.values_mut());
+        format!("{:?}", map.into_iter());
+    }
+
+    fn map_clone<K: Clone>(mut map: BTreeMap<K, ()>) {
+        map.clone_from(&map.clone());
+    }
+}
+
+#[allow(dead_code)]
 fn test_const() {
     const MAP: &'static BTreeMap<(), ()> = &BTreeMap::new();
     const LEN: usize = MAP.len();
