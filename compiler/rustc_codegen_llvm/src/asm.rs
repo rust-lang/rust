@@ -213,14 +213,13 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             }
                         }
                     } else {
-                        let ts = s.to_owned();
                         // Labels should be made local to prevent issues with inlined `asm!` and duplicate labels
                         // Fixes https://github.com/rust-lang/rust/issues/74262
-                        if let Some(label) = get_llvm_label_from_str(&ts) {
+                        if let Some(label) = get_llvm_label_from_str(s) {
                             labels.push(label.to_owned());
                         }
 
-                        template_str.push_str(&ts)
+                        template_str.push_str(s)
                     }
                 }
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span: _ } => {
@@ -252,9 +251,37 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
 
-        for label in &labels {
-            template_str =
-                template_str.replace(label, format!("${{:private}}{}${{:uid}}", label).as_ref());
+        fn valid_ident_continuation(c: char) -> bool {
+            ('a'..='z').contains(&c)
+                || ('A'..='Z').contains(&c)
+                || ('0'..='9').contains(&c)
+                || '_' == c
+                || '$' == c
+                || '.' == c
+                || '@' == c
+        }
+
+        for label in labels.iter() {
+            let indices: Vec<_> = template_str.match_indices(label).map(|(idx, _)| idx).collect();
+            let ranges: Vec<_> = indices
+                .iter()
+                .filter_map(|&idx| {
+                    let label_end_idx = idx + label.len();
+                    let next_char = template_str[label_end_idx..].chars().nth(0);
+                    if next_char.is_none() || !valid_ident_continuation(next_char.unwrap()) {
+                        Some(idx..label_end_idx)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            // We add a constant length of 18 to the string every time
+            // from ${:private} and ${:uid}
+            for (i, range) in ranges.iter().enumerate() {
+                let real_range = range.start + (i * 18)..range.end + (i * 18);
+                template_str.replace_range(real_range, &format!("${{:private}}{}${{:uid}}", label))
+            }
         }
 
         if !options.contains(InlineAsmOptions::PRESERVES_FLAGS) {
@@ -901,6 +928,7 @@ fn get_llvm_label_from_str(s: &str) -> Option<&str> {
                 if chars.all(|c| {
                     ('a'..='z').contains(&c)
                         || ('A'..='Z').contains(&c)
+                        || ('0'..='9').contains(&c)
                         || '_' == c
                         || '$' == c
                         || '.' == c
