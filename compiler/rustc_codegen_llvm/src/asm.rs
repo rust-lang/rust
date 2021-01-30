@@ -262,10 +262,9 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         }
 
         for label in labels.iter() {
-            let indices: Vec<_> = template_str.match_indices(label).map(|(idx, _)| idx).collect();
-            let ranges: Vec<_> = indices
-                .iter()
-                .filter_map(|&idx| {
+            let ranges: Vec<_> = template_str
+                .match_indices(label)
+                .filter_map(|(idx, _)| {
                     let label_end_idx = idx + label.len();
                     let next_char = template_str[label_end_idx..].chars().nth(0);
                     if next_char.is_none() || !valid_ident_continuation(next_char.unwrap()) {
