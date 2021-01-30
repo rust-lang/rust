@@ -10,6 +10,11 @@ enum B {
     Snd,
 }
 
+union Foo {
+    bar: u32,
+    qux: f32,
+}
+
 fn main() {
     let a = A { b: B::Fst };
     if let B::Fst = a {}; //~ ERROR mismatched types [E0308]
@@ -19,5 +24,12 @@ fn main() {
         //~| HELP you might have meant to use field `b` of type `B`
         B::Fst => (), //~ ERROR mismatched types [E0308]
         B::Snd => (), //~ ERROR mismatched types [E0308]
+    }
+
+    let foo = Foo { bar: 42 };
+    match foo {
+        //~^ HELP you might have meant to use field `bar` of type `u32`
+        1u32 => (), //~ ERROR mismatched types [E0308]
+        _ => (),
     }
 }

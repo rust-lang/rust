@@ -1842,13 +1842,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             {
                 if let ObligationCauseCode::Pattern { span: Some(span), .. } = cause.code {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        let suggestion = if expected_def.is_struct() {
+                            format!("{}.{}", snippet, name)
+                        } else if expected_def.is_union() {
+                            format!("unsafe {{ {}.{} }}", snippet, name)
+                        } else {
+                            return;
+                        };
                         diag.span_suggestion(
                             span,
                             &format!(
                                 "you might have meant to use field `{}` of type `{}`",
                                 name, ty
                             ),
-                            format!("{}.{}", snippet, name),
+                            suggestion,
                             Applicability::MaybeIncorrect,
                         );
                     }

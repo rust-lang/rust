@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/field-access.rs:15:12
+  --> $DIR/field-access.rs:20:12
    |
 LL |     Fst,
    |     --- unit variant defined here
@@ -15,7 +15,7 @@ LL |     if let B::Fst = a.b {};
    |                     ^^^
 
 error[E0308]: mismatched types
-  --> $DIR/field-access.rs:20:9
+  --> $DIR/field-access.rs:25:9
    |
 LL |     Fst,
    |     --- unit variant defined here
@@ -32,7 +32,7 @@ LL |     match a.b {
    |           ^^^
 
 error[E0308]: mismatched types
-  --> $DIR/field-access.rs:21:9
+  --> $DIR/field-access.rs:26:9
    |
 LL |     Snd,
    |     --- unit variant defined here
@@ -48,6 +48,20 @@ help: you might have meant to use field `b` of type `B`
 LL |     match a.b {
    |           ^^^
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/field-access.rs:32:9
+   |
+LL |     match foo {
+   |           --- this expression has type `Foo`
+LL |
+LL |         1u32 => (),
+   |         ^^^^ expected union `Foo`, found `u32`
+   |
+help: you might have meant to use field `bar` of type `u32`
+   |
+LL |     match unsafe { foo.bar } {
+   |           ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
