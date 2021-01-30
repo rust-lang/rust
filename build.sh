@@ -32,7 +32,6 @@ done
 
 # Build cg_clif
 unset CARGO_TARGET_DIR
-export RUSTFLAGS="-Zrun_dsymutil=no"
 unamestr=$(uname)
 if [[ "$unamestr" == 'Linux' ]]; then
    export RUSTFLAGS='-Clink-arg=-Wl,-rpath=$ORIGIN/../lib '$RUSTFLAGS
