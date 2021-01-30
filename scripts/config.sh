@@ -44,7 +44,11 @@ fi
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)
 
 export RUSTC=$dir"/bin/cg_clif"
-export RUSTFLAGS=$linker" "$RUSTFLAGS
+
+if [ ! -z $linker ]; then
+	export RUSTFLAGS=$linker" "$RUSTFLAGS
+fi
+
 export RUSTDOCFLAGS=$linker' -Cpanic=abort -Zpanic-abort-tests '\
 '-Zcodegen-backend='$dir'/lib/librustc_codegen_cranelift.'$dylib_ext' --sysroot '$dir
 
