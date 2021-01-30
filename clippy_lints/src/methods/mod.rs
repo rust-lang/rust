@@ -1687,8 +1687,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let name = impl_item.ident.name.as_str();
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id);
         let item = cx.tcx.hir().expect_item(parent);
-        let def_id = cx.tcx.hir().local_def_id(item.hir_id);
-        let self_ty = cx.tcx.type_of(def_id);
+        let self_ty = cx.tcx.type_of(item.def_id);
 
         // if this impl block implements a trait, lint in trait definition instead
         if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {

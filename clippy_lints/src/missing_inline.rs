@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             return;
         }
 
-        if !cx.access_levels.is_exported(it.hir_id) {
+        if !cx.access_levels.is_exported(it.hir_id()) {
             return;
         }
         match it.kind {

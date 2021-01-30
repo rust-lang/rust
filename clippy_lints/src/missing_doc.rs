@@ -135,8 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             hir::ItemKind::Fn(..) => {
                 // ignore main()
                 if it.ident.name == sym::main {
-                    let def_id = it.hir_id.owner;
-                    let def_key = cx.tcx.hir().def_key(def_id);
+                    let def_key = cx.tcx.hir().def_key(it.def_id);
                     if def_key.parent == Some(hir::def_id::CRATE_DEF_INDEX) {
                         return;
                     }
@@ -159,8 +158,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::Use(..) => return,
         };
 
-        let def_id = cx.tcx.hir().local_def_id(it.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
 
         self.check_missing_docs_attrs(cx, &it.attrs, it.span, article, desc);
     }

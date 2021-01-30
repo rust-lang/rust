@@ -124,7 +124,7 @@ declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF]);
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, _, body_id) = item.kind {
-            check_fn(cx, &sig.decl, item.hir_id, Some(body_id));
+            check_fn(cx, &sig.decl, item.hir_id(), Some(body_id));
         }
     }
 
