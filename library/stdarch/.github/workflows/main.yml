@@ -90,7 +90,7 @@ jobs:
         - thumbv7em-none-eabihf
 
         # macOS targets
-        - x86_64-apple-darwin
+        #- x86_64-apple-darwin
         # FIXME: gh-actions build environment doesn't have linker support
         # - i686-apple-darwin
 
@@ -134,8 +134,9 @@ jobs:
         #  os: ubuntu-latest
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-latest
-        - target: x86_64-apple-darwin
-          os: macos-latest
+        # Temporarily disabled because otool crashes with "Out of memory", seems Github CI issue
+        #- target: x86_64-apple-darwin
+        #  os: macos-latest
         - target: x86_64-pc-windows-msvc
           os: windows-latest
         - target: i686-pc-windows-msvc
