@@ -1,4 +1,5 @@
 // check-pass
+// edition:2018
 #![warn(semicolon_in_expressions_from_macros)]
 
 #[allow(dead_code)]
@@ -9,6 +10,11 @@ macro_rules! foo {
               //~| WARN trailing
               //~| WARN this was previously
     }
+}
+
+#[allow(semicolon_in_expressions_from_macros)]
+async fn bar() {
+    foo!(first);
 }
 
 fn main() {
