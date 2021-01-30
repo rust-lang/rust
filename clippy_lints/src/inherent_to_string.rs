@@ -108,10 +108,10 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             if decl.inputs.len() == 1;
 
             // Check if return type is String
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym::string_type);
+            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::string_type);
 
             // Filters instances of to_string which are required by a trait
-            if trait_ref_of_method(cx, impl_item.hir_id).is_none();
+            if trait_ref_of_method(cx, impl_item.hir_id()).is_none();
 
             then {
                 show_lint(cx, impl_item);
@@ -124,8 +124,7 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
     let display_trait_id = get_trait_def_id(cx, &paths::DISPLAY_TRAIT).expect("Failed to get trait ID of `Display`!");
 
     // Get the real type of 'self'
-    let fn_def_id = cx.tcx.hir().local_def_id(item.hir_id);
-    let self_type = cx.tcx.fn_sig(fn_def_id).input(0);
+    let self_type = cx.tcx.fn_sig(item.def_id).input(0);
     let self_type = self_type.skip_binder().peel_refs();
 
     // Emit either a warning or an error
