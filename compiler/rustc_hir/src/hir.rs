@@ -2541,9 +2541,15 @@ impl VariantData<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug, Hash)]
 pub struct ItemId {
     pub id: HirId,
+}
+
+impl ItemId {
+    pub fn hir_id(&self) -> HirId {
+        self.id
+    }
 }
 
 /// An item
@@ -2557,6 +2563,12 @@ pub struct Item<'hir> {
     pub kind: ItemKind<'hir>,
     pub vis: Visibility<'hir>,
     pub span: Span,
+}
+
+impl Item<'_> {
+    pub fn item_id(&self) -> ItemId {
+        ItemId { id: self.hir_id }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

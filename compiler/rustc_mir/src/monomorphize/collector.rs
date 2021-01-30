@@ -1030,7 +1030,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                     "RootCollector: ItemKind::GlobalAsm({})",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id(item.hir_id).to_def_id())
                 );
-                self.output.push(dummy_spanned(MonoItem::GlobalAsm(item.hir_id)));
+                self.output.push(dummy_spanned(MonoItem::GlobalAsm(item.item_id())));
             }
             hir::ItemKind::Static(..) => {
                 let def_id = self.tcx.hir().local_def_id(item.hir_id).to_def_id();
