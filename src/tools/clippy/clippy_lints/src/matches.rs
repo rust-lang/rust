@@ -2,10 +2,10 @@ use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
-    expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
-    is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg, remove_blocks,
-    snippet, snippet_block, snippet_opt, snippet_with_applicability, span_lint_and_help, span_lint_and_note,
-    span_lint_and_sugg, span_lint_and_then,
+    expr_block, get_arg_name, get_parent_expr, implements_trait, in_macro, indent_of, is_allowed, is_expn_of,
+    is_refutable, is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg,
+    peel_hir_pat_refs, peel_mid_ty_refs, peel_n_hir_expr_refs, remove_blocks, snippet, snippet_block, snippet_opt,
+    snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use if_chain::if_chain;
@@ -728,20 +728,60 @@ fn report_single_match_single_pattern(
     let els_str = els.map_or(String::new(), |els| {
         format!(" else {}", expr_block(cx, els, None, "..", Some(expr.span)))
     });
+
+    let (msg, sugg) = if_chain! {
+        let (pat, pat_ref_count) = peel_hir_pat_refs(arms[0].pat);
+        if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind;
+        let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex));
+        if let Some(trait_id) = cx.tcx.lang_items().structural_peq_trait();
+        if ty.is_integral() || ty.is_char() || ty.is_str() || implements_trait(cx, ty, trait_id, &[]);
+        then {
+            // scrutinee derives PartialEq and the pattern is a constant.
+            let pat_ref_count = match pat.kind {
+                // string literals are already a reference.
+                PatKind::Lit(Expr { kind: ExprKind::Lit(lit), .. }) if lit.node.is_str() => pat_ref_count + 1,
+                _ => pat_ref_count,
+            };
+            // References are only implicitly added to the pattern, so no overflow here.
+            // e.g. will work: match &Some(_) { Some(_) => () }
+            // will not: match Some(_) { &Some(_) => () }
+            let ref_count_diff = ty_ref_count - pat_ref_count;
+
+            // Try to remove address of expressions first.
+            let (ex, removed) = peel_n_hir_expr_refs(ex, ref_count_diff);
+            let ref_count_diff = ref_count_diff - removed;
+
+            let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
+            let sugg = format!(
+                "if {} == {}{} {}{}",
+                snippet(cx, ex.span, ".."),
+                // PartialEq for different reference counts may not exist.
+                "&".repeat(ref_count_diff),
+                snippet(cx, arms[0].pat.span, ".."),
+                expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
+                els_str,
+            );
+            (msg, sugg)
+        } else {
+            let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
+            let sugg = format!(
+                "if let {} = {} {}{}",
+                snippet(cx, arms[0].pat.span, ".."),
+                snippet(cx, ex.span, ".."),
+                expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
+                els_str,
+            );
+            (msg, sugg)
+        }
+    };
+
     span_lint_and_sugg(
         cx,
         lint,
         expr.span,
-        "you seem to be trying to use match for destructuring a single pattern. Consider using `if \
-         let`",
+        msg,
         "try this",
-        format!(
-            "if let {} = {} {}{}",
-            snippet(cx, arms[0].pat.span, ".."),
-            snippet(cx, ex.span, ".."),
-            expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
-            els_str,
-        ),
+        sugg,
         Applicability::HasPlaceholders,
     );
 }
@@ -1185,6 +1225,14 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
             } else {
                 pat
             };
+
+            // strip potential borrows (#6503), but only if the type is a reference
+            let mut ex_new = ex;
+            if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = ex.kind {
+                if let ty::Ref(..) = cx.typeck_results().expr_ty(&ex_inner).kind() {
+                    ex_new = ex_inner;
+                }
+            };
             span_lint_and_sugg(
                 cx,
                 MATCH_LIKE_MATCHES_MACRO,
@@ -1194,7 +1242,7 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
                 format!(
                     "{}matches!({}, {})",
                     if b0 { "" } else { "!" },
-                    snippet_with_applicability(cx, ex.span, "..", &mut applicability),
+                    snippet_with_applicability(cx, ex_new.span, "..", &mut applicability),
                     pat_and_guard,
                 ),
                 applicability,

@@ -12,6 +12,7 @@ use walkdir::WalkDir;
 
 pub mod bless;
 pub mod fmt;
+pub mod lintcheck;
 pub mod new_lint;
 pub mod ra_setup;
 pub mod serve;

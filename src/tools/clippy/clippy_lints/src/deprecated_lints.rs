@@ -179,3 +179,12 @@ declare_deprecated_lint! {
     pub UNKNOWN_CLIPPY_LINTS,
     "this lint has been integrated into the `unknown_lints` rustc lint"
 }
+
+declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** This lint has been replaced by `manual_find_map`, a
+    /// more specific lint.
+    pub FIND_MAP,
+    "this lint has been replaced by `manual_find_map`, a more specific lint"
+}

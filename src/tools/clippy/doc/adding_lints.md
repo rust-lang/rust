@@ -23,6 +23,7 @@ because that's clearly a non-descriptive name.
   - [Running rustfmt](#running-rustfmt)
   - [Debugging](#debugging)
   - [PR Checklist](#pr-checklist)
+  - [Adding configuration to a lint](#adding-configuration-to-a-lint)
   - [Cheatsheet](#cheatsheet)
 
 ## Setup
@@ -525,6 +526,81 @@ Before submitting your PR make sure you followed all of the basic requirements:
 - \[ ] Executed `cargo dev update_lints`
 - \[ ] Added lint documentation
 - \[ ] Run `cargo dev fmt`
+
+## Adding configuration to a lint
+
+Clippy supports the configuration of lints values using a `clippy.toml` file in the workspace 
+directory. Adding a configuration to a lint can be useful for thresholds or to constrain some
+behavior that can be seen as a false positive for some users. Adding a configuration is done 
+in the following steps:
+
+1. Adding a new configuration entry to [clippy_lints::utils::conf](/clippy_lints/src/utils/conf.rs)
+    like this:
+    ```rust
+    /// Lint: LINT_NAME. <The configuration field doc comment>
+    (configuration_ident, "configuration_value": Type, DefaultValue),
+    ```
+    The configuration value and identifier should usually be the same. The doc comment will be 
+    automatically added to the lint documentation.
+2. Adding the configuration value to the lint impl struct:
+    1. This first requires the definition of a lint impl struct. Lint impl structs are usually 
+        generated with the `declare_lint_pass!` macro. This struct needs to be defined manually
+        to add some kind of metadata to it:
+        ```rust
+        // Generated struct definition
+        declare_lint_pass!(StructName => [
+            LINT_NAME
+        ]);
+
+        // New manual definition struct
+        #[derive(Copy, Clone)]
+        pub struct StructName {}
+
+        impl_lint_pass!(StructName => [
+            LINT_NAME
+        ]);
+        ```
+    
+    2. Next add the configuration value and a corresponding creation method like this:
+        ```rust
+        #[derive(Copy, Clone)]
+        pub struct StructName {
+            configuration_ident: Type,
+        }
+
+        // ...
+
+        impl StructName {
+            pub fn new(configuration_ident: Type) -> Self {
+                Self {
+                    configuration_ident,
+                }
+            }
+        }
+        ```
+3. Passing the configuration value to the lint impl struct:
+
+    First find the struct construction in the [clippy_lints lib file](/clippy_lints/src/lib.rs). 
+    Make sure that `clippy dev update_lints` added it beforehand. The configuration value is now 
+    cloned or copied into a local value that is then passed to the impl struct like this:
+    ```rust
+    // Default generated registration:
+    store.register_late_pass(|| box module::StructName);
+
+    // New registration with configuration value
+    let configuration_ident = conf.configuration_ident.clone();
+    store.register_late_pass(move || box module::StructName::new(configuration_ident));
+    ```
+
+    Congratulations the work is almost done. The configuration value can now be accessed
+    in the linting code via `self.configuration_ident`.
+
+4. Adding tests:
+    1. The default configured value can be tested like any normal lint in [`tests/ui`](/tests/ui).
+    2. The configuration itself will be tested separately in [`tests/ui-toml`](/tests/ui-toml). 
+        Simply add a new subfolder with a fitting name. This folder contains a `clippy.toml` file 
+        with the configuration value and a rust file that should be linted by clippy. The test can 
+        otherwise be written as usual.
 
 ## Cheatsheet
 

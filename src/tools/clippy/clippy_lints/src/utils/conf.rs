@@ -127,6 +127,7 @@ define_Conf! {
         "OAuth", "GraphQL",
         "OCaml",
         "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap",
+        "WebGL",
         "TensorFlow",
         "TrueType",
         "iOS", "macOS",

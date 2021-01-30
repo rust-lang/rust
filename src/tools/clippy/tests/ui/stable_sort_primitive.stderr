@@ -1,46 +1,59 @@
-error: used sort instead of sort_unstable to sort primitive type `i32`
+error: used `sort` on primitive type `i32`
   --> $DIR/stable_sort_primitive.rs:7:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
    |
    = note: `-D clippy::stable-sort-primitive` implied by `-D warnings`
+   = note: an unstable sort would perform faster without any observable difference for this data type
 
-error: used sort instead of sort_unstable to sort primitive type `bool`
+error: used `sort` on primitive type `bool`
   --> $DIR/stable_sort_primitive.rs:9:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort would perform faster without any observable difference for this data type
 
-error: used sort instead of sort_unstable to sort primitive type `char`
+error: used `sort` on primitive type `char`
   --> $DIR/stable_sort_primitive.rs:11:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort would perform faster without any observable difference for this data type
 
-error: used sort instead of sort_unstable to sort primitive type `str`
+error: used `sort` on primitive type `str`
   --> $DIR/stable_sort_primitive.rs:13:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort would perform faster without any observable difference for this data type
 
-error: used sort instead of sort_unstable to sort primitive type `tuple`
+error: used `sort` on primitive type `tuple`
   --> $DIR/stable_sort_primitive.rs:15:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort would perform faster without any observable difference for this data type
 
-error: used sort instead of sort_unstable to sort primitive type `array`
+error: used `sort` on primitive type `array`
   --> $DIR/stable_sort_primitive.rs:17:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort would perform faster without any observable difference for this data type
 
-error: used sort instead of sort_unstable to sort primitive type `i32`
+error: used `sort` on primitive type `i32`
   --> $DIR/stable_sort_primitive.rs:19:5
    |
 LL |     arr.sort();
    |     ^^^^^^^^^^ help: try: `arr.sort_unstable()`
+   |
+   = note: an unstable sort would perform faster without any observable difference for this data type
 
 error: aborting due to 7 previous errors
 

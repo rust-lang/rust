@@ -2,7 +2,7 @@ use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{span_lint_and_then, SpanlessEq};
 use if_chain::if_chain;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind, QPath, StmtKind};
+use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind, QPath, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -72,8 +72,7 @@ fn check_arm(arm: &Arm<'_>, wild_outer_arm: &Arm<'_>, cx: &LateContext<'_>) {
         if arms_inner.iter().all(|arm| arm.guard.is_none());
         // match expression must be a local binding
         // match <local> { .. }
-        if let ExprKind::Path(QPath::Resolved(None, path)) = expr_in.kind;
-        if let Res::Local(binding_id) = path.res;
+        if let Some(binding_id) = addr_adjusted_binding(expr_in, cx);
         // one of the branches must be "wild-like"
         if let Some(wild_inner_arm_idx) = arms_inner.iter().rposition(|arm_inner| arm_is_wild_like(arm_inner, cx.tcx));
         let (wild_inner_arm, non_wild_inner_arm) =
@@ -85,7 +84,12 @@ fn check_arm(arm: &Arm<'_>, wild_outer_arm: &Arm<'_>, cx: &LateContext<'_>) {
         // the "wild-like" branches must be equal
         if SpanlessEq::new(cx).eq_expr(wild_inner_arm.body, wild_outer_arm.body);
         // the binding must not be used in the if guard
-        if !matches!(arm.guard, Some(Guard::If(guard)) if LocalUsedVisitor::new(binding_id).check_expr(guard));
+        if match arm.guard {
+            None => true,
+            Some(Guard::If(expr) | Guard::IfLet(_, expr)) => {
+                !LocalUsedVisitor::new(binding_id).check_expr(expr)
+            }
+        };
         // ...or anywhere in the inner match
         if !arms_inner.iter().any(|arm| LocalUsedVisitor::new(binding_id).check_arm(arm));
         then {
@@ -169,4 +173,21 @@ fn is_none_ctor(res: Res, tcx: TyCtxt<'_>) -> bool {
         }
     }
     false
+}
+
+/// Retrieves a binding ID with optional `&` and/or `*` operators removed. (e.g. `&**foo`)
+/// Returns `None` if a non-reference type is de-referenced.
+/// For example, if `Vec` is de-referenced to a slice, `None` is returned.
+fn addr_adjusted_binding(mut expr: &Expr<'_>, cx: &LateContext<'_>) -> Option<HirId> {
+    loop {
+        match expr.kind {
+            ExprKind::AddrOf(_, _, e) => expr = e,
+            ExprKind::Path(QPath::Resolved(None, path)) => match path.res {
+                Res::Local(binding_id) => break Some(binding_id),
+                _ => break None,
+            },
+            ExprKind::Unary(UnOp::UnDeref, e) if cx.typeck_results().expr_ty(e).is_ref() => expr = e,
+            _ => break None,
+        }
+    }
 }

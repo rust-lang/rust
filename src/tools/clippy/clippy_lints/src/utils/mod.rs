@@ -31,7 +31,6 @@ pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
-use std::mem;
 
 use if_chain::if_chain;
 use rustc_ast::ast::{self, Attribute, LitKind};
@@ -39,7 +38,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::{
@@ -48,6 +47,7 @@ use rustc_hir::{
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
+use rustc_middle::hir::exports::Export;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
@@ -308,65 +308,43 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
 }
 
 /// Gets the definition associated to a path.
-pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<def::Res> {
-    let crates = cx.tcx.crates();
-    let krate = crates
-        .iter()
-        .find(|&&krate| cx.tcx.crate_name(krate).as_str() == path[0]);
-    if let Some(krate) = krate {
-        let krate = DefId {
-            krate: *krate,
-            index: CRATE_DEF_INDEX,
-        };
-        let mut current_item = None;
-        let mut items = cx.tcx.item_children(krate);
-        let mut path_it = path.iter().skip(1).peekable();
-
-        loop {
-            let segment = match path_it.next() {
-                Some(segment) => segment,
-                None => return None,
-            };
-
-            // `get_def_path` seems to generate these empty segments for extern blocks.
-            // We can just ignore them.
-            if segment.is_empty() {
-                continue;
-            }
-
-            let result = SmallVec::<[_; 8]>::new();
-            for item in mem::replace(&mut items, cx.tcx.arena.alloc_slice(&result)).iter() {
-                if item.ident.name.as_str() == *segment {
-                    if path_it.peek().is_none() {
-                        return Some(item.res);
-                    }
-
-                    current_item = Some(item);
-                    items = cx.tcx.item_children(item.res.def_id());
-                    break;
-                }
-            }
-
-            // The segment isn't a child_item.
-            // Try to find it under an inherent impl.
-            if_chain! {
-                if path_it.peek().is_none();
-                if let Some(current_item) = current_item;
-                let item_def_id = current_item.res.def_id();
-                if cx.tcx.def_kind(item_def_id) == DefKind::Struct;
-                then {
-                    // Bad `find_map` suggestion. See #4193.
-                    #[allow(clippy::find_map)]
-                    return cx.tcx.inherent_impls(item_def_id).iter()
-                        .flat_map(|&impl_def_id| cx.tcx.item_children(impl_def_id))
-                        .find(|item| item.ident.name.as_str() == *segment)
-                        .map(|item| item.res);
-                }
-            }
-        }
-    } else {
-        None
+#[allow(clippy::shadow_unrelated)] // false positive #6563
+pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<Res> {
+    fn item_child_by_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, name: &str) -> Option<&'tcx Export<HirId>> {
+        tcx.item_children(def_id)
+            .iter()
+            .find(|item| item.ident.name.as_str() == name)
     }
+
+    let (krate, first, path) = match *path {
+        [krate, first, ref path @ ..] => (krate, first, path),
+        _ => return None,
+    };
+    let tcx = cx.tcx;
+    let crates = tcx.crates();
+    let krate = crates.iter().find(|&&num| tcx.crate_name(num).as_str() == krate)?;
+    let first = item_child_by_name(tcx, krate.as_def_id(), first)?;
+    let last = path
+        .iter()
+        .copied()
+        // `get_def_path` seems to generate these empty segments for extern blocks.
+        // We can just ignore them.
+        .filter(|segment| !segment.is_empty())
+        // for each segment, find the child item
+        .try_fold(first, |item, segment| {
+            let def_id = item.res.def_id();
+            if let Some(item) = item_child_by_name(tcx, def_id, segment) {
+                Some(item)
+            } else if matches!(item.res, Res::Def(DefKind::Enum | DefKind::Struct, _)) {
+                // it is not a child item so check inherent impl items
+                tcx.inherent_impls(def_id)
+                    .iter()
+                    .find_map(|&impl_def_id| item_child_by_name(tcx, impl_def_id, segment))
+            } else {
+                None
+            }
+        })?;
+    Some(last.res)
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
@@ -1134,8 +1112,7 @@ pub fn is_self(slf: &Param<'_>) -> bool {
 
 pub fn is_self_ty(slf: &hir::Ty<'_>) -> bool {
     if_chain! {
-        if let TyKind::Path(ref qp) = slf.kind;
-        if let QPath::Resolved(None, ref path) = *qp;
+        if let TyKind::Path(QPath::Resolved(None, ref path)) = slf.kind;
         if let Res::SelfTy(..) = path.res;
         then {
             return true
@@ -1653,6 +1630,44 @@ where
     }
 
     match_expr_list
+}
+
+/// Peels off all references on the pattern. Returns the underlying pattern and the number of
+/// references removed.
+pub fn peel_hir_pat_refs(pat: &'a Pat<'a>) -> (&'a Pat<'a>, usize) {
+    fn peel(pat: &'a Pat<'a>, count: usize) -> (&'a Pat<'a>, usize) {
+        if let PatKind::Ref(pat, _) = pat.kind {
+            peel(pat, count + 1)
+        } else {
+            (pat, count)
+        }
+    }
+    peel(pat, 0)
+}
+
+/// Peels off up to the given number of references on the expression. Returns the underlying
+/// expression and the number of references removed.
+pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
+    fn f(expr: &'a Expr<'a>, count: usize, target: usize) -> (&'a Expr<'a>, usize) {
+        match expr.kind {
+            ExprKind::AddrOf(_, _, expr) if count != target => f(expr, count + 1, target),
+            _ => (expr, count),
+        }
+    }
+    f(expr, 0, count)
+}
+
+/// Peels off all references on the type. Returns the underlying type and the number of references
+/// removed.
+pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
+    fn peel(ty: Ty<'_>, count: usize) -> (Ty<'_>, usize) {
+        if let ty::Ref(_, ty, _) = ty.kind() {
+            peel(ty, count + 1)
+        } else {
+            (ty, count)
+        }
+    }
+    peel(ty, 0)
 }
 
 #[macro_export]

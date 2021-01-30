@@ -1,6 +1,7 @@
 [alias]
 uitest = "test --test compile-test"
 dev = "run --target-dir clippy_dev/target --package clippy_dev --bin clippy_dev --manifest-path clippy_dev/Cargo.toml --"
+dev-lintcheck = "run --target-dir clippy_dev/target --package clippy_dev --bin clippy_dev --manifest-path clippy_dev/Cargo.toml --features lintcheck -- lintcheck"
 
 [build]
 rustflags = ["-Zunstable-options"]
