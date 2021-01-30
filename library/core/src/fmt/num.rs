@@ -643,25 +643,42 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
 }
 
 /// Partition of `n` into n > 1e19 and rem <= 1e19
+///
+/// Integer division algorithm is based on the following paper:
+///
+///   T. Granlund and P. Montgomery, “Division by Invariant Integers Using Multiplication”
+///   in Proc. of the SIGPLAN94 Conference on Programming Language Design and
+///   Implementation, 1994, pp. 61–72
+///
 fn udiv_1e19(n: u128) -> (u128, u64) {
     const DIV: u64 = 1e19 as u64;
-    let high = (n >> 64) as u64;
-    if high == 0 {
-        let low = n as u64;
-        return ((low / DIV) as u128, low % DIV);
-    }
-    let sr = 65 - high.leading_zeros();
-    let mut q = n << (128 - sr);
-    let mut r = n >> sr;
-    let mut carry = 0;
+    const FACTOR: u128 = 156927543384667019095894735580191660403;
 
-    for _ in 0..sr {
-        r = (r << 1) | (q >> 127);
-        q = (q << 1) | carry as u128;
+    let quot = if n < 1 << 83 {
+        ((n >> 19) as u64 / (DIV >> 19)) as u128
+    } else {
+        u128_mulhi(n, FACTOR) >> 62
+    };
 
-        let s = (DIV as u128).wrapping_sub(r).wrapping_sub(1) as i128 >> 127;
-        carry = (s & 1) as u64;
-        r -= (DIV as u128) & s as u128;
-    }
-    ((q << 1) | carry as u128, r as u64)
+    let rem = (n - quot * DIV as u128) as u64;
+    (quot, rem)
+}
+
+/// Multiply unsigned 128 bit integers, return upper 128 bits of the result
+#[inline]
+fn u128_mulhi(x: u128, y: u128) -> u128 {
+    let x_lo = x as u64;
+    let x_hi = (x >> 64) as u64;
+    let y_lo = y as u64;
+    let y_hi = (y >> 64) as u64;
+
+    // handle possibility of overflow
+    let carry = (x_lo as u128 * y_lo as u128) >> 64;
+    let m = x_lo as u128 * y_hi as u128 + carry;
+    let high1 = m >> 64;
+
+    let m_lo = m as u64;
+    let high2 = (x_hi as u128 * y_lo as u128 + m_lo as u128) >> 64;
+
+    x_hi as u128 * y_hi as u128 + high1 + high2
 }
