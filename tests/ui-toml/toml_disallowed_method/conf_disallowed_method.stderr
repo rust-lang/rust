@@ -1,16 +1,22 @@
-error: use of a disallowed method `regex::re_unicode::Regex::is_match`
-  --> $DIR/conf_disallowed_method.rs:10:5
+error: use of a disallowed method `regex::re_unicode::Regex::new`
+  --> $DIR/conf_disallowed_method.rs:7:14
    |
-LL |     re.is_match("abc");
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     let re = Regex::new(r"ab.*c").unwrap();
+   |              ^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::disallowed-method` implied by `-D warnings`
 
+error: use of a disallowed method `regex::re_unicode::Regex::is_match`
+  --> $DIR/conf_disallowed_method.rs:8:5
+   |
+LL |     re.is_match("abc");
+   |     ^^^^^^^^^^^^^^^^^^
+
 error: use of a disallowed method `core::iter::traits::iterator::Iterator::sum`
-  --> $DIR/conf_disallowed_method.rs:12:5
+  --> $DIR/conf_disallowed_method.rs:11:5
    |
 LL |     a.iter().sum::<i32>();
    |     ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
