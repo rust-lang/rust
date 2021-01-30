@@ -851,22 +851,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         _ => bug!("Expected an upvar")
                     };
 
-                    let mut mutability = Mutability::Not;
+                    let mutability = captured_place.mutability;
 
                     // FIXME(project-rfc-2229#8): Store more precise information
                     let mut name = kw::Empty;
                     if let Some(Node::Binding(pat)) = tcx_hir.find(var_id) {
                         if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                             name = ident.name;
-                            match hir_typeck_results
-                                .extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
-                            {
-                                Some(ty::BindByValue(hir::Mutability::Mut)) => {
-                                    mutability = Mutability::Mut;
-                                }
-                                Some(_) => mutability = Mutability::Not,
-                                _ => {}
-                            }
                         }
                     }
 

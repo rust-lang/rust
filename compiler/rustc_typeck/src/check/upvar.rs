@@ -184,10 +184,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let origin = if self.tcx.features().capture_disjoint_fields {
                     origin
                 } else {
-                    // FIXME(project-rfc-2229#26): Once rust-lang#80092 is merged, we should restrict the
-                    // precision of origin as well. Otherwise, this will cause issues when project-rfc-2229#26
-                    // is fixed as we might see Index projections in the origin, which we can't print because
-                    // we don't store enough information.
+                    // FIXME(project-rfc-2229#31): Once the changes to support reborrowing are
+                    //                             made, make sure we are selecting and restricting
+                    //                             the origin correctly.
                     (origin.0, Place { projections: vec![], ..origin.1 })
                 };
 
@@ -252,8 +251,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let capture = captured_place.info.capture_kind;
 
                 debug!(
-                    "place={:?} upvar_ty={:?} capture={:?}",
-                    captured_place.place, upvar_ty, capture
+                    "final_upvar_tys: place={:?} upvar_ty={:?} capture={:?}, mutability={:?}",
+                    captured_place.place, upvar_ty, capture, captured_place.mutability,
                 );
 
                 match capture {
@@ -419,19 +418,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 base => bug!("Expected upvar, found={:?}", base),
             };
 
-            // Arrays are captured in entirety, drop Index projections and projections
-            // after Index projections.
-            let first_index_projection =
-                place.projections.split(|proj| ProjectionKind::Index == proj.kind).next();
-            let place = Place {
-                base_ty: place.base_ty,
-                base: place.base,
-                projections: first_index_projection.map_or(Vec::new(), |p| p.to_vec()),
-            };
+            let place = restrict_capture_precision(place, capture_info.capture_kind);
 
             let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
                 None => {
-                    let min_cap_list = vec![ty::CapturedPlace { place, info: capture_info }];
+                    let mutability = self.determine_capture_mutability(&place);
+                    let min_cap_list =
+                        vec![ty::CapturedPlace { place, info: capture_info, mutability }];
                     root_var_min_capture_list.insert(var_hir_id, min_cap_list);
                     continue;
                 }
@@ -494,8 +487,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Only need to insert when we don't have an ancestor in the existing min capture list
             if !ancestor_found {
+                let mutability = self.determine_capture_mutability(&place);
                 let captured_place =
-                    ty::CapturedPlace { place: place.clone(), info: updated_capture_info };
+                    ty::CapturedPlace { place, info: updated_capture_info, mutability };
                 min_cap_list.push(captured_place);
             }
         }
@@ -614,6 +608,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 diag.emit();
             }
         }
+    }
+
+    /// A captured place is mutable if
+    /// 1. Projections don't include a Deref of an immut-borrow, **and**
+    /// 2. PlaceBase is mut or projections include a Deref of a mut-borrow.
+    fn determine_capture_mutability(&self, place: &Place<'tcx>) -> hir::Mutability {
+        let var_hir_id = match place.base {
+            PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+            _ => unreachable!(),
+        };
+
+        let bm = *self
+            .typeck_results
+            .borrow()
+            .pat_binding_modes()
+            .get(var_hir_id)
+            .expect("missing binding mode");
+
+        let mut is_mutbl = match bm {
+            ty::BindByValue(mutability) => mutability,
+            ty::BindByReference(_) => hir::Mutability::Not,
+        };
+
+        for pointer_ty in place.deref_tys() {
+            match pointer_ty.kind() {
+                // We don't capture derefs of raw ptrs
+                ty::RawPtr(_) => unreachable!(),
+
+                // Derefencing a mut-ref allows us to mut the Place if we don't deref
+                // an immut-ref after on top of this.
+                ty::Ref(.., hir::Mutability::Mut) => is_mutbl = hir::Mutability::Mut,
+
+                // The place isn't mutable once we dereference a immutable reference.
+                ty::Ref(.., hir::Mutability::Not) => return hir::Mutability::Not,
+
+                // Dereferencing a box doesn't change mutability
+                ty::Adt(def, ..) if def.is_box() => {}
+
+                unexpected_ty => bug!("deref of unexpected pointer type {:?}", unexpected_ty),
+            }
+        }
+
+        is_mutbl
     }
 }
 
@@ -958,6 +995,66 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 
         self.adjust_upvar_borrow_kind_for_mut(assignee_place, diag_expr_id);
     }
+}
+
+/// Truncate projections so that following rules are obeyed by the captured `place`:
+///
+/// - No Derefs in move closure, this will result in value behind a reference getting moved.
+/// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
+///   them completely.
+/// - No Index projections are captured, since arrays are captured completely.
+fn restrict_capture_precision<'tcx>(
+    mut place: Place<'tcx>,
+    capture_kind: ty::UpvarCapture<'tcx>,
+) -> Place<'tcx> {
+    if place.projections.is_empty() {
+        // Nothing to do here
+        return place;
+    }
+
+    if place.base_ty.is_unsafe_ptr() {
+        place.projections.truncate(0);
+        return place;
+    }
+
+    let mut truncated_length = usize::MAX;
+    let mut first_deref_projection = usize::MAX;
+
+    for (i, proj) in place.projections.iter().enumerate() {
+        if proj.ty.is_unsafe_ptr() {
+            // Don't apply any projections on top of an unsafe ptr
+            truncated_length = truncated_length.min(i + 1);
+            break;
+        }
+        match proj.kind {
+            ProjectionKind::Index => {
+                // Arrays are completely captured, so we drop Index projections
+                truncated_length = truncated_length.min(i);
+                break;
+            }
+            ProjectionKind::Deref => {
+                // We only drop Derefs in case of move closures
+                // There might be an index projection or raw ptr ahead, so we don't stop here.
+                first_deref_projection = first_deref_projection.min(i);
+            }
+            ProjectionKind::Field(..) => {} // ignore
+            ProjectionKind::Subslice => {}  // We never capture this
+        }
+    }
+
+    let length = place
+        .projections
+        .len()
+        .min(truncated_length)
+        // In case of capture `ByValue` we want to not capture derefs
+        .min(match capture_kind {
+            ty::UpvarCapture::ByValue(..) => first_deref_projection,
+            ty::UpvarCapture::ByRef(..) => usize::MAX,
+        });
+
+    place.projections.truncate(length);
+
+    place
 }
 
 fn construct_place_string(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
