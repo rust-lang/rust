@@ -504,13 +504,9 @@ pub fn rename<P: AsRef<Path>, U: AsRef<Path>>(
 
 /// Create a symbolic link.
 ///
-/// This corresponds to the `path_symlink` syscall.
-pub fn symlink<P: AsRef<Path>, U: AsRef<Path>>(
-    old_path: P,
-    fd: &File,
-    new_path: U,
-) -> io::Result<()> {
-    fd.as_inner()
-        .fd()
-        .symlink(osstr2str(old_path.as_ref().as_ref())?, osstr2str(new_path.as_ref().as_ref())?)
+/// This is similar to [`std::os::unix::fs::symlink`] and
+/// [`std::os::windows::fs::symlink_file`] and [`symlink_dir`](std::os::windows::fs::symlink_dir)
+/// counterparts.
+pub fn symlink<P: AsRef<Path>, U: AsRef<Path>>(old_path: P, new_path: U) -> io::Result<()> {
+    crate::sys::fs::symlink(old_path.as_ref(), new_path.as_ref())
 }
