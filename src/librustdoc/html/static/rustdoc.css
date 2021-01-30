@@ -156,6 +156,7 @@ code, pre, a.test-arrow {
 }
 .docblock pre code, .docblock-short pre code, .docblock code.spotlight {
 	padding: 0;
+	padding-right: 1ex;
 }
 .docblock code.spotlight :last-child {
 	padding-bottom: 0.6em;
@@ -403,9 +404,6 @@ nav.sub {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	margin: 0;
-}
-.docblock code, .docblock-short code {
-	white-space: pre-wrap;
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
