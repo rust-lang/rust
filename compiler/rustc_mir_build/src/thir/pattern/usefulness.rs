@@ -1440,6 +1440,28 @@ fn is_useful<'p, 'tcx>(
         }
         matrix.undo(); // Remove all the newly added rows
     } else {
+        // // FIXME: need to not shortcircuit wildcards first
+        // if matches!(v.row_data.witness_preference, ConstructWitness)
+        //     && super::deconstruct_pat::IntRange::is_integral(ty)
+        // {
+        //     let mut seen = Vec::new();
+        //     for entry in matrix.last_col() {
+        //         let (ctor, span) = (entry.head_ctor(cx), entry.pat.span);
+        //         let pcx = PatCtxt { cx, ty, span, is_top_level };
+        //         if let Constructor::IntRange(ctor_range) = &ctor {
+        //             // Lint on likely incorrect range patterns (#63987)
+        //             ctor_range.lint_overlapping_range_endpoints(
+        //                 pcx,
+        //                 seen.iter().copied(),
+        //                 matrix.column_count(),
+        //                 v.row_data.hir_id,
+        //             )
+        //         }
+        //         if !entry.is_under_guard {
+        //             seen.push((ctor, span));
+        //         }
+        //     }
+        // }
         let v_ctor = v.head_ctor(cx);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
             // Lint on likely incorrect range patterns (#63987)

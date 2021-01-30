@@ -85,7 +85,7 @@ pub(super) struct IntRange {
 
 impl IntRange {
     #[inline]
-    fn is_integral(ty: Ty<'_>) -> bool {
+    pub(super) fn is_integral(ty: Ty<'_>) -> bool {
         matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool)
     }
 
