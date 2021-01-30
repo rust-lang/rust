@@ -545,8 +545,8 @@ impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
         // to avoid aliasing with outstanding references to other elements,
         // in particular, those returned to the caller in earlier iterations.
         let leaf = Self::as_leaf_ptr(&mut self);
-        let keys = unsafe { &raw const (*leaf).keys };
-        let vals = unsafe { &raw mut (*leaf).vals };
+        let keys = unsafe { ptr::addr_of!((*leaf).keys) };
+        let vals = unsafe { ptr::addr_of_mut!((*leaf).vals) };
         // We must coerce to unsized array pointers because of Rust issue #74679.
         let keys: *const [_] = keys;
         let vals: *mut [_] = vals;
