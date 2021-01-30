@@ -68,11 +68,11 @@ RUN ./build-binutils.sh
 COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
 RUN ./build-gcc.sh && apt-get remove -y gcc g++
 
-# Debian 6 has Python 2.6 by default, but LLVM needs 2.7+
+# Debian 6 has Python 2.6 by default, but LLVM >= 12 needs Python 3
 COPY host-x86_64/dist-x86_64-linux/build-python.sh /tmp/
 RUN ./build-python.sh
 
-# LLVM needs cmake 3.4.3 or higher, and is planning to raise to 3.13.4.
+# LLVM needs cmake 3.13.4 or higher
 COPY host-x86_64/dist-x86_64-linux/build-cmake.sh /tmp/
 RUN ./build-cmake.sh
 
@@ -94,8 +94,10 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.i686-unknown-linux-gnu.linker=clang \
       --build=i686-unknown-linux-gnu \
       --set llvm.ninja=false \
+      --set llvm.use-linker=lld \
+      --set rust.use-lld=true \
       --set rust.jemalloc
-ENV SCRIPT python2.7 ../x.py dist --build $HOSTS --host $HOSTS --target $HOSTS
+ENV SCRIPT python3 ../x.py dist --build $HOSTS --host $HOSTS --target $HOSTS
 ENV CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This was added when we switched from gcc to clang. It's not clear why this is
