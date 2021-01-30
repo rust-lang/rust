@@ -34,7 +34,6 @@ use std::hash::BuildHasherDefault;
 
 use if_chain::if_chain;
 use rustc_ast::ast::{self, Attribute, LitKind};
-use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -346,19 +345,6 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<Res> {
             }
         })?;
     Some(last.res)
-}
-
-pub fn qpath_res(cx: &LateContext<'_>, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
-    match qpath {
-        hir::QPath::Resolved(_, path) => path.res,
-        hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
-            if cx.tcx.has_typeck_results(id.owner.to_def_id()) {
-                cx.tcx.typeck(id.owner).qpath_res(qpath, id)
-            } else {
-                Res::Err
-            }
-        },
-    }
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
@@ -1201,27 +1187,27 @@ pub fn get_arg_name(pat: &Pat<'_>) -> Option<Symbol> {
     }
 }
 
-pub fn int_bits(tcx: TyCtxt<'_>, ity: ast::IntTy) -> u64 {
-    Integer::from_attr(&tcx, attr::IntType::SignedInt(ity)).size().bits()
+pub fn int_bits(tcx: TyCtxt<'_>, ity: ty::IntTy) -> u64 {
+    Integer::from_int_ty(&tcx, ity).size().bits()
 }
 
 #[allow(clippy::cast_possible_wrap)]
 /// Turn a constant int byte representation into an i128
-pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: ast::IntTy) -> i128 {
+pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: ty::IntTy) -> i128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as i128) << amt) >> amt
 }
 
 #[allow(clippy::cast_sign_loss)]
 /// clip unused bytes
-pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: ast::IntTy) -> u128 {
+pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: ty::IntTy) -> u128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as u128) << amt) >> amt
 }
 
 /// clip unused bytes
-pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: ast::UintTy) -> u128 {
-    let bits = Integer::from_attr(&tcx, attr::IntType::UnsignedInt(ity)).size().bits();
+pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: ty::UintTy) -> u128 {
+    let bits = Integer::from_uint_ty(&tcx, ity).size().bits();
     let amt = 128 - bits;
     (u << amt) >> amt
 }
@@ -1448,7 +1434,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Tuple(ref substs) => substs.types().any(|ty| is_must_use_ty(cx, ty)),
         ty::Opaque(ref def_id, _) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
-                if let ty::PredicateAtom::Trait(trait_predicate, _) = predicate.skip_binders() {
+                if let ty::PredicateKind::Trait(trait_predicate, _) = predicate.kind().skip_binder() {
                     if must_use_attr(&cx.tcx.get_attrs(trait_predicate.trait_ref.def_id)).is_some() {
                         return true;
                     }

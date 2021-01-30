@@ -507,8 +507,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "this lint has been uplifted to rustc and is now called `panic_fmt`",
     );
     store.register_removed(
+        "clippy::unknown_clippy_lints",
+        "this lint has been integrated into the `unknown_lints` rustc lint",
+    );
+    store.register_removed(
         "clippy::find_map",
-        "this lint is replaced by `manual_find_map`, a more specific lint",
+        "this lint has been replaced by `manual_find_map`, a more specific lint",
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
@@ -553,7 +557,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
         &attrs::INLINE_ALWAYS,
         &attrs::MISMATCHED_TARGET_OS,
-        &attrs::UNKNOWN_CLIPPY_LINTS,
         &attrs::USELESS_ATTRIBUTE,
         &await_holding_invalid::AWAIT_HOLDING_LOCK,
         &await_holding_invalid::AWAIT_HOLDING_REFCELL_REF,
@@ -1409,7 +1412,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&attrs::DEPRECATED_CFG_ATTR),
         LintId::of(&attrs::DEPRECATED_SEMVER),
         LintId::of(&attrs::MISMATCHED_TARGET_OS),
-        LintId::of(&attrs::UNKNOWN_CLIPPY_LINTS),
         LintId::of(&attrs::USELESS_ATTRIBUTE),
         LintId::of(&bit_mask::BAD_BIT_MASK),
         LintId::of(&bit_mask::INEFFECTIVE_BIT_MASK),
@@ -1692,7 +1694,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
         LintId::of(&assign_ops::ASSIGN_OP_PATTERN),
         LintId::of(&attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
-        LintId::of(&attrs::UNKNOWN_CLIPPY_LINTS),
         LintId::of(&blacklisted_name::BLACKLISTED_NAME),
         LintId::of(&blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
         LintId::of(&collapsible_if::COLLAPSIBLE_ELSE_IF),

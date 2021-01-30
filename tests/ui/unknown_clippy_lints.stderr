@@ -1,52 +1,58 @@
-error: unknown clippy lint: clippy::if_not_els
+error: unknown lint: `clippy::All`
+  --> $DIR/unknown_clippy_lints.rs:5:10
+   |
+LL | #![allow(clippy::All)]
+   |          ^^^^^^^^^^^ help: did you mean: `clippy::all`
+   |
+   = note: `-D unknown-lints` implied by `-D warnings`
+
+error: unknown lint: `clippy::CMP_NAN`
+  --> $DIR/unknown_clippy_lints.rs:6:9
+   |
+LL | #![warn(clippy::CMP_NAN)]
+   |         ^^^^^^^^^^^^^^^ help: did you mean: `clippy::cmp_nan`
+
+error: unknown lint: `clippy::if_not_els`
   --> $DIR/unknown_clippy_lints.rs:9:8
    |
 LL | #[warn(clippy::if_not_els)]
    |        ^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::if_not_else`
-   |
-   = note: `-D clippy::unknown-clippy-lints` implied by `-D warnings`
 
-error: unknown clippy lint: clippy::UNNecsaRy_cAst
+error: unknown lint: `clippy::UNNecsaRy_cAst`
   --> $DIR/unknown_clippy_lints.rs:10:8
    |
 LL | #[warn(clippy::UNNecsaRy_cAst)]
    |        ^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::unnecessary_cast`
 
-error: unknown clippy lint: clippy::useles_transute
+error: unknown lint: `clippy::useles_transute`
   --> $DIR/unknown_clippy_lints.rs:11:8
    |
 LL | #[warn(clippy::useles_transute)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::useless_transmute`
 
-error: unknown clippy lint: clippy::dead_cod
+error: unknown lint: `clippy::dead_cod`
   --> $DIR/unknown_clippy_lints.rs:13:8
    |
 LL | #[warn(clippy::dead_cod)]
    |        ^^^^^^^^^^^^^^^^ help: did you mean: `clippy::drop_copy`
 
-error: unknown clippy lint: clippy::unused_colle
+error: unknown lint: `clippy::unused_colle`
   --> $DIR/unknown_clippy_lints.rs:15:8
    |
 LL | #[warn(clippy::unused_colle)]
    |        ^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::unused_self`
 
-error: unknown clippy lint: clippy::const_static_lifetim
+error: unknown lint: `clippy::const_static_lifetim`
   --> $DIR/unknown_clippy_lints.rs:17:8
    |
 LL | #[warn(clippy::const_static_lifetim)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::redundant_static_lifetimes`
 
-error: unknown clippy lint: clippy::All
+error: unknown lint: `clippy::All`
   --> $DIR/unknown_clippy_lints.rs:5:10
    |
 LL | #![allow(clippy::All)]
-   |          ^^^^^^^^^^^ help: lowercase the lint name: `clippy::all`
+   |          ^^^^^^^^^^^ help: did you mean: `clippy::all`
 
-error: unknown clippy lint: clippy::CMP_NAN
-  --> $DIR/unknown_clippy_lints.rs:6:9
-   |
-LL | #![warn(clippy::CMP_NAN)]
-   |         ^^^^^^^^^^^^^^^ help: lowercase the lint name: `clippy::cmp_nan`
-
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

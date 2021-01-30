@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use if_chain::if_chain;
-use rustc_ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
+use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
@@ -18,7 +18,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::TypeFoldable;
-use rustc_middle::ty::{self, InferTy, Ty, TyCtxt, TyS, TypeAndMut, TypeckResults};
+use rustc_middle::ty::{self, FloatTy, InferTy, IntTy, Ty, TyCtxt, TyS, TypeAndMut, TypeckResults, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -34,7 +34,7 @@ use crate::utils::sugg::Sugg;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_hir_ty_cfg_dependant,
     is_type_diagnostic_item, last_path_segment, match_def_path, match_path, meets_msrv, method_chain_args,
-    multispan_sugg, numeric_literal::NumericLiteral, qpath_res, reindent_multiline, sext, snippet, snippet_opt,
+    multispan_sugg, numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt,
     snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
     span_lint_and_then, unsext,
 };
@@ -298,7 +298,7 @@ fn match_type_parameter(cx: &LateContext<'_>, qpath: &QPath<'_>, path: &[&str]) 
             _ => None,
         });
         if let TyKind::Path(ref qpath) = ty.kind;
-        if let Some(did) = qpath_res(cx, qpath, ty.hir_id).opt_def_id();
+        if let Some(did) = cx.qpath_res(qpath, ty.hir_id).opt_def_id();
         if match_def_path(cx, did, path);
         then {
             return Some(ty.span);
@@ -365,7 +365,7 @@ impl Types {
         match hir_ty.kind {
             TyKind::Path(ref qpath) if !is_local => {
                 let hir_id = hir_ty.hir_id;
-                let res = qpath_res(cx, qpath, hir_id);
+                let res = cx.qpath_res(qpath, hir_id);
                 if let Some(def_id) = res.opt_def_id() {
                     if Some(def_id) == cx.tcx.lang_items().owned_box() {
                         if let Some(span) = match_borrows_parameter(cx, qpath) {
@@ -535,7 +535,7 @@ impl Types {
                             });
                             // ty is now _ at this point
                             if let TyKind::Path(ref ty_qpath) = ty.kind;
-                            let res = qpath_res(cx, ty_qpath, ty.hir_id);
+                            let res = cx.qpath_res(ty_qpath, ty.hir_id);
                             if let Some(def_id) = res.opt_def_id();
                             if Some(def_id) == cx.tcx.lang_items().owned_box();
                             // At this point, we know ty is Box<T>, now get T
@@ -652,7 +652,7 @@ impl Types {
         match mut_ty.ty.kind {
             TyKind::Path(ref qpath) => {
                 let hir_id = mut_ty.ty.hir_id;
-                let def = qpath_res(cx, qpath, hir_id);
+                let def = cx.qpath_res(qpath, hir_id);
                 if_chain! {
                     if let Some(def_id) = def.opt_def_id();
                     if Some(def_id) == cx.tcx.lang_items().owned_box();
@@ -739,7 +739,7 @@ fn is_any_trait(t: &hir::Ty<'_>) -> bool {
 
 fn get_bounds_if_impl_trait<'tcx>(cx: &LateContext<'tcx>, qpath: &QPath<'_>, id: HirId) -> Option<GenericBounds<'tcx>> {
     if_chain! {
-        if let Some(did) = qpath_res(cx, qpath, id).opt_def_id();
+        if let Some(did) = cx.qpath_res(qpath, id).opt_def_id();
         if let Some(Node::GenericParam(generic_param)) = cx.tcx.hir().get_if_local(did);
         if let GenericParamKind::Type { synthetic, .. } = generic_param.kind;
         if synthetic == Some(SyntheticTyParamKind::ImplTrait);
