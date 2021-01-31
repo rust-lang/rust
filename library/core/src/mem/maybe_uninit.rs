@@ -173,32 +173,32 @@ use crate::ptr;
 /// ## Initializing a struct field-by-field
 ///
 /// You can use `MaybeUninit<T>`, and the [`std::ptr::addr_of_mut`] macro, to initialize structs field by field:
-/// 
+///
 /// ```rust
 /// use std::mem::MaybeUninit;
 /// use std::ptr::addr_of_mut;
-/// 
+///
 /// #[derive(Debug, PartialEq)]
 /// pub struct Foo {
 ///     name: String,
 ///     list: Vec<u8>,
 /// }
-/// 
+///
 /// let foo = {
 ///     let mut uninit: MaybeUninit<Foo> = MaybeUninit::uninit();
 ///     let ptr = uninit.as_mut_ptr();
-/// 
+///
 ///     // Initializing the `name` field
 ///     unsafe { addr_of_mut!((*ptr).name).write("Bob".to_string()); }
-/// 
+///
 ///     // Initializing the `list` field
 ///     // If there was a panic here, then the `String` in the `name` field would be leaked.
 ///     unsafe { addr_of_mut!((*ptr).list).write(vec![0, 1, 2]); }
-/// 
+///
 ///     // All the fields are initialized, so we call `assume_init` to get an initialized Foo.
 ///     unsafe { uninit.assume_init() }
 /// };
-/// 
+///
 /// assert_eq!(
 ///     foo,
 ///     Foo {
