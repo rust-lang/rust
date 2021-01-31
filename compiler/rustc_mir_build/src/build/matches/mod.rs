@@ -1226,9 +1226,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// this point, the input candidates have been fully simplified,
     /// and so we know that all remaining match-pairs require some
     /// sort of test. To decide what test to perform, we take the highest
-    /// priority candidate (last one in the list) and extract the
-    /// first match-pair from the list. From this we decide what kind
-    /// of test is needed using [`Builder::test`], defined in the
+    /// priority candidate (the first one in the list, as of January 2021)
+    /// and extract the first match-pair from the list. From this we decide
+    /// what kind of test is needed using [`Builder::test`], defined in the
     /// [`test` module](mod@test).
     ///
     /// *Note:* taking the first match pair is somewhat arbitrary, and
