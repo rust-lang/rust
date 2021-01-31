@@ -207,7 +207,7 @@ use crate::ptr;
 ///     }
 /// );
 /// ```
-///
+/// [`std::ptr::addr_of_mut`]: crate::ptr::addr_of_mut
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Layout
