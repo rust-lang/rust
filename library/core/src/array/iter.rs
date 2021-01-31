@@ -2,7 +2,7 @@
 
 use crate::{
     fmt,
-    iter::{ExactSizeIterator, FusedIterator, TrustedLen},
+    iter::{ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess},
     mem::{self, MaybeUninit},
     ops::Range,
     ptr,
@@ -130,6 +130,18 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
     fn last(mut self) -> Option<Self::Item> {
         self.next_back()
     }
+
+    #[inline]
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: Callers are only allowed to pass an index that is in bounds
+        // Additionally Self: TrustedRandomAccess is only implemented for T: Copy which means even
+        // multiple repeated reads of the same index would be safe and the
+        // values aree !Drop, thus won't suffer from double drops.
+        unsafe { self.data.get_unchecked(self.alive.start + idx).assume_init_read() }
+    }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
@@ -183,6 +195,17 @@ impl<T, const N: usize> FusedIterator for IntoIter<T, N> {}
 // always decremented by 1 in those methods, but only if `Some(_)` is returned.
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+// T: Copy as approximation for !Drop since get_unchecked does not update the pointers
+// and thus we can't implement drop-handling
+unsafe impl<T, const N: usize> TrustedRandomAccess for IntoIter<T, N>
+where
+    T: Copy,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
+}
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T: Clone, const N: usize> Clone for IntoIter<T, N> {
