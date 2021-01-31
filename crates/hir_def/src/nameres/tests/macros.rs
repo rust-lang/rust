@@ -391,11 +391,21 @@ foo!(ok_shadow);
 mod m4;
 bar!(OkMacroUse);
 
+mod m5;
+baz!(OkMacroUseInner);
+
 //- /m3/m4.rs
 foo!(ok_shadow_deep);
 macro_rules! bar {
     ($x:ident) => { struct $x; }
 }
+//- /m3/m5.rs
+#![macro_use]
+macro_rules! baz {
+    ($x:ident) => { struct $x; }
+}
+
+
 "#,
         expect![[r#"
             crate
@@ -423,11 +433,15 @@ macro_rules! bar {
             crate::m3
             OkAfterInside: t v
             OkMacroUse: t v
+            OkMacroUseInner: t v
             m4: t
+            m5: t
             ok_shadow: v
 
             crate::m3::m4
             ok_shadow_deep: v
+
+            crate::m3::m5
         "#]],
     );
 }
