@@ -604,7 +604,9 @@ pub(super) enum Constructor<'tcx> {
     /// Constants that must not be matched structurally. They are treated as black
     /// boxes for the purposes of exhaustiveness: we must not inspect them, and they
     /// don't count towards making a match exhaustive.
-    Opaque,
+    /// We distinguish differnet opaque constants by their span.
+    /// FIXME(Nadrieril): spans are brittle, we could do better.
+    Opaque(Span),
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively. Also used
     /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
     NonExhaustive,
@@ -667,7 +669,7 @@ impl<'tcx> Constructor<'tcx> {
                         // All constants that can be structurally matched have already been expanded
                         // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
                         // opaque.
-                        _ => Opaque,
+                        _ => Opaque(pat.span),
                     }
                 }
             }
@@ -793,8 +795,10 @@ impl<'tcx> Constructor<'tcx> {
             }
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
-            // We are trying to inspect an opaque constant. Thus we skip the row.
-            (Opaque, _) | (_, Opaque) => false,
+            // We are trying to inspect an opaque constant. Thus we skip the row, unless the
+            // constructors are literally the same constant pattern.
+            (Opaque(self_span), Opaque(other_span)) => self_span == other_span,
+            (Opaque(_), _) | (_, Opaque(_)) => false,
             // Only a wildcard pattern can match the special extra constructor.
             (NonExhaustive, _) => false,
 
@@ -834,7 +838,7 @@ impl<'tcx> Constructor<'tcx> {
                 .any(|other| slice.is_covered_by(other)),
             // This constructor is never covered by anything else
             NonExhaustive => false,
-            Str(..) | FloatRange(..) | Opaque | Missing | Wildcard => {
+            Str(..) | FloatRange(..) | Opaque(..) | Missing | Wildcard => {
                 span_bug!(pcx.span, "found unexpected ctor in all_ctors: {:?}", self)
             }
         }
@@ -1057,6 +1061,14 @@ impl<'tcx> SplitWildcard<'tcx> {
             return once(ctor).chain(ctors).collect();
         }
 
+        // We need to not forget potential opaque constructors.
+        if self.matrix_ctors.iter().any(|c| matches!(c, Opaque(..))) {
+            return self
+                .all_ctors
+                .into_iter()
+                .chain(self.matrix_ctors.into_iter().filter(|c| matches!(c, Opaque(..))))
+                .collect();
+        }
         // All the constructors are present in the matrix, so we just go through them all.
         self.all_ctors
     }
@@ -1187,7 +1199,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
-            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Missing
+            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque(..) | Missing
             | Wildcard => Fields::Slice(&[]),
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
@@ -1275,7 +1287,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             IntRange(range) => return range.to_pat(pcx.cx.tcx, pcx.ty),
             NonExhaustive => PatKind::Wild,
             Wildcard => return Pat::wildcard_from_ty(pcx.ty),
-            Opaque => bug!("we should not try to apply an opaque constructor"),
+            Opaque(..) => bug!("we should not try to apply an opaque constructor"),
             Missing => bug!(
                 "trying to apply the `Missing` constructor; this should have been done in `apply_constructors`"
             ),

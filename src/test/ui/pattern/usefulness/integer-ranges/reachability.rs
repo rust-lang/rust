@@ -9,7 +9,7 @@ macro_rules! m {
             $t2 => {}
             _ => {}
         }
-    }
+    };
 }
 
 fn main() {
@@ -33,8 +33,8 @@ fn main() {
     m!(0u8, 20..30, 31);
 
     m!(0u8, 20..=30, 20..=30); //~ ERROR unreachable pattern
-    m!(0u8, 20.. 30, 20.. 30); //~ ERROR unreachable pattern
-    m!(0u8, 20..=30, 20.. 30); //~ ERROR unreachable pattern
+    m!(0u8, 20..30, 20..30); //~ ERROR unreachable pattern
+    m!(0u8, 20..=30, 20..30); //~ ERROR unreachable pattern
     m!(0u8, 20..=30, 19..=30);
     m!(0u8, 20..=30, 21..=30); //~ ERROR unreachable pattern
     m!(0u8, 20..=30, 20..=29); //~ ERROR unreachable pattern
@@ -42,50 +42,50 @@ fn main() {
     m!('a', 'A'..='z', 'a'..='z'); //~ ERROR unreachable pattern
 
     match 0u8 {
-        5 => {},
-        6 => {},
-        7 => {},
-        8 => {},
-        5..=8 => {}, //~ ERROR unreachable pattern
-        _ => {},
+        5 => {}
+        6 => {}
+        7 => {}
+        8 => {}
+        5..=8 => {} //~ ERROR unreachable pattern
+        _ => {}
     }
     match 0u8 {
-        0..10 => {},
-        10..20 => {},
-        5..15 => {}, //~ ERROR unreachable pattern
-        _ => {},
+        0..10 => {}
+        10..20 => {}
+        5..15 => {} //~ ERROR unreachable pattern
+        _ => {}
     }
     match 0u8 {
-        0..10 => {},
-        10..20 => {},
-        20..30 => {},
-        5..25 => {}, //~ ERROR unreachable pattern
-        _ => {},
+        0..10 => {}
+        10..20 => {}
+        20..30 => {}
+        5..25 => {} //~ ERROR unreachable pattern
+        _ => {}
     }
     match 0u8 {
-        0..10 => {},
-        10 => {},
-        11..=23 => {},
-        19..30 => {},
-        5..25 => {}, //~ ERROR unreachable pattern
-        _ => {},
+        0..10 => {}
+        10 => {}
+        11..=23 => {}
+        19..30 => {}
+        5..25 => {} //~ ERROR unreachable pattern
+        _ => {}
     }
     match 0usize {
-        0..10 => {},
-        10..20 => {},
-        5..15 => {}, //~ ERROR unreachable pattern
-        _ => {},
+        0..10 => {}
+        10..20 => {}
+        5..15 => {} //~ ERROR unreachable pattern
+        _ => {}
     }
     // Chars between '\u{D7FF}' and '\u{E000}' are invalid even though ranges that contain them are
     // allowed.
     match 'a' {
-        _ => {},
-        '\u{D7FF}'..='\u{E000}' => {}, //~ ERROR unreachable pattern
+        _ => {}
+        '\u{D7FF}'..='\u{E000}' => {} //~ ERROR unreachable pattern
     }
     match 'a' {
-        '\u{0}'..='\u{D7FF}' => {},
-        '\u{E000}'..='\u{10_FFFF}' => {},
-        '\u{D7FF}'..='\u{E000}' => {}, // FIXME should be unreachable
+        '\u{0}'..='\u{D7FF}' => {}
+        '\u{E000}'..='\u{10_FFFF}' => {}
+        '\u{D7FF}'..='\u{E000}' => {} //~ ERROR unreachable pattern
     }
 
     match (0u8, true) {
@@ -102,7 +102,7 @@ fn main() {
     match &0 {
         &42 => {}
         &FOO => {} //~ ERROR unreachable pattern
-        BAR => {} //~ ERROR unreachable pattern
+        BAR => {}  //~ ERROR unreachable pattern
         _ => {}
     }
     // Regression test, see https://github.com/rust-lang/rust/pull/66326#issuecomment-552889933

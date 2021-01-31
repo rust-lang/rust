@@ -71,16 +71,16 @@ LL |     m!(0u8, 20..=30, 20..=30);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:36:22
+  --> $DIR/reachability.rs:36:21
    |
-LL |     m!(0u8, 20.. 30, 20.. 30);
-   |                      ^^^^^^^
+LL |     m!(0u8, 20..30, 20..30);
+   |                     ^^^^^^
 
 error: unreachable pattern
   --> $DIR/reachability.rs:37:22
    |
-LL |     m!(0u8, 20..=30, 20.. 30);
-   |                      ^^^^^^^
+LL |     m!(0u8, 20..=30, 20..30);
+   |                      ^^^^^^
 
 error: unreachable pattern
   --> $DIR/reachability.rs:39:22
@@ -103,37 +103,43 @@ LL |     m!('a', 'A'..='z', 'a'..='z');
 error: unreachable pattern
   --> $DIR/reachability.rs:49:9
    |
-LL |         5..=8 => {},
+LL |         5..=8 => {}
    |         ^^^^^
 
 error: unreachable pattern
   --> $DIR/reachability.rs:55:9
    |
-LL |         5..15 => {},
+LL |         5..15 => {}
    |         ^^^^^
 
 error: unreachable pattern
   --> $DIR/reachability.rs:62:9
    |
-LL |         5..25 => {},
+LL |         5..25 => {}
    |         ^^^^^
 
 error: unreachable pattern
   --> $DIR/reachability.rs:70:9
    |
-LL |         5..25 => {},
+LL |         5..25 => {}
    |         ^^^^^
 
 error: unreachable pattern
   --> $DIR/reachability.rs:76:9
    |
-LL |         5..15 => {},
+LL |         5..15 => {}
    |         ^^^^^
 
 error: unreachable pattern
   --> $DIR/reachability.rs:83:9
    |
-LL |         '\u{D7FF}'..='\u{E000}' => {},
+LL |         '\u{D7FF}'..='\u{E000}' => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/reachability.rs:88:9
+   |
+LL |         '\u{D7FF}'..='\u{E000}' => {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
@@ -148,5 +154,5 @@ error: unreachable pattern
 LL |         BAR => {}
    |         ^^^
 
-error: aborting due to 24 previous errors
+error: aborting due to 25 previous errors
 
