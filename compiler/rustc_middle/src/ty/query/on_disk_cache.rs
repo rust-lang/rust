@@ -3,7 +3,7 @@ use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
-use crate::ty::{self, Ty};
+use crate::ty::{self, Ty, TyInterner};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -677,6 +677,11 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    #[inline]
+    fn interner(&self) -> TyInterner<'tcx> {
+        self.tcx.interner()
     }
 
     #[inline]
