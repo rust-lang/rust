@@ -26,23 +26,32 @@ LL | const TEST3: _ = Some(42);
    |              help: replace `_` with the correct type: `Option<i32>`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item_help.rs:14:18
+  --> $DIR/typeck_type_placeholder_item_help.rs:13:22
    |
-LL |     const TEST4: _ = 42;
+LL | const TEST4: fn() -> _ = 42;
+   |                      ^
+   |                      |
+   |                      not allowed in type signatures
+   |                      help: use type parameters instead: `T`
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item_help.rs:17:18
+   |
+LL |     const TEST5: _ = 42;
    |                  ^
    |                  |
    |                  not allowed in type signatures
    |                  help: replace `_` with the correct type: `i32`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item_help.rs:21:18
+  --> $DIR/typeck_type_placeholder_item_help.rs:24:18
    |
-LL |     const TEST5: _ = 13;
+LL |     const TEST6: _ = 13;
    |                  ^
    |                  |
    |                  not allowed in type signatures
    |                  help: replace `_` with the correct type: `i32`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0121`.
