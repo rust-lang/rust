@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-source scripts/ext_config.sh
-
 ./build.sh --without-sysroot "$@"
 
 rm -r target/out || true

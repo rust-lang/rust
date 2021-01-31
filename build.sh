@@ -64,7 +64,6 @@ fi
 
 if [[ "$build_sysroot" == "1" ]]; then
     echo "[BUILD] sysroot"
-    export CG_CLIF_INCR_CACHE_DISABLED=1
     dir=$(pwd)
     cd "$target_dir"
     time "$dir/build_sysroot/build_sysroot.sh"
