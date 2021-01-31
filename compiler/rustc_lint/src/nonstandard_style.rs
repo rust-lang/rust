@@ -56,8 +56,19 @@ declare_lint! {
 
 declare_lint_pass!(NonCamelCaseTypes => [NON_CAMEL_CASE_TYPES]);
 
+/// Some unicode characters *have* case, are considered upper case or lower case, but they *can't*
+/// be upper cased or lower cased. For the purposes of the lint suggestion, we care about being able
+/// to change the char's case.
 fn char_has_case(c: char) -> bool {
-    c.to_lowercase().to_string() != c.to_uppercase().to_string()
+    let mut l = c.to_lowercase();
+    let mut u = c.to_uppercase();
+    while let Some(l) = l.next() {
+        match u.next() {
+            Some(u) if l != u => return true,
+            _ => {}
+        }
+    }
+    u.next().is_some()
 }
 
 fn is_camel_case(name: &str) -> bool {
