@@ -4,7 +4,9 @@
 mod tests;
 
 use crate::fmt;
-use crate::io::{self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write};
+use crate::io::{
+    self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write,
+};
 
 /// A reader which is always at EOF.
 ///
