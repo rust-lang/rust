@@ -200,7 +200,15 @@ impl Attrs {
                 let mod_data = &def_map[module.local_id];
                 match mod_data.declaration_source(db) {
                     Some(it) => {
-                        RawAttrs::from_attrs_owner(db, it.as_ref().map(|it| it as &dyn AttrsOwner))
+                        let raw_attrs = RawAttrs::from_attrs_owner(
+                            db,
+                            it.as_ref().map(|it| it as &dyn AttrsOwner),
+                        );
+                        match mod_data.definition_source(db) {
+                            InFile { file_id, value: ModuleSource::SourceFile(file) } => raw_attrs
+                                .merge(RawAttrs::from_attrs_owner(db, InFile::new(file_id, &file))),
+                            _ => raw_attrs,
+                        }
                     }
                     None => RawAttrs::from_attrs_owner(
                         db,

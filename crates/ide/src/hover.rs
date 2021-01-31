@@ -3444,4 +3444,20 @@ impl<const LEN: usize> Foo<LEN$0> {}
             "#]],
         );
     }
+
+    #[test]
+    fn hover_mod_def() {
+        check(
+            r#"
+//- /main.rs
+mod foo$0;
+//- /foo.rs
+//! For the horde!
+"#,
+            expect![[r#"
+                *foo*
+                For the horde!
+            "#]],
+        );
+    }
 }
