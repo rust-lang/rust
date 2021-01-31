@@ -17,7 +17,6 @@ Core encoding and decoding interfaces.
 #![feature(min_specialization)]
 #![feature(vec_spare_capacity)]
 #![feature(core_intrinsics)]
-#![feature(int_bits_const)]
 #![feature(maybe_uninit_slice)]
 #![feature(new_uninit)]
 #![cfg_attr(test, feature(test))]
