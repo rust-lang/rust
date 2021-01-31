@@ -188,8 +188,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut bx);
 
+    // Evaluate all required consts; codegen later assumes that CTFE will never fail.
+    let mut all_consts_ok = true;
     for const_ in &mir.required_consts {
         if let Err(err) = fx.eval_mir_constant(const_) {
+            all_consts_ok = false;
             match err {
                 // errored or at least linted
                 ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {}
@@ -198,6 +201,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 }
             }
         }
+    }
+    if !all_consts_ok {
+        // We leave the IR in some half-built state here, and rely on this code not even being
+        // submitted to LLVM once an error was raised.
+        return;
     }
 
     let memory_locals = analyze::non_ssa_locals(&fx);

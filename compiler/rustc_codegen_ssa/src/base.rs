@@ -626,6 +626,11 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                         total_codegen_time += start_time.elapsed();
                         module
                     };
+                // This will unwind if there are errors, which triggers our `AbortCodegenOnDrop`
+                // guard. Unfortunately, just skipping the `submit_codegened_module_to_llvm` makes
+                // compilation hang on post-monomorphization errors.
+                tcx.sess.abort_if_errors();
+
                 submit_codegened_module_to_llvm(
                     &backend,
                     &ongoing_codegen.coordinator_send,
