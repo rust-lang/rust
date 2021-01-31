@@ -1424,7 +1424,7 @@ h4 > .notable-traits {
 		margin-left: 0px;
 	}
 
-	#main {
+	#main, #search {
 		margin-top: 45px;
 		padding: 0;
 	}
