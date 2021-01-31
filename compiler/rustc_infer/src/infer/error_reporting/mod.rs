@@ -1826,7 +1826,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
         diag: &mut DiagnosticBuilder<'tcx>,
     ) {
-        debug!("suggest_accessing_field_where_appropriate(cause={:?}, exp_found={:?})", cause, exp_found);
+        debug!(
+            "suggest_accessing_field_where_appropriate(cause={:?}, exp_found={:?})",
+            cause, exp_found
+        );
         if let ty::Adt(expected_def, expected_substs) = exp_found.expected.kind() {
             if expected_def.is_enum() {
                 return;
