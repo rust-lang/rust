@@ -97,6 +97,9 @@ declare_features! (
     (removed, extern_in_paths, "1.33.0", Some(55600), None,
      Some("subsumed by `::foo::bar` paths")),
     (removed, quote, "1.33.0", Some(29601), None, None),
+    /// Allows `[x; N]` where `x` is a constant (RFC 2203).
+    (removed, const_in_array_repeat_expressions,  "1.37.0", Some(49147), None,
+     Some("removed due to causing promotable bugs")),
     /// Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (removed, dropck_parametricity, "1.38.0", Some(28498), None, None),
     (removed, await_macro, "1.38.0", Some(50547), None,

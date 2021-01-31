@@ -1,5 +1,4 @@
 // run-pass
-#![feature(const_in_array_repeat_expressions)]
 
 #[derive(Debug, Eq, PartialEq)]
 struct Bar;

@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `Header<'_>: Copy` is not satisfied
+  --> $DIR/repeat_empty_ok.rs:8:19
+   |
+LL |     let headers = [Header{value: &[]}; 128];
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Header<'_>`
+   |
+   = note: the `Copy` trait is required because the repeated element will be copied
+
+error[E0277]: the trait bound `Header<'_>: Copy` is not satisfied
+  --> $DIR/repeat_empty_ok.rs:13:19
+   |
+LL |     let headers = [Header{value: &[0]}; 128];
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Header<'_>`
+   |
+   = note: the `Copy` trait is required because the repeated element will be copied
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
