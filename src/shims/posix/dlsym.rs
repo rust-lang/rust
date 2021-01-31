@@ -34,7 +34,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+
         check_abi(abi, Abi::C)?;
+
         match dlsym {
             Dlsym::Linux(dlsym) => linux::EvalContextExt::call_dlsym(this, dlsym, args, ret),
             Dlsym::MacOs(dlsym) => macos::EvalContextExt::call_dlsym(this, dlsym, args, ret),
