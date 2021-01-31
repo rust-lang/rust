@@ -18,7 +18,7 @@ use crate::slice::{Iter, IterMut};
 
 mod iter;
 
-#[unstable(feature = "array_value_iter", issue = "65798")]
+#[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).

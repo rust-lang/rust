@@ -11,11 +11,9 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
-#![feature(array_value_iter_slice)]
 #![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
-#![feature(array_value_iter)]
 #![cfg_attr(bootstrap, feature(min_const_generics))]
 #![feature(min_specialization)]
 #![cfg_attr(test, feature(test))]
