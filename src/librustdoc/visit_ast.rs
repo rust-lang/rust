@@ -89,7 +89,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // (since a direct parent isn't necessarily a module, c.f. #77828).
             let macro_parent_def_id = {
                 use rustc_middle::ty::DefIdTree;
-                tcx.parent(tcx.hir().local_def_id(def.hir_id).to_def_id()).unwrap()
+                tcx.parent(def.def_id.to_def_id()).unwrap()
             };
             let macro_parent_path = tcx.def_path(macro_parent_def_id);
             // HACK: rustdoc has no way to lookup `doctree::Module`s by their HirId. Instead,

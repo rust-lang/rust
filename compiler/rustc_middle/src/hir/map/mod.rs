@@ -500,7 +500,7 @@ impl<'hir> Map<'hir> {
         V: Visitor<'hir>,
     {
         for id in self.krate().exported_macros {
-            visitor.visit_macro_def(self.expect_macro_def(id.hir_id));
+            visitor.visit_macro_def(self.expect_macro_def(id.hir_id()));
         }
     }
 

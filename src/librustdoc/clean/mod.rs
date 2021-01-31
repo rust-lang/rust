@@ -2291,7 +2291,7 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
             )
         } else {
             let vis = item.vis.clean(cx);
-            let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
+            let def_id = item.def_id.to_def_id();
 
             if matchers.len() <= 1 {
                 format!(
@@ -2314,7 +2314,7 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
         };
 
         Item::from_hir_id_and_parts(
-            item.hir_id,
+            item.hir_id(),
             Some(name),
             MacroItem(Macro { source, imported_from: None }),
             cx,

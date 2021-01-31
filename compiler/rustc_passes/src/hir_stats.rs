@@ -246,7 +246,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_macro_def(&mut self, macro_def: &'v hir::MacroDef<'v>) {
-        self.record("MacroDef", Id::Node(macro_def.hir_id), macro_def);
+        self.record("MacroDef", Id::Node(macro_def.hir_id()), macro_def);
         hir_visit::walk_macro_def(self, macro_def)
     }
 }

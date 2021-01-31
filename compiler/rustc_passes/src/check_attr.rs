@@ -1155,7 +1155,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'tcx>) {
         self.check_attributes(
-            macro_def.hir_id,
+            macro_def.hir_id(),
             macro_def.attrs,
             &macro_def.span,
             Target::MacroDef,

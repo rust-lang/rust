@@ -106,7 +106,7 @@ fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
     tcx.hir().krate().visit_all_item_likes(&mut collector);
 
     for m in tcx.hir().krate().exported_macros {
-        collector.observe_item(m.attrs, m.hir_id);
+        collector.observe_item(m.attrs, m.hir_id());
     }
 
     collector.items

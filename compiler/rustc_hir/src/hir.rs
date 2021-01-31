@@ -761,14 +761,20 @@ impl Crate<'_> {
 /// A macro definition, in this crate or imported from another.
 ///
 /// Not parsed directly, but created on macro import or `macro_rules!` expansion.
-#[derive(Debug, HashStable_Generic)]
+#[derive(Debug)]
 pub struct MacroDef<'hir> {
     pub ident: Ident,
     pub vis: Visibility<'hir>,
     pub attrs: &'hir [Attribute],
-    pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub span: Span,
     pub ast: ast::MacroDef,
+}
+
+impl MacroDef<'_> {
+    pub fn hir_id(&self) -> HirId {
+        HirId::make_owner(self.def_id)
+    }
 }
 
 /// A block of statements `{ .. }`, which may have a label (in this case the
@@ -2941,7 +2947,8 @@ impl<'hir> Node<'hir> {
             Node::Item(Item { def_id, .. })
             | Node::TraitItem(TraitItem { def_id, .. })
             | Node::ImplItem(ImplItem { def_id, .. })
-            | Node::ForeignItem(ForeignItem { def_id, .. }) => Some(HirId::make_owner(*def_id)),
+            | Node::ForeignItem(ForeignItem { def_id, .. })
+            | Node::MacroDef(MacroDef { def_id, .. }) => Some(HirId::make_owner(*def_id)),
             Node::Field(StructField { hir_id, .. })
             | Node::AnonConst(AnonConst { hir_id, .. })
             | Node::Expr(Expr { hir_id, .. })
@@ -2952,7 +2959,6 @@ impl<'hir> Node<'hir> {
             | Node::Arm(Arm { hir_id, .. })
             | Node::Block(Block { hir_id, .. })
             | Node::Local(Local { hir_id, .. })
-            | Node::MacroDef(MacroDef { hir_id, .. })
             | Node::Lifetime(Lifetime { hir_id, .. })
             | Node::Param(Param { hir_id, .. })
             | Node::GenericParam(GenericParam { hir_id, .. }) => Some(*hir_id),

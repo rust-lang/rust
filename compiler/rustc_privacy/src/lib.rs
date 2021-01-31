@@ -867,14 +867,12 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             // `#[macro_export]`-ed `macro_rules!` are `Public` since they
             // ignore their containing path to always appear at the crate root.
             if md.ast.macro_rules {
-                self.update(md.hir_id, Some(AccessLevel::Public));
+                self.update(md.hir_id(), Some(AccessLevel::Public));
             }
             return;
         }
 
-        let macro_module_def_id =
-            ty::DefIdTree::parent(self.tcx, self.tcx.hir().local_def_id(md.hir_id).to_def_id())
-                .unwrap();
+        let macro_module_def_id = ty::DefIdTree::parent(self.tcx, md.def_id.to_def_id()).unwrap();
         let hir_id = macro_module_def_id
             .as_local()
             .map(|def_id| self.tcx.hir().local_def_id_to_hir_id(def_id));
@@ -884,7 +882,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             _ => return,
         };
         let level = if md.vis.node.is_pub() { self.get(module_id) } else { None };
-        let new_level = self.update(md.hir_id, level);
+        let new_level = self.update(md.hir_id(), level);
         if new_level.is_none() {
             return;
         }
