@@ -35,10 +35,10 @@ impl ItemLowerer<'_, '_, '_> {
 
 impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     fn visit_mod(&mut self, m: &'a Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
-        let hir_id = self.lctx.lower_node_id(n);
+        let def_id = self.lctx.lower_node_id(n).expect_owner();
 
         self.lctx.modules.insert(
-            hir_id,
+            def_id,
             hir::ModuleItems {
                 items: BTreeSet::new(),
                 trait_items: BTreeSet::new(),
@@ -48,7 +48,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         );
 
         let old = self.lctx.current_module;
-        self.lctx.current_module = hir_id;
+        self.lctx.current_module = def_id;
         visit::walk_mod(self, m);
         self.lctx.current_module = old;
     }

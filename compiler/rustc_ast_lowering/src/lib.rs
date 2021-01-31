@@ -48,7 +48,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
@@ -110,7 +110,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
 
-    modules: BTreeMap<hir::HirId, hir::ModuleItems>,
+    modules: BTreeMap<LocalDefId, hir::ModuleItems>,
 
     generator_kind: Option<hir::GeneratorKind>,
 
@@ -158,7 +158,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// vector.
     in_scope_lifetimes: Vec<ParamName>,
 
-    current_module: hir::HirId,
+    current_module: LocalDefId,
 
     type_def_lifetime_params: DefIdMap<usize>,
 
@@ -314,8 +314,8 @@ pub fn lower_crate<'a, 'hir>(
         is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         type_def_lifetime_params: Default::default(),
-        current_module: hir::CRATE_HIR_ID,
-        current_hir_id_owner: vec![(LocalDefId { local_def_index: CRATE_DEF_INDEX }, 0)],
+        current_module: CRATE_DEF_ID,
+        current_hir_id_owner: vec![(CRATE_DEF_ID, 0)],
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
         generator_kind: None,

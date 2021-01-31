@@ -479,7 +479,7 @@ crate fn run_global_ctxt(
     // NOTE: This is copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
     tcx.sess.time("item_types_checking", || {
         for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
+            tcx.ensure().check_mod_item_types(module);
         }
     });
     tcx.sess.abort_if_errors();
@@ -488,8 +488,7 @@ crate fn run_global_ctxt(
     });
     tcx.sess.time("check_mod_attrs", || {
         for &module in tcx.hir().krate().modules.keys() {
-            let local_def_id = tcx.hir().local_def_id(module);
-            tcx.ensure().check_mod_attrs(local_def_id);
+            tcx.ensure().check_mod_attrs(module);
         }
     });
 

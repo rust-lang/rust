@@ -14,12 +14,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     let errors = Lock::new(Vec::new());
     let hir_map = tcx.hir();
 
-    par_iter(&hir_map.krate().modules).for_each(|(module_id, _)| {
-        let local_def_id = hir_map.local_def_id(*module_id);
-        hir_map.visit_item_likes_in_module(
-            local_def_id,
-            &mut OuterVisitor { hir_map, errors: &errors },
-        );
+    par_iter(&hir_map.krate().modules).for_each(|(&module_id, _)| {
+        hir_map
+            .visit_item_likes_in_module(module_id, &mut OuterVisitor { hir_map, errors: &errors });
     });
 
     let errors = errors.into_inner();
