@@ -192,7 +192,7 @@ use crate::ptr;
 ///     unsafe { addr_of_mut!((*ptr).name).write("Bob".to_string()); }
 ///
 ///     // Initializing the `list` field
-///     // If there was a panic here, then the `String` in the `name` field would be leaked.
+///     // If there is a panic here, then the `String` in the `name` field leaks.
 ///     unsafe { addr_of_mut!((*ptr).list).write(vec![0, 1, 2]); }
 ///
 ///     // All the fields are initialized, so we call `assume_init` to get an initialized Foo.
