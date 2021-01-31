@@ -12,5 +12,17 @@ error: usage of `FromIterator::from_iter`
 LL |     HashMap::<usize, &i8>::from_iter(vec![5, 5, 5, 5].iter().enumerate());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `vec![5, 5, 5, 5].iter().enumerate().collect()`
 
-error: aborting due to 2 previous errors
+error: usage of `FromIterator::from_iter`
+  --> $DIR/from_iter_instead_of_collect.rs:15:19
+   |
+LL |     assert_eq!(a, Vec::from_iter(0..3));
+   |                   ^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<std::vec::Vec<i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> $DIR/from_iter_instead_of_collect.rs:17:17
+   |
+LL |     let mut b = VecDeque::from_iter(0..3);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<std::collections::VecDeque<i32>>()`
+
+error: aborting due to 4 previous errors
 

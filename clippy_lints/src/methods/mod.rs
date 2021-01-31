@@ -4094,14 +4094,19 @@ fn lint_from_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<
         if implements_trait(cx, ty, from_iter_id, &[]) && implements_trait(cx, arg_ty, iter_id, &[]);
         then {
             // `expr` implements `FromIterator` trait
-            let iter_expr = snippet(cx, args[0].span, "..");
+            let iter_expr = sugg::Sugg::hir(cx, &args[0], "..").maybe_par();
+            let sugg = if higher::range(&args[0]).is_some() {
+                format!("{}.collect::<{}>()", iter_expr, ty)
+            } else {
+                format!("{}.collect()", iter_expr)
+            };
             span_lint_and_sugg(
                 cx,
                 FROM_ITER_INSTEAD_OF_COLLECT,
                 expr.span,
                 "usage of `FromIterator::from_iter`",
                 "use `.collect()` instead of `::from_iter()`",
-                format!("{}.collect()", iter_expr),
+                sugg,
                 Applicability::MaybeIncorrect,
             );
         }
