@@ -2852,13 +2852,12 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_fill_with)]
-    ///
     /// let mut buf = vec![1; 10];
     /// buf.fill_with(Default::default);
     /// assert_eq!(buf, vec![0; 10]);
     /// ```
-    #[unstable(feature = "slice_fill_with", issue = "79221")]
+    #[doc(alias = "memset")]
+    #[stable(feature = "slice_fill_with", since = "1.51.0")]
     pub fn fill_with<F>(&mut self, mut f: F)
     where
         F: FnMut() -> T,
