@@ -51,6 +51,7 @@ use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::InferTy::*;
+pub use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::*;
 
 pub use self::binding::BindingMode;
@@ -67,7 +68,7 @@ pub use self::consts::{
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
     CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorDiagnosticData,
-    GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TypeckResults, UserType,
+    GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TyInterner, TypeckResults, UserType,
     UserTypeAnnotationIndex,
 };
 pub use self::instance::{Instance, InstanceDef};
@@ -76,7 +77,6 @@ pub use self::parameterized::ParameterizedOverTcx;
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::RegionKind::*;
-pub use self::sty::TyKind::*;
 pub use self::sty::{
     Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar, BoundVariableKind,
     CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid, EarlyBinder, EarlyBoundRegion,
@@ -449,13 +449,13 @@ pub(crate) struct TyS<'tcx> {
 }
 
 // `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(TyS<'_>, 40);
+//#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+//static_assert_size!(TyS<'_>, 40);
 
 // We are actually storing a stable hash cache next to the type, so let's
 // also check the full size
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(WithStableHash<TyS<'_>>, 56);
+//#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+//static_assert_size!(WithStableHash<TyS<'_>>, 56);
 
 /// Use this rather than `TyS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]

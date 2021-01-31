@@ -4262,6 +4262,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "rustc_type_ir",
  "tracing",
 ]
 
@@ -4283,6 +4284,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "rustc_type_ir",
  "smallvec",
  "tracing",
 ]
@@ -4484,6 +4486,7 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
+ "smallvec",
 ]
 
 [[package]]

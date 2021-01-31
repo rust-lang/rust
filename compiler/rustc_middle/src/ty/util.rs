@@ -5,7 +5,9 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFolder};
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
-use crate::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{
+    self, Const, DebruijnIndex, DefIdTree, List, ReEarlyBound, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
@@ -20,6 +22,7 @@ use rustc_macros::HashStable;
 use rustc_span::{sym, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi;
+use rustc_type_ir::TyKind::*;
 use smallvec::SmallVec;
 use std::{fmt, iter};
 

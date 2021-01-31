@@ -2,16 +2,14 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use self::TyKind::*;
-
 use crate::infer::canonical::Canonical;
 use crate::ty::fold::ValidateBoundVars;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
-use crate::ty::InferTy::{self, *};
+use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitor,
 };
-use crate::ty::{DelaySpanBugEmitted, List, ParamEnv};
+use crate::ty::{List, ParamEnv};
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
@@ -28,6 +26,10 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
+
+use rustc_type_ir::TyKind as IrTyKind;
+pub type TyKind<'tcx> = IrTyKind<ty::TyInterner<'tcx>>;
+use rustc_type_ir::sty::TyKind::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
@@ -78,6 +80,7 @@ impl BoundRegionKind {
     }
 }
 
+/*
 /// Defines the kinds of types used by the type system.
 ///
 /// Types written by the user start out as [hir::TyKind](rustc_hir::TyKind) and get
@@ -253,7 +256,9 @@ pub enum TyKind<'tcx> {
     /// propagated to avoid useless error messages.
     Error(DelaySpanBugEmitted),
 }
+*/
 
+/*
 impl<'tcx> TyKind<'tcx> {
     #[inline]
     pub fn is_primitive(&self) -> bool {
@@ -262,6 +267,25 @@ impl<'tcx> TyKind<'tcx> {
 
     /// Get the article ("a" or "an") to use with this type.
     pub fn article(&self) -> &'static str {
+        match self {
+            Int(_) | Float(_) | Array(_, _) => "an",
+            Adt(def, _) if def.is_enum() => "an",
+            // This should never happen, but ICEing and causing the user's code
+            // to not compile felt too harsh.
+            Error(_) => "a",
+            _ => "a",
+        }
+    }
+}
+*/
+
+pub trait Article {
+    fn article(&self) -> &'static str;
+}
+
+impl<'tcx> Article for TyKind<'tcx> {
+    /// Get the article ("a" or "an") to use with this type.
+    fn article(&self) -> &'static str {
         match self {
             Int(_) | Float(_) | Array(_, _) => "an",
             Adt(def, _) if def.is_enum() => "an",
@@ -930,7 +954,9 @@ impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
+    pub fn auto_traits<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = DefId> + rustc_data_structures::captures::Captures<'tcx> + 'a {
         self.iter().filter_map(|predicate| match predicate.skip_binder() {
             ExistentialPredicate::AutoTrait(did) => Some(did),
             _ => None,
