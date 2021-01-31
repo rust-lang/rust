@@ -1,7 +1,7 @@
 // check-pass
+// compile-flags: -Z borrowck=migrate
 // ignore-compare-mode-nll
 #![allow(warnings)]
-#![feature(const_in_array_repeat_expressions, nll)]
 
 // Some type that is not copyable.
 struct Bar;

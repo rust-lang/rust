@@ -1,7 +1,5 @@
 // check-pass
-// compile-flags: -Z borrowck=migrate
 // ignore-compare-mode-nll
-#![feature(const_in_array_repeat_expressions)]
 #![allow(warnings)]
 
 // Some type that is not copyable.

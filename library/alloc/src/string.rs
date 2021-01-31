@@ -972,7 +972,7 @@ impl String {
         self.vec.try_reserve(additional)
     }
 
-    /// Tries to reserves the minimum capacity for exactly `additional` more elements to
+    /// Tries to reserve the minimum capacity for exactly `additional` more elements to
     /// be inserted in the given `String`. After calling `reserve_exact`,
     /// capacity will be greater than or equal to `self.len() + additional`.
     /// Does nothing if the capacity is already sufficient.
