@@ -1,3 +1,8 @@
+//! This test is a part of quality control and makes clippy eat what it produces. Awesome lints and
+//! long error messages
+//!
+//! See [Eating your own dog food](https://en.wikipedia.org/wiki/Eating_your_own_dog_food) for context
+
 // Dogfood cannot run on Windows
 #![cfg(not(windows))]
 #![feature(once_cell)]
@@ -33,6 +38,10 @@ fn dogfood_clippy() {
 
     // internal lints only exist if we build with the internal-lints feature
     if cfg!(feature = "internal-lints") {
+        command.args(&["-D", "clippy::internal"]);
+    }
+
+    if cfg!(feature = "metadata-collector-lint") {
         command.args(&["-D", "clippy::internal"]);
     }
 

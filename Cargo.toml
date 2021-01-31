@@ -52,6 +52,7 @@ rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util" }
 deny-warnings = []
 integration = ["tempfile"]
 internal-lints = ["clippy_lints/internal-lints"]
+metadata-collector-lint = ["clippy_lints/metadata-collector-lint"]
 
 [package.metadata.rust-analyzer]
 # This package uses #[feature(rustc_private)]
