@@ -1482,7 +1482,7 @@ impl Step for ErrorIndex {
         // error_index_generator depends on librustdoc. Use the compiler that
         // is normally used to build rustdoc for other tests (like compiletest
         // tests in src/test/rustdoc) so that it shares the same artifacts.
-        let compiler = run.builder.compiler_for(run.builder.top_stage, run.target, run.target);
+        let compiler = run.builder.compiler(run.builder.top_stage, run.builder.config.build);
         run.builder.ensure(ErrorIndex { compiler });
     }
 
@@ -1499,19 +1499,16 @@ impl Step for ErrorIndex {
         t!(fs::create_dir_all(&dir));
         let output = dir.join("error-index.md");
 
-        let mut tool = tool::ErrorIndex::command(builder, compiler);
+        let mut tool = tool::ErrorIndex::command(builder);
         tool.arg("markdown").arg(&output);
 
-        // Use the rustdoc that was built by self.compiler. This copy of
-        // rustdoc is shared with other tests (like compiletest tests in
-        // src/test/rustdoc). This helps avoid building rustdoc multiple
-        // times.
-        let rustdoc_compiler = builder.compiler(builder.top_stage, builder.config.build);
-        builder.info(&format!("Testing error-index stage{}", rustdoc_compiler.stage));
+        builder.info(&format!("Testing error-index stage{}", compiler.stage));
         let _time = util::timeit(&builder);
         builder.run_quiet(&mut tool);
-        builder.ensure(compile::Std { compiler: rustdoc_compiler, target: rustdoc_compiler.host });
-        markdown_test(builder, rustdoc_compiler, &output);
+        // The tests themselves need to link to std, so make sure it is
+        // available.
+        builder.ensure(compile::Std { compiler, target: compiler.host });
+        markdown_test(builder, compiler, &output);
     }
 }
 
