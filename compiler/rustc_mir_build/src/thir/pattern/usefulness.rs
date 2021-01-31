@@ -1441,38 +1441,7 @@ fn is_useful<'p, 'tcx>(
         }
         matrix.undo(); // Remove all the newly added rows
     } else {
-        // // FIXME: need to not shortcircuit wildcards first
-        // if matches!(v.row_data.witness_preference, ConstructWitness)
-        //     && super::deconstruct_pat::IntRange::is_integral(ty)
-        // {
-        //     let mut seen = Vec::new();
-        //     for entry in matrix.last_col() {
-        //         let (ctor, span) = (entry.head_ctor(cx), entry.pat.span);
-        //         let pcx = PatCtxt { cx, ty, span, is_top_level };
-        //         if let Constructor::IntRange(ctor_range) = &ctor {
-        //             // Lint on likely incorrect range patterns (#63987)
-        //             ctor_range.lint_overlapping_range_endpoints(
-        //                 pcx,
-        //                 seen.iter().copied(),
-        //                 matrix.column_count(),
-        //                 v.row_data.hir_id,
-        //             )
-        //         }
-        //         if !entry.is_under_guard {
-        //             seen.push((ctor, span));
-        //         }
-        //     }
-        // }
         let v_ctor = v.head_ctor(cx);
-        if let Constructor::IntRange(ctor_range) = &v_ctor {
-            // Lint on likely incorrect range patterns (#63987)
-            ctor_range.lint_overlapping_range_endpoints(
-                pcx,
-                matrix.head_ctors_and_spans(cx),
-                matrix.column_count(),
-                v.row_data.hir_id,
-            )
-        }
         // We split the head constructor of `v`.
         let split_ctors = v_ctor.split(pcx, matrix.head_ctors(cx));
         // For each constructor, we compute whether there's a value that starts with it that would
@@ -1523,34 +1492,33 @@ fn exhaustiveness_witnesses<'p, 'tcx>(
     let ty = matrix.ty_of_last_col().unwrap_or(pat.ty);
     let pcx = PatCtxt { cx, ty, span: pat.span, is_top_level };
 
-    // // FIXME: need to not shortcircuit wildcards first
-    // if matches!(v.row_data.witness_preference, ConstructWitness)
-    //     && super::deconstruct_pat::IntRange::is_integral(ty)
-    // {
-    //     let mut seen = Vec::new();
-    //     for entry in matrix.last_col() {
-    //         let (ctor, span) = (entry.head_ctor(cx), entry.pat.span);
-    //         let pcx = PatCtxt { cx, ty, span, is_top_level };
-    //         if let Constructor::IntRange(ctor_range) = &ctor {
-    //             // Lint on likely incorrect range patterns (#63987)
-    //             ctor_range.lint_overlapping_range_endpoints(
-    //                 pcx,
-    //                 seen.iter().copied(),
-    //                 matrix.column_count(),
-    //                 v.row_data.hir_id,
-    //             )
-    //         }
-    //         if !entry.is_under_guard {
-    //             seen.push((ctor, span));
-    //         }
-    //     }
-    // }
+    if super::deconstruct_pat::IntRange::is_integral(ty) {
+        let mut seen = Vec::new();
+        for entry in matrix.last_col() {
+            let ctor = entry.head_ctor(cx);
+            let span = entry.pat.span;
+            if let Constructor::IntRange(ctor_range) = &ctor {
+                let pcx = PatCtxt { cx, ty, span, is_top_level };
+                // Lint on likely incorrect range patterns (#63987)
+                ctor_range.lint_overlapping_range_endpoints(
+                    pcx,
+                    seen.iter().copied(),
+                    matrix.column_count(),
+                    v.row_data.hir_id,
+                )
+            }
+            if !entry.is_under_guard {
+                seen.push((ctor, span));
+            }
+        }
+    }
     let v_ctor = v.head_ctor(cx);
     // We split the head constructor of `v`.
     let split_ctors = v_ctor.split(pcx, matrix.head_ctors(cx));
     // For each constructor, we compute whether there's a value that starts with it that would
     // witness the usefulness of `v`.
     let mut usefulness = Usefulness::new_not_useful(ConstructWitness);
+    let mut any_missing = false;
     for ctor in split_ctors.into_iter() {
         debug!("specialize({:?})", ctor);
         // We cache the result of `Fields::wildcards` because it is used a lot.
@@ -1562,8 +1530,13 @@ fn exhaustiveness_witnesses<'p, 'tcx>(
         let u = exhaustiveness_witnesses(cx, matrix, &v, false);
         matrix.undo();
         matrix.undo();
-        let u = u.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns, matrix.head_ctors(cx));
-        usefulness.extend(u);
+        if !any_missing {
+            // If we've seen the `Missing` constructor already, we don't further accumulate
+            // witnesses.
+            let u = u.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns, matrix.head_ctors(cx));
+            usefulness.extend(u);
+        }
+        any_missing = any_missing || matches!(&ctor, Constructor::Missing);
     }
     debug!(?usefulness);
     usefulness

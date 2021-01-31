@@ -50,6 +50,7 @@ use super::usefulness::{MatchCheckCtxt, PatCtxt};
 use super::{FieldPat, Pat, PatKind, PatRange};
 
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_index::vec::Idx;
 
 use rustc_attr::{SignedInt, UnsignedInt};
@@ -78,7 +79,7 @@ use std::ops::RangeInclusive;
 ///
 /// `IntRange` is never used to encode an empty range or a "range" that wraps
 /// around the (offset) space: i.e., `range.lo <= range.hi`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(super) struct IntRange {
     range: RangeInclusive<u128>,
 }
@@ -388,7 +389,7 @@ impl SplitIntRange {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum SliceKind {
     /// Patterns of length `n` (`[x, y]`).
     FixedLen(u64),
@@ -418,7 +419,7 @@ impl SliceKind {
 }
 
 /// A constructor for array and slice patterns.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub(super) struct Slice {
     /// `None` if the matched value is a slice, `Some(n)` if it is an array of size `n`.
     array_len: Option<u64>,
@@ -585,7 +586,7 @@ impl SplitVarLenSlice {
 /// `specialize_constructor` returns the list of fields corresponding to a pattern, given a
 /// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
 /// `Fields`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(super) enum Constructor<'tcx> {
     /// The constructor for patterns that have a single constructor, like tuples, struct patterns
     /// and fixed-length arrays.
@@ -1047,7 +1048,13 @@ impl<'tcx> SplitWildcard<'tcx> {
             } else {
                 Wildcard
             };
-            return smallvec![ctor];
+
+            let ctors: FxHashSet<Constructor<'_>> = self
+                .matrix_ctors
+                .iter()
+                .flat_map(|ctor| ctor.split(pcx, self.matrix_ctors.iter()))
+                .collect();
+            return once(ctor).chain(ctors).collect();
         }
 
         // All the constructors are present in the matrix, so we just go through them all.

@@ -910,7 +910,7 @@ pub enum BindingAnnotation {
     RefMut,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic, Hash)]
 pub enum RangeEnd {
     Included,
     Excluded,
