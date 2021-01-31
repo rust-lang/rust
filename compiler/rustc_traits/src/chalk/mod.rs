@@ -97,7 +97,6 @@ crate fn evaluate_goal<'tcx>(
     use chalk_solve::Solver;
     let mut solver = chalk_engine::solve::SLGSolver::new(32, None);
     let db = ChalkRustIrDatabase { interner, reempty_placeholder };
-    //dbg!("evaluate_goal_pre", &obligation, &lowered_goal);
     let solution = solver.solve(&db, &lowered_goal);
     debug!(?obligation, ?solution, "evaluate goal");
 

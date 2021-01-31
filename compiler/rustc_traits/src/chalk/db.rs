@@ -690,7 +690,7 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
         def_id: chalk_ir::FnDefId<RustInterner<'tcx>>,
     ) -> chalk_ir::Variances<RustInterner<'tcx>> {
         let variances = self.interner.tcx.variances_of(def_id.0);
-        chalk_ir::Variances::from(
+        chalk_ir::Variances::from_iter(
             &self.interner,
             variances.iter().map(|v| match v {
                 ty::Variance::Invariant => chalk_ir::Variance::Invariant,
@@ -706,7 +706,7 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
         def_id: chalk_ir::AdtId<RustInterner<'tcx>>,
     ) -> chalk_ir::Variances<RustInterner<'tcx>> {
         let variances = self.interner.tcx.variances_of(def_id.0.did);
-        chalk_ir::Variances::from(
+        chalk_ir::Variances::from_iter(
             &self.interner,
             variances.iter().map(|v| match v {
                 ty::Variance::Invariant => chalk_ir::Variance::Invariant,

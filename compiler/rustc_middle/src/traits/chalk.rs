@@ -87,17 +87,34 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
             write!(fmt, "{:?}", pci.consequence)?;
 
             let conditions = pci.conditions.interned();
+            let constraints = pci.constraints.interned();
 
             let conds = conditions.len();
-            if conds == 0 {
+            let consts = constraints.len();
+            if conds == 0 && consts == 0 {
                 return Ok(());
             }
 
             write!(fmt, " :- ")?;
-            for cond in &conditions[..conds - 1] {
-                write!(fmt, "{:?}, ", cond)?;
+
+            if conds != 0 {
+                for cond in &conditions[..conds - 1] {
+                    write!(fmt, "{:?}, ", cond)?;
+                }
+                write!(fmt, "{:?}", conditions[conds - 1])?;
             }
-            write!(fmt, "{:?}", conditions[conds - 1])?;
+
+            if conds != 0 && consts != 0 {
+                write!(fmt, " ; ")?;
+            }
+
+            if consts != 0 {
+                for constraint in &constraints[..consts - 1] {
+                    write!(fmt, "{:?}, ", constraint)?;
+                }
+                write!(fmt, "{:?}", constraints[consts - 1])?;
+            }
+
             Ok(())
         };
         Some(write())
