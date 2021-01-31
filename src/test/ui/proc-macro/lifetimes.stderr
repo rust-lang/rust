@@ -2,7 +2,12 @@ error: expected type, found `'`
   --> $DIR/lifetimes.rs:7:10
    |
 LL | type A = single_quote_alone!();
-   |          ^^^^^^^^^^^^^^^^^^^^^ this macro call doesn't expand to a type
+   |          ^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          expected type
+   |          this macro call doesn't expand to a type
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 
