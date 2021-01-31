@@ -1217,8 +1217,8 @@ impl Ipv6Addr {
 
     /// Returns [`true`] if the address is a unicast link-local address (`fe80::/64`).
     ///
-    /// A common mis-conception is to think that "unicast link-local addresses start with
-    /// `fe80::`", but the [IETF RFC 4291] actually defines a stricter format for these addresses:
+    /// A common misconception is to think that "unicast link-local addresses start with
+    /// `fe80::`", but [IETF RFC 4291] actually defines a stricter format for these addresses:
     ///
     /// ```no_rust
     /// |   10     |
@@ -1228,9 +1228,9 @@ impl Ipv6Addr {
     /// +----------+-------------------------+----------------------------+
     /// ```
     ///
-    /// This method validates the format defined in the RFC and won't recognize the following
-    /// addresses such as `fe80:0:0:1::` or `fe81::` as unicast link-local addresses for example.
-    /// If you need a less strict validation use [`Ipv6Addr::is_unicast_link_local()`] instead.
+    /// This method validates the format defined in the RFC and won't recognize addresses
+    /// like `fe80:0:0:1::` or `fe81::` as unicast link-local addresses.
+    /// If you need a less strict validation, use [`Ipv6Addr::is_unicast_link_local()`] instead.
     ///
     /// # Examples
     ///
@@ -1282,7 +1282,7 @@ impl Ipv6Addr {
     /// +----------+-------------------------+----------------------------+
     /// ```
     ///
-    /// As a result, this method consider addresses such as `fe80:0:0:1::` or `fe81::` to be
+    /// As a result, this method considers addresses such as `fe80:0:0:1::` or `fe81::` to be
     /// unicast link-local addresses, whereas [`Ipv6Addr::is_unicast_link_local_strict()`] does not.
     /// If you need a strict validation fully compliant with the RFC, use
     /// [`Ipv6Addr::is_unicast_link_local_strict()`] instead.
@@ -1362,7 +1362,7 @@ impl Ipv6Addr {
     }
 
     /// Returns [`true`] if this is an address reserved for documentation
-    /// (2001:db8::/32).
+    /// (`2001:db8::/32`).
     ///
     /// This property is defined in [IETF RFC 3849].
     ///
