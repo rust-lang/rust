@@ -13,7 +13,6 @@
 #![feature(unboxed_closures)]
 #![feature(generator_trait)]
 #![feature(fn_traits)]
-#![feature(int_bits_const)]
 #![feature(min_specialization)]
 #![feature(auto_traits)]
 #![feature(nll)]
