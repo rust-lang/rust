@@ -723,51 +723,69 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         // Remove and save the last column and its selected rows.
         self.save_last_col();
         let old_last_col = self.last_col_history.last().unwrap();
+        let old_selected_rows = self.selected_rows_history.last().unwrap();
+        let sel_rows_origin = self.selected_rows_history.len() - 1;
+
+        // Keep only rows that match this ctor.
+        self.selected_rows.clear();
+        self.selected_rows.extend(
+            old_selected_rows
+                .iter()
+                .copied()
+                .enumerate()
+                .filter(|(_, row)| ctor.is_covered_by(pcx, old_last_col[row.id].head_ctor(pcx.cx)))
+                .map(|(sel_row_id, row)| SelectedRow {
+                    id: row.id,
+                    origin: Origin::Specialized {
+                        col: sel_rows_origin,
+                        row: sel_row_id,
+                        ctor_arity: ctor_wild_subpatterns.len(),
+                    },
+                }),
+        );
 
         // Prepare new columns for the arguments of the patterns we are specializing.
         let old_col_count = self.column_count();
         self.columns.reserve(ctor_wild_subpatterns.len());
-        for _ in 0..ctor_wild_subpatterns.len() {
-            self.columns.push(Vec::new());
+
+        // Add new columns filled with wildcards.
+        let new_fields = ctor_wild_subpatterns.clone().into_patterns();
+        // Note: the fields are in the natural left-to-right order but the columns are not.
+        // We need to start from the last field to get the columns right.
+        for &pat in new_fields.iter().rev() {
+            let mut col = Vec::with_capacity(self.selected_rows.len());
+            for _ in 0..self.selected_rows.len() {
+                // dummy entry
+                col.push(MatrixEntry {
+                    pat,
+                    next_row_id: 0,
+                    ctor: OnceCell::new(),
+                    is_under_guard: false,
+                });
+            }
+            self.columns.push(col);
         }
         let new_columns = &mut self.columns[old_col_count..];
-        let sel_rows_origin = self.selected_rows_history.len() - 1;
 
-        self.selected_rows = self
-            .selected_rows
-            .drain(..)
-            .enumerate()
-            // Keep only rows that match this ctor.
-            .filter(|(_, row)| ctor.is_covered_by(pcx, old_last_col[row.id].head_ctor(pcx.cx)))
-            .map(|(sel_row_id, mut row)| {
-                row.origin = Origin::Specialized {
-                    col: sel_rows_origin,
-                    row: sel_row_id,
-                    ctor_arity: ctor_wild_subpatterns.len(),
-                };
-                let origin_row_id = row.id;
-                let head_entry = &old_last_col[origin_row_id];
-                // Extract fields from the arguments of the head of each row.
-                let new_fields = ctor_wild_subpatterns
-                    .replace_with_pattern_arguments(head_entry.pat)
-                    .into_patterns();
-                // The rest of the row starts at `row_id`.
-                row.id = head_entry.next_row_id;
-                // Note: the fields are in the natural left-to-right order but the columns are not.
-                // We need to start from the last field to get the `next_row_id`s right.
-                for (col, &pat) in new_columns.iter_mut().zip(new_fields.iter().rev()) {
-                    col.push(MatrixEntry {
-                        pat,
-                        next_row_id: row.id,
-                        ctor: OnceCell::new(),
-                        is_under_guard: head_entry.is_under_guard,
-                    });
-                    // Make `row_id` point to the entry just added.
-                    row.id = col.len() - 1;
-                }
-                row
-            })
-            .collect();
+        // Fill the columns with the patterns we want.
+        for (new_id, row) in self.selected_rows.iter_mut().enumerate() {
+            let head_entry = &old_last_col[row.id];
+            // Extract fields from the arguments of the head of each row.
+            let new_fields = ctor_wild_subpatterns
+                .replace_with_pattern_arguments(head_entry.pat)
+                .into_patterns();
+            // The rest of the row starts at `row_id`.
+            row.id = head_entry.next_row_id;
+            // Note: the fields are in the natural left-to-right order but the columns are not.
+            // We need to start from the last field to get the `next_row_id`s right.
+            for (col, &pat) in new_columns.iter_mut().zip(new_fields.iter().rev()) {
+                col[new_id].pat = pat;
+                col[new_id].next_row_id = row.id;
+                col[new_id].is_under_guard = head_entry.is_under_guard;
+                // Make `row_id` point to the entry just added.
+                row.id = new_id;
+            }
+        }
 
         self.history.push(UndoKind::Specialize {
             ty: pcx.ty,
