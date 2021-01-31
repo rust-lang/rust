@@ -977,8 +977,6 @@ impl UnusedDelimLint for UnusedBraces {
                 }
             }
             ast::ExprKind::Let(_, ref expr) => {
-                // FIXME(#60336): Properly handle `let true = (false && true)`
-                // actually needing the parenthesis.
                 self.check_unused_delims_expr(
                     cx,
                     expr,
