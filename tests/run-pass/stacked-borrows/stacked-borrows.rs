@@ -1,5 +1,4 @@
 // compile-flags: -Zmiri-track-raw-pointers
-#![feature(raw_ref_macros)]
 use std::ptr;
     
 // Test various stacked-borrows-related things.
@@ -169,8 +168,8 @@ fn raw_ref_to_part() {
     }
 
     let it = Box::new(Whole { part: Part { _lame: 0 }, extra: 42 });
-    let whole = ptr::raw_mut!(*Box::leak(it));
-    let part = unsafe { ptr::raw_mut!((*whole).part) };
+    let whole = ptr::addr_of_mut!(*Box::leak(it));
+    let part = unsafe { ptr::addr_of_mut!((*whole).part) };
     let typed = unsafe { &mut *(part as *mut Whole) };
     assert!(typed.extra == 42);
     drop(unsafe { Box::from_raw(whole) });

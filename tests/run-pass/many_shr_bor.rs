@@ -1,6 +1,7 @@
 // Make sure validation can handle many overlapping shared borrows for different parts of a data structure
 use std::cell::RefCell;
 
+#[allow(unused)]
 struct Test {
     a: u32,
     b: u32,
