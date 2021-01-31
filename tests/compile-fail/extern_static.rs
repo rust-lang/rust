@@ -1,4 +1,3 @@
-#![feature(raw_ref_op)]
 //! Even referencing an unknown `extern static` already triggers an error.
 
 extern "C" {
@@ -6,5 +5,5 @@ extern "C" {
 }
 
 fn main() {
-    let _val = unsafe { &raw const FOO }; //~ ERROR is not supported by Miri
+    let _val = unsafe { std::ptr::addr_of!(FOO) }; //~ ERROR is not supported by Miri
 }

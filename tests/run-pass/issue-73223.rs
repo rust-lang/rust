@@ -4,6 +4,7 @@ fn main() {
     assert_eq!(state.rest(path), "some/more");
 }
 
+#[allow(unused)]
 struct State {
     prev: Option<usize>,
     next: Option<usize>,
