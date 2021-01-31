@@ -661,11 +661,28 @@ pub type RootVariableMinCaptureList<'tcx> = FxIndexMap<hir::HirId, MinCaptureLis
 /// Part of `MinCaptureInformationMap`; List of `CapturePlace`s.
 pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
 
-/// A `Place` and the corresponding `CaptureInfo`.
+/// A composite describing a `Place` that is captured by a closure.
 #[derive(PartialEq, Clone, Debug, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
 pub struct CapturedPlace<'tcx> {
+    /// The `Place` that is captured.
     pub place: HirPlace<'tcx>,
+
+    /// `CaptureKind` and expression(s) that resulted in such capture of `place`.
     pub info: CaptureInfo<'tcx>,
+
+    /// Represents if `place` can be mutated or not.
+    pub mutability: hir::Mutability,
+}
+
+impl CapturedPlace<'tcx> {
+    /// Returns the hir-id of the root variable for the captured place.
+    /// e.g., if `a.b.c` was captured, would return the hir-id for `a`.
+    pub fn get_root_variable(&self) -> hir::HirId {
+        match self.place.base {
+            HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+            base => bug!("Expected upvar, found={:?}", base),
+        }
+    }
 }
 
 pub fn place_to_string_for_capture(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {

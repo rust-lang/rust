@@ -5,11 +5,10 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{HirId, Node};
+use rustc_hir::Node;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
     PlaceRef, VarDebugInfoContents,
@@ -18,7 +17,7 @@ use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
@@ -73,16 +72,14 @@ crate use region_infer::RegionInferenceContext;
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]
-crate struct Upvar {
+crate struct Upvar<'tcx> {
+    // FIXME(project-rfc_2229#36): print capture precisely here.
     name: Symbol,
 
-    // FIXME(project-rfc-2229#8): This should use Place or something similar
-    var_hir_id: HirId,
+    place: CapturedPlace<'tcx>,
 
     /// If true, the capture is behind a reference.
     by_ref: bool,
-
-    mutability: Mutability,
 }
 
 const DEREF_PROJECTION: &[PlaceElem<'_>; 1] = &[ProjectionElem::Deref];
@@ -161,26 +158,13 @@ fn do_mir_borrowck<'a, 'tcx>(
     let upvars: Vec<_> = tables
         .closure_min_captures_flattened(def.did.to_def_id())
         .map(|captured_place| {
-            let var_hir_id = match captured_place.place.base {
-                HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
-                _ => bug!("Expected upvar"),
-            };
+            let var_hir_id = captured_place.get_root_variable();
             let capture = captured_place.info.capture_kind;
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue(_) => false,
                 ty::UpvarCapture::ByRef(..) => true,
             };
-            let mut upvar = Upvar {
-                name: tcx.hir().name(var_hir_id),
-                var_hir_id,
-                by_ref,
-                mutability: Mutability::Not,
-            };
-            let bm = *tables.pat_binding_modes().get(var_hir_id).expect("missing binding mode");
-            if bm == ty::BindByValue(hir::Mutability::Mut) {
-                upvar.mutability = Mutability::Mut;
-            }
-            upvar
+            Upvar { name: tcx.hir().name(var_hir_id), place: captured_place.clone(), by_ref }
         })
         .collect();
 
@@ -549,7 +533,7 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     dominators: Dominators<BasicBlock>,
 
     /// Information about upvars not necessarily preserved in types or MIR
-    upvars: Vec<Upvar>,
+    upvars: Vec<Upvar<'tcx>>,
 
     /// Names of local (user) variables (extracted from `var_debug_info`).
     local_names: IndexVec<Local, Option<Symbol>>,
@@ -1374,13 +1358,38 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn propagate_closure_used_mut_upvar(&mut self, operand: &Operand<'tcx>) {
         let propagate_closure_used_mut_place = |this: &mut Self, place: Place<'tcx>| {
-            if !place.projection.is_empty() {
-                if let Some(field) = this.is_upvar_field_projection(place.as_ref()) {
-                    this.used_mut_upvars.push(field);
-                }
-            } else {
-                this.used_mut.insert(place.local);
+            // We have three possibilities here:
+            // a. We are modifying something through a mut-ref
+            // b. We are modifying something that is local to our parent
+            // c. Current body is a nested closure, and we are modifying path starting from
+            //    a Place captured by our parent closure.
+
+            // Handle (c), the path being modified is exactly the path captured by our parent
+            if let Some(field) = this.is_upvar_field_projection(place.as_ref()) {
+                this.used_mut_upvars.push(field);
+                return;
             }
+
+            for (place_ref, proj) in place.iter_projections().rev() {
+                // Handle (a)
+                if proj == ProjectionElem::Deref {
+                    match place_ref.ty(this.body(), this.infcx.tcx).ty.kind() {
+                        // We aren't modifying a variable directly
+                        ty::Ref(_, _, hir::Mutability::Mut) => return,
+
+                        _ => {}
+                    }
+                }
+
+                // Handle (c)
+                if let Some(field) = this.is_upvar_field_projection(place_ref) {
+                    this.used_mut_upvars.push(field);
+                    return;
+                }
+            }
+
+            // Handle(b)
+            this.used_mut.insert(place.local);
         };
 
         // This relies on the current way that by-value
@@ -2146,6 +2155,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         place: PlaceRef<'tcx>,
         is_local_mutation_allowed: LocalMutationIsAllowed,
     ) -> Result<RootPlace<'tcx>, PlaceRef<'tcx>> {
+        debug!("is_mutable: place={:?}, is_local...={:?}", place, is_local_mutation_allowed);
         match place.last_projection() {
             None => {
                 let local = &self.body.local_decls[place.local];
@@ -2227,11 +2237,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if let Some(field) = upvar_field_projection {
                             let upvar = &self.upvars[field.index()];
                             debug!(
-                                "upvar.mutability={:?} local_mutation_is_allowed={:?} \
-                                 place={:?}",
-                                upvar, is_local_mutation_allowed, place
+                                "is_mutable: upvar.mutability={:?} local_mutation_is_allowed={:?} \
+                                 place={:?}, place_base={:?}",
+                                upvar, is_local_mutation_allowed, place, place_base
                             );
-                            match (upvar.mutability, is_local_mutation_allowed) {
+                            match (upvar.place.mutability, is_local_mutation_allowed) {
                                 (
                                     Mutability::Not,
                                     LocalMutationIsAllowed::No

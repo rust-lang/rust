@@ -1,0 +1,147 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:14:17
+   |
+LL |     let mut c = #[rustc_capture_analysis]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:35:17
+   |
+LL |     let mut c = #[rustc_capture_analysis]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:55:17
+   |
+LL |     let mut c = #[rustc_capture_analysis]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/move_closure.rs:3:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:17:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         *ref_s += 10;
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing ref_s[Deref] -> ByValue
+  --> $DIR/move_closure.rs:20:9
+   |
+LL |         *ref_s += 10;
+   |         ^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:17:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         *ref_s += 10;
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture ref_s[] -> ByValue
+  --> $DIR/move_closure.rs:20:9
+   |
+LL |         *ref_s += 10;
+   |         ^^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:38:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         t.0.0 = "new s".into();
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:41:9
+   |
+LL |         t.0.0 = "new s".into();
+   |         ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:38:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         t.0.0 = "new s".into();
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:41:9
+   |
+LL |         t.0.0 = "new s".into();
+   |         ^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:58:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         t.0.0 = "new S".into();
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:61:9
+   |
+LL |         t.0.0 = "new S".into();
+   |         ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:58:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         t.0.0 = "new S".into();
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0),(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:61:9
+   |
+LL |         t.0.0 = "new S".into();
+   |         ^^^^^
+
+error: aborting due to 9 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.
