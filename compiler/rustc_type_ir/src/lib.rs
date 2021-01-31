@@ -9,8 +9,20 @@ extern crate rustc_macros;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
+use rustc_serialize::{Decodable, Decoder};
 use std::fmt;
 use std::mem::discriminant;
+
+pub trait Interner<D: Decoder> {
+    type Predicate: Decodable<D>;
+    type BinderPredicateKind;
+
+    fn mk_predicate(self, binder: Self::BinderPredicateKind) -> Self::Predicate;
+}
+
+pub trait HasInterner<D: Decoder> {
+    type Interner: Interner<D>;
+}
 
 bitflags! {
     /// Flags that we track on types. These flags are propagated upwards

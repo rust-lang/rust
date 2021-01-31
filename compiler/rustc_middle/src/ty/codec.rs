@@ -13,11 +13,12 @@ use crate::mir::{
     interpret::{AllocId, Allocation},
 };
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, List, Ty, TyCtxt};
+use crate::ty::{self, List, Ty, TyCtxt, TyInterner};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::Span;
+use rustc_type_ir::Interner;
 use std::hash::Hash;
 use std::intrinsics;
 use std::marker::DiscriminantKind;
@@ -161,6 +162,7 @@ pub trait TyDecoder<'tcx>: Decoder {
     const CLEAR_CROSS_CRATE: bool;
 
     fn tcx(&self) -> TyCtxt<'tcx>;
+    fn interner(&self) -> TyInterner<'tcx>;
 
     fn peek_byte(&self) -> u8;
 
@@ -244,7 +246,8 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<ty::PredicateKind<'tc
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Predicate<'tcx> {
     fn decode(decoder: &mut D) -> Result<ty::Predicate<'tcx>, D::Error> {
         let predicate_kind = Decodable::decode(decoder)?;
-        let predicate = decoder.tcx().mk_predicate(predicate_kind);
+        let predicate =
+            <TyInterner<'tcx> as Interner<D>>::mk_predicate(decoder.interner(), predicate_kind);
         Ok(predicate)
     }
 }

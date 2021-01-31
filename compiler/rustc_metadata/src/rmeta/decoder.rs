@@ -27,8 +27,7 @@ use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
-use rustc_middle::ty::codec::TyDecoder;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, codec::TyDecoder, Ty, TyCtxt, TyInterner};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnDataDecodeMode;
@@ -279,6 +278,11 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx.expect("missing TyCtxt in DecodeContext")
+    }
+
+    #[inline]
+    fn interner(&self) -> TyInterner<'tcx> {
+        self.tcx().interner()
     }
 
     #[inline]

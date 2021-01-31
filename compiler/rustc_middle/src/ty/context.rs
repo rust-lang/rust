@@ -18,11 +18,11 @@ use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
-    self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig, Const, ConstVid,
-    DefIdTree, ExistentialPredicate, FloatTy, FloatVar, FloatVid, GenericParamDefKind, InferConst,
-    InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate,
-    PredicateInner, PredicateKind, ProjectionTy, Region, RegionKind, ReprOptions,
-    TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy, Visibility,
+    self, codec::TyDecoder, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
+    Const, ConstVid, DefIdTree, ExistentialPredicate, FloatTy, FloatVar, FloatVid,
+    GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
+    PolyFnSig, Predicate, PredicateInner, PredicateKind, ProjectionTy, Region, RegionKind,
+    ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy, Visibility,
 };
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -47,7 +47,10 @@ use rustc_hir::{
 };
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+use rustc_serialize::{
+    opaque::{FileEncodeResult, FileEncoder},
+    Decoder,
+};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Session;
@@ -56,6 +59,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
+use rustc_type_ir::Interner;
 
 use smallvec::SmallVec;
 use std::any::Any;
@@ -68,6 +72,19 @@ use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
+
+pub struct TyInterner<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx, D: Decoder + TyDecoder<'tcx>> Interner<D> for TyInterner<'tcx> {
+    type Predicate = Predicate<'tcx>;
+    type BinderPredicateKind = Binder<PredicateKind<'tcx>>;
+
+    fn mk_predicate(self, binder: Binder<PredicateKind<'tcx>>) -> Predicate<'tcx> {
+        self.tcx.mk_predicate(binder)
+    }
+}
 
 /// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
 /// except through the error-reporting functions on a [`tcx`][TyCtxt].
@@ -1025,6 +1042,10 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn interner(self) -> TyInterner<'tcx> {
+        TyInterner { tcx: self }
+    }
+
     pub fn typeck_opt_const_arg(
         self,
         def: ty::WithOptConstParam<LocalDefId>,
