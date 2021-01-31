@@ -1,7 +1,7 @@
 // run-pass
 
-#![allow(unused)]
-#![feature(const_in_array_repeat_expressions)]
+#![feature(inline_const)]
+#![allow(unused, incomplete_features)]
 
 // Some type that is not copyable.
 struct Bar;
@@ -18,6 +18,6 @@ const _: [u32; 2] = [type_copy(); 2];
 
 // This is allowed because all promotion contexts use the explicit rules for promotability when
 // inside an explicit const context.
-const _: [Option<Bar>; 2] = [type_no_copy(); 2];
+const _: [Option<Bar>; 2] = [const { type_no_copy() }; 2];
 
 fn main() {}

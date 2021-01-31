@@ -1881,23 +1881,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::Coercion { source: _, target } => {
                 err.note(&format!("required by cast to type `{}`", self.ty_to_string(target)));
             }
-            ObligationCauseCode::RepeatVec(suggest_const_in_array_repeat_expressions) => {
+            ObligationCauseCode::RepeatVec => {
                 err.note(
                     "the `Copy` trait is required because the repeated element will be copied",
                 );
-                if suggest_const_in_array_repeat_expressions {
-                    err.note(
-                        "this array initializer can be evaluated at compile-time, see issue \
-                         #49147 <https://github.com/rust-lang/rust/issues/49147> \
-                         for more information",
-                    );
-                    if tcx.sess.opts.unstable_features.is_nightly_build() {
-                        err.help(
-                            "add `#![feature(const_in_array_repeat_expressions)]` to the \
-                             crate attributes to enable",
-                        );
-                    }
-                }
             }
             ObligationCauseCode::VariableType(hir_id) => {
                 let parent_node = self.tcx.hir().get_parent_node(hir_id);
