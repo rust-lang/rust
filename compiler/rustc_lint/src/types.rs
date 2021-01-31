@@ -1262,15 +1262,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, it: &hir::ForeignItem<'_>) {
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Declaration };
-        let abi = cx.tcx.hir().get_foreign_abi(it.hir_id);
+        let abi = cx.tcx.hir().get_foreign_abi(it.hir_id());
 
         if !vis.is_internal_abi(abi) {
             match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
-                    vis.check_foreign_fn(it.hir_id, decl);
+                    vis.check_foreign_fn(it.hir_id(), decl);
                 }
                 hir::ForeignItemKind::Static(ref ty, _) => {
-                    vis.check_foreign_static(it.hir_id, ty.span);
+                    vis.check_foreign_static(it.hir_id(), ty.span);
                 }
                 hir::ForeignItemKind::Type => (),
             }

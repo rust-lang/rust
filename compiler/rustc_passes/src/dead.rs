@@ -453,9 +453,13 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
         use hir::ForeignItemKind::{Fn, Static};
         if matches!(foreign_item.kind, Static(..) | Fn(..))
-            && has_allow_dead_code_or_lang_attr(self.tcx, foreign_item.hir_id, &foreign_item.attrs)
+            && has_allow_dead_code_or_lang_attr(
+                self.tcx,
+                foreign_item.hir_id(),
+                &foreign_item.attrs,
+            )
         {
-            self.worklist.push(foreign_item.hir_id);
+            self.worklist.push(foreign_item.hir_id());
         }
     }
 }
@@ -542,8 +546,8 @@ impl DeadVisitor<'tcx> {
     }
 
     fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem<'_>) -> bool {
-        !self.symbol_is_live(fi.hir_id)
-            && !has_allow_dead_code_or_lang_attr(self.tcx, fi.hir_id, &fi.attrs)
+        !self.symbol_is_live(fi.hir_id())
+            && !has_allow_dead_code_or_lang_attr(self.tcx, fi.hir_id(), &fi.attrs)
     }
 
     // id := HIR id of an item's definition.
@@ -649,7 +653,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem<'tcx>) {
         if self.should_warn_about_foreign_item(fi) {
-            self.warn_dead_code(fi.hir_id, fi.span, fi.ident.name, "used");
+            self.warn_dead_code(fi.hir_id(), fi.span, fi.ident.name, "used");
         }
         intravisit::walk_foreign_item(self, fi);
     }

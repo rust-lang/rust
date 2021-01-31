@@ -776,7 +776,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                 }
             } else {
                 for item in items {
-                    let def_id = tcx.hir().local_def_id(item.id.hir_id);
+                    let def_id = item.id.def_id;
                     let generics = tcx.generics_of(def_id);
                     let own_counts = generics.own_counts();
                     if generics.params.len() - own_counts.lifetimes != 0 {

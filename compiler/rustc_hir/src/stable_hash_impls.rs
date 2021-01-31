@@ -1,8 +1,8 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 
 use crate::hir::{
-    BodyId, Expr, ForeignItemId, ImplItem, ImplItemId, Item, ItemId, Mod, TraitItem, TraitItemId,
-    Ty, VisibilityKind,
+    BodyId, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item, ItemId, Mod, TraitItem,
+    TraitItemId, Ty, VisibilityKind,
 };
 use crate::hir_id::{HirId, ItemLocalId};
 use rustc_span::def_id::{DefPathHash, LocalDefId};
@@ -62,11 +62,11 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ImplItemId {
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ForeignItemId {
-    type KeyType = (DefPathHash, ItemLocalId);
+    type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
-        self.hir_id.to_stable_hash_key(hcx)
+    fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
+        hcx.local_def_path_hash(self.def_id)
     }
 }
 
@@ -97,7 +97,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ItemId {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ForeignItemId {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_reference_to_item(self.hir_id, hasher)
+        hcx.hash_reference_to_item(self.hir_id(), hasher)
     }
 }
 
@@ -172,6 +172,20 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItem<'_> {
             generics.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
+        });
+    }
+}
+
+impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ForeignItem<'_> {
+    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+        let ForeignItem { def_id: _, ident, ref attrs, ref kind, span, ref vis } = *self;
+
+        hcx.hash_hir_item_like(|hcx| {
+            ident.name.hash_stable(hcx, hasher);
+            attrs.hash_stable(hcx, hasher);
+            kind.hash_stable(hcx, hasher);
+            span.hash_stable(hcx, hasher);
+            vis.hash_stable(hcx, hasher);
         });
     }
 }

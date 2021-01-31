@@ -728,12 +728,11 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         hir::ItemKind::ForeignMod { items, .. } => {
             for item in items {
                 let item = tcx.hir().foreign_item(item.id);
-                let def_id = tcx.hir().local_def_id(item.hir_id);
-                tcx.ensure().generics_of(def_id);
-                tcx.ensure().type_of(def_id);
-                tcx.ensure().predicates_of(def_id);
+                tcx.ensure().generics_of(item.def_id);
+                tcx.ensure().type_of(item.def_id);
+                tcx.ensure().predicates_of(item.def_id);
                 if let hir::ForeignItemKind::Fn(..) = item.kind {
-                    tcx.ensure().fn_sig(def_id);
+                    tcx.ensure().fn_sig(item.def_id);
                 }
             }
         }

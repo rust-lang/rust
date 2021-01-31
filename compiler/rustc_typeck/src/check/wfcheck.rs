@@ -154,10 +154,10 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 let it = tcx.hir().foreign_item(it.id);
                 match it.kind {
                     hir::ForeignItemKind::Fn(ref decl, ..) => {
-                        check_item_fn(tcx, it.hir_id, it.ident, it.span, decl)
+                        check_item_fn(tcx, it.hir_id(), it.ident, it.span, decl)
                     }
                     hir::ForeignItemKind::Static(ref ty, ..) => {
-                        check_item_type(tcx, it.hir_id, ty.span, true)
+                        check_item_type(tcx, it.hir_id(), ty.span, true)
                     }
                     hir::ForeignItemKind::Type => (),
                 }

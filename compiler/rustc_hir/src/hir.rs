@@ -2783,7 +2783,14 @@ pub enum AssocItemKind {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ForeignItemId {
-    pub hir_id: HirId,
+    pub def_id: LocalDefId,
+}
+
+impl ForeignItemId {
+    pub fn hir_id(&self) -> HirId {
+        // Items are always HIR owners.
+        HirId::make_owner(self.def_id)
+    }
 }
 
 /// A reference from a foreign block to one of its items. This
@@ -2801,15 +2808,25 @@ pub struct ForeignItemRef<'hir> {
     pub vis: Visibility<'hir>,
 }
 
-#[derive(Debug, HashStable_Generic)]
+#[derive(Debug)]
 pub struct ForeignItem<'hir> {
-    #[stable_hasher(project(name))]
     pub ident: Ident,
     pub attrs: &'hir [Attribute],
     pub kind: ForeignItemKind<'hir>,
-    pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub span: Span,
     pub vis: Visibility<'hir>,
+}
+
+impl ForeignItem<'_> {
+    pub fn hir_id(&self) -> HirId {
+        // Items are always HIR owners.
+        HirId::make_owner(self.def_id)
+    }
+
+    pub fn foreign_item_id(&self) -> ForeignItemId {
+        ForeignItemId { def_id: self.def_id }
+    }
 }
 
 /// An item within an `extern` block.
@@ -2923,9 +2940,9 @@ impl<'hir> Node<'hir> {
         match self {
             Node::Item(Item { def_id, .. })
             | Node::TraitItem(TraitItem { def_id, .. })
-            | Node::ImplItem(ImplItem { def_id, .. }) => Some(HirId::make_owner(*def_id)),
-            Node::ForeignItem(ForeignItem { hir_id, .. })
-            | Node::Field(StructField { hir_id, .. })
+            | Node::ImplItem(ImplItem { def_id, .. })
+            | Node::ForeignItem(ForeignItem { def_id, .. }) => Some(HirId::make_owner(*def_id)),
+            Node::Field(StructField { hir_id, .. })
             | Node::AnonConst(AnonConst { hir_id, .. })
             | Node::Expr(Expr { hir_id, .. })
             | Node::Stmt(Stmt { hir_id, .. })
@@ -2960,5 +2977,5 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Item<'static>, 200);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 144);
     rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 168);
-    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 160);
+    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 152);
 }

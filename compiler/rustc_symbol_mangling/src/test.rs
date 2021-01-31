@@ -73,6 +73,6 @@ impl hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'tcx> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'tcx hir::ForeignItem<'tcx>) {
-        self.process_attrs(foreign_item.hir_id);
+        self.process_attrs(foreign_item.hir_id());
     }
 }

@@ -110,7 +110,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
         if let hir::ForeignItemKind::Fn(..) = foreign_item.kind {
-            self.visit_node_helper(foreign_item.hir_id);
+            self.visit_node_helper(foreign_item.hir_id());
         }
     }
 }

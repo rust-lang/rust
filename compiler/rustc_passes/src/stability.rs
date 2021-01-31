@@ -459,7 +459,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
         self.annotate(
-            i.hir_id,
+            i.hir_id(),
             &i.attrs,
             i.span,
             AnnotationKind::Required,
@@ -594,7 +594,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
-        self.check_missing_stability(i.hir_id, i.span);
+        self.check_missing_stability(i.hir_id(), i.span);
         intravisit::walk_foreign_item(self, i);
     }
 

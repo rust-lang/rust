@@ -1449,14 +1449,14 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
-        let access = access_from!(self.save_ctxt, item, item.hir_id);
+        let access = access_from!(self.save_ctxt, item, item.hir_id());
 
         match item.kind {
             hir::ForeignItemKind::Fn(decl, _, ref generics) => {
                 if let Some(fn_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(fn_data, DefData, item.span);
 
-                    self.process_generic_params(generics, &fn_data.qualname, item.hir_id);
+                    self.process_generic_params(generics, &fn_data.qualname, item.hir_id());
                     self.dumper.dump_def(&access, fn_data);
                 }
 

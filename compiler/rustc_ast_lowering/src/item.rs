@@ -111,7 +111,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         self.lctx.allocate_hir_id_counter(item.id);
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             let hir_item = lctx.lower_foreign_item(item);
-            let id = hir::ForeignItemId { hir_id: hir_item.hir_id };
+            let id = hir_item.foreign_item_id();
             lctx.foreign_items.insert(id, hir_item);
             lctx.modules.get_mut(&lctx.current_module).unwrap().foreign_items.insert(id);
         });
@@ -711,7 +711,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem<'hir> {
         let def_id = self.resolver.local_def_id(i.id);
         hir::ForeignItem {
-            hir_id: self.lower_node_id(i.id),
+            def_id,
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             kind: match i.kind {
@@ -746,7 +746,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef<'hir> {
         hir::ForeignItemRef {
-            id: hir::ForeignItemId { hir_id: self.lower_node_id(i.id) },
+            id: hir::ForeignItemId { def_id: self.lower_node_id(i.id).expect_owner() },
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),

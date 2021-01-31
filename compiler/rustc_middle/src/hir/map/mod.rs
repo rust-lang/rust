@@ -322,7 +322,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        match self.find(id.hir_id).unwrap() {
+        match self.find(id.hir_id()).unwrap() {
             Node::ForeignItem(item) => item,
             _ => bug!(),
         }

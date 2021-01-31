@@ -155,8 +155,8 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
-        self.with_lint_attrs(it.hir_id, &it.attrs, |cx| {
-            cx.with_param_env(it.hir_id, |cx| {
+        self.with_lint_attrs(it.hir_id(), &it.attrs, |cx| {
+            cx.with_param_env(it.hir_id(), |cx| {
                 lint_callback!(cx, check_foreign_item, it);
                 hir_visit::walk_foreign_item(cx, it);
                 lint_callback!(cx, check_foreign_item_post, it);

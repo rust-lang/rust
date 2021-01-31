@@ -736,14 +736,14 @@ impl<'hir> Sig for hir::Variant<'hir> {
 
 impl<'hir> Sig for hir::ForeignItem<'hir> {
     fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
-        let id = Some(self.hir_id);
+        let id = Some(self.hir_id());
         match self.kind {
             hir::ForeignItemKind::Fn(decl, _, ref generics) => {
                 let mut text = String::new();
                 text.push_str("fn ");
 
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id, self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
 
                 sig.text.push('(');
                 for i in decl.inputs {
@@ -774,7 +774,7 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
                 }
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_hir_id(self.hir_id, scx),
+                    id: id_from_def_id(self.def_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -790,7 +790,7 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
                 let mut text = "type ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_hir_id(self.hir_id, scx),
+                    id: id_from_def_id(self.def_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];

@@ -462,7 +462,7 @@ impl ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
     }
 
     fn visit_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
-        self.check_item(item.hir_id, item.span);
+        self.check_item(item.hir_id(), item.span);
     }
 }
 

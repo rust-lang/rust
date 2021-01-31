@@ -660,11 +660,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'_>) {
-        let def_id = cx.tcx.hir().local_def_id(foreign_item.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(foreign_item.def_id.to_def_id());
         self.check_missing_docs_attrs(
             cx,
-            Some(foreign_item.hir_id),
+            Some(foreign_item.hir_id()),
             &foreign_item.attrs,
             foreign_item.span,
             article,
@@ -1365,7 +1364,7 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
         self.perform_lint(
             cx,
             "item",
-            foreign_item.hir_id,
+            foreign_item.hir_id(),
             &foreign_item.vis,
             foreign_item.span,
             true,
@@ -2675,10 +2674,7 @@ impl ClashingExternDeclarations {
     /// Insert a new foreign item into the seen set. If a symbol with the same name already exists
     /// for the item, return its HirId without updating the set.
     fn insert(&mut self, tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> Option<HirId> {
-        let hid = fi.hir_id;
-
-        let local_did = tcx.hir().local_def_id(fi.hir_id);
-        let did = local_did.to_def_id();
+        let did = fi.def_id.to_def_id();
         let instance = Instance::new(did, ty::List::identity_for_item(tcx, did));
         let name = Symbol::intern(tcx.symbol_name(instance).name);
         if let Some(&hir_id) = self.seen_decls.get(&name) {
@@ -2687,7 +2683,7 @@ impl ClashingExternDeclarations {
             // This lets us avoid emitting "knock-on" diagnostics.
             Some(hir_id)
         } else {
-            self.seen_decls.insert(name, hid)
+            self.seen_decls.insert(name, fi.hir_id())
         }
     }
 
@@ -2695,16 +2691,15 @@ impl ClashingExternDeclarations {
     /// the name specified in a #[link_name = ...] attribute if one was specified, else, just the
     /// symbol's name.
     fn name_of_extern_decl(tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> SymbolName {
-        let did = tcx.hir().local_def_id(fi.hir_id);
         if let Some((overridden_link_name, overridden_link_name_span)) =
-            tcx.codegen_fn_attrs(did).link_name.map(|overridden_link_name| {
+            tcx.codegen_fn_attrs(fi.def_id).link_name.map(|overridden_link_name| {
                 // FIXME: Instead of searching through the attributes again to get span
                 // information, we could have codegen_fn_attrs also give span information back for
                 // where the attribute was defined. However, until this is found to be a
                 // bottleneck, this does just fine.
                 (
                     overridden_link_name,
-                    tcx.get_attrs(did.to_def_id())
+                    tcx.get_attrs(fi.def_id.to_def_id())
                         .iter()
                         .find(|at| tcx.sess.check_name(at, sym::link_name))
                         .unwrap()
@@ -2932,10 +2927,10 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
             let tcx = cx.tcx;
             if let Some(existing_hid) = self.insert(tcx, this_fi) {
                 let existing_decl_ty = tcx.type_of(tcx.hir().local_def_id(existing_hid));
-                let this_decl_ty = tcx.type_of(tcx.hir().local_def_id(this_fi.hir_id));
+                let this_decl_ty = tcx.type_of(this_fi.def_id);
                 debug!(
                     "ClashingExternDeclarations: Comparing existing {:?}: {:?} to this {:?}: {:?}",
-                    existing_hid, existing_decl_ty, this_fi.hir_id, this_decl_ty
+                    existing_hid, existing_decl_ty, this_fi.def_id, this_decl_ty
                 );
                 // Check that the declarations match.
                 if !Self::structurally_same_type(
@@ -2957,7 +2952,7 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                     // Finally, emit the diagnostic.
                     tcx.struct_span_lint_hir(
                         CLASHING_EXTERN_DECLARATIONS,
-                        this_fi.hir_id,
+                        this_fi.hir_id(),
                         get_relevant_span(this_fi),
                         |lint| {
                             let mut expected_str = DiagnosticStyledString::new();

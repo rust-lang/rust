@@ -1110,7 +1110,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
         self.check_attributes(
-            f_item.hir_id,
+            f_item.hir_id(),
             &f_item.attrs,
             &f_item.span,
             target,

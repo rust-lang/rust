@@ -137,7 +137,7 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_extern_item_data(&self, item: &hir::ForeignItem<'_>) -> Option<Data> {
-        let def_id = self.tcx.hir().local_def_id(item.hir_id).to_def_id();
+        let def_id = item.def_id.to_def_id();
         let qualname = format!("::{}", self.tcx.def_path_str(def_id));
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, arg_names, ref generics) => {
@@ -156,7 +156,7 @@ impl<'tcx> SaveContext<'tcx> {
                             unsafety: hir::Unsafety::Unsafe,
                             // functions in extern block cannot be const
                             constness: hir::Constness::NotConst,
-                            abi: self.tcx.hir().get_foreign_abi(item.hir_id),
+                            abi: self.tcx.hir().get_foreign_abi(item.hir_id()),
                             // functions in extern block cannot be async
                             asyncness: hir::IsAsync::NotAsync,
                         },

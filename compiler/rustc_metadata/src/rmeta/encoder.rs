@@ -1411,8 +1411,7 @@ impl EncodeContext<'a, 'tcx> {
             hir::ItemKind::ForeignMod { items, .. } => record!(self.tables.children[def_id] <-
                 items
                     .iter()
-                    .map(|foreign_item| tcx.hir().local_def_id(
-                        foreign_item.id.hir_id).local_def_index)
+                    .map(|foreign_item| foreign_item.id.def_id.local_def_index)
             ),
             hir::ItemKind::Enum(..) => record!(self.tables.children[def_id] <-
                 self.tcx.adt_def(def_id).variants.iter().map(|v| {
@@ -1859,8 +1858,7 @@ impl Visitor<'tcx> for EncodeContext<'a, 'tcx> {
     }
     fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem<'tcx>) {
         intravisit::walk_foreign_item(self, ni);
-        let def_id = self.tcx.hir().local_def_id(ni.hir_id);
-        self.encode_info_for_foreign_item(def_id.to_def_id(), ni);
+        self.encode_info_for_foreign_item(ni.def_id.to_def_id(), ni);
     }
     fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
         intravisit::walk_generics(self, generics);

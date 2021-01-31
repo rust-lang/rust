@@ -685,7 +685,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             hir::ItemKind::ForeignMod { items, .. } => {
                 for foreign_item in items {
                     if foreign_item.vis.node.is_pub() {
-                        self.update(foreign_item.id.hir_id, item_level);
+                        self.update(foreign_item.id.hir_id(), item_level);
                     }
                 }
             }
@@ -800,9 +800,9 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             // Visit everything, but foreign items have their own levels.
             hir::ItemKind::ForeignMod { items, .. } => {
                 for foreign_item in items {
-                    let foreign_item_level = self.get(foreign_item.id.hir_id);
+                    let foreign_item_level = self.get(foreign_item.id.hir_id());
                     if foreign_item_level.is_some() {
-                        self.reach(foreign_item.id.hir_id, foreign_item_level)
+                        self.reach(foreign_item.id.hir_id(), foreign_item_level)
                             .generics()
                             .predicates()
                             .ty();
@@ -1653,7 +1653,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
-        if self.access_levels.is_reachable(item.hir_id) {
+        if self.access_levels.is_reachable(item.hir_id()) {
             intravisit::walk_foreign_item(self, item)
         }
     }
@@ -1982,8 +1982,8 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // Subitems of foreign modules have their own publicity.
             hir::ItemKind::ForeignMod { items, .. } => {
                 for foreign_item in items {
-                    let vis = tcx.visibility(tcx.hir().local_def_id(foreign_item.id.hir_id));
-                    self.check(foreign_item.id.hir_id, vis).generics().predicates().ty();
+                    let vis = tcx.visibility(foreign_item.id.def_id);
+                    self.check(foreign_item.id.hir_id(), vis).generics().predicates().ty();
                 }
             }
             // Subitems of structs and unions have their own publicity.

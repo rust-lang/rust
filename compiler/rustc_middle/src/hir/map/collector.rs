@@ -354,14 +354,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_foreign_item(&mut self, fi: &'hir ForeignItem<'hir>) {
-        debug_assert_eq!(
-            fi.hir_id.owner,
-            self.definitions.opt_hir_id_to_local_def_id(fi.hir_id).unwrap()
-        );
-        self.with_dep_node_owner(fi.hir_id.owner, fi, |this, hash| {
-            this.insert_with_hash(fi.span, fi.hir_id, Node::ForeignItem(fi), hash);
+        self.with_dep_node_owner(fi.def_id, fi, |this, hash| {
+            this.insert_with_hash(fi.span, fi.hir_id(), Node::ForeignItem(fi), hash);
 
-            this.with_parent(fi.hir_id, |this| {
+            this.with_parent(fi.hir_id(), |this| {
                 intravisit::walk_foreign_item(this, fi);
             });
         });

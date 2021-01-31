@@ -583,7 +583,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
-        self.with_lint_attrs(it.hir_id, &it.attrs, |builder| {
+        self.with_lint_attrs(it.hir_id(), &it.attrs, |builder| {
             intravisit::walk_foreign_item(builder, it);
         })
     }
