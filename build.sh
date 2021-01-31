@@ -3,7 +3,7 @@ set -e
 
 # Settings
 export CHANNEL="release"
-build_sysroot=1
+build_sysroot="clif"
 target_dir='build'
 oldbe=''
 while [[ $# != 0 ]]; do
@@ -11,8 +11,9 @@ while [[ $# != 0 ]]; do
         "--debug")
             export CHANNEL="debug"
             ;;
-        "--without-sysroot")
-            build_sysroot=0
+        "--sysroot")
+            build_sysroot=$2
+            shift
             ;;
         "--target-dir")
             target_dir=$2
@@ -23,7 +24,7 @@ while [[ $# != 0 ]]; do
             ;;
         *)
             echo "Unknown flag '$1'"
-            echo "Usage: ./build.sh [--debug] [--without-sysroot] [--target-dir DIR] [--oldbe]"
+            echo "Usage: ./build.sh [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--oldbe]"
             exit 1
             ;;
     esac
@@ -62,10 +63,24 @@ if [[ "$TARGET_TRIPLE" == "x86_64-pc-windows-gnu" ]]; then
     cp $(rustc --print sysroot)/lib/rustlib/$TARGET_TRIPLE/lib/*.o "$target_dir/lib/rustlib/$TARGET_TRIPLE/lib/"
 fi
 
-if [[ "$build_sysroot" == "1" ]]; then
-    echo "[BUILD] sysroot"
-    dir=$(pwd)
-    cd "$target_dir"
-    time "$dir/build_sysroot/build_sysroot.sh"
-    cp lib/rustlib/*/lib/libstd-* lib/
-fi
+case "$build_sysroot" in
+    "none")
+        ;;
+    "llvm")
+        cp -r $(rustc --print sysroot)/lib/rustlib/$TARGET_TRIPLE/lib "$target_dir/lib/rustlib/$TARGET_TRIPLE/"
+        ;;
+    "clif")
+        echo "[BUILD] sysroot"
+        dir=$(pwd)
+        cd "$target_dir"
+        time "$dir/build_sysroot/build_sysroot.sh"
+        cp lib/rustlib/*/lib/libstd-* lib/
+        ;;
+    *)
+        echo "Unknown sysroot kind \`$build_sysroot\`."
+        echo "The allowed values are:"
+        echo "    none A sysroot that doesn't contain the standard library"
+        echo "    llvm Copy the sysroot from rustc compiled by cg_llvm"
+        echo "    clif Build a new sysroot using cg_clif"
+        exit 1
+esac
