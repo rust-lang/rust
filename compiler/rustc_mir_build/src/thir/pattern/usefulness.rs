@@ -1362,36 +1362,37 @@ fn is_useful<'p, 'tcx>(
         let u = match (v.row_data.witness_preference, is_covered) {
             (_, true) => Usefulness::new_not_useful(v.row_data.witness_preference),
             (ConstructWitness, false) => {
-                let mut u = Usefulness::new_useful(ConstructWitness);
-                // The column in the matrix history that we are currently processing.
-                let mut hist_col_id = matrix.last_col_history.len() - 1;
-                // Rewind the matrix history to reconstruct the appropriate witnesses.
-                for hist in matrix.history.iter().rev() {
-                    match *hist {
-                        UndoKind::Specialize {
-                            ty,
-                            span,
-                            ref ctor,
-                            ref ctor_wild_subpatterns,
-                            ..
-                        } => {
-                            let column = &matrix.last_col_history[hist_col_id];
-                            let selected_rows = &matrix.selected_rows_history[hist_col_id];
-                            let head_ctors =
-                                selected_rows.iter().map(|row| column[row.id].head_ctor(cx));
-                            let pcx = PatCtxt { cx, ty, span, is_top_level };
-                            u = u.apply_constructor(pcx, ctor, ctor_wild_subpatterns, head_ctors);
-                            hist_col_id -= 1;
-                        }
-                        UndoKind::OrPatBranch { .. } | UndoKind::OrPat { .. } => unreachable!(),
-                        UndoKind::OrPatsExp { any_or_pats } => {
-                            if any_or_pats {
-                                hist_col_id -= 1;
-                            }
-                        }
-                    }
-                }
-                u
+                unreachable!()
+                // let mut u = Usefulness::new_useful(ConstructWitness);
+                // // The column in the matrix history that we are currently processing.
+                // let mut hist_col_id = matrix.last_col_history.len() - 1;
+                // // Rewind the matrix history to reconstruct the appropriate witnesses.
+                // for hist in matrix.history.iter().rev() {
+                //     match *hist {
+                //         UndoKind::Specialize {
+                //             ty,
+                //             span,
+                //             ref ctor,
+                //             ref ctor_wild_subpatterns,
+                //             ..
+                //         } => {
+                //             let column = &matrix.last_col_history[hist_col_id];
+                //             let selected_rows = &matrix.selected_rows_history[hist_col_id];
+                //             let head_ctors =
+                //                 selected_rows.iter().map(|row| column[row.id].head_ctor(cx));
+                //             let pcx = PatCtxt { cx, ty, span, is_top_level };
+                //             u = u.apply_constructor(pcx, ctor, ctor_wild_subpatterns, head_ctors);
+                //             hist_col_id -= 1;
+                //         }
+                //         UndoKind::OrPatBranch { .. } | UndoKind::OrPat { .. } => unreachable!(),
+                //         UndoKind::OrPatsExp { any_or_pats } => {
+                //             if any_or_pats {
+                //                 hist_col_id -= 1;
+                //             }
+                //         }
+                //     }
+                // }
+                // u
             }
             (LeaveOutWitness, false) => {
                 let mut set = SubPatSet::empty();
@@ -1491,6 +1492,83 @@ fn is_useful<'p, 'tcx>(
     }
 }
 
+#[instrument(skip(cx, matrix, is_top_level))]
+fn exhaustiveness_witnesses<'p, 'tcx>(
+    cx: &MatchCheckCtxt<'p, 'tcx>,
+    matrix: &mut Matrix<'p, 'tcx>,
+    v: &PatStack<'p, 'tcx>,
+    is_top_level: bool,
+) -> Usefulness<'p, 'tcx> {
+    debug!("matrix,v={:?}{:?}", matrix, v);
+
+    // The base case. We are pattern-matching on () and the return value is
+    // based on whether our matrix has a row or not.
+    // NOTE: This could potentially be optimized by checking rows.is_empty()
+    // first and then, if v is non-empty, the return value is based on whether
+    // the type of the tuple we're checking is inhabited or not.
+    if matrix.column_count() == 0 {
+        let is_covered =
+            matrix.selected_rows.iter().any(|row| !matrix.row_data[row.id].is_under_guard);
+        let usefulness = if is_covered {
+            Usefulness::new_not_useful(ConstructWitness)
+        } else {
+            Usefulness::new_useful(ConstructWitness)
+        };
+        debug!(?usefulness);
+        return usefulness;
+    }
+
+    let pat = v.head();
+    // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
+    let ty = matrix.ty_of_last_col().unwrap_or(pat.ty);
+    let pcx = PatCtxt { cx, ty, span: pat.span, is_top_level };
+
+    // // FIXME: need to not shortcircuit wildcards first
+    // if matches!(v.row_data.witness_preference, ConstructWitness)
+    //     && super::deconstruct_pat::IntRange::is_integral(ty)
+    // {
+    //     let mut seen = Vec::new();
+    //     for entry in matrix.last_col() {
+    //         let (ctor, span) = (entry.head_ctor(cx), entry.pat.span);
+    //         let pcx = PatCtxt { cx, ty, span, is_top_level };
+    //         if let Constructor::IntRange(ctor_range) = &ctor {
+    //             // Lint on likely incorrect range patterns (#63987)
+    //             ctor_range.lint_overlapping_range_endpoints(
+    //                 pcx,
+    //                 seen.iter().copied(),
+    //                 matrix.column_count(),
+    //                 v.row_data.hir_id,
+    //             )
+    //         }
+    //         if !entry.is_under_guard {
+    //             seen.push((ctor, span));
+    //         }
+    //     }
+    // }
+    let v_ctor = v.head_ctor(cx);
+    // We split the head constructor of `v`.
+    let split_ctors = v_ctor.split(pcx, matrix.head_ctors(cx));
+    // For each constructor, we compute whether there's a value that starts with it that would
+    // witness the usefulness of `v`.
+    let mut usefulness = Usefulness::new_not_useful(ConstructWitness);
+    for ctor in split_ctors.into_iter() {
+        debug!("specialize({:?})", ctor);
+        // We cache the result of `Fields::wildcards` because it is used a lot.
+        let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
+        let v = v.pop_head_constructor(&ctor_wild_subpatterns);
+        matrix.specialize(pcx, ctor.clone(), ctor_wild_subpatterns.clone());
+        // Expand any or-patterns present in the new last column.
+        matrix.expand_or_patterns();
+        let u = exhaustiveness_witnesses(cx, matrix, &v, false);
+        matrix.undo();
+        matrix.undo();
+        let u = u.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns, matrix.head_ctors(cx));
+        usefulness.extend(u);
+    }
+    debug!(?usefulness);
+    usefulness
+}
+
 /// The arm of a match expression.
 #[derive(Clone, Copy)]
 crate struct MatchArm<'p, 'tcx> {
@@ -1560,9 +1638,8 @@ crate fn compute_match_usefulness<'p, 'tcx>(
         hir_id: scrut_hir_id,
     };
     let v = PatStack::from_pattern(wild_pattern, row_data);
-    let mut usefulness = Usefulness::new_not_useful(v.row_data.witness_preference);
     matrix.expand_or_patterns();
-    is_useful(cx, &mut matrix, &v, &mut usefulness, true);
+    let usefulness = exhaustiveness_witnesses(cx, &mut matrix, &v, true);
     let non_exhaustiveness_witnesses = match usefulness {
         WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
         NoWitnesses(_) => bug!(),
