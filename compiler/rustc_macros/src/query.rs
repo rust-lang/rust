@@ -189,25 +189,6 @@ impl<T: Parse> Parse for List<T> {
     }
 }
 
-/// A named group containing queries.
-///
-/// For now, the name is not used any more, but the capability remains interesting for future
-/// developments of the query system.
-struct Group {
-    #[allow(unused)]
-    name: Ident,
-    queries: List<Query>,
-}
-
-impl Parse for Group {
-    fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let name: Ident = input.parse()?;
-        let content;
-        braced!(content in input);
-        Ok(Group { name, queries: content.parse()? })
-    }
-}
-
 struct QueryModifiers {
     /// The description of the query.
     desc: (Option<Ident>, Punctuated<Expr, Token![,]>),
@@ -450,15 +431,15 @@ fn add_query_description_impl(
 }
 
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
-    let groups = parse_macro_input!(input as List<Group>);
+    let queries = parse_macro_input!(input as List<Query>);
 
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
     let mut dep_node_def_stream = quote! {};
     let mut cached_queries = quote! {};
 
-    for group in groups.0 {
-        for mut query in group.queries.0 {
+    //for group in groups.0 {
+        for mut query in queries.0 {
             let modifiers = process_modifiers(&mut query);
             let name = &query.name;
             let arg = &query.arg;
@@ -516,7 +497,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
             add_query_description_impl(&query, modifiers, &mut query_description_stream);
         }
-    }
+    //}
 
     TokenStream::from(quote! {
         macro_rules! rustc_query_append {
