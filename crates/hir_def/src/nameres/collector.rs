@@ -1273,12 +1273,8 @@ impl ModCollector<'_, '_> {
             // out of line module, resolve, parse and recurse
             ModKind::Outline {} => {
                 let ast_id = AstId::new(self.file_id, module.ast_id);
-                match self.mod_dir.resolve_declaration(
-                    self.def_collector.db,
-                    self.file_id,
-                    &module.name,
-                    path_attr,
-                ) {
+                let db = self.def_collector.db;
+                match self.mod_dir.resolve_declaration(db, self.file_id, &module.name, path_attr) {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
                         let module_id = self.push_child_module(
                             module.name.clone(),
@@ -1286,7 +1282,7 @@ impl ModCollector<'_, '_> {
                             Some((file_id, is_mod_rs)),
                             &self.item_tree[module.visibility],
                         );
-                        let item_tree = self.def_collector.db.item_tree(file_id.into());
+                        let item_tree = db.item_tree(file_id.into());
                         ModCollector {
                             def_collector: &mut *self.def_collector,
                             macro_depth: self.macro_depth,
@@ -1296,7 +1292,12 @@ impl ModCollector<'_, '_> {
                             mod_dir,
                         }
                         .collect(item_tree.top_level_items());
-                        if is_macro_use {
+                        if is_macro_use
+                            || item_tree
+                                .top_level_attrs(db, self.def_collector.def_map.krate)
+                                .by_key("macro_use")
+                                .exists()
+                        {
                             self.import_all_legacy_macros(module_id);
                         }
                     }
