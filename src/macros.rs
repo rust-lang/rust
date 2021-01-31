@@ -16,7 +16,7 @@ use rustc_ast::token::{BinOpToken, DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{Cursor, LazyTokenStream, TokenStream, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
-use rustc_parse::parser::Parser;
+use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{stream_to_parser, MACRO_ARGUMENTS};
 use rustc_span::{
     symbol::{self, kw},
@@ -138,7 +138,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
     // `parse_item` returns `Option<ptr::P<ast::Item>>`.
     parse_macro_arg!(
         Item,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_item(),
+        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_item(ForceCollect::No),
         |x: Option<ptr::P<ast::Item>>| x
     );
 

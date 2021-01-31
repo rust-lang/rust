@@ -4,7 +4,10 @@ use std::path::{Path, PathBuf};
 use rustc_ast::ast;
 use rustc_ast::token::{DelimToken, TokenKind};
 use rustc_errors::Diagnostic;
-use rustc_parse::{new_parser_from_file, parser::Parser as RawParser};
+use rustc_parse::{
+    new_parser_from_file,
+    parser::{ForceCollect, Parser as RawParser},
+};
 use rustc_span::{sym, symbol::kw, Span};
 
 use crate::attr::first_attr_value_str_by_name;
@@ -247,7 +250,7 @@ impl<'a> Parser<'a> {
             while parser.token != TokenKind::CloseDelim(DelimToken::Brace)
                 && parser.token.kind != TokenKind::Eof
             {
-                let item = match parser.parse_item() {
+                let item = match parser.parse_item(ForceCollect::No) {
                     Ok(Some(item_ptr)) => item_ptr.into_inner(),
                     Ok(None) => continue,
                     Err(mut err) => {
