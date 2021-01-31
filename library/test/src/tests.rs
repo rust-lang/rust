@@ -391,12 +391,7 @@ fn parse_show_output_flag() {
 
 #[test]
 fn parse_include_ignored_flag() {
-    let args = vec![
-        "progname".to_string(),
-        "filter".to_string(),
-        "-Zunstable-options".to_string(),
-        "--include-ignored".to_string(),
-    ];
+    let args = vec!["progname".to_string(), "filter".to_string(), "--include-ignored".to_string()];
     let opts = parse_opts(&args).unwrap().unwrap();
     assert_eq!(opts.run_ignored, RunIgnored::Yes);
 }

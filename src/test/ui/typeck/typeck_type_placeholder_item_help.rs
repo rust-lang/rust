@@ -10,15 +10,18 @@ const TEST2: _ = 42u32;
 const TEST3: _ = Some(42);
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
-trait Test4 {
-    const TEST4: _ = 42;
+const TEST4: fn() -> _ = 42;
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+
+trait Test5 {
+    const TEST5: _ = 42;
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 }
 
-struct Test5;
+struct Test6;
 
-impl Test5 {
-    const TEST5: _ = 13;
+impl Test6 {
+    const TEST6: _ = 13;
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 }
 

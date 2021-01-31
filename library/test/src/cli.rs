@@ -230,9 +230,9 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     // Unstable flags
     let force_run_in_process = unstable_optflag!(matches, allow_unstable, "force-run-in-process");
     let exclude_should_panic = unstable_optflag!(matches, allow_unstable, "exclude-should-panic");
-    let include_ignored = unstable_optflag!(matches, allow_unstable, "include-ignored");
     let time_options = get_time_options(&matches, allow_unstable)?;
 
+    let include_ignored = matches.opt_present("include-ignored");
     let quiet = matches.opt_present("quiet");
     let exact = matches.opt_present("exact");
     let list = matches.opt_present("list");

@@ -7,9 +7,9 @@ The type checker is responsible for:
 1. Determining the type of each expression.
 2. Resolving methods and traits.
 3. Guaranteeing that most type rules are met. ("Most?", you say, "why most?"
-   Well, dear reader, read on)
+   Well, dear reader, read on.)
 
-The main entry point is `check_crate()`. Type checking operates in
+The main entry point is [`check_crate()`]. Type checking operates in
 several major phases:
 
 1. The collect phase first passes over all items and determines their
@@ -25,7 +25,7 @@ several major phases:
    containing function).  Inference is used to supply types wherever
    they are unknown. The actual checking of a function itself has
    several phases (check, regionck, writeback), as discussed in the
-   documentation for the `check` module.
+   documentation for the [`check`] module.
 
 The type checker is defined into various submodules which are documented
 independently:
@@ -56,7 +56,6 @@ This API is completely unstable and subject to change.
 */
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(array_value_iter)]
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]

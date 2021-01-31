@@ -62,7 +62,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
 fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
     // Increment the reference count of the arc to clone it.
     unsafe fn clone_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) -> RawWaker {
-        unsafe { Arc::incr_strong_count(waker as *const W) };
+        unsafe { Arc::increment_strong_count(waker as *const W) };
         RawWaker::new(
             waker as *const (),
             &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
@@ -83,7 +83,7 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 
     // Decrement the reference count of the Arc on drop
     unsafe fn drop_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) {
-        unsafe { Arc::decr_strong_count(waker as *const W) };
+        unsafe { Arc::decrement_strong_count(waker as *const W) };
     }
 
     RawWaker::new(

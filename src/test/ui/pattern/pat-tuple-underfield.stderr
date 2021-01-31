@@ -122,8 +122,8 @@ LL |         Point4(   a   ,     _    , _, _) => {}
    |                                  ^^^^^^
 help: use `..` to ignore the rest of the fields
    |
-LL |         Point4(   a   ,     _    , ..) => {}
-   |                                  ^^^^
+LL |         Point4(   a, ..) => {}
+   |                    ^^^^
 
 error: aborting due to 8 previous errors
 

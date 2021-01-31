@@ -4,7 +4,7 @@
 mod tests;
 
 use crate::fmt;
-use crate::io::{self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Write};
+use crate::io::{self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 
 /// A reader which is always at EOF.
 ///
@@ -56,6 +56,21 @@ impl BufRead for Empty {
     }
     #[inline]
     fn consume(&mut self, _n: usize) {}
+}
+
+#[stable(feature = "empty_seek", since = "1.51.0")]
+impl Seek for Empty {
+    fn seek(&mut self, _pos: SeekFrom) -> io::Result<u64> {
+        Ok(0)
+    }
+
+    fn stream_len(&mut self) -> io::Result<u64> {
+        Ok(0)
+    }
+
+    fn stream_position(&mut self) -> io::Result<u64> {
+        Ok(0)
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]

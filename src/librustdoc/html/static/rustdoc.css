@@ -156,6 +156,7 @@ code, pre, a.test-arrow {
 }
 .docblock pre code, .docblock-short pre code, .docblock code.spotlight {
 	padding: 0;
+	padding-right: 1ex;
 }
 .docblock code.spotlight :last-child {
 	padding-bottom: 0.6em;
@@ -404,7 +405,7 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock code, .docblock-short code {
+.docblock-short code {
 	white-space: pre-wrap;
 }
 
@@ -1623,6 +1624,10 @@ h4 > .notable-traits {
 
 	#settings-menu {
 		top: 7px;
+	}
+
+	.docblock {
+		margin-left: 12px;
 	}
 }
 

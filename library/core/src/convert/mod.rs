@@ -616,6 +616,14 @@ impl AsRef<str> for str {
     }
 }
 
+#[stable(feature = "as_mut_str_for_str", since = "1.51.0")]
+impl AsMut<str> for str {
+    #[inline]
+    fn as_mut(&mut self) -> &mut str {
+        self
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // THE NO-ERROR ERROR TYPE
 ////////////////////////////////////////////////////////////////////////////////

@@ -962,15 +962,13 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_mutate_strong_count)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
     ///
     /// unsafe {
     ///     let ptr = Arc::into_raw(five);
-    ///     Arc::incr_strong_count(ptr);
+    ///     Arc::increment_strong_count(ptr);
     ///
     ///     // This assertion is deterministic because we haven't shared
     ///     // the `Arc` between threads.
@@ -979,8 +977,8 @@ impl<T: ?Sized> Arc<T> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "arc_mutate_strong_count", issue = "71983")]
-    pub unsafe fn incr_strong_count(ptr: *const T) {
+    #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
+    pub unsafe fn increment_strong_count(ptr: *const T) {
         // Retain Arc, but don't touch refcount by wrapping in ManuallyDrop
         let arc = unsafe { mem::ManuallyDrop::new(Arc::<T>::from_raw(ptr)) };
         // Now increase refcount, but don't drop new refcount either
@@ -1001,27 +999,25 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_mutate_strong_count)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
     ///
     /// unsafe {
     ///     let ptr = Arc::into_raw(five);
-    ///     Arc::incr_strong_count(ptr);
+    ///     Arc::increment_strong_count(ptr);
     ///
     ///     // Those assertions are deterministic because we haven't shared
     ///     // the `Arc` between threads.
     ///     let five = Arc::from_raw(ptr);
     ///     assert_eq!(2, Arc::strong_count(&five));
-    ///     Arc::decr_strong_count(ptr);
+    ///     Arc::decrement_strong_count(ptr);
     ///     assert_eq!(1, Arc::strong_count(&five));
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "arc_mutate_strong_count", issue = "71983")]
-    pub unsafe fn decr_strong_count(ptr: *const T) {
+    #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
+    pub unsafe fn decrement_strong_count(ptr: *const T) {
         unsafe { mem::drop(Arc::from_raw(ptr)) };
     }
 
