@@ -2082,6 +2082,12 @@ impl<T> [T] {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
+    ///
+    /// [`binary_search_by`]: #method.binary_search_by
+    /// [`binary_search_by_key`]: #method.binary_search_by_key
+    /// [`partition_point`]: #method.partition_point
+    ///
     /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
@@ -2128,6 +2134,12 @@ impl<T> [T] {
     /// one of the matches could be returned. If the value is not found then
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
+    ///
+    /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
+    ///
+    /// [`binary_search`]: #method.binary_search
+    /// [`binary_search_by_key`]: #method.binary_search_by_key
+    /// [`partition_point`]: #method.partition_point
     ///
     /// # Examples
     ///
@@ -2186,7 +2198,12 @@ impl<T> [T] {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
+    ///
     /// [`sort_by_key`]: #method.sort_by_key
+    /// [`binary_search`]: #method.binary_search
+    /// [`binary_search_by`]: #method.binary_search_by
+    /// [`partition_point`]: #method.partition_point
     ///
     /// # Examples
     ///
@@ -3398,6 +3415,12 @@ impl<T> [T] {
     ///
     /// If this slice is not partitioned, the returned result is unspecified and meaningless,
     /// as this method performs a kind of binary search.
+    ///
+    /// See also [`binary_search`], [`binary_search_by`], and [`binary_search_by_key`].
+    ///
+    /// [`binary_search`]: #method.binary_search
+    /// [`binary_search_by`]: #method.binary_search_by
+    /// [`binary_search_by_key`]: #method.binary_search_by_key
     ///
     /// # Examples
     ///
