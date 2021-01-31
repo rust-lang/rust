@@ -1,5 +1,3 @@
-#![feature(const_in_array_repeat_expressions)]
-
 #[derive(Copy, Clone)]
 struct Foo<T>(T);
 

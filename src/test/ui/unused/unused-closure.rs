@@ -2,7 +2,6 @@
 // edition:2018
 
 #![feature(async_closure)]
-#![feature(const_in_array_repeat_expressions)]
 #![feature(generators)]
 #![deny(unused_must_use)]
 
@@ -17,10 +16,6 @@ fn unused() {
 
 
     [Box::new([|| {}; 10]); 1]; //~ ERROR unused array of boxed arrays of closures that must be used
-
-    [|| { //~ ERROR unused array of generators that must be used
-        yield 42u32;
-    }; 42];
 
     vec![|| "a"].pop().unwrap(); //~ ERROR unused closure that must be used
 

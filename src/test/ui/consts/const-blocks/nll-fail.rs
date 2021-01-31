@@ -1,5 +1,4 @@
 // ignore-compare-mode-nll
-#![feature(const_in_array_repeat_expressions, nll)]
 #![allow(warnings)]
 
 // Some type that is not copyable.

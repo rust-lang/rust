@@ -485,9 +485,6 @@ declare_features! (
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
 
-    /// Allows `[x; N]` where `x` is a constant (RFC 2203).
-    (active, const_in_array_repeat_expressions, "1.37.0", Some(49147), None),
-
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
 
