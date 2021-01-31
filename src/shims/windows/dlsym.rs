@@ -1,20 +1,11 @@
 use rustc_middle::mir;
 use rustc_target::spec::abi::Abi;
 
-use log::trace;
-
 use crate::*;
-use helpers::{check_abi, check_arg_count};
-use shims::windows::sync::EvalContextExt as _;
+use helpers::check_abi;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dlsym {
-    AcquireSRWLockExclusive,
-    ReleaseSRWLockExclusive,
-    TryAcquireSRWLockExclusive,
-    AcquireSRWLockShared,
-    ReleaseSRWLockShared,
-    TryAcquireSRWLockShared,
 }
 
 impl Dlsym {
@@ -22,12 +13,6 @@ impl Dlsym {
     // should become a NULL pointer (pretend it does not exist).
     pub fn from_str(name: &str) -> InterpResult<'static, Option<Dlsym>> {
         Ok(match name {
-            "AcquireSRWLockExclusive" => Some(Dlsym::AcquireSRWLockExclusive),
-            "ReleaseSRWLockExclusive" => Some(Dlsym::ReleaseSRWLockExclusive),
-            "TryAcquireSRWLockExclusive" => Some(Dlsym::TryAcquireSRWLockExclusive),
-            "AcquireSRWLockShared" => Some(Dlsym::AcquireSRWLockShared),
-            "ReleaseSRWLockShared" => Some(Dlsym::ReleaseSRWLockShared),
-            "TryAcquireSRWLockShared" => Some(Dlsym::TryAcquireSRWLockShared),
             "GetSystemTimePreciseAsFileTime" => None,
             _ => throw_unsup_format!("unsupported Windows dlsym: {}", name),
         })
@@ -40,46 +25,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         dlsym: Dlsym,
         abi: Abi,
-        args: &[OpTy<'tcx, Tag>],
+        _args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let (dest, ret) = ret.expect("we don't support any diverging dlsym");
+        let (_dest, _ret) = ret.expect("we don't support any diverging dlsym");
         assert!(this.tcx.sess.target.os == "windows");
 
         check_abi(abi, Abi::System)?;
 
-        match dlsym {
-            Dlsym::AcquireSRWLockExclusive => {
-                let &[ptr] = check_arg_count(args)?;
-                this.AcquireSRWLockExclusive(ptr)?;
-            }
-            Dlsym::ReleaseSRWLockExclusive => {
-                let &[ptr] = check_arg_count(args)?;
-                this.ReleaseSRWLockExclusive(ptr)?;
-            }
-            Dlsym::TryAcquireSRWLockExclusive => {
-                let &[ptr] = check_arg_count(args)?;
-                let ret = this.TryAcquireSRWLockExclusive(ptr)?;
-                this.write_scalar(Scalar::from_u8(ret), dest)?;
-            }
-            Dlsym::AcquireSRWLockShared => {
-                let &[ptr] = check_arg_count(args)?;
-                this.AcquireSRWLockShared(ptr)?;
-            }
-            Dlsym::ReleaseSRWLockShared => {
-                let &[ptr] = check_arg_count(args)?;
-                this.ReleaseSRWLockShared(ptr)?;
-            }
-            Dlsym::TryAcquireSRWLockShared => {
-                let &[ptr] = check_arg_count(args)?;
-                let ret = this.TryAcquireSRWLockShared(ptr)?;
-                this.write_scalar(Scalar::from_u8(ret), dest)?;
-            }
-        }
-
-        trace!("{:?}", this.dump_place(*dest));
-        this.go_to_block(ret);
-        Ok(())
+        match dlsym {}
     }
 }
