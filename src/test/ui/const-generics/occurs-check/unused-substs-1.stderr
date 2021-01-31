@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `A<{_: usize}>: Bar<{_: usize}>` is not satisfied
+  --> $DIR/unused-substs-1.rs:12:13
+   |
+LL | / struct A<const N: usize>
+LL | | where
+LL | |     A<N>: Bar<N>;
+   | |_________________- required by `A`
+...
+LL |       let _ = A;
+   |               ^ the trait `Bar<{_: usize}>` is not implemented for `A<{_: usize}>`
+   |
+   = help: the following implementations were found:
+             <A<7_usize> as Bar<N>>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
