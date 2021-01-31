@@ -3,7 +3,7 @@ use crate::convert::TryFrom;
 use crate::mem;
 use crate::ops::{self, Try};
 
-use super::{FusedIterator, TrustedLen};
+use super::{FusedIterator, TrustedLen, TrustedRandomAccess};
 
 /// Objects that have a notion of *successor* and *predecessor* operations.
 ///
@@ -493,6 +493,18 @@ macro_rules! range_exact_iter_impl {
     )*)
 }
 
+/// Safety: This macro must only be used on types that are `Copy` and result in ranges
+/// which have an exact `size_hint()` where the upper bound must not be `None`.
+macro_rules! unsafe_range_trusted_random_access_impl {
+    ($($t:ty)*) => ($(
+        #[doc(hidden)]
+        #[unstable(feature = "trusted_random_access", issue = "none")]
+        unsafe impl TrustedRandomAccess for ops::Range<$t> {
+            const MAY_HAVE_SIDE_EFFECT: bool = false;
+        }
+    )*)
+}
+
 macro_rules! range_incl_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -553,6 +565,18 @@ impl<A: Step> Iterator for ops::Range<A> {
     fn max(mut self) -> Option<A> {
         self.next_back()
     }
+
+    #[inline]
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: The TrustedRandomAccess contract requires that callers only  pass an index
+        // that is in bounds.
+        // Additionally Self: TrustedRandomAccess is only implemented for Copy types
+        // which means even repeated reads of the same index would be safe.
+        unsafe { Step::forward_unchecked(self.start.clone(), idx) }
+    }
 }
 
 // These macros generate `ExactSizeIterator` impls for various range types.
@@ -574,6 +598,23 @@ range_exact_iter_impl! {
     u32
     i32
 }
+
+unsafe_range_trusted_random_access_impl! {
+    usize u8 u16
+    isize i8 i16
+}
+
+#[cfg(target_pointer_width = "32")]
+unsafe_range_trusted_random_access_impl! {
+    u32 i32
+}
+
+#[cfg(target_pointer_width = "64")]
+unsafe_range_trusted_random_access_impl! {
+    u32 i32
+    u64 i64
+}
+
 range_incl_exact_iter_impl! {
     u8
     i8
