@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-export CG_CLIF_DISPLAY_CG_TIME=1
+source scripts/ext_config.sh
 
 ./build.sh --without-sysroot "$@"
 

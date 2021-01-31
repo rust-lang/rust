@@ -48,12 +48,19 @@ else
     cargo build $oldbe
 fi
 
+source scripts/ext_config.sh
+
 rm -rf "$target_dir"
 mkdir "$target_dir"
 mkdir "$target_dir"/bin "$target_dir"/lib
 ln target/$CHANNEL/cg_clif{,_build_sysroot} "$target_dir"/bin
 ln target/$CHANNEL/*rustc_codegen_cranelift* "$target_dir"/lib
 ln rust-toolchain scripts/config.sh scripts/cargo.sh "$target_dir"
+
+mkdir -p "$target_dir/lib/rustlib/$TARGET_TRIPLE/lib/"
+if [[ "$TARGET_TRIPLE" == "x86_64-pc-windows-gnu" ]]; then
+    cp $(rustc --print sysroot)/lib/rustlib/$TARGET_TRIPLE/lib/*.o "$target_dir/lib/rustlib/$TARGET_TRIPLE/lib/"
+fi
 
 if [[ "$build_sysroot" == "1" ]]; then
     echo "[BUILD] sysroot"
