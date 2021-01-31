@@ -509,10 +509,6 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         PatStack { pats: vec, row_data, head_ctor: OnceCell::new() }
     }
 
-    fn len(&self) -> usize {
-        self.pats.len()
-    }
-
     fn head(&self) -> &'p Pat<'tcx> {
         self.pats[0]
     }
@@ -581,7 +577,6 @@ struct SelectedRow<'p, 'tcx> {
 #[derive(Clone, Debug)]
 struct RowData<'p, 'tcx> {
     is_under_guard: bool,
-    witness_preference: WitnessPreference,
     hir_id: HirId,
     usefulness: Usefulness<'p, 'tcx>,
 }
@@ -628,12 +623,26 @@ struct Matrix<'p, 'tcx> {
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
-    /// A matrix is created with a given number of columns and all its rows must have that same
-    /// number of columns.
-    fn new(n_columns: usize) -> Self {
-        let mut this = Matrix::default();
-        this.columns.resize_with(n_columns, Vec::new);
-        this
+    /// A matrix is created from a list of match arms.
+    fn new(arms: &[MatchArm<'p, 'tcx>]) -> Self {
+        let mut matrix = Matrix::default();
+        let mut column = Vec::new();
+        for (id, arm) in arms.iter().enumerate() {
+            matrix.selected_rows.push(SelectedRow { id, origin: Origin::Pushed });
+            matrix.row_data.push(RowData {
+                is_under_guard: arm.has_guard,
+                hir_id: arm.hir_id,
+                usefulness: Usefulness::new_not_useful(LeaveOutWitness),
+            });
+            column.push(MatrixEntry {
+                pat: arm.pat,
+                next_row_id: id,
+                ctor: OnceCell::new(),
+                is_under_guard: arm.has_guard,
+            });
+        }
+        matrix.columns.push(column);
+        matrix
     }
 
     /// Number of columns of this matrix.
@@ -646,31 +655,6 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         let last_col = self.columns.last()?;
         let row = self.selected_rows.first()?;
         Some(last_col[row.id].pat.ty)
-    }
-
-    /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
-    /// expands it.
-    fn push(&mut self, mut row: PatStack<'p, 'tcx>) {
-        assert_eq!(self.column_count(), 1);
-        assert_eq!(row.len(), 1);
-
-        self.selected_rows.push(SelectedRow { id: self.row_data.len(), origin: Origin::Pushed });
-        let next_row_id = &mut self.selected_rows.last_mut().unwrap().id;
-        for i in 0..row.len() {
-            self.columns[i].push(MatrixEntry {
-                // Patterns are stored in the reverse order in `PatStack`.
-                pat: row.pats[row.len() - 1 - i],
-                next_row_id: *next_row_id,
-                ctor: OnceCell::new(),
-                is_under_guard: row.row_data.is_under_guard,
-            });
-            *next_row_id = self.columns[i].len() - 1;
-        }
-
-        if let Some(ctor) = row.head_ctor.take() {
-            let _ = self.columns.last().unwrap()[*next_row_id].ctor.set(ctor);
-        }
-        self.row_data.push(row.row_data);
     }
 
     /// Iterate over the last column; panics if no columns.
@@ -1460,21 +1444,11 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     scrut_hir_id: HirId,
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
-    let mut matrix = Matrix::new(1);
-    for arm in arms {
-        let row_data = RowData {
-            is_under_guard: arm.has_guard,
-            witness_preference: LeaveOutWitness,
-            hir_id: arm.hir_id,
-            usefulness: Usefulness::new_not_useful(LeaveOutWitness),
-        };
-        matrix.push(PatStack::from_pattern(arm.pat, row_data));
-    }
+    let mut matrix = Matrix::new(arms);
 
     let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(scrut_ty));
     let row_data = RowData {
         is_under_guard: false,
-        witness_preference: ConstructWitness,
         hir_id: scrut_hir_id,
         usefulness: Usefulness::new_not_useful(ConstructWitness),
     };
