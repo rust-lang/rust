@@ -1,6 +1,8 @@
 use crate::intrinsics;
 use crate::iter::adapters::{zip::try_get_unchecked, InPlaceIterable, SourceIter};
-use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedRandomAccess};
+use crate::iter::{
+    DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess,
+};
 use crate::ops::Try;
 
 /// An iterator that yields `None` forever after the underlying iterator
@@ -181,6 +183,12 @@ where
         FuseImpl::is_empty(self)
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: `TrustedLen` requires that an accurate length is reported via `size_hint()`. As `Fuse`
+// is just forwarding this to the wrapped iterator `I` this property is preserved and it is safe to
+// implement `TrustedLen` here.
+unsafe impl<I> TrustedLen for Fuse<I> where I: TrustedLen {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
