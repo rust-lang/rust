@@ -10,13 +10,15 @@ extern crate static_cross_crate;
 // Allowing this would be a disaster for pattern matching, we could violate exhaustiveness checking!
 const SLICE_MUT: &[u8; 1] = { //~ ERROR undefined behavior to use this value
 //~| NOTE encountered a reference pointing to a static variable
-//~| NOTE
+//~| NOTE undefined behavior
+//~| NOTE the raw bytes of the constant
     unsafe { &static_cross_crate::ZERO }
 };
 
 const U8_MUT: &u8 = { //~ ERROR undefined behavior to use this value
 //~| NOTE encountered a reference pointing to a static variable
-//~| NOTE
+//~| NOTE undefined behavior
+//~| NOTE the raw bytes of the constant
     unsafe { &static_cross_crate::ZERO[0] }
 };
 

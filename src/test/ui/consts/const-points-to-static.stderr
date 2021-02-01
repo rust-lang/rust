@@ -5,6 +5,9 @@ LL | const TEST: &u8 = &MY_STATIC;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a reference pointing to a static variable
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc0────────╼                         │ ╾──────╼
+           }
 
 warning: skipping const checks
    |

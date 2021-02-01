@@ -5,7 +5,8 @@
 const TEST: &u8 = &MY_STATIC;
 //~^ ERROR it is undefined behavior to use this value
 //~| NOTE  encountered a reference pointing to a static variable
-//~| NOTE
+//~| NOTE undefined behavior
+//~| NOTE  the raw bytes of the constant (size: 8, align: 8)
 
 static MY_STATIC: u8 = 4;
 

@@ -5,6 +5,9 @@ LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               00 00 00 00 00 00 00 00                         │ ........
+           }
 
 error: any use of this value will cause an error
   --> $DIR/ub-nonnull.rs:18:30
@@ -34,6 +37,9 @@ LL | const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 1, align: 1) {
+               00                                              │ .
+           }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-nonnull.rs:25:1
@@ -42,6 +48,9 @@ LL | const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               00 00 00 00 00 00 00 00                         │ ........
+           }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-nonnull.rs:33:1
@@ -50,6 +59,9 @@ LL | const UNINIT: NonZeroU8 = unsafe { MaybeUninit { uninit: () }.init };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes at .0, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 1, align: 1) {
+               __                                              │ ░
+           }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-nonnull.rs:41:1
@@ -58,6 +70,9 @@ LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 42, but expected something in the range 10..=30
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               2a 00 00 00                                     │ *...
+           }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-nonnull.rs:47:1
@@ -66,6 +81,9 @@ LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 20, but expected something less or equal to 10, or greater or equal to 30
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               14 00 00 00                                     │ ....
+           }
 
 error: aborting due to 7 previous errors
 
