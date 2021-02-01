@@ -16,7 +16,7 @@ pub extern crate rustc_plugin_impl as plugin;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
-use rustc_data_structures::profiling::print_time_passes_entry;
+use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorReported, PResult};
@@ -1312,7 +1312,8 @@ pub fn init_env_logger(env: &str) {
 }
 
 pub fn main() -> ! {
-    let start = Instant::now();
+    let start_time = Instant::now();
+    let start_rss = get_resident_set_size();
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook();
@@ -1330,7 +1331,11 @@ pub fn main() -> ! {
             .collect::<Vec<_>>();
         RunCompiler::new(&args, &mut callbacks).run()
     });
-    // The extra `\t` is necessary to align this label with the others.
-    print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
+
+    if callbacks.time_passes {
+        let end_rss = get_resident_set_size();
+        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss);
+    }
+
     process::exit(exit_code)
 }

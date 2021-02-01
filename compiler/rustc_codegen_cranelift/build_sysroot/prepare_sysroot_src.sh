@@ -29,4 +29,11 @@ git commit --no-gpg-sign -m "Patch $file"
 done
 popd
 
-echo "Successfully prepared libcore for building"
+git clone https://github.com/rust-lang/compiler-builtins.git || echo "rust-lang/compiler-builtins has already been cloned"
+pushd compiler-builtins
+git checkout -- .
+git checkout 0.1.39
+git apply ../../crate_patches/0001-compiler-builtins-Remove-rotate_left-from-Int.patch
+popd
+
+echo "Successfully prepared sysroot source for building"

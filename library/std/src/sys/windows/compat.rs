@@ -74,9 +74,9 @@ macro_rules! compat_fn {
             /// used, and would remove it.
             #[used]
             #[link_section = ".CRT$XCU"]
-            static INIT_TABLE_ENTRY: fn() = init;
+            static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
 
-            fn init() {
+            unsafe extern "C" fn init() {
                 // There is no locking here. This code is executed before main() is entered, and
                 // is guaranteed to be single-threaded.
                 //
@@ -84,16 +84,14 @@ macro_rules! compat_fn {
                 // any Rust functions or CRT functions, if those functions touch any global state,
                 // because this function runs during global initialization. For example, DO NOT
                 // do any dynamic allocation, don't call LoadLibrary, etc.
-                unsafe {
-                    let module_name: *const u8 = concat!($module, "\0").as_ptr();
-                    let symbol_name: *const u8 = concat!(stringify!($symbol), "\0").as_ptr();
-                    let module_handle = $crate::sys::c::GetModuleHandleA(module_name as *const i8);
-                    if !module_handle.is_null() {
-                        match $crate::sys::c::GetProcAddress(module_handle, symbol_name as *const i8) as usize {
-                            0 => {}
-                            n => {
-                                PTR = Some(mem::transmute::<usize, F>(n));
-                            }
+                let module_name: *const u8 = concat!($module, "\0").as_ptr();
+                let symbol_name: *const u8 = concat!(stringify!($symbol), "\0").as_ptr();
+                let module_handle = $crate::sys::c::GetModuleHandleA(module_name as *const i8);
+                if !module_handle.is_null() {
+                    match $crate::sys::c::GetProcAddress(module_handle, symbol_name as *const i8) as usize {
+                        0 => {}
+                        n => {
+                            PTR = Some(mem::transmute::<usize, F>(n));
                         }
                     }
                 }

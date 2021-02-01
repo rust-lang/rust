@@ -1,5 +1,5 @@
 use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
-use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Const, Ty};
@@ -64,7 +64,7 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
 
     fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {
         if self.borrowck_context.is_some() {
-            let origin = NLLRegionVariableOrigin::Existential { from_forall };
+            let origin = NllRegionVariableOrigin::Existential { from_forall };
             self.infcx.next_nll_region_var(origin)
         } else {
             self.infcx.tcx.lifetimes.re_erased
@@ -81,7 +81,7 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
         self.infcx.next_nll_region_var_in_universe(
-            NLLRegionVariableOrigin::Existential { from_forall: false },
+            NllRegionVariableOrigin::Existential { from_forall: false },
             universe,
         )
     }

@@ -1695,15 +1695,6 @@ function defocusSearchBar() {
 
             search.innerHTML = output;
             showSearchResults(search);
-            var tds = search.getElementsByTagName("td");
-            var td_width = 0;
-            if (tds.length > 0) {
-                td_width = tds[0].offsetWidth;
-            }
-            var width = search.offsetWidth - 40 - td_width;
-            onEachLazy(search.getElementsByClassName("desc"), function(e) {
-                e.style.width = width + "px";
-            });
             initSearchNav();
             var elems = document.getElementById("titles").childNodes;
             elems[0].onclick = function() { printTab(0); };

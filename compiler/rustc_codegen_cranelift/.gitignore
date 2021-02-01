@@ -8,6 +8,7 @@ perf.data.old
 *.string*
 /build
 /build_sysroot/sysroot_src
+/build_sysroot/compiler-builtins
 /rust
 /rand
 /regex

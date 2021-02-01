@@ -16,7 +16,7 @@ use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
-    InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin,
+    InferCtxt, InferOk, LateBoundRegionConversionTime, NllRegionVariableOrigin,
 };
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
@@ -872,7 +872,7 @@ impl MirTypeckRegionConstraints<'tcx> {
         match self.placeholder_index_to_region.get(placeholder_index) {
             Some(&v) => v,
             None => {
-                let origin = NLLRegionVariableOrigin::Placeholder(placeholder);
+                let origin = NllRegionVariableOrigin::Placeholder(placeholder);
                 let region = infcx.next_nll_region_var_in_universe(origin, placeholder.universe);
                 self.placeholder_index_to_region.push(region);
                 region

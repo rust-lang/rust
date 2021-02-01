@@ -11,7 +11,8 @@ use alloc_system::System;
 #[global_allocator]
 static ALLOC: System = System;
 
-#[link(name = "c")]
+#[cfg_attr(unix, link(name = "c"))]
+#[cfg_attr(target_env = "msvc", link(name = "msvcrt"))]
 extern "C" {
     fn puts(s: *const u8) -> i32;
 }

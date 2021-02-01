@@ -18,15 +18,17 @@ use rustc_hir::{AssocItemKind, HirIdSet, Node, PatKind};
 use rustc_middle::bug;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
+use rustc_middle::mir::abstract_const::Node as ACNode;
 use rustc_middle::span_bug;
 use rustc_middle::ty::fold::TypeVisitor;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::{self, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use rustc_trait_selection::traits::const_evaluatable::{self, AbstractConst};
 
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
@@ -112,17 +114,33 @@ where
                 ty.visit_with(self)
             }
             ty::PredicateKind::RegionOutlives(..) => ControlFlow::CONTINUE,
-            ty::PredicateKind::ConstEvaluatable(..)
+            ty::PredicateKind::ConstEvaluatable(defs, substs)
                 if self.def_id_visitor.tcx().features().const_evaluatable_checked =>
             {
-                // FIXME(const_evaluatable_checked): If the constant used here depends on a
-                // private function we may have to do something here...
-                //
-                // For now, let's just pretend that everything is fine.
+                let tcx = self.def_id_visitor.tcx();
+                if let Ok(Some(ct)) = AbstractConst::new(tcx, defs, substs) {
+                    self.visit_abstract_const_expr(tcx, ct)?;
+                }
                 ControlFlow::CONTINUE
             }
             _ => bug!("unexpected predicate: {:?}", predicate),
         }
+    }
+
+    fn visit_abstract_const_expr(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        ct: AbstractConst<'tcx>,
+    ) -> ControlFlow<V::BreakTy> {
+        const_evaluatable::walk_abstract_const(tcx, ct, |node| match node {
+            ACNode::Leaf(leaf) => {
+                let leaf = leaf.subst(tcx, ct.substs);
+                self.visit_const(leaf)
+            }
+            ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
+                ControlFlow::CONTINUE
+            }
+        })
     }
 
     fn visit_predicates(
@@ -240,6 +258,15 @@ where
         } else {
             ty.super_visit_with(self)
         }
+    }
+
+    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        self.visit_ty(c.ty)?;
+        let tcx = self.def_id_visitor.tcx();
+        if let Ok(Some(ct)) = AbstractConst::from_const(tcx, c) {
+            self.visit_abstract_const_expr(tcx, ct)?;
+        }
+        ControlFlow::CONTINUE
     }
 }
 

@@ -9,7 +9,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::canonical::QueryOutlivesConstraint;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
-use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::mir::{
     Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
     ConstraintCategory, Local, Location, ReturnConstraint,
@@ -143,9 +143,9 @@ pub(crate) struct AppliedMemberConstraint {
 
 pub(crate) struct RegionDefinition<'tcx> {
     /// What kind of variable is this -- a free region? existential
-    /// variable? etc. (See the `NLLRegionVariableOrigin` for more
+    /// variable? etc. (See the `NllRegionVariableOrigin` for more
     /// info.)
-    pub(in crate::borrow_check) origin: NLLRegionVariableOrigin,
+    pub(in crate::borrow_check) origin: NllRegionVariableOrigin,
 
     /// Which universe is this region variable defined in? This is
     /// most often `ty::UniverseIndex::ROOT`, but when we encounter
@@ -451,7 +451,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let scc = self.constraint_sccs.scc(variable);
 
             match self.definitions[variable].origin {
-                NLLRegionVariableOrigin::FreeRegion => {
+                NllRegionVariableOrigin::FreeRegion => {
                     // For each free, universally quantified region X:
 
                     // Add all nodes in the CFG to liveness constraints
@@ -462,7 +462,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     self.scc_values.add_element(scc, variable);
                 }
 
-                NLLRegionVariableOrigin::Placeholder(placeholder) => {
+                NllRegionVariableOrigin::Placeholder(placeholder) => {
                     // Each placeholder region is only visible from
                     // its universe `ui` and its extensions. So we
                     // can't just add it into `scc` unless the
@@ -480,8 +480,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     }
                 }
 
-                NLLRegionVariableOrigin::RootEmptyRegion
-                | NLLRegionVariableOrigin::Existential { .. } => {
+                NllRegionVariableOrigin::RootEmptyRegion
+                | NllRegionVariableOrigin::Existential { .. } => {
                     // For existential, regions, nothing to do.
                 }
             }
@@ -1348,7 +1348,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         for (fr, fr_definition) in self.definitions.iter_enumerated() {
             match fr_definition.origin {
-                NLLRegionVariableOrigin::FreeRegion => {
+                NllRegionVariableOrigin::FreeRegion => {
                     // Go through each of the universal regions `fr` and check that
                     // they did not grow too large, accumulating any requirements
                     // for our caller into the `outlives_requirements` vector.
@@ -1360,12 +1360,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     );
                 }
 
-                NLLRegionVariableOrigin::Placeholder(placeholder) => {
+                NllRegionVariableOrigin::Placeholder(placeholder) => {
                     self.check_bound_universal_region(fr, placeholder, errors_buffer);
                 }
 
-                NLLRegionVariableOrigin::RootEmptyRegion
-                | NLLRegionVariableOrigin::Existential { .. } => {
+                NllRegionVariableOrigin::RootEmptyRegion
+                | NllRegionVariableOrigin::Existential { .. } => {
                     // nothing to check here
                 }
             }
@@ -1449,7 +1449,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 errors_buffer.push(RegionErrorKind::RegionError {
                     longer_fr: *longer_fr,
                     shorter_fr: *shorter_fr,
-                    fr_origin: NLLRegionVariableOrigin::FreeRegion,
+                    fr_origin: NllRegionVariableOrigin::FreeRegion,
                     is_reported: true,
                 });
             }
@@ -1459,16 +1459,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // a more complete picture on how to separate this responsibility.
         for (fr, fr_definition) in self.definitions.iter_enumerated() {
             match fr_definition.origin {
-                NLLRegionVariableOrigin::FreeRegion => {
+                NllRegionVariableOrigin::FreeRegion => {
                     // handled by polonius above
                 }
 
-                NLLRegionVariableOrigin::Placeholder(placeholder) => {
+                NllRegionVariableOrigin::Placeholder(placeholder) => {
                     self.check_bound_universal_region(fr, placeholder, errors_buffer);
                 }
 
-                NLLRegionVariableOrigin::RootEmptyRegion
-                | NLLRegionVariableOrigin::Existential { .. } => {
+                NllRegionVariableOrigin::RootEmptyRegion
+                | NllRegionVariableOrigin::Existential { .. } => {
                     // nothing to check here
                 }
             }
@@ -1516,7 +1516,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 errors_buffer.push(RegionErrorKind::RegionError {
                     longer_fr,
                     shorter_fr: representative,
-                    fr_origin: NLLRegionVariableOrigin::FreeRegion,
+                    fr_origin: NllRegionVariableOrigin::FreeRegion,
                     is_reported: true,
                 });
             }
@@ -1539,7 +1539,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 errors_buffer.push(RegionErrorKind::RegionError {
                     longer_fr,
                     shorter_fr,
-                    fr_origin: NLLRegionVariableOrigin::FreeRegion,
+                    fr_origin: NllRegionVariableOrigin::FreeRegion,
                     is_reported: !error_reported,
                 });
 
@@ -1597,7 +1597,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let blame_span_category = self.find_outlives_blame_span(
                     body,
                     longer_fr,
-                    NLLRegionVariableOrigin::FreeRegion,
+                    NllRegionVariableOrigin::FreeRegion,
                     shorter_fr,
                 );
 
@@ -1656,7 +1656,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
             longer_fr,
             error_element,
-            fr_origin: NLLRegionVariableOrigin::Placeholder(placeholder),
+            fr_origin: NllRegionVariableOrigin::Placeholder(placeholder),
         });
     }
 
@@ -1732,7 +1732,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("cannot_name_value_of(r1={:?}, r2={:?})", r1, r2);
 
         match self.definitions[r2].origin {
-            NLLRegionVariableOrigin::Placeholder(placeholder) => {
+            NllRegionVariableOrigin::Placeholder(placeholder) => {
                 let universe1 = self.definitions[r1].universe;
                 debug!(
                     "cannot_name_value_of: universe1={:?} placeholder={:?}",
@@ -1741,9 +1741,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 universe1.cannot_name(placeholder.universe)
             }
 
-            NLLRegionVariableOrigin::RootEmptyRegion
-            | NLLRegionVariableOrigin::FreeRegion
-            | NLLRegionVariableOrigin::Existential { .. } => false,
+            NllRegionVariableOrigin::RootEmptyRegion
+            | NllRegionVariableOrigin::FreeRegion
+            | NllRegionVariableOrigin::Existential { .. } => false,
         }
     }
 
@@ -1771,7 +1771,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         fr1: RegionVid,
-        fr1_origin: NLLRegionVariableOrigin,
+        fr1_origin: NllRegionVariableOrigin,
         fr2: RegionVid,
     ) -> (ConstraintCategory, Span) {
         let (category, _, span) = self.best_blame_constraint(body, fr1, fr1_origin, |r| {
@@ -1933,7 +1933,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .definitions
                 .iter_enumerated()
                 .find_map(|(r, definition)| match definition.origin {
-                    NLLRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
+                    NllRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
                     _ => None,
                 })
                 .unwrap(),
@@ -1965,7 +1965,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         from_region: RegionVid,
-        from_region_origin: NLLRegionVariableOrigin,
+        from_region_origin: NllRegionVariableOrigin,
         target_test: impl Fn(RegionVid) -> bool,
     ) -> (ConstraintCategory, bool, Span) {
         debug!(
@@ -2059,11 +2059,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         //
         // and here we prefer to blame the source (the y = x statement).
         let blame_source = match from_region_origin {
-            NLLRegionVariableOrigin::FreeRegion
-            | NLLRegionVariableOrigin::Existential { from_forall: false } => true,
-            NLLRegionVariableOrigin::RootEmptyRegion
-            | NLLRegionVariableOrigin::Placeholder(_)
-            | NLLRegionVariableOrigin::Existential { from_forall: true } => false,
+            NllRegionVariableOrigin::FreeRegion
+            | NllRegionVariableOrigin::Existential { from_forall: false } => true,
+            NllRegionVariableOrigin::RootEmptyRegion
+            | NllRegionVariableOrigin::Placeholder(_)
+            | NllRegionVariableOrigin::Existential { from_forall: true } => false,
         };
 
         let find_region = |i: &usize| {
@@ -2144,8 +2144,8 @@ impl<'tcx> RegionDefinition<'tcx> {
         // `init_universal_regions`.
 
         let origin = match rv_origin {
-            RegionVariableOrigin::NLL(origin) => origin,
-            _ => NLLRegionVariableOrigin::Existential { from_forall: false },
+            RegionVariableOrigin::Nll(origin) => origin,
+            _ => NllRegionVariableOrigin::Existential { from_forall: false },
         };
 
         Self { origin, universe, external_name: None }
