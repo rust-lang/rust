@@ -12,7 +12,6 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
 use rustc_index::vec::IndexVec;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
@@ -196,80 +195,8 @@ impl<'hir> Map<'hir> {
         }
 
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
-        let def_kind = match self.find(hir_id)? {
-            Node::Item(item) => match item.kind {
-                ItemKind::Static(..) => DefKind::Static,
-                ItemKind::Const(..) => DefKind::Const,
-                ItemKind::Fn(..) => DefKind::Fn,
-                ItemKind::Mod(..) => DefKind::Mod,
-                ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
-                ItemKind::TyAlias(..) => DefKind::TyAlias,
-                ItemKind::Enum(..) => DefKind::Enum,
-                ItemKind::Struct(..) => DefKind::Struct,
-                ItemKind::Union(..) => DefKind::Union,
-                ItemKind::Trait(..) => DefKind::Trait,
-                ItemKind::TraitAlias(..) => DefKind::TraitAlias,
-                ItemKind::ExternCrate(_) => DefKind::ExternCrate,
-                ItemKind::Use(..) => DefKind::Use,
-                ItemKind::ForeignMod { .. } => DefKind::ForeignMod,
-                ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
-                ItemKind::Impl { .. } => DefKind::Impl,
-            },
-            Node::ForeignItem(item) => match item.kind {
-                ForeignItemKind::Fn(..) => DefKind::Fn,
-                ForeignItemKind::Static(..) => DefKind::Static,
-                ForeignItemKind::Type => DefKind::ForeignTy,
-            },
-            Node::TraitItem(item) => match item.kind {
-                TraitItemKind::Const(..) => DefKind::AssocConst,
-                TraitItemKind::Fn(..) => DefKind::AssocFn,
-                TraitItemKind::Type(..) => DefKind::AssocTy,
-            },
-            Node::ImplItem(item) => match item.kind {
-                ImplItemKind::Const(..) => DefKind::AssocConst,
-                ImplItemKind::Fn(..) => DefKind::AssocFn,
-                ImplItemKind::TyAlias(..) => DefKind::AssocTy,
-            },
-            Node::Variant(_) => DefKind::Variant,
-            Node::Ctor(variant_data) => {
-                // FIXME(eddyb) is this even possible, if we have a `Node::Ctor`?
-                assert_ne!(variant_data.ctor_hir_id(), None);
-
-                let ctor_of = match self.find(self.get_parent_node(hir_id)) {
-                    Some(Node::Item(..)) => def::CtorOf::Struct,
-                    Some(Node::Variant(..)) => def::CtorOf::Variant,
-                    _ => unreachable!(),
-                };
-                DefKind::Ctor(ctor_of, def::CtorKind::from_hir(variant_data))
-            }
-            Node::AnonConst(_) => DefKind::AnonConst,
-            Node::Field(_) => DefKind::Field,
-            Node::Expr(expr) => match expr.kind {
-                ExprKind::Closure(.., None) => DefKind::Closure,
-                ExprKind::Closure(.., Some(_)) => DefKind::Generator,
-                _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
-            },
-            Node::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
-            Node::GenericParam(param) => match param.kind {
-                GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
-                GenericParamKind::Type { .. } => DefKind::TyParam,
-                GenericParamKind::Const { .. } => DefKind::ConstParam,
-            },
-            Node::Crate(_) => DefKind::Mod,
-            Node::Stmt(_)
-            | Node::PathSegment(_)
-            | Node::Ty(_)
-            | Node::TraitRef(_)
-            | Node::Pat(_)
-            | Node::Binding(_)
-            | Node::Local(_)
-            | Node::Param(_)
-            | Node::Arm(_)
-            | Node::Lifetime(_)
-            | Node::Visibility(_)
-            | Node::Block(_) => return None,
-        };
-        Some(def_kind)
+        let entry = self.find_entry(hir_id)?;
+        entry.node.opt_def_kind(|| self.get(entry.parent))
     }
 
     pub fn def_kind(&self, local_def_id: LocalDefId) -> DefKind {
@@ -891,48 +818,19 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn opt_span(&self, hir_id: HirId) -> Option<Span> {
-        let span = match self.find_entry(hir_id)?.node {
-            Node::Param(param) => param.span,
-            Node::Item(item) => match &item.kind {
-                ItemKind::Fn(sig, _, _) => sig.span,
-                _ => item.span,
-            },
-            Node::ForeignItem(foreign_item) => foreign_item.span,
-            Node::TraitItem(trait_item) => match &trait_item.kind {
-                TraitItemKind::Fn(sig, _) => sig.span,
-                _ => trait_item.span,
-            },
-            Node::ImplItem(impl_item) => match &impl_item.kind {
-                ImplItemKind::Fn(sig, _) => sig.span,
-                _ => impl_item.span,
-            },
-            Node::Variant(variant) => variant.span,
-            Node::Field(field) => field.span,
+        let node = self.find_entry(hir_id)?.node;
+        if let Some(span) = node.opt_span() {
+            return Some(span);
+        };
+        let span = match node {
             Node::AnonConst(constant) => self.body(constant.body).value.span,
-            Node::Expr(expr) => expr.span,
-            Node::Stmt(stmt) => stmt.span,
-            Node::PathSegment(seg) => seg.ident.span,
-            Node::Ty(ty) => ty.span,
-            Node::TraitRef(tr) => tr.path.span,
-            Node::Binding(pat) => pat.span,
-            Node::Pat(pat) => pat.span,
-            Node::Arm(arm) => arm.span,
-            Node::Block(block) => block.span,
             Node::Ctor(..) => match self.find(self.get_parent_node(hir_id))? {
                 Node::Item(item) => item.span,
                 Node::Variant(variant) => variant.span,
                 _ => unreachable!(),
             },
-            Node::Lifetime(lifetime) => lifetime.span,
-            Node::GenericParam(param) => param.span,
-            Node::Visibility(&Spanned {
-                node: VisibilityKind::Restricted { ref path, .. },
-                ..
-            }) => path.span,
             Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
-            Node::Local(local) => local.span,
-            Node::MacroDef(macro_def) => macro_def.span,
-            Node::Crate(item) => item.span,
+            _ => bug!("span should be known by now"),
         };
         Some(span)
     }
@@ -1052,7 +950,25 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
         collector.finalize_and_compute_crate_hash(crate_disambiguator, &*tcx.cstore, cmdline_args)
     };
 
-    tcx.arena.alloc(IndexedHir { crate_hash, map })
+    let indexed = tcx.arena.alloc(IndexedHir { crate_hash, map });
+    let map = &indexed.map;
+
+    // Those queries are trivial, so we force-feed them.
+    for (id, hir_owner_data) in map.iter_enumerated() {
+        tcx.feed().hir_owner(id, hir_owner_data.signature);
+        tcx.feed().hir_owner_nodes(id, hir_owner_data.with_bodies.as_deref());
+        if let Some(entry) = hir_owner_data.signature {
+            if let Some(span) = entry.node.opt_span() {
+                tcx.feed().def_span(id, span);
+            }
+            tcx.feed().opt_def_kind(
+                id,
+                entry.node.opt_def_kind(|| map[entry.parent.owner].signature.unwrap().node),
+            );
+        }
+    }
+
+    indexed
 }
 
 fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {

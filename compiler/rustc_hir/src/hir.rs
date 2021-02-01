@@ -1,7 +1,8 @@
-use crate::def::{DefKind, Namespace, Res};
+use crate::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::{itemlikevisit, LangItem};
+use rustc_span::hygiene::MacroKind;
 
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{self as ast, CrateSugar, LlvmAsmDialect};
@@ -2845,5 +2846,134 @@ impl<'hir> Node<'hir> {
             Node::Ctor(variant) => variant.ctor_hir_id(),
             Node::Crate(_) | Node::Visibility(_) => None,
         }
+    }
+
+    pub fn opt_def_kind(&self, ctor_parent_node: impl Fn() -> Self) -> Option<DefKind> {
+        let def_kind = match self {
+            Node::Item(item) => match item.kind {
+                ItemKind::Static(..) => DefKind::Static,
+                ItemKind::Const(..) => DefKind::Const,
+                ItemKind::Fn(..) => DefKind::Fn,
+                ItemKind::Mod(..) => DefKind::Mod,
+                ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
+                ItemKind::TyAlias(..) => DefKind::TyAlias,
+                ItemKind::Enum(..) => DefKind::Enum,
+                ItemKind::Struct(..) => DefKind::Struct,
+                ItemKind::Union(..) => DefKind::Union,
+                ItemKind::Trait(..) => DefKind::Trait,
+                ItemKind::TraitAlias(..) => DefKind::TraitAlias,
+                ItemKind::ExternCrate(_) => DefKind::ExternCrate,
+                ItemKind::Use(..) => DefKind::Use,
+                ItemKind::ForeignMod { .. } => DefKind::ForeignMod,
+                ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
+                ItemKind::Impl { .. } => DefKind::Impl,
+            },
+            Node::ForeignItem(item) => match item.kind {
+                ForeignItemKind::Fn(..) => DefKind::Fn,
+                ForeignItemKind::Static(..) => DefKind::Static,
+                ForeignItemKind::Type => DefKind::ForeignTy,
+            },
+            Node::TraitItem(item) => match item.kind {
+                TraitItemKind::Const(..) => DefKind::AssocConst,
+                TraitItemKind::Fn(..) => DefKind::AssocFn,
+                TraitItemKind::Type(..) => DefKind::AssocTy,
+            },
+            Node::ImplItem(item) => match item.kind {
+                ImplItemKind::Const(..) => DefKind::AssocConst,
+                ImplItemKind::Fn(..) => DefKind::AssocFn,
+                ImplItemKind::TyAlias(..) => DefKind::AssocTy,
+            },
+            Node::Variant(_) => DefKind::Variant,
+            Node::Ctor(variant_data) => {
+                // FIXME(eddyb) is this even possible, if we have a `Node::Ctor`?
+                assert_ne!(variant_data.ctor_hir_id(), None);
+
+                let ctor_of = match ctor_parent_node() {
+                    Node::Item(..) => CtorOf::Struct,
+                    Node::Variant(..) => CtorOf::Variant,
+                    _ => unreachable!(),
+                };
+                DefKind::Ctor(ctor_of, CtorKind::from_hir(variant_data))
+            }
+            Node::AnonConst(_) => DefKind::AnonConst,
+            Node::Field(_) => DefKind::Field,
+            Node::Expr(expr) => match expr.kind {
+                ExprKind::Closure(.., None) => DefKind::Closure,
+                ExprKind::Closure(.., Some(_)) => DefKind::Generator,
+                _ => panic!("def_kind: unsupported node: {:?}", expr),
+            },
+            Node::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
+            Node::GenericParam(param) => match param.kind {
+                GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
+                GenericParamKind::Type { .. } => DefKind::TyParam,
+                GenericParamKind::Const { .. } => DefKind::ConstParam,
+            },
+            Node::Crate(_) => DefKind::Mod,
+            Node::Stmt(_)
+            | Node::PathSegment(_)
+            | Node::Ty(_)
+            | Node::TraitRef(_)
+            | Node::Pat(_)
+            | Node::Binding(_)
+            | Node::Local(_)
+            | Node::Param(_)
+            | Node::Arm(_)
+            | Node::Lifetime(_)
+            | Node::Visibility(_)
+            | Node::Block(_) => return None,
+        };
+        Some(def_kind)
+    }
+
+    pub fn opt_span(&self) -> Option<Span> {
+        match self {
+            Node::Item(item) => match &item.kind {
+                ItemKind::Fn(sig, _, _) => return Some(sig.span),
+                _ => {}
+            },
+            Node::TraitItem(trait_item) => match &trait_item.kind {
+                TraitItemKind::Fn(sig, _) => return Some(sig.span),
+                _ => {}
+            },
+            Node::ImplItem(impl_item) => match &impl_item.kind {
+                ImplItemKind::Fn(sig, _) => return Some(sig.span),
+                _ => {}
+            },
+            _ => {}
+        };
+        self.opt_span_with_body()
+    }
+
+    pub fn opt_span_with_body(&self) -> Option<Span> {
+        let span = match self {
+            Node::Param(param) => param.span,
+            Node::Item(item) => item.span,
+            Node::ForeignItem(foreign_item) => foreign_item.span,
+            Node::TraitItem(trait_item) => trait_item.span,
+            Node::ImplItem(impl_item) => impl_item.span,
+            Node::Variant(variant) => variant.span,
+            Node::Field(field) => field.span,
+            Node::AnonConst(_) => return None,
+            Node::Expr(expr) => expr.span,
+            Node::Stmt(stmt) => stmt.span,
+            Node::PathSegment(seg) => seg.ident.span,
+            Node::Ty(ty) => ty.span,
+            Node::TraitRef(tr) => tr.path.span,
+            Node::Binding(pat) => pat.span,
+            Node::Pat(pat) => pat.span,
+            Node::Arm(arm) => arm.span,
+            Node::Block(block) => block.span,
+            Node::Ctor(..) => return None,
+            Node::Lifetime(lifetime) => lifetime.span,
+            Node::GenericParam(param) => param.span,
+            Node::Visibility(vis) => match vis.node {
+                VisibilityKind::Restricted { ref path, .. } => path.span,
+                _ => return None,
+            },
+            Node::Local(local) => local.span,
+            Node::MacroDef(macro_def) => macro_def.span,
+            Node::Crate(item) => item.span,
+        };
+        Some(span)
     }
 }
