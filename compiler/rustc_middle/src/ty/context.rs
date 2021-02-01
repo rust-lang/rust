@@ -59,9 +59,8 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
-use rustc_type_ir::Interner;
+use rustc_type_ir::{InternAs, InternIteratorElement, Interner};
 
-use smallvec::SmallVec;
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -77,12 +76,30 @@ pub struct TyInterner<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
+#[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx, D: Decoder + TyDecoder<'tcx>> Interner<D> for TyInterner<'tcx> {
+    type GenericArg = GenericArg<'tcx>;
+    type ListGenericArg = &'tcx List<GenericArg<'tcx>>;
+
     type Predicate = Predicate<'tcx>;
     type BinderPredicateKind = Binder<PredicateKind<'tcx>>;
 
+    type Ty = Ty<'tcx>;
+    type TyKind = TyKind<'tcx>;
+
     fn mk_predicate(self, binder: Binder<PredicateKind<'tcx>>) -> Predicate<'tcx> {
         self.tcx.mk_predicate(binder)
+    }
+
+    fn mk_ty(self, st: TyKind<'tcx>) -> Ty<'tcx> {
+        self.tcx.mk_ty(st)
+    }
+
+    fn mk_substs<I: InternAs<[Self::GenericArg], Self::ListGenericArg>>(
+        self,
+        iter: I,
+    ) -> I::Output {
+        self.tcx.mk_substs(iter)
     }
 }
 
@@ -2665,81 +2682,6 @@ impl TyCtxtAt<'tcx> {
     #[track_caller]
     pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {
         self.tcx.ty_error_with_message(self.span, msg)
-    }
-}
-
-pub trait InternAs<T: ?Sized, R> {
-    type Output;
-    fn intern_with<F>(self, f: F) -> Self::Output
-    where
-        F: FnOnce(&T) -> R;
-}
-
-impl<I, T, R, E> InternAs<[T], R> for I
-where
-    E: InternIteratorElement<T, R>,
-    I: Iterator<Item = E>,
-{
-    type Output = E::Output;
-    fn intern_with<F>(self, f: F) -> Self::Output
-    where
-        F: FnOnce(&[T]) -> R,
-    {
-        E::intern_with(self, f)
-    }
-}
-
-pub trait InternIteratorElement<T, R>: Sized {
-    type Output;
-    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output;
-}
-
-impl<T, R> InternIteratorElement<T, R> for T {
-    type Output = R;
-    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
-        f(&iter.collect::<SmallVec<[_; 8]>>())
-    }
-}
-
-impl<'a, T, R> InternIteratorElement<T, R> for &'a T
-where
-    T: Clone + 'a,
-{
-    type Output = R;
-    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
-        f(&iter.cloned().collect::<SmallVec<[_; 8]>>())
-    }
-}
-
-impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
-    type Output = Result<R, E>;
-    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(
-        mut iter: I,
-        f: F,
-    ) -> Self::Output {
-        // This code is hot enough that it's worth specializing for the most
-        // common length lists, to avoid the overhead of `SmallVec` creation.
-        // The match arms are in order of frequency. The 1, 2, and 0 cases are
-        // typically hit in ~95% of cases. We assume that if the upper and
-        // lower bounds from `size_hint` agree they are correct.
-        Ok(match iter.size_hint() {
-            (1, Some(1)) => {
-                let t0 = iter.next().unwrap()?;
-                assert!(iter.next().is_none());
-                f(&[t0])
-            }
-            (2, Some(2)) => {
-                let t0 = iter.next().unwrap()?;
-                let t1 = iter.next().unwrap()?;
-                assert!(iter.next().is_none());
-                f(&[t0, t1])
-            }
-            (0, Some(0)) => {
-                assert!(iter.next().is_none());
-                f(&[])
-            }
-            _ => f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?),
-        })
     }
 }
 

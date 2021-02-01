@@ -10,18 +10,99 @@ extern crate rustc_macros;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 use rustc_serialize::{Decodable, Decoder};
+use smallvec::SmallVec;
 use std::fmt;
 use std::mem::discriminant;
 
 pub trait Interner<D: Decoder> {
+    type GenericArg;
+    type ListGenericArg;
+
     type Predicate: Decodable<D>;
     type BinderPredicateKind;
 
+    type Ty;
+    type TyKind;
+
     fn mk_predicate(self, binder: Self::BinderPredicateKind) -> Self::Predicate;
+    fn mk_ty(self, st: Self::TyKind) -> Self::Ty;
+    fn mk_substs<I: InternAs<[Self::GenericArg], Self::ListGenericArg>>(self, iter: I)
+    -> I::Output;
 }
 
-pub trait HasInterner<D: Decoder> {
-    type Interner: Interner<D>;
+pub trait InternAs<T: ?Sized, R> {
+    type Output;
+    fn intern_with<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce(&T) -> R;
+}
+
+impl<I, T, R, E> InternAs<[T], R> for I
+where
+    E: InternIteratorElement<T, R>,
+    I: Iterator<Item = E>,
+{
+    type Output = E::Output;
+    fn intern_with<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce(&[T]) -> R,
+    {
+        E::intern_with(self, f)
+    }
+}
+
+pub trait InternIteratorElement<T, R>: Sized {
+    type Output;
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output;
+}
+
+impl<T, R> InternIteratorElement<T, R> for T {
+    type Output = R;
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+        f(&iter.collect::<SmallVec<[_; 8]>>())
+    }
+}
+
+impl<'a, T, R> InternIteratorElement<T, R> for &'a T
+where
+    T: Clone + 'a,
+{
+    type Output = R;
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+        f(&iter.cloned().collect::<SmallVec<[_; 8]>>())
+    }
+}
+
+impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
+    type Output = Result<R, E>;
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(
+        mut iter: I,
+        f: F,
+    ) -> Self::Output {
+        // This code is hot enough that it's worth specializing for the most
+        // common length lists, to avoid the overhead of `SmallVec` creation.
+        // The match arms are in order of frequency. The 1, 2, and 0 cases are
+        // typically hit in ~95% of cases. We assume that if the upper and
+        // lower bounds from `size_hint` agree they are correct.
+        Ok(match iter.size_hint() {
+            (1, Some(1)) => {
+                let t0 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0])
+            }
+            (2, Some(2)) => {
+                let t0 = iter.next().unwrap()?;
+                let t1 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0, t1])
+            }
+            (0, Some(0)) => {
+                assert!(iter.next().is_none());
+                f(&[])
+            }
+            _ => f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?),
+        })
+    }
 }
 
 bitflags! {

@@ -222,8 +222,10 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
                 decoder.with_position(shorthand, Ty::decode)
             })
         } else {
-            let tcx = decoder.tcx();
-            Ok(tcx.mk_ty(ty::TyKind::decode(decoder)?))
+            Ok(<TyInterner<'tcx> as Interner<D>>::mk_ty(
+                decoder.interner(),
+                ty::TyKind::decode(decoder)?,
+            ))
         }
     }
 }
@@ -255,8 +257,10 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Predicate<'tcx> {
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for SubstsRef<'tcx> {
     fn decode(decoder: &mut D) -> Result<Self, D::Error> {
         let len = decoder.read_usize()?;
-        let tcx = decoder.tcx();
-        tcx.mk_substs((0..len).map(|_| Decodable::decode(decoder)))
+        Ok(<TyInterner<'tcx> as Interner<D>>::mk_substs(
+            decoder.interner(),
+            (0..len).map(|_| Decodable::decode(decoder)),
+        )?)
     }
 }
 

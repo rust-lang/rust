@@ -4546,6 +4546,7 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
+ "smallvec 1.4.2",
 ]
 
 [[package]]
