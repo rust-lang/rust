@@ -55,22 +55,19 @@ fn insert_vec_map<K: Idx, V: Clone>(map: &mut IndexVec<K, Option<V>>, k: K, v: V
     map[k] = Some(v);
 }
 
-fn hash(
-    hcx: &mut StableHashingContext<'_>,
-    input: impl for<'a> HashStable<StableHashingContext<'a>>,
-) -> Fingerprint {
-    let mut stable_hasher = StableHasher::new();
-    input.hash_stable(hcx, &mut stable_hasher);
-    stable_hasher.finish()
-}
-
 fn hash_body(
     hcx: &mut StableHashingContext<'_>,
     def_path_hash: DefPathHash,
     item_like: impl for<'a> HashStable<StableHashingContext<'a>>,
     hir_body_nodes: &mut Vec<(DefPathHash, Fingerprint)>,
 ) -> Fingerprint {
-    let hash = hash(hcx, HirItemLike { item_like: &item_like });
+    let hash = {
+        let mut stable_hasher = StableHasher::new();
+        hcx.while_hashing_hir_bodies(true, |hcx| {
+            item_like.hash_stable(hcx, &mut stable_hasher);
+        });
+        stable_hasher.finish()
+    };
     hir_body_nodes.push((def_path_hash, hash));
     hash
 }
@@ -573,20 +570,5 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         let ForeignItemRef { id, ident: _, span: _, vis: _ } = *fi;
 
         self.visit_nested_foreign_item(id);
-    }
-}
-
-struct HirItemLike<T> {
-    item_like: T,
-}
-
-impl<'hir, T> HashStable<StableHashingContext<'hir>> for HirItemLike<T>
-where
-    T: HashStable<StableHashingContext<'hir>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'hir>, hasher: &mut StableHasher) {
-        hcx.while_hashing_hir_bodies(true, |hcx| {
-            self.item_like.hash_stable(hcx, hasher);
-        });
     }
 }
