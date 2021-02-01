@@ -8,6 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, Definitions};
 use rustc_hir::intravisit;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
 use rustc_index::vec::IndexVec;
@@ -494,6 +495,15 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn visit_exported_macros_in_krate<V>(&self, visitor: &mut V)
+    where
+        V: Visitor<'hir>,
+    {
+        for id in self.krate().exported_macros {
+            visitor.visit_macro_def(self.expect_macro_def(id.hir_id));
+        }
+    }
+
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
     pub fn get(&self, id: HirId) -> Node<'hir> {
         self.find(id).unwrap_or_else(|| bug!("couldn't find hir id {} in the HIR map", id))
@@ -802,6 +812,13 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn expect_macro_def(&self, id: HirId) -> &'hir MacroDef<'hir> {
+        match self.find(id) {
+            Some(Node::MacroDef(macro_def)) => macro_def,
+            _ => bug!("expected macro def, found {}", self.node_to_string(id)),
+        }
+    }
+
     pub fn expect_expr(&self, id: HirId) -> &'hir Expr<'hir> {
         match self.find(id) {
             Some(Node::Expr(expr)) => expr,
@@ -821,6 +838,7 @@ impl<'hir> Map<'hir> {
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
             Node::Ctor(..) => self.name(self.get_parent_item(id)),
+            Node::MacroDef(md) => md.ident.name,
             _ => return None,
         })
     }
