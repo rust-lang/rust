@@ -1425,7 +1425,7 @@ h4 > .notable-traits {
 		margin-left: 0px;
 	}
 
-	#main {
+	#main, #search {
 		margin-top: 45px;
 		padding: 0;
 	}
@@ -1579,7 +1579,7 @@ h4 > .notable-traits {
 	}
 }
 
-@media (max-width: 416px) {
+@media (max-width: 464px) {
 	#titles, #titles > button {
 		height: 73px;
 	}
