@@ -184,6 +184,11 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// SAFETY: `TrustedRandomAccess` requires that `size_hint()` must be exact and cheap to call, and
+// `Iterator::__iterator_get_unchecked()` must be implemented accordingly.
+//
+// This is safe to implement as `Fuse` is just forwarding these to the wrapped iterator `I`, which
+// preserves these properties.
 unsafe impl<I> TrustedRandomAccess for Fuse<I>
 where
     I: TrustedRandomAccess,
