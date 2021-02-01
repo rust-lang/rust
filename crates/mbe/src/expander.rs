@@ -5,7 +5,7 @@
 mod matcher;
 mod transcriber;
 
-use rustc_hash::FxHashMap;
+use smallvec::SmallVec;
 use syntax::SmolStr;
 
 use crate::{ExpandError, ExpandResult};
@@ -28,10 +28,10 @@ pub(crate) fn expand_rules(
                 return ExpandResult::ok(value);
             }
         }
-        // Use the rule if we matched more tokens, or had fewer errors
+        // Use the rule if we matched more tokens, or bound variables count
         if let Some((prev_match, _)) = &match_ {
-            if (new_match.unmatched_tts, new_match.err_count)
-                < (prev_match.unmatched_tts, prev_match.err_count)
+            if (new_match.unmatched_tts, -(new_match.bound_count as i32))
+                < (prev_match.unmatched_tts, -(prev_match.bound_count as i32))
             {
                 match_ = Some((new_match, rule));
             }
@@ -94,19 +94,19 @@ pub(crate) fn expand_rules(
 /// In other words, `Bindings` is a *multi* mapping from `SmolStr` to
 /// `tt::TokenTree`, where the index to select a particular `TokenTree` among
 /// many is not a plain `usize`, but an `&[usize]`.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct Bindings {
-    inner: FxHashMap<SmolStr, Binding>,
+    inner: SmallVec<[(SmolStr, Binding); 4]>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Binding {
     Fragment(Fragment),
     Nested(Vec<Binding>),
     Empty,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Fragment {
     /// token fragments are just copy-pasted into the output
     Tokens(tt::TokenTree),
