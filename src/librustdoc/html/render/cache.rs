@@ -78,7 +78,7 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 desc: item.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)),
                 parent: Some(did),
                 parent_idx: None,
-                search_type: get_index_search_type(&item, None),
+                search_type: get_index_search_type(&item, Some(cache)),
             });
             for alias in item.attrs.get_doc_aliases() {
                 cache
