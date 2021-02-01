@@ -280,9 +280,6 @@
 //! The details are not necessary to understand this file, so we explain them in
 //! [`super::deconstruct_pat`]. Splitting is done by the [`Constructor::split`] function.
 
-use self::Usefulness::*;
-use self::WitnessPreference::*;
-
 use super::deconstruct_pat::{Constructor, Fields, SplitWildcard};
 use super::{Pat, PatKind};
 use super::{PatternFoldable, PatternFolder};
@@ -522,7 +519,11 @@ struct SelectedRow<'p, 'tcx> {
 struct RowData<'p, 'tcx> {
     is_under_guard: bool,
     hir_id: HirId,
-    usefulness: Usefulness<'p, 'tcx>,
+    /// Carries a set of subpatterns that have been found to be unreachable. If full, this
+    /// indicates the whole pattern is unreachable. If not, this indicates that the pattern is
+    /// reachable but has some unreachable sub-patterns (due to or-patterns). In the absence of
+    /// or-patterns, this is either `Empty` or `Full`.
+    unreachable_subpats: SubPatSet<'p, 'tcx>,
 }
 
 impl<'p, 'tcx> MatrixEntry<'p, 'tcx> {
@@ -573,7 +574,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             matrix.row_data.push(RowData {
                 is_under_guard: arm.has_guard,
                 hir_id: arm.hir_id,
-                usefulness: Usefulness::new_not_useful(LeaveOutWitness),
+                unreachable_subpats: SubPatSet::full(),
             });
             column.push(MatrixEntry {
                 pat: arm.pat,
@@ -1078,46 +1079,37 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
 }
 
 #[derive(Clone, Debug)]
-enum Usefulness<'p, 'tcx> {
-    /// Carries a set of subpatterns that have been found to be unreachable. If full, this
-    /// indicates the whole pattern is unreachable. If not, this indicates that the pattern is
-    /// reachable but has some unreachable sub-patterns (due to or-patterns). In the absence of
-    /// or-patterns, this is either `Empty` or `Full`.
-    NoWitnesses(SubPatSet<'p, 'tcx>),
-    /// Carries a list of witnesses of non-exhaustiveness. If empty, indicates that the whole
-    /// pattern is unreachable.
-    WithWitnesses(Vec<Witness<'tcx>>),
-}
+/// Carries a list of witnesses of non-exhaustiveness. If empty, indicates that the whole
+/// pattern is unreachable.
+struct Witnesses<'tcx>(Vec<Witness<'tcx>>);
 
-impl<'p, 'tcx> Usefulness<'p, 'tcx> {
-    fn new_useful(preference: WitnessPreference) -> Self {
-        match preference {
-            ConstructWitness => WithWitnesses(vec![Witness(vec![])]),
-            LeaveOutWitness => NoWitnesses(SubPatSet::empty()),
-        }
+impl<'tcx> Witnesses<'tcx> {
+    fn new_empty() -> Self {
+        Witnesses(vec![])
     }
-    fn new_not_useful(preference: WitnessPreference) -> Self {
-        match preference {
-            ConstructWitness => WithWitnesses(vec![]),
-            LeaveOutWitness => NoWitnesses(SubPatSet::full()),
-        }
+    fn new_singleton() -> Self {
+        Witnesses(vec![Witness(vec![])])
     }
 
-    /// Combine usefulnesses from two branches. This is an associative operation.
-    fn extend(&mut self, other: Self) {
-        match (&mut *self, other) {
-            (WithWitnesses(_), WithWitnesses(o)) if o.is_empty() => {}
-            (WithWitnesses(s), WithWitnesses(o)) if s.is_empty() => *self = WithWitnesses(o),
-            (WithWitnesses(s), WithWitnesses(o)) => s.extend(o),
-            (NoWitnesses(s), NoWitnesses(o)) => s.intersect(o),
-            _ => unreachable!(),
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Combine witnesses from two branches. This is an associative operation.
+    fn extend(&mut self, mut other: Self) {
+        if other.is_empty() {
+        } else if self.is_empty() {
+            *self = other
+        } else {
+            self.0.append(&mut other.0)
         }
     }
 
-    /// After calculating usefulness after a specialization, call this to recontruct a usefulness
-    /// that makes sense for the matrix pre-specialization. This new usefulness can then be merged
-    /// with the results of specializing with the other constructors.
-    fn apply_constructor<'a>(
+    /// After calculating witnesses after a specialization, call this to recontruct witnesses that
+    /// makes sense for the matrix pre-specialization. Those new witnesses can then be merged with
+    /// the results of specializing with the other constructors.
+    /// This is essentially the reverse of specialization.
+    fn apply_constructor<'a, 'p>(
         self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
@@ -1127,49 +1119,41 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     where
         'tcx: 'a,
     {
-        match self {
-            WithWitnesses(witnesses) if witnesses.is_empty() => WithWitnesses(witnesses),
-            WithWitnesses(witnesses) => {
-                let new_witnesses = if matches!(ctor, Constructor::Missing) {
-                    let mut split_wildcard = SplitWildcard::new(pcx);
-                    split_wildcard.split(pcx, head_ctors);
-                    // Construct for each missing constructor a "wild" version of this
-                    // constructor, that matches everything that can be built with
-                    // it. For example, if `ctor` is a `Constructor::Variant` for
-                    // `Option::Some`, we get the pattern `Some(_)`.
-                    let new_patterns: Vec<_> = split_wildcard
-                        .iter_missing(pcx)
-                        .map(|missing_ctor| {
-                            Fields::wildcards(pcx, missing_ctor).apply(pcx, missing_ctor)
-                        })
-                        .collect();
-                    witnesses
-                        .into_iter()
-                        .flat_map(|witness| {
-                            new_patterns.iter().map(move |pat| {
-                                let mut witness = witness.clone();
-                                witness.0.push(pat.clone());
-                                witness
-                            })
-                        })
-                        .collect()
-                } else {
-                    witnesses
-                        .into_iter()
-                        .map(|witness| witness.apply_constructor(pcx, &ctor, ctor_wild_subpatterns))
-                        .collect()
-                };
-                WithWitnesses(new_witnesses)
-            }
-            NoWitnesses(subpats) => NoWitnesses(subpats.unspecialize(ctor_wild_subpatterns.len())),
+        if self.is_empty() {
+            return self;
         }
+        let witnesses = self.0.into_iter();
+        let new_witnesses = if matches!(ctor, Constructor::Missing) {
+            let mut split_wildcard = SplitWildcard::new(pcx);
+            split_wildcard.split(pcx, head_ctors);
+            // Construct for each missing constructor a "wild" version of this
+            // constructor, that matches everything that can be built with
+            // it. For example, if `ctor` is a `Constructor::Variant` for
+            // `Option::Some`, we get the pattern `Some(_)`.
+            let new_patterns: Vec<_> = split_wildcard
+                .iter_missing(pcx)
+                .map(|missing_ctor| Fields::wildcards(pcx, missing_ctor).apply(pcx, missing_ctor))
+                .collect();
+            witnesses
+                .flat_map(|witness| {
+                    new_patterns.iter().map(move |pat| {
+                        let mut witness = witness.clone();
+                        witness.0.push(pat.clone());
+                        witness
+                    })
+                })
+                .collect()
+        } else {
+            witnesses
+                .map(|witness| witness.apply_constructor(pcx, &ctor, ctor_wild_subpatterns))
+                .collect()
+        };
+        Witnesses(new_witnesses)
     }
-}
 
-#[derive(Copy, Clone, Debug)]
-enum WitnessPreference {
-    ConstructWitness,
-    LeaveOutWitness,
+    fn into_pats(self) -> Vec<Pat<'tcx>> {
+        self.0.into_iter().map(|w| w.single_pattern()).collect()
+    }
 }
 
 /// A witness of non-exhaustiveness for error reporting, represented
@@ -1275,7 +1259,7 @@ fn compute_matrix_usefulness<'p, 'tcx>(
     matrix: &mut Matrix<'p, 'tcx>,
     hir_id: HirId,
     is_top_level: bool,
-) -> Usefulness<'p, 'tcx> {
+) -> Witnesses<'tcx> {
     debug!("matrix:{:?}", matrix);
 
     // The base case. We are pattern-matching on () and the return value is
@@ -1305,20 +1289,17 @@ fn compute_matrix_usefulness<'p, 'tcx>(
                     }
                 }
                 debug!("row {} found useful {:?}", row.id, set);
-                matrix.row_data[row.id].usefulness.extend(NoWitnesses(set));
+                matrix.row_data[row.id].unreachable_subpats.intersect(set);
             }
             if !matrix.row_data[row.id].is_under_guard {
                 is_covered = true;
                 break;
             }
         }
-        let usefulness = if is_covered {
-            Usefulness::new_not_useful(ConstructWitness)
-        } else {
-            Usefulness::new_useful(ConstructWitness)
-        };
-        debug!(?usefulness);
-        return usefulness;
+        let witnesses =
+            if is_covered { Witnesses::new_empty() } else { Witnesses::new_singleton() };
+        debug!(?witnesses);
+        return witnesses;
     }
 
     let ty = matrix.ty_of_last_col();
@@ -1352,7 +1333,7 @@ fn compute_matrix_usefulness<'p, 'tcx>(
     let split_ctors = split_wildcard.into_ctors(pcx);
     // For each constructor, we try to see for which rows a pattern starting with this ctor could
     // be useful.
-    let mut usefulness = Usefulness::new_not_useful(ConstructWitness);
+    let mut witnesses = Witnesses::new_empty();
     let mut any_missing = false;
     for ctor in split_ctors.into_iter() {
         debug!("specialize({:?})", ctor);
@@ -1361,19 +1342,19 @@ fn compute_matrix_usefulness<'p, 'tcx>(
         matrix.specialize(pcx, &ctor, &ctor_wild_subpatterns);
         // Expand any or-patterns present in the new last column.
         matrix.expand_or_patterns();
-        let u = compute_matrix_usefulness(cx, matrix, hir_id, false);
+        let w = compute_matrix_usefulness(cx, matrix, hir_id, false);
         matrix.undo();
         matrix.undo();
         if !any_missing {
             // If we've seen the `Missing` constructor already, we don't further accumulate
             // witnesses.
-            let u = u.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns, matrix.head_ctors(cx));
-            usefulness.extend(u);
+            let w = w.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns, matrix.head_ctors(cx));
+            witnesses.extend(w);
         }
         any_missing = any_missing || matches!(&ctor, Constructor::Missing);
     }
-    debug!(?usefulness);
-    usefulness
+    debug!(?witnesses);
+    witnesses
 }
 
 /// The arm of a match expression.
@@ -1416,26 +1397,22 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     let mut matrix = Matrix::new(scrut_ty, arms);
     matrix.expand_or_patterns();
 
-    let usefulness = compute_matrix_usefulness(cx, &mut matrix, scrut_hir_id, true);
-
-    let non_exhaustiveness_witnesses = match usefulness {
-        WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
-        NoWitnesses(_) => bug!(),
-    };
+    let witnesses = compute_matrix_usefulness(cx, &mut matrix, scrut_hir_id, true);
 
     let arm_usefulness: Vec<_> = matrix
         .row_data
         .iter()
+        .map(|data| &data.unreachable_subpats)
         .zip(arms.iter().copied())
-        .map(|(data, arm)| {
-            let reachability = match &data.usefulness {
-                NoWitnesses(subpats) if subpats.is_full() => Reachability::Unreachable,
-                NoWitnesses(subpats) => Reachability::Reachable(subpats.to_spans().unwrap()),
-                WithWitnesses(..) => bug!(),
+        .map(|(subpats, arm)| {
+            let reachability = if subpats.is_full() {
+                Reachability::Unreachable
+            } else {
+                Reachability::Reachable(subpats.to_spans().unwrap())
             };
             (arm, reachability)
         })
         .collect();
 
-    UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses }
+    UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses: witnesses.into_pats() }
 }
