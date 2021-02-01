@@ -2663,6 +2663,7 @@ pub struct TraitKind(
     pub GenericBounds,
     pub Vec<P<AssocItem>>,
 );
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct TyAliasKind(pub Defaultness, pub Generics, pub GenericBounds, pub Option<P<Ty>>);
 
@@ -2753,6 +2754,9 @@ pub enum ItemKind {
     MacroDef(MacroDef),
 }
 
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(ItemKind, 112);
+
 impl ItemKind {
     pub fn article(&self) -> &str {
         use ItemKind::*;
@@ -2824,6 +2828,9 @@ pub enum AssocItemKind {
     MacCall(MacCall),
 }
 
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(AssocItemKind, 72);
+
 impl AssocItemKind {
     pub fn defaultness(&self) -> Defaultness {
         match *self {
@@ -2872,6 +2879,9 @@ pub enum ForeignItemKind {
     /// A macro expanding to foreign items.
     MacCall(MacCall),
 }
+
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
 
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
