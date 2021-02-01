@@ -82,8 +82,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// visible through borrow checking. False edges ensure that the CFG as
     /// seen by borrow checking doesn't encode this. False edges are added:
     ///
-    /// * From each prebinding block to the next prebinding block.
-    /// * From each otherwise block to the next prebinding block.
+    /// * From each pre-binding block to the next pre-binding block.
+    /// * From each otherwise block to the next pre-binding block.
     crate fn match_expr(
         &mut self,
         destination: Place<'tcx>,
@@ -630,10 +630,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 #[derive(Debug)]
 pub(super) struct Candidate<'pat, 'tcx> {
-    /// `Span` of the original pattern that gave rise to this candidate
+    /// [`Span`] of the original pattern that gave rise to this candidate.
     span: Span,
 
-    /// This `Candidate` has a guard.
+    /// Whether this `Candidate` has a guard.
     has_guard: bool,
 
     /// All of these must be satisfied...
@@ -645,14 +645,15 @@ pub(super) struct Candidate<'pat, 'tcx> {
     /// ...and these types asserted...
     ascriptions: Vec<Ascription<'tcx>>,
 
-    /// ... and if this is non-empty, one of these subcandidates also has to match ...
+    /// ...and if this is non-empty, one of these subcandidates also has to match...
     subcandidates: Vec<Candidate<'pat, 'tcx>>,
 
-    /// ...and the guard must be evaluated, if false branch to Block...
+    /// ...and the guard must be evaluated; if it's `false` then branch to `otherwise_block`.
     otherwise_block: Option<BasicBlock>,
 
-    /// ...and the blocks for add false edges between candidates
+    /// The block before the `bindings` have been established.
     pre_binding_block: Option<BasicBlock>,
+    /// The pre-binding block of the next candidate.
     next_candidate_pre_binding_block: Option<BasicBlock>,
 }
 
@@ -737,18 +738,19 @@ crate struct MatchPair<'pat, 'tcx> {
     pattern: &'pat Pat<'tcx>,
 }
 
+/// See [`Test`] for more.
 #[derive(Clone, Debug, PartialEq)]
 enum TestKind<'tcx> {
-    /// Test the branches of enum.
+    /// Test what enum variant a value is.
     Switch {
-        /// The enum being tested
+        /// The enum type being tested.
         adt_def: &'tcx ty::AdtDef,
         /// The set of variants that we should create a branch for. We also
         /// create an additional "otherwise" case.
         variants: BitSet<VariantIdx>,
     },
 
-    /// Test what value an `integer`, `bool` or `char` has.
+    /// Test what value an integer, `bool`, or `char` has.
     SwitchInt {
         /// The type of the value that we're testing.
         switch_ty: Ty<'tcx>,
@@ -756,7 +758,7 @@ enum TestKind<'tcx> {
         ///
         /// For integers and `char`s we create a branch to each of the values in
         /// `options`, as well as an "otherwise" branch for all other values, even
-        /// in the (rare) case that options is exhaustive.
+        /// in the (rare) case that `options` is exhaustive.
         ///
         /// For `bool` we always generate two edges, one for `true` and one for
         /// `false`.
@@ -776,17 +778,21 @@ enum TestKind<'tcx> {
     /// Test whether the value falls within an inclusive or exclusive range
     Range(PatRange<'tcx>),
 
-    /// Test length of the slice is equal to len
+    /// Test that the length of the slice is equal to `len`.
     Len { len: u64, op: BinOp },
 }
 
+/// A test to perform to determine which [`Candidate`] matches a value.
+///
+/// [`Test`] is just the test to perform; it does not include the value
+/// to be tested.
 #[derive(Debug)]
 crate struct Test<'tcx> {
     span: Span,
     kind: TestKind<'tcx>,
 }
 
-/// ArmHasGuard is isomorphic to a boolean flag. It indicates whether
+/// `ArmHasGuard` is a wrapper around a boolean flag. It indicates whether
 /// a match arm has a guard expression attached to it.
 #[derive(Copy, Clone, Debug)]
 crate struct ArmHasGuard(crate bool);
@@ -801,27 +807,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// candidates are sorted such that the first item in the list
     /// has the highest priority. When a candidate is found to match
     /// the value, we will set and generate a branch to the appropriate
-    /// prebinding block.
+    /// pre-binding block.
     ///
     /// If we find that *NONE* of the candidates apply, we branch to the
     /// `otherwise_block`, setting it to `Some` if required. In principle, this
     /// means that the input list was not exhaustive, though at present we
     /// sometimes are not smart enough to recognize all exhaustive inputs.
     ///
-    /// It might be surprising that the input can be inexhaustive.
+    /// It might be surprising that the input can be non-exhaustive.
     /// Indeed, initially, it is not, because all matches are
     /// exhaustive in Rust. But during processing we sometimes divide
     /// up the list of candidates and recurse with a non-exhaustive
     /// list. This is important to keep the size of the generated code
-    /// under control. See `test_candidates` for more details.
+    /// under control. See [`Builder::test_candidates`] for more details.
     ///
-    /// If `fake_borrows` is Some, then places which need fake borrows
+    /// If `fake_borrows` is `Some`, then places which need fake borrows
     /// will be added to it.
     ///
     /// For an example of a case where we set `otherwise_block`, even for an
-    /// exhaustive match consider:
+    /// exhaustive match, consider:
     ///
-    /// ```rust
+    /// ```
     /// match x {
     ///     (true, true) => (),
     ///     (_, false) => (),
@@ -830,8 +836,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// ```
     ///
     /// For this match, we check if `x.0` matches `true` (for the first
-    /// arm). If that's false, we check `x.1`. If it's `true` we check if
-    /// `x.0` matches `false` (for the third arm). In the (impossible at
+    /// arm). If it doesn't match, we check `x.1`. If `x.1` is `true` we check
+    /// if `x.0` matches `false` (for the third arm). In the (impossible at
     /// runtime) case when `x.0` is now `true`, we branch to
     /// `otherwise_block`.
     fn match_candidates<'pat>(
@@ -938,26 +944,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
     }
 
-    /// Link up matched candidates. For example, if we have something like
-    /// this:
+    /// Link up matched candidates.
+    ///
+    /// For example, if we have something like this:
     ///
     /// ```rust
     /// ...
-    /// Some(x) if cond => ...
+    /// Some(x) if cond1 => ...
     /// Some(x) => ...
-    /// Some(x) if cond => ...
+    /// Some(x) if cond2 => ...
     /// ...
     /// ```
     ///
     /// We generate real edges from:
-    /// * `start_block` to the `prebinding_block` of the first pattern,
-    /// * the otherwise block of the first pattern to the second pattern,
-    /// * the otherwise block of the third pattern to the a block with an
-    ///   Unreachable terminator.
     ///
-    /// As well as that we add fake edges from the otherwise blocks to the
-    /// prebinding block of the next candidate in the original set of
+    /// * `start_block` to the [pre-binding block] of the first pattern,
+    /// * the [otherwise block] of the first pattern to the second pattern,
+    /// * the [otherwise block] of the third pattern to a block with an
+    ///   [`Unreachable` terminator](TerminatorKind::Unreachable).
+    ///
+    /// In addition, we add fake edges from the otherwise blocks to the
+    /// pre-binding block of the next candidate in the original set of
     /// candidates.
+    ///
+    /// [pre-binding block]: Candidate::pre_binding_block
+    /// [otherwise block]: Candidate::otherwise_block
     fn select_matched_candidates(
         &mut self,
         matched_candidates: &mut [&mut Candidate<'_, 'tcx>],
@@ -1044,7 +1055,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// forwards to [Builder::test_candidates].
     ///
     /// Given a pattern `(P | Q, R | S)` we (in principle) generate a CFG like
-    /// so
+    /// so:
     ///
     /// ```text
     /// [ start ]
@@ -1214,10 +1225,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// This is the most subtle part of the matching algorithm. At
     /// this point, the input candidates have been fully simplified,
     /// and so we know that all remaining match-pairs require some
-    /// sort of test. To decide what test to do, we take the highest
-    /// priority candidate (last one in the list) and extract the
-    /// first match-pair from the list. From this we decide what kind
-    /// of test is needed using `test`, defined in the `test` module.
+    /// sort of test. To decide what test to perform, we take the highest
+    /// priority candidate (the first one in the list, as of January 2021)
+    /// and extract the first match-pair from the list. From this we decide
+    /// what kind of test is needed using [`Builder::test`], defined in the
+    /// [`test` module](mod@test).
     ///
     /// *Note:* taking the first match pair is somewhat arbitrary, and
     /// we might do better here by choosing more carefully what to
@@ -1225,20 +1237,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// For example, consider the following possible match-pairs:
     ///
-    /// 1. `x @ Some(P)` -- we will do a `Switch` to decide what variant `x` has
-    /// 2. `x @ 22` -- we will do a `SwitchInt`
-    /// 3. `x @ 3..5` -- we will do a range test
+    /// 1. `x @ Some(P)` -- we will do a [`Switch`] to decide what variant `x` has
+    /// 2. `x @ 22` -- we will do a [`SwitchInt`] to decide what value `x` has
+    /// 3. `x @ 3..5` -- we will do a [`Range`] test to decide what range `x` falls in
     /// 4. etc.
     ///
+    /// [`Switch`]: TestKind::Switch
+    /// [`SwitchInt`]: TestKind::SwitchInt
+    /// [`Range`]: TestKind::Range
+    ///
     /// Once we know what sort of test we are going to perform, this
-    /// Tests may also help us with other candidates. So we walk over
+    /// test may also help us winnow down our candidates. So we walk over
     /// the candidates (from high to low priority) and check. This
     /// gives us, for each outcome of the test, a transformed list of
-    /// candidates. For example, if we are testing the current
-    /// variant of `x.0`, and we have a candidate `{x.0 @ Some(v), x.1
-    /// @ 22}`, then we would have a resulting candidate of `{(x.0 as
-    /// Some).0 @ v, x.1 @ 22}`. Note that the first match-pair is now
-    /// simpler (and, in fact, irrefutable).
+    /// candidates. For example, if we are testing `x.0`'s variant,
+    /// and we have a candidate `(x.0 @ Some(v), x.1 @ 22)`,
+    /// then we would have a resulting candidate of `((x.0 as Some).0 @ v, x.1 @ 22)`.
+    /// Note that the first match-pair is now simpler (and, in fact, irrefutable).
     ///
     /// But there may also be candidates that the test just doesn't
     /// apply to. The classical example involves wildcards:
@@ -1268,7 +1283,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// is trivially NP-complete:
     ///
     /// ```rust
-    ///     match (var0, var1, var2, var3, ..) {
+    ///     match (var0, var1, var2, var3, ...) {
     ///         (true, _, _, false, true, ...) => false,
     ///         (_, true, true, false, _, ...) => false,
     ///         (false, _, false, false, _, ...) => false,
@@ -1283,7 +1298,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// That kind of exponential worst-case might not occur in practice, but
     /// our simplistic treatment of constants and guards would make it occur
-    /// in very common situations - for example #29740:
+    /// in very common situations - for example [#29740]:
     ///
     /// ```rust
     /// match x {
@@ -1294,13 +1309,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// }
     /// ```
     ///
-    /// Here we first test the match-pair `x @ "foo"`, which is an `Eq` test.
+    /// [#29740]: https://github.com/rust-lang/rust/issues/29740
+    ///
+    /// Here we first test the match-pair `x @ "foo"`, which is an [`Eq` test].
+    ///
+    /// [`Eq` test]: TestKind::Eq
     ///
     /// It might seem that we would end up with 2 disjoint candidate
-    /// sets, consisting of the first candidate or the other 3, but our
-    /// algorithm doesn't reason about "foo" being distinct from the other
+    /// sets, consisting of the first candidate or the other two, but our
+    /// algorithm doesn't reason about `"foo"` being distinct from the other
     /// constants; it considers the latter arms to potentially match after
-    /// both outcomes, which obviously leads to an exponential amount
+    /// both outcomes, which obviously leads to an exponential number
     /// of tests.
     ///
     /// To avoid these kinds of problems, our algorithm tries to ensure
@@ -1312,16 +1331,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// After we perform our test, we branch into the appropriate candidate
     /// set and recurse with `match_candidates`. These sub-matches are
-    /// obviously inexhaustive - as we discarded our otherwise set - so
+    /// obviously non-exhaustive - as we discarded our otherwise set - so
     /// we set their continuation to do `match_candidates` on the
-    /// "unmatched" set (which is again inexhaustive).
+    /// "unmatched" set (which is again non-exhaustive).
     ///
     /// If you apply this to the above test, you basically wind up
     /// with an if-else-if chain, testing each candidate in turn,
     /// which is precisely what we want.
     ///
     /// In addition to avoiding exponential-time blowups, this algorithm
-    /// also has nice property that each guard and arm is only generated
+    /// also has the nice property that each guard and arm is only generated
     /// once.
     fn test_candidates<'pat, 'b, 'c>(
         &mut self,
