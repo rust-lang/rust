@@ -2,7 +2,7 @@
 //! `cargo check` json format to the LSP diagnostic format.
 use std::{collections::HashMap, path::Path};
 
-use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
+use flycheck::{DiagnosticLevel, DiagnosticSpan};
 use stdx::format_to;
 
 use crate::{lsp_ext, to_proto::url_from_abs_path};
@@ -97,9 +97,7 @@ fn map_rust_child_diagnostic(
 
     let mut edit_map: HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = HashMap::new();
     for &span in &spans {
-        if let (Some(Applicability::MachineApplicable), Some(suggested_replacement)) =
-            (&span.suggestion_applicability, &span.suggested_replacement)
-        {
+        if let Some(suggested_replacement) = &span.suggested_replacement {
             let location = location(workspace_root, span);
             let edit = lsp_types::TextEdit::new(location.range, suggested_replacement.clone());
             edit_map.entry(location.uri).or_default().push(edit);
