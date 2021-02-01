@@ -12,7 +12,7 @@ use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind}
 
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::profiling::print_time_passes_entry;
+use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{par_iter, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
@@ -595,6 +595,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     let mut cgu_reuse = Vec::new();
     let mut pre_compiled_cgus: Option<FxHashMap<usize, _>> = None;
     let mut total_codegen_time = Duration::new(0, 0);
+    let start_rss = tcx.sess.time_passes().then(|| get_resident_set_size());
 
     for (i, cgu) in codegen_units.iter().enumerate() {
         ongoing_codegen.wait_for_signal_to_codegen_item();
@@ -669,7 +670,16 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
-    print_time_passes_entry(tcx.sess.time_passes(), "codegen_to_LLVM_IR", total_codegen_time);
+    if tcx.sess.time_passes() {
+        let end_rss = get_resident_set_size();
+
+        print_time_passes_entry(
+            "codegen_to_LLVM_IR",
+            total_codegen_time,
+            start_rss.unwrap(),
+            end_rss,
+        );
+    }
 
     ongoing_codegen.check_for_errors(tcx.sess);
 

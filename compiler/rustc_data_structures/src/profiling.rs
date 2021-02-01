@@ -555,13 +555,16 @@ impl<'a> TimingGuard<'a> {
 
 #[must_use]
 pub struct VerboseTimingGuard<'a> {
-    start_and_message: Option<(Instant, String)>,
+    start_and_message: Option<(Instant, Option<usize>, String)>,
     _guard: TimingGuard<'a>,
 }
 
 impl<'a> VerboseTimingGuard<'a> {
     pub fn start(message: Option<String>, _guard: TimingGuard<'a>) -> Self {
-        VerboseTimingGuard { _guard, start_and_message: message.map(|msg| (Instant::now(), msg)) }
+        VerboseTimingGuard {
+            _guard,
+            start_and_message: message.map(|msg| (Instant::now(), get_resident_set_size(), msg)),
+        }
     }
 
     #[inline(always)]
@@ -573,25 +576,42 @@ impl<'a> VerboseTimingGuard<'a> {
 
 impl Drop for VerboseTimingGuard<'_> {
     fn drop(&mut self) {
-        if let Some((start, ref message)) = self.start_and_message {
-            print_time_passes_entry(true, &message[..], start.elapsed());
+        if let Some((start_time, start_rss, ref message)) = self.start_and_message {
+            let end_rss = get_resident_set_size();
+            print_time_passes_entry(&message[..], start_time.elapsed(), start_rss, end_rss);
         }
     }
 }
 
-pub fn print_time_passes_entry(do_it: bool, what: &str, dur: Duration) {
-    if !do_it {
-        return;
-    }
+pub fn print_time_passes_entry(
+    what: &str,
+    dur: Duration,
+    start_rss: Option<usize>,
+    end_rss: Option<usize>,
+) {
+    let rss_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as usize;
 
-    let mem_string = match get_resident() {
-        Some(n) => {
-            let mb = n as f64 / 1_000_000.0;
-            format!("; rss: {}MB", mb.round() as usize)
+    let mem_string = match (start_rss, end_rss) {
+        (Some(start_rss), Some(end_rss)) => {
+            // It's tempting to add the change in RSS from start to end, but its somewhat confusing
+            // and misleading when looking at time-passes output. Consider two adjacent entries:
+            //
+            // time:  10.000; rss start:  1000MB, end:  1000MB, change:     0MB     pass1
+            // time:   5.000; rss start:  2000MB, end:  2000MB, change:     0MB     pass2
+            //
+            // If you're looking for jumps in RSS based on the change column, you miss the fact
+            // that a 1GB jump happened between pass1 and pass2 (supposing pass1 and pass2 actually
+            // occur sequentially and pass1 isn't just nested within pass2). It's easy to imagine
+            // someone missing this or being confused by the fact that the change is zero.
+
+            format!("; rss: {:>5}MB -> {:>5}MB", rss_to_mb(start_rss), rss_to_mb(end_rss))
         }
-        None => String::new(),
+        (Some(start_rss), None) => format!("; rss start: {:>5}MB", rss_to_mb(start_rss)),
+        (None, Some(end_rss)) => format!("; rss end: {:5>}MB", rss_to_mb(end_rss)),
+        (None, None) => String::new(),
     };
-    println!("time: {}{}\t{}", duration_to_secs_str(dur), mem_string, what);
+
+    println!("time: {:>7}{}\t{}", duration_to_secs_str(dur), mem_string, what);
 }
 
 // Hack up our own formatting for the duration to make it easier for scripts
@@ -603,7 +623,7 @@ pub fn duration_to_secs_str(dur: std::time::Duration) -> String {
 // Memory reporting
 cfg_if! {
     if #[cfg(windows)] {
-        fn get_resident() -> Option<usize> {
+        pub fn get_resident_set_size() -> Option<usize> {
             use std::mem::{self, MaybeUninit};
             use winapi::shared::minwindef::DWORD;
             use winapi::um::processthreadsapi::GetCurrentProcess;
@@ -621,7 +641,7 @@ cfg_if! {
             }
         }
     } else if #[cfg(unix)] {
-        fn get_resident() -> Option<usize> {
+        pub fn get_resident_set_size() -> Option<usize> {
             let field = 1;
             let contents = fs::read("/proc/self/statm").ok()?;
             let contents = String::from_utf8(contents).ok()?;
@@ -630,7 +650,7 @@ cfg_if! {
             Some(npages * 4096)
         }
     } else {
-        fn get_resident() -> Option<usize> {
+        pub fn get_resident_set_size() -> Option<usize> {
             None
         }
     }
