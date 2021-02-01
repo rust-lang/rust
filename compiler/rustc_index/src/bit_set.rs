@@ -30,6 +30,7 @@ pub const WORD_BITS: usize = WORD_BYTES * 8;
 #[derive(Eq, PartialEq, Decodable, Encodable)]
 pub struct BitSet<T> {
     domain_size: usize,
+    len: usize,
     words: Vec<Word>,
     marker: PhantomData<T>,
 }
@@ -46,14 +47,19 @@ impl<T: Idx> BitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
-        BitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
+        BitSet { domain_size, len: 0, words: vec![0; num_words], marker: PhantomData }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
-        let mut result = BitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
+        let mut result = BitSet {
+            domain_size,
+            len: domain_size,
+            words: vec![!0; num_words],
+            marker: PhantomData,
+        };
         result.clear_excess_bits();
         result
     }
@@ -64,6 +70,7 @@ impl<T: Idx> BitSet<T> {
         for word in &mut self.words {
             *word = 0;
         }
+        self.len = 0;
     }
 
     /// Clear excess bits in the final word.
@@ -78,7 +85,7 @@ impl<T: Idx> BitSet<T> {
 
     /// Count the number of set bits in the set.
     pub fn count(&self) -> usize {
-        self.words.iter().map(|e| e.count_ones() as usize).sum()
+        self.len
     }
 
     /// Returns `true` if `self` contains `elem`.
@@ -93,13 +100,13 @@ impl<T: Idx> BitSet<T> {
     #[inline]
     pub fn superset(&self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
+        other.len <= self.len && self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
     }
 
     /// Is the set empty?
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.words.iter().all(|a| *a == 0)
+        self.len == 0
     }
 
     /// Insert `elem`. Returns whether the set has changed.
@@ -111,7 +118,9 @@ impl<T: Idx> BitSet<T> {
         let word = *word_ref;
         let new_word = word | mask;
         *word_ref = new_word;
-        new_word != word
+        let changed = new_word != word;
+        self.len += changed as usize;
+        changed
     }
 
     /// Sets all bits to true.
@@ -119,6 +128,7 @@ impl<T: Idx> BitSet<T> {
         for word in &mut self.words {
             *word = !0;
         }
+        self.len = self.domain_size;
         self.clear_excess_bits();
     }
 
@@ -131,7 +141,9 @@ impl<T: Idx> BitSet<T> {
         let word = *word_ref;
         let new_word = word & !mask;
         *word_ref = new_word;
-        new_word != word
+        let changed = new_word != word;
+        self.len -= changed as usize;
+        changed
     }
 
     /// Sets `self = self | other` and returns `true` if `self` changed
@@ -150,7 +162,9 @@ impl<T: Idx> BitSet<T> {
     /// (i.e., if any bits were removed).
     pub fn intersect(&mut self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut self.words, &other.words, |a, b| a & b)
+        let (changed, new_len) = bitwise(&mut self.words, &other.words, |a, b| a & b);
+        self.len = new_len;
+        changed
     }
 
     /// Gets a slice of the underlying words.
@@ -161,7 +175,7 @@ impl<T: Idx> BitSet<T> {
     /// Iterates over the indices of set bits in a sorted order.
     #[inline]
     pub fn iter(&self) -> BitIter<'_, T> {
-        BitIter::new(&self.words)
+        BitIter::new(&self.words, self.len)
     }
 
     /// Duplicates the set as a hybrid set.
@@ -205,7 +219,7 @@ impl<T: Idx> BitSet<T> {
         not_already |= (self.words[current_index] ^ new_bit_mask) != 0;
         // Any bits in the tail? Note `clear_excess_bits` before.
         not_already |= self.words[current_index + 1..].iter().any(|&x| x != 0);
-
+        self.len = self.words.iter().map(|w| w.count_ones() as usize).sum();
         not_already
     }
 }
@@ -227,20 +241,29 @@ pub trait SubtractFromBitSet<T: Idx> {
 impl<T: Idx> UnionIntoBitSet<T> for BitSet<T> {
     fn union_into(&self, other: &mut BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut other.words, &self.words, |a, b| a | b)
+        let (changed, new_len) = bitwise(&mut other.words, &self.words, |a, b| a | b);
+        other.len = new_len;
+        changed
     }
 }
 
 impl<T: Idx> SubtractFromBitSet<T> for BitSet<T> {
     fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut other.words, &self.words, |a, b| a & !b)
+        let (changed, new_len) = bitwise(&mut other.words, &self.words, |a, b| a & !b);
+        other.len = new_len;
+        changed
     }
 }
 
 impl<T> Clone for BitSet<T> {
     fn clone(&self) -> Self {
-        BitSet { domain_size: self.domain_size, words: self.words.clone(), marker: PhantomData }
+        BitSet {
+            domain_size: self.domain_size,
+            len: self.len,
+            words: self.words.clone(),
+            marker: PhantomData,
+        }
     }
 
     fn clone_from(&mut self, from: &Self) {
@@ -248,6 +271,7 @@ impl<T> Clone for BitSet<T> {
             self.words.resize(from.domain_size, 0);
             self.domain_size = from.domain_size;
         }
+        self.len = from.len;
 
         self.words.copy_from_slice(&from.words);
     }
@@ -304,6 +328,9 @@ pub struct BitIter<'a, T: Idx> {
     /// The offset (measured in bits) of the current word.
     offset: usize,
 
+    /// How many items are remaining
+    rem: usize,
+
     /// Underlying iterator over the words.
     iter: slice::Iter<'a, Word>,
 
@@ -312,7 +339,7 @@ pub struct BitIter<'a, T: Idx> {
 
 impl<'a, T: Idx> BitIter<'a, T> {
     #[inline]
-    fn new(words: &'a [Word]) -> BitIter<'a, T> {
+    fn new(words: &'a [Word], len: usize) -> BitIter<'a, T> {
         // We initialize `word` and `offset` to degenerate values. On the first
         // call to `next()` we will fall through to getting the first word from
         // `iter`, which sets `word` to the first word (if there is one) and
@@ -320,6 +347,7 @@ impl<'a, T: Idx> BitIter<'a, T> {
         // additional state about whether we have started.
         BitIter {
             word: 0,
+            rem: len,
             offset: usize::MAX - (WORD_BITS - 1),
             iter: words.iter(),
             marker: PhantomData,
@@ -337,6 +365,7 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
                 let bit_pos = self.word.trailing_zeros() as usize;
                 let bit = 1 << bit_pos;
                 self.word ^= bit;
+                self.rem -= 1;
                 return Some(T::new(bit_pos + self.offset));
             }
 
@@ -347,22 +376,32 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
             self.offset = self.offset.wrapping_add(WORD_BITS);
         }
     }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.rem, Some(self.rem))
+    }
 }
 
+unsafe impl<'a, T: Idx> core::iter::TrustedLen for BitIter<'a, T> {}
+impl<'a, T: Idx> core::iter::ExactSizeIterator for BitIter<'a, T> {}
+
+/// Computes a bitwise operation between out_vec and in_vec, putting the result into out_vec
+/// Also computes the number of ones in out_vec
 #[inline]
-fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
+fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> (bool, usize)
 where
     Op: Fn(Word, Word) -> Word,
 {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
+    let mut total = 0;
     for (out_elem, in_elem) in out_vec.iter_mut().zip(in_vec.iter()) {
         let old_val = *out_elem;
         let new_val = op(old_val, *in_elem);
         *out_elem = new_val;
         changed |= old_val != new_val;
+        total += new_val.count_ones() as usize;
     }
-    changed
+    (changed, total)
 }
 
 const SPARSE_MAX: usize = 8;
@@ -887,7 +926,8 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     pub fn iter(&self, row: R) -> BitIter<'_, C> {
         assert!(row.index() < self.num_rows);
         let (start, end) = self.range(row);
-        BitIter::new(&self.words[start..end])
+        let len = self.words[start..end].iter().map(|s| s.count_ones() as usize).sum();
+        BitIter::new(&self.words[start..end], len)
     }
 
     /// Returns the number of elements in `row`.

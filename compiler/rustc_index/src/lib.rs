@@ -4,6 +4,7 @@
 #![feature(extend_one)]
 #![feature(unboxed_closures)]
 #![feature(test)]
+#![feature(trusted_len)]
 #![feature(fn_traits)]
 
 pub mod bit_set;
