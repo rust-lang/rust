@@ -50,11 +50,24 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                             if b_def == def && b_substs == substs {
                                 debug!("is_const_evaluatable: caller_bound ~~> ok");
                                 return Ok(());
-                            } else if AbstractConst::new(tcx, b_def, b_substs)?
-                                .map_or(false, |b_ct| try_unify(tcx, ct, b_ct))
-                            {
-                                debug!("is_const_evaluatable: abstract_const ~~> ok");
-                                return Ok(());
+                            }
+
+                            if let Some(b_ct) = AbstractConst::new(tcx, b_def, b_substs)? {
+                                // Try to unify with each subtree in the AbstractConst to allow for
+                                // `N + 1` being const evaluatable even if theres only a `ConstEvaluatable`
+                                // predicate for `(N + 1) * 2`
+                                let result =
+                                    walk_abstract_const(tcx, b_ct, |b_ct| {
+                                        match try_unify(tcx, ct, b_ct) {
+                                            true => ControlFlow::BREAK,
+                                            false => ControlFlow::CONTINUE,
+                                        }
+                                    });
+
+                                if let ControlFlow::Break(()) = result {
+                                    debug!("is_const_evaluatable: abstract_const ~~> ok");
+                                    return Ok(());
+                                }
                             }
                         }
                         _ => {} // don't care
@@ -78,7 +91,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                     Concrete,
                 }
                 let mut failure_kind = FailureKind::Concrete;
-                walk_abstract_const::<!, _>(tcx, ct, |node| match node {
+                walk_abstract_const::<!, _>(tcx, ct, |node| match node.root() {
                     Node::Leaf(leaf) => {
                         let leaf = leaf.subst(tcx, ct.substs);
                         if leaf.has_infer_types_or_consts() {
@@ -580,15 +593,15 @@ pub fn walk_abstract_const<'tcx, R, F>(
     mut f: F,
 ) -> ControlFlow<R>
 where
-    F: FnMut(Node<'tcx>) -> ControlFlow<R>,
+    F: FnMut(AbstractConst<'tcx>) -> ControlFlow<R>,
 {
     fn recurse<'tcx, R>(
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
-        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<R>,
+        f: &mut dyn FnMut(AbstractConst<'tcx>) -> ControlFlow<R>,
     ) -> ControlFlow<R> {
+        f(ct)?;
         let root = ct.root();
-        f(root)?;
         match root {
             Node::Leaf(_) => ControlFlow::CONTINUE,
             Node::Binop(_, l, r) => {

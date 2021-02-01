@@ -828,7 +828,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             // constants which are not considered const evaluatable.
             use rustc_middle::mir::abstract_const::Node;
             if let Ok(Some(ct)) = AbstractConst::from_const(self.tcx, ct) {
-                const_evaluatable::walk_abstract_const(self.tcx, ct, |node| match node {
+                const_evaluatable::walk_abstract_const(self.tcx, ct, |node| match node.root() {
                     Node::Leaf(leaf) => {
                         let leaf = leaf.subst(self.tcx, ct.substs);
                         self.visit_const(leaf)
@@ -849,7 +849,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                 // take a `ty::Const` instead.
                 use rustc_middle::mir::abstract_const::Node;
                 if let Ok(Some(ct)) = AbstractConst::new(self.tcx, def, substs) {
-                    const_evaluatable::walk_abstract_const(self.tcx, ct, |node| match node {
+                    const_evaluatable::walk_abstract_const(self.tcx, ct, |node| match node.root() {
                         Node::Leaf(leaf) => {
                             let leaf = leaf.subst(self.tcx, ct.substs);
                             self.visit_const(leaf)
