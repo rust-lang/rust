@@ -3,7 +3,7 @@
 set -e
 
 source build/config.sh
-export CG_CLIF_INCR_CACHE_DISABLED=1
+source scripts/ext_config.sh
 MY_RUSTC="$RUSTC $RUSTFLAGS -L crate=target/out --out-dir target/out -Cdebuginfo=2"
 
 function no_sysroot_tests() {

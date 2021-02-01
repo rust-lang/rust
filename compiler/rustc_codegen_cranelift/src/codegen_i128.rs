@@ -1,5 +1,7 @@
 //! Replaces 128-bit operators with lang item calls where necessary
 
+use cranelift_codegen::ir::ArgumentPurpose;
+
 use crate::prelude::*;
 
 pub(crate) fn maybe_codegen<'tcx>(
@@ -24,41 +26,41 @@ pub(crate) fn maybe_codegen<'tcx>(
             None
         }
         BinOp::Add | BinOp::Sub if !checked => None,
-        BinOp::Add => {
-            let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
-            return Some(if is_signed {
-                fx.easy_call("__rust_i128_addo", &[lhs, rhs], out_ty)
+        BinOp::Mul if !checked => {
+            let val_ty = if is_signed {
+                fx.tcx.types.i128
             } else {
-                fx.easy_call("__rust_u128_addo", &[lhs, rhs], out_ty)
-            });
+                fx.tcx.types.u128
+            };
+            Some(fx.easy_call("__multi3", &[lhs, rhs], val_ty))
         }
-        BinOp::Sub => {
+        BinOp::Add | BinOp::Sub | BinOp::Mul => {
+            assert!(checked);
             let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
-            return Some(if is_signed {
-                fx.easy_call("__rust_i128_subo", &[lhs, rhs], out_ty)
-            } else {
-                fx.easy_call("__rust_u128_subo", &[lhs, rhs], out_ty)
-            });
+            let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
+            let param_types = vec![
+                AbiParam::special(pointer_ty(fx.tcx), ArgumentPurpose::StructReturn),
+                AbiParam::new(types::I128),
+                AbiParam::new(types::I128),
+            ];
+            let args = [
+                out_place.to_ptr().get_addr(fx),
+                lhs.load_scalar(fx),
+                rhs.load_scalar(fx),
+            ];
+            let name = match (bin_op, is_signed) {
+                (BinOp::Add, false) => "__rust_u128_addo",
+                (BinOp::Add, true) => "__rust_i128_addo",
+                (BinOp::Sub, false) => "__rust_u128_subo",
+                (BinOp::Sub, true) => "__rust_i128_subo",
+                (BinOp::Mul, false) => "__rust_u128_mulo",
+                (BinOp::Mul, true) => "__rust_i128_mulo",
+                _ => unreachable!(),
+            };
+            fx.lib_call(name, param_types, vec![], &args);
+            Some(out_place.to_cvalue(fx))
         }
         BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
-        BinOp::Mul => {
-            let res = if checked {
-                let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
-                if is_signed {
-                    fx.easy_call("__rust_i128_mulo", &[lhs, rhs], out_ty)
-                } else {
-                    fx.easy_call("__rust_u128_mulo", &[lhs, rhs], out_ty)
-                }
-            } else {
-                let val_ty = if is_signed {
-                    fx.tcx.types.i128
-                } else {
-                    fx.tcx.types.u128
-                };
-                fx.easy_call("__multi3", &[lhs, rhs], val_ty)
-            };
-            Some(res)
-        }
         BinOp::Div => {
             assert!(!checked);
             if is_signed {

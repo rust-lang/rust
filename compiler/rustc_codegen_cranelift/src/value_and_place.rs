@@ -334,7 +334,9 @@ impl<'tcx> CPlace<'tcx> {
 
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
-            size: u32::try_from(layout.size.bytes()).unwrap(),
+            // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
+            // specify stack slot alignment.
+            size: (u32::try_from(layout.size.bytes()).unwrap() + 15) / 16 * 16,
             offset: None,
         });
         CPlace {
@@ -450,64 +452,6 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, 'tcx, impl Module>,
         from: CValue<'tcx>,
     ) {
-        fn assert_assignable<'tcx>(
-            fx: &FunctionCx<'_, 'tcx, impl Module>,
-            from_ty: Ty<'tcx>,
-            to_ty: Ty<'tcx>,
-        ) {
-            match (from_ty.kind(), to_ty.kind()) {
-                (ty::Ref(_, a, _), ty::Ref(_, b, _))
-                | (
-                    ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
-                    ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }),
-                ) => {
-                    assert_assignable(fx, a, b);
-                }
-                (ty::FnPtr(_), ty::FnPtr(_)) => {
-                    let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
-                        ParamEnv::reveal_all(),
-                        from_ty.fn_sig(fx.tcx),
-                    );
-                    let to_sig = fx.tcx.normalize_erasing_late_bound_regions(
-                        ParamEnv::reveal_all(),
-                        to_ty.fn_sig(fx.tcx),
-                    );
-                    assert_eq!(
-                        from_sig, to_sig,
-                        "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
-                        from_sig, to_sig, fx,
-                    );
-                    // fn(&T) -> for<'l> fn(&'l T) is allowed
-                }
-                (&ty::Dynamic(from_traits, _), &ty::Dynamic(to_traits, _)) => {
-                    for (from, to) in from_traits.iter().zip(to_traits) {
-                        let from = fx
-                            .tcx
-                            .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), from);
-                        let to = fx
-                            .tcx
-                            .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to);
-                        assert_eq!(
-                            from, to,
-                            "Can't write trait object of incompatible traits {:?} to place with traits {:?}\n\n{:#?}",
-                            from_traits, to_traits, fx,
-                        );
-                    }
-                    // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
-                }
-                _ => {
-                    assert_eq!(
-                        from_ty,
-                        to_ty,
-                        "Can't write value with incompatible type {:?} to place with type {:?}\n\n{:#?}",
-                        from_ty,
-                        to_ty,
-                        fx,
-                    );
-                }
-            }
-        }
-
         assert_assignable(fx, from.layout().ty, self.layout().ty);
 
         self.write_cvalue_maybe_transmute(fx, from, "write_cvalue");
@@ -556,7 +500,9 @@ impl<'tcx> CPlace<'tcx> {
                     // FIXME do something more efficient for transmutes between vectors and integers.
                     let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
                         kind: StackSlotKind::ExplicitSlot,
-                        size: src_ty.bytes(),
+                        // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
+                        // specify stack slot alignment.
+                        size: (src_ty.bytes() + 15) / 16 * 16,
                         offset: None,
                     });
                     let ptr = Pointer::stack_slot(stack_slot);
@@ -791,6 +737,65 @@ impl<'tcx> CPlace<'tcx> {
         CPlace {
             inner: self.inner,
             layout,
+        }
+    }
+}
+
+#[track_caller]
+pub(crate) fn assert_assignable<'tcx>(
+    fx: &FunctionCx<'_, 'tcx, impl Module>,
+    from_ty: Ty<'tcx>,
+    to_ty: Ty<'tcx>,
+) {
+    match (from_ty.kind(), to_ty.kind()) {
+        (ty::Ref(_, a, _), ty::Ref(_, b, _))
+        | (
+            ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
+            ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }),
+        ) => {
+            assert_assignable(fx, a, b);
+        }
+        (ty::Ref(_, a, _), ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }))
+        | (ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }), ty::Ref(_, b, _)) => {
+            assert_assignable(fx, a, b);
+        }
+        (ty::FnPtr(_), ty::FnPtr(_)) => {
+            let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
+                ParamEnv::reveal_all(),
+                from_ty.fn_sig(fx.tcx),
+            );
+            let to_sig = fx
+                .tcx
+                .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to_ty.fn_sig(fx.tcx));
+            assert_eq!(
+                from_sig, to_sig,
+                "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
+                from_sig, to_sig, fx,
+            );
+            // fn(&T) -> for<'l> fn(&'l T) is allowed
+        }
+        (&ty::Dynamic(from_traits, _), &ty::Dynamic(to_traits, _)) => {
+            for (from, to) in from_traits.iter().zip(to_traits) {
+                let from = fx
+                    .tcx
+                    .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), from);
+                let to = fx
+                    .tcx
+                    .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to);
+                assert_eq!(
+                    from, to,
+                    "Can't write trait object of incompatible traits {:?} to place with traits {:?}\n\n{:#?}",
+                    from_traits, to_traits, fx,
+                );
+            }
+            // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
+        }
+        _ => {
+            assert_eq!(
+                from_ty, to_ty,
+                "Can't write value with incompatible type {:?} to place with type {:?}\n\n{:#?}",
+                from_ty, to_ty, fx,
+            );
         }
     }
 }

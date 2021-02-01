@@ -27,7 +27,6 @@ extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
@@ -90,7 +89,8 @@ mod prelude {
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::layout::{self, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
-        self, FloatTy, FnSig, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut, TypeFoldable, UintTy,
+        self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut,
+        TypeFoldable, UintTy,
     };
     pub(crate) use rustc_target::abi::{Abi, LayoutOf, Scalar, Size, VariantIdx};
 
@@ -256,8 +256,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         };
         let res = driver::codegen_crate(tcx, metadata, need_metadata_module, config);
 
-        rustc_symbol_mangling::test::report_symbol_names(tcx);
-
         res
     }
 
@@ -279,18 +277,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> Result<(), ErrorReported> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        let _timer = sess.prof.generic_activity("link_crate");
-
-        sess.time("linking", || {
-            let target_cpu = crate::target_triple(sess).to_string();
-            link_binary::<crate::archive::ArArchiveBuilder<'_>>(
-                sess,
-                &codegen_results,
-                outputs,
-                &codegen_results.crate_name.as_str(),
-                &target_cpu,
-            );
-        });
+        let target_cpu = crate::target_triple(sess).to_string();
+        link_binary::<crate::archive::ArArchiveBuilder<'_>>(
+            sess,
+            &codegen_results,
+            outputs,
+            &codegen_results.crate_name.as_str(),
+            &target_cpu,
+        );
 
         Ok(())
     }
@@ -345,7 +339,12 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
 
     let flags = settings::Flags::new(flags_builder);
 
-    let mut isa_builder = cranelift_codegen::isa::lookup(target_triple).unwrap();
+    let variant = if cfg!(feature = "oldbe") {
+        cranelift_codegen::isa::BackendVariant::Legacy
+    } else {
+        cranelift_codegen::isa::BackendVariant::MachInst
+    };
+    let mut isa_builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
     // Don't use "haswell", as it implies `has_lzcnt`.macOS CI is still at Ivy Bridge EP, so `lzcnt`
     // is interpreted as `bsr`.
     isa_builder.enable("nehalem").unwrap();

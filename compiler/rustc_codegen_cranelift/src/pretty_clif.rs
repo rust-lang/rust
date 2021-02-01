@@ -61,7 +61,9 @@ use cranelift_codegen::{
     write::{FuncWriter, PlainWriter},
 };
 
+use rustc_middle::ty::layout::FnAbiExt;
 use rustc_session::config::OutputType;
+use rustc_target::abi::call::FnAbi;
 
 use crate::prelude::*;
 
@@ -78,11 +80,8 @@ impl CommentWriter {
                 format!("symbol {}", tcx.symbol_name(instance).name),
                 format!("instance {:?}", instance),
                 format!(
-                    "sig {:?}",
-                    tcx.normalize_erasing_late_bound_regions(
-                        ParamEnv::reveal_all(),
-                        crate::abi::fn_sig_for_fn_abi(tcx, instance)
-                    )
+                    "abi {:?}",
+                    FnAbi::of_instance(&RevealAllLayoutCx(tcx), instance, &[])
                 ),
                 String::new(),
             ]
