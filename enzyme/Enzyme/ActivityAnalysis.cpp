@@ -1023,7 +1023,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       // UpHypothesis.ConstantValues.insert(val);
       UpHypothesis->insertConstantsFrom(*Hypothesis);
       assert(directions & UP);
-      bool ActiveUp = !UpHypothesis->isInstructionInactiveFromOrigin(TR, Val);
+      bool ActiveUp = !isa<Argument>(Val) && !UpHypothesis->isInstructionInactiveFromOrigin(TR, Val);
 
       // Case b) can occur if:
       //    1) this memory is used as part of an active return
