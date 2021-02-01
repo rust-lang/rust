@@ -302,6 +302,10 @@ Release steps:
 5. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's submodule.
    Self-approve the PR.
 
+If the GitHub Actions release fails because of a transient problem like a timeout, you can re-run the job from the Actions console.
+If it fails because of something that needs to be fixed, remove the release tag (if needed), fix the problem, then start over.
+Make sure to remove the new changelog post created when running `cargo xtask release` a second time.
+
 # Permissions
 
 There are three sets of people with extra permissions:
