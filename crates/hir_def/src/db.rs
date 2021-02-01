@@ -59,7 +59,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     fn crate_def_map_query(&self, krate: CrateId) -> Arc<DefMap>;
 
     #[salsa::invoke(DefMap::block_def_map_query)]
-    fn block_def_map(&self, block: BlockId) -> Arc<DefMap>;
+    fn block_def_map(&self, block: BlockId) -> Option<Arc<DefMap>>;
 
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;

@@ -700,10 +700,13 @@ impl ExprCollector<'_> {
         let ast_id = self.expander.ast_id(&block);
         let block_loc = BlockLoc { ast_id, module: self.expander.module };
         let block_id = self.db.intern_block(block_loc);
-        let def_map = self.db.block_def_map(block_id);
-        let root = def_map.module_id(def_map.root());
+        let opt_def_map = self.db.block_def_map(block_id);
+        let has_def_map = opt_def_map.is_some();
+        let def_map = opt_def_map.unwrap_or_else(|| self.expander.def_map.clone());
+        let module =
+            if has_def_map { def_map.module_id(def_map.root()) } else { self.expander.module };
         let prev_def_map = mem::replace(&mut self.expander.def_map, def_map);
-        let prev_module = mem::replace(&mut self.expander.module, root);
+        let prev_module = mem::replace(&mut self.expander.module, module);
 
         self.collect_stmts_items(block.statements());
         let statements =

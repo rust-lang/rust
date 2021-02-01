@@ -197,12 +197,17 @@ impl DefMap {
         Arc::new(def_map)
     }
 
-    pub(crate) fn block_def_map_query(db: &dyn DefDatabase, block_id: BlockId) -> Arc<DefMap> {
+    pub(crate) fn block_def_map_query(
+        db: &dyn DefDatabase,
+        block_id: BlockId,
+    ) -> Option<Arc<DefMap>> {
         let block: BlockLoc = db.lookup_intern_block(block_id);
         let parent = block.module.def_map(db);
 
-        // FIXME: It would be good to just return the parent map when the block has no items, but
-        // we rely on `def_map.block` in a few places, which is `Some` for the inner `DefMap`.
+        let item_tree = db.item_tree(block.ast_id.file_id);
+        if item_tree.inner_items_of_block(block.ast_id.value).is_empty() {
+            return None;
+        }
 
         let block_info =
             BlockInfo { block: block_id, parent, parent_module: block.module.local_id };
@@ -211,7 +216,7 @@ impl DefMap {
         def_map.block = Some(block_info);
 
         let def_map = collector::collect_defs(db, def_map, Some(block.ast_id));
-        Arc::new(def_map)
+        Some(Arc::new(def_map))
     }
 
     fn empty(krate: CrateId, edition: Edition) -> DefMap {

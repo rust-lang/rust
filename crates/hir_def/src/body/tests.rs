@@ -43,7 +43,7 @@ fn block_def_map_at(ra_fixture: &str) -> Arc<DefMap> {
     let mut block =
         block_at_pos(&db, &def_map, position).expect("couldn't find enclosing function or block");
     loop {
-        let def_map = db.block_def_map(block);
+        let def_map = db.block_def_map(block).unwrap_or_else(|| def_map.clone());
         let new_block = block_at_pos(&db, &def_map, position);
         match new_block {
             Some(new_block) => {
@@ -58,6 +58,7 @@ fn block_def_map_at(ra_fixture: &str) -> Arc<DefMap> {
 }
 
 fn block_at_pos(db: &dyn DefDatabase, def_map: &DefMap, position: FilePosition) -> Option<BlockId> {
+    // Find the smallest (innermost) function containing the cursor.
     let mut size = None;
     let mut fn_def = None;
     for (_, module) in def_map.modules() {
@@ -73,7 +74,6 @@ fn block_at_pos(db: &dyn DefDatabase, def_map: &DefMap, position: FilePosition) 
                 let ast = ast_map.get(item_tree[it.lookup(db).id.value].ast_id).to_node(&root);
                 let range = ast.syntax().text_range();
 
-                // Find the smallest (innermost) function containing the cursor.
                 if !range.contains(position.offset) {
                     continue;
                 }

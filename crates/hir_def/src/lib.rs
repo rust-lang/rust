@@ -81,7 +81,13 @@ pub struct ModuleId {
 impl ModuleId {
     pub fn def_map(&self, db: &dyn db::DefDatabase) -> Arc<DefMap> {
         match self.block {
-            Some(block) => db.block_def_map(block),
+            Some(block) => {
+                db.block_def_map(block).unwrap_or_else(|| {
+                    // NOTE: This should be unreachable - all `ModuleId`s come from their `DefMap`s,
+                    // so the `DefMap` here must exist.
+                    panic!("no `block_def_map` for `ModuleId` {:?}", self);
+                })
+            }
             None => db.crate_def_map(self.krate),
         }
     }
@@ -239,6 +245,7 @@ pub struct BlockId(salsa::InternId);
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub struct BlockLoc {
     ast_id: AstId<ast::BlockExpr>,
+    /// The containing module.
     module: ModuleId,
 }
 impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
