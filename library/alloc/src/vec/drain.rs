@@ -1,6 +1,6 @@
 use crate::alloc::{Allocator, Global};
 use core::fmt;
-use core::iter::{FusedIterator, TrustedLen};
+use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce};
 use core::mem::{self};
 use core::ptr::{self, NonNull};
 use core::slice::{self};
@@ -89,6 +89,19 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
+    #[doc(hidden)]
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
+    where
+        Self: TrustedRandomAccessNoCoerce,
+    {
+        // SAFETY: `TrustedRandomAccessNoCoerce` requires that `idx` is in bounds and that
+        // each `idx` is only accessed once. Forwarding to the slice iterator's
+        // implementation is thus safe, and reading the value is safe because
+        // `Self: TrustedRandomAccessNoCoerce` implies `T: Copy` so the `Drop` impl below
+        // won't cause each item to be dropped twice.
+        unsafe { ptr::read(self.iter.__iterator_get_unchecked(idx) as *const _) }
+    }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -152,6 +165,21 @@ impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
 // SAFETY: `Drain` simply forwards to the underlying slice iterator, which implements `TrustedLen`
 // so the required properties are all preserved.
 unsafe impl<T, A: Allocator> TrustedLen for Drain<'_, T, A> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+// SAFETY: `Drain` forwards to the underlying slice iterator, which implements `TrustedRandomAccessNoCoerce`,
+// and then reads the items instead of just returning a reference. As `TrustedRandomAccessNoCoerce`
+// requires each index to be accessed only once, this is safe to do here.
+//
+// TrustedRandomAccess (without NoCoerce) must not be implemented because
+// subtypes/supertypes of `T` might not be `NonDrop`
+unsafe impl<T, A: Allocator> TrustedRandomAccessNoCoerce for Drain<'_, T, A>
+where
+    T: super::into_iter::NonDrop,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
