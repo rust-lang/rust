@@ -4,10 +4,10 @@
 use std::borrow::Cow;
 
 use rustc_middle::mir;
+use rustc_target::abi::call::PassMode;
 
 use cranelift_codegen::entity::EntityRef;
 
-use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
 pub(super) fn add_args_header_comment(fx: &mut FunctionCx<'_, '_, impl Module>) {
@@ -21,9 +21,9 @@ pub(super) fn add_arg_comment<'tcx>(
     kind: &str,
     local: Option<mir::Local>,
     local_field: Option<usize>,
-    params: EmptySinglePair<Value>,
-    pass_mode: PassMode,
-    ty: Ty<'tcx>,
+    params: &[Value],
+    arg_abi_mode: PassMode,
+    arg_layout: TyAndLayout<'tcx>,
 ) {
     let local = if let Some(local) = local {
         Cow::Owned(format!("{:?}", local))
@@ -37,12 +37,20 @@ pub(super) fn add_arg_comment<'tcx>(
     };
 
     let params = match params {
-        Empty => Cow::Borrowed("-"),
-        Single(param) => Cow::Owned(format!("= {:?}", param)),
-        Pair(param_a, param_b) => Cow::Owned(format!("= {:?}, {:?}", param_a, param_b)),
+        [] => Cow::Borrowed("-"),
+        [param] => Cow::Owned(format!("= {:?}", param)),
+        [param_a, param_b] => Cow::Owned(format!("= {:?},{:?}", param_a, param_b)),
+        params => Cow::Owned(format!(
+            "= {}",
+            params
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(",")
+        )),
     };
 
-    let pass_mode = format!("{:?}", pass_mode);
+    let pass_mode = format!("{:?}", arg_abi_mode);
     fx.add_global_comment(format!(
         "{kind:5}{local:>3}{local_field:<5} {params:10} {pass_mode:36} {ty:?}",
         kind = kind,
@@ -50,7 +58,7 @@ pub(super) fn add_arg_comment<'tcx>(
         local_field = local_field,
         params = params,
         pass_mode = pass_mode,
-        ty = ty,
+        ty = arg_layout.ty,
     ));
 }
 

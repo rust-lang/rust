@@ -1,9 +1,7 @@
 #!/bin/bash
 set -e
 
-export RUSTFLAGS="-Zrun_dsymutil=no"
-
-./build.sh --without-sysroot "$@"
+./build.sh --sysroot none "$@"
 
 rm -r target/out || true
 
