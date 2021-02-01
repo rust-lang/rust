@@ -500,6 +500,7 @@ struct MatrixEntry<'p, 'tcx> {
     /// because or-patterns and filtering disalign the columns. In the last column this is `0`.
     next_row_id: usize,
     /// Cache the constructor for this pattern.
+    /// TODO: use Option
     ctor: OnceCell<Constructor<'tcx>>,
     /// Whether this pattern is under a guard and thus should be ignored by patterns below.
     is_under_guard: bool,
@@ -732,9 +733,13 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             // Note: the fields are in the natural left-to-right order but the columns are not.
             // We need to start from the last field to get the `next_row_id`s right.
             for (col, &pat) in new_columns.iter_mut().zip(new_fields.iter().rev()) {
-                col[new_id].pat = pat;
-                col[new_id].next_row_id = row.id;
-                col[new_id].is_under_guard = head_entry.is_under_guard;
+                let entry = &mut col[new_id];
+                entry.pat = pat;
+                entry.next_row_id = row.id;
+                entry.is_under_guard = head_entry.is_under_guard;
+                if !pat.is_or_pat() {
+                    entry.head_ctor(pcx.cx);
+                }
                 // Make `row_id` point to the entry just added.
                 row.id = new_id;
             }
@@ -745,7 +750,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
     /// Expands or-patterns in the last column of the matrix. Does nothing if the first column is
     /// missing or has no or-patterns.
-    fn expand_or_patterns(&mut self) {
+    fn expand_or_patterns(&mut self, cx: &MatchCheckCtxt<'p, 'tcx>) {
         let any_or_pats = !self.columns.is_empty() && self.last_col().any(|e| e.pat.is_or_pat());
         self.history.push(UndoKind::OrPatsExp { any_or_pats });
         if !any_or_pats {
@@ -771,6 +776,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                         ctor: OnceCell::new(),
                         is_under_guard: entry.is_under_guard,
                     };
+                    entry.head_ctor(cx);
                     new_last_col.push(entry);
                     self.selected_rows.push(SelectedRow {
                         id: new_last_col.len() - 1,
@@ -1341,7 +1347,7 @@ fn compute_matrix_usefulness<'p, 'tcx>(
         let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
         matrix.specialize(pcx, &ctor, &ctor_wild_subpatterns);
         // Expand any or-patterns present in the new last column.
-        matrix.expand_or_patterns();
+        matrix.expand_or_patterns(cx);
         let w = compute_matrix_usefulness(cx, matrix, hir_id, false);
         matrix.undo();
         matrix.undo();
@@ -1395,7 +1401,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
     let mut matrix = Matrix::new(scrut_ty, arms);
-    matrix.expand_or_patterns();
+    matrix.expand_or_patterns(cx);
 
     let witnesses = compute_matrix_usefulness(cx, &mut matrix, scrut_hir_id, true);
 
