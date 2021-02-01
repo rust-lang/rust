@@ -100,29 +100,3 @@ pub fn extend_for_unit() {
     }
     assert_eq!(x, 5);
 }
-
-#[test]
-pub fn inplace_result_collect() {
-    let src = vec![0usize; 256];
-    let srcptr = src.as_ptr();
-    let sink = src.into_iter().map(|i| Ok(i)).collect::<Result<Vec<_>, ()>>().unwrap();
-    let sinkptr = sink.as_ptr();
-    assert_eq!(srcptr, sinkptr);
-
-    let src: Vec<usize> = vec![0usize; 256];
-    let srcptr = src.as_ptr();
-    let iter = src
-        .into_iter()
-        .enumerate()
-        .map(|i| i.0 + i.1)
-        .zip(std::iter::repeat(1usize))
-        .map(|(a, b)| a + b)
-        .map_while(Option::Some)
-        .peekable()
-        .skip(1)
-        .map(|e| std::num::NonZeroUsize::new(e))
-        .map(|z| z.map(|u| u.get()).ok_or(()));
-    let sink = iter.collect::<Result<Vec<_>, _>>().unwrap();
-    let sinkptr = sink.as_ptr();
-    assert_eq!(srcptr, sinkptr as *const usize);
-}
