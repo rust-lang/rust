@@ -269,20 +269,22 @@ impl GlobalState {
         let project_folders =
             ProjectFolders::new(&workspaces, &files_config.exclude, workspace_build_data.as_ref());
 
-        self.proc_macro_client = match self.config.proc_macro_srv() {
-            None => None,
-            Some((path, args)) => match ProcMacroClient::extern_process(path.clone(), args) {
-                Ok(it) => Some(it),
-                Err(err) => {
-                    log::error!(
-                        "Failed to run proc_macro_srv from path {}, error: {:?}",
-                        path.display(),
-                        err
-                    );
-                    None
-                }
-            },
-        };
+        if self.proc_macro_client.is_none() {
+            self.proc_macro_client = match self.config.proc_macro_srv() {
+                None => None,
+                Some((path, args)) => match ProcMacroClient::extern_process(path.clone(), args) {
+                    Ok(it) => Some(it),
+                    Err(err) => {
+                        log::error!(
+                            "Failed to run proc_macro_srv from path {}, error: {:?}",
+                            path.display(),
+                            err
+                        );
+                        None
+                    }
+                },
+            };
+        }
 
         let watch = match files_config.watcher {
             FilesWatcher::Client => vec![],
