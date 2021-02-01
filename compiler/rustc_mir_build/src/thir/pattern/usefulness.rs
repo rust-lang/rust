@@ -572,6 +572,9 @@ struct SelectedRow<'p, 'tcx> {
     id: usize,
     /// Where the pointed row item came from.
     origin: Origin<'p, 'tcx>,
+    /// Whether we encountered any or-patterns in the way to get to this row. In other words,
+    /// whether following the `origin`s goes through any `Origin::OrPat`.
+    any_or_pats: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -618,7 +621,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         let mut matrix = Matrix::default();
         let mut column = Vec::new();
         for (id, arm) in arms.iter().enumerate() {
-            matrix.selected_rows.push(SelectedRow { id, origin: Origin::Pushed });
+            matrix.selected_rows.push(SelectedRow {
+                id,
+                origin: Origin::Pushed,
+                any_or_pats: false,
+            });
             matrix.row_data.push(RowData {
                 is_under_guard: arm.has_guard,
                 hir_id: arm.hir_id,
@@ -731,6 +738,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                         row: sel_row_id,
                         ctor_arity: ctor_wild_subpatterns.len(),
                     },
+                    any_or_pats: row.any_or_pats,
                 }),
         );
 
@@ -1323,17 +1331,19 @@ fn compute_matrix_usefulness<'p, 'tcx>(
         for row in &matrix.selected_rows {
             if !is_covered {
                 let mut set = SubPatSet::empty();
-                let mut origin = row.origin;
-                loop {
-                    match origin {
-                        Origin::Pushed => break,
-                        Origin::Specialized { col, row, ctor_arity } => {
-                            set = set.unspecialize(ctor_arity);
-                            origin = matrix.selected_rows_history[col][row].origin;
-                        }
-                        Origin::OrPat { col, row, alt_id, alt_count, pat } => {
-                            set = set.unsplit_or_pat(alt_id, alt_count, pat);
-                            origin = matrix.selected_rows_history[col][row].origin;
+                if row.any_or_pats {
+                    let mut origin = row.origin;
+                    loop {
+                        match origin {
+                            Origin::Pushed => break,
+                            Origin::Specialized { col, row, ctor_arity } => {
+                                set = set.unspecialize(ctor_arity);
+                                origin = matrix.selected_rows_history[col][row].origin;
+                            }
+                            Origin::OrPat { col, row, alt_id, alt_count, pat } => {
+                                set = set.unsplit_or_pat(alt_id, alt_count, pat);
+                                origin = matrix.selected_rows_history[col][row].origin;
+                            }
                         }
                     }
                 }
