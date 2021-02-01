@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `NonExistent` in this scope
-  --> $DIR/ambiguous-builtin-attrs.rs:32:5
+  --> $DIR/ambiguous-builtin-attrs.rs:34:5
    |
 LL |     NonExistent;
    |     ^^^^^^^^^^^ not found in this scope
@@ -93,6 +93,15 @@ error[E0517]: attribute should be applied to a struct, enum, or union
    |
 LL | fn non_macro_expanded_location<#[repr(C)] T>() {
    |                                       ^   - not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/ambiguous-builtin-attrs.rs:24:16
+   |
+LL |         #[repr(C)]
+   |                ^
+...
+LL |         _ => {}
+   |         ------- not a struct, enum, or union
 
 error: aborting due to 8 previous errors
 
