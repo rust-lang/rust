@@ -83,4 +83,5 @@ LL | }
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+Some errors have detailed explanations: E0521, E0597.
+For more information about an error, try `rustc --explain E0521`.
