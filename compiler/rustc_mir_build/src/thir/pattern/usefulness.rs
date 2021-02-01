@@ -200,10 +200,10 @@
 //! We then extend this function to work with pattern-stacks as input, by acting on the first
 //! column and keeping the other columns untouched.
 //!
-//! Specialization for the whole matrix is done in [`Matrix::specialize_constructor`]. Note that
+//! Specialization for the whole matrix is done in `Matrix::specialize_constructor`. Note that
 //! or-patterns in the first column are expanded before being stored in the matrix. Specialization
 //! for a single patstack is done from a combination of [`Constructor::is_covered_by`] and
-//! [`PatStack::pop_head_constructor`]. The internals of how it's done mostly live in the
+//! `PatStack::pop_head_constructor`. The internals of how it's done mostly live in the
 //! [`Fields`] struct.
 //!
 //!
@@ -263,7 +263,7 @@
 //! //==>> we have tried all the constructors. The output is the single witness `[Some(false)]`.
 //! ```
 //!
-//! This computation is done in [`is_useful`]. In practice we don't care about the list of
+//! This computation is done in [`compute_matrix_usefulness`]. In practice we don't care about the list of
 //! witnesses when computing reachability; we only need to know whether any exist. We do keep the
 //! witnesses when computing exhaustiveness to report them to the user.
 //!
@@ -284,7 +284,6 @@ use super::deconstruct_pat::{Constructor, Fields, SplitWildcard};
 use super::{Pat, PatKind};
 use super::{PatternFoldable, PatternFolder};
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::OnceCell;
 
