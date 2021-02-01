@@ -4133,6 +4133,7 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
+ "rustc_trait_selection",
  "rustc_typeck",
  "tracing",
 ]
