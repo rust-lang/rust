@@ -901,7 +901,7 @@ impl HandlerInner {
 
     fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: &str) -> ! {
         self.emit_diag_at_span(Diagnostic::new(Bug, msg), sp);
-        panic!(ExplicitBug);
+        panic::panic_any(ExplicitBug);
     }
 
     fn emit_diag_at_span(&mut self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
@@ -955,7 +955,7 @@ impl HandlerInner {
 
     fn bug(&mut self, msg: &str) -> ! {
         self.emit_diagnostic(&Diagnostic::new(Bug, msg));
-        panic!(ExplicitBug);
+        panic::panic_any(ExplicitBug);
     }
 
     fn delay_as_bug(&mut self, diagnostic: Diagnostic) {
