@@ -272,7 +272,40 @@ let g:ale_linters = {'rust': ['analyzer']}
 
 NeoVim 0.5 (not yet released) has built-in language server support.
 For a quick start configuration of rust-analyzer, use https://github.com/neovim/nvim-lspconfig#rust_analyzer[neovim/nvim-lspconfig].
-Once `neovim/nvim-lspconfig` is installed, use `+lua require'nvim_lsp'.rust_analyzer.setup({})+` in your `init.vim`.
+Once `neovim/nvim-lspconfig` is installed, use `+lua require'lspconfig'.rust_analyzer.setup({})+` in your `init.vim`.
+
+You can also pass LSP settings to the server:
+
+[source,vim]
+----
+lua << EOF
+local nvim_lsp = require'lspconfig'
+
+local on_attach = function(client)
+    require'completion'.on_attach(client)
+end
+
+nvim_lsp.rust_analyzer.setup({
+    on_attach=on_attach,
+    settings = {
+        ["rust-analyzer"] = {
+            assist = {
+                importMergeBehavior = "last",
+                importPrefix = "by_self",
+            },
+            cargo = {
+                loadOutDirsFromCheck = true
+            },
+            procMacro = {
+                enable = true
+            },
+        }
+    }
+})
+EOF
+----
+
+See https://sharksforarms.dev/posts/neovim-rust/ for more tips on getting started.
 
 === Sublime Text 3
 
