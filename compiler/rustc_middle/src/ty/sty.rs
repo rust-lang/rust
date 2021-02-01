@@ -1871,8 +1871,14 @@ impl<'tcx> TyS<'tcx> {
     pub fn is_scalar(&self) -> bool {
         matches!(
             self.kind(),
-            Bool | Char | Int(_) | Float(_) | Uint(_) | FnDef(..) | FnPtr(_) | RawPtr(_)
-            | Infer(IntVar(_) | FloatVar(_))
+            Bool | Char
+                | Int(_)
+                | Float(_)
+                | Uint(_)
+                | FnDef(..)
+                | FnPtr(_)
+                | RawPtr(_)
+                | Infer(IntVar(_) | FloatVar(_))
         )
     }
 

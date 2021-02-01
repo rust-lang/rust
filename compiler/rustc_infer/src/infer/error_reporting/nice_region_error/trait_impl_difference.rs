@@ -132,7 +132,12 @@ impl Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
                 [segment]
                     if segment
                         .res
-                        .map(|res| matches!(res, Res::SelfTy(_, _) | Res::Def(hir::def::DefKind::TyParam, _)))
+                        .map(|res| {
+                            matches!(
+                                res,
+                                Res::SelfTy(_, _) | Res::Def(hir::def::DefKind::TyParam, _)
+                            )
+                        })
                         .unwrap_or(false) =>
                 {
                     self.types.push(path.span);
