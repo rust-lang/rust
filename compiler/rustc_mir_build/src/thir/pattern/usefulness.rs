@@ -295,9 +295,8 @@ use rustc_arena::TypedArena;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
-use smallvec::{smallvec, SmallVec};
 use std::fmt;
 use std::iter::IntoIterator;
 use std::ops::Index;
@@ -487,64 +486,6 @@ impl<T> Index<usize> for VecVec<T> {
 impl<T> Default for VecVec<T> {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
-/// works well.
-#[derive(Clone)]
-struct PatStack<'p, 'tcx> {
-    pats: SmallVec<[&'p Pat<'tcx>; 2]>,
-    row_data: RowData<'p, 'tcx>,
-    /// Cache for the constructor of the head
-    head_ctor: OnceCell<Constructor<'tcx>>,
-}
-
-impl<'p, 'tcx> PatStack<'p, 'tcx> {
-    fn from_pattern(pat: &'p Pat<'tcx>, row_data: RowData<'p, 'tcx>) -> Self {
-        Self::from_vec(smallvec![pat], row_data)
-    }
-
-    fn from_vec(vec: SmallVec<[&'p Pat<'tcx>; 2]>, row_data: RowData<'p, 'tcx>) -> Self {
-        PatStack { pats: vec, row_data, head_ctor: OnceCell::new() }
-    }
-
-    fn head(&self) -> &'p Pat<'tcx> {
-        self.pats[0]
-    }
-
-    fn head_ctor<'a>(&'a self, cx: &MatchCheckCtxt<'p, 'tcx>) -> &'a Constructor<'tcx> {
-        self.head_ctor.get_or_init(|| Constructor::from_pat(cx, self.head()))
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
-        self.pats.iter().copied()
-    }
-
-    /// This computes `S(self.head_ctor(), self)`. See top of the file for explanations.
-    ///
-    /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
-    /// fields filled with wild patterns.
-    ///
-    /// This is roughly the inverse of `Constructor::apply`.
-    fn pop_head_constructor(&self, ctor_wild_subpatterns: &Fields<'p, 'tcx>) -> PatStack<'p, 'tcx> {
-        // We pop the head pattern and push the new fields extracted from the arguments of
-        // `self.head()`.
-        let mut new_fields =
-            ctor_wild_subpatterns.replace_with_pattern_arguments(self.head()).into_patterns();
-        new_fields.extend_from_slice(&self.pats[1..]);
-        PatStack::from_vec(new_fields, self.row_data.clone())
-    }
-}
-
-/// Pretty-printing for matrix row.
-impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "+")?;
-        for pat in self.iter() {
-            write!(f, " {} +", pat)?;
-        }
-        Ok(())
     }
 }
 
@@ -1328,14 +1269,14 @@ impl<'tcx> Witness<'tcx> {
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
-#[instrument(skip(cx, matrix, is_top_level))]
+#[instrument(skip(cx, matrix, hir_id, is_top_level))]
 fn compute_matrix_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &mut Matrix<'p, 'tcx>,
-    v: &PatStack<'p, 'tcx>,
+    hir_id: HirId,
     is_top_level: bool,
 ) -> Usefulness<'p, 'tcx> {
-    debug!("matrix,v={:?}{:?}", matrix, v);
+    debug!("matrix:{:?}", matrix);
 
     // The base case. We are pattern-matching on () and the return value is
     // based on whether our matrix has a row or not.
@@ -1380,23 +1321,23 @@ fn compute_matrix_usefulness<'p, 'tcx>(
         return usefulness;
     }
 
-    let pat = v.head();
     let ty = matrix.ty_of_last_col();
-    let pcx = PatCtxt { cx, ty, span: pat.span, is_top_level };
+    let pcx = PatCtxt { cx, ty, span: DUMMY_SP, is_top_level };
 
     if super::deconstruct_pat::IntRange::is_integral(ty) {
+        // Lint on likely incorrect range patterns (#63987)
         let mut seen = Vec::new();
         for entry in matrix.last_col() {
             let ctor = entry.head_ctor(cx);
             let span = entry.pat.span;
             if let Constructor::IntRange(ctor_range) = &ctor {
                 let pcx = PatCtxt { cx, ty, span, is_top_level };
-                // Lint on likely incorrect range patterns (#63987)
                 ctor_range.lint_overlapping_range_endpoints(
                     pcx,
                     seen.iter().copied(),
                     matrix.column_count(),
-                    v.row_data.hir_id,
+                    // TODO: use correct HirId
+                    hir_id,
                 )
             }
             if !entry.is_under_guard {
@@ -1404,22 +1345,23 @@ fn compute_matrix_usefulness<'p, 'tcx>(
             }
         }
     }
-    let v_ctor = v.head_ctor(cx);
-    // We split the head constructor of `v`.
-    let split_ctors = v_ctor.split(pcx, matrix.head_ctors(cx));
-    // For each constructor, we compute whether there's a value that starts with it that would
-    // witness the usefulness of `v`.
+
+    // We list the relevant constructors.
+    let mut split_wildcard = SplitWildcard::new(pcx);
+    split_wildcard.split(pcx, matrix.head_ctors(cx));
+    let split_ctors = split_wildcard.into_ctors(pcx);
+    // For each constructor, we try to see for which rows a pattern starting with this ctor could
+    // be useful.
     let mut usefulness = Usefulness::new_not_useful(ConstructWitness);
     let mut any_missing = false;
     for ctor in split_ctors.into_iter() {
         debug!("specialize({:?})", ctor);
         // We cache the result of `Fields::wildcards` because it is used a lot.
         let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
-        let v = v.pop_head_constructor(&ctor_wild_subpatterns);
         matrix.specialize(pcx, &ctor, &ctor_wild_subpatterns);
         // Expand any or-patterns present in the new last column.
         matrix.expand_or_patterns();
-        let u = compute_matrix_usefulness(cx, matrix, &v, false);
+        let u = compute_matrix_usefulness(cx, matrix, hir_id, false);
         matrix.undo();
         matrix.undo();
         if !any_missing {
@@ -1472,16 +1414,10 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
     let mut matrix = Matrix::new(scrut_ty, arms);
-
-    let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(scrut_ty));
-    let row_data = RowData {
-        is_under_guard: false,
-        hir_id: scrut_hir_id,
-        usefulness: Usefulness::new_not_useful(ConstructWitness),
-    };
-    let v = PatStack::from_pattern(wild_pattern, row_data);
     matrix.expand_or_patterns();
-    let usefulness = compute_matrix_usefulness(cx, &mut matrix, &v, true);
+
+    let usefulness = compute_matrix_usefulness(cx, &mut matrix, scrut_hir_id, true);
+
     let non_exhaustiveness_witnesses = match usefulness {
         WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
         NoWitnesses(_) => bug!(),

@@ -1017,7 +1017,7 @@ impl<'tcx> SplitWildcard<'tcx> {
 
     /// Return the set of constructors resulting from splitting the wildcard. As explained at the
     /// top of the file, if any constructors are missing we can ignore the present ones.
-    fn into_ctors(self, pcx: PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
+    pub(super) fn into_ctors(self, pcx: PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
         if self.any_missing(pcx) {
             // Some constructors are missing, thus we can specialize with the special `Missing`
             // constructor, which stands for those constructors that are not seen in the matrix,
