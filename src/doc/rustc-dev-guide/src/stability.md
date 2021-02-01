@@ -44,12 +44,8 @@ prevents breaking dependencies by leveraging Cargo's lint capping.
 [rustc bug]: https://github.com/rust-lang/rust/issues/15702
 
 ## stable
-
 The `#[stable(feature = "foo", "since = "1.420.69")]` attribute explicitly
-marks an item as stabilized. To do this, follow the instructions in
-[Stabilizing Features](./stabilization_guide.md).
-
-Note that stable functions may use unstable things in their body.
+marks an item as stabilized. Note that stable functions may use unstable things in their body.
 
 ## rustc_const_unstable
 
@@ -72,6 +68,24 @@ even on an `unstable` function, if that function is called from another
 Furthermore this attribute is needed to mark an intrinsic as callable from
 `rustc_const_stable` functions.
 
+## Stabilizing a library feature
+
+To stabilize a feature, follow these steps:
+
+0. Ask a **@T-libs** member to start an FCP on the tracking issue and wait for
+   the FCP to complete (with `disposition-merge`).
+1. Change `#[unstable(...)]` to `#[stable(since = "version")]`.
+   `version` should be the *current nightly*, i.e. stable+2. You can see which version is
+   the current nightly [on Forge](https://forge.rust-lang.org/#current-release-versions).
+2. Remove `#![feature(...)]` from any test or doc-test for this API. If the feature is used in the
+   compiler or tools, remove it from there as well.
+3. If applicable, change `#[rustc_const_unstable(...)]` to
+   `#[rustc_const_stable(since = "version")]`.
+4. Open a PR against `rust-lang/rust`.
+   - Add the appropriate labels: `@rustbot modify labels: +T-libs`.
+   - Link to the tracking issue and say "Closes #XXXXX".
+
+You can see an example of stabilizing a feature at [#75132](https://github.com/rust-lang/rust/pull/75132).
 
 ## allow_internal_unstable
 
@@ -130,35 +144,4 @@ default `allow`, but most of the standard library raises it to a warning with
 `#![warn(deprecated_in_future)]`.
 
 [`deprecated` attribute]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-deprecated-attribute
-
-## -Z force-unstable-if-unmarked
-
-The `-Z force-unstable-if-unmarked` flag has a variety of purposes to help
-enforce that the correct crates are marked as unstable. It was introduced
-primarily to allow rustc and the standard library to link to arbitrary crates
-on crates.io which do not themselves use `staged_api`. `rustc` also relies on
-this flag to mark all of its crates as unstable with the `rustc_private`
-feature so that each crate does not need to be carefully marked with
-`unstable`.
-
-This flag is automatically applied to all of `rustc` and the standard library
-by the bootstrap scripts. This is needed because the compiler and all of its
-dependencies are shipped in the sysroot to all users.
-
-This flag has the following effects:
-
-- Marks the crate as "unstable" with the `rustc_private` feature if it is not
-  itself marked as stable or unstable.
-- Allows these crates to access other forced-unstable crates without any need
-  for attributes. Normally a crate would need a `#![feature(rustc_private)]`
-  attribute to use other unstable crates. However, that would make it
-  impossible for a crate from crates.io to access its own dependencies since
-  that crate won't have a `feature(rustc_private)` attribute, but *everything*
-  is compiled with `-Z force-unstable-if-unmarked`.
-
-Code which does not use `-Z force-unstable-if-unmarked` should include the
-`#![feature(rustc_private)]` crate attribute to access these force-unstable
-crates. This is needed for things that link `rustc`, such as `miri`, `rls`, or
-`clippy`.
-
 [blog]: https://www.ralfj.de/blog/2018/07/19/const.html

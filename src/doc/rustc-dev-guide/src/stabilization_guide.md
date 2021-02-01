@@ -1,5 +1,10 @@
 # Request for stabilization
 
+**NOTE**: this page is about stabilizing language features.
+For stabilizing *library* features, see [Stabilizing a library feature].
+
+[Stabilizing a library feature]: ./stability.md#stabilizing-a-library-feature
+
 Once an unstable feature has been well-tested with no outstanding
 concern, anyone may push for its stabilization. It involves the
 following steps:

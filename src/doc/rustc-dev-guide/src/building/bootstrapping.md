@@ -313,11 +313,41 @@ of the public API of the standard library, but are used to implement it.
 `rustlib` is part of the search path for linkers, but `lib` will never be part
 of the search path.
 
+#### -Z force-unstable-if-unmarked
+
 Since `rustlib` is part of the search path, it means we have to be careful
 about which crates are included in it. In particular, all crates except for
 the standard library are built with the flag `-Z force-unstable-if-unmarked`,
 which means that you have to use `#![feature(rustc_private)]` in order to
 load it (as opposed to the standard library, which is always available).
+
+The `-Z force-unstable-if-unmarked` flag has a variety of purposes to help
+enforce that the correct crates are marked as unstable. It was introduced
+primarily to allow rustc and the standard library to link to arbitrary crates
+on crates.io which do not themselves use `staged_api`. `rustc` also relies on
+this flag to mark all of its crates as unstable with the `rustc_private`
+feature so that each crate does not need to be carefully marked with
+`unstable`.
+
+This flag is automatically applied to all of `rustc` and the standard library
+by the bootstrap scripts. This is needed because the compiler and all of its
+dependencies are shipped in the sysroot to all users.
+
+This flag has the following effects:
+
+- Marks the crate as "unstable" with the `rustc_private` feature if it is not
+  itself marked as stable or unstable.
+- Allows these crates to access other forced-unstable crates without any need
+  for attributes. Normally a crate would need a `#![feature(rustc_private)]`
+  attribute to use other unstable crates. However, that would make it
+  impossible for a crate from crates.io to access its own dependencies since
+  that crate won't have a `feature(rustc_private)` attribute, but *everything*
+  is compiled with `-Z force-unstable-if-unmarked`.
+
+Code which does not use `-Z force-unstable-if-unmarked` should include the
+`#![feature(rustc_private)]` crate attribute to access these force-unstable
+crates. This is needed for things that link `rustc`, such as `miri`, `rls`, or
+`clippy`.
 
 You can find more discussion about sysroots in:
 - The [rustdoc PR] explaining why it uses `extern crate` for dependencies loaded from sysroot

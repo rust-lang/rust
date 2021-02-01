@@ -10,6 +10,7 @@ if [ "$MAX_LINE_LENGTH" == "" ]; then
 fi
 
 if [ "$1" == "" ]; then
+  shopt -s globstar
   files=( src/**/*.md )
 else
   files=( "$@" )
