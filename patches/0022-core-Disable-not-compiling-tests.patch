@@ -119,5 +119,21 @@ index 6609bc3..241b497 100644
  
  #[test]
  #[should_panic(expected = "index 0 greater than length of slice")]
+diff --git a/library/core/tests/num/ops.rs b/library/core/tests/num/ops.rs
+index 9979cc8..d5d1d83 100644
+--- a/library/core/tests/num/ops.rs
++++ b/library/core/tests/num/ops.rs
+@@ -238,7 +238,7 @@ macro_rules! test_shift_assign {
+         }
+     };
+ }
+-test_shift!(test_shl_defined, Shl::shl);
+-test_shift_assign!(test_shl_assign_defined, ShlAssign::shl_assign);
+-test_shift!(test_shr_defined, Shr::shr);
+-test_shift_assign!(test_shr_assign_defined, ShrAssign::shr_assign);
++//test_shift!(test_shl_defined, Shl::shl);
++//test_shift_assign!(test_shl_assign_defined, ShlAssign::shl_assign);
++//test_shift!(test_shr_defined, Shr::shr);
++//test_shift_assign!(test_shr_assign_defined, ShrAssign::shr_assign);
 --
 2.21.0 (Apple Git-122)

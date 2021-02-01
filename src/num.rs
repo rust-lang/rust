@@ -280,7 +280,6 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
                     (val, fx.bcx.ins().bor(has_underflow, has_overflow))
                 }
                 types::I64 => {
-                    //let val = fx.easy_call("__mulodi4", &[lhs, rhs, overflow_ptr], types::I64);
                     let val = fx.bcx.ins().imul(lhs, rhs);
                     let has_overflow = if !signed {
                         let val_hi = fx.bcx.ins().umulhi(lhs, rhs);

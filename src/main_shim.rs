@@ -69,8 +69,8 @@ pub(crate) fn maybe_create_entry_wrapper(
 
         let instance = Instance::mono(tcx, rust_main_def_id).polymorphize(tcx);
 
-        let (main_name, main_sig) =
-            get_function_name_and_sig(tcx, m.isa().triple(), instance, false);
+        let main_name = tcx.symbol_name(instance).name.to_string();
+        let main_sig = get_function_sig(tcx, m.isa().triple(), instance);
         let main_func_id = m
             .declare_function(&main_name, Linkage::Import, &main_sig)
             .unwrap();
