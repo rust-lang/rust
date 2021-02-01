@@ -332,7 +332,7 @@ static inline llvm::Type *FloatToIntTy(llvm::Type *T) {
   if (auto ty = llvm::dyn_cast<llvm::VectorType>(T)) {
     return llvm::VectorType::get(FloatToIntTy(ty->getElementType()),
 #if LLVM_VERSION_MAJOR >= 11
-                                 ty->getNumElements(), false);
+                                 ty->getElementCount());
 #else
                                  ty->getNumElements());
 #endif
@@ -354,7 +354,7 @@ static inline llvm::Type *IntToFloatTy(llvm::Type *T) {
   if (auto ty = llvm::dyn_cast<llvm::VectorType>(T)) {
     return llvm::VectorType::get(IntToFloatTy(ty->getElementType()),
 #if LLVM_VERSION_MAJOR >= 11
-                                 ty->getNumElements(), false);
+                                 ty->getElementCount());
 #else
                                  ty->getNumElements());
 #endif

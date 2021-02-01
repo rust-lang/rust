@@ -1448,7 +1448,12 @@ void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
 
   auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
   VectorType *vecType = cast<VectorType>(I.getOperand(0)->getType());
+  #if LLVM_VERSION_MAJOR >= 11
+  assert(!vecType->getElementCount().isScalable());
+  size_t numElems = vecType->getElementCount().getKnownMinValue();
+  #else
   size_t numElems = vecType->getNumElements();
+  #endif
   size_t size = (dl.getTypeSizeInBits(vecType->getElementType()) + 7) / 8;
   size_t vecSize = (dl.getTypeSizeInBits(vecType) + 7) / 8;
 
@@ -1496,8 +1501,14 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
   const size_t lhs = 0;
   const size_t rhs = 1;
 
+  #if LLVM_VERSION_MAJOR >= 11
+  assert(!cast<VectorType>(I.getOperand(lhs)->getType())->getElementCount().isScalable());
+  size_t numFirst =
+      cast<VectorType>(I.getOperand(lhs)->getType())->getElementCount().getKnownMinValue();
+  #else
   size_t numFirst =
       cast<VectorType>(I.getOperand(lhs)->getType())->getNumElements();
+  #endif
   size_t size = (dl.getTypeSizeInBits(resType->getElementType()) + 7) / 8;
   size_t resSize = (dl.getTypeSizeInBits(resType) + 7) / 8;
 
