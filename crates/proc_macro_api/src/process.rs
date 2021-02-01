@@ -10,6 +10,7 @@ use std::{
 };
 
 use crossbeam_channel::{bounded, Receiver, Sender};
+use stdx::JodChild;
 
 use crate::{
     msg::{ErrorCode, Message, Request, Response, ResponseError},
@@ -116,13 +117,7 @@ struct Task {
 }
 
 struct Process {
-    child: Child,
-}
-
-impl Drop for Process {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
-    }
+    child: JodChild,
 }
 
 impl Process {
@@ -131,7 +126,7 @@ impl Process {
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<Process> {
         let args: Vec<OsString> = args.into_iter().map(|s| s.as_ref().into()).collect();
-        let child = mk_child(&path, &args)?;
+        let child = JodChild(mk_child(&path, &args)?);
         Ok(Process { child })
     }
 
