@@ -504,21 +504,53 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromICmp(
     break;
   }
   case ICmpInst::ICMP_SLT:
-  case ICmpInst::ICMP_ULT: { // while (X < Y)
+  case ICmpInst::ICMP_ULT:
+  case ICmpInst::ICMP_SLE:
+  case ICmpInst::ICMP_ULE: { // while (X < Y)
     bool IsSigned = Pred == ICmpInst::ICMP_SLT;
     ExitLimit EL =
         howManyLessThans(LHS, RHS, L, IsSigned, ControlsExit, AllowPredicates);
-    if (EL.hasAnyInfo())
+    if (EL.hasAnyInfo()) {
+      if (Pred == ICmpInst::ICMP_SLE || Pred == ICmpInst::ICMP_ULE) {
+        EL.MaxOrZero = false;
+        SmallVector<const SCEV *, 2> sv = {
+            EL.ExactNotTaken,
+            getConstant(ConstantInt::get(
+                cast<IntegerType>(EL.ExactNotTaken->getType()), 1))};
+        EL.ExactNotTaken = getAddExpr(sv);
+        SmallVector<const SCEV *, 2> sv2 = {
+            EL.MaxNotTaken,
+            getConstant(ConstantInt::get(
+                cast<IntegerType>(EL.MaxNotTaken->getType()), 1))};
+        EL.MaxNotTaken = getAddExpr(sv2);
+      }
       return EL;
+    }
     break;
   }
   case ICmpInst::ICMP_SGT:
-  case ICmpInst::ICMP_UGT: { // while (X > Y)
+  case ICmpInst::ICMP_UGT:
+  case ICmpInst::ICMP_SGE:
+  case ICmpInst::ICMP_UGE: { // while (X > Y)
     bool IsSigned = Pred == ICmpInst::ICMP_SGT;
     ExitLimit EL = howManyGreaterThans(LHS, RHS, L, IsSigned, ControlsExit,
                                        AllowPredicates);
-    if (EL.hasAnyInfo())
+    if (EL.hasAnyInfo()) {
+      if (Pred == ICmpInst::ICMP_SGE || Pred == ICmpInst::ICMP_UGE) {
+        EL.MaxOrZero = false;
+        SmallVector<const SCEV *, 2> sv = {
+            EL.ExactNotTaken,
+            getConstant(ConstantInt::get(
+                cast<IntegerType>(EL.ExactNotTaken->getType()), 1))};
+        EL.ExactNotTaken = getAddExpr(sv, SCEV::NoWrapMask);
+        SmallVector<const SCEV *, 2> sv2 = {
+            EL.MaxNotTaken,
+            getConstant(ConstantInt::get(
+                cast<IntegerType>(EL.MaxNotTaken->getType()), 1))};
+        EL.MaxNotTaken = getAddExpr(sv2, SCEV::NoWrapMask);
+      }
       return EL;
+    }
     break;
   }
   default:

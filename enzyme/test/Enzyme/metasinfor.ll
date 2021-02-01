@@ -78,6 +78,8 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   %a.addr = alloca double, align 8
 ; CHECK-NEXT:   store double %a, double* %a.addr, align 8, !tbaa !2
+; CHECK-NEXT:   %0 = add i32 %n, 1
+; CHECK-NEXT:   %1 = zext i32 %0 to i64
 ; CHECK-NEXT:   br label %for.cond
 
 ; TODO THIS LOOP SHOULD BE KILLED
@@ -95,7 +97,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   ret { double } %[[res]]
 
 ; CHECK: invertfor.cond:                                   ; preds = %for.cond, %incinvertfor.cond
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[isub:.+]], %incinvertfor.cond ], [ %iv, %for.cond ]
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[isub:.+]], %incinvertfor.cond ], [ %1, %for.cond ]
 ; CHECK-NEXT:   %[[ecmp:.+]] = icmp eq i64 %"iv'ac.0", 0
 ; TODO why is this select still here
 ; CHECK-NEXT:   %[[sel:.+]] = select{{( fast)?}} i1 %[[ecmp]], double 0.000000e+00, double %differeturn
