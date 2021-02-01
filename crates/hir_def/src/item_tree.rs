@@ -24,7 +24,7 @@ use la_arena::{Arena, Idx, RawIdx};
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use syntax::{ast, match_ast};
+use syntax::{ast, match_ast, SyntaxKind};
 use test_utils::mark;
 
 use crate::{
@@ -80,6 +80,10 @@ impl ItemTree {
     pub(crate) fn item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
         let _p = profile::span("item_tree_query").detail(|| format!("{:?}", file_id));
         let syntax = if let Some(node) = db.parse_or_expand(file_id) {
+            if node.kind() == SyntaxKind::ERROR {
+                // FIXME: not 100% sure why these crop up, but return an empty tree to avoid a panic
+                return Default::default();
+            }
             node
         } else {
             return Default::default();
