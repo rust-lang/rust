@@ -4,7 +4,7 @@
   fn hello() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/control-flow-simplification.rs:11:14: 11:14
       let mut _1: bool;                    // in scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-      let mut _2: !;                       // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let mut _2: !;                       // in scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
@@ -15,16 +15,16 @@
       }
   
       bb1: {
-          StorageLive(_2);                 // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-          begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_2);                 // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
+          begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
                                            // mir::Constant
-                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // + span: $SRC_DIR/std/src/panic.rs:LL:COL
                                            // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
                                            // ty::Const
                                            // + ty: &str
                                            // + val: Value(Slice { data: Allocation { bytes: [101, 120, 112, 108, 105, 99, 105, 116, 32, 112, 97, 110, 105, 99], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16383], len: Size { raw: 14 } }, size: Size { raw: 14 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 14 })
                                            // mir::Constant
-                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // + span: $SRC_DIR/std/src/panic.rs:LL:COL
                                            // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [101, 120, 112, 108, 105, 99, 105, 116, 32, 112, 97, 110, 105, 99], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16383], len: Size { raw: 14 } }, size: Size { raw: 14 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 14 }) }
       }
   

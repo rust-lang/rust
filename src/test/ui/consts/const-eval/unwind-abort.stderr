@@ -5,7 +5,7 @@ LL |     panic!()
    |     ^^^^^^^^
    |     |
    |     the evaluated program panicked at 'explicit panic', $DIR/unwind-abort.rs:5:5
-   |     inside `foo` at $SRC_DIR/std/src/macros.rs:LL:COL
+   |     inside `foo` at $SRC_DIR/std/src/panic.rs:LL:COL
    |     inside `_` at $DIR/unwind-abort.rs:8:15
 ...
 LL | const _: () = foo();

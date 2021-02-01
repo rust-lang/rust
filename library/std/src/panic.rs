@@ -18,6 +18,27 @@ use crate::sync::{Arc, Mutex, RwLock};
 use crate::task::{Context, Poll};
 use crate::thread::Result;
 
+#[doc(hidden)]
+#[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
+#[allow_internal_unstable(libstd_sys_internals)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
+#[rustc_macro_transparency = "semitransparent"]
+pub macro panic_2015 {
+    () => ({
+        $crate::rt::begin_panic("explicit panic")
+    }),
+    ($msg:expr $(,)?) => ({
+        $crate::rt::begin_panic($msg)
+    }),
+    ($fmt:expr, $($arg:tt)+) => ({
+        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+))
+    }),
+}
+
+#[doc(hidden)]
+#[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
+pub use core::panic::panic_2021;
+
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use crate::panicking::{set_hook, take_hook};
 

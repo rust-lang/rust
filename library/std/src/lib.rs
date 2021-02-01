@@ -259,6 +259,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(duration_constants)]
 #![feature(duration_zero)]
+#![feature(edition_panic)]
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
