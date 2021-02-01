@@ -1,7 +1,10 @@
-use base_db::{fixture::WithFixture, SourceDatabase};
+mod block;
+
+use base_db::{fixture::WithFixture, FilePosition, SourceDatabase};
+use expect_test::Expect;
 use test_utils::mark;
 
-use crate::{test_db::TestDB, ModuleDefId};
+use crate::{test_db::TestDB, BlockId, ModuleDefId};
 
 use super::*;
 
@@ -29,6 +32,115 @@ fn lower(ra_fixture: &str) -> Arc<Body> {
 fn check_diagnostics(ra_fixture: &str) {
     let db: TestDB = TestDB::with_files(ra_fixture);
     db.check_diagnostics();
+}
+
+fn block_def_map_at(ra_fixture: &str) -> Arc<DefMap> {
+    let (db, position) = crate::test_db::TestDB::with_position(ra_fixture);
+
+    let krate = db.crate_graph().iter().next().unwrap();
+    let def_map = db.crate_def_map(krate);
+
+    let mut block =
+        block_at_pos(&db, &def_map, position).expect("couldn't find enclosing function or block");
+    loop {
+        let def_map = db.block_def_map(block);
+        let new_block = block_at_pos(&db, &def_map, position);
+        match new_block {
+            Some(new_block) => {
+                assert_ne!(block, new_block);
+                block = new_block;
+            }
+            None => {
+                return def_map;
+            }
+        }
+    }
+}
+
+fn block_at_pos(db: &dyn DefDatabase, def_map: &DefMap, position: FilePosition) -> Option<BlockId> {
+    let mut size = None;
+    let mut fn_def = None;
+    for (_, module) in def_map.modules() {
+        let file_id = module.definition_source(db).file_id;
+        if file_id != position.file_id.into() {
+            continue;
+        }
+        let root = db.parse_or_expand(file_id).unwrap();
+        let ast_map = db.ast_id_map(file_id);
+        let item_tree = db.item_tree(file_id);
+        for decl in module.scope.declarations() {
+            if let ModuleDefId::FunctionId(it) = decl {
+                let ast = ast_map.get(item_tree[it.lookup(db).id.value].ast_id).to_node(&root);
+                let range = ast.syntax().text_range();
+
+                // Find the smallest (innermost) function containing the cursor.
+                if !range.contains(position.offset) {
+                    continue;
+                }
+
+                let new_size = match size {
+                    None => range.len(),
+                    Some(size) => {
+                        if range.len() < size {
+                            range.len()
+                        } else {
+                            size
+                        }
+                    }
+                };
+                if size != Some(new_size) {
+                    size = Some(new_size);
+                    fn_def = Some(it);
+                }
+            }
+        }
+    }
+
+    let (body, source_map) = db.body_with_source_map(fn_def?.into());
+
+    // Now find the smallest encompassing block expression in the function body.
+    let mut size = None;
+    let mut block_id = None;
+    for (expr_id, expr) in body.exprs.iter() {
+        if let Expr::Block { id, .. } = expr {
+            if let Ok(ast) = source_map.expr_syntax(expr_id) {
+                if ast.file_id != position.file_id.into() {
+                    continue;
+                }
+
+                let root = db.parse_or_expand(ast.file_id).unwrap();
+                let ast = ast.value.to_node(&root);
+                let range = ast.syntax().text_range();
+
+                if !range.contains(position.offset) {
+                    continue;
+                }
+
+                let new_size = match size {
+                    None => range.len(),
+                    Some(size) => {
+                        if range.len() < size {
+                            range.len()
+                        } else {
+                            size
+                        }
+                    }
+                };
+                if size != Some(new_size) {
+                    size = Some(new_size);
+                    block_id = Some(*id);
+                }
+            }
+        }
+    }
+
+    Some(block_id.expect("can't find block containing cursor"))
+}
+
+fn check_at(ra_fixture: &str, expect: Expect) {
+    let def_map = block_def_map_at(ra_fixture);
+    let actual = def_map.dump();
+    expect.assert_eq(&actual);
 }
 
 #[test]
