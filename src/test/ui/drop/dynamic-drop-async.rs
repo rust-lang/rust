@@ -82,7 +82,7 @@ impl Allocator {
         self.cur_ops.set(self.cur_ops.get() + 1);
 
         if self.cur_ops.get() == self.failing_op {
-            panic!(InjectedFailure);
+            panic::panic_any(InjectedFailure);
         }
     }
 }
