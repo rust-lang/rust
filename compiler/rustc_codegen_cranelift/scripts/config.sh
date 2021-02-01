@@ -12,28 +12,6 @@ else
    exit 1
 fi
 
-HOST_TRIPLE=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
-TARGET_TRIPLE=$HOST_TRIPLE
-#TARGET_TRIPLE="x86_64-pc-windows-gnu"
-#TARGET_TRIPLE="aarch64-unknown-linux-gnu"
-
-linker=''
-RUN_WRAPPER=''
-export JIT_SUPPORTED=1
-if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
-   export JIT_SUPPORTED=0
-   if [[ "$TARGET_TRIPLE" == "aarch64-unknown-linux-gnu" ]]; then
-      # We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
-      linker='-Clinker=aarch64-linux-gnu-gcc'
-      RUN_WRAPPER='qemu-aarch64 -L /usr/aarch64-linux-gnu'
-   elif [[ "$TARGET_TRIPLE" == "x86_64-pc-windows-gnu" ]]; then
-      # We are cross-compiling for Windows. Run tests in wine.
-      RUN_WRAPPER='wine'
-   else
-      echo "Unknown non-native platform"
-   fi
-fi
-
 if echo "$RUSTC_WRAPPER" | grep sccache; then
 echo
 echo -e "\x1b[1;93m=== Warning: Unset RUSTC_WRAPPER to prevent interference with sccache ===\x1b[0m"
@@ -44,16 +22,14 @@ fi
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)
 
 export RUSTC=$dir"/bin/cg_clif"
-export RUSTFLAGS=$linker" "$RUSTFLAGS
+
 export RUSTDOCFLAGS=$linker' -Cpanic=abort -Zpanic-abort-tests '\
 '-Zcodegen-backend='$dir'/lib/librustc_codegen_cranelift.'$dylib_ext' --sysroot '$dir
 
 # FIXME remove once the atomic shim is gone
-if [[ $(uname) == 'Darwin' ]]; then
+if [[ "$unamestr" == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
 
-export LD_LIBRARY_PATH="$(rustc --print sysroot)/lib"
+export LD_LIBRARY_PATH="$(rustc --print sysroot)/lib:"$dir"/lib"
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH
-
-export CG_CLIF_DISPLAY_CG_TIME=1

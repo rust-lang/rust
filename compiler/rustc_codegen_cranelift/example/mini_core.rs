@@ -532,8 +532,8 @@ pub mod intrinsics {
 }
 
 pub mod libc {
-    #[cfg_attr(not(windows), link(name = "c"))]
-    #[cfg_attr(windows, link(name = "msvcrt"))]
+    #[cfg_attr(unix, link(name = "c"))]
+    #[cfg_attr(target_env = "msvc", link(name = "msvcrt"))]
     extern "C" {
         pub fn puts(s: *const i8) -> i32;
         pub fn printf(format: *const i8, ...) -> i32;
