@@ -281,9 +281,6 @@ pub(super) fn run_aot(
         None
     };
 
-    rustc_incremental::assert_dep_graph(tcx);
-    rustc_incremental::save_dep_graph(tcx);
-
     let metadata_module = if need_metadata_module {
         let _timer = tcx.prof.generic_activity("codegen crate metadata");
         let (metadata_cgu_name, tmp_file) = tcx.sess.time("write compressed metadata", || {
@@ -321,10 +318,6 @@ pub(super) fn run_aot(
     } else {
         None
     };
-
-    if tcx.sess.opts.output_types.should_codegen() {
-        rustc_incremental::assert_module_sources::assert_module_sources(tcx);
-    }
 
     Box::new((
         CodegenResults {

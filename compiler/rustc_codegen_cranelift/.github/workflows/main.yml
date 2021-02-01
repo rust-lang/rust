@@ -12,6 +12,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        env:
+          - BACKEND: ""
+          - BACKEND: --oldbe
 
     steps:
     - uses: actions/checkout@v2
@@ -51,7 +54,7 @@ jobs:
         export COMPILE_RUNS=2
         export RUN_RUNS=2
 
-        ./test.sh
+        ./test.sh $BACKEND
 
     - name: Package prebuilt cg_clif
       run: tar cvfJ cg_clif.tar.xz build
