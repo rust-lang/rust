@@ -658,7 +658,7 @@ pub struct Crate<'hir> {
     pub impl_items: BTreeMap<ImplItemId, ImplItem<'hir>>,
     pub foreign_items: BTreeMap<ForeignItemId, ForeignItem<'hir>>,
     pub bodies: BTreeMap<BodyId, Body<'hir>>,
-    pub trait_impls: BTreeMap<DefId, Vec<HirId>>,
+    pub trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
 
     /// A list of the body ids written out in the order in which they
     /// appear in the crate. If you're going to process all the bodies

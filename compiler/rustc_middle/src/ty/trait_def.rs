@@ -4,9 +4,8 @@ use crate::ty::fast_reject;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ty, TyCtxt};
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::DefPathHash;
-use rustc_hir::HirId;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -201,7 +200,7 @@ impl<'tcx> TyCtxt<'tcx> {
 pub(super) fn all_local_trait_impls<'tcx>(
     tcx: TyCtxt<'tcx>,
     krate: CrateNum,
-) -> &'tcx BTreeMap<DefId, Vec<HirId>> {
+) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
     &tcx.hir_crate(krate).trait_impls
 }
 
@@ -229,8 +228,8 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         }
     }
 
-    for &hir_id in tcx.hir().trait_impls(trait_id) {
-        let impl_def_id = tcx.hir().local_def_id(hir_id).to_def_id();
+    for &impl_def_id in tcx.hir().trait_impls(trait_id) {
+        let impl_def_id = impl_def_id.to_def_id();
 
         let impl_self_ty = tcx.type_of(impl_def_id);
         if impl_self_ty.references_error() {

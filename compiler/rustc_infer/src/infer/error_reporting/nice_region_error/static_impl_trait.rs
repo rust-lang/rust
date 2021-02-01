@@ -361,8 +361,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             .hir()
                             .trait_impls(trait_did)
                             .iter()
-                            .filter_map(|impl_node| {
-                                let impl_did = tcx.hir().local_def_id(*impl_node);
+                            .filter_map(|&impl_did| {
                                 match tcx.hir().get_if_local(impl_did.to_def_id()) {
                                     Some(Node::Item(Item {
                                         kind: ItemKind::Impl(hir::Impl { self_ty, .. }),

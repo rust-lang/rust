@@ -172,8 +172,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
     tcx.ensure().specialization_graph_of(def_id);
 
     let impls = tcx.hir().trait_impls(def_id);
-    for &hir_id in impls {
-        let impl_def_id = tcx.hir().local_def_id(hir_id);
+    for &impl_def_id in impls {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
 
         check_impl(tcx, impl_def_id, trait_ref);

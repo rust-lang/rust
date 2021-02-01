@@ -396,8 +396,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self_ty: ref ty,
                 items: ref impl_items,
             }) => {
-                let def_id = self.resolver.local_def_id(id);
-
                 // Lower the "impl header" first. This ordering is important
                 // for in-band lifetimes! Consider `'a` here:
                 //
@@ -411,10 +409,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // method, it will not be considered an in-band
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
-                let lowered_trait_impl_id = self.lower_node_id(id);
+                let lowered_trait_def_id = self.lower_node_id(id).expect_owner();
                 let (generics, (trait_ref, lowered_ty)) = self.add_in_band_defs(
                     ast_generics,
-                    def_id,
+                    lowered_trait_def_id,
                     AnonymousLifetimeMode::CreateParameter,
                     |this, _| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
@@ -426,7 +424,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 this.trait_impls
                                     .entry(def_id)
                                     .or_default()
-                                    .push(lowered_trait_impl_id);
+                                    .push(lowered_trait_def_id);
                             }
                         }
 

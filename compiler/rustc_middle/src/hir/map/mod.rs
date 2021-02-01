@@ -449,7 +449,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn trait_impls(&self, trait_did: DefId) -> &'hir [HirId] {
+    pub fn trait_impls(&self, trait_did: DefId) -> &'hir [LocalDefId] {
         self.tcx.all_local_trait_impls(LOCAL_CRATE).get(&trait_did).map_or(&[], |xs| &xs[..])
     }
 

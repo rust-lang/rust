@@ -108,7 +108,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     exported_macros: Vec<hir::MacroDef<'hir>>,
     non_exported_macro_attrs: Vec<ast::Attribute>,
 
-    trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
+    trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
 
     modules: BTreeMap<LocalDefId, hir::ModuleItems>,
 
