@@ -121,9 +121,11 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
 
         impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
             fn drop(&mut self) {
-                // Continue the same loop we have below. If the loop already finished, this does
-                // nothing.
-                self.0.for_each(drop);
+                if mem::needs_drop::<T>() {
+                    // Continue the same loop we have below. If the loop already finished, this does
+                    // nothing.
+                    self.0.for_each(drop);
+                }
 
                 if self.0.tail_len > 0 {
                     unsafe {
@@ -142,11 +144,13 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
             }
         }
 
-        // exhaust self first
-        while let Some(item) = self.next() {
-            let guard = DropGuard(self);
-            drop(item);
-            mem::forget(guard);
+        // exhaust self first if dropping of the items is required
+        if mem::needs_drop::<T>() {
+            while let Some(item) = self.next() {
+                let guard = DropGuard(self);
+                drop(item);
+                mem::forget(guard);
+            }
         }
 
         // Drop a `DropGuard` to move back the non-drained tail of `self`.
