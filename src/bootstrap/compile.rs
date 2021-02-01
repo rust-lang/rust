@@ -1050,8 +1050,10 @@ impl Step for Assemble {
             builder.copy(&lld_install.join("bin").join(&src_exe), &libdir_bin.join(&dst_exe));
         }
 
-        // Similarly, copy `llvm-dwp` into libdir for Split DWARF.
-        {
+        // Similarly, copy `llvm-dwp` into libdir for Split DWARF. Only copy it when the LLVM
+        // backend is used to avoid unnecessarily building LLVM and because LLVM is not checked
+        // out by default when the LLVM backend is not enabled.
+        if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
             let src_exe = exe("llvm-dwp", target_compiler.host);
             let dst_exe = exe("rust-llvm-dwp", target_compiler.host);
             let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
