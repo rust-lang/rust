@@ -612,30 +612,6 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.selected_rows.iter().map(move |row| &last_col[row.id])
     }
 
-    /// Iterate over the first constructor of each row.
-    fn head_ctors<'a>(
-        &'a self,
-        cx: &'a MatchCheckCtxt<'p, 'tcx>,
-    ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> + Clone {
-        self.head_ctors_and_spans(cx).map(|(ctor, _)| ctor)
-    }
-
-    /// Iterate over the first constructor and the corresponding span of each row.
-    fn head_ctors_and_spans<'a>(
-        &'a self,
-        cx: &'a MatchCheckCtxt<'p, 'tcx>,
-    ) -> impl Iterator<Item = (&'a Constructor<'tcx>, Span)> + Captures<'p> + Clone {
-        self.last_col().map(move |entry| {
-            // // TODO: breaks diagnostics
-            // if entry.is_under_guard {
-            //     None
-            // } else {
-            //     Some((entry.head_ctor(cx), entry.pat.span))
-            // }
-            (entry.head_ctor(cx), entry.pat.span)
-        })
-    }
-
     /// Iterate over the entries of the selected row.
     fn row<'a>(&'a self, mut row_id: usize) -> impl Iterator<Item = &'a MatrixEntry<'p, 'tcx>> {
         // Starting from the last column, follow the `next_row_id`s to explore the row.
@@ -1335,7 +1311,7 @@ fn compute_matrix_usefulness<'p, 'tcx>(
 
     // We list the relevant constructors.
     let mut split_wildcard = SplitWildcard::new(pcx);
-    split_wildcard.split(pcx, matrix.head_ctors(cx));
+    split_wildcard.split(pcx, matrix.last_col().map(move |entry| entry.head_ctor(cx)));
     let split_ctors = split_wildcard.into_ctors(pcx);
     // For each constructor, we try to see for which rows a pattern starting with this ctor could
     // be useful.
@@ -1354,7 +1330,15 @@ fn compute_matrix_usefulness<'p, 'tcx>(
         if !any_missing {
             // If we've seen the `Missing` constructor already, we don't further accumulate
             // witnesses.
-            let w = w.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns, matrix.head_ctors(cx));
+            let w = w.apply_constructor(
+                pcx,
+                &ctor,
+                &ctor_wild_subpatterns,
+                matrix
+                    .last_col()
+                    .filter(|entry| !entry.is_under_guard)
+                    .map(move |entry| entry.head_ctor(cx)),
+            );
             witnesses.extend(w);
         }
         any_missing = any_missing || matches!(&ctor, Constructor::Missing);
