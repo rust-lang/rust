@@ -300,7 +300,7 @@ use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
 use std::iter::IntoIterator;
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 
 crate struct MatchCheckCtxt<'a, 'tcx> {
     crate tcx: TyCtxt<'tcx>,
@@ -436,87 +436,51 @@ impl<T> VecVec<T> {
     }
 
     #[inline]
-    fn is_empty(&self) -> bool {
-        self.indices.is_empty()
-    }
-
-    /// Reserves capacity for at least `additional` more items.
-    fn reserve_items(&mut self, additional: usize) {
-        self.data.reserve(additional);
-    }
-
-    /// Reserves capacity for at least `additional` more vecs.
-    fn reserve_vecs(&mut self, additional: usize) {
-        self.indices.reserve(additional);
-    }
-
-    #[inline]
     fn last(&self) -> Option<&[T]> {
-        let i = self.last_index_cache?;
-        Some(&self.data[i..])
-    }
-
-    /// Pushes a new empty `Vec` at the end.
-    #[inline]
-    fn push_new(&mut self) {
-        let last_idx = self.data.len();
-        self.last_index_cache = Some(last_idx);
-        self.indices.push(last_idx);
+        if let Some(i) = self.last_index_cache {
+            Some(&self.data[i..self.data.len()])
+        } else {
+            None
+        }
     }
 
     /// Pushes a new `Vec` at the end.
-    #[inline]
     fn push_slice(&mut self, items: &[T])
     where
         T: Clone,
     {
-        self.push_new();
+        self.last_index_cache = Some(self.data.len());
+        self.indices.push(self.data.len());
         self.data.extend_from_slice(items);
     }
 
     /// Pushes a new `Vec` at the end.
-    #[inline]
     fn push_vec(&mut self, mut items: Vec<T>) {
-        self.push_new();
+        self.last_index_cache = Some(self.data.len());
+        self.indices.push(self.data.len());
         self.data.append(&mut items);
     }
 
-    /// Pushes an element onto the last vec, if any.
-    #[inline]
-    fn push_to_last(&mut self, item: T) {
-        if self.is_empty() {
-            panic!("can't push an element; this `VecVec` is empty");
-        }
-        self.data.push(item);
+    fn pop_iter<'a>(&'a mut self) -> Option<impl Iterator<Item = T> + 'a> {
+        let l = self.indices.pop()?;
+        self.last_index_cache = self.indices.last().copied();
+        Some(self.data.drain(l..))
     }
 
-    #[inline]
-    fn pop(&mut self) {
-        if let Some(l) = self.indices.pop() {
-            self.last_index_cache = self.indices.last().copied();
-            self.data.drain(l..);
-        }
+    fn pop_vec(&mut self) -> Option<Vec<T>> {
+        let l = self.indices.pop()?;
+        self.last_index_cache = self.indices.last().copied();
+        Some(self.data.split_off(l))
     }
 }
 
 impl<T> Index<usize> for VecVec<T> {
     type Output = [T];
-    #[inline]
     fn index(&self, index: usize) -> &Self::Output {
         assert!(index < self.len());
         let lo = self.indices[index];
         let hi = *self.indices.get(index + 1).unwrap_or(&self.data.len());
-        self.data.index(lo..hi)
-    }
-}
-
-impl<T> IndexMut<usize> for VecVec<T> {
-    #[inline]
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        assert!(index < self.len());
-        let lo = self.indices[index];
-        let hi = *self.indices.get(index + 1).unwrap_or(&self.data.len());
-        self.data.index_mut(lo..hi)
+        &self.data.index(lo..hi)
     }
 }
 
@@ -643,7 +607,7 @@ enum UndoKind<'p, 'tcx> {
 #[derive(Clone, Default)]
 struct Matrix<'p, 'tcx> {
     /// Stores the patterns by column. The leftmost column is stored last.
-    columns: VecVec<MatrixEntry<'p, 'tcx>>,
+    columns: Vec<Vec<MatrixEntry<'p, 'tcx>>>,
     /// In order to not rebuild the matrix every time, we may keep patterns around even when their
     /// rows have been filtered out. The actual contents of the first column are those indices in
     /// `selected_rows`, and the contents in subsequent columns can be found by following
@@ -677,7 +641,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 is_under_guard: arm.has_guard,
             });
         }
-        matrix.columns.push_vec(column);
+        matrix.columns.push(column);
         matrix
     }
 
@@ -736,17 +700,15 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Stores the last column and the currently selected rows into history. The last column is
     /// removed from `self.columns`. `selected_rows` is kept as is.
     fn save_last_col(&mut self) {
-        self.last_col_history.push_slice(self.columns.last().unwrap());
-        self.columns.pop();
+        self.last_col_history.push_vec(self.columns.pop().unwrap());
         self.selected_rows_history.push_slice(&self.selected_rows);
     }
     /// Restores the last column and the selected rows from history.
     fn restore_last_col(&mut self) {
-        self.columns.push_slice(self.last_col_history.last().unwrap());
-        self.last_col_history.pop();
+        self.columns.push(self.last_col_history.pop_vec().unwrap());
         self.selected_rows.clear();
         self.selected_rows.extend_from_slice(self.selected_rows_history.last().unwrap());
-        self.selected_rows_history.pop();
+        self.selected_rows_history.pop_iter();
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
@@ -784,25 +746,26 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
         // Prepare new columns for the arguments of the patterns we are specializing.
         let old_col_count = self.column_count();
-        self.columns.reserve_vecs(ctor_wild_subpatterns.len());
-        self.columns.reserve_items(ctor_wild_subpatterns.len() * self.selected_rows.len());
+        self.columns.reserve(ctor_wild_subpatterns.len());
 
         // Add new columns filled with wildcards.
         let new_fields = ctor_wild_subpatterns.clone().into_patterns();
         // Note: the fields are in the natural left-to-right order but the columns are not.
         // We need to start from the last field to get the columns right.
         for &pat in new_fields.iter().rev() {
-            self.columns.push_new();
+            let mut col = Vec::with_capacity(self.selected_rows.len());
             for _ in 0..self.selected_rows.len() {
                 // dummy entry
-                self.columns.push_to_last(MatrixEntry {
+                col.push(MatrixEntry {
                     pat,
                     next_row_id: 0,
                     ctor: OnceCell::new(),
                     is_under_guard: false,
                 });
             }
+            self.columns.push(col);
         }
+        let new_columns = &mut self.columns[old_col_count..];
 
         // Fill the columns with the patterns we want.
         for (new_id, row) in self.selected_rows.iter_mut().enumerate() {
@@ -815,8 +778,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             row.id = head_entry.next_row_id;
             // Note: the fields are in the natural left-to-right order but the columns are not.
             // We need to start from the last field to get the `next_row_id`s right.
-            for (i, &pat) in new_fields.iter().rev().enumerate() {
-                let col = &mut self.columns[old_col_count + i];
+            for (col, &pat) in new_columns.iter_mut().zip(new_fields.iter().rev()) {
                 col[new_id].pat = pat;
                 col[new_id].next_row_id = row.id;
                 col[new_id].is_under_guard = head_entry.is_under_guard;
@@ -847,7 +809,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.selected_rows.clear();
         let old_last_col = self.last_col_history.last().unwrap();
         let old_selected_rows = self.selected_rows_history.last().unwrap();
-        self.columns.push_new();
+        let mut new_last_col = Vec::new();
         for (sel_row_id, row) in old_selected_rows.iter().enumerate() {
             let entry = &old_last_col[row.id];
             let orig_pat = entry.pat;
@@ -862,9 +824,9 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                         ctor: OnceCell::new(),
                         is_under_guard: entry.is_under_guard,
                     };
-                    self.columns.push_to_last(entry);
+                    new_last_col.push(entry);
                     self.selected_rows.push(SelectedRow {
-                        id: self.selected_rows.len(),
+                        id: new_last_col.len() - 1,
                         origin: Origin::OrPat {
                             col: self.selected_rows_history.len() - 1,
                             row: sel_row_id,
@@ -875,11 +837,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                     });
                 }
             } else {
-                self.columns.push_to_last(entry.clone());
+                new_last_col.push(entry.clone());
                 self.selected_rows
-                    .push(SelectedRow { id: self.selected_rows.len(), origin: row.origin });
+                    .push(SelectedRow { id: new_last_col.len() - 1, origin: row.origin });
             }
         }
+        self.columns.push(new_last_col);
     }
 
     /// Undo either the last specialization or the last manual or-pattern expansion.
@@ -888,13 +851,13 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         match undo {
             UndoKind::Specialize { ctor_arity, .. } => {
                 for _ in 0..ctor_arity {
-                    self.columns.pop();
+                    self.columns.pop().unwrap();
                 }
                 self.restore_last_col();
             }
             UndoKind::OrPatsExp { any_or_pats } => {
                 if any_or_pats {
-                    self.columns.pop();
+                    self.columns.pop().unwrap();
                     self.restore_last_col();
                 }
             }
