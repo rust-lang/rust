@@ -606,6 +606,8 @@ struct Matrix<'p, 'tcx> {
     /// `selected_rows`, and the contents in subsequent columns can be found by following
     /// `next_row_id`s.
     selected_rows: Vec<SelectedRow<'p, 'tcx>>,
+    /// Stores the type of each column.
+    col_ty: Vec<Ty<'tcx>>,
     /// Stores data for each of the original rows. The rightmost column's `next_row_id` points into
     /// this.
     row_data: Vec<RowData<'p, 'tcx>>,
@@ -613,11 +615,12 @@ struct Matrix<'p, 'tcx> {
     history: Vec<UndoKind>,
     last_col_history: VecVec<MatrixEntry<'p, 'tcx>>,
     selected_rows_history: VecVec<SelectedRow<'p, 'tcx>>,
+    col_ty_history: Vec<Ty<'tcx>>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// A matrix is created from a list of match arms.
-    fn new(arms: &[MatchArm<'p, 'tcx>]) -> Self {
+    fn new(ty: Ty<'tcx>, arms: &[MatchArm<'p, 'tcx>]) -> Self {
         let mut matrix = Matrix::default();
         let mut column = Vec::new();
         for (id, arm) in arms.iter().enumerate() {
@@ -639,6 +642,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             });
         }
         matrix.columns.push(column);
+        matrix.col_ty.push(ty);
         matrix
     }
 
@@ -647,11 +651,16 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.columns.len()
     }
 
-    /// Returns the type of the first column, if any.
-    fn ty_of_last_col(&self) -> Option<Ty<'tcx>> {
-        let last_col = self.columns.last()?;
-        let row = self.selected_rows.first()?;
-        Some(last_col[row.id].pat.ty)
+    /// Returns the type of the first column.
+    fn ty_of_last_col(&self) -> Ty<'tcx> {
+        // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476). Ideally
+        // should just use `col_ty`.
+        let last_col = self.columns.last().unwrap();
+        if let Some(row) = self.selected_rows.first() {
+            last_col[row.id].pat.ty
+        } else {
+            self.col_ty.last().unwrap()
+        }
     }
 
     /// Iterate over the last column; panics if no columns.
@@ -698,11 +707,13 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// removed from `self.columns`. `selected_rows` is kept as is.
     fn save_last_col(&mut self) {
         self.last_col_history.push_vec(self.columns.pop().unwrap());
+        self.col_ty_history.push(self.col_ty.pop().unwrap());
         self.selected_rows_history.push_slice(&self.selected_rows);
     }
     /// Restores the last column and the selected rows from history.
     fn restore_last_col(&mut self) {
         self.columns.push(self.last_col_history.pop_vec().unwrap());
+        self.col_ty.push(self.col_ty_history.pop().unwrap());
         self.selected_rows.clear();
         self.selected_rows.extend_from_slice(self.selected_rows_history.last().unwrap());
         self.selected_rows_history.pop_iter();
@@ -745,6 +756,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         // Prepare new columns for the arguments of the patterns we are specializing.
         let old_col_count = self.column_count();
         self.columns.reserve(ctor_wild_subpatterns.len());
+        self.col_ty.reserve(ctor_wild_subpatterns.len());
 
         // Add new columns filled with wildcards.
         let new_fields = ctor_wild_subpatterns.clone().into_patterns();
@@ -762,6 +774,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 });
             }
             self.columns.push(col);
+            self.col_ty.push(pat.ty);
         }
         let new_columns = &mut self.columns[old_col_count..];
 
@@ -835,6 +848,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             }
         }
         self.columns.push(new_last_col);
+        self.col_ty.push(*self.col_ty_history.last().unwrap());
     }
 
     /// Undo either the last specialization or the last manual or-pattern expansion.
@@ -844,12 +858,14 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             UndoKind::Specialize { ctor_arity, .. } => {
                 for _ in 0..ctor_arity {
                     self.columns.pop().unwrap();
+                    self.col_ty.pop().unwrap();
                 }
                 self.restore_last_col();
             }
             UndoKind::OrPatsExp { any_or_pats } => {
                 if any_or_pats {
                     self.columns.pop().unwrap();
+                    self.col_ty.pop().unwrap();
                     self.restore_last_col();
                 }
             }
@@ -1365,8 +1381,7 @@ fn compute_matrix_usefulness<'p, 'tcx>(
     }
 
     let pat = v.head();
-    // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
-    let ty = matrix.ty_of_last_col().unwrap_or(pat.ty);
+    let ty = matrix.ty_of_last_col();
     let pcx = PatCtxt { cx, ty, span: pat.span, is_top_level };
 
     if super::deconstruct_pat::IntRange::is_integral(ty) {
@@ -1456,7 +1471,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     scrut_hir_id: HirId,
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
-    let mut matrix = Matrix::new(arms);
+    let mut matrix = Matrix::new(scrut_ty, arms);
 
     let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(scrut_ty));
     let row_data = RowData {
