@@ -149,6 +149,8 @@ impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: `Drain` simply forwards to the underlying slice iterator, which implements `TrustedLen`
+// so the required properties are all preserved.
 unsafe impl<T, A: Allocator> TrustedLen for Drain<'_, T, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
