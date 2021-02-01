@@ -587,21 +587,11 @@ impl<'p, 'tcx> MatrixEntry<'p, 'tcx> {
     }
 }
 
-#[derive(Clone)]
-enum UndoKind<'p, 'tcx> {
-    Specialize {
-        ty: Ty<'tcx>,
-        span: Span,
-        ctor: Constructor<'tcx>,
-        ctor_arity: usize,
-        ctor_wild_subpatterns: Fields<'p, 'tcx>,
-    },
-    OrPatsExp {
-        any_or_pats: bool,
-    },
+#[derive(Clone, Copy)]
+enum UndoKind {
+    Specialize { ctor_arity: usize },
+    OrPatsExp { any_or_pats: bool },
 }
-
-// type RowId = usize;
 
 /// A 2D matrix.
 #[derive(Clone, Default)]
@@ -617,7 +607,7 @@ struct Matrix<'p, 'tcx> {
     /// this.
     row_data: Vec<RowData<'p, 'tcx>>,
     /// Stores the history of operations done on this matrix, so that we can undo them in-place.
-    history: Vec<UndoKind<'p, 'tcx>>,
+    history: Vec<UndoKind>,
     last_col_history: VecVec<MatrixEntry<'p, 'tcx>>,
     selected_rows_history: VecVec<SelectedRow<'p, 'tcx>>,
 }
@@ -715,8 +705,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     fn specialize<'a>(
         &'a mut self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
-        ctor: Constructor<'tcx>,
-        ctor_wild_subpatterns: Fields<'p, 'tcx>,
+        ctor: &Constructor<'tcx>,
+        ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) {
         assert!(self.column_count() >= 1);
 
@@ -787,13 +777,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             }
         }
 
-        self.history.push(UndoKind::Specialize {
-            ty: pcx.ty,
-            span: pcx.span,
-            ctor,
-            ctor_arity: ctor_wild_subpatterns.len(),
-            ctor_wild_subpatterns,
-        });
+        self.history.push(UndoKind::Specialize { ctor_arity: ctor_wild_subpatterns.len() });
     }
 
     /// Expands or-patterns in the last column of the matrix. Does nothing if the first column is
@@ -834,19 +818,19 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                             alt_count,
                             pat: orig_pat,
                         },
+                        any_or_pats: true,
                     });
                 }
             } else {
                 new_last_col.push(entry.clone());
-                self.selected_rows
-                    .push(SelectedRow { id: new_last_col.len() - 1, origin: row.origin });
+                self.selected_rows.push(SelectedRow { id: new_last_col.len() - 1, ..*row });
             }
         }
         self.columns.push(new_last_col);
     }
 
     /// Undo either the last specialization or the last manual or-pattern expansion.
-    fn undo(&mut self) -> Option<UndoKind<'p, 'tcx>> {
+    fn undo(&mut self) -> Option<UndoKind> {
         let undo = self.history.pop()?;
         match undo {
             UndoKind::Specialize { ctor_arity, .. } => {
@@ -1407,7 +1391,7 @@ fn compute_matrix_usefulness<'p, 'tcx>(
         // We cache the result of `Fields::wildcards` because it is used a lot.
         let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
         let v = v.pop_head_constructor(&ctor_wild_subpatterns);
-        matrix.specialize(pcx, ctor.clone(), ctor_wild_subpatterns.clone());
+        matrix.specialize(pcx, &ctor, &ctor_wild_subpatterns);
         // Expand any or-patterns present in the new last column.
         matrix.expand_or_patterns();
         let u = compute_matrix_usefulness(cx, matrix, &v, false);
