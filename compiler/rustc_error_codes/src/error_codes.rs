@@ -267,6 +267,7 @@ E0516: include_str!("./error_codes/E0516.md"),
 E0517: include_str!("./error_codes/E0517.md"),
 E0518: include_str!("./error_codes/E0518.md"),
 E0520: include_str!("./error_codes/E0520.md"),
+E0521: include_str!("./error_codes/E0521.md"),
 E0522: include_str!("./error_codes/E0522.md"),
 E0524: include_str!("./error_codes/E0524.md"),
 E0525: include_str!("./error_codes/E0525.md"),
@@ -597,7 +598,6 @@ E0780: include_str!("./error_codes/E0780.md"),
     E0514, // metadata version mismatch
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     // two dependencies have same (crate-name, disambiguator) but different SVH
-    E0521, // borrowed data escapes outside of closure
     E0523,
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
