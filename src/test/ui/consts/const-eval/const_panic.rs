@@ -1,4 +1,5 @@
 #![feature(const_panic)]
+#![allow(non_fmt_panic)]
 #![crate_type = "lib"]
 
 const MSG: &str = "hello";

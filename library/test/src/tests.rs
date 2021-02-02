@@ -199,7 +199,7 @@ fn test_should_panic_bad_message() {
 fn test_should_panic_non_string_message_type() {
     use crate::tests::TrFailedMsg;
     fn f() {
-        panic!(1i32);
+        std::panic::panic_any(1i32);
     }
     let expected = "foobar";
     let failed_msg = format!(
