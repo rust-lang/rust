@@ -896,7 +896,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 fragment
             }
             Err(mut err) => {
-                err.set_span(span);
+                if err.span.is_dummy() {
+                    err.set_span(span);
+                }
                 annotate_err_with_kind(&mut err, kind, span);
                 err.emit();
                 self.cx.trace_macros_diag();
