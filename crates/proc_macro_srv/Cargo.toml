@@ -12,7 +12,7 @@ doctest = false
 [dependencies]
 object = { version = "0.23", default-features = false, features = ["std", "read_core", "elf", "macho", "pe"] }
 libloading = "0.6.0"
-memmap = "0.7"
+memmap2 = "0.2.0"
 
 tt = { path = "../tt", version = "0.0.0" }
 mbe = { path = "../mbe", version = "0.0.0" }
