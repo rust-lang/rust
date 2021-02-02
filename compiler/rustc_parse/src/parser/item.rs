@@ -46,7 +46,7 @@ impl<'a> Parser<'a> {
             self.parse_mod(&token::CloseDelim(token::Brace), unsafety)?
         };
         attrs.append(&mut inner_attrs);
-        Ok((id, ItemKind::Mod(module)))
+        Ok((id, ItemKind::Mod(box module)))
     }
 
     /// Parses the contents of a module (inner attributes followed by module items).
@@ -919,7 +919,7 @@ impl<'a> Parser<'a> {
         let abi = self.parse_abi(); // ABI?
         let items = self.parse_item_list(attrs, |p| p.parse_foreign_item())?;
         let module = ast::ForeignMod { unsafety, abi, items };
-        Ok((Ident::invalid(), ItemKind::ForeignMod(module)))
+        Ok((Ident::invalid(), ItemKind::ForeignMod(box module)))
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).

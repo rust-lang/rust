@@ -376,7 +376,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let krate_item = AstFragment::Items(smallvec![P(ast::Item {
             attrs: krate.attrs,
             span: krate.span,
-            kind: ast::ItemKind::Mod(krate.module),
+            kind: ast::ItemKind::Mod(box krate.module),
             ident: Ident::invalid(),
             id: ast::DUMMY_NODE_ID,
             vis: ast::Visibility {
@@ -388,7 +388,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         })]);
 
         match self.fully_expand_fragment(krate_item).make_items().pop().map(P::into_inner) {
-            Some(ast::Item { attrs, kind: ast::ItemKind::Mod(module), .. }) => {
+            Some(ast::Item { attrs, kind: ast::ItemKind::Mod(box module), .. }) => {
                 krate.attrs = attrs;
                 krate.module = module;
             }
@@ -1379,7 +1379,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     _ => unreachable!(),
                 })
             }
-            ast::ItemKind::Mod(ref mut old_mod @ ast::Mod { .. }) if ident != Ident::invalid() => {
+            ast::ItemKind::Mod(ref mut old_mod @ box ast::Mod { .. })
+                if ident != Ident::invalid() =>
+            {
                 let sess = &self.cx.sess.parse_sess;
                 let orig_ownership = self.cx.current_expansion.directory_ownership;
                 let mut module = (*self.cx.current_expansion.module).clone();
@@ -1412,7 +1414,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         extern_mod_loaded(&krate, ident);
                     }
 
-                    *old_mod = krate.module;
+                    *old_mod = box krate.module;
                     item.attrs = krate.attrs;
                     // File can have inline attributes, e.g., `#![cfg(...)]` & co. => Reconfigure.
                     item = match self.configure(item) {

@@ -2725,11 +2725,11 @@ pub enum ItemKind {
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
-    Mod(Mod),
+    Mod(Box<Mod>),
     /// An external module (`extern`).
     ///
     /// E.g., `extern {}` or `extern "C" {}`.
-    ForeignMod(ForeignMod),
+    ForeignMod(Box<ForeignMod>),
     /// Module-level inline assembly (from `global_asm!()`).
     GlobalAsm(Box<GlobalAsm>),
     /// A type alias (`type`).
@@ -2770,7 +2770,7 @@ pub enum ItemKind {
 }
 
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(ItemKind, 72);
+rustc_data_structures::static_assert_size!(ItemKind, 24);
 
 impl ItemKind {
     pub fn article(&self) -> &str {

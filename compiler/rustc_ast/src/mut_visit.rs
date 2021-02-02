@@ -1016,7 +1016,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
             id: DUMMY_NODE_ID,
             vis: item_vis,
             span,
-            kind: ItemKind::Mod(module),
+            kind: ItemKind::Mod(box module),
             tokens: None,
         });
         let items = vis.flat_map_item(item);
@@ -1028,7 +1028,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
         } else if len == 1 {
             let Item { attrs, span, kind, .. } = items.into_iter().next().unwrap().into_inner();
             match kind {
-                ItemKind::Mod(module) => Crate { module, attrs, span, proc_macros },
+                ItemKind::Mod(box module) => Crate { module, attrs, span, proc_macros },
                 _ => panic!("visitor converted a module to not a module"),
             }
         } else {

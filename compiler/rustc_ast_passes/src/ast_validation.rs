@@ -1006,7 +1006,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.error_item_without_body(item.span, "function", msg, " { <body> }");
                 }
             }
-            ItemKind::ForeignMod(ForeignMod { unsafety, .. }) => {
+            ItemKind::ForeignMod(box ForeignMod { unsafety, .. }) => {
                 let old_item = mem::replace(&mut self.extern_mod, Some(item));
                 self.invalid_visibility(
                     &item.vis,
@@ -1054,7 +1054,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return;
             }
-            ItemKind::Mod(Mod { inline, unsafety, .. }) => {
+            ItemKind::Mod(box Mod { inline, unsafety, .. }) => {
                 if let Unsafe::Yes(span) = unsafety {
                     self.err_handler().span_err(span, "module cannot be declared unsafe");
                 }
