@@ -104,6 +104,8 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
   fi
+
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift"
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
@@ -124,7 +126,6 @@ else
 
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
 
-  # Test the Cranelift backend in on CI, but don't ship it.
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift"
 
   # We enable this for non-dist builders, since those aren't trying to produce
