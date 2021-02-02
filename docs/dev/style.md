@@ -267,6 +267,20 @@ Non-local code properties degrade under change, privacy makes invariant local.
 Borrowed own data discloses irrelevant details about origin of data.
 Irrelevant (neither right nor wrong) things obscure correctness.
 
+## Useless Types
+
+More generally, always prefer types on the left
+
+```rust
+// GOOD      BAD
+&[T]         &Vec<T>
+&str         &String
+Option<&T>   &Option<T>
+```
+
+**Rationale:** types on the left are strictly more general.
+Even when generality is not required, consistency is important.
+
 ## Constructors
 
 Prefer `Default` to zero-argument `new` function
