@@ -4,11 +4,11 @@ use super::{FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 
 use crate::{maybe_collect_tokens, maybe_whole};
 
+use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
-use rustc_ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
@@ -229,7 +229,7 @@ impl<'a> Parser<'a> {
         } else if self.check_fn_front_matter() {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, req_name, lo)?;
-            (ident, ItemKind::Fn(def(), sig, generics, body))
+            (ident, ItemKind::Fn(box FnKind(def(), sig, generics, body)))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
                 // EXTERN CRATE
@@ -556,7 +556,7 @@ impl<'a> Parser<'a> {
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
 
-                ItemKind::Impl {
+                ItemKind::Impl(box ImplKind {
                     unsafety,
                     polarity,
                     defaultness,
@@ -565,11 +565,11 @@ impl<'a> Parser<'a> {
                     of_trait: Some(trait_ref),
                     self_ty: ty_second,
                     items: impl_items,
-                }
+                })
             }
             None => {
                 // impl Type
-                ItemKind::Impl {
+                ItemKind::Impl(box ImplKind {
                     unsafety,
                     polarity,
                     defaultness,
@@ -578,7 +578,7 @@ impl<'a> Parser<'a> {
                     of_trait: None,
                     self_ty: ty_first,
                     items: impl_items,
-                }
+                })
             }
         };
 
@@ -718,7 +718,7 @@ impl<'a> Parser<'a> {
             // It's a normal trait.
             tps.where_clause = self.parse_where_clause()?;
             let items = self.parse_item_list(attrs, |p| p.parse_trait_item())?;
-            Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, items)))
+            Ok((ident, ItemKind::Trait(box TraitKind(is_auto, unsafety, tps, bounds, items))))
         }
     }
 
@@ -767,7 +767,7 @@ impl<'a> Parser<'a> {
         let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
         self.expect_semi()?;
 
-        Ok((ident, ItemKind::TyAlias(def, generics, bounds, default)))
+        Ok((ident, ItemKind::TyAlias(box TyAliasKind(def, generics, bounds, default))))
     }
 
     /// Parses a `UseTree`.
@@ -1013,7 +1013,9 @@ impl<'a> Parser<'a> {
         let mut impl_info = self.parse_item_impl(attrs, defaultness)?;
         match impl_info.1 {
             // only try to recover if this is implementing a trait for a type
-            ItemKind::Impl { of_trait: Some(ref trai), ref mut constness, .. } => {
+            ItemKind::Impl(box ImplKind {
+                of_trait: Some(ref trai), ref mut constness, ..
+            }) => {
                 *constness = Const::Yes(const_span);
 
                 let before_trait = trai.path.span.shrink_to_lo();

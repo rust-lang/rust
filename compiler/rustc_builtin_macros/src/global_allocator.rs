@@ -5,7 +5,7 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Attribute, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
-use rustc_ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
+use rustc_ast::{FnKind, ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
@@ -85,7 +85,8 @@ impl AllocFnFactory<'_, '_> {
         let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header, span: self.span };
         let block = Some(self.cx.block_expr(output_expr));
-        let kind = ItemKind::Fn(ast::Defaultness::Final, sig, Generics::default(), block);
+        let kind =
+            ItemKind::Fn(box FnKind(ast::Defaultness::Final, sig, Generics::default(), block));
         let item = self.cx.item(
             self.span,
             Ident::from_str_and_span(&self.kind.fn_name(method.name), self.span),

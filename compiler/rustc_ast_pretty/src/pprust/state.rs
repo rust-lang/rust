@@ -1022,14 +1022,14 @@ impl<'a> State<'a> {
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
         match kind {
-            ast::ForeignItemKind::Fn(def, sig, gen, body) => {
+            ast::ForeignItemKind::Fn(box ast::FnKind(def, sig, gen, body)) => {
                 self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
             }
             ast::ForeignItemKind::Static(ty, mutbl, body) => {
                 let def = ast::Defaultness::Final;
                 self.print_item_const(ident, Some(*mutbl), ty, body.as_deref(), vis, def);
             }
-            ast::ForeignItemKind::TyAlias(def, generics, bounds, ty) => {
+            ast::ForeignItemKind::TyAlias(box ast::TyAliasKind(def, generics, bounds, ty)) => {
                 self.print_associated_type(ident, generics, bounds, ty.as_deref(), vis, *def);
             }
             ast::ForeignItemKind::MacCall(m) => {
@@ -1134,7 +1134,7 @@ impl<'a> State<'a> {
             ast::ItemKind::Const(def, ref ty, ref body) => {
                 self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis, def);
             }
-            ast::ItemKind::Fn(def, ref sig, ref gen, ref body) => {
+            ast::ItemKind::Fn(box ast::FnKind(def, ref sig, ref gen, ref body)) => {
                 let body = body.as_deref();
                 self.print_fn_full(sig, item.ident, gen, &item.vis, def, body, &item.attrs);
             }
@@ -1175,7 +1175,7 @@ impl<'a> State<'a> {
                 self.s.word(ga.asm.to_string());
                 self.end();
             }
-            ast::ItemKind::TyAlias(def, ref generics, ref bounds, ref ty) => {
+            ast::ItemKind::TyAlias(box ast::TyAliasKind(def, ref generics, ref bounds, ref ty)) => {
                 let ty = ty.as_deref();
                 self.print_associated_type(item.ident, generics, bounds, ty, &item.vis, def);
             }
@@ -1190,7 +1190,7 @@ impl<'a> State<'a> {
                 self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, item.ident, item.span, true);
             }
-            ast::ItemKind::Impl {
+            ast::ItemKind::Impl(box ast::ImplKind {
                 unsafety,
                 polarity,
                 defaultness,
@@ -1199,7 +1199,7 @@ impl<'a> State<'a> {
                 ref of_trait,
                 ref self_ty,
                 ref items,
-            } => {
+            }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_defaultness(defaultness);
@@ -1233,7 +1233,13 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            ast::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
+            ast::ItemKind::Trait(box ast::TraitKind(
+                is_auto,
+                unsafety,
+                ref generics,
+                ref bounds,
+                ref trait_items,
+            )) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_unsafety(unsafety);
@@ -1453,13 +1459,13 @@ impl<'a> State<'a> {
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
         match kind {
-            ast::AssocItemKind::Fn(def, sig, gen, body) => {
+            ast::AssocItemKind::Fn(box ast::FnKind(def, sig, gen, body)) => {
                 self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
             }
             ast::AssocItemKind::Const(def, ty, body) => {
                 self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
             }
-            ast::AssocItemKind::TyAlias(def, generics, bounds, ty) => {
+            ast::AssocItemKind::TyAlias(box ast::TyAliasKind(def, generics, bounds, ty)) => {
                 self.print_associated_type(ident, generics, bounds, ty.as_deref(), vis, *def);
             }
             ast::AssocItemKind::MacCall(m) => {

@@ -2,7 +2,7 @@
 //! Clippy.
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_ast::{Item, ItemKind};
+use rustc_ast::{ImplKind, Item, ItemKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -243,7 +243,7 @@ declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
 
 impl EarlyLintPass for LintPassImpl {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Impl { of_trait: Some(lint_pass), .. } = &item.kind {
+        if let ItemKind::Impl(box ImplKind { of_trait: Some(lint_pass), .. }) = &item.kind {
             if let Some(last) = lint_pass.path.segments.last() {
                 if last.ident.name == sym::LintPass {
                     let expn_data = lint_pass.path.span.ctxt().outer_expn_data();

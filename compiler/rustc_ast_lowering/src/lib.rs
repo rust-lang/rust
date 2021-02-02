@@ -32,6 +32,7 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(or_patterns)]
+#![feature(box_patterns)]
 #![recursion_limit = "256"]
 
 use rustc_ast::node_id::NodeMap;
@@ -500,8 +501,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ItemKind::Struct(_, ref generics)
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
-                    | ItemKind::TyAlias(_, ref generics, ..)
-                    | ItemKind::Trait(_, _, ref generics, ..) => {
+                    | ItemKind::TyAlias(box TyAliasKind(_, ref generics, ..))
+                    | ItemKind::Trait(box TraitKind(_, _, ref generics, ..)) => {
                         let def_id = self.lctx.resolver.local_def_id(item.id);
                         let count = generics
                             .params

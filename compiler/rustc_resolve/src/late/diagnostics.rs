@@ -1109,7 +1109,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 if assoc_item.ident == ident {
                     return Some(match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
-                        ast::AssocItemKind::Fn(_, sig, ..) if sig.decl.has_self() => {
+                        ast::AssocItemKind::Fn(box ast::FnKind(_, sig, ..))
+                            if sig.decl.has_self() =>
+                        {
                             AssocSuggestion::MethodWithSelf
                         }
                         ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn,
