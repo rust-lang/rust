@@ -374,19 +374,6 @@ impl Step for Rustc {
                 }
             }
 
-            // Copy over the codegen backends
-            let backends_src = builder.sysroot_codegen_backends(compiler);
-            let backends_rel = backends_src
-                .strip_prefix(&src)
-                .unwrap()
-                .strip_prefix(builder.sysroot_libdir_relative(compiler))
-                .unwrap();
-            // Don't use custom libdir here because ^lib/ will be resolved again with installer
-            let backends_dst = image.join("lib").join(&backends_rel);
-
-            t!(fs::create_dir_all(&backends_dst));
-            builder.cp_r(&backends_src, &backends_dst);
-
             // Copy libLLVM.so to the lib dir as well, if needed. While not
             // technically needed by rustc itself it's needed by lots of other
             // components like the llvm tools and LLD. LLD is included below and
@@ -1195,6 +1182,80 @@ impl Step for Miri {
 }
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct CodegenBackend {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+    pub backend: Interned<String>,
+}
+
+impl Step for CodegenBackend {
+    type Output = GeneratedTarball;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("compiler/rustc_codegen_cranelift")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        for &backend in &run.builder.config.rust_codegen_backends {
+            if backend == "llvm" {
+                continue; // Already built as part of rustc
+            }
+
+            run.builder.ensure(CodegenBackend {
+                compiler: run.builder.compiler_for(
+                    run.builder.top_stage,
+                    run.builder.config.build,
+                    run.target,
+                ),
+                target: run.target,
+                backend,
+            });
+        }
+    }
+
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
+        let compiler = self.compiler;
+        let target = self.target;
+        let backend = self.backend;
+        assert!(builder.config.extended);
+
+        builder.ensure(compile::CodegenBackend { compiler, target, backend });
+
+        let mut tarball = Tarball::new(builder, &format!("rustc-codegen-{}", backend), &target.triple);
+        if backend == "cranelift" {
+            tarball.set_overlay(OverlayKind::RustcCodegenCranelift);
+        } else {
+            panic!("Unknown overlay kind for rustc_codegen_{}", backend);
+        }
+        tarball.is_preview(true);
+        tarball.add_legal_and_readme_to(format!("share/doc/rustc_codegen_{}", backend));
+
+
+        let src = builder.sysroot(compiler);
+        let backends_src = builder.sysroot_codegen_backends(compiler);
+        let backends_rel = backends_src
+            .strip_prefix(&src)
+            .unwrap()
+            .strip_prefix(builder.sysroot_libdir_relative(compiler))
+            .unwrap();
+        // Don't use custom libdir here because ^lib/ will be resolved again with installer
+        let backends_dst = tarball.image_dir().join("lib").join(&backends_rel);
+
+        t!(fs::create_dir_all(&backends_dst));
+        let backend_name = format!("rustc_codegen_{}", backend);
+        for backend in fs::read_dir(&backends_src).unwrap() {
+            let file_name = backend.unwrap().file_name();
+            if file_name.to_str().unwrap().contains(&backend_name) {
+                tarball.add_file(backends_src.join(file_name), backends_rel, 0o644);
+            }
+        }
+
+        tarball.generate()
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustfmt {
     pub compiler: Compiler,
     pub target: TargetSelection,
@@ -1523,6 +1584,8 @@ impl Step for Extended {
                     "rust-demangler-preview".to_string()
                 } else if name == "miri" {
                     "miri-preview".to_string()
+                } else if name == "rustc-codegen-cranelift" {
+                    "rustc-codegen-cranelift-preview".to_string()
                 } else {
                     name.to_string()
                 };
