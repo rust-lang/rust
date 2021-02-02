@@ -945,7 +945,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
 
-            ItemKind::Enum(_, ref generics)
+            ItemKind::Enum(box EnumKind(_, ref generics))
             | ItemKind::Struct(box StructUnionKind(_, ref generics))
             | ItemKind::Union(box StructUnionKind(_, ref generics)) => {
                 self.resolve_adt(item, generics);

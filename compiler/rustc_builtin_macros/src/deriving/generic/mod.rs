@@ -403,7 +403,7 @@ impl<'a> TraitDef<'a> {
                 });
                 let has_no_type_params = match item.kind {
                     ast::ItemKind::Struct(box ast::StructUnionKind(_, ref generics))
-                    | ast::ItemKind::Enum(_, ref generics)
+                    | ast::ItemKind::Enum(box ast::EnumKind(_, ref generics))
                     | ast::ItemKind::Union(box ast::StructUnionKind(_, ref generics)) => !generics
                         .params
                         .iter()
@@ -426,7 +426,7 @@ impl<'a> TraitDef<'a> {
                         from_scratch,
                         use_temporaries,
                     ),
-                    ast::ItemKind::Enum(ref enum_def, ref generics) => {
+                    ast::ItemKind::Enum(box ast::EnumKind(ref enum_def, ref generics)) => {
                         // We ignore `use_temporaries` here, because
                         // `repr(packed)` enums cause an error later on.
                         //
@@ -1739,7 +1739,7 @@ where
 pub fn is_type_without_fields(item: &Annotatable) -> bool {
     if let Annotatable::Item(ref item) = *item {
         match item.kind {
-            ast::ItemKind::Enum(ref enum_def, _) => {
+            ast::ItemKind::Enum(box ast::EnumKind(ref enum_def, _)) => {
                 enum_def.variants.iter().all(|v| v.data.fields().is_empty())
             }
             ast::ItemKind::Struct(box ast::StructUnionKind(ref variant_data, _)) => {

@@ -2695,6 +2695,9 @@ pub struct ConstKind(pub Defaultness, pub P<Ty>, pub Option<P<Expr>>);
 pub struct StructUnionKind(pub VariantData, pub Generics);
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct EnumKind(pub EnumDef, pub Generics);
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
@@ -2733,7 +2736,7 @@ pub enum ItemKind {
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
-    Enum(EnumDef, Generics),
+    Enum(Box<EnumKind>),
     /// A struct definition (`struct`).
     ///
     /// E.g., `struct Foo<A> { x: A }`.
@@ -2802,7 +2805,7 @@ impl ItemKind {
         match self {
             Self::Fn(box FnKind(_, _, generics, _))
             | Self::TyAlias(box TyAliasKind(_, generics, ..))
-            | Self::Enum(_, generics)
+            | Self::Enum(box EnumKind(_, generics))
             | Self::Struct(box StructUnionKind(_, generics))
             | Self::Union(box StructUnionKind(_, generics))
             | Self::Trait(box TraitKind(_, _, generics, ..))

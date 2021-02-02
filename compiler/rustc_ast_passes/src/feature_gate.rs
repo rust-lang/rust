@@ -345,7 +345,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Enum(ast::EnumDef { ref variants, .. }, ..) => {
+            ast::ItemKind::Enum(box ast::EnumKind(ast::EnumDef { ref variants, .. }, ..)) => {
                 for variant in variants {
                     match (&variant.data, &variant.disr_expr) {
                         (ast::VariantData::Unit(..), _) => {}

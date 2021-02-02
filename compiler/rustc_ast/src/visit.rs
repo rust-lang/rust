@@ -308,7 +308,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, ty);
         }
-        ItemKind::Enum(ref enum_definition, ref generics) => {
+        ItemKind::Enum(box EnumKind(ref enum_definition, ref generics)) => {
             visitor.visit_generics(generics);
             visitor.visit_enum_def(enum_definition, generics, item.id, item.span)
         }

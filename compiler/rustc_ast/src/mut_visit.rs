@@ -926,7 +926,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             visit_bounds(bounds, vis);
             visit_opt(ty, |ty| vis.visit_ty(ty));
         }
-        ItemKind::Enum(EnumDef { variants }, generics) => {
+        ItemKind::Enum(box EnumKind(EnumDef { variants }, generics)) => {
             variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
             vis.visit_generics(generics);
         }

@@ -459,7 +459,7 @@ impl<'a> StripUnconfigured<'a> {
             | ast::ItemKind::Union(box ast::StructUnionKind(def, _generics)) => {
                 self.configure_variant_data(def)
             }
-            ast::ItemKind::Enum(ast::EnumDef { variants }, _generics) => {
+            ast::ItemKind::Enum(box ast::EnumKind(ast::EnumDef { variants }, _generics)) => {
                 variants.flat_map_in_place(|variant| self.configure(variant));
                 for variant in variants {
                     self.configure_variant_data(&mut variant.data);

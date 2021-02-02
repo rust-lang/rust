@@ -1179,7 +1179,7 @@ impl<'a> State<'a> {
                 let ty = ty.as_deref();
                 self.print_associated_type(item.ident, generics, bounds, ty, &item.vis, def);
             }
-            ast::ItemKind::Enum(ref enum_definition, ref params) => {
+            ast::ItemKind::Enum(box ast::EnumKind(ref enum_definition, ref params)) => {
                 self.print_enum_def(enum_definition, params, item.ident, item.span, &item.vis);
             }
             ast::ItemKind::Struct(box ast::StructUnionKind(ref struct_def, ref generics)) => {

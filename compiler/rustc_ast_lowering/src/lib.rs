@@ -500,7 +500,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 match item.kind {
                     ItemKind::Struct(box StructUnionKind(_, ref generics))
                     | ItemKind::Union(box StructUnionKind(_, ref generics))
-                    | ItemKind::Enum(_, ref generics)
+                    | ItemKind::Enum(box EnumKind(_, ref generics))
                     | ItemKind::TyAlias(box TyAliasKind(_, ref generics, ..))
                     | ItemKind::Trait(box TraitKind(_, _, ref generics, ..)) => {
                         let def_id = self.lctx.resolver.local_def_id(item.id);

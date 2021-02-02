@@ -1094,7 +1094,7 @@ impl<'a> Parser<'a> {
 
         let enum_definition =
             EnumDef { variants: variants.into_iter().filter_map(|v| v).collect() };
-        Ok((id, ItemKind::Enum(enum_definition, generics)))
+        Ok((id, ItemKind::Enum(box EnumKind(enum_definition, generics))))
     }
 
     fn parse_enum_variant(&mut self) -> PResult<'a, Option<Variant>> {

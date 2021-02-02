@@ -1,7 +1,8 @@
 use crate::utils::{meets_msrv, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_ast::ast::{
-    Attribute, Item, ItemKind, StructField, StructUnionKind, Variant, VariantData, VisibilityKind,
+    Attribute, EnumKind, Item, ItemKind, StructField, StructUnionKind, Variant, VariantData,
+    VisibilityKind,
 };
 use rustc_attr as attr;
 use rustc_errors::Applicability;
@@ -81,7 +82,7 @@ impl EarlyLintPass for ManualNonExhaustive {
         }
 
         match &item.kind {
-            ItemKind::Enum(def, _) => {
+            ItemKind::Enum(box EnumKind(def, _)) => {
                 check_manual_non_exhaustive_enum(cx, item, &def.variants);
             }
             ItemKind::Struct(box StructUnionKind(variant_data, _)) => {

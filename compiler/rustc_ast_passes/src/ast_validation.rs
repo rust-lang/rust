@@ -1019,7 +1019,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.extern_mod = old_item;
                 return; // Avoid visiting again.
             }
-            ItemKind::Enum(ref def, _) => {
+            ItemKind::Enum(box EnumKind(ref def, _)) => {
                 for variant in &def.variants {
                     self.invalid_visibility(&variant.vis, None);
                     for field in variant.data.fields() {

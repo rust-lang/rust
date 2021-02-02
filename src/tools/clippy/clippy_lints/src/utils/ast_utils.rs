@@ -253,8 +253,8 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_generics(lg, rg)
                 && over(lb, rb, |l, r| eq_generic_bound(l, r))
                 && both(lt, rt, |l, r| eq_ty(l, r))
-        },
-        (Enum(le, lg), Enum(re, rg)) => {
+        }
+        (Enum(box EnumKind(le, lg)), Enum(box EnumKind(re, rg))) => {
             over(&le.variants, &re.variants, |l, r| eq_variant(l, r)) && eq_generics(lg, rg)
         }
         (Struct(box StructUnionKind(lv, lg)), Struct(box StructUnionKind(rv, rg)))

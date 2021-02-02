@@ -2,7 +2,7 @@
 
 use crate::utils::{camel_case, is_present_in_source};
 use crate::utils::{span_lint, span_lint_and_help};
-use rustc_ast::ast::{EnumDef, Item, ItemKind, VisibilityKind};
+use rustc_ast::ast::{EnumDef, EnumKind, Item, ItemKind, VisibilityKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, Lint};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
@@ -315,7 +315,7 @@ impl EarlyLintPass for EnumVariantNames {
                 }
             }
         }
-        if let ItemKind::Enum(ref def, _) = item.kind {
+        if let ItemKind::Enum(box EnumKind(ref def, _)) = item.kind {
             let lint = match item.vis.kind {
                 VisibilityKind::Public => PUB_ENUM_VARIANT_NAMES,
                 _ => ENUM_VARIANT_NAMES,

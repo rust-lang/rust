@@ -805,7 +805,7 @@ impl Nonterminal {
 
         let name = item.ident.name;
         if name == sym::ProceduralMasqueradeDummyType || name == sym::ProcMacroHack {
-            if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
+            if let ast::ItemKind::Enum(box ast::EnumKind(enum_def, _)) = &item.kind {
                 if let [variant] = &*enum_def.variants {
                     return variant.ident.name == sym::Input;
                 }
