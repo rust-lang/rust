@@ -47,7 +47,8 @@ first read the [Basics docs](doc/basics.md).**
 ### Finding something to fix/improve
 
 All issues on Clippy are mentored, if you want help simply ask @Manishearth, @flip1995, @phansch
-or @yaahc directly by mentioning them in the issue or over on [Zulip].
+or @llogiq directly by mentioning them in the issue or over on [Zulip]. This list may be out of date.
+All currently active mentors can be found [here](https://github.com/rust-lang/highfive/blob/master/highfive/configs/rust-lang/rust-clippy.json#L3)
 
 Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy
 issues. You can use `@rustbot claim` to assign the issue to yourself.
