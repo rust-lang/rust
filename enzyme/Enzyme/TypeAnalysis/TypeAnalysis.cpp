@@ -121,8 +121,7 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                            uint8_t direction)
     : notForAnalysis(getGuaranteedUnreachable(fn.Function)), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
-      PHIRecur(false),
-      DT(std::make_shared<DominatorTree>(*fn.Function)) {
+      PHIRecur(false), DT(std::make_shared<DominatorTree>(*fn.Function)) {
 
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
@@ -146,13 +145,13 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
   }
 }
 
-TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
-                           const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis, std::shared_ptr<llvm::DominatorTree> DT,
-                           uint8_t direction, bool PHIRecur)
+TypeAnalyzer::TypeAnalyzer(
+    const FnTypeInfo &fn, TypeAnalysis &TA,
+    const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
+    std::shared_ptr<llvm::DominatorTree> DT, uint8_t direction, bool PHIRecur)
     : notForAnalysis(notForAnalysis.begin(), notForAnalysis.end()), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
-      PHIRecur(PHIRecur),
-      DT(DT) {
+      PHIRecur(PHIRecur), DT(DT) {
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
 }
@@ -674,7 +673,8 @@ void TypeAnalyzer::considerTBAA() {
 }
 
 void TypeAnalyzer::runPHIHypotheses() {
-  if (PHIRecur) return;
+  if (PHIRecur)
+    return;
   bool Changed;
   do {
     Changed = false;
@@ -687,7 +687,8 @@ void TypeAnalyzer::runPHIHypotheses() {
             // the incoming operands are integral
 
             TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural,
-                                     notForAnalysis, DT, DOWN, /*PHIRecur*/true);
+                                     notForAnalysis, DT, DOWN,
+                                     /*PHIRecur*/ true);
             tmpAnalysis.intseen = intseen;
             tmpAnalysis.analysis = analysis;
             tmpAnalysis.analysis[phi] = TypeTree(BaseType::Integer).Only(-1);
@@ -718,7 +719,8 @@ void TypeAnalyzer::runPHIHypotheses() {
             // Assume that this is an integer, does that mean we can prove that
             // the incoming operands are integral
             TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural,
-                                     notForAnalysis, DT, DOWN, /*PHIRecur*/true);
+                                     notForAnalysis, DT, DOWN,
+                                     /*PHIRecur*/ true);
             tmpAnalysis.intseen = intseen;
             tmpAnalysis.analysis = analysis;
             tmpAnalysis.analysis[phi] =
@@ -2165,9 +2167,8 @@ void TypeAnalyzer::visitInvokeInst(InvokeInst &call) {
   analysis[&call] = analysis[tmpCall];
   analysis.erase(tmpCall);
 
-  auto found = workList.find(tmpCall);
-  if (found != workList.end()) {
-    workList.erase(found);
+  if (workList.count(tmpCall)) {
+    workList.remove(tmpCall);
     workList.insert(&call);
   }
 

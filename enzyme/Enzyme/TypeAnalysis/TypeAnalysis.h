@@ -30,6 +30,8 @@
 
 #include <llvm/Config/llvm-config.h>
 
+#include "llvm/ADT/SetVector.h"
+
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
 #include "llvm/IR/Constants.h"
@@ -157,7 +159,7 @@ public:
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
 public:
   /// List of value's which should be re-analyzed now with new information
-  std::set<llvm::Value *> workList;
+  llvm::SetVector<llvm::Value *> workList;
 
   const llvm::SmallPtrSet<llvm::BasicBlock *, 4> notForAnalysis;
 
