@@ -230,10 +230,10 @@ fn main() {
                             err => panic!("unknown error decoding -Zmiri-seed as hex: {:?}", err),
                         });
                     if seed_raw.len() > 8 {
-                        panic!(format!(
+                        panic!(
                             "-Zmiri-seed must be at most 8 bytes, was {}",
                             seed_raw.len()
-                        ));
+                        );
                     }
 
                     let mut bytes = [0; 8];
