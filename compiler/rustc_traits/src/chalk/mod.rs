@@ -105,14 +105,40 @@ crate fn evaluate_goal<'tcx>(
     // really need this and so it's really minimal.
     // Right now, we also treat a `Unique` solution the same as
     // `Ambig(Definite)`. This really isn't right.
-    let make_solution = |subst: chalk_ir::Substitution<_>| {
+    let make_solution = |subst: chalk_ir::Substitution<_>,
+                         binders: chalk_ir::CanonicalVarKinds<_>| {
+        use rustc_middle::infer::canonical::CanonicalVarInfo;
+
         let mut var_values: IndexVec<BoundVar, GenericArg<'tcx>> = IndexVec::new();
         subst.as_slice(&interner).iter().for_each(|p| {
             var_values.push(p.lower_into(&interner));
         });
+        let variables: Vec<_> = binders
+            .iter(&interner)
+            .map(|var| {
+                let kind = match var.kind {
+                    chalk_ir::VariableKind::Ty(ty_kind) => CanonicalVarKind::Ty(match ty_kind {
+                        chalk_ir::TyVariableKind::General => CanonicalTyVarKind::General(
+                            ty::UniverseIndex::from_usize(var.skip_kind().counter),
+                        ),
+                        chalk_ir::TyVariableKind::Integer => CanonicalTyVarKind::Int,
+                        chalk_ir::TyVariableKind::Float => CanonicalTyVarKind::Float,
+                    }),
+                    chalk_ir::VariableKind::Lifetime => CanonicalVarKind::Region(
+                        ty::UniverseIndex::from_usize(var.skip_kind().counter),
+                    ),
+                    chalk_ir::VariableKind::Const(_) => CanonicalVarKind::Const(
+                        ty::UniverseIndex::from_usize(var.skip_kind().counter),
+                    ),
+                };
+                CanonicalVarInfo { kind }
+            })
+            .collect();
+        let max_universe =
+            binders.iter(&interner).map(|v| v.skip_kind().counter).max().unwrap_or(0);
         let sol = Canonical {
-            max_universe: ty::UniverseIndex::from_usize(0),
-            variables: obligation.variables.clone(),
+            max_universe: ty::UniverseIndex::from_usize(max_universe),
+            variables: tcx.intern_canonical_var_infos(&variables),
             value: QueryResponse {
                 var_values: CanonicalVarValues { var_values },
                 region_constraints: QueryRegionConstraints::default(),
@@ -126,11 +152,13 @@ crate fn evaluate_goal<'tcx>(
         .map(|s| match s {
             Solution::Unique(subst) => {
                 // FIXME(chalk): handle constraints
-                make_solution(subst.value.subst)
+                make_solution(subst.value.subst, subst.binders)
             }
             Solution::Ambig(guidance) => {
                 match guidance {
-                    chalk_solve::Guidance::Definite(subst) => make_solution(subst.value),
+                    chalk_solve::Guidance::Definite(subst) => {
+                        make_solution(subst.value, subst.binders)
+                    }
                     chalk_solve::Guidance::Suggested(_) => unimplemented!(),
                     chalk_solve::Guidance::Unknown => {
                         // chalk_fulfill doesn't use the var_values here, so

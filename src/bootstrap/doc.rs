@@ -636,7 +636,6 @@ impl Step for Rustdoc {
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
-    pub compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -652,12 +651,7 @@ impl Step for ErrorIndex {
 
     fn make_run(run: RunConfig<'_>) {
         let target = run.target;
-        // error_index_generator depends on librustdoc. Use the compiler that
-        // is normally used to build rustdoc for other documentation so that
-        // it shares the same artifacts.
-        let compiler =
-            run.builder.compiler_for(run.builder.top_stage, run.builder.config.build, target);
-        run.builder.ensure(ErrorIndex { compiler, target });
+        run.builder.ensure(ErrorIndex { target });
     }
 
     /// Generates the HTML rendered error-index by running the
@@ -666,7 +660,7 @@ impl Step for ErrorIndex {
         builder.info(&format!("Documenting error index ({})", self.target));
         let out = builder.doc_out(self.target);
         t!(fs::create_dir_all(&out));
-        let mut index = tool::ErrorIndex::command(builder, self.compiler);
+        let mut index = tool::ErrorIndex::command(builder);
         index.arg("html");
         index.arg(out.join("error-index.html"));
         index.arg(&builder.version);

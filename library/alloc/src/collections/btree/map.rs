@@ -823,6 +823,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
+    #[doc(alias = "delete")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V>
     where
