@@ -6,7 +6,7 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_target;
 
-use rustc_data_structures::profiling::print_time_passes_entry;
+use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_interface::interface;
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
@@ -39,7 +39,8 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
 }
 
 fn main() {
-    let start = std::time::Instant::now();
+    let start_time = std::time::Instant::now();
+    let start_rss = get_resident_set_size();
     rustc_driver::init_rustc_env_logger();
     let mut callbacks = CraneliftPassesCallbacks::default();
     rustc_driver::install_ice_hook();
@@ -61,7 +62,11 @@ fn main() {
         })));
         run_compiler.run()
     });
-    // The extra `\t` is necessary to align this label with the others.
-    print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
+
+    if callbacks.time_passes {
+        let end_rss = get_resident_set_size();
+        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss);
+    }
+
     std::process::exit(exit_code)
 }
