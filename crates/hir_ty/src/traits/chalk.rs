@@ -675,7 +675,7 @@ pub(crate) fn fn_def_variance_query(
 ) -> Variances {
     let callable_def: CallableDefId = from_chalk(db, fn_def_id);
     let generic_params = generics(db.upcast(), callable_def.into());
-    Variances::from(
+    Variances::from_iter(
         &Interner,
         std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),
     )
@@ -688,7 +688,7 @@ pub(crate) fn adt_variance_query(
 ) -> Variances {
     let adt: crate::AdtId = from_chalk(db, adt_id);
     let generic_params = generics(db.upcast(), adt.into());
-    Variances::from(
+    Variances::from_iter(
         &Interner,
         std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),
     )
