@@ -19,6 +19,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, FatalError};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
+use smallvec::smallvec;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
@@ -727,6 +728,48 @@ fn force_query_impl<CTX, C>(
     );
 }
 
+#[inline(never)]
+fn feed_query_impl<CTX, C>(
+    tcx: CTX,
+    state: &QueryState<CTX::DepKind, CTX::Query, C>,
+    key: C::Key,
+    value: C::Value,
+    query: &QueryVtable<CTX, C::Key, C::Value>,
+) -> C::Stored
+where
+    C: QueryCache,
+    C::Key: crate::dep_graph::DepNodeParams<CTX>,
+    CTX: QueryContext,
+{
+    try_get_cached(
+        tcx,
+        state,
+        key,
+        |cached, _| {
+            // Cache hit, do nothing
+            cached.clone()
+        },
+        |key, mut lookup| {
+            let dep_node_index = if !tcx.dep_graph().is_fully_enabled() {
+                // Create a dummy DepNodeIndex
+                let ((), dep_node_index) = tcx.dep_graph().with_anon_task(DepKind::NULL, || ());
+                dep_node_index
+            } else {
+                let dep_node = query.to_dep_node(tcx, &key);
+                let edges = smallvec![];
+                let current_fingerprint = {
+                    let mut hcx = tcx.create_stable_hashing_context();
+                    query.hash_result(&mut hcx, &value)
+                };
+                tcx.dep_graph().create_dep_node(dep_node, tcx, edges, current_fingerprint)
+            };
+
+            debug!("feed(key={:?}) @ dni={:?} => value={:?}", key, dep_node_index, value);
+            state.cache.complete(&mut lookup.lock.cache, key, value, dep_node_index)
+        },
+    )
+}
+
 #[inline(always)]
 pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Stored
 where
@@ -746,6 +789,8 @@ where
     Q::Key: crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
+    debug!("ty::query::ensure_query<{}>(key={:?})", Q::NAME, key);
+
     ensure_query_impl(tcx, Q::query_state(tcx), key, &Q::VTABLE)
 }
 
@@ -756,5 +801,30 @@ where
     Q::Key: crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
+    debug!(
+        "ty::query::force_query<{}>(key={:?}, span={:?}, dep_node={:?})",
+        Q::NAME,
+        key,
+        span,
+        dep_node
+    );
+
     force_query_impl(tcx, Q::query_state(tcx), key, span, dep_node, &Q::VTABLE)
+}
+
+#[inline(always)]
+pub fn feed_query<Q, CTX>(tcx: CTX, key: Q::Key, value: Q::Value) -> Q::Stored
+where
+    Q: QueryDescription<CTX>,
+    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
+    Q::Value: Debug,
+    CTX: QueryContext,
+{
+    debug!("ty::query::feed_query<{}>(key={:?}, value={:?})", Q::NAME, key, value);
+
+    assert!(!Q::ANON);
+    assert!(!Q::EVAL_ALWAYS);
+
+    let state = Q::query_state(tcx);
+    feed_query_impl(tcx, state, key, value, &Q::VTABLE)
 }

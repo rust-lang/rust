@@ -51,7 +51,7 @@ impl std::convert::From<DepNodeIndex> for QueryInvocationId {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum DepNodeColor {
     Red,
     Green(DepNodeIndex),
@@ -270,18 +270,36 @@ impl<K: DepKind> DepGraph<K> {
         create_task: fn(DepNode<K>) -> Option<TaskDeps<K>>,
         hash_result: impl FnOnce(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
     ) -> (R, DepNodeIndex) {
-        if let Some(ref data) = self.data {
+        if let Some(ref _data) = self.data {
             let task_deps = create_task(key).map(Lock::new);
             let result = K::with_deps(task_deps.as_ref(), || task(cx, arg));
             let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
             let mut hcx = cx.create_stable_hashing_context();
             let current_fingerprint = hash_result(&mut hcx, &result);
+            let dep_node_index = self.create_dep_node(key, cx, edges, current_fingerprint);
+            (result, dep_node_index)
+        } else {
+            // Incremental compilation is turned off. We just execute the task
+            // without tracking. We still provide a dep-node index that uniquely
+            // identifies the task so that we have a cheap way of referring to
+            // the query for self-profiling.
+            (task(cx, arg), self.next_virtual_depnode_index())
+        }
+    }
 
+    pub(crate) fn create_dep_node<Ctxt: DepContext<DepKind = K>>(
+        &self,
+        key: DepNode<K>,
+        cx: Ctxt,
+        edges: EdgesVec,
+        current_fingerprint: Option<Fingerprint>,
+    ) -> DepNodeIndex {
+        if let Some(ref data) = self.data {
             let print_status = cfg!(debug_assertions) && cx.debug_dep_tasks();
 
             // Intern the new `DepNode`.
-            let dep_node_index = if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
+            if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
                 // Determine the color and index of the new `DepNode`.
                 let (color, dep_node_index) = if let Some(current_fingerprint) = current_fingerprint
                 {
@@ -331,12 +349,18 @@ impl<K: DepKind> DepGraph<K> {
                     (DepNodeColor::Red, dep_node_index)
                 };
 
-                debug_assert!(
-                    data.colors.get(prev_index).is_none(),
-                    "DepGraph::with_task() - Duplicate DepNodeColor \
-                            insertion for {:?}",
-                    key
+                debug!(
+                    "marking prev={:?} from {:?} to {:?}",
+                    prev_index,
+                    data.colors.get(prev_index),
+                    color
                 );
+                //debug_assert!(
+                //    data.colors.get(prev_index).is_none(),
+                //    "DepGraph::with_task() - Duplicate DepNodeColor \
+                //            insertion for {:?}",
+                //    key
+                //);
 
                 data.colors.insert(prev_index, color);
                 dep_node_index
@@ -352,15 +376,13 @@ impl<K: DepKind> DepGraph<K> {
                     edges,
                     current_fingerprint.unwrap_or(Fingerprint::ZERO),
                 )
-            };
-
-            (result, dep_node_index)
+            }
         } else {
             // Incremental compilation is turned off. We just execute the task
             // without tracking. We still provide a dep-node index that uniquely
             // identifies the task so that we have a cheap way of referring to
             // the query for self-profiling.
-            (task(cx, arg), self.next_virtual_depnode_index())
+            self.next_virtual_depnode_index()
         }
     }
 

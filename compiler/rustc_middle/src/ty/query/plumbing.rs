@@ -439,6 +439,13 @@ macro_rules! define_queries {
                 }
             }
 
+            /// Returns a transparent wrapper for `TyCtxt` which
+            /// allows to feed the query cache.
+            #[inline(always)]
+            pub fn feed(self) -> TyCtxtFeed<$tcx> {
+                TyCtxtFeed { tcx: self }
+            }
+
             $($(#[$attr])*
             #[inline(always)]
             #[must_use]
@@ -485,6 +492,29 @@ macro_rules! define_queries {
                 -> <queries::$name<$tcx> as QueryConfig>::Stored
             {
                 get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into_query_param())
+            })*
+        }
+
+        #[derive(Copy, Clone)]
+        pub struct TyCtxtFeed<'tcx> {
+            pub tcx: TyCtxt<'tcx>,
+        }
+
+        impl Deref for TyCtxtFeed<'tcx> {
+            type Target = TyCtxt<'tcx>;
+            #[inline(always)]
+            fn deref(&self) -> &Self::Target {
+                &self.tcx
+            }
+        }
+
+        impl TyCtxtFeed<$tcx> {
+            $($(#[$attr])*
+            #[inline(always)]
+            pub fn $name(self, key: query_helper_param_ty!($($K)*), value: query_values::$name<$tcx>)
+                -> <queries::$name<$tcx> as QueryConfig>::Stored
+            {
+                feed_query::<queries::$name<'_>, _>(self.tcx, key.into_query_param(), value)
             })*
         }
 
