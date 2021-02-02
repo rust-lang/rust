@@ -7,7 +7,7 @@ use std::{
 };
 
 use libloading::Library;
-use memmap::Mmap;
+use memmap2::Mmap;
 use object::Object;
 use proc_macro_api::ProcMacroKind;
 
