@@ -185,3 +185,36 @@ pub mod mark {
         "#]],
     );
 }
+
+#[test]
+fn macro_resolve_legacy() {
+    check_at(
+        r#"
+//- /lib.rs
+mod module;
+
+//- /module.rs
+macro_rules! m {
+    () => {
+        struct Def {}
+    };
+}
+
+fn f() {
+    {
+        m!();
+        $0
+    }
+}
+        "#,
+        expect![[r#"
+            block scope
+            Def: t
+            crate
+            module: t
+
+            crate::module
+            f: v
+        "#]],
+    )
+}
