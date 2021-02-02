@@ -287,12 +287,12 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                     num_binders: binders.len(interner),
                     sig: sig.lower_into(interner),
-                    substitution: chalk_ir::Substitution::from_iter(
+                    substitution: chalk_ir::FnSubst(chalk_ir::Substitution::from_iter(
                         interner,
                         inputs_and_outputs.iter().map(|ty| {
                             chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner)
                         }),
-                    ),
+                    )),
                 })
             }
             ty::Dynamic(predicates, region) => chalk_ir::TyKind::Dyn(chalk_ir::DynTy {
@@ -478,6 +478,10 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
             }
             chalk_ir::LifetimeData::Static => ty::RegionKind::ReStatic,
             chalk_ir::LifetimeData::Phantom(_, _) => unimplemented!(),
+            chalk_ir::LifetimeData::Empty(ui) => {
+                ty::RegionKind::ReEmpty(ty::UniverseIndex::from_usize(ui.counter))
+            }
+            chalk_ir::LifetimeData::Erased => ty::RegionKind::ReErased,
         };
         interner.tcx.mk_region(kind)
     }
