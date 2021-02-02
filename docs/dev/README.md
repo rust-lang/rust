@@ -9,8 +9,9 @@ $ cargo test
 
 should be enough to get you started!
 
-To learn more about how rust-analyzer works, see
-[./architecture.md](./architecture.md) document.
+To learn more about how rust-analyzer works, see [./architecture.md](./architecture.md) document.
+It also explains the high-level layout of the source code.
+Do skim through that document.
 
 We also publish rustdoc docs to pages:
 
@@ -99,25 +100,6 @@ I don't have a specific workflow for this case.
 Additionally, I use `cargo run --release -p rust-analyzer -- analysis-stats path/to/some/rust/crate` to run a batch analysis.
 This is primarily useful for performance optimizations, or for bug minimization.
 
-## Parser Tests
-
-Tests for the parser (`parser`) live in the `syntax` crate (see `test_data` directory).
-There are two kinds of tests:
-
-* Manually written test cases in `parser/ok` and `parser/err`
-* "Inline" tests in `parser/inline` (these are generated) from comments in `parser` crate.
-
-The purpose of inline tests is not to achieve full coverage by test cases, but to explain to the reader of the code what each particular `if` and `match` is responsible for.
-If you are tempted to add a large inline test, it might be a good idea to leave only the simplest example in place, and move the test to a manual `parser/ok` test.
-
-To update test data, run with `UPDATE_EXPECT` variable:
-
-```bash
-env UPDATE_EXPECT=1 cargo qt
-```
-
-After adding a new inline test you need to run `cargo xtest codegen` and also update the test data as described above.
-
 ## TypeScript Tests
 
 If you change files under `editors/code` and would like to run the tests and linter, install npm and run:
@@ -127,73 +109,6 @@ cd editors/code
 npm ci
 npm run lint
 ```
-
-# Code organization
-
-All Rust code lives in the `crates` top-level directory, and is organized as a single Cargo workspace.
-The `editors` top-level directory contains code for integrating with editors.
-Currently, it contains the plugin for VS Code (in TypeScript).
-The `docs` top-level directory contains both developer and user documentation.
-
-We have some automation infra in Rust in the `xtask` package.
-It contains stuff like formatting checking, code generation and powers `cargo xtask install`.
-The latter syntax is achieved with the help of cargo aliases (see `.cargo` directory).
-
-# Architecture Invariants
-
-This section tries to document high-level design constraints, which are not
-always obvious from the low-level code.
-
-## Incomplete syntax trees
-
-Syntax trees are by design incomplete and do not enforce well-formedness.
-If an AST method returns an `Option`, it *can* be `None` at runtime, even if this is forbidden by the grammar.
-
-## LSP independence
-
-rust-analyzer is independent from LSP.
-It provides features for a hypothetical perfect Rust-specific IDE client.
-Internal representations are lowered to LSP in the `rust-analyzer` crate (the only crate which is allowed to use LSP types).
-
-## IDE/Compiler split
-
-There's a semi-hard split between "compiler" and "IDE", at the `hir` crate.
-Compiler derives new facts about source code.
-It explicitly acknowledges that not all info is available (i.e. you can't look at types during name resolution).
-
-IDE assumes that all information is available at all times.
-
-IDE should use only types from `hir`, and should not depend on the underling compiler types.
-`hir` is a facade.
-
-## IDE API
-
-The main IDE crate (`ide`) uses "Plain Old Data" for the API.
-Rather than talking in definitions and references, it talks in Strings and textual offsets.
-In general, API is centered around UI concerns -- the result of the call is what the user sees in the editor, and not what the compiler sees underneath.
-The results are 100% Rust specific though.
-Shout outs to LSP developers for popularizing the idea that "UI" is a good place to draw a boundary at.
-
-## LSP is stateless
-
-The protocol is implemented in the mostly stateless way.
-A good mental model is HTTP, which doesn't store per-client state, and instead relies on devices like cookies to maintain an illusion of state.
-If some action requires multi-step protocol, each step should be self-contained.
-
-A good example here is code action resolving process.
-TO display the lightbulb, we compute the list of code actions without computing edits.
-Figuring out the edit is done in a separate `codeAction/resolve` call.
-Rather than storing some `lazy_edit: Box<dyn FnOnce() -> Edit>` somewhere, we use a string ID of action to re-compute the list of actions during the resolve process.
-(See [this post](https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html) for more details.)
-The benefit here is that, generally speaking, the state of the world might change between `codeAction` and `codeAction` resolve requests, so any closure we store might become invalid.
-
-While we don't currently implement any complicated refactors with complex GUI, I imagine we'd use the same techniques for refactors.
-After clicking each "Next" button during refactor, the client would send all the info which server needs to re-recreate the context from scratch.
-
-## CI
-
-CI does not test rust-analyzer, CI is a core part of rust-analyzer, and is maintained with above average standard of quality.
-CI is reproducible -- it can only be broken by changes to files in this repository, any dependence on externalities is a bug.
 
 # Code Style & Review Process
 
