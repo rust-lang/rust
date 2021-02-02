@@ -257,21 +257,20 @@ impl Builder {
     /// If a tool does not pass its tests, don't ship it.
     /// Right now, we do this only for Miri.
     fn check_toolstate(&mut self) {
-        let toolstates: Option<HashMap<String, String>> =
-            File::open(self.input.join("toolstates-linux.json"))
+        for file in &["toolstates-linux.json", "toolstates-windows.json"] {
+            let toolstates: Option<HashMap<String, String>> = File::open(self.input.join(file))
                 .ok()
                 .and_then(|f| serde_json::from_reader(&f).ok());
-        let toolstates = toolstates.unwrap_or_else(|| {
-            println!(
-                "WARNING: `toolstates-linux.json` missing/malformed; \
-                assuming all tools failed"
-            );
-            HashMap::default() // Use empty map if anything went wrong.
-        });
-        // Mark some tools as missing based on toolstate.
-        if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
-            println!("Miri tests are not passing, removing component");
-            self.versions.disable_version(&PkgType::Miri);
+            let toolstates = toolstates.unwrap_or_else(|| {
+                println!("WARNING: `{}` missing/malformed; assuming all tools failed", file);
+                HashMap::default() // Use empty map if anything went wrong.
+            });
+            // Mark some tools as missing based on toolstate.
+            if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
+                println!("Miri tests are not passing, removing component");
+                self.versions.disable_version(&PkgType::Miri);
+                break;
+            }
         }
     }
 
