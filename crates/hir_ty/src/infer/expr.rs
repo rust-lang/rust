@@ -137,7 +137,7 @@ impl<'a> InferenceContext<'a> {
 
                 self.coerce_merge_branch(&then_ty, &else_ty)
             }
-            Expr::Block { statements, tail, label, id: _ } => match label {
+            Expr::Block { statements, tail, label } => match label {
                 Some(_) => {
                     let break_ty = self.table.new_type_var();
                     self.breakables.push(BreakableContext {

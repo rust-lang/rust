@@ -1,5 +1,4 @@
 use super::*;
-use expect_test::expect;
 
 #[test]
 fn inner_item_smoke() {

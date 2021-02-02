@@ -20,7 +20,6 @@ use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
-    BlockId,
 };
 
 pub type ExprId = Idx<Expr>;
@@ -57,7 +56,6 @@ pub enum Expr {
         else_branch: Option<ExprId>,
     },
     Block {
-        id: BlockId,
         statements: Vec<Statement>,
         tail: Option<ExprId>,
         label: Option<LabelId>,
