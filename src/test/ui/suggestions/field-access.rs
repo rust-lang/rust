@@ -18,17 +18,17 @@ union Foo {
 fn main() {
     let a = A { b: B::Fst };
     if let B::Fst = a {}; //~ ERROR mismatched types [E0308]
-    //~^ HELP you might have meant to use field `b` of type `B`
+    //~^ HELP you might have meant to use field `b` whose type is `B`
     match a {
-        //~^ HELP you might have meant to use field `b` of type `B`
-        //~| HELP you might have meant to use field `b` of type `B`
+        //~^ HELP you might have meant to use field `b` whose type is `B`
+        //~| HELP you might have meant to use field `b` whose type is `B`
         B::Fst => (), //~ ERROR mismatched types [E0308]
         B::Snd => (), //~ ERROR mismatched types [E0308]
     }
 
     let foo = Foo { bar: 42 };
     match foo {
-        //~^ HELP you might have meant to use field `bar` of type `u32`
+        //~^ HELP you might have meant to use field `bar` whose type is `u32`
         1u32 => (), //~ ERROR mismatched types [E0308]
         _ => (),
     }
