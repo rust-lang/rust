@@ -433,7 +433,7 @@ impl CStore {
                 id: ast::DUMMY_NODE_ID,
                 span,
                 attrs,
-                kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
+                kind: ast::ItemKind::MacroDef(Box::new(data.get_macro(id.index, sess))),
                 vis: ast::Visibility {
                     span: span.shrink_to_lo(),
                     kind: ast::VisibilityKind::Inherited,

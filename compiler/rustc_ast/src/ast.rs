@@ -2766,11 +2766,11 @@ pub enum ItemKind {
     MacCall(Box<MacCall>),
 
     /// A macro definition.
-    MacroDef(MacroDef),
+    MacroDef(Box<MacroDef>),
 }
 
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(ItemKind, 24);
+rustc_data_structures::static_assert_size!(ItemKind, 16);
 
 impl ItemKind {
     pub fn article(&self) -> &str {

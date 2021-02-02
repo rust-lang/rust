@@ -230,7 +230,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
 
-        if let ItemKind::MacroDef(MacroDef { ref body, macro_rules }) = i.kind {
+        if let ItemKind::MacroDef(box MacroDef { ref body, macro_rules }) = i.kind {
             if !macro_rules || self.sess.contains_name(&i.attrs, sym::macro_export) {
                 let hir_id = self.lower_node_id(i.id);
                 let body = P(self.lower_mac_args(body));
