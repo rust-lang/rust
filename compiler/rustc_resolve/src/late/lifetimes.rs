@@ -2415,7 +2415,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     _ => break,
                                 }
                             }
-                            break Some(e);
+                            break Some(&e[..]);
                         }
                         Elide::Forbid => break None,
                     };
@@ -2445,7 +2445,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             lifetime_refs.len(),
             &lifetime_names,
             lifetime_spans,
-            error.map(|p| &p[..]).unwrap_or(&[]),
+            error.unwrap_or(&[]),
         );
         err.emit();
     }
