@@ -214,8 +214,16 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
         clean::Generic(s) if accept_generic => Some(s),
         clean::Primitive(ref p) => Some(p.as_sym()),
         clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_, accept_generic),
-        // FIXME: add all from clean::Type.
-        _ => None,
+        clean::Generic(_)
+        | clean::BareFunction(_)
+        | clean::Tuple(_)
+        | clean::Slice(_)
+        | clean::Array(_, _)
+        | clean::Never
+        | clean::RawPointer(_, _)
+        | clean::QPath { .. }
+        | clean::Infer
+        | clean::ImplTrait(_) => None,
     }
 }
 
