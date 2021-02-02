@@ -20,6 +20,7 @@ pub(crate) enum PkgType {
     Rustfmt,
     LlvmTools,
     Miri,
+    RustcCodegenCranelift,
     Other(String),
 }
 
@@ -36,6 +37,8 @@ impl PkgType {
             "rustfmt" | "rustfmt-preview" => PkgType::Rustfmt,
             "llvm-tools" | "llvm-tools-preview" => PkgType::LlvmTools,
             "miri" | "miri-preview" => PkgType::Miri,
+            "rustc-codegen-cranelift"
+            | "rustc-codegen-cranelift-preview" => PkgType::RustcCodegenCranelift,
             other => PkgType::Other(other.into()),
         }
     }
@@ -53,6 +56,7 @@ impl PkgType {
             PkgType::Rustfmt => "rustfmt",
             PkgType::LlvmTools => "llvm-tools",
             PkgType::Miri => "miri",
+            PkgType::RustcCodegenCranelift => "rustc-codegen-cranelift",
             PkgType::Other(component) => component,
         }
     }
@@ -68,6 +72,7 @@ impl PkgType {
             PkgType::Rustfmt => false,
             PkgType::LlvmTools => false,
             PkgType::Miri => false,
+            PkgType::RustcCodegenCranelift => false,
 
             PkgType::Rust => true,
             PkgType::RustSrc => true,
