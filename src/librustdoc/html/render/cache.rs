@@ -173,9 +173,9 @@ crate fn get_index_search_type<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> Option<IndexItemFunctionType> {
     let (all_types, ret_types) = match *item.kind {
-        clean::FunctionItem(ref f) => get_all_types(&f.generics, &f.decl, tcx, &cache),
-        clean::MethodItem(ref m, _) => get_all_types(&m.generics, &m.decl, tcx, &cache),
-        clean::TyMethodItem(ref m) => get_all_types(&m.generics, &m.decl, tcx, &cache),
+        clean::FunctionItem(ref f) => get_all_types(&f.generics, &f.decl, tcx),
+        clean::MethodItem(ref m, _) => get_all_types(&m.generics, &m.decl, tcx),
+        clean::TyMethodItem(ref m) => get_all_types(&m.generics, &m.decl, tcx),
         _ => return None,
     };
 
@@ -257,7 +257,6 @@ crate fn get_real_types<'tcx>(
     arg: &Type,
     tcx: TyCtxt<'tcx>,
     recurse: i32,
-    cache: &Cache,
     res: &mut FxHashSet<(Type, TypeKind)>,
 ) -> usize {
     fn insert(res: &mut FxHashSet<(Type, TypeKind)>, tcx: TyCtxt<'_>, ty: Type) -> usize {
@@ -279,8 +278,7 @@ crate fn get_real_types<'tcx>(
     }
     let mut nb_added = 0;
 
-    if arg.is_full_generic() {
-        let arg_s = Symbol::intern(&arg.print(cache).to_string());
+    if let &Type::Generic(arg_s) = arg {
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
             WherePredicate::BoundPredicate { ty, .. } => ty.def_id() == arg.def_id(),
             _ => false,
@@ -293,7 +291,7 @@ crate fn get_real_types<'tcx>(
                             continue;
                         }
                         if let Some(ty) = x.get_type() {
-                            let adds = get_real_types(generics, &ty, tcx, recurse + 1, cache, res);
+                            let adds = get_real_types(generics, &ty, tcx, recurse + 1, res);
                             nb_added += adds;
                             if adds == 0 && !ty.is_full_generic() {
                                 nb_added += insert(res, tcx, ty);
@@ -306,7 +304,7 @@ crate fn get_real_types<'tcx>(
         if let Some(bound) = generics.params.iter().find(|g| g.is_type() && g.name == arg_s) {
             for bound in bound.get_bounds().unwrap_or(&[]) {
                 if let Some(ty) = bound.get_trait_type() {
-                    let adds = get_real_types(generics, &ty, tcx, recurse + 1, cache, res);
+                    let adds = get_real_types(generics, &ty, tcx, recurse + 1, res);
                     nb_added += adds;
                     if adds == 0 && !ty.is_full_generic() {
                         nb_added += insert(res, tcx, ty);
@@ -319,7 +317,7 @@ crate fn get_real_types<'tcx>(
         if let Some(gens) = arg.generics() {
             for gen in gens.iter() {
                 if gen.is_full_generic() {
-                    nb_added += get_real_types(generics, gen, tcx, recurse + 1, cache, res);
+                    nb_added += get_real_types(generics, gen, tcx, recurse + 1, res);
                 } else {
                     nb_added += insert(res, tcx, (*gen).clone());
                 }
@@ -337,7 +335,6 @@ crate fn get_all_types<'tcx>(
     generics: &Generics,
     decl: &FnDecl,
     tcx: TyCtxt<'tcx>,
-    cache: &Cache,
 ) -> (Vec<(Type, TypeKind)>, Vec<(Type, TypeKind)>) {
     let mut all_types = FxHashSet::default();
     for arg in decl.inputs.values.iter() {
@@ -345,7 +342,7 @@ crate fn get_all_types<'tcx>(
             continue;
         }
         let mut args = FxHashSet::default();
-        get_real_types(generics, &arg.type_, tcx, 0, cache, &mut args);
+        get_real_types(generics, &arg.type_, tcx, 0, &mut args);
         if !args.is_empty() {
             all_types.extend(args);
         } else {
@@ -358,7 +355,7 @@ crate fn get_all_types<'tcx>(
     let ret_types = match decl.output {
         FnRetTy::Return(ref return_type) => {
             let mut ret = FxHashSet::default();
-            get_real_types(generics, &return_type, tcx, 0, cache, &mut ret);
+            get_real_types(generics, &return_type, tcx, 0, &mut ret);
             if ret.is_empty() {
                 if let Some(kind) = return_type.def_id().map(|did| tcx.def_kind(did).into()) {
                     ret.insert((return_type.clone(), kind));
