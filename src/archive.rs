@@ -30,7 +30,6 @@ pub(crate) struct ArArchiveBuilder<'a> {
     // Don't use `HashMap` here, as the order is important. `rust.metadata.bin` must always be at
     // the end of an archive for linkers to not get confused.
     entries: Vec<(String, ArchiveEntry)>,
-    update_symbols: bool,
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
@@ -69,7 +68,6 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 
             src_archives,
             entries,
-            update_symbols: false,
         }
     }
 
@@ -136,9 +134,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         })
     }
 
-    fn update_symbols(&mut self) {
-        self.update_symbols = true;
-    }
+    fn update_symbols(&mut self) {}
 
     fn build(mut self) {
         enum BuilderKind {
