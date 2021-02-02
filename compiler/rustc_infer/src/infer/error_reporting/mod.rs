@@ -1855,7 +1855,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         diag.span_suggestion(
                             span,
                             &format!(
-                                "you might have meant to use field `{}` of type `{}`",
+                                "you might have meant to use field `{}` whose type is `{}`",
                                 name, ty
                             ),
                             suggestion,
