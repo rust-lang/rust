@@ -189,25 +189,6 @@ impl<T: Parse> Parse for List<T> {
     }
 }
 
-/// A named group containing queries.
-///
-/// For now, the name is not used any more, but the capability remains interesting for future
-/// developments of the query system.
-struct Group {
-    #[allow(unused)]
-    name: Ident,
-    queries: List<Query>,
-}
-
-impl Parse for Group {
-    fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let name: Ident = input.parse()?;
-        let content;
-        braced!(content in input);
-        Ok(Group { name, queries: content.parse()? })
-    }
-}
-
 struct QueryModifiers {
     /// The description of the query.
     desc: (Option<Ident>, Punctuated<Expr, Token![,]>),
@@ -450,72 +431,70 @@ fn add_query_description_impl(
 }
 
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
-    let groups = parse_macro_input!(input as List<Group>);
+    let queries = parse_macro_input!(input as List<Query>);
 
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
     let mut dep_node_def_stream = quote! {};
     let mut cached_queries = quote! {};
 
-    for group in groups.0 {
-        for mut query in group.queries.0 {
-            let modifiers = process_modifiers(&mut query);
-            let name = &query.name;
-            let arg = &query.arg;
-            let result_full = &query.result;
-            let result = match query.result {
-                ReturnType::Default => quote! { -> () },
-                _ => quote! { #result_full },
-            };
+    for mut query in queries.0 {
+        let modifiers = process_modifiers(&mut query);
+        let name = &query.name;
+        let arg = &query.arg;
+        let result_full = &query.result;
+        let result = match query.result {
+            ReturnType::Default => quote! { -> () },
+            _ => quote! { #result_full },
+        };
 
-            if modifiers.cache.is_some() {
-                cached_queries.extend(quote! {
-                    #name,
-                });
-            }
-
-            let mut attributes = Vec::new();
-
-            // Pass on the fatal_cycle modifier
-            if modifiers.fatal_cycle {
-                attributes.push(quote! { fatal_cycle });
-            };
-            // Pass on the storage modifier
-            if let Some(ref ty) = modifiers.storage {
-                attributes.push(quote! { storage(#ty) });
-            };
-            // Pass on the cycle_delay_bug modifier
-            if modifiers.cycle_delay_bug {
-                attributes.push(quote! { cycle_delay_bug });
-            };
-            // Pass on the no_hash modifier
-            if modifiers.no_hash {
-                attributes.push(quote! { no_hash });
-            };
-            // Pass on the anon modifier
-            if modifiers.anon {
-                attributes.push(quote! { anon });
-            };
-            // Pass on the eval_always modifier
-            if modifiers.eval_always {
-                attributes.push(quote! { eval_always });
-            };
-
-            let attribute_stream = quote! {#(#attributes),*};
-            let doc_comments = query.doc_comments.iter();
-            // Add the query to the group
-            query_stream.extend(quote! {
-                #(#doc_comments)*
-                [#attribute_stream] fn #name(#arg) #result,
+        if modifiers.cache.is_some() {
+            cached_queries.extend(quote! {
+                #name,
             });
-
-            // Create a dep node for the query
-            dep_node_def_stream.extend(quote! {
-                [#attribute_stream] #name(#arg),
-            });
-
-            add_query_description_impl(&query, modifiers, &mut query_description_stream);
         }
+
+        let mut attributes = Vec::new();
+
+        // Pass on the fatal_cycle modifier
+        if modifiers.fatal_cycle {
+            attributes.push(quote! { fatal_cycle });
+        };
+        // Pass on the storage modifier
+        if let Some(ref ty) = modifiers.storage {
+            attributes.push(quote! { storage(#ty) });
+        };
+        // Pass on the cycle_delay_bug modifier
+        if modifiers.cycle_delay_bug {
+            attributes.push(quote! { cycle_delay_bug });
+        };
+        // Pass on the no_hash modifier
+        if modifiers.no_hash {
+            attributes.push(quote! { no_hash });
+        };
+        // Pass on the anon modifier
+        if modifiers.anon {
+            attributes.push(quote! { anon });
+        };
+        // Pass on the eval_always modifier
+        if modifiers.eval_always {
+            attributes.push(quote! { eval_always });
+        };
+
+        let attribute_stream = quote! {#(#attributes),*};
+        let doc_comments = query.doc_comments.iter();
+        // Add the query to the group
+        query_stream.extend(quote! {
+            #(#doc_comments)*
+            [#attribute_stream] fn #name(#arg) #result,
+        });
+
+        // Create a dep node for the query
+        dep_node_def_stream.extend(quote! {
+            [#attribute_stream] #name(#arg),
+        });
+
+        add_query_description_impl(&query, modifiers, &mut query_description_stream);
     }
 
     TokenStream::from(quote! {
