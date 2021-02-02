@@ -889,6 +889,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// ```
 ///
 /// [`RefCell`]: crate::cell::RefCell
+#[doc(alias = "delete")]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn drop<T>(_x: T) {}
