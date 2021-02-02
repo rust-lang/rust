@@ -1042,7 +1042,7 @@ impl Clean<PolyTrait> for hir::PolyTraitRef<'_> {
 
 impl Clean<TypeKind> for hir::def::DefKind {
     fn clean(&self, _: &DocContext<'_>) -> TypeKind {
-        self.into()
+        (*self).into()
     }
 }
 

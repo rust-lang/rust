@@ -1302,12 +1302,6 @@ crate enum TypeKind {
     Primitive,
 }
 
-impl<'a> From<&'a hir::def::DefKind> for TypeKind {
-    fn from(other: &hir::def::DefKind) -> Self {
-        Self::from(*other)
-    }
-}
-
 impl From<hir::def::DefKind> for TypeKind {
     fn from(other: hir::def::DefKind) -> Self {
         match other {
