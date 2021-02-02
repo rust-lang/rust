@@ -241,6 +241,7 @@ pub mod ops;
 pub mod any;
 pub mod array;
 pub mod ascii;
+pub mod backtrace;
 pub mod cell;
 pub mod char;
 pub mod ffi;

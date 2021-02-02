@@ -104,15 +104,19 @@ use crate::sync::Once;
 use crate::sys_common::backtrace::{lock, output_filename};
 use crate::vec::Vec;
 
+pub use core::backtrace::Backtrace;
+
 /// A captured OS thread stack backtrace.
 ///
 /// This type represents a stack backtrace for an OS thread captured at a
 /// previous point in time. In some instances the `Backtrace` type may
 /// internally be empty due to configuration. For more information see
 /// `Backtrace::capture`.
-pub struct Backtrace {
+struct BacktraceImpl {
     inner: Inner,
 }
+
+impl core::backtrace::RawBacktraceImpl for BacktraceImpl {}
 
 /// The current status of a backtrace, indicating whether it was captured or
 /// whether it is empty for some other reason.
@@ -173,7 +177,7 @@ enum BytesOrWide {
     Wide(Vec<u16>),
 }
 
-impl fmt::Debug for Backtrace {
+impl fmt::Debug for BacktraceImpl {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let capture = match &self.inner {
             Inner::Unsupported => return fmt.write_str("<unsupported>"),
@@ -372,7 +376,7 @@ impl<'a> Backtrace {
     }
 }
 
-impl fmt::Display for Backtrace {
+impl fmt::Display for BacktraceImpl {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let capture = match &self.inner {
             Inner::Unsupported => return fmt.write_str("unsupported backtrace"),

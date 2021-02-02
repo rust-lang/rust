@@ -249,6 +249,7 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(const_ipv4)]
 #![feature(container_error_extra)]
+#![feature(core_backtrace)]
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
 #![feature(decl_macro)]
