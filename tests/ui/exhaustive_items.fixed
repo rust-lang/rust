@@ -73,7 +73,7 @@ pub mod structs {
     // no warning, private fields
     pub struct ExhaustivePrivateField {
         pub foo: u8,
-        bar: String
+        bar: String,
     }
 
     // no warning, private
