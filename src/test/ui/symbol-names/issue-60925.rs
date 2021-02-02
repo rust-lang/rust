@@ -23,8 +23,8 @@ mod foo {
         //[legacy]~^ ERROR symbol-name(_ZN11issue_609253foo37Foo$LT$issue_60925..llv$u6d$..Foo$GT$3foo
         //[legacy]~| ERROR demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo
         //[legacy]~| ERROR demangling-alt(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo)
-         //[v0]~^^^^ ERROR symbol-name(_RNvMNtCs4fqI2P2rA04_11issue_609253fooINtB2_3FooNtNtB4_4llvm3FooE3foo)
-            //[v0]~| ERROR demangling(<issue_60925[317d481089b8c8fe]::foo::Foo<issue_60925[317d481089b8c8fe]::llvm::Foo>>::foo)
+         //[v0]~^^^^ ERROR symbol-name(_RNvMNtCs21hi0yVfW1J_11issue_609253fooINtB2_3FooNtNtB4_4llvm3FooE3foo)
+            //[v0]~| ERROR demangling(<issue_60925[17891616a171812d]::foo::Foo<issue_60925[17891616a171812d]::llvm::Foo>>::foo)
             //[v0]~| ERROR demangling-alt(<issue_60925::foo::Foo<issue_60925::llvm::Foo>>::foo)
         pub(crate) fn foo() {
             for _ in 0..0 {

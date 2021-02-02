@@ -1,10 +1,10 @@
-error: symbol-name(_ZN11issue_609253foo37Foo$LT$issue_60925..llv$u6d$..Foo$GT$3foo17h79d9aaa05f4b26d6E)
+error: symbol-name(_ZN11issue_609253foo37Foo$LT$issue_60925..llv$u6d$..Foo$GT$3foo17hb8ca3eb2682b1b51E)
   --> $DIR/issue-60925.rs:22:9
    |
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo::h79d9aaa05f4b26d6)
+error: demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo::hb8ca3eb2682b1b51)
   --> $DIR/issue-60925.rs:22:9
    |
 LL |         #[rustc_symbol_name]
