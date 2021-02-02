@@ -22,7 +22,7 @@ extern "C" {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg = "cfail2", except = "hir_owner_nodes")]
+#[rustc_dirty(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 extern "C" {
     pub fn change_function_name2(c: i64) -> i32;
@@ -113,7 +113,7 @@ extern "C" {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg = "cfail2", except = "hir_owner_nodes")]
+#[rustc_dirty(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 extern "rust-call" {
     pub fn change_calling_convention(c: i32);
@@ -126,7 +126,7 @@ extern "C" {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg = "cfail2", except = "hir_owner_nodes")]
+#[rustc_dirty(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 extern "C" {
     pub fn make_function_public(c: i32);
@@ -139,7 +139,7 @@ extern "C" {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg = "cfail2", except = "hir_owner_nodes")]
+#[rustc_dirty(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 extern "C" {
     pub fn add_function1(c: i32);
@@ -154,7 +154,7 @@ extern "C" {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg = "cfail2", except = "hir_owner_nodes")]
+#[rustc_dirty(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 #[link_args = "-foo -bar -baz"]
 extern "C" {
@@ -169,7 +169,7 @@ extern "C" {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg = "cfail2", except = "hir_owner_nodes")]
+#[rustc_dirty(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 #[link(name = "bar")]
 extern "C" {
