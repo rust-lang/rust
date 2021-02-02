@@ -59,8 +59,8 @@ note: potential failure(s)
 LL |         let s = s.unwrap();
    |                 ^^^^^^^^^^
 LL |         if !s.is_empty() {
-LL |             panic!(42);
-   |             ^^^^^^^^^^^
+LL |             panic!("42");
+   |             ^^^^^^^^^^^^^
 LL |         } else if s.parse::<u32>().unwrap() != 42 {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |             panic!("{:?}", s);
