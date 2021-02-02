@@ -105,7 +105,6 @@ fn emit_aapcs_va_arg(
     let mut end = bx.build_sibling_block("va_arg.end");
     let zero = bx.const_i32(0);
     let offset_align = Align::from_bytes(4).unwrap();
-    assert_eq!(bx.tcx().sess.target.endian, Endian::Little);
 
     let gr_type = target_ty.is_any_ptr() || target_ty.is_integral();
     let (reg_off, reg_top_index, slot_size) = if gr_type {
@@ -144,9 +143,14 @@ fn emit_aapcs_va_arg(
     let top = in_reg.load(top, bx.tcx().data_layout.pointer_align.abi);
 
     // reg_value = *(@top + reg_off_v);
-    let top = in_reg.gep(top, &[reg_off_v]);
-    let top = in_reg.bitcast(top, bx.cx.type_ptr_to(layout.llvm_type(bx)));
-    let reg_value = in_reg.load(top, layout.align.abi);
+    let mut reg_addr = in_reg.gep(top, &[reg_off_v]);
+    if bx.tcx().sess.target.endian == Endian::Big && layout.size.bytes() != slot_size {
+        // On big-endian systems the value is right-aligned in its slot.
+        let offset = bx.const_i32((slot_size - layout.size.bytes()) as i32);
+        reg_addr = in_reg.gep(reg_addr, &[offset]);
+    }
+    let reg_addr = in_reg.bitcast(reg_addr, bx.cx.type_ptr_to(layout.llvm_type(bx)));
+    let reg_value = in_reg.load(reg_addr, layout.align.abi);
     in_reg.br(&end.llbb());
 
     // On Stack block
