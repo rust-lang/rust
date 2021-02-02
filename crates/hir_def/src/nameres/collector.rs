@@ -592,7 +592,13 @@ impl DefCollector<'_> {
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
                         // additions
-                        let scope = &self.def_map[m.local_id].scope;
+                        let def_map;
+                        let scope = if m.block == self.def_map.block_id() {
+                            &self.def_map[m.local_id].scope
+                        } else {
+                            def_map = m.def_map(self.db);
+                            &def_map[m.local_id].scope
+                        };
 
                         // Module scoped macros is included
                         let items = scope

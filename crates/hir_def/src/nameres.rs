@@ -258,6 +258,10 @@ impl DefMap {
         self.krate
     }
 
+    pub(crate) fn block_id(&self) -> Option<BlockId> {
+        self.block.as_ref().map(|block| block.block)
+    }
+
     pub(crate) fn prelude(&self) -> Option<ModuleId> {
         self.prelude
     }
