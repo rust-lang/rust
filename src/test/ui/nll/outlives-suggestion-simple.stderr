@@ -106,3 +106,4 @@ LL |         Bar2::new(&self)
 
 error: aborting due to 9 previous errors
 
+For more information about this error, try `rustc --explain E0521`.
