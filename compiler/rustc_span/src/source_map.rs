@@ -799,6 +799,9 @@ impl SourceMap {
 
     /// Returns a new span representing the next character after the end-point of this span.
     pub fn next_point(&self, sp: Span) -> Span {
+        if sp.is_dummy() {
+            return sp;
+        }
         let start_of_next_point = sp.hi().0;
 
         let width = self.find_width_of_character_at_span(sp.shrink_to_hi(), true);

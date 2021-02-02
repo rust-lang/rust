@@ -1,48 +1,52 @@
 use super::*;
 
+fn generate_fake_frames() -> Vec<BacktraceFrame> {
+    vec![
+        BacktraceFrame {
+            frame: RawFrame::Fake,
+            symbols: vec![BacktraceSymbol {
+                name: Some(b"std::backtrace::Backtrace::create".to_vec()),
+                filename: Some(BytesOrWide::Bytes(b"rust/backtrace.rs".to_vec())),
+                lineno: Some(100),
+                colno: None,
+            }],
+        },
+        BacktraceFrame {
+            frame: RawFrame::Fake,
+            symbols: vec![BacktraceSymbol {
+                name: Some(b"__rust_maybe_catch_panic".to_vec()),
+                filename: None,
+                lineno: None,
+                colno: None,
+            }],
+        },
+        BacktraceFrame {
+            frame: RawFrame::Fake,
+            symbols: vec![
+                BacktraceSymbol {
+                    name: Some(b"std::rt::lang_start_internal".to_vec()),
+                    filename: Some(BytesOrWide::Bytes(b"rust/rt.rs".to_vec())),
+                    lineno: Some(300),
+                    colno: Some(5),
+                },
+                BacktraceSymbol {
+                    name: Some(b"std::rt::lang_start".to_vec()),
+                    filename: Some(BytesOrWide::Bytes(b"rust/rt.rs".to_vec())),
+                    lineno: Some(400),
+                    colno: None,
+                },
+            ],
+        },
+    ]
+}
+
 #[test]
 fn test_debug() {
     let backtrace = Backtrace {
         inner: Inner::Captured(LazilyResolvedCapture::new(Capture {
             actual_start: 1,
             resolved: true,
-            frames: vec![
-                BacktraceFrame {
-                    frame: RawFrame::Fake,
-                    symbols: vec![BacktraceSymbol {
-                        name: Some(b"std::backtrace::Backtrace::create".to_vec()),
-                        filename: Some(BytesOrWide::Bytes(b"rust/backtrace.rs".to_vec())),
-                        lineno: Some(100),
-                        colno: None,
-                    }],
-                },
-                BacktraceFrame {
-                    frame: RawFrame::Fake,
-                    symbols: vec![BacktraceSymbol {
-                        name: Some(b"__rust_maybe_catch_panic".to_vec()),
-                        filename: None,
-                        lineno: None,
-                        colno: None,
-                    }],
-                },
-                BacktraceFrame {
-                    frame: RawFrame::Fake,
-                    symbols: vec![
-                        BacktraceSymbol {
-                            name: Some(b"std::rt::lang_start_internal".to_vec()),
-                            filename: Some(BytesOrWide::Bytes(b"rust/rt.rs".to_vec())),
-                            lineno: Some(300),
-                            colno: Some(5),
-                        },
-                        BacktraceSymbol {
-                            name: Some(b"std::rt::lang_start".to_vec()),
-                            filename: Some(BytesOrWide::Bytes(b"rust/rt.rs".to_vec())),
-                            lineno: Some(400),
-                            colno: None,
-                        },
-                    ],
-                },
-            ],
+            frames: generate_fake_frames(),
         })),
     };
 
@@ -57,4 +61,35 @@ fn test_debug() {
 
     // Format the backtrace a second time, just to make sure lazily resolved state is stable
     assert_eq!(format!("{:#?}", backtrace), expected);
+}
+
+#[test]
+fn test_frames() {
+    let backtrace = Backtrace {
+        inner: Inner::Captured(LazilyResolvedCapture::new(Capture {
+            actual_start: 1,
+            resolved: true,
+            frames: generate_fake_frames(),
+        })),
+    };
+
+    let frames = backtrace.frames();
+
+    #[rustfmt::skip]
+    let expected = vec![
+        "[
+    { fn: \"std::backtrace::Backtrace::create\", file: \"rust/backtrace.rs\", line: 100 },
+]",
+        "[
+    { fn: \"__rust_maybe_catch_panic\" },
+]",
+        "[
+    { fn: \"std::rt::lang_start_internal\", file: \"rust/rt.rs\", line: 300 },
+    { fn: \"std::rt::lang_start\", file: \"rust/rt.rs\", line: 400 },
+]"
+    ];
+
+    let mut iter = frames.iter().zip(expected.iter());
+
+    assert!(iter.all(|(f, e)| format!("{:#?}", f) == *e));
 }

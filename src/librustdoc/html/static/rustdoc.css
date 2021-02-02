@@ -1490,6 +1490,14 @@ h4 > .notable-traits {
 		background-color: rgba(0,0,0,0);
 		height: 100%;
 	}
+	/*
+	This allows to prevent the version text to overflow the sidebar title on mobile mode when the
+	sidebar is displayed (after clicking on the "hamburger" button).
+	*/
+	.sidebar.mobile > div.version {
+		overflow: hidden;
+		max-height: 33px;
+	}
 	.sidebar {
 		width: calc(100% + 30px);
 	}
