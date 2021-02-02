@@ -203,6 +203,10 @@ function betterLookingDiff(entry, data) {
         if (!entry.hasOwnProperty(key)) {
             continue;
         }
+        if (!data || !data.hasOwnProperty(key)) {
+            output += '-' + spaces + contentToDiffLine(key, entry[key]) + '\n';
+            continue;
+        }
         let value = data[key];
         if (value !== entry[key]) {
             output += '-' + spaces + contentToDiffLine(key, entry[key]) + '\n';

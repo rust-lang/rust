@@ -1301,6 +1301,7 @@ crate enum TypeKind {
     Attr,
     Derive,
     TraitAlias,
+    Primitive,
 }
 
 crate trait GetDefId {
@@ -1401,6 +1402,16 @@ impl Type {
 
     crate fn is_full_generic(&self) -> bool {
         matches!(self, Type::Generic(_))
+    }
+
+    crate fn is_primitive(&self) -> bool {
+        match self {
+            Self::Primitive(_) => true,
+            Self::BorrowedRef { ref type_, .. } | Self::RawPointer(_, ref type_) => {
+                type_.is_primitive()
+            }
+            _ => false,
+        }
     }
 
     crate fn projection(&self) -> Option<(&Type, DefId, Symbol)> {
