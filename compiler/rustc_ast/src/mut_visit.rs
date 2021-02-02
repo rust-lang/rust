@@ -930,7 +930,8 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
             vis.visit_generics(generics);
         }
-        ItemKind::Struct(variant_data, generics) | ItemKind::Union(variant_data, generics) => {
+        ItemKind::Struct(box StructUnionKind(variant_data, generics))
+        | ItemKind::Union(box StructUnionKind(variant_data, generics)) => {
             vis.visit_variant_data(variant_data);
             vis.visit_generics(generics);
         }

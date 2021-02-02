@@ -1182,11 +1182,11 @@ impl<'a> State<'a> {
             ast::ItemKind::Enum(ref enum_definition, ref params) => {
                 self.print_enum_def(enum_definition, params, item.ident, item.span, &item.vis);
             }
-            ast::ItemKind::Struct(ref struct_def, ref generics) => {
+            ast::ItemKind::Struct(box ast::StructUnionKind(ref struct_def, ref generics)) => {
                 self.head(visibility_qualified(&item.vis, "struct"));
                 self.print_struct(struct_def, generics, item.ident, item.span, true);
             }
-            ast::ItemKind::Union(ref struct_def, ref generics) => {
+            ast::ItemKind::Union(box ast::StructUnionKind(ref struct_def, ref generics)) => {
                 self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, item.ident, item.span, true);
             }

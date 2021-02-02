@@ -363,14 +363,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 },
                 self.lower_generics(generics, ImplTraitContext::disallowed()),
             ),
-            ItemKind::Struct(ref struct_def, ref generics) => {
+            ItemKind::Struct(box StructUnionKind(ref struct_def, ref generics)) => {
                 let struct_def = self.lower_variant_data(struct_def);
                 hir::ItemKind::Struct(
                     struct_def,
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                 )
             }
-            ItemKind::Union(ref vdata, ref generics) => {
+            ItemKind::Union(box StructUnionKind(ref vdata, ref generics)) => {
                 let vdata = self.lower_variant_data(vdata);
                 hir::ItemKind::Union(
                     vdata,

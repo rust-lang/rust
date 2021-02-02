@@ -2,7 +2,7 @@
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::{ImplKind, ItemKind, MetaItem};
+use rustc_ast::{ImplKind, ItemKind, MetaItem, StructUnionKind};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
@@ -121,7 +121,8 @@ fn inject_impl_of_structural_trait(
     };
 
     let generics = match item.kind {
-        ItemKind::Struct(_, ref generics) | ItemKind::Enum(_, ref generics) => generics,
+        ItemKind::Struct(box StructUnionKind(_, ref generics))
+        | ItemKind::Enum(_, ref generics) => generics,
         // Do not inject `impl Structural for Union`. (`PartialEq` does not
         // support unions, so we will see error downstream.)
         ItemKind::Union(..) => return,

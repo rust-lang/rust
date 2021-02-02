@@ -455,7 +455,8 @@ impl<'a> StripUnconfigured<'a> {
 
     pub fn configure_item_kind(&mut self, item: &mut ast::ItemKind) {
         match item {
-            ast::ItemKind::Struct(def, _generics) | ast::ItemKind::Union(def, _generics) => {
+            ast::ItemKind::Struct(box ast::StructUnionKind(def, _generics))
+            | ast::ItemKind::Union(box ast::StructUnionKind(def, _generics)) => {
                 self.configure_variant_data(def)
             }
             ast::ItemKind::Enum(ast::EnumDef { variants }, _generics) => {

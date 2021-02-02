@@ -17,7 +17,9 @@ use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segmen
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
-use rustc_ast::{Block, FnKind, ForeignItem, ForeignItemKind, ImplKind, Item, ItemKind, NodeId};
+use rustc_ast::{
+    Block, FnKind, ForeignItem, ForeignItemKind, ImplKind, Item, ItemKind, NodeId, StructUnionKind,
+};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
@@ -817,7 +819,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in both the type and value namespaces.
-            ItemKind::Struct(ref vdata, _) => {
+            ItemKind::Struct(box StructUnionKind(ref vdata, _)) => {
                 // Define a name in the type namespace.
                 let res = Res::Def(DefKind::Struct, def_id);
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
@@ -864,7 +866,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 }
             }
 
-            ItemKind::Union(ref vdata, _) => {
+            ItemKind::Union(box StructUnionKind(ref vdata, _)) => {
                 let res = Res::Def(DefKind::Union, def_id);
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
 

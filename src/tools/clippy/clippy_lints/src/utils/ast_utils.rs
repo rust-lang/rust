@@ -256,8 +256,9 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         },
         (Enum(le, lg), Enum(re, rg)) => {
             over(&le.variants, &re.variants, |l, r| eq_variant(l, r)) && eq_generics(lg, rg)
-        },
-        (Struct(lv, lg), Struct(rv, rg)) | (Union(lv, lg), Union(rv, rg)) => {
+        }
+        (Struct(box StructUnionKind(lv, lg)), Struct(box StructUnionKind(rv, rg)))
+        | (Union(box StructUnionKind(lv, lg)), Union(box StructUnionKind(rv, rg))) => {
             eq_variant_data(lv, rv) && eq_generics(lg, rg)
         }
         (Trait(box TraitKind(la, lu, lg, lb, li)), Trait(box TraitKind(ra, ru, rg, rb, ri))) => {

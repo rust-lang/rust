@@ -498,8 +498,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let hir_id = self.lctx.allocate_hir_id_counter(item.id);
 
                 match item.kind {
-                    ItemKind::Struct(_, ref generics)
-                    | ItemKind::Union(_, ref generics)
+                    ItemKind::Struct(box StructUnionKind(_, ref generics))
+                    | ItemKind::Union(box StructUnionKind(_, ref generics))
                     | ItemKind::Enum(_, ref generics)
                     | ItemKind::TyAlias(box TyAliasKind(_, ref generics, ..))
                     | ItemKind::Trait(box TraitKind(_, _, ref generics, ..)) => {

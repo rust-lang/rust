@@ -1188,7 +1188,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         };
 
-        Ok((class_name, ItemKind::Struct(vdata, generics)))
+        Ok((class_name, ItemKind::Struct(box StructUnionKind(vdata, generics))))
     }
 
     /// Parses `union Foo { ... }`.
@@ -1212,7 +1212,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         };
 
-        Ok((class_name, ItemKind::Union(vdata, generics)))
+        Ok((class_name, ItemKind::Union(box StructUnionKind(vdata, generics))))
     }
 
     fn parse_record_struct_body(

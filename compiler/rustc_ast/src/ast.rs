@@ -2692,6 +2692,9 @@ pub struct StaticKind(pub P<Ty>, pub Mutability, pub Option<P<Expr>>);
 pub struct ConstKind(pub Defaultness, pub P<Ty>, pub Option<P<Expr>>);
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct StructUnionKind(pub VariantData, pub Generics);
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
@@ -2734,11 +2737,11 @@ pub enum ItemKind {
     /// A struct definition (`struct`).
     ///
     /// E.g., `struct Foo<A> { x: A }`.
-    Struct(VariantData, Generics),
+    Struct(Box<StructUnionKind>),
     /// A union definition (`union`).
     ///
     /// E.g., `union Foo<A, B> { x: A, y: B }`.
-    Union(VariantData, Generics),
+    Union(Box<StructUnionKind>),
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
@@ -2761,7 +2764,7 @@ pub enum ItemKind {
 }
 
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(ItemKind, 112);
+rustc_data_structures::static_assert_size!(ItemKind, 104);
 
 impl ItemKind {
     pub fn article(&self) -> &str {
@@ -2800,8 +2803,8 @@ impl ItemKind {
             Self::Fn(box FnKind(_, _, generics, _))
             | Self::TyAlias(box TyAliasKind(_, generics, ..))
             | Self::Enum(_, generics)
-            | Self::Struct(_, generics)
-            | Self::Union(_, generics)
+            | Self::Struct(box StructUnionKind(_, generics))
+            | Self::Union(box StructUnionKind(_, generics))
             | Self::Trait(box TraitKind(_, _, generics, ..))
             | Self::TraitAlias(generics, _)
             | Self::Impl(box ImplKind { generics, .. }) => Some(generics),

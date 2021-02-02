@@ -402,9 +402,9 @@ impl<'a> TraitDef<'a> {
                     false
                 });
                 let has_no_type_params = match item.kind {
-                    ast::ItemKind::Struct(_, ref generics)
+                    ast::ItemKind::Struct(box ast::StructUnionKind(_, ref generics))
                     | ast::ItemKind::Enum(_, ref generics)
-                    | ast::ItemKind::Union(_, ref generics) => !generics
+                    | ast::ItemKind::Union(box ast::StructUnionKind(_, ref generics)) => !generics
                         .params
                         .iter()
                         .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })),
@@ -415,7 +415,10 @@ impl<'a> TraitDef<'a> {
                 let use_temporaries = is_packed && always_copy;
 
                 let newitem = match item.kind {
-                    ast::ItemKind::Struct(ref struct_def, ref generics) => self.expand_struct_def(
+                    ast::ItemKind::Struct(box ast::StructUnionKind(
+                        ref struct_def,
+                        ref generics,
+                    )) => self.expand_struct_def(
                         cx,
                         &struct_def,
                         item.ident,
@@ -432,7 +435,10 @@ impl<'a> TraitDef<'a> {
                         // is fine.
                         self.expand_enum_def(cx, enum_def, item.ident, generics, from_scratch)
                     }
-                    ast::ItemKind::Union(ref struct_def, ref generics) => {
+                    ast::ItemKind::Union(box ast::StructUnionKind(
+                        ref struct_def,
+                        ref generics,
+                    )) => {
                         if self.supports_unions {
                             self.expand_struct_def(
                                 cx,
@@ -1736,7 +1742,9 @@ pub fn is_type_without_fields(item: &Annotatable) -> bool {
             ast::ItemKind::Enum(ref enum_def, _) => {
                 enum_def.variants.iter().all(|v| v.data.fields().is_empty())
             }
-            ast::ItemKind::Struct(ref variant_data, _) => variant_data.fields().is_empty(),
+            ast::ItemKind::Struct(box ast::StructUnionKind(ref variant_data, _)) => {
+                variant_data.fields().is_empty()
+            }
             _ => false,
         }
     } else {

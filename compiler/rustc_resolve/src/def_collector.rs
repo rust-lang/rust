@@ -104,7 +104,8 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
 
         self.with_parent(def, |this| {
             match i.kind {
-                ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
+                ItemKind::Struct(box StructUnionKind(ref struct_def, _))
+                | ItemKind::Union(box StructUnionKind(ref struct_def, _)) => {
                     // If this is a unit or tuple-like struct, register the constructor.
                     if let Some(ctor_hir_id) = struct_def.ctor_id() {
                         this.create_def(ctor_hir_id, DefPathData::Ctor, i.span);
