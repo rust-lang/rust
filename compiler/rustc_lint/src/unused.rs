@@ -694,7 +694,9 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        if let Const(.., Some(expr)) | Static(.., Some(expr)) = &item.kind {
+        if let Const(box ast::ConstKind(.., Some(expr)))
+        | Static(box ast::StaticKind(.., Some(expr))) = &item.kind
+        {
             self.check_unused_delims_expr(
                 cx,
                 expr,

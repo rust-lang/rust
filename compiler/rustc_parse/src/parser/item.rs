@@ -248,7 +248,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `static`
             let m = self.parse_mutability();
             let (ident, ty, expr) = self.parse_item_global(Some(m))?;
-            (ident, ItemKind::Static(ty, m, expr))
+            (ident, ItemKind::Static(box StaticKind(ty, m, expr)))
         } else if let Const::Yes(const_span) = self.parse_constness() {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -257,7 +257,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.recover_const_mut(const_span);
                 let (ident, ty, expr) = self.parse_item_global(None)?;
-                (ident, ItemKind::Const(def(), ty, expr))
+                (ident, ItemKind::Const(box ConstKind(def(), ty, expr)))
             }
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
             return Ok(None);
         } else if macros_allowed && self.check_path() {
             // MACRO INVOCATION ITEM
-            (Ident::invalid(), ItemKind::MacCall(self.parse_item_macro(vis)?))
+            (Ident::invalid(), ItemKind::MacCall(box self.parse_item_macro(vis)?))
         } else {
             return Ok(None);
         };
@@ -737,10 +737,10 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(a, _, b) => {
+                        ItemKind::Static(box StaticKind(a, _, b)) => {
                             self.struct_span_err(span, "associated `static` items are not allowed")
                                 .emit();
-                            AssocItemKind::Const(Defaultness::Final, a, b)
+                            AssocItemKind::Const(box ConstKind(Defaultness::Final, a, b))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
                     },
@@ -929,9 +929,9 @@ impl<'a> Parser<'a> {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Const(_, a, b) => {
+                        ItemKind::Const(box ConstKind(_, a, b)) => {
                             self.error_on_foreign_const(span, ident);
-                            ForeignItemKind::Static(a, Mutability::Not, b)
+                            ForeignItemKind::Static(box StaticKind(a, Mutability::Not, b))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
                     },

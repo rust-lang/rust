@@ -1072,12 +1072,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler().span_err(item.span, "unions cannot have zero fields");
                 }
             }
-            ItemKind::Const(def, .., None) => {
+            ItemKind::Const(box ConstKind(def, .., None)) => {
                 self.check_defaultness(item.span, def);
                 let msg = "free constant item without body";
                 self.error_item_without_body(item.span, "constant", msg, " = <expr>;");
             }
-            ItemKind::Static(.., None) => {
+            ItemKind::Static(box StaticKind(.., None)) => {
                 let msg = "free static item without body";
                 self.error_item_without_body(item.span, "static", msg, " = <expr>;");
             }
@@ -1108,7 +1108,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_type_no_bounds(bounds, "`extern` blocks");
                 self.check_foreign_ty_genericless(generics);
             }
-            ForeignItemKind::Static(_, _, body) => {
+            ForeignItemKind::Static(box StaticKind(_, _, body)) => {
                 self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
             }
             ForeignItemKind::MacCall(..) => {}
@@ -1339,7 +1339,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if ctxt == AssocCtxt::Impl {
             match &item.kind {
-                AssocItemKind::Const(_, _, body) => {
+                AssocItemKind::Const(box ConstKind(_, _, body)) => {
                     self.check_impl_item_provided(item.span, body, "constant", " = <expr>;");
                 }
                 AssocItemKind::Fn(box FnKind(_, _, _, body)) => {

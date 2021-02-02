@@ -55,7 +55,7 @@ pub fn placeholder(
             ident,
             vis,
             attrs,
-            kind: ast::ItemKind::MacCall(mac_placeholder()),
+            kind: ast::ItemKind::MacCall(box mac_placeholder()),
             tokens: None,
         })]),
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![P(ast::AssocItem {
@@ -64,7 +64,7 @@ pub fn placeholder(
             ident,
             vis,
             attrs,
-            kind: ast::AssocItemKind::MacCall(mac_placeholder()),
+            kind: ast::AssocItemKind::MacCall(box mac_placeholder()),
             tokens: None,
         })]),
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![P(ast::AssocItem {
@@ -73,7 +73,7 @@ pub fn placeholder(
             ident,
             vis,
             attrs,
-            kind: ast::AssocItemKind::MacCall(mac_placeholder()),
+            kind: ast::AssocItemKind::MacCall(box mac_placeholder()),
             tokens: None,
         })]),
         AstFragmentKind::ForeignItems => {
@@ -83,7 +83,7 @@ pub fn placeholder(
                 ident,
                 vis,
                 attrs,
-                kind: ast::ForeignItemKind::MacCall(mac_placeholder()),
+                kind: ast::ForeignItemKind::MacCall(box mac_placeholder()),
                 tokens: None,
             })])
         }

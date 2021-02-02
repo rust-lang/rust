@@ -229,10 +229,10 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     match (l, r) {
         (ExternCrate(l), ExternCrate(r)) => l == r,
         (Use(l), Use(r)) => eq_use_tree(l, r),
-        (Static(lt, lm, le), Static(rt, rm, re)) => {
+        (Static(box StaticKind(lt, lm, le)), Static(box StaticKind(rt, rm, re))) => {
             lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re)
         }
-        (Const(ld, lt, le), Const(rd, rt, re)) => {
+        (Const(box ConstKind(ld, lt, le)), Const(box ConstKind(rd, rt, re))) => {
             eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re)
         }
         (Fn(box FnKind(ld, lf, lg, lb)), Fn(box FnKind(rd, rf, rg, rb))) => {
@@ -308,7 +308,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
 pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
     use ForeignItemKind::*;
     match (l, r) {
-        (Static(lt, lm, le), Static(rt, rm, re)) => {
+        (Static(box StaticKind(lt, lm, le)), Static(box StaticKind(rt, rm, re))) => {
             lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re)
         }
         (Fn(box FnKind(ld, lf, lg, lb)), Fn(box FnKind(rd, rf, rg, rb))) => {
@@ -331,7 +331,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
 pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
     use AssocItemKind::*;
     match (l, r) {
-        (Const(ld, lt, le), Const(rd, rt, re)) => {
+        (Const(box ConstKind(ld, lt, le)), Const(box ConstKind(rd, rt, re))) => {
             eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re)
         }
         (Fn(box FnKind(ld, lf, lg, lb)), Fn(box FnKind(rd, rf, rg, rb))) => {

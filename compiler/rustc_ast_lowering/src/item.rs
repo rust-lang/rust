@@ -270,11 +270,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 self.lower_use_tree(use_tree, &prefix, id, vis, ident, attrs)
             }
-            ItemKind::Static(ref t, m, ref e) => {
+            ItemKind::Static(box StaticKind(ref t, m, ref e)) => {
                 let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
                 hir::ItemKind::Static(ty, m, body_id)
             }
-            ItemKind::Const(_, ref t, ref e) => {
+            ItemKind::Const(box ConstKind(_, ref t, ref e)) => {
                 let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
                 hir::ItemKind::Const(ty, body_id)
             }
@@ -723,7 +723,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
-                ForeignItemKind::Static(ref t, m, _) => {
+                ForeignItemKind::Static(box StaticKind(ref t, m, _)) => {
                     let ty = self.lower_ty(t, ImplTraitContext::disallowed());
                     hir::ForeignItemKind::Static(ty, m)
                 }
@@ -806,7 +806,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let trait_item_def_id = self.resolver.local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
-            AssocItemKind::Const(_, ref ty, ref default) => {
+            AssocItemKind::Const(box ConstKind(_, ref ty, ref default)) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
                 let body = default.as_ref().map(|x| self.lower_const_body(i.span, Some(x)));
                 (hir::Generics::empty(), hir::TraitItemKind::Const(ty, body))
@@ -848,7 +848,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {
         let (kind, has_default) = match &i.kind {
-            AssocItemKind::Const(_, _, default) => (hir::AssocItemKind::Const, default.is_some()),
+            AssocItemKind::Const(box ConstKind(_, _, default)) => {
+                (hir::AssocItemKind::Const, default.is_some())
+            }
             AssocItemKind::TyAlias(box TyAliasKind(_, _, _, default)) => {
                 (hir::AssocItemKind::Type, default.is_some())
             }
@@ -871,7 +873,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let impl_item_def_id = self.resolver.local_def_id(i.id);
 
         let (generics, kind) = match &i.kind {
-            AssocItemKind::Const(_, ty, expr) => {
+            AssocItemKind::Const(box ConstKind(_, ty, expr)) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
                 (
                     hir::Generics::empty(),

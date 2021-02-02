@@ -2686,6 +2686,12 @@ pub struct ImplKind {
 pub struct FnKind(pub Defaultness, pub FnSig, pub Generics, pub Option<P<Block>>);
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct StaticKind(pub P<Ty>, pub Mutability, pub Option<P<Expr>>);
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct ConstKind(pub Defaultness, pub P<Ty>, pub Option<P<Expr>>);
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
@@ -2698,11 +2704,11 @@ pub enum ItemKind {
     /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
-    Static(P<Ty>, Mutability, Option<P<Expr>>),
+    Static(Box<StaticKind>),
     /// A constant item (`const`).
     ///
     /// E.g., `const FOO: i32 = 42;`.
-    Const(Defaultness, P<Ty>, Option<P<Expr>>),
+    Const(Box<ConstKind>),
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
@@ -2748,7 +2754,7 @@ pub enum ItemKind {
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
-    MacCall(MacCall),
+    MacCall(Box<MacCall>),
 
     /// A macro definition.
     MacroDef(MacroDef),
@@ -2819,22 +2825,22 @@ pub type AssocItem = Item<AssocItemKind>;
 pub enum AssocItemKind {
     /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
     /// If `def` is parsed, then the constant is provided, and otherwise required.
-    Const(Defaultness, P<Ty>, Option<P<Expr>>),
+    Const(Box<ConstKind>),
     /// An associated function.
     Fn(Box<FnKind>),
     /// An associated type.
     TyAlias(Box<TyAliasKind>),
     /// A macro expanding to associated items.
-    MacCall(MacCall),
+    MacCall(Box<MacCall>),
 }
 
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(AssocItemKind, 72);
+rustc_data_structures::static_assert_size!(AssocItemKind, 16);
 
 impl AssocItemKind {
     pub fn defaultness(&self) -> Defaultness {
         match *self {
-            Self::Const(def, ..)
+            Self::Const(box ConstKind(def, ..))
             | Self::Fn(box FnKind(def, ..))
             | Self::TyAlias(box TyAliasKind(def, ..)) => def,
             Self::MacCall(..) => Defaultness::Final,
@@ -2845,7 +2851,7 @@ impl AssocItemKind {
 impl From<AssocItemKind> for ItemKind {
     fn from(assoc_item_kind: AssocItemKind) -> ItemKind {
         match assoc_item_kind {
-            AssocItemKind::Const(a, b, c) => ItemKind::Const(a, b, c),
+            AssocItemKind::Const(const_kind) => ItemKind::Const(const_kind),
             AssocItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             AssocItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
@@ -2858,7 +2864,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
 
     fn try_from(item_kind: ItemKind) -> Result<AssocItemKind, ItemKind> {
         Ok(match item_kind {
-            ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
+            ItemKind::Const(const_kind) => AssocItemKind::Const(const_kind),
             ItemKind::Fn(fn_kind) => AssocItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_alias_kind) => AssocItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
@@ -2871,22 +2877,22 @@ impl TryFrom<ItemKind> for AssocItemKind {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ForeignItemKind {
     /// A foreign static item (`static FOO: u8`).
-    Static(P<Ty>, Mutability, Option<P<Expr>>),
+    Static(Box<StaticKind>),
     /// An foreign function.
     Fn(Box<FnKind>),
     /// An foreign type.
     TyAlias(Box<TyAliasKind>),
     /// A macro expanding to foreign items.
-    MacCall(MacCall),
+    MacCall(Box<MacCall>),
 }
 
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
+rustc_data_structures::static_assert_size!(ForeignItemKind, 16);
 
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
-            ForeignItemKind::Static(a, b, c) => ItemKind::Static(a, b, c),
+            ForeignItemKind::Static(static_kind) => ItemKind::Static(static_kind),
             ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             ForeignItemKind::MacCall(a) => ItemKind::MacCall(a),
@@ -2899,7 +2905,7 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 
     fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
         Ok(match item_kind {
-            ItemKind::Static(a, b, c) => ForeignItemKind::Static(a, b, c),
+            ItemKind::Static(static_kind) => ForeignItemKind::Static(static_kind),
             ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_alias_kind) => ForeignItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => ForeignItemKind::MacCall(a),

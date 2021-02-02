@@ -212,7 +212,7 @@ pub fn expand_test_or_bench(
             cx.attribute(cx.meta_word(attr_sp, sym::rustc_test_marker)),
         ],
         // const $ident: test::TestDescAndFn =
-        ast::ItemKind::Const(
+        ast::ItemKind::Const(box ast::ConstKind(
             ast::Defaultness::Final,
             cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
             // test::TestDescAndFn {
@@ -301,7 +301,7 @@ pub fn expand_test_or_bench(
                     ],
                 ), // }
             ),
-        ),
+        )),
     );
     test_const = test_const.map(|mut tc| {
         tc.vis.kind = ast::VisibilityKind::Public;

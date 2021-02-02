@@ -908,7 +908,8 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
     match kind {
         ItemKind::ExternCrate(_orig_name) => {}
         ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-        ItemKind::Static(ty, _, expr) | ItemKind::Const(_, ty, expr) => {
+        ItemKind::Static(box StaticKind(ty, _, expr))
+        | ItemKind::Const(box ConstKind(_, ty, expr)) => {
             vis.visit_ty(ty);
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
@@ -972,7 +973,7 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
     match kind {
-        AssocItemKind::Const(_, ty, expr) => {
+        AssocItemKind::Const(box ConstKind(_, ty, expr)) => {
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
@@ -1062,7 +1063,7 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
     match kind {
-        ForeignItemKind::Static(ty, _, expr) => {
+        ForeignItemKind::Static(box StaticKind(ty, _, expr)) => {
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }

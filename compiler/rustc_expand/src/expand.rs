@@ -1373,7 +1373,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 item.attrs = attrs;
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
-                    ItemKind::MacCall(mac) => {
+                    ItemKind::MacCall(box mac) => {
                         self.collect_bang(mac, span, AstFragmentKind::Items).make_items()
                     }
                     _ => unreachable!(),
@@ -1464,7 +1464,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             ast::AssocItemKind::MacCall(..) => {
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
-                    ast::AssocItemKind::MacCall(mac) => self
+                    ast::AssocItemKind::MacCall(box mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::TraitItems)
                         .make_trait_items(),
                     _ => unreachable!(),
@@ -1487,7 +1487,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             ast::AssocItemKind::MacCall(..) => {
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
-                    ast::AssocItemKind::MacCall(mac) => self
+                    ast::AssocItemKind::MacCall(box mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::ImplItems)
                         .make_impl_items(),
                     _ => unreachable!(),
@@ -1534,7 +1534,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             ast::ForeignItemKind::MacCall(..) => {
                 self.check_attributes(&foreign_item.attrs);
                 foreign_item.and_then(|item| match item.kind {
-                    ast::ForeignItemKind::MacCall(mac) => self
+                    ast::ForeignItemKind::MacCall(box mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::ForeignItems)
                         .make_foreign_items(),
                     _ => unreachable!(),

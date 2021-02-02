@@ -1025,7 +1025,7 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(box ast::FnKind(def, sig, gen, body)) => {
                 self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
             }
-            ast::ForeignItemKind::Static(ty, mutbl, body) => {
+            ast::ForeignItemKind::Static(box ast::StaticKind(ty, mutbl, body)) => {
                 let def = ast::Defaultness::Final;
                 self.print_item_const(ident, Some(*mutbl), ty, body.as_deref(), vis, def);
             }
@@ -1127,11 +1127,11 @@ impl<'a> State<'a> {
                 self.end(); // end inner head-block
                 self.end(); // end outer head-block
             }
-            ast::ItemKind::Static(ref ty, mutbl, ref body) => {
+            ast::ItemKind::Static(box ast::StaticKind(ref ty, mutbl, ref body)) => {
                 let def = ast::Defaultness::Final;
                 self.print_item_const(item.ident, Some(mutbl), ty, body.as_deref(), &item.vis, def);
             }
-            ast::ItemKind::Const(def, ref ty, ref body) => {
+            ast::ItemKind::Const(box ast::ConstKind(def, ref ty, ref body)) => {
                 self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis, def);
             }
             ast::ItemKind::Fn(box ast::FnKind(def, ref sig, ref gen, ref body)) => {
@@ -1462,7 +1462,7 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Fn(box ast::FnKind(def, sig, gen, body)) => {
                 self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
             }
-            ast::AssocItemKind::Const(def, ty, body) => {
+            ast::AssocItemKind::Const(box ast::ConstKind(def, ty, body)) => {
                 self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
             }
             ast::AssocItemKind::TyAlias(box ast::TyAliasKind(def, generics, bounds, ty)) => {
