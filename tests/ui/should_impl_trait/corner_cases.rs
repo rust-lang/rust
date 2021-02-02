@@ -8,7 +8,8 @@
     clippy::unused_self,
     clippy::needless_lifetimes,
     clippy::missing_safety_doc,
-    clippy::wrong_self_convention
+    clippy::wrong_self_convention,
+    clippy::missing_panics_doc
 )]
 
 use std::ops::Mul;

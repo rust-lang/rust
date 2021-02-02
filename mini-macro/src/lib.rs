@@ -7,6 +7,9 @@ extern crate proc_macro;
 use proc_macro::{quote, TokenStream};
 
 #[proc_macro_derive(ClippyMiniMacroTest)]
+/// # Panics
+///
+/// Panics if the macro derivation fails
 pub fn mini_macro(_: TokenStream) -> TokenStream {
     quote!(
         #[allow(unused)]
