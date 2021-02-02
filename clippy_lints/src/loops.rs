@@ -1996,52 +1996,82 @@ fn check_manual_flatten<'tcx>(
     body: &'tcx Expr<'_>,
     span: Span,
 ) {
-    if_chain! {
-        // Ensure the `if let` statement is the only expression in the for-loop
-        if let ExprKind::Block(ref block, _) = body.kind;
-        if block.stmts.is_empty();
-        if let Some(inner_expr) = block.expr;
-        if let ExprKind::Match(
-            ref match_expr, ref match_arms, MatchSource::IfLetDesugar{ contains_else_clause: false }
-        ) = inner_expr.kind;
-        // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
-        if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
-        if let ExprKind::Path(QPath::Resolved(None, match_expr_path)) = match_expr.kind;
-        if let Res::Local(match_expr_path_id) = match_expr_path.res;
-        if pat_hir_id == match_expr_path_id;
-        // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
-        if let PatKind::TupleStruct(QPath::Resolved(None, path), _, _) = match_arms[0].pat.kind;
-        if is_some_ctor(cx, path.res) || is_ok_ctor(cx, path.res);
-        let if_let_type = if is_some_ctor(cx, path.res) {
-            "Some"
-        } else {
-            "Ok"
-        };
-        // Determine if `arg` is `Iterator` or implicitly calls `into_iter`
-        let arg_ty = cx.typeck_results().expr_ty(arg);
-        if let Some(id) = get_trait_def_id(cx, &paths::ITERATOR);
-        if let is_iterator = implements_trait(cx, arg_ty, id, &[]);
-
-        then {
-            // Prepare the error message
-            let msg = format!("Unnecessary `if let` since only the `{}` variant of the iterator element is used.", if_let_type);
-
-            // Prepare the help message
-            let arg_snippet = snippet(cx, arg.span, "..");
-            let hint = if is_iterator {
-                format!("try: `{}.flatten()`", arg_snippet)
+    if let ExprKind::Block(ref block, _) = body.kind {
+        // Ensure the `if let` statement is the only expression or statement in the for-loop
+        let inner_expr = if block.stmts.len() == 1 && block.expr.is_none() {
+            let match_stmt = &block.stmts[0];
+            if let StmtKind::Semi(inner_expr) = match_stmt.kind {
+                Some(inner_expr)
             } else {
-                format!("try: `{}.into_iter().flatten()`", arg_snippet)
-            };
+                None
+            }
+        } else if block.stmts.is_empty() {
+            block.expr
+        } else {
+            None
+        };
 
-            span_lint_and_help(
-                cx,
-                MANUAL_FLATTEN,
-                span,
-                &msg,
-                Some(arg.span),
-                &hint,
-            );
+        if_chain! {
+            if let Some(inner_expr) = inner_expr;
+            if let ExprKind::Match(
+                ref match_expr, ref match_arms, MatchSource::IfLetDesugar{ contains_else_clause: false }
+            ) = inner_expr.kind;
+            // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
+            if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
+            if let ExprKind::Path(QPath::Resolved(None, match_expr_path)) = match_expr.kind;
+            if let Res::Local(match_expr_path_id) = match_expr_path.res;
+            if pat_hir_id == match_expr_path_id;
+            // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
+            if let PatKind::TupleStruct(QPath::Resolved(None, path), _, _) = match_arms[0].pat.kind;
+            let some_ctor = is_some_ctor(cx, path.res);
+            let ok_ctor = is_ok_ctor(cx, path.res);
+            if some_ctor || ok_ctor;
+            let if_let_type = if some_ctor { "Some" } else { "Ok" };
+
+            then {
+                // Prepare the error message
+                let msg = format!("unnecessary `if let` since only the `{}` variant of the iterator element is used", if_let_type);
+
+                // Prepare the help message
+                let mut applicability = Applicability::MaybeIncorrect;
+                let arg_snippet = snippet_with_applicability(
+                    cx,
+                    arg.span,
+                    "..",
+                    &mut applicability,
+                );
+                // Determine if `arg` is by reference, an `Iterator`, or implicitly adjusted with `into_iter`
+                let hint = match arg.kind {
+                    ExprKind::AddrOf(_, _, arg_expr) => {
+                        format!("{}.iter().flatten()", snippet(cx, arg_expr.span, ".."))
+                    },
+                    ExprKind::MethodCall(_, _, _, _) | ExprKind::Path(QPath::Resolved(None, _)) => {
+                        // Determine if `arg` is `Iterator` or implicitly calls `into_iter`
+                        let arg_ty = cx.typeck_results().expr_ty(arg);
+                        if let Some(id) = get_trait_def_id(cx, &paths::ITERATOR) {
+                            let is_iterator = implements_trait(cx, arg_ty, id, &[]);
+                            if is_iterator {
+                                format!("{}.flatten()", arg_snippet)
+                            } else {
+                                format!("{}.into_iter().flatten()", arg_snippet)
+                            }
+                        } else {
+                            return
+                        }
+                    },
+                    _ => return,
+                };
+
+                span_lint_and_sugg(
+                    cx,
+                    MANUAL_FLATTEN,
+                    span,
+                    &msg,
+                    "try",
+                    hint,
+                    applicability,
+                )
+            }
         }
     }
 }
