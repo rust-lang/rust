@@ -1825,11 +1825,27 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "vec_spare_capacity", issue = "75017")]
     #[inline]
     pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
+        self.split_at_spare_mut().1
+    }
+
+    #[inline]
+    fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
+        let ptr = self.as_mut_ptr();
+
+        // Safety:
+        // - `ptr` is guaranteed to be in bounds for `capacity` elements
+        // - `len` is guaranteed to less or equal to `capacity`
+        // - `MaybeUninit<T>` has the same layout as `T`
+        let spare_ptr = unsafe { ptr.cast::<MaybeUninit<T>>().add(self.len) };
+
+        // Safety:
+        // - `ptr` is guaranteed to be valid for `len` elements
+        // - `spare_ptr` is offseted from `ptr` by `len`, so it doesn't overlap `initialized` slice
         unsafe {
-            slice::from_raw_parts_mut(
-                self.as_mut_ptr().add(self.len) as *mut MaybeUninit<T>,
-                self.buf.capacity() - self.len,
-            )
+            let initialized = slice::from_raw_parts_mut(ptr, self.len);
+            let spare = slice::from_raw_parts_mut(spare_ptr, self.buf.capacity() - self.len);
+
+            (initialized, spare)
         }
     }
 }
@@ -1890,6 +1906,39 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
+    }
+
+    /// Copies elements from `src` range to the end of the vector.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// #![feature(vec_extend_from_within)]
+    ///
+    /// let mut vec = vec![0, 1, 2, 3, 4];
+    ///
+    /// vec.extend_from_within(2..);
+    /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4]);
+    ///
+    /// vec.extend_from_within(..2);
+    /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4, 0, 1]);
+    ///
+    /// vec.extend_from_within(4..8);
+    /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4, 0, 1, 4, 2, 3, 4]);
+    /// ```
+    #[unstable(feature = "vec_extend_from_within", issue = "81656")]
+    pub fn extend_from_within<R>(&mut self, src: R)
+    where
+        R: RangeBounds<usize>,
+    {
+        let range = src.assert_len(self.len());
+        self.reserve(range.len());
+
+        // SAFETY:
+        // - `assert_len` guarantees  that the given range is valid for indexing self
+        unsafe {
+            self.spec_extend_from_within(range);
+        }
     }
 }
 
@@ -1996,6 +2045,62 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
     <T as SpecFromElem>::from_elem(elem, n, alloc)
+}
+
+trait ExtendFromWithinSpec {
+    /// Safety:
+    /// - `src` needs to be valid index
+    /// - `self.capacity() - self.len()` must be `>= src.len()`
+    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>);
+}
+
+impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
+    default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
+        let initialized = {
+            let (this, spare) = self.split_at_spare_mut();
+
+            // Safety:
+            // - caller guaratees that src is a valid index
+            let to_clone = unsafe { this.get_unchecked(src) };
+
+            to_clone.iter().cloned().zip(spare.iter_mut()).map(|(e, s)| s.write(e)).count()
+        };
+
+        // Safety:
+        // - elements were just initialized
+        unsafe {
+            let new_len = self.len() + initialized;
+            self.set_len(new_len);
+        }
+    }
+}
+
+impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
+    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
+        let count = src.len();
+        {
+            let (init, spare) = self.split_at_spare_mut();
+
+            // Safety:
+            // - caller guaratees that `src` is a valid index
+            let source = unsafe { init.get_unchecked(src) };
+
+            // Safety:
+            // - Both pointers are created from unique slice references (`&mut [_]`)
+            //   so they are valid and do not overlap.
+            // - Elements are :Copy so it's OK to to copy them, without doing
+            //   anything with the original values
+            // - `count` is equal to the len of `source`, so source is valid for
+            //   `count` reads
+            // - `.reserve(count)` guarantees that `spare.len() >= count` so spare
+            //   is valid for `count` writes
+            unsafe { ptr::copy_nonoverlapping(source.as_ptr(), spare.as_mut_ptr() as _, count) };
+        }
+
+        // Safety:
+        // - The elements were just initialized by `copy_nonoverlapping`
+        self.len += count;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
