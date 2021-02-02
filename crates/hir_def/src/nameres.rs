@@ -275,6 +275,11 @@ impl DefMap {
         ModuleId { krate: self.krate, local_id, block }
     }
 
+    pub(crate) fn crate_root(&self) -> ModuleId {
+        let (root_map, _) = self.ancestor_maps(self.root).last().unwrap();
+        root_map.module_id(root_map.root)
+    }
+
     pub(crate) fn resolve_path(
         &self,
         db: &dyn DefDatabase,
