@@ -1012,7 +1012,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
 
-            ItemKind::TraitAlias(ref generics, ref bounds) => {
+            ItemKind::TraitAlias(box TraitAliasKind(ref generics, ref bounds)) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     let local_def_id = this.r.local_def_id(item.id).to_def_id();

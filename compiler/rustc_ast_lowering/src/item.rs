@@ -469,10 +469,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     items,
                 )
             }
-            ItemKind::TraitAlias(ref generics, ref bounds) => hir::ItemKind::TraitAlias(
-                self.lower_generics(generics, ImplTraitContext::disallowed()),
-                self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
-            ),
+            ItemKind::TraitAlias(box TraitAliasKind(ref generics, ref bounds)) => {
+                hir::ItemKind::TraitAlias(
+                    self.lower_generics(generics, ImplTraitContext::disallowed()),
+                    self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
+                )
+            }
             ItemKind::MacroDef(..) | ItemKind::MacCall(..) => {
                 panic!("`TyMac` should have been expanded by now")
             }

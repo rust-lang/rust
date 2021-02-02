@@ -1267,7 +1267,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            ast::ItemKind::TraitAlias(ref generics, ref bounds) => {
+            ast::ItemKind::TraitAlias(box ast::TraitAliasKind(ref generics, ref bounds)) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.word_nbsp("trait");

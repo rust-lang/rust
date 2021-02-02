@@ -2698,6 +2698,9 @@ pub struct StructUnionKind(pub VariantData, pub Generics);
 pub struct EnumKind(pub EnumDef, pub Generics);
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct TraitAliasKind(pub Generics, pub GenericBounds);
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
@@ -2752,7 +2755,7 @@ pub enum ItemKind {
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
-    TraitAlias(Generics, GenericBounds),
+    TraitAlias(Box<TraitAliasKind>),
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
@@ -2767,7 +2770,7 @@ pub enum ItemKind {
 }
 
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(ItemKind, 104);
+rustc_data_structures::static_assert_size!(ItemKind, 72);
 
 impl ItemKind {
     pub fn article(&self) -> &str {
@@ -2809,7 +2812,7 @@ impl ItemKind {
             | Self::Struct(box StructUnionKind(_, generics))
             | Self::Union(box StructUnionKind(_, generics))
             | Self::Trait(box TraitKind(_, _, generics, ..))
-            | Self::TraitAlias(generics, _)
+            | Self::TraitAlias(box TraitAliasKind(generics, _))
             | Self::Impl(box ImplKind { generics, .. }) => Some(generics),
             _ => None,
         }

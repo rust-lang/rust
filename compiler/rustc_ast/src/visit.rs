@@ -337,7 +337,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Trait);
         }
-        ItemKind::TraitAlias(ref generics, ref bounds) => {
+        ItemKind::TraitAlias(box TraitAliasKind(ref generics, ref bounds)) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
         }

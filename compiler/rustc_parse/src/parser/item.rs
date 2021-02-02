@@ -713,7 +713,7 @@ impl<'a> Parser<'a> {
 
             self.sess.gated_spans.gate(sym::trait_alias, whole_span);
 
-            Ok((ident, ItemKind::TraitAlias(tps, bounds)))
+            Ok((ident, ItemKind::TraitAlias(box TraitAliasKind(tps, bounds))))
         } else {
             // It's a normal trait.
             tps.where_clause = self.parse_where_clause()?;

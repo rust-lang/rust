@@ -267,8 +267,10 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_generics(lg, rg)
                 && over(lb, rb, |l, r| eq_generic_bound(l, r))
                 && over(li, ri, |l, r| eq_item(l, r, eq_assoc_item_kind))
-        },
-        (TraitAlias(lg, lb), TraitAlias(rg, rb)) => eq_generics(lg, rg) && over(lb, rb, |l, r| eq_generic_bound(l, r)),
+        }
+        (TraitAlias(box TraitAliasKind(lg, lb)), TraitAlias(box TraitAliasKind(rg, rb))) => {
+            eq_generics(lg, rg) && over(lb, rb, |l, r| eq_generic_bound(l, r))
+        }
         (
             Impl(box ImplKind {
                 unsafety: lu,
