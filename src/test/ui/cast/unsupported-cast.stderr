@@ -1,7 +1,7 @@
 error[E0606]: casting `f64` as `*const A` is invalid
-  --> $DIR/unsupported-cast.rs:6:20
+  --> $DIR/unsupported-cast.rs:4:20
    |
-LL |   println!("{:?}", 1.0 as *const A); // Can't cast float to foreign.
+LL |   println!("{:?}", 1.0 as *const A);
    |                    ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
