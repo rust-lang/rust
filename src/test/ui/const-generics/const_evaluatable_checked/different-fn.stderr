@@ -4,7 +4,7 @@ error: unconstrained generic constant
 LL |     [0; size_of::<Foo<T>>()]
    |         ^^^^^^^^^^^^^^^^^^^
    |
-help: consider adding a `where` bound for this expression
+help: try adding a `where` bound using this expression: where [u8; size_of::<Foo<T>>()]: Sized
   --> $DIR/different-fn.rs:10:9
    |
 LL |     [0; size_of::<Foo<T>>()]
