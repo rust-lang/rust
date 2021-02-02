@@ -9,7 +9,7 @@ LL |     if let B::Fst = a {};
    |            |
    |            expected struct `A`, found enum `B`
    |
-help: you might have meant to use field `b` of type `B`
+help: you might have meant to use field `b` whose type is `B`
    |
 LL |     if let B::Fst = a.b {};
    |                     ^^^
@@ -26,7 +26,7 @@ LL |     match a {
 LL |         B::Fst => (),
    |         ^^^^^^ expected struct `A`, found enum `B`
    |
-help: you might have meant to use field `b` of type `B`
+help: you might have meant to use field `b` whose type is `B`
    |
 LL |     match a.b {
    |           ^^^
@@ -43,7 +43,7 @@ LL |     match a {
 LL |         B::Snd => (),
    |         ^^^^^^ expected struct `A`, found enum `B`
    |
-help: you might have meant to use field `b` of type `B`
+help: you might have meant to use field `b` whose type is `B`
    |
 LL |     match a.b {
    |           ^^^
@@ -57,7 +57,7 @@ LL |
 LL |         1u32 => (),
    |         ^^^^ expected union `Foo`, found `u32`
    |
-help: you might have meant to use field `bar` of type `u32`
+help: you might have meant to use field `bar` whose type is `u32`
    |
 LL |     match unsafe { foo.bar } {
    |           ^^^^^^^^^^^^^^^^^^
