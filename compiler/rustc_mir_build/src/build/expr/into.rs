@@ -10,7 +10,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{CanonicalUserTypeAnnotation};
+use rustc_middle::ty::CanonicalUserTypeAnnotation;
 
 use std::slice;
 
@@ -38,7 +38,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
 
-        let expr_is_block_or_scope = matches!(expr.kind, ExprKind::Block { .. } | ExprKind::Scope { .. });
+        let expr_is_block_or_scope =
+            matches!(expr.kind, ExprKind::Block { .. } | ExprKind::Scope { .. });
 
         let schedule_drop = move |this: &mut Self| {
             if let Some(drop_scope) = scope {
@@ -68,7 +69,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.match_expr(destination, scope, expr_span, block, scrutinee, arms)
             }
             ExprKind::If { cond, then, else_opt } => {
-                let place = unpack!(block = this.as_temp(block, Some(this.local_scope()), cond, Mutability::Mut));
+                let place = unpack!(
+                    block = this.as_temp(block, Some(this.local_scope()), cond, Mutability::Mut)
+                );
                 let operand = Operand::Move(Place::from(place));
 
                 let mut then_block = this.cfg.start_new_block();
@@ -100,14 +103,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
 
                 join_block.unit()
-            },
+            }
             ExprKind::NeverToAny { source } => {
                 let source = this.hir.mirror(source);
-                let is_call = matches!(source.kind, ExprKind::Call { .. } | ExprKind::InlineAsm { .. });
+                let is_call =
+                    matches!(source.kind, ExprKind::Call { .. } | ExprKind::InlineAsm { .. });
 
                 // (#66975) Source could be a const of type `!`, so has to
                 // exist in the generated MIR.
-                unpack!(block = this.as_temp(block, Some(this.local_scope()), source, Mutability::Mut,));
+                unpack!(
+                    block = this.as_temp(block, Some(this.local_scope()), source, Mutability::Mut,)
+                );
 
                 // This is an optimization. If the expression was a call then we already have an
                 // unreachable block. Don't bother to terminate it and create a new one.
@@ -313,7 +319,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         .field(n, ty)
                                         .into_place(this.hir.tcx(), this.hir.typeck_results()),
                                 )
-                            },
+                            }
                         })
                         .collect()
                 } else {

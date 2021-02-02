@@ -1692,15 +1692,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let e = self.hir.mirror(e.clone());
                     let source_info = self.source_info(e.span);
                     (e.span, self.test_bool(block, e, source_info))
-                },
+                }
                 Guard::IfLet(pat, scrutinee) => {
                     let scrutinee_span = scrutinee.span();
-                    let scrutinee_place = unpack!(block = self.lower_scrutinee(block, scrutinee.clone(), scrutinee_span));
+                    let scrutinee_place = unpack!(
+                        block = self.lower_scrutinee(block, scrutinee.clone(), scrutinee_span)
+                    );
                     let mut guard_candidate = Candidate::new(scrutinee_place, &pat, false);
                     let wildcard = Pat::wildcard_from_ty(pat.ty);
                     let mut otherwise_candidate = Candidate::new(scrutinee_place, &wildcard, false);
-                    let fake_borrow_temps =
-                        self.lower_match_tree(block, pat.span, false, &mut [&mut guard_candidate, &mut otherwise_candidate]);
+                    let fake_borrow_temps = self.lower_match_tree(
+                        block,
+                        pat.span,
+                        false,
+                        &mut [&mut guard_candidate, &mut otherwise_candidate],
+                    );
                     self.declare_bindings(
                         None,
                         pat.span.to(arm_span.unwrap()),

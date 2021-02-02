@@ -41,13 +41,16 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Block => match token.kind {
                 token::OpenDelim(token::Brace) => true,
-                token::Interpolated(ref nt) => !matches!(**nt, token::NtItem(_)
-                    | token::NtPat(_)
-                    | token::NtTy(_)
-                    | token::NtIdent(..)
-                    | token::NtMeta(_)
-                    | token::NtPath(_)
-                    | token::NtVis(_)),
+                token::Interpolated(ref nt) => !matches!(
+                    **nt,
+                    token::NtItem(_)
+                        | token::NtPat(_)
+                        | token::NtTy(_)
+                        | token::NtIdent(..)
+                        | token::NtMeta(_)
+                        | token::NtPath(_)
+                        | token::NtVis(_)
+                ),
                 _ => false,
             },
             NonterminalKind::Path | NonterminalKind::Meta => match token.kind {

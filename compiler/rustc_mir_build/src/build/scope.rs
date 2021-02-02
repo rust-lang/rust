@@ -931,10 +931,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local_scope = self.local_scope();
         let scope = self.scopes.scopes.last_mut().unwrap();
 
-        assert_eq!(
-            scope.region_scope, local_scope,
-            "local scope is not the topmost scope!",
-        );
+        assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!",);
 
         // look for moves of a local variable, like `MOVE(_X)`
         let locals_moved = operands
@@ -1046,9 +1043,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             matches!(
                 self.cfg.block_data(start).terminator().kind,
                 TerminatorKind::Assert { .. }
-                | TerminatorKind::Call {..}
-                | TerminatorKind::DropAndReplace { .. }
-                | TerminatorKind::FalseUnwind { .. }
+                    | TerminatorKind::Call { .. }
+                    | TerminatorKind::DropAndReplace { .. }
+                    | TerminatorKind::FalseUnwind { .. }
             ),
             "diverge_from called on block with terminator that cannot unwind."
         );

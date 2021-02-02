@@ -506,7 +506,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let count = generics
                             .params
                             .iter()
-                            .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime { .. }))
+                            .filter(|param| {
+                                matches!(param.kind, ast::GenericParamKind::Lifetime { .. })
+                            })
                             .count();
                         self.lctx.type_def_lifetime_params.insert(def_id.to_def_id(), count);
                     }
