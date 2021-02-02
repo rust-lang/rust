@@ -16,8 +16,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::abstract_const::{Node, NodeId};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::{self, Rvalue, StatementKind, TerminatorKind};
-use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -43,10 +42,6 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                 for pred in param_env.caller_bounds() {
                     match pred.kind().skip_binder() {
                         ty::PredicateKind::ConstEvaluatable(b_def, b_substs) => {
-                            debug!(
-                                "is_const_evaluatable: caller_bound={:?}, {:?}",
-                                b_def, b_substs
-                            );
                             if b_def == def && b_substs == substs {
                                 debug!("is_const_evaluatable: caller_bound ~~> ok");
                                 return Ok(());
@@ -113,15 +108,24 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                     }
                     FailureKind::MentionsParam => {
                         // FIXME(const_evaluatable_checked): Better error message.
-                        infcx
-                            .tcx
-                            .sess
-                            .struct_span_err(span, "unconstrained generic constant")
-                            .span_help(
+                        let mut err =
+                            infcx.tcx.sess.struct_span_err(span, "unconstrained generic constant");
+                        let const_span = tcx.def_span(def.did);
+                        // FIXME(const_evaluatable_checked): Update this suggestion once
+                        // explicit const evaluatable bounds are implemented.
+                        if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(const_span)
+                        {
+                            err.span_help(
                                 tcx.def_span(def.did),
+                                &format!("try adding a `where` bound using this expression: where [u8; {}]: Sized", snippet),
+                            );
+                        } else {
+                            err.span_help(
+                                const_span,
                                 "consider adding a `where` bound for this expression",
-                            )
-                            .emit();
+                            );
+                        }
+                        err.emit();
                         return Err(ErrorHandled::Reported(ErrorReported));
                     }
                     FailureKind::Concrete => {
