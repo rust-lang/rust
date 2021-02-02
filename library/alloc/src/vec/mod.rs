@@ -1650,7 +1650,7 @@ impl<T, A: Allocator> Vec<T, A> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let Range { start, end } = Range::ensure_subset_of(range, ..len);
+        let Range { start, end } = slice::range(range, ..len);
 
         unsafe {
             // set self.vec length's to start, to be safe in case Drain is leaked
