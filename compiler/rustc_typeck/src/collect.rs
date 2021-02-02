@@ -578,7 +578,7 @@ fn type_param_predicates(
         )
         .into_iter()
         .filter(|(predicate, _)| match predicate.kind().skip_binder() {
-            ty::PredicateAtom::Trait(data, _) => data.self_ty().is_param(index),
+            ty::PredicateKind::Trait(data, _) => data.self_ty().is_param(index),
             _ => false,
         }),
     );

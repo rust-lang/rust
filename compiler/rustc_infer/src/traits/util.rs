@@ -301,7 +301,7 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
             let super_predicates =
                 tcx.super_predicates_that_define_assoc_type((trait_ref.def_id(), Some(assoc_name)));
             for (super_predicate, _) in super_predicates.predicates {
-                let bound_predicate = super_predicate.bound_atom();
+                let bound_predicate = super_predicate.kind();
                 let subst_predicate = super_predicate
                     .subst_supertrait(tcx, &bound_predicate.rebind(trait_ref.skip_binder()));
                 if let Some(binder) = subst_predicate.to_opt_poly_trait_ref() {
