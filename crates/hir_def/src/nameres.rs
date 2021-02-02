@@ -201,10 +201,8 @@ impl DefMap {
         let block: BlockLoc = db.lookup_intern_block(block_id);
         let parent = block.module.def_map(db);
 
-        let item_tree = db.item_tree(block.ast_id.file_id);
-        if item_tree.inner_items_of_block(block.ast_id.value).is_empty() {
-            return parent.clone();
-        }
+        // FIXME: It would be good to just return the parent map when the block has no items, but
+        // we rely on `def_map.block` in a few places, which is `Some` for the inner `DefMap`.
 
         let block_info =
             BlockInfo { block: block_id, parent, parent_module: block.module.local_id };
