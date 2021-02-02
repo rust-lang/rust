@@ -1,8 +1,7 @@
-use crate::utils::{snippet, span_lint_and_then, visitors::LocalUsedVisitor};
+use crate::utils::{path_to_local_id, snippet, span_lint_and_then, visitors::LocalUsedVisitor};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
 use rustc_hir::BindingAnnotation;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -66,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                 if let hir::ExprKind::If(ref cond, ref then, ref else_) = if_.kind;
                 if !LocalUsedVisitor::new(canonical_id).check_expr(cond);
                 if let hir::ExprKind::Block(ref then, _) = then.kind;
-                if let Some(value) = check_assign(cx, canonical_id, &*then);
+                if let Some(value) = check_assign(canonical_id, &*then);
                 if !LocalUsedVisitor::new(canonical_id).check_expr(value);
                 then {
                     let span = stmt.span.to(if_.span);
@@ -79,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
 
                     let (default_multi_stmts, default) = if let Some(ref else_) = *else_ {
                         if let hir::ExprKind::Block(ref else_, _) = else_.kind {
-                            if let Some(default) = check_assign(cx, canonical_id, else_) {
+                            if let Some(default) = check_assign(canonical_id, else_) {
                                 (else_.stmts.len() > 1, default)
                             } else if let Some(ref default) = local.init {
                                 (true, &**default)
@@ -134,19 +133,13 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
     }
 }
 
-fn check_assign<'tcx>(
-    cx: &LateContext<'tcx>,
-    decl: hir::HirId,
-    block: &'tcx hir::Block<'_>,
-) -> Option<&'tcx hir::Expr<'tcx>> {
+fn check_assign<'tcx>(decl: hir::HirId, block: &'tcx hir::Block<'_>) -> Option<&'tcx hir::Expr<'tcx>> {
     if_chain! {
         if block.expr.is_none();
         if let Some(expr) = block.stmts.iter().last();
         if let hir::StmtKind::Semi(ref expr) = expr.kind;
         if let hir::ExprKind::Assign(ref var, ref value, _) = expr.kind;
-        if let hir::ExprKind::Path(ref qpath) = var.kind;
-        if let Res::Local(local_id) = cx.qpath_res(qpath, var.hir_id);
-        if decl == local_id;
+        if path_to_local_id(var, decl);
         then {
             let mut v = LocalUsedVisitor::new(decl);
 

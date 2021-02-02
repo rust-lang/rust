@@ -307,6 +307,22 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
         .all(|(a, b)| a.ident.name.as_str() == *b)
 }
 
+/// If the expression is a path to a local, returns the canonical `HirId` of the local.
+pub fn path_to_local(expr: &Expr<'_>) -> Option<HirId> {
+    if let ExprKind::Path(QPath::Resolved(None, ref path)) = expr.kind {
+        if let Res::Local(id) = path.res {
+            return Some(id);
+        }
+    }
+    None
+}
+
+/// Returns true if the expression is a path to a local with the specified `HirId`.
+/// Use this function to see if an expression matches a function argument or a match binding.
+pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
+    path_to_local(expr) == Some(id)
+}
+
 /// Gets the definition associated to a path.
 #[allow(clippy::shadow_unrelated)] // false positive #6563
 pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
@@ -1135,9 +1151,7 @@ pub fn is_try<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
             if let PatKind::TupleStruct(ref path, ref pat, None) = arm.pat.kind;
             if match_qpath(path, &paths::RESULT_OK[1..]);
             if let PatKind::Binding(_, hir_id, _, None) = pat[0].kind;
-            if let ExprKind::Path(QPath::Resolved(None, ref path)) = arm.body.kind;
-            if let Res::Local(lid) = path.res;
-            if lid == hir_id;
+            if path_to_local_id(arm.body, hir_id);
             then {
                 return true;
             }
@@ -1181,12 +1195,11 @@ pub fn is_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool 
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
 
-pub fn get_arg_name(pat: &Pat<'_>) -> Option<Symbol> {
-    match pat.kind {
-        PatKind::Binding(.., ident, None) => Some(ident.name),
-        PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
-        _ => None,
+pub fn strip_pat_refs<'hir>(mut pat: &'hir Pat<'hir>) -> &'hir Pat<'hir> {
+    while let PatKind::Ref(subpat, _) = pat.kind {
+        pat = subpat;
     }
+    pat
 }
 
 pub fn int_bits(tcx: TyCtxt<'_>, ity: ty::IntTy) -> u64 {

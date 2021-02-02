@@ -15,8 +15,7 @@ use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, PatKind, QPath, TraitItem, TraitItemKind, UnOp};
+use rustc_hir::{Expr, ExprKind, PatKind, TraitItem, TraitItemKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
@@ -30,12 +29,12 @@ use crate::consts::{constant, Constant};
 use crate::utils::eager_or_lazy::is_lazyness_candidate;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    contains_return, contains_ty, get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher,
-    implements_trait, in_macro, is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
-    match_def_path, match_qpath, match_trait_method, match_type, match_var, meets_msrv, method_calls,
-    method_chain_args, paths, remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
-    walk_ptrs_ty_depth, SpanlessEq,
+    contains_return, contains_ty, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
+    in_macro, is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path,
+    match_qpath, match_trait_method, match_type, meets_msrv, method_calls, method_chain_args, path_to_local_id, paths,
+    remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, strip_pat_refs, sugg, walk_ptrs_ty_depth,
+    SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -2396,11 +2395,12 @@ fn lint_unnecessary_fold(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: 
             if bin_op.node == op;
 
             // Extract the names of the two arguments to the closure
-            if let Some(first_arg_ident) = get_arg_name(&closure_body.params[0].pat);
-            if let Some(second_arg_ident) = get_arg_name(&closure_body.params[1].pat);
+            if let [param_a, param_b] = closure_body.params;
+            if let PatKind::Binding(_, first_arg_id, ..) = strip_pat_refs(&param_a.pat).kind;
+            if let PatKind::Binding(_, second_arg_id, second_arg_ident, _) = strip_pat_refs(&param_b.pat).kind;
 
-            if match_var(&*left_expr, first_arg_ident);
-            if replacement_has_args || match_var(&*right_expr, second_arg_ident);
+            if path_to_local_id(left_expr, first_arg_id);
+            if replacement_has_args || path_to_local_id(right_expr, second_arg_id);
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -3068,10 +3068,8 @@ fn lint_filter_map<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, is_f
             };
             // let the filter closure arg and the map closure arg be equal
             if_chain! {
-                if let ExprKind::Path(QPath::Resolved(None, a_path)) = a_path.kind;
-                if let ExprKind::Path(QPath::Resolved(None, b_path)) = b.kind;
-                if a_path.res == Res::Local(filter_param_id);
-                if b_path.res == Res::Local(map_param_id);
+                if path_to_local_id(a_path, filter_param_id);
+                if path_to_local_id(b, map_param_id);
                 if TyS::same_type(cx.typeck_results().expr_ty_adjusted(a), cx.typeck_results().expr_ty_adjusted(b));
                 then {
                     return true;
@@ -3255,8 +3253,9 @@ fn lint_search_is_some<'tcx>(
                 then {
                     if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
                         Some(search_snippet.replacen('&', "", 1))
-                    } else if let Some(name) = get_arg_name(&closure_arg.pat) {
-                        Some(search_snippet.replace(&format!("*{}", name), &name.as_str()))
+                    } else if let PatKind::Binding(_, _, ident, _) = strip_pat_refs(&closure_arg.pat).kind {
+                        let name = &*ident.name.as_str();
+                        Some(search_snippet.replace(&format!("*{}", name), name))
                     } else {
                         None
                     }
@@ -3688,9 +3687,7 @@ fn lint_option_as_ref_deref<'tcx>(
                 hir::ExprKind::MethodCall(_, _, args, _) => {
                     if_chain! {
                         if args.len() == 1;
-                        if let hir::ExprKind::Path(qpath) = &args[0].kind;
-                        if let hir::def::Res::Local(local_id) = cx.qpath_res(qpath, args[0].hir_id);
-                        if closure_body.params[0].pat.hir_id == local_id;
+                        if path_to_local_id(&args[0], closure_body.params[0].pat.hir_id);
                         let adj = cx
                             .typeck_results()
                             .expr_adjustments(&args[0])
@@ -3710,10 +3707,8 @@ fn lint_option_as_ref_deref<'tcx>(
                     if_chain! {
                         if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner1) = inner.kind;
                         if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner2) = inner1.kind;
-                        if let hir::ExprKind::Path(ref qpath) = inner2.kind;
-                        if let hir::def::Res::Local(local_id) = cx.qpath_res(qpath, inner2.hir_id);
                         then {
-                            closure_body.params[0].pat.hir_id == local_id
+                            path_to_local_id(inner2, closure_body.params[0].pat.hir_id)
                         } else {
                             false
                         }

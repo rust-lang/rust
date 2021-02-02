@@ -1,7 +1,7 @@
+use crate::utils::path_to_local_id;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
 use rustc_hir::intravisit::{self, walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, Expr, ExprKind, HirId, QPath, Stmt};
+use rustc_hir::{Arm, Expr, HirId, Stmt};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 
@@ -168,15 +168,11 @@ impl<'v> Visitor<'v> for LocalUsedVisitor {
     type Map = Map<'v>;
 
     fn visit_expr(&mut self, expr: &'v Expr<'v>) {
-        if let ExprKind::Path(QPath::Resolved(None, path)) = expr.kind {
-            if let Res::Local(id) = path.res {
-                if id == self.local_hir_id {
-                    self.used = true;
-                    return;
-                }
-            }
+        if path_to_local_id(expr, self.local_hir_id) {
+            self.used = true;
+        } else {
+            walk_expr(self, expr);
         }
-        walk_expr(self, expr);
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

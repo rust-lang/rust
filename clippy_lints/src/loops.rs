@@ -1,14 +1,13 @@
 use crate::consts::constant;
-use crate::utils::paths;
 use crate::utils::sugg::Sugg;
-use crate::utils::usage::{is_unused, mutated_variables};
+use crate::utils::usage::mutated_variables;
 use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
     indent_of, is_in_panic_handler, is_integer_const, is_no_std_crate, is_ok_ctor, is_refutable, is_some_ctor,
-    is_type_diagnostic_item, last_path_segment, match_trait_method, match_type, match_var, multispan_sugg,
-    single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
-    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
+    is_type_diagnostic_item, last_path_segment, match_trait_method, match_type, multispan_sugg, path_to_local,
+    path_to_local_id, paths, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -877,21 +876,6 @@ fn get_span_of_entire_for_loop(expr: &Expr<'_>) -> Span {
     }
 }
 
-fn same_var<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, var: HirId) -> bool {
-    if_chain! {
-        if let ExprKind::Path(qpath) = &expr.kind;
-        if let QPath::Resolved(None, path) = qpath;
-        if path.segments.len() == 1;
-        if let Res::Local(local_id) = cx.qpath_res(qpath, expr.hir_id);
-        then {
-            // our variable!
-            local_id == var
-        } else {
-            false
-        }
-    }
-}
-
 /// a wrapper of `Sugg`. Besides what `Sugg` do, this removes unnecessary `0`;
 /// and also, it avoids subtracting a variable from the same one by replacing it with `0`.
 /// it exists for the convenience of the overloaded operators while normal functions can do the
@@ -1044,14 +1028,9 @@ fn get_details_from_idx<'tcx>(
     idx: &Expr<'_>,
     starts: &[Start<'tcx>],
 ) -> Option<(StartKind<'tcx>, Offset)> {
-    fn get_start<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>, starts: &[Start<'tcx>]) -> Option<StartKind<'tcx>> {
-        starts.iter().find_map(|start| {
-            if same_var(cx, e, start.id) {
-                Some(start.kind)
-            } else {
-                None
-            }
-        })
+    fn get_start<'tcx>(e: &Expr<'_>, starts: &[Start<'tcx>]) -> Option<StartKind<'tcx>> {
+        let id = path_to_local(e)?;
+        starts.iter().find(|start| start.id == id).map(|start| start.kind)
     }
 
     fn get_offset<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>, starts: &[Start<'tcx>]) -> Option<Sugg<'static>> {
@@ -1060,7 +1039,7 @@ fn get_details_from_idx<'tcx>(
                 ast::LitKind::Int(x, _ty) => Some(Sugg::NonParen(x.to_string().into())),
                 _ => None,
             },
-            ExprKind::Path(..) if get_start(cx, e, starts).is_none() => Some(Sugg::hir(cx, e, "???")),
+            ExprKind::Path(..) if get_start(e, starts).is_none() => Some(Sugg::hir(cx, e, "???")),
             _ => None,
         }
     }
@@ -1068,18 +1047,18 @@ fn get_details_from_idx<'tcx>(
     match idx.kind {
         ExprKind::Binary(op, lhs, rhs) => match op.node {
             BinOpKind::Add => {
-                let offset_opt = get_start(cx, lhs, starts)
+                let offset_opt = get_start(lhs, starts)
                     .and_then(|s| get_offset(cx, rhs, starts).map(|o| (s, o)))
-                    .or_else(|| get_start(cx, rhs, starts).and_then(|s| get_offset(cx, lhs, starts).map(|o| (s, o))));
+                    .or_else(|| get_start(rhs, starts).and_then(|s| get_offset(cx, lhs, starts).map(|o| (s, o))));
 
                 offset_opt.map(|(s, o)| (s, Offset::positive(o)))
             },
             BinOpKind::Sub => {
-                get_start(cx, lhs, starts).and_then(|s| get_offset(cx, rhs, starts).map(|o| (s, Offset::negative(o))))
+                get_start(lhs, starts).and_then(|s| get_offset(cx, rhs, starts).map(|o| (s, Offset::negative(o))))
             },
             _ => None,
         },
-        ExprKind::Path(..) => get_start(cx, idx, starts).map(|s| (s, Offset::empty())),
+        ExprKind::Path(..) => get_start(idx, starts).map(|s| (s, Offset::empty())),
         _ => None,
     }
 }
@@ -1096,11 +1075,10 @@ fn get_assignment<'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx 
 /// The returned iterator yields `None` if no assignment expressions are there,
 /// filtering out the increments of the given whitelisted loop counters;
 /// because its job is to make sure there's nothing other than assignments and the increments.
-fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
-    cx: &'a LateContext<'tcx>,
+fn get_assignments<'a, 'tcx>(
     Block { stmts, expr, .. }: &'tcx Block<'tcx>,
-    loop_counters: &'c [Start<'tcx>],
-) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> + 'c {
+    loop_counters: &'a [Start<'tcx>],
+) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> + 'a {
     // As the `filter` and `map` below do different things, I think putting together
     // just increases complexity. (cc #3188 and #4193)
     stmts
@@ -1112,12 +1090,14 @@ fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
         .chain((*expr).into_iter())
         .filter(move |e| {
             if let ExprKind::AssignOp(_, place, _) = e.kind {
-                !loop_counters
-                    .iter()
-                    // skip the first item which should be `StartKind::Range`
-                    // this makes it possible to use the slice with `StartKind::Range` in the same iterator loop.
-                    .skip(1)
-                    .any(|counter| same_var(cx, place, counter.id))
+                path_to_local(place).map_or(false, |id| {
+                    !loop_counters
+                        .iter()
+                        // skip the first item which should be `StartKind::Range`
+                        // this makes it possible to use the slice with `StartKind::Range` in the same iterator loop.
+                        .skip(1)
+                        .any(|counter| counter.id == id)
+                })
             } else {
                 true
             }
@@ -1174,7 +1154,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
             if method.ident.name == sym!(len);
             if len_args.len() == 1;
             if let Some(arg) = len_args.get(0);
-            if var_def_id(cx, arg) == var_def_id(cx, base);
+            if path_to_local(arg) == path_to_local(base);
             then {
                 if sugg.as_str() == end_str {
                     sugg::EMPTY.into()
@@ -1279,7 +1259,7 @@ fn detect_manual_memcpy<'tcx>(
                 if let Some(loop_counters) = get_loop_counters(cx, block, expr) {
                     starts.extend(loop_counters);
                 }
-                iter_a = Some(get_assignments(cx, block, &starts));
+                iter_a = Some(get_assignments(block, &starts));
             } else {
                 iter_b = Some(get_assignment(body));
             }
@@ -1301,7 +1281,7 @@ fn detect_manual_memcpy<'tcx>(
                             if let Some((start_right, offset_right)) = get_details_from_idx(cx, &idx_right, &starts);
 
                             // Source and destination must be different
-                            if var_def_id(cx, base_left) != var_def_id(cx, base_right);
+                            if path_to_local(base_left) != path_to_local(base_right);
                             then {
                                 Some((IndexExpr { base: base_left, idx: start_left, idx_offset: offset_left },
                                     IndexExpr { base: base_right, idx: start_right, idx_offset: offset_right }))
@@ -2018,9 +1998,7 @@ fn check_manual_flatten<'tcx>(
             ) = inner_expr.kind;
             // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
             if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
-            if let ExprKind::Path(QPath::Resolved(None, match_expr_path)) = match_expr.kind;
-            if let Res::Local(match_expr_path_id) = match_expr_path.res;
-            if pat_hir_id == match_expr_path_id;
+            if path_to_local_id(match_expr, pat_hir_id);
             // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
             if let PatKind::TupleStruct(QPath::Resolved(None, path), _, _) = match_arms[0].pat.kind;
             let some_ctor = is_some_ctor(cx, path.res);
@@ -2131,20 +2109,11 @@ fn mut_warn_with_span(cx: &LateContext<'_>, span: Option<Span>) {
 
 fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId> {
     if_chain! {
-        if let ExprKind::Path(ref qpath) = bound.kind;
-        if let QPath::Resolved(None, _) = *qpath;
+        if let Some(hir_id) = path_to_local(bound);
+        if let Node::Binding(pat) = cx.tcx.hir().get(hir_id);
+        if let PatKind::Binding(BindingAnnotation::Mutable, ..) = pat.kind;
         then {
-            let res = cx.qpath_res(qpath, bound.hir_id);
-            if let Res::Local(hir_id) = res {
-                let node_str = cx.tcx.hir().get(hir_id);
-                if_chain! {
-                    if let Node::Binding(pat) = node_str;
-                    if let PatKind::Binding(BindingAnnotation::Mutable, ..) = pat.kind;
-                    then {
-                        return Some(hir_id);
-                    }
-                }
-            }
+            return Some(hir_id);
         }
     }
     None
@@ -2179,7 +2148,9 @@ fn check_for_mutation<'tcx>(
 fn pat_is_wild<'tcx>(pat: &'tcx PatKind<'_>, body: &'tcx Expr<'_>) -> bool {
     match *pat {
         PatKind::Wild => true,
-        PatKind::Binding(.., ident, None) if ident.as_str().starts_with('_') => is_unused(&ident, body),
+        PatKind::Binding(_, id, ident, None) if ident.as_str().starts_with('_') => {
+            !LocalUsedVisitor::new(id).check_expr(body)
+        },
         _ => false,
     }
 }
@@ -2215,7 +2186,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
             if let QPath::Resolved(None, ref seqvar) = *seqpath;
             if seqvar.segments.len() == 1;
             then {
-                let index_used_directly = same_var(self.cx, idx, self.var);
+                let index_used_directly = path_to_local_id(idx, self.var);
                 let indexed_indirectly = {
                     let mut used_visitor = LocalUsedVisitor::new(self.var);
                     walk_expr(&mut used_visitor, idx);
@@ -2286,17 +2257,14 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
 
         if_chain! {
             // directly using a variable
-            if let ExprKind::Path(ref qpath) = expr.kind;
-            if let QPath::Resolved(None, ref path) = *qpath;
-            if path.segments.len() == 1;
+            if let ExprKind::Path(QPath::Resolved(None, path)) = expr.kind;
+            if let Res::Local(local_id) = path.res;
             then {
-                if let Res::Local(local_id) = self.cx.qpath_res(qpath, expr.hir_id) {
-                    if local_id == self.var {
-                        self.nonindex = true;
-                    } else {
-                        // not the correct variable, but still a variable
-                        self.referenced.insert(path.segments[0].ident.name);
-                    }
+                if local_id == self.var {
+                    self.nonindex = true;
+                } else {
+                    // not the correct variable, but still a variable
+                    self.referenced.insert(path.segments[0].ident.name);
                 }
             }
         }
@@ -2354,7 +2322,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
 }
 
 fn is_used_inside<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, container: &'tcx Expr<'_>) -> bool {
-    let def_id = match var_def_id(cx, expr) {
+    let def_id = match path_to_local(expr) {
         Some(id) => id,
         None => return false,
     };
@@ -2367,12 +2335,11 @@ fn is_used_inside<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, container:
 }
 
 fn is_iterator_used_after_while_let<'tcx>(cx: &LateContext<'tcx>, iter_expr: &'tcx Expr<'_>) -> bool {
-    let def_id = match var_def_id(cx, iter_expr) {
+    let def_id = match path_to_local(iter_expr) {
         Some(id) => id,
         None => return false,
     };
     let mut visitor = VarUsedAfterLoopVisitor {
-        cx,
         def_id,
         iter_expr_id: iter_expr.hir_id,
         past_while_let: false,
@@ -2384,20 +2351,19 @@ fn is_iterator_used_after_while_let<'tcx>(cx: &LateContext<'tcx>, iter_expr: &'t
     visitor.var_used_after_while_let
 }
 
-struct VarUsedAfterLoopVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
+struct VarUsedAfterLoopVisitor {
     def_id: HirId,
     iter_expr_id: HirId,
     past_while_let: bool,
     var_used_after_while_let: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.past_while_let {
-            if Some(self.def_id) == var_def_id(self.cx, expr) {
+            if path_to_local_id(expr, self.def_id) {
                 self.var_used_after_while_let = true;
             }
         } else if self.iter_expr_id == expr.hir_id {
@@ -2519,7 +2485,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
         }
 
         // If node is a variable
-        if let Some(def_id) = var_def_id(self.cx, expr) {
+        if let Some(def_id) = path_to_local(expr) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 let state = self.states.entry(def_id).or_insert(IncrementVisitorVarState::Initial);
                 if *state == IncrementVisitorVarState::IncrOnce {
@@ -2646,7 +2612,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         }
 
         // If node is the desired variable, see how it's used
-        if var_def_id(self.cx, expr) == Some(self.var_id) {
+        if path_to_local_id(expr, self.var_id) {
             if self.past_loop {
                 self.state = InitializeVisitorState::DontWarn;
                 return;
@@ -2693,16 +2659,6 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     }
 }
 
-fn var_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<HirId> {
-    if let ExprKind::Path(ref qpath) = expr.kind {
-        let path_res = cx.qpath_res(qpath, expr.hir_id);
-        if let Res::Local(hir_id) = path_res {
-            return Some(hir_id);
-        }
-    }
-    None
-}
-
 fn is_loop(expr: &Expr<'_>) -> bool {
     matches!(expr.kind, ExprKind::Loop(..))
 }
@@ -2725,8 +2681,8 @@ fn is_nested(cx: &LateContext<'_>, match_expr: &Expr<'_>, iter_expr: &Expr<'_>) 
 
 fn is_loop_nested(cx: &LateContext<'_>, loop_expr: &Expr<'_>, iter_expr: &Expr<'_>) -> bool {
     let mut id = loop_expr.hir_id;
-    let iter_name = if let Some(name) = path_name(iter_expr) {
-        name
+    let iter_id = if let Some(id) = path_to_local(iter_expr) {
+        id
     } else {
         return true;
     };
@@ -2744,7 +2700,7 @@ fn is_loop_nested(cx: &LateContext<'_>, loop_expr: &Expr<'_>, iter_expr: &Expr<'
             Some(Node::Block(block)) => {
                 let mut block_visitor = LoopNestVisitor {
                     hir_id: id,
-                    iterator: iter_name,
+                    iterator: iter_id,
                     nesting: Unknown,
                 };
                 walk_block(&mut block_visitor, block);
@@ -2772,7 +2728,7 @@ use self::Nesting::{LookFurther, RuledOut, Unknown};
 
 struct LoopNestVisitor {
     hir_id: HirId,
-    iterator: Symbol,
+    iterator: HirId,
     nesting: Nesting,
 }
 
@@ -2797,7 +2753,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
         }
         match expr.kind {
             ExprKind::Assign(ref path, _, _) | ExprKind::AssignOp(_, ref path, _) => {
-                if match_var(path, self.iterator) {
+                if path_to_local_id(path, self.iterator) {
                     self.nesting = RuledOut;
                 }
             },
@@ -2809,8 +2765,8 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
         if self.nesting != Unknown {
             return;
         }
-        if let PatKind::Binding(.., span_name, _) = pat.kind {
-            if self.iterator == span_name.name {
+        if let PatKind::Binding(_, id, ..) = pat.kind {
+            if id == self.iterator {
                 self.nesting = RuledOut;
                 return;
             }
@@ -2821,16 +2777,6 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
-}
-
-fn path_name(e: &Expr<'_>) -> Option<Symbol> {
-    if let ExprKind::Path(QPath::Resolved(_, ref path)) = e.kind {
-        let segments = &path.segments;
-        if segments.len() == 1 {
-            return Some(segments[0].ident.name);
-        }
-    };
-    None
 }
 
 fn check_infinite_loop<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) {
@@ -3194,7 +3140,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UsedCountVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if same_var(self.cx, expr, self.id) {
+        if path_to_local_id(expr, self.id) {
             self.count += 1;
         } else {
             walk_expr(self, expr);
