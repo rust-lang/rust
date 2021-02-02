@@ -67,6 +67,22 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         write!(f, ")")
     }
 
+    /// Declare that we are forcing this dep_node_index.
+    fn current_node() -> Option<DepNodeIndex> {
+        ty::tls::with_context_opt(|icx| icx.and_then(|icx| icx.dep_node_index))
+    }
+
+    fn within_node<OP, R>(dep_node_index: DepNodeIndex, op: OP) -> R
+    where
+        OP: FnOnce() -> R,
+    {
+        ty::tls::with_context(|icx| {
+            let icx = ty::tls::ImplicitCtxt { dep_node_index: Some(dep_node_index), ..icx.clone() };
+
+            ty::tls::enter_context(&icx, |_| op())
+        })
+    }
+
     fn with_deps<OP, R>(task_deps: Option<&Lock<TaskDeps>>, op: OP) -> R
     where
         OP: FnOnce() -> R,

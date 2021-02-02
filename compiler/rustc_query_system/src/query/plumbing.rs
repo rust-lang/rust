@@ -550,9 +550,9 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
 ) where
     CTX: QueryContext,
 {
-    assert!(
-        Some(tcx.dep_graph().fingerprint_of(dep_node_index))
-            == tcx.dep_graph().prev_fingerprint_of(dep_node),
+    assert_eq!(
+        Some(tcx.dep_graph().fingerprint_of(dep_node_index)),
+        tcx.dep_graph().prev_fingerprint_of(dep_node),
         "fingerprint for green query instance not loaded from cache: {:?}",
         dep_node,
     );
@@ -565,7 +565,7 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
 
     let old_hash = tcx.dep_graph().fingerprint_of(dep_node_index);
 
-    assert!(new_hash == old_hash, "found unstable fingerprints for {:?}", dep_node,);
+    assert_eq!(new_hash, old_hash, "found unstable fingerprints for {:?}", dep_node,);
 }
 
 fn force_query_with_job<C, CTX>(
@@ -756,12 +756,22 @@ where
                 dep_node_index
             } else {
                 let dep_node = query.to_dep_node(tcx, &key);
-                let edges = smallvec![];
+                let pending_index = tcx.dep_graph().reserve_dep_node(&dep_node);
+                let edges = smallvec![
+                    <CTX::DepKind as DepKind>::current_node()
+                        .expect("feed_query must be called from another query.")
+                ];
                 let current_fingerprint = {
                     let mut hcx = tcx.create_stable_hashing_context();
                     query.hash_result(&mut hcx, &value)
                 };
-                tcx.dep_graph().create_dep_node(dep_node, tcx, edges, current_fingerprint)
+                tcx.dep_graph().create_dep_node(
+                    dep_node,
+                    tcx,
+                    pending_index,
+                    edges,
+                    current_fingerprint,
+                )
             };
 
             debug!("feed(key={:?}) @ dni={:?} => value={:?}", key, dep_node_index, value);
@@ -823,7 +833,6 @@ where
     debug!("ty::query::feed_query<{}>(key={:?}, value={:?})", Q::NAME, key, value);
 
     assert!(!Q::ANON);
-    assert!(!Q::EVAL_ALWAYS);
 
     let state = Q::query_state(tcx);
     feed_query_impl(tcx, state, key, value, &Q::VTABLE)

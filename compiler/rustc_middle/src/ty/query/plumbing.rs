@@ -60,13 +60,8 @@ impl QueryContext for TyCtxt<'tcx> {
         // when accessing the `ImplicitCtxt`.
         tls::with_related_context(*self, move |current_icx| {
             // Update the `ImplicitCtxt` to point to our new query job.
-            let new_icx = ImplicitCtxt {
-                tcx: *self,
-                query: Some(token),
-                diagnostics,
-                layout_depth: current_icx.layout_depth,
-                task_deps: current_icx.task_deps,
-            };
+            let new_icx =
+                ImplicitCtxt { tcx: *self, query: Some(token), diagnostics, ..*current_icx };
 
             // Use the `ImplicitCtxt` while we execute the query.
             tls::enter_context(&new_icx, |_| {

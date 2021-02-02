@@ -73,6 +73,14 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Hash {
     /// Implementation of `std::fmt::Debug` for `DepNode`.
     fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
+    /// Declare that we are forcing this dep_node_index.
+    fn current_node() -> Option<DepNodeIndex>;
+
+    /// Declare that we are forcing this dep_node_index.
+    fn within_node<OP, R>(dep_node_index: DepNodeIndex, op: OP) -> R
+    where
+        OP: FnOnce() -> R;
+
     /// Execute the operation with provided dependencies.
     fn with_deps<OP, R>(deps: Option<&Lock<TaskDeps<Self>>>, op: OP) -> R
     where
