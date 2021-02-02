@@ -181,6 +181,7 @@ mod copy_iterator;
 mod create_dir;
 mod dbg_macro;
 mod default;
+mod default_numeric_fallback;
 mod dereference;
 mod derive;
 mod disallowed_method;
@@ -584,6 +585,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &dbg_macro::DBG_MACRO,
         &default::DEFAULT_TRAIT_ACCESS,
         &default::FIELD_REASSIGN_WITH_DEFAULT,
+        &default_numeric_fallback::DEFAULT_NUMERIC_FALLBACK,
         &dereference::EXPLICIT_DEREF_METHODS,
         &derive::DERIVE_HASH_XOR_EQ,
         &derive::DERIVE_ORD_XOR_PARTIAL_ORD,
@@ -1026,6 +1028,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box strings::StringAdd);
     store.register_late_pass(|| box implicit_return::ImplicitReturn);
     store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
+    store.register_late_pass(|| box default_numeric_fallback::DefaultNumericFallback);
 
     let msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
@@ -1258,6 +1261,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&asm_syntax::INLINE_ASM_X86_INTEL_SYNTAX),
         LintId::of(&create_dir::CREATE_DIR),
         LintId::of(&dbg_macro::DBG_MACRO),
+        LintId::of(&default_numeric_fallback::DEFAULT_NUMERIC_FALLBACK),
         LintId::of(&else_if_without_else::ELSE_IF_WITHOUT_ELSE),
         LintId::of(&exhaustive_items::EXHAUSTIVE_ENUMS),
         LintId::of(&exhaustive_items::EXHAUSTIVE_STRUCTS),
