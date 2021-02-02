@@ -271,8 +271,16 @@ impl DefMap {
                         );
                     }
 
+                    let def_map;
+                    let module_data = if module.block == self.block_id() {
+                        &self[module.local_id]
+                    } else {
+                        def_map = module.def_map(db);
+                        &def_map[module.local_id]
+                    };
+
                     // Since it is a qualified path here, it should not contains legacy macros
-                    self[module.local_id].scope.get(&segment)
+                    module_data.scope.get(&segment)
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     // enum variant
