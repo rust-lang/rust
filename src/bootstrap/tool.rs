@@ -376,7 +376,15 @@ pub struct ErrorIndex {
 }
 
 impl ErrorIndex {
-    pub fn command(builder: &Builder<'_>, compiler: Compiler) -> Command {
+    pub fn command(builder: &Builder<'_>) -> Command {
+        // This uses stage-1 to match the behavior of building rustdoc.
+        // Error-index-generator links with the rustdoc library, so we want to
+        // use the same librustdoc to avoid building rustdoc twice (and to
+        // avoid building the compiler an extra time). This uses
+        // saturating_sub to deal with building with stage 0. (Using stage 0
+        // isn't recommended, since it will fail if any new error index tests
+        // use new syntax, but it should work otherwise.)
+        let compiler = builder.compiler(builder.top_stage.saturating_sub(1), builder.config.build);
         let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
         add_dylib_path(
             vec![PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host))],
@@ -396,8 +404,14 @@ impl Step for ErrorIndex {
     fn make_run(run: RunConfig<'_>) {
         // Compile the error-index in the same stage as rustdoc to avoid
         // recompiling rustdoc twice if we can.
-        let host = run.builder.config.build;
-        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
+        //
+        // NOTE: This `make_run` isn't used in normal situations, only if you
+        // manually build the tool with `x.py build
+        // src/tools/error-index-generator` which almost nobody does.
+        // Normally, `x.py test` or `x.py doc` will use the
+        // `ErrorIndex::command` function instead.
+        let compiler =
+            run.builder.compiler(run.builder.top_stage.saturating_sub(1), run.builder.config.build);
         run.builder.ensure(ErrorIndex { compiler });
     }
 
