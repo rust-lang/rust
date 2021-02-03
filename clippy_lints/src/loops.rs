@@ -2041,25 +2041,24 @@ fn check_manual_flatten<'tcx>(
                     &mut applicability,
                 );
                 // Determine if `arg` is by reference, an `Iterator`, or implicitly adjusted with `into_iter`
-                let hint = match arg.kind {
-                    ExprKind::AddrOf(_, _, arg_expr) => {
+                let arg_ty = cx.typeck_results().expr_ty(arg);
+                let hint = if arg_ty.is_ref() {
+                    if has_iter_method(cx, arg_ty).is_none() {
+                        return;
+                    } else if let ExprKind::AddrOf(_, _, arg_expr) = arg.kind {
                         format!("{}.iter().flatten()", snippet(cx, arg_expr.span, ".."))
-                    },
-                    ExprKind::MethodCall(_, _, _, _) | ExprKind::Path(QPath::Resolved(None, _)) => {
-                        // Determine if `arg` is `Iterator` or implicitly calls `into_iter`
-                        let arg_ty = cx.typeck_results().expr_ty(arg);
-                        if let Some(id) = get_trait_def_id(cx, &paths::ITERATOR) {
-                            let is_iterator = implements_trait(cx, arg_ty, id, &[]);
-                            if is_iterator {
-                                format!("{}.flatten()", arg_snippet)
-                            } else {
-                                format!("{}.into_iter().flatten()", arg_snippet)
-                            }
-                        } else {
-                            return
-                        }
-                    },
-                    _ => return,
+                    } else {
+                        return;
+                    }
+                } else if let Some(id) = get_trait_def_id(cx, &paths::ITERATOR) {
+                    let is_iterator = implements_trait(cx, arg_ty, id, &[]);
+                    if is_iterator {
+                        format!("{}.flatten()", arg_snippet)
+                    } else {
+                        format!("{}.into_iter().flatten()", arg_snippet)
+                    }
+                } else {
+                    return
                 };
 
                 span_lint_and_sugg(
