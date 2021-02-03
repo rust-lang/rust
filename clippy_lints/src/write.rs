@@ -233,7 +233,11 @@ impl_lint_pass!(Write => [
 
 impl EarlyLintPass for Write {
     fn check_item(&mut self, _: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Impl(box ImplKind { of_trait: Some(trait_ref), .. }) = &item.kind {
+        if let ItemKind::Impl(box ImplKind {
+            of_trait: Some(trait_ref),
+            ..
+        }) = &item.kind
+        {
             let trait_name = trait_ref
                 .path
                 .segments

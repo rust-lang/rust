@@ -1,0 +1,67 @@
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/doc_panics.rs:7:1
+   |
+LL | / pub fn unwrap() {
+LL | |     let result = Err("Hi");
+LL | |     result.unwrap()
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::missing-panics-doc` implied by `-D warnings`
+note: first possible panic found here
+  --> $DIR/doc_panics.rs:9:5
+   |
+LL |     result.unwrap()
+   |     ^^^^^^^^^^^^^^^
+
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/doc_panics.rs:13:1
+   |
+LL | / pub fn panic() {
+LL | |     panic!("This function panics")
+LL | | }
+   | |_^
+   |
+note: first possible panic found here
+  --> $DIR/doc_panics.rs:14:5
+   |
+LL |     panic!("This function panics")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/doc_panics.rs:18:1
+   |
+LL | / pub fn todo() {
+LL | |     todo!()
+LL | | }
+   | |_^
+   |
+note: first possible panic found here
+  --> $DIR/doc_panics.rs:19:5
+   |
+LL |     todo!()
+   |     ^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/doc_panics.rs:23:1
+   |
+LL | / pub fn inner_body(opt: Option<u32>) {
+LL | |     opt.map(|x| {
+LL | |         if x == 10 {
+LL | |             panic!()
+LL | |         }
+LL | |     });
+LL | | }
+   | |_^
+   |
+note: first possible panic found here
+  --> $DIR/doc_panics.rs:26:13
+   |
+LL |             panic!()
+   |             ^^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
