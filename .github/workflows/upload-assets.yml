@@ -9,18 +9,18 @@ jobs:
     name: build-release
     strategy:
       matrix:
-        build: [linux, macos, windows-gnu, windows-msvc]
+        build: [linux-x86_64, macos-x86_64, windows-x86_64-gnu, windows-x86_64-msvc]
         include:
-          - build: linux
+          - build: linux-x86_64
             os: ubuntu-latest
             rust: nightly
-          - build: macos
+          - build: macos-x86_64
             os: macos-latest
             rust: nightly
-          - build: windows-gnu
+          - build: windows-x86_64-gnu
             os: windows-latest
             rust: nightly-x86_64-gnu
-          - build: windows-msvc
+          - build: windows-x86_64-msvc
             os: windows-latest
             rust: nightly-x86_64-msvc
     runs-on: ${{ matrix.os }}
