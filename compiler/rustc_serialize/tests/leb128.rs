@@ -1,3 +1,4 @@
+#![feature(int_bits_const)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array)]
 
