@@ -810,14 +810,10 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
             // Only check the presence of the `const` modifier.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id());
             let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
-            (is_const_fn, needs_inline || is_const_fn || always_encode_mir)
+            (is_const_fn, needs_inline || always_encode_mir)
         }
         // Generators require optimized MIR to compute layout.
-        DefKind::Generator => {
-            // Only check the presence of the `const` modifier.
-            let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id());
-            (is_const_fn, true)
-        }
+        DefKind::Generator => (false, true),
         // The others don't have MIR.
         _ => (false, false),
     }
