@@ -3,7 +3,7 @@ use std::ops::Range;
 
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then};
 use if_chain::if_chain;
-use rustc_ast::ast::{Expr, ExprKind, Item, ItemKind, LitKind, MacCall, StrLit, StrStyle};
+use rustc_ast::ast::{Expr, ExprKind, ImplKind, Item, ItemKind, LitKind, MacCall, StrLit, StrStyle};
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;
@@ -231,10 +231,10 @@ impl_lint_pass!(Write => [
 
 impl EarlyLintPass for Write {
     fn check_item(&mut self, _: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Impl {
+        if let ItemKind::Impl(box ImplKind {
             of_trait: Some(trait_ref),
             ..
-        } = &item.kind
+        }) = &item.kind
         {
             let trait_name = trait_ref
                 .path
