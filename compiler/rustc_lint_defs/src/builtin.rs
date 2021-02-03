@@ -5,9 +5,47 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
+// ignore-tidy-filelength
+
 use crate::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
+
+declare_lint! {
+    /// The `forbidden_lint_groups` lint detects violations of
+    /// `forbid` applied to a lint group. Due to a bug in the compiler,
+    /// these used to be overlooked entirely. They now generate a warning.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![forbid(warnings)]
+    /// #![deny(bad_style)]
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Recommended fix
+    ///
+    /// If your crate is using `#![forbid(warnings)]`,
+    /// we recommend that you change to `#![deny(warnings)]`.
+    ///
+    /// ### Explanation
+    ///
+    /// Due to a compiler bug, applying `forbid` to lint groups
+    /// previously had no effect. The bug is now fixed but instead of
+    /// enforcing `forbid` we issue this future-compatibility warning
+    /// to avoid breaking existing crates.
+    pub FORBIDDEN_LINT_GROUPS,
+    Warn,
+    "applying forbid to lint-groups",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #81670 <https://github.com/rust-lang/rust/issues/81670>",
+        edition: None,
+    };
+}
 
 declare_lint! {
     /// The `ill_formed_attribute_input` lint detects ill-formed attribute
@@ -2888,6 +2926,7 @@ declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
     HardwiredLints => [
+        FORBIDDEN_LINT_GROUPS,
         ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
         ARITHMETIC_OVERFLOW,
         UNCONDITIONAL_PANIC,
