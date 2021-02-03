@@ -2910,7 +2910,7 @@ function defocusSearchBar() {
             ["-", "Collapse all sections"],
         ].map(x => "<dt>" +
             x[0].split(" ")
-                .map((y, index) => (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : y)
+                .map((y, index) => (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " ")
                 .join("") + "</dt><dd>" + x[1] + "</dd>").join("");
         var div_shortcuts = document.createElement("div");
         addClass(div_shortcuts, "shortcuts");
