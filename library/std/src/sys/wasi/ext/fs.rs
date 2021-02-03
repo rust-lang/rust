@@ -502,6 +502,8 @@ pub fn rename<P: AsRef<Path>, U: AsRef<Path>>(
     )
 }
 
+/// Create a symbolic link.
+///
 /// This corresponds to the `path_symlink` syscall.
 pub fn symlink<P: AsRef<Path>, U: AsRef<Path>>(
     old_path: P,
