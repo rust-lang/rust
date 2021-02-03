@@ -74,42 +74,42 @@ const char *KnownInactiveFunctionsStartingWith[] = {
     "_ZN4core3fmt", "_ZN3std2io5stdio6_print", "f90io"};
 
 std::set<std::string> KnownInactiveFunctions = {"__assert_fail",
-                                        "__cxa_guard_acquire",
-                                        "__cxa_guard_release",
-                                        "__cxa_guard_abort",
-                                        "printf",
-                                        "vprintf",
-                                        "puts",
-                                        "__enzyme_float",
-                                        "__enzyme_double",
-                                        "__enzyme_integer",
-                                        "__enzyme_pointer",
-                                        "__kmpc_for_static_init_4",
-                                        "__kmpc_for_static_init_4u",
-                                        "__kmpc_for_static_init_8",
-                                        "__kmpc_for_static_init_8u",
-                                        "__kmpc_for_static_fini",
-                                        "__kmpc_dispatch_init_4",
-                                        "__kmpc_dispatch_init_4u",
-                                        "__kmpc_dispatch_init_8",
-                                        "__kmpc_dispatch_init_8u",
-                                        "__kmpc_dispatch_next_4",
-                                        "__kmpc_dispatch_next_4u",
-                                        "__kmpc_dispatch_next_8",
-                                        "__kmpc_dispatch_next_8u",
-                                        "__kmpc_dispatch_fini_4",
-                                        "__kmpc_dispatch_fini_4u",
-                                        "__kmpc_dispatch_fini_8",
-                                        "__kmpc_dispatch_fini_8u",
-                                        "malloc_usable_size",
-                                        "malloc_size",
-                                        "MPI_Init",
-                                        "MPI_Comm_size",
-                                        "MPI_Comm_rank",
-                                        "MPI_Get_processor_name",
-                                        "MPI_Finalize",
-                                        "_msize",
-                                        "ftnio_fmt_write64"};
+                                                "__cxa_guard_acquire",
+                                                "__cxa_guard_release",
+                                                "__cxa_guard_abort",
+                                                "printf",
+                                                "vprintf",
+                                                "puts",
+                                                "__enzyme_float",
+                                                "__enzyme_double",
+                                                "__enzyme_integer",
+                                                "__enzyme_pointer",
+                                                "__kmpc_for_static_init_4",
+                                                "__kmpc_for_static_init_4u",
+                                                "__kmpc_for_static_init_8",
+                                                "__kmpc_for_static_init_8u",
+                                                "__kmpc_for_static_fini",
+                                                "__kmpc_dispatch_init_4",
+                                                "__kmpc_dispatch_init_4u",
+                                                "__kmpc_dispatch_init_8",
+                                                "__kmpc_dispatch_init_8u",
+                                                "__kmpc_dispatch_next_4",
+                                                "__kmpc_dispatch_next_4u",
+                                                "__kmpc_dispatch_next_8",
+                                                "__kmpc_dispatch_next_8u",
+                                                "__kmpc_dispatch_fini_4",
+                                                "__kmpc_dispatch_fini_4u",
+                                                "__kmpc_dispatch_fini_8",
+                                                "__kmpc_dispatch_fini_8u",
+                                                "malloc_usable_size",
+                                                "malloc_size",
+                                                "MPI_Init",
+                                                "MPI_Comm_size",
+                                                "MPI_Comm_rank",
+                                                "MPI_Get_processor_name",
+                                                "MPI_Finalize",
+                                                "_msize",
+                                                "ftnio_fmt_write64"};
 
 /// Is the use of value val as an argument of call CI known to be inactive
 /// This tool can only be used when in DOWN mode
@@ -831,12 +831,12 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
         // If this is a malloc or free, this doesn't impact the activity
         if (auto CI = dyn_cast<CallInst>(&I)) {
-          Function* F = CI->getCalledFunction();
-          #if LLVM_VERSION_MAJOR >= 11
+          Function *F = CI->getCalledFunction();
+#if LLVM_VERSION_MAJOR >= 11
           if (auto Cst = dyn_cast<CastInst>(CI->getCalledOperand()))
-          #else
+#else
           if (auto Cst = dyn_cast<CastInst>(CI->getCalledValue()))
-          #endif
+#endif
           {
             F = dyn_cast<Function>(Cst->getOperand(0));
           }
@@ -846,7 +846,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
                 isDeallocationFunction(*F, TLI)) {
               continue;
             }
-            
+
             bool noUse = false;
             for (auto FuncName : KnownInactiveFunctionsStartingWith) {
               if (F->getName().startswith(FuncName)) {
@@ -854,11 +854,13 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
                 break;
               }
             }
-            if (noUse) continue;
+            if (noUse)
+              continue;
             if (KnownInactiveFunctions.count(F->getName().str())) {
               continue;
             }
-            if (isMemFreeLibMFunction(F->getName()) || F->getName() == "__fd_sincos_1") {
+            if (isMemFreeLibMFunction(F->getName()) ||
+                F->getName() == "__fd_sincos_1") {
               continue;
             }
 
@@ -967,8 +969,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             // active
             potentiallyActiveLoad = !Hypothesis->isConstantValue(TR, LI);
           } else if (auto MTI = dyn_cast<MemTransferInst>(&I)) {
-            potentiallyActiveLoad = !Hypothesis->isConstantValue(
-                TR, MTI->getArgOperand(0));
+            potentiallyActiveLoad =
+                !Hypothesis->isConstantValue(TR, MTI->getArgOperand(0));
           } else {
             // Otherwise fallback and check any part of the instruction is
             // active
@@ -981,11 +983,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           if (printconst)
             llvm::errs() << "potential active store: " << I << "\n";
           if (auto SI = dyn_cast<StoreInst>(&I)) {
-            potentialStore = !Hypothesis->isConstantValue(
-                TR, SI->getValueOperand());
+            potentialStore =
+                !Hypothesis->isConstantValue(TR, SI->getValueOperand());
           } else if (auto MTI = dyn_cast<MemTransferInst>(&I)) {
-            potentialStore = !Hypothesis->isConstantValue(
-                TR, MTI->getArgOperand(1));
+            potentialStore =
+                !Hypothesis->isConstantValue(TR, MTI->getArgOperand(1));
           } else {
             // Otherwise fallback and check if the instruction is active
             // TODO: note that this can be optimized (especially for function
@@ -1278,8 +1280,8 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
 
       if (KnownInactiveFunctions.count(called->getName().str())) {
         if (printconst)
-        llvm::errs() << "constant(" << (int)directions << ") up-knowninactivecall " << *inst
-                      << "\n";
+          llvm::errs() << "constant(" << (int)directions
+                       << ") up-knowninactivecall " << *inst << "\n";
         return true;
       }
 

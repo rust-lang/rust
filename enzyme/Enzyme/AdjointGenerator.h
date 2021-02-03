@@ -1369,23 +1369,6 @@ public:
       return;
     }
 
-    /*
-    if (gutils->isConstantValue(MTI.getOperand(1))) {
-      auto DstOrig =
-  #if LLVM_VERSION_MAJOR >= 12
-          getUnderlyingObject(MTI.getOperand(0)), 100);
-  #else
-          GetUnderlyingObject(MTI.getOperand(0)), TR.info.Function->getParent()->getDataLayout(),
-                              100);
-  #endif
-      if (auto AI = dyn_cast<AllocaInst>(DstOrig)) {
-        if (!ATA.isValueActivelyStoredOrReturned(AI)) {
-          fdsfads
-        }
-      }
-    }
-    */
-
     Value *orig_op0 = MTI.getOperand(0);
     Value *orig_op1 = MTI.getOperand(1);
     Value *op2 = gutils->getNewFromOriginal(MTI.getOperand(2));

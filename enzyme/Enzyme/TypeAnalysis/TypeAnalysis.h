@@ -131,7 +131,7 @@ public:
   llvm::Type *addingType(size_t num, llvm::Value *val);
 
   /// Return whether a given block is analyzed
-  bool isBlockAnalyzed(llvm::BasicBlock* BB);
+  bool isBlockAnalyzed(llvm::BasicBlock *BB);
 
   /// Returns whether in the first num bytes there is pointer, int, float, or
   /// none If pointerIntSame is set to true, then consider either as the same

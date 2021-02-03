@@ -1845,15 +1845,20 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
 
       Type *PNfloatType = PNtype.isFloat();
       if (!PNfloatType) {
+        if (looseTypeAnalysis) {
+          if (orig->getType()->isFPOrFPVectorTy())
+            PNfloatType = orig->getType()->getScalarType();
+        }
+      }
+      if (!PNfloatType) {
         llvm::errs() << *gutils->oldFunc->getParent() << "\n";
         llvm::errs() << *gutils->oldFunc << "\n";
         llvm::errs() << " for orig " << *orig << " saw "
                      << TR.intType(size, orig, /*necessary*/ false).str()
                      << " - "
                      << "\n";
+        TR.intType(size, orig, /*necessary*/ true);
       }
-      assert(PNfloatType);
-      TR.intType(size, orig, /*necessary*/ true);
 
       auto prediff = gutils->diffe(orig, Builder);
 
