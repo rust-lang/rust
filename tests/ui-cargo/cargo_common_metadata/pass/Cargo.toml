@@ -1,6 +1,7 @@
 [package]
 name = "cargo_common_metadata"
 version = "0.1.0"
+publish = false
 authors = ["Random person from the Internet <someone@someplace.org>"]
 description = "A test package for the cargo_common_metadata lint"
 repository = "https://github.com/someone/cargo_common_metadata"
