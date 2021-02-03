@@ -133,14 +133,16 @@ where
     }
 }
 
-pub struct LocalUsedVisitor {
+pub struct LocalUsedVisitor<'hir> {
+    hir: Map<'hir>,
     pub local_hir_id: HirId,
     pub used: bool,
 }
 
-impl LocalUsedVisitor {
-    pub fn new(local_hir_id: HirId) -> Self {
+impl<'hir> LocalUsedVisitor<'hir> {
+    pub fn new(cx: &LateContext<'hir>, local_hir_id: HirId) -> Self {
         Self {
+            hir: cx.tcx.hir(),
             local_hir_id,
             used: false,
         }
@@ -151,23 +153,26 @@ impl LocalUsedVisitor {
         std::mem::replace(&mut self.used, false)
     }
 
-    pub fn check_arm(&mut self, arm: &Arm<'_>) -> bool {
+    pub fn check_arm(&mut self, arm: &'hir Arm<'_>) -> bool {
         self.check(arm, Self::visit_arm)
     }
 
-    pub fn check_expr(&mut self, expr: &Expr<'_>) -> bool {
+    pub fn check_expr(&mut self, expr: &'hir Expr<'_>) -> bool {
         self.check(expr, Self::visit_expr)
     }
 
-    pub fn check_stmt(&mut self, stmt: &Stmt<'_>) -> bool {
+    pub fn check_stmt(&mut self, stmt: &'hir Stmt<'_>) -> bool {
         self.check(stmt, Self::visit_stmt)
     }
 }
 
-impl<'v> Visitor<'v> for LocalUsedVisitor {
+impl<'v> Visitor<'v> for LocalUsedVisitor<'v> {
     type Map = Map<'v>;
 
     fn visit_expr(&mut self, expr: &'v Expr<'v>) {
+        if self.used {
+            return;
+        }
         if path_to_local_id(expr, self.local_hir_id) {
             self.used = true;
         } else {
@@ -176,6 +181,6 @@ impl<'v> Visitor<'v> for LocalUsedVisitor {
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
+        NestedVisitorMap::OnlyBodies(self.hir)
     }
 }

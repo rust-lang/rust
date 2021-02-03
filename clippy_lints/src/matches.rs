@@ -911,7 +911,7 @@ fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms
     }
 }
 
-fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
+fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'tcx>]) {
     let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
     if is_type_diagnostic_item(cx, ex_ty, sym::result_type) {
         for arm in arms {
@@ -924,7 +924,9 @@ fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                         // Looking for unused bindings (i.e.: `_e`)
                         inner.iter().for_each(|pat| {
                             if let PatKind::Binding(_, id, ident, None) = pat.kind {
-                                if ident.as_str().starts_with('_') && !LocalUsedVisitor::new(id).check_expr(arm.body) {
+                                if ident.as_str().starts_with('_')
+                                    && !LocalUsedVisitor::new(cx, id).check_expr(arm.body)
+                                {
                                     ident_bind_name = (&ident.name.as_str()).to_string();
                                     matching_wild = true;
                                 }
