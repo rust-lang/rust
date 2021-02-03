@@ -164,7 +164,7 @@ These crates also define various intermediate representations of the core.
 
 **Architecture Invariant:** these crates explicitly care about being incremental.
 The core invariant we maintain is "typing inside a function's body never invalidates global derived data".
-IE, if you change the body of `foo`, all facts about `bar` should remain intact.
+i.e., if you change the body of `foo`, all facts about `bar` should remain intact.
 
 **Architecture Invariant:** hir exists only in context of particular crate instance with specific CFG flags.
 The same syntax may produce several instances of HIR if the crate participates in the crate graph more than once.
@@ -232,7 +232,7 @@ All other requests are processed in background.
 
 **Architecture Invariant:** the server is stateless, a-la HTTP.
 Sometimes state needs to be preserved between requests.
-For example, "what is the `edit` for the fifth's completion item of the last completion edit?".
+For example, "what is the `edit` for the fifth completion item of the last completion edit?".
 For this, the second request should include enough info to re-create the context from scratch.
 This generally means including all the parameters of the original request.
 
@@ -249,7 +249,7 @@ These crates deal with invoking `cargo` to learn about project structure and get
 They use `crates/path` heavily instead of `std::path`.
 A single `rust-analyzer` process can serve many projects, so it is important that server's current directory does not leak.
 
-### `crates/mbe`, `crated/tt`, `crates/proc_macro_api`, `crates/proc_macro_srv`
+### `crates/mbe`, `crates/tt`, `crates/proc_macro_api`, `crates/proc_macro_srv`
 
 These crates implement macros as token tree -> token tree transforms.
 They are independent from the rest of the code.
@@ -264,7 +264,7 @@ These crates implement a virtual file system.
 They provide consistent snapshots of the underlying file system and insulate messy OS paths.
 
 **Architecture Invariant:** vfs doesn't assume a single unified file system.
-IE, a single rust-analyzer process can act as a remote server for two different machines, where the same `/tmp/foo.rs` path points to different files.
+i.e., a single rust-analyzer process can act as a remote server for two different machines, where the same `/tmp/foo.rs` path points to different files.
 For this reason, all path APIs generally take some existing path as a "file system witness".
 
 ### `crates/stdx`
