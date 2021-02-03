@@ -109,7 +109,7 @@ See <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
 | HIR          | High-Level Intermediate Representation |
 | TCX          | Type context                           |
 
-This is a concise list of abbreviations that can come up during clippy development. An extensive
+This is a concise list of abbreviations that can come up during Clippy development. An extensive
 general list can be found in the [rustc-dev-guide glossary][glossary]. Always feel free to ask if
 an abbreviation or meaning is unclear to you.
 

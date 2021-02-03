@@ -56,27 +56,36 @@ pub mod enums {
 pub mod structs {
     #[non_exhaustive]
     pub struct Exhaustive {
-        foo: u8,
-        bar: String,
+        pub foo: u8,
+        pub bar: String,
     }
 
     // no warning, already non_exhaustive
     #[non_exhaustive]
     pub struct NonExhaustive {
-        foo: u8,
+        pub foo: u8,
+        pub bar: String,
+    }
+
+    // no warning, private fields
+    pub struct ExhaustivePrivateFieldTuple(u8);
+
+    // no warning, private fields
+    pub struct ExhaustivePrivateField {
+        pub foo: u8,
         bar: String,
     }
 
     // no warning, private
     struct ExhaustivePrivate {
-        foo: u8,
-        bar: String,
+        pub foo: u8,
+        pub bar: String,
     }
 
     // no warning, private
     #[non_exhaustive]
     struct NonExhaustivePrivate {
-        foo: u8,
-        bar: String,
+        pub foo: u8,
+        pub bar: String,
     }
 }
