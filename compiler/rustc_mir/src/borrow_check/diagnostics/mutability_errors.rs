@@ -514,7 +514,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let upvar = ty::place_to_string_for_capture(tcx, place);
             match tables.upvar_capture(upvar_id) {
                 ty::UpvarCapture::ByRef(ty::UpvarBorrow {
-                    kind: ty::BorrowKind::MutBorrow,
+                    kind: ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
                     ..
                 }) => {
                     format!("mutable borrow of `{}`", upvar)
@@ -522,7 +522,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 ty::UpvarCapture::ByValue(_) => {
                     format!("possible mutation of `{}`", upvar)
                 }
-                _ => bug!("upvar `{}` borrowed, but not mutably", upvar),
+                val => bug!("upvar `{}` borrowed, but not mutably: {:?}", upvar, val),
             }
         } else {
             bug!("not an upvar")
