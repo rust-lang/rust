@@ -1,5 +1,5 @@
 error: `assert!(true)` will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:9:5
+  --> $DIR/assertions_on_constants.rs:11:5
    |
 LL |     assert!(true);
    |     ^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     assert!(true);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(false)` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:10:5
+  --> $DIR/assertions_on_constants.rs:12:5
    |
 LL |     assert!(false);
    |     ^^^^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL |     assert!(false);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(true)` will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:11:5
+  --> $DIR/assertions_on_constants.rs:13:5
    |
 LL |     assert!(true, "true message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     assert!(true, "true message");
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(false, "false message")` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:12:5
+  --> $DIR/assertions_on_constants.rs:14:5
    |
 LL |     assert!(false, "false message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL |     assert!(false, "false message");
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(false, msg.to_uppercase())` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:15:5
+  --> $DIR/assertions_on_constants.rs:17:5
    |
 LL |     assert!(false, msg.to_uppercase());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |     assert!(false, msg.to_uppercase());
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(true)` will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:18:5
+  --> $DIR/assertions_on_constants.rs:20:5
    |
 LL |     assert!(B);
    |     ^^^^^^^^^^^
@@ -54,7 +54,7 @@ LL |     assert!(B);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(false)` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:21:5
+  --> $DIR/assertions_on_constants.rs:23:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^^
@@ -63,7 +63,7 @@ LL |     assert!(C);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(false, "C message")` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:22:5
+  --> $DIR/assertions_on_constants.rs:24:5
    |
 LL |     assert!(C, "C message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL |     assert!(C, "C message");
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `debug_assert!(true)` will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:24:5
+  --> $DIR/assertions_on_constants.rs:26:5
    |
 LL |     debug_assert!(true);
    |     ^^^^^^^^^^^^^^^^^^^^
