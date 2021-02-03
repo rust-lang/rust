@@ -125,8 +125,8 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
     let expr = body.tail_expr();
     let ret_ty = match expr {
         Some(expr) => {
-            // TODO: can we do assist when type is unknown?
-            //       We can insert something like `-> ()`
+            // FIXME: can we do assist when type is unknown?
+            //        We can insert something like `-> ()`
             let ty = ctx.sema.type_of_expr(&expr)?;
             Some(ty.display_source_code(ctx.db(), module.into()).ok()?)
         }
