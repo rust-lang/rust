@@ -283,12 +283,19 @@ macro_rules! impl_unsigned_int_ops {
 
                         #[inline]
                         fn div(self, rhs: Self) -> Self::Output {
-                            // TODO there is probably a better way of doing this
-                            if AsRef::<[$scalar]>::as_ref(&rhs)
+                            if rhs.as_slice()
                                 .iter()
                                 .any(|x| *x == 0)
                             {
                                 panic!("attempt to divide by zero");
+                            }
+
+                            // Guards for div(MIN, -1),
+                            // this check only applies to signed ints
+                            if <$scalar>::MIN != 0 && self.as_slice().iter()
+                                    .zip(rhs.as_slice().iter())
+                                    .any(|(x,y)| *x == <$scalar>::MIN && *y == -1 as _) {
+                                panic!("attempt to divide with overflow");
                             }
                             unsafe { crate::intrinsics::simd_div(self, rhs) }
                         }
@@ -303,6 +310,11 @@ macro_rules! impl_unsigned_int_ops {
                         fn div(self, rhs: $scalar) -> Self::Output {
                             if rhs == 0 {
                                 panic!("attempt to divide by zero");
+                            }
+                            if <$scalar>::MIN != 0 &&
+                                self.as_slice().iter().any(|x| *x == <$scalar>::MIN) &&
+                                rhs == -1 as _ {
+                                    panic!("attempt to divide with overflow");
                             }
                             let rhs = Self::splat(rhs);
                             unsafe { crate::intrinsics::simd_div(self, rhs) }
@@ -353,6 +365,14 @@ macro_rules! impl_unsigned_int_ops {
                             {
                                 panic!("attempt to calculate the remainder with a divisor of zero");
                             }
+
+                            // Guards for rem(MIN, -1)
+                            // this branch applies the check only to signed ints
+                            if <$scalar>::MIN != 0 && self.as_slice().iter()
+                                    .zip(rhs.as_slice().iter())
+                                    .any(|(x,y)| *x == <$scalar>::MIN && *y == -1 as _) {
+                                panic!("attempt to calculate the remainder with overflow");
+                            }
                             unsafe { crate::intrinsics::simd_rem(self, rhs) }
                         }
                     }
@@ -366,6 +386,11 @@ macro_rules! impl_unsigned_int_ops {
                         fn rem(self, rhs: $scalar) -> Self::Output {
                             if rhs == 0 {
                                 panic!("attempt to calculate the remainder with a divisor of zero");
+                            }
+                            if <$scalar>::MIN != 0 &&
+                                self.as_slice().iter().any(|x| *x == <$scalar>::MIN) &&
+                                rhs == -1 as _ {
+                                    panic!("attempt to calculate the remainder with overflow");
                             }
                             let rhs = Self::splat(rhs);
                             unsafe { crate::intrinsics::simd_rem(self, rhs) }
