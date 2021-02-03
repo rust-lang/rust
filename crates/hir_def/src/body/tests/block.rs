@@ -14,6 +14,7 @@ fn outer() {
         expect![[r#"
             block scope
             inner: v
+
             crate
             inner: t
             outer: v
@@ -38,6 +39,7 @@ fn outer() {
             CrateStruct: t v
             SelfStruct: t v
             Struct: t v
+
             crate
             Struct: t v
             outer: v
@@ -62,6 +64,7 @@ fn outer() {
             block scope
             imported: t v
             name: v
+
             crate
             name: t
             outer: v
@@ -88,9 +91,11 @@ fn outer() {
             inner1: t
             inner2: v
             outer: v
+
             block scope
             inner: v
             inner1: t
+
             crate
             outer: v
         "#]],
@@ -113,6 +118,7 @@ struct Struct {}
         expect![[r#"
             block scope
             Struct: t
+
             crate
             Struct: t
             module: t
@@ -143,6 +149,7 @@ fn f() {
         expect![[r#"
             block scope
             Hit: t
+
             crate
             f: v
         "#]],
@@ -177,8 +184,10 @@ pub mod mark {
         expect![[r#"
             block scope
             Hit: t
+
             block scope
             nested: v
+
             crate
             f: v
             mark: t
@@ -210,6 +219,7 @@ fn f() {
         expect![[r#"
             block scope
             Def: t
+
             crate
             module: t
 
