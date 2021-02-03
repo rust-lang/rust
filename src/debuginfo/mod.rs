@@ -9,7 +9,7 @@ use crate::prelude::*;
 use rustc_index::vec::IndexVec;
 
 use cranelift_codegen::entity::EntityRef;
-use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
+use cranelift_codegen::ir::{LabelValueLoc, StackSlots, ValueLabel, ValueLoc};
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::ValueLocRange;
 
@@ -39,7 +39,6 @@ pub(crate) struct DebugContext<'tcx> {
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
 
-    clif_types: FxHashMap<Type, UnitEntryId>,
     types: FxHashMap<Ty<'tcx>, UnitEntryId>,
 }
 
@@ -115,46 +114,8 @@ impl<'tcx> DebugContext<'tcx> {
             dwarf,
             unit_range_list: RangeList(Vec::new()),
 
-            clif_types: FxHashMap::default(),
             types: FxHashMap::default(),
         }
-    }
-
-    fn dwarf_ty_for_clif_ty(&mut self, ty: Type) -> UnitEntryId {
-        if let Some(type_id) = self.clif_types.get(&ty) {
-            return *type_id;
-        }
-
-        let new_entry = |dwarf: &mut DwarfUnit, tag| dwarf.unit.add(dwarf.unit.root(), tag);
-
-        let primitive = |dwarf: &mut DwarfUnit, ate| {
-            let type_id = new_entry(dwarf, gimli::DW_TAG_base_type);
-            let type_entry = dwarf.unit.get_mut(type_id);
-            type_entry.set(gimli::DW_AT_encoding, AttributeValue::Encoding(ate));
-            type_id
-        };
-
-        let type_id = if ty.is_bool() {
-            primitive(&mut self.dwarf, gimli::DW_ATE_boolean)
-        } else if ty.is_int() {
-            primitive(&mut self.dwarf, gimli::DW_ATE_address)
-        } else if ty.is_float() {
-            primitive(&mut self.dwarf, gimli::DW_ATE_float)
-        } else {
-            new_entry(&mut self.dwarf, gimli::DW_TAG_structure_type)
-        };
-
-        let type_entry = self.dwarf.unit.get_mut(type_id);
-        type_entry.set(
-            gimli::DW_AT_name,
-            AttributeValue::String(format!("{}", ty).replace('i', "u").into_bytes()),
-        );
-        type_entry.set(
-            gimli::DW_AT_byte_size,
-            AttributeValue::Udata(u64::from(ty.bytes())),
-        );
-
-        type_id
     }
 
     fn dwarf_ty(&mut self, ty: Ty<'tcx>) -> UnitEntryId {
@@ -312,51 +273,6 @@ impl<'tcx> DebugContext<'tcx> {
         // Using Udata for DW_AT_high_pc requires at least DWARF4
         func_entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(end)));
 
-        // FIXME Remove once actual debuginfo for locals works.
-        for (i, (param, &val)) in context
-            .func
-            .signature
-            .params
-            .iter()
-            .zip(
-                context
-                    .func
-                    .dfg
-                    .block_params(context.func.layout.entry_block().unwrap()),
-            )
-            .enumerate()
-        {
-            use cranelift_codegen::ir::ArgumentPurpose;
-            let base_name = match param.purpose {
-                ArgumentPurpose::Normal => "arg",
-                ArgumentPurpose::StructArgument(_) => "struct_arg",
-                ArgumentPurpose::StructReturn => "sret",
-                ArgumentPurpose::Link
-                | ArgumentPurpose::FramePointer
-                | ArgumentPurpose::CalleeSaved => continue,
-                ArgumentPurpose::VMContext
-                | ArgumentPurpose::SignatureId
-                | ArgumentPurpose::CallerTLS
-                | ArgumentPurpose::CalleeTLS
-                | ArgumentPurpose::StackLimit => unreachable!(),
-            };
-            let name = format!("{}{}", base_name, i);
-
-            let dw_ty = self.dwarf_ty_for_clif_ty(param.value_type);
-            let loc =
-                translate_loc(isa, context.func.locations[val], &context.func.stack_slots).unwrap();
-
-            let arg_id = self
-                .dwarf
-                .unit
-                .add(entry_id, gimli::DW_TAG_formal_parameter);
-            let var_entry = self.dwarf.unit.get_mut(arg_id);
-
-            var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
-            var_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(dw_ty));
-            var_entry.set(gimli::DW_AT_location, AttributeValue::Exprloc(loc));
-        }
-
         // FIXME make it more reliable and implement scopes before re-enabling this.
         if false {
             let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
@@ -463,17 +379,17 @@ fn place_location<'tcx>(
 // Adapted from https://github.com/CraneStation/wasmtime/blob/5a1845b4caf7a5dba8eda1fef05213a532ed4259/crates/debug/src/transform/expression.rs#L59-L137
 fn translate_loc(
     isa: &dyn TargetIsa,
-    loc: ValueLoc,
+    loc: LabelValueLoc,
     stack_slots: &StackSlots,
 ) -> Option<Expression> {
     match loc {
-        ValueLoc::Reg(reg) => {
+        LabelValueLoc::ValueLoc( ValueLoc::Reg(reg)) => {
             let machine_reg = isa.map_dwarf_register(reg).unwrap();
             let mut expr = Expression::new();
             expr.op_reg(gimli::Register(machine_reg));
             Some(expr)
         }
-        ValueLoc::Stack(ss) => {
+        LabelValueLoc::ValueLoc(ValueLoc::Stack(ss)) => {
             if let Some(ss_offset) = stack_slots[ss].offset {
                 let mut expr = Expression::new();
                 expr.op_breg(X86_64::RBP, i64::from(ss_offset) + 16);
@@ -482,6 +398,17 @@ fn translate_loc(
                 None
             }
         }
-        _ => None,
+        LabelValueLoc::ValueLoc(ValueLoc::Unassigned) => unreachable!(),
+        LabelValueLoc::Reg(reg) => {
+            let machine_reg = isa.map_regalloc_reg_to_dwarf(reg).unwrap();
+            let mut expr = Expression::new();
+            expr.op_reg(gimli::Register(machine_reg));
+            Some(expr)
+        }
+        LabelValueLoc::SPOffset(offset) => {
+            let mut expr = Expression::new();
+                expr.op_breg(X86_64::RSP, offset);
+                Some(expr)
+        }
     }
 }
