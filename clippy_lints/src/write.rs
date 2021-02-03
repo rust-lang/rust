@@ -231,7 +231,7 @@ impl_lint_pass!(Write => [
 
 impl EarlyLintPass for Write {
     fn check_item(&mut self, _: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Impl (box ImplKind {
+        if let ItemKind::Impl(box ImplKind {
             of_trait: Some(trait_ref),
             ..
         }) = &item.kind

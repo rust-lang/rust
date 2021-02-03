@@ -1,7 +1,5 @@
 use crate::utils::{attr_by_name, in_macro, match_path_ast, span_lint_and_help};
-use rustc_ast::ast::{
-    AssocItemKind, Extern, FnKind, FnSig, ImplKind, Item, ItemKind, TraitKind, Ty, TyKind,
-};
+use rustc_ast::ast::{AssocItemKind, Extern, FnKind, FnSig, ImplKind, Item, ItemKind, TraitKind, Ty, TyKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -160,15 +158,17 @@ impl EarlyLintPass for ExcessiveBools {
                         "consider using a state machine or refactoring bools into two-variant enums",
                     );
                 }
-            }
-            ItemKind::Impl(box ImplKind { of_trait: None, items, .. })
+            },
+            ItemKind::Impl(box ImplKind {
+                of_trait: None, items, ..
+            })
             | ItemKind::Trait(box TraitKind(.., items)) => {
                 for item in items {
                     if let AssocItemKind::Fn(box FnKind(_, fn_sig, _, _)) = &item.kind {
                         self.check_fn_sig(cx, fn_sig, item.span);
                     }
                 }
-            }
+            },
             ItemKind::Fn(box FnKind(_, fn_sig, _, _)) => self.check_fn_sig(cx, fn_sig, item.span),
             _ => (),
         }
