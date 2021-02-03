@@ -1,7 +1,7 @@
 use crate::utils::path_to_local_id;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, Expr, HirId, Stmt};
+use rustc_hir::{Arm, Body, Expr, HirId, Stmt};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 
@@ -155,6 +155,10 @@ impl<'hir> LocalUsedVisitor<'hir> {
 
     pub fn check_arm(&mut self, arm: &'hir Arm<'_>) -> bool {
         self.check(arm, Self::visit_arm)
+    }
+
+    pub fn check_body(&mut self, body: &'hir Body<'_>) -> bool {
+        self.check(body, Self::visit_body)
     }
 
     pub fn check_expr(&mut self, expr: &'hir Expr<'_>) -> bool {
