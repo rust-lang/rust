@@ -1880,8 +1880,7 @@ impl Step for RemoteCopyLibs {
         builder.info(&format!("REMOTE copy libs to emulator ({})", target));
         t!(fs::create_dir_all(builder.out.join("tmp")));
 
-        let server =
-            builder.ensure(tool::RemoteTestServer { compiler: compiler.with_stage(0), target });
+        let server = builder.ensure(tool::RemoteTestServer { compiler, target });
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
