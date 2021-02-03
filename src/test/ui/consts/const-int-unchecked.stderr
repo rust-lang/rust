@@ -7,374 +7,514 @@ LL | const SHL_U8: u8 = unsafe { intrinsics::unchecked_shl(5_u8, 8) };
    |                             overflowing shift by 8 in `unchecked_shl`
    |
    = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:17:31
+  --> $DIR/const-int-unchecked.rs:18:31
    |
 LL | const SHL_U16: u16 = unsafe { intrinsics::unchecked_shl(5_u16, 16) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 16 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:19:31
+  --> $DIR/const-int-unchecked.rs:21:31
    |
 LL | const SHL_U32: u32 = unsafe { intrinsics::unchecked_shl(5_u32, 32) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 32 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:21:31
+  --> $DIR/const-int-unchecked.rs:24:31
    |
 LL | const SHL_U64: u64 = unsafe { intrinsics::unchecked_shl(5_u64, 64) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 64 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:23:33
+  --> $DIR/const-int-unchecked.rs:27:33
    |
 LL | const SHL_U128: u128 = unsafe { intrinsics::unchecked_shl(5_u128, 128) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
    |                                 overflowing shift by 128 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:28:29
+  --> $DIR/const-int-unchecked.rs:33:29
    |
 LL | const SHL_I8: i8 = unsafe { intrinsics::unchecked_shl(5_i8, 8) };
    | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                             |
    |                             overflowing shift by 8 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:30:31
+  --> $DIR/const-int-unchecked.rs:36:31
    |
 LL | const SHL_I16: i16 = unsafe { intrinsics::unchecked_shl(5_16, 16) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 16 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:32:31
+  --> $DIR/const-int-unchecked.rs:39:31
    |
 LL | const SHL_I32: i32 = unsafe { intrinsics::unchecked_shl(5_i32, 32) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 32 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:34:31
+  --> $DIR/const-int-unchecked.rs:42:31
    |
 LL | const SHL_I64: i64 = unsafe { intrinsics::unchecked_shl(5_i64, 64) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 64 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:36:33
+  --> $DIR/const-int-unchecked.rs:45:33
    |
 LL | const SHL_I128: i128 = unsafe { intrinsics::unchecked_shl(5_i128, 128) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
    |                                 overflowing shift by 128 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:41:33
+  --> $DIR/const-int-unchecked.rs:51:33
    |
 LL | const SHL_I8_NEG: i8 = unsafe { intrinsics::unchecked_shl(5_i8, -1) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
    |                                 overflowing shift by 255 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:43:35
+  --> $DIR/const-int-unchecked.rs:54:35
    |
 LL | const SHL_I16_NEG: i16 = unsafe { intrinsics::unchecked_shl(5_16, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
    |                                   overflowing shift by 65535 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:45:35
+  --> $DIR/const-int-unchecked.rs:57:35
    |
 LL | const SHL_I32_NEG: i32 = unsafe { intrinsics::unchecked_shl(5_i32, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
    |                                   overflowing shift by 4294967295 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:47:35
+  --> $DIR/const-int-unchecked.rs:60:35
    |
 LL | const SHL_I64_NEG: i64 = unsafe { intrinsics::unchecked_shl(5_i64, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
    |                                   overflowing shift by 18446744073709551615 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:49:37
+  --> $DIR/const-int-unchecked.rs:63:37
    |
 LL | const SHL_I128_NEG: i128 = unsafe { intrinsics::unchecked_shl(5_i128, -1) };
    | ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                     |
    |                                     overflowing shift by 340282366920938463463374607431768211455 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:55:40
+  --> $DIR/const-int-unchecked.rs:70:40
    |
 LL | const SHL_I8_NEG_RANDOM: i8 = unsafe { intrinsics::unchecked_shl(5_i8, -6) };
    | ---------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                        |
    |                                        overflowing shift by 250 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:57:42
+  --> $DIR/const-int-unchecked.rs:73:42
    |
 LL | const SHL_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shl(5_16, -13) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
    |                                          overflowing shift by 65523 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:59:42
+  --> $DIR/const-int-unchecked.rs:76:42
    |
 LL | const SHL_I32_NEG_RANDOM: i32 = unsafe { intrinsics::unchecked_shl(5_i32, -25) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
    |                                          overflowing shift by 4294967271 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:61:42
+  --> $DIR/const-int-unchecked.rs:79:42
    |
 LL | const SHL_I64_NEG_RANDOM: i64 = unsafe { intrinsics::unchecked_shl(5_i64, -30) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
    |                                          overflowing shift by 18446744073709551586 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:63:44
+  --> $DIR/const-int-unchecked.rs:82:44
    |
 LL | const SHL_I128_NEG_RANDOM: i128 = unsafe { intrinsics::unchecked_shl(5_i128, -93) };
    | -------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                            |
    |                                            overflowing shift by 340282366920938463463374607431768211363 in `unchecked_shl`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:70:29
+  --> $DIR/const-int-unchecked.rs:90:29
    |
 LL | const SHR_U8: u8 = unsafe { intrinsics::unchecked_shr(5_u8, 8) };
    | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                             |
    |                             overflowing shift by 8 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:72:31
+  --> $DIR/const-int-unchecked.rs:93:31
    |
 LL | const SHR_U16: u16 = unsafe { intrinsics::unchecked_shr(5_u16, 16) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 16 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:74:31
+  --> $DIR/const-int-unchecked.rs:96:31
    |
 LL | const SHR_U32: u32 = unsafe { intrinsics::unchecked_shr(5_u32, 32) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 32 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:76:31
+  --> $DIR/const-int-unchecked.rs:99:31
    |
 LL | const SHR_U64: u64 = unsafe { intrinsics::unchecked_shr(5_u64, 64) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 64 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:78:33
+  --> $DIR/const-int-unchecked.rs:102:33
    |
 LL | const SHR_U128: u128 = unsafe { intrinsics::unchecked_shr(5_u128, 128) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
    |                                 overflowing shift by 128 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:83:29
+  --> $DIR/const-int-unchecked.rs:108:29
    |
 LL | const SHR_I8: i8 = unsafe { intrinsics::unchecked_shr(5_i8, 8) };
    | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                             |
    |                             overflowing shift by 8 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:85:31
+  --> $DIR/const-int-unchecked.rs:111:31
    |
 LL | const SHR_I16: i16 = unsafe { intrinsics::unchecked_shr(5_16, 16) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 16 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:87:31
+  --> $DIR/const-int-unchecked.rs:114:31
    |
 LL | const SHR_I32: i32 = unsafe { intrinsics::unchecked_shr(5_i32, 32) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 32 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:89:31
+  --> $DIR/const-int-unchecked.rs:117:31
    |
 LL | const SHR_I64: i64 = unsafe { intrinsics::unchecked_shr(5_i64, 64) };
    | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                               |
    |                               overflowing shift by 64 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:91:33
+  --> $DIR/const-int-unchecked.rs:120:33
    |
 LL | const SHR_I128: i128 = unsafe { intrinsics::unchecked_shr(5_i128, 128) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
    |                                 overflowing shift by 128 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:96:33
+  --> $DIR/const-int-unchecked.rs:126:33
    |
 LL | const SHR_I8_NEG: i8 = unsafe { intrinsics::unchecked_shr(5_i8, -1) };
    | --------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                 |
    |                                 overflowing shift by 255 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:98:35
+  --> $DIR/const-int-unchecked.rs:129:35
    |
 LL | const SHR_I16_NEG: i16 = unsafe { intrinsics::unchecked_shr(5_16, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
    |                                   overflowing shift by 65535 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:100:35
+  --> $DIR/const-int-unchecked.rs:132:35
    |
 LL | const SHR_I32_NEG: i32 = unsafe { intrinsics::unchecked_shr(5_i32, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
    |                                   overflowing shift by 4294967295 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:102:35
+  --> $DIR/const-int-unchecked.rs:135:35
    |
 LL | const SHR_I64_NEG: i64 = unsafe { intrinsics::unchecked_shr(5_i64, -1) };
    | ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                   |
    |                                   overflowing shift by 18446744073709551615 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:104:37
+  --> $DIR/const-int-unchecked.rs:138:37
    |
 LL | const SHR_I128_NEG: i128 = unsafe { intrinsics::unchecked_shr(5_i128, -1) };
    | ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                     |
    |                                     overflowing shift by 340282366920938463463374607431768211455 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:110:40
+  --> $DIR/const-int-unchecked.rs:145:40
    |
 LL | const SHR_I8_NEG_RANDOM: i8 = unsafe { intrinsics::unchecked_shr(5_i8, -6) };
    | ---------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                        |
    |                                        overflowing shift by 250 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:112:42
+  --> $DIR/const-int-unchecked.rs:148:42
    |
 LL | const SHR_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shr(5_16, -13) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
    |                                          overflowing shift by 65523 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:114:42
+  --> $DIR/const-int-unchecked.rs:151:42
    |
 LL | const SHR_I32_NEG_RANDOM: i32 = unsafe { intrinsics::unchecked_shr(5_i32, -25) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
    |                                          overflowing shift by 4294967271 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:116:42
+  --> $DIR/const-int-unchecked.rs:154:42
    |
 LL | const SHR_I64_NEG_RANDOM: i64 = unsafe { intrinsics::unchecked_shr(5_i64, -30) };
    | -----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                          |
    |                                          overflowing shift by 18446744073709551586 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:118:44
+  --> $DIR/const-int-unchecked.rs:157:44
    |
 LL | const SHR_I128_NEG_RANDOM: i128 = unsafe { intrinsics::unchecked_shr(5_i128, -93) };
    | -------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                            |
    |                                            overflowing shift by 340282366920938463463374607431768211363 in `unchecked_shr`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:123:25
+  --> $DIR/const-int-unchecked.rs:163:25
    |
 LL | const _: u16 = unsafe { std::intrinsics::unchecked_add(40000u16, 30000) };
    | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                         |
    |                         overflow executing `unchecked_add`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:126:25
+  --> $DIR/const-int-unchecked.rs:167:25
    |
 LL | const _: u32 = unsafe { std::intrinsics::unchecked_sub(14u32, 22) };
    | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                         |
    |                         overflow executing `unchecked_sub`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:129:25
+  --> $DIR/const-int-unchecked.rs:171:25
    |
 LL | const _: u16 = unsafe { std::intrinsics::unchecked_mul(300u16, 250u16) };
    | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                         |
    |                         overflow executing `unchecked_mul`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:132:25
+  --> $DIR/const-int-unchecked.rs:175:25
    |
 LL | const _: i32 = unsafe { std::intrinsics::unchecked_div(1, 0) };
    | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                         |
    |                         dividing by zero
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:134:25
+  --> $DIR/const-int-unchecked.rs:178:25
    |
 LL | const _: i32 = unsafe { std::intrinsics::unchecked_div(i32::MIN, -1) };
    | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                         |
    |                         overflow executing `unchecked_div`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:137:25
+  --> $DIR/const-int-unchecked.rs:182:25
    |
 LL | const _: i32 = unsafe { std::intrinsics::unchecked_rem(1, 0) };
    | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                         |
    |                         calculating the remainder with a divisor of zero
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-int-unchecked.rs:139:25
+  --> $DIR/const-int-unchecked.rs:185:25
    |
 LL | const _: i32 = unsafe { std::intrinsics::unchecked_rem(i32::MIN, -1) };
    | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                         |
    |                         overflow executing `unchecked_rem`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: aborting due to 47 previous errors
 

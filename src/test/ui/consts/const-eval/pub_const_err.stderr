@@ -11,6 +11,8 @@ note: the lint level is defined here
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 warning: 1 warning emitted
 

@@ -7,6 +7,7 @@ trait Tr {
     // `Self::A` must not be assumed to hold inside the trait.
     const B: u8 = Self::A + 1;
     //~^ ERROR any use of this value will cause an error
+    //~| WARN this was previously accepted by the compiler but is being phased out
 }
 
 // An impl that doesn't override any constant will NOT cause a const eval error
@@ -33,6 +34,7 @@ fn main() {
     assert_eq!(<() as Tr>::B, 0);    // causes the error above
     //~^ ERROR evaluation of constant value failed
     //~| ERROR erroneous constant used
+    //~| WARN this was previously accepted by the compiler but is being phased out
 
     assert_eq!(<u8 as Tr>::A, 254);
     assert_eq!(<u8 as Tr>::B, 255);

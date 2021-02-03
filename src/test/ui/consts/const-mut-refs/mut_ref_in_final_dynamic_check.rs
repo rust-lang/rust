@@ -13,6 +13,7 @@ const fn helper() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (integer as pointer), who doesn't love tests like this.
     // This code never gets executed, because the static checks fail before that.
     Some(&mut *(42 as *mut i32)) //~ ERROR any use of this value will cause an error
+    //~| WARN this was previously accepted by the compiler but is being phased out
 } }
 // The error is an evaluation error and not a validation error, so the error is reported
 // directly at the site where it occurs.
