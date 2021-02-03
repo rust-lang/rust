@@ -324,6 +324,7 @@ impl DefMap {
         let mut current_map = self;
         while let Some(block) = &current_map.block {
             go(&mut buf, current_map, "block scope", current_map.root);
+            buf.push('\n');
             current_map = &*block.parent;
         }
         go(&mut buf, current_map, "crate", current_map.root);
