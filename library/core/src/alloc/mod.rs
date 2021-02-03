@@ -342,7 +342,10 @@ pub unsafe trait Allocator {
     ///
     /// The returned adaptor also implements `Allocator` and will simply borrow this.
     #[inline(always)]
-    fn by_ref(&self) -> &Self {
+    fn by_ref(&self) -> &Self
+    where
+        Self: Sized,
+    {
         self
     }
 }
