@@ -140,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                     UNNECESSARY_WRAPS,
                     fn_decl.output.span(),
                     "unneeded wrapped unit return type",
-                    format!("remove the `-> {}<()>`", return_type_label).as_str(),
+                    format!("remove the `-> {}<[...]>`", return_type_label).as_str(),
                     String::new(),
                     Applicability::MaybeIncorrect,
                 );

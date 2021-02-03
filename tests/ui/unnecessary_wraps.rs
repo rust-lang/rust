@@ -135,7 +135,6 @@ fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
         return Ok(());
     }
     if a {
-        Ok(());
         Ok(())
     } else {
         return Ok(());
