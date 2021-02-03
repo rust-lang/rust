@@ -4,8 +4,8 @@ fn main() {
     // Test for loop over implicitly adjusted `Iterator` with `if let` expression
     let x = vec![Some(1), Some(2), Some(3)];
     for n in x {
-        if let Some(n) = n {
-            println!("{}", n);
+        if let Some(y) = n {
+            println!("{}", y);
         }
     }
 
@@ -24,12 +24,22 @@ fn main() {
         }
     }
 
+    // Test for loop over an implicit reference
+    // Note: If `clippy::manual_flatten` is made autofixable, this case will
+    // lead to a follow-up lint `clippy::into_iter_on_ref`
+    let z = &y;
+    for n in z {
+        if let Ok(n) = n {
+            println!("{}", n);
+        }
+    }
+
     // Test for loop over `Iterator` with `if let` expression
     let z = vec![Some(1), Some(2), Some(3)];
     let z = z.iter();
     for n in z {
-        if let Some(n) = n {
-            println!("{}", n);
+        if let Some(m) = n {
+            println!("{}", m);
         }
     }
 

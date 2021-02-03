@@ -2034,42 +2034,27 @@ fn check_manual_flatten<'tcx>(
 
                 // Prepare the help message
                 let mut applicability = Applicability::MaybeIncorrect;
-                let arg_snippet = snippet_with_applicability(
-                    cx,
-                    arg.span,
-                    "..",
-                    &mut applicability,
-                );
-                // Determine if `arg` is by reference, an `Iterator`, or implicitly adjusted with `into_iter`
-                let arg_ty = cx.typeck_results().expr_ty(arg);
-                let hint = if arg_ty.is_ref() {
-                    if has_iter_method(cx, arg_ty).is_none() {
-                        return;
-                    } else if let ExprKind::AddrOf(_, _, arg_expr) = arg.kind {
-                        format!("{}.iter().flatten()", snippet(cx, arg_expr.span, ".."))
-                    } else {
-                        return;
-                    }
-                } else if let Some(id) = get_trait_def_id(cx, &paths::ITERATOR) {
-                    let is_iterator = implements_trait(cx, arg_ty, id, &[]);
-                    if is_iterator {
-                        format!("{}.flatten()", arg_snippet)
-                    } else {
-                        format!("{}.into_iter().flatten()", arg_snippet)
-                    }
-                } else {
-                    return
-                };
+                let arg_snippet = make_iterator_snippet(cx, arg, &mut applicability);
 
-                span_lint_and_sugg(
+                span_lint_and_then(
                     cx,
                     MANUAL_FLATTEN,
                     span,
                     &msg,
-                    "try",
-                    hint,
-                    applicability,
-                )
+                    |diag| {
+                        let sugg = format!("{}.flatten()", arg_snippet);
+                        diag.span_suggestion(
+                            arg.span,
+                            "try",
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        );
+                        diag.span_help(
+                            inner_expr.span,
+                            "also remove the `if let` statement in the for loop",
+                        );
+                    }
+                );
             }
         }
     }
