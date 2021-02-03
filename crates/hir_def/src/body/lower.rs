@@ -1,7 +1,7 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
-use std::{any::type_name, sync::Arc};
+use std::{any::type_name, mem, sync::Arc};
 
 use either::Either;
 use hir_expand::{
@@ -36,8 +36,8 @@ use crate::{
     item_tree::{ItemTree, ItemTreeId, ItemTreeNode},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
-    AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
-    StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    AdtId, BlockLoc, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern,
+    ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
 use super::{diagnostics::BodyDiagnostic, ExprSource, PatSource};
@@ -152,8 +152,8 @@ impl ExprCollector<'_> {
     fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
         self.make_expr(expr, Err(SyntheticSyntax))
     }
-    fn empty_block(&mut self) -> ExprId {
-        self.alloc_expr_desugared(Expr::Block { statements: Vec::new(), tail: None, label: None })
+    fn unit(&mut self) -> ExprId {
+        self.alloc_expr_desugared(Expr::Tuple { exprs: Vec::new() })
     }
     fn missing_expr(&mut self) -> ExprId {
         self.alloc_expr_desugared(Expr::Missing)
@@ -222,7 +222,7 @@ impl ExprCollector<'_> {
                                 MatchArm { pat, expr: then_branch, guard: None },
                                 MatchArm {
                                     pat: placeholder_pat,
-                                    expr: else_branch.unwrap_or_else(|| self.empty_block()),
+                                    expr: else_branch.unwrap_or_else(|| self.unit()),
                                     guard: None,
                                 },
                             ];
@@ -561,7 +561,7 @@ impl ExprCollector<'_> {
         let outer_file = self.expander.current_file_id;
 
         let macro_call = self.expander.to_source(AstPtr::new(&e));
-        let res = self.expander.enter_expand(self.db, Some(&self.body.item_scope), e);
+        let res = self.expander.enter_expand(self.db, e);
 
         match &res.err {
             Some(ExpandError::UnresolvedProcMacro) => {
@@ -697,12 +697,30 @@ impl ExprCollector<'_> {
     }
 
     fn collect_block(&mut self, block: ast::BlockExpr) -> ExprId {
-        let syntax_node_ptr = AstPtr::new(&block.clone().into());
+        let ast_id = self.expander.ast_id(&block);
+        let block_loc = BlockLoc { ast_id, module: self.expander.module };
+        let block_id = self.db.intern_block(block_loc);
+        let opt_def_map = self.db.block_def_map(block_id);
+        let has_def_map = opt_def_map.is_some();
+        let def_map = opt_def_map.unwrap_or_else(|| self.expander.def_map.clone());
+        let module =
+            if has_def_map { def_map.module_id(def_map.root()) } else { self.expander.module };
+        let prev_def_map = mem::replace(&mut self.expander.def_map, def_map);
+        let prev_module = mem::replace(&mut self.expander.module, module);
+
         self.collect_stmts_items(block.statements());
         let statements =
             block.statements().filter_map(|s| self.collect_stmt(s)).flatten().collect();
         let tail = block.tail_expr().map(|e| self.collect_expr(e));
-        self.alloc_expr(Expr::Block { statements, tail, label: None }, syntax_node_ptr)
+        let syntax_node_ptr = AstPtr::new(&block.clone().into());
+        let expr_id = self.alloc_expr(
+            Expr::Block { id: block_id, statements, tail, label: None },
+            syntax_node_ptr,
+        );
+
+        self.expander.def_map = prev_def_map;
+        self.expander.module = prev_module;
+        expr_id
     }
 
     fn collect_stmts_items(&mut self, stmts: ast::AstChildren<ast::Stmt>) {
@@ -832,7 +850,7 @@ impl ExprCollector<'_> {
                 if annotation == BindingAnnotation::Unannotated && subpat.is_none() {
                     // This could also be a single-segment path pattern. To
                     // decide that, we need to try resolving the name.
-                    let (resolved, _) = self.expander.crate_def_map.resolve_path(
+                    let (resolved, _) = self.expander.def_map.resolve_path(
                         self.db,
                         self.expander.module.local_id,
                         &name.clone().into(),
