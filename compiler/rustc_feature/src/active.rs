@@ -628,6 +628,9 @@ declare_features! (
 
     /// Allows using `pointer` and `reference` in intra-doc links
     (active, intra_doc_pointers, "1.51.0", Some(80896), None),
+
+    /// Allows `extern "C-cmse-nonsecure-call" fn()`.
+    (active, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391), None),
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

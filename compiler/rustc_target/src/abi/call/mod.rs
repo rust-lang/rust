@@ -551,6 +551,7 @@ pub enum Conv {
 
     // Target-specific calling conventions.
     ArmAapcs,
+    CCmseNonSecureCall,
 
     Msp430Intr,
 

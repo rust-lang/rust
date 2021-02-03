@@ -2650,6 +2650,7 @@ where
             Win64 => Conv::X86_64Win64,
             SysV64 => Conv::X86_64SysV,
             Aapcs => Conv::ArmAapcs,
+            CCmseNonSecureCall => Conv::CCmseNonSecureCall,
             PtxKernel => Conv::PtxKernel,
             Msp430Interrupt => Conv::Msp430Intr,
             X86Interrupt => Conv::X86Intr,

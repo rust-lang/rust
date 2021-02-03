@@ -42,6 +42,17 @@ pub(super) fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: Abi) {
         )
         .emit()
     }
+
+    // This ABI is only allowed on function pointers
+    if abi == Abi::CCmseNonSecureCall {
+        struct_span_err!(
+            tcx.sess,
+            span,
+            E0781,
+            "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers."
+        )
+        .emit()
+    }
 }
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
