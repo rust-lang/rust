@@ -159,7 +159,7 @@ Express function preconditions in types and force the caller to provide them (ra
 
 ```rust
 // GOOD
-fn frbonicate(walrus: Walrus) {
+fn frobnicate(walrus: Walrus) {
     ...
 }
 
@@ -374,7 +374,7 @@ Avoid making a lot of code type parametric, *especially* on the boundaries betwe
 
 ```rust
 // GOOD
-fn frbonicate(f: impl FnMut()) {
+fn frobnicate(f: impl FnMut()) {
     frobnicate_impl(&mut f)
 }
 fn frobnicate_impl(f: &mut dyn FnMut()) {
@@ -382,7 +382,7 @@ fn frobnicate_impl(f: &mut dyn FnMut()) {
 }
 
 // BAD
-fn frbonicate(f: impl FnMut()) {
+fn frobnicate(f: impl FnMut()) {
     // lots of code
 }
 ```
@@ -391,11 +391,11 @@ Avoid `AsRef` polymorphism, it pays back only for widely used libraries:
 
 ```rust
 // GOOD
-fn frbonicate(f: &Path) {
+fn frobnicate(f: &Path) {
 }
 
 // BAD
-fn frbonicate(f: impl AsRef<Path>) {
+fn frobnicate(f: impl AsRef<Path>) {
 }
 ```
 
@@ -705,7 +705,7 @@ fn foo() -> Option<Bar> {
 }
 ```
 
-**Rationale:** reduce congnitive stack usage.
+**Rationale:** reduce cognitive stack usage.
 
 ## Comparisons
 

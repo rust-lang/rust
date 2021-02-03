@@ -115,7 +115,7 @@ This is important because it is possible to useful tooling using only syntax tre
 Without semantic information, you don't need to be able to _build_ code, which makes the tooling more robust.
 See also https://web.stanford.edu/~mlfbrown/paper.pdf.
 You can view the `syntax` crate as an entry point to rust-analyzer.
-`sytax` crate is an **API Boundary**.
+`syntax` crate is an **API Boundary**.
 
 **Architecture Invariant:** syntax tree is a value type.
 The tree is fully determined by the contents of its syntax nodes, it doesn't need global context (like an interner) and doesn't store semantic info.
@@ -198,14 +198,14 @@ It is an **API Boundary**.
 If you want to use IDE parts of rust-analyzer via LSP, custom flatbuffers-based protocol or just as a library in your text editor, this is the right API.
 
 **Architecture Invariant:** `ide` crate's API is build out of POD types with public fields.
-The API uses editor's terminology, it talks about offsets and string labels rathe than in terms of definitions or types.
+The API uses editor's terminology, it talks about offsets and string labels rather than in terms of definitions or types.
 It is effectively the view in MVC and viewmodel in [MVVM](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93viewmodel).
 All arguments and return types are conceptually serializable.
 In particular, syntax tress and and hir types are generally absent from the API (but are used heavily in the implementation).
 Shout outs to LSP developers for popularizing the idea that "UI" is a good place to draw a boundary at.
 
 `ide` is also the first crate which has the notion of change over time.
-`AnalysisHost` is a state to which you can transactonally `apply_change`.
+`AnalysisHost` is a state to which you can transactionally `apply_change`.
 `Analysis` is an immutable snapshot of the state.
 
 Internally, `ide` is split across several crates. `ide_assists`, `ide_completion` and `ide_ssr` implement large isolated features.
@@ -254,6 +254,10 @@ A single `rust-analyzer` process can serve many projects, so it is important tha
 These crates implement macros as token tree -> token tree transforms.
 They are independent from the rest of the code.
 
+### `crates/cfg`
+
+This crate is responsible for parsing, evaluation and general definition of `cfg` attributes.
+
 ### `crates/vfs`, `crates/vfs-notify`
 
 These crates implement a virtual fils system.
@@ -265,7 +269,8 @@ For this reason, all path APIs generally take some existing path as a "file syst
 
 ### `crates/stdx`
 
-This crate contains various non-rust-analyzer specific utils, which could have been in std.
+This crate contains various non-rust-analyzer specific utils, which could have been in std, as well
+as copies of unstable std items we would like to make use of already, like `std::str::split_once`.
 
 ### `crates/profile`
 
@@ -285,7 +290,7 @@ There are tests to check that the generated code is fresh.
 
 In particular, we generate:
 
-* API for working with syntax trees (`syntax::ast`, the `ungrammar` crate).
+* API for working with syntax trees (`syntax::ast`, the [`ungrammar`](https://github.com/rust-analyzer/ungrammar) crate).
 * Various sections of the manual:
 
     * features
