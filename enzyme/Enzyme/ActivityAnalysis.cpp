@@ -1281,8 +1281,8 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
       for (auto FuncName : KnownInactiveFunctions) {
         if (called->getName() == FuncName) {
           if (printconst)
-          llvm::errs() << "constant(" << (int)directions << ") up-knowninactivecall " << *inst
-                        << "\n";
+            llvm::errs() << "constant(" << (int)directions
+                         << ") up-knowninactivecall " << *inst << "\n";
           return true;
         }
       }
@@ -1296,8 +1296,8 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
           !hasMetadata(called, "enzyme_gradient") && !isa<IntrinsicInst>(op) &&
           emptyfnconst) {
         if (printconst)
-        llvm::errs() << "constant(" << (int)directions << ") up-emptyconst " << *inst
-                     << "\n";
+          llvm::errs() << "constant(" << (int)directions << ") up-emptyconst "
+                       << *inst << "\n";
         return true;
       }
     }
@@ -1335,8 +1335,8 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     case Intrinsic::is_constant:
 #endif
       if (printconst)
-        llvm::errs() << "constant(" << (int)directions << ") up-intrinsic " << *inst
-                     << "\n";
+        llvm::errs() << "constant(" << (int)directions << ") up-intrinsic "
+                     << *inst << "\n";
       return true;
     default:
       break;

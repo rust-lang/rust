@@ -31,9 +31,15 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
 
+#include "llvm/Support/CommandLine.h"
+
 #include "TypeTree.h"
 
 using namespace llvm;
+/// Maximum offset for type trees to keep
+llvm::cl::opt<ssize_t> MaxTypeOffset("enzyme-max-type-offset", cl::init(500),
+                                     cl::Hidden,
+                                     cl::desc("Maximum type tree offset"));
 
 // TODO keep type information that is striated
 // e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]

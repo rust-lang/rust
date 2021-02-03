@@ -41,6 +41,9 @@
 #include "BaseType.h"
 #include "ConcreteType.h"
 
+/// Maximum offset for type trees to keep
+extern llvm::cl::opt<ssize_t> MaxTypeOffset;
+
 /// Helper function to print a vector of ints to a string
 static inline std::string to_string(const std::vector<int> x) {
   std::string out = "[";
@@ -262,10 +265,10 @@ public:
       return changed;
     }
 
-    std::vector<std::pair<int,std::set<std::vector<int>>>> best;
+    std::vector<std::pair<int, std::set<std::vector<int>>>> best;
     for (const auto &pair : mapping) {
-      size_t i=0;
-      for(int val : pair.first) {
+      size_t i = 0;
+      for (int val : pair.first) {
         if (best.size() <= i) {
           best.emplace_back(val, std::set<std::vector<int>>());
         }
@@ -282,20 +285,20 @@ public:
         i++;
       }
     }
-    size_t i=0;
+    size_t i = 0;
     bool keep = false;
     bool considerErase = false;
     for (auto Off : Seq) {
       if (i < best.size()) {
         if (Off < best[i].first) {
-          if (best[i].first > 500)
-            for(auto v : best[i].second) {
+          if (best[i].first > MaxTypeOffset)
+            for (auto v : best[i].second) {
               mapping.erase(v);
               changed = true;
             }
           keep = true;
         } else {
-          if (Off > 500) {
+          if (Off > MaxTypeOffset) {
             considerErase = true;
           }
         }
@@ -304,7 +307,8 @@ public:
       }
       i++;
     }
-    if (considerErase && !keep) return changed;
+    if (considerErase && !keep)
+      return changed;
     mapping.insert(std::pair<const std::vector<int>, ConcreteType>(Seq, CT));
     return true;
   }

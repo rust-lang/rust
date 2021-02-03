@@ -144,7 +144,8 @@ public:
   bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val);
 
   /// Is the value potentially actively returned or stored
-  bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value *val, bool outside=false);
+  bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value *val,
+                                       bool outside = false);
 
 private:
   /// StoredOrReturnedCache acts as an inductive cache of results for

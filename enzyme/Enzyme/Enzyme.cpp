@@ -65,7 +65,7 @@ llvm::cl::opt<bool>
                   cl::desc("Run enzymepostprocessing optimizations"));
 
 /// Return whether successful
-template<typename T>
+template <typename T>
 bool HandleAutoDiff(T *CI, TargetLibraryInfo &TLI, AAResults &AA,
                     bool PostOpt) {
 

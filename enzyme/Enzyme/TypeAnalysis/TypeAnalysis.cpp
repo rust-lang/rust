@@ -50,6 +50,11 @@
 
 #include "TBAA.h"
 
+/// Maximum offset for type trees to keep
+llvm::cl::opt<ssize_t> MaxIntOffset("enzyme-max-int-offset", cl::init(100),
+                                    cl::Hidden,
+                                    cl::desc("Maximum type tree offset"));
+
 const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
     {"cos", Intrinsic::cos},
     {"sin", Intrinsic::sin},
@@ -452,8 +457,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
   // Print the update being made, if requested
   if (PrintType) {
     llvm::errs() << "updating analysis of val: " << *Val
-                << " current: " << prev.str() << " new "
-                << Data.str();
+                 << " current: " << prev.str() << " new " << Data.str();
     if (Origin)
       llvm::errs() << " from " << *Origin;
     llvm::errs() << " Changed=" << Changed << " legal=" << LegalOr << "\n";
@@ -2801,7 +2805,7 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
       intseen[val].insert(v);
     } else {
       if (intseen[val].size() == 1) {
-        if (abs(*intseen[val].begin()) > 100) {
+        if (abs(*intseen[val].begin()) > MaxIntOffset) {
           if (abs(*intseen[val].begin()) > abs(v)) {
             intseen[val].clear();
             intseen[val].insert(v);
@@ -2809,14 +2813,14 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
             return;
           }
         } else {
-          if (abs(v) > 100) {
+          if (abs(v) > MaxIntOffset) {
             return;
           } else {
             intseen[val].insert(v);
           }
         }
       } else {
-        if (abs(v) > 100) {
+        if (abs(v) > MaxIntOffset) {
           return;
         } else {
           intseen[val].insert(v);
@@ -3041,9 +3045,15 @@ FnTypeInfo TypeAnalyzer::getCallInfo(CallInst &call, Function &fn) {
       }
     }
     typeInfo.Arguments.insert(std::pair<Argument *, TypeTree>(&arg, dt));
-    typeInfo.KnownValues.insert(std::pair<Argument *, std::set<int64_t>>(
-        &arg, fntypeinfo.knownIntegralValues(call.getArgOperand(argnum), *DT,
-                                             intseen)));
+    std::set<int64_t> bounded;
+    for (auto v : fntypeinfo.knownIntegralValues(call.getArgOperand(argnum),
+                                                 *DT, intseen)) {
+      if (abs(v) > MaxIntOffset)
+        continue;
+      bounded.insert(v);
+    }
+    typeInfo.KnownValues.insert(
+        std::pair<Argument *, std::set<int64_t>>(&arg, bounded));
     ++argnum;
   }
 
