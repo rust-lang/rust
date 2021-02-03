@@ -1592,7 +1592,17 @@ where
                 }
             },
             (&Kind::End(a, _), &Kind::Start(b, _)) if a != Bound::Included(b) => (),
-            _ => return Some((a.range(), b.range())),
+            _ => {
+                // skip if the range `a` is completely included into the range `b`
+                if let Ordering::Equal | Ordering::Less = a.cmp(&b) {
+                    let kind_a = Kind::End(a.range().node.1, a.range());
+                    let kind_b = Kind::End(b.range().node.1, b.range());
+                    if let Ordering::Equal | Ordering::Greater = kind_a.cmp(&kind_b) {
+                        return None;
+                    }
+                }
+                return Some((a.range(), b.range()));
+            },
         }
     }
 

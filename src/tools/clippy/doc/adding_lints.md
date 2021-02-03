@@ -581,15 +581,15 @@ in the following steps:
 3. Passing the configuration value to the lint impl struct:
 
     First find the struct construction in the [clippy_lints lib file](/clippy_lints/src/lib.rs). 
-    Make sure that `clippy dev update_lints` added it beforehand. The configuration value is now 
-    cloned or copied into a local value that is then passed to the impl struct like this:
+    The configuration value is now cloned or copied into a local value that is then passed to the
+    impl struct like this:
     ```rust
     // Default generated registration:
-    store.register_late_pass(|| box module::StructName);
+    store.register_*_pass(|| box module::StructName);
 
     // New registration with configuration value
     let configuration_ident = conf.configuration_ident.clone();
-    store.register_late_pass(move || box module::StructName::new(configuration_ident));
+    store.register_*_pass(move || box module::StructName::new(configuration_ident));
     ```
 
     Congratulations the work is almost done. The configuration value can now be accessed
@@ -599,7 +599,7 @@ in the following steps:
     1. The default configured value can be tested like any normal lint in [`tests/ui`](/tests/ui).
     2. The configuration itself will be tested separately in [`tests/ui-toml`](/tests/ui-toml). 
         Simply add a new subfolder with a fitting name. This folder contains a `clippy.toml` file 
-        with the configuration value and a rust file that should be linted by clippy. The test can 
+        with the configuration value and a rust file that should be linted by Clippy. The test can 
         otherwise be written as usual.
 
 ## Cheatsheet

@@ -160,15 +160,17 @@ impl EarlyLintPass for ExcessiveBools {
                         "consider using a state machine or refactoring bools into two-variant enums",
                     );
                 }
-            }
-            ItemKind::Impl(box ImplKind { of_trait: None, items, .. })
+            },
+            ItemKind::Impl(box ImplKind {
+                of_trait: None, items, ..
+            })
             | ItemKind::Trait(box TraitKind(.., items)) => {
                 for item in items {
                     if let AssocItemKind::Fn(box FnKind(_, fn_sig, _, _)) = &item.kind {
                         self.check_fn_sig(cx, fn_sig, item.span);
                     }
                 }
-            }
+            },
             ItemKind::Fn(box FnKind(_, fn_sig, _, _)) => self.check_fn_sig(cx, fn_sig, item.span),
             _ => (),
         }

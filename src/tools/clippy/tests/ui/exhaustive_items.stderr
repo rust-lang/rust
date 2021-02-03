@@ -41,8 +41,8 @@ error: exported structs should not be exhaustive
   --> $DIR/exhaustive_items.rs:55:5
    |
 LL | /     pub struct Exhaustive {
-LL | |         foo: u8,
-LL | |         bar: String,
+LL | |         pub foo: u8,
+LL | |         pub bar: String,
 LL | |     }
    | |_____^
    |

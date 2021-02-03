@@ -309,7 +309,15 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
 
 /// Gets the definition associated to a path.
 #[allow(clippy::shadow_unrelated)] // false positive #6563
-pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<Res> {
+pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
+    macro_rules! try_res {
+        ($e:expr) => {
+            match $e {
+                Some(e) => e,
+                None => return Res::Err,
+            }
+        };
+    }
     fn item_child_by_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, name: &str) -> Option<&'tcx Export<HirId>> {
         tcx.item_children(def_id)
             .iter()
@@ -318,12 +326,12 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<Res> {
 
     let (krate, first, path) = match *path {
         [krate, first, ref path @ ..] => (krate, first, path),
-        _ => return None,
+        _ => return Res::Err,
     };
     let tcx = cx.tcx;
     let crates = tcx.crates();
-    let krate = crates.iter().find(|&&num| tcx.crate_name(num).as_str() == krate)?;
-    let first = item_child_by_name(tcx, krate.as_def_id(), first)?;
+    let krate = try_res!(crates.iter().find(|&&num| tcx.crate_name(num).as_str() == krate));
+    let first = try_res!(item_child_by_name(tcx, krate.as_def_id(), first));
     let last = path
         .iter()
         .copied()
@@ -343,21 +351,15 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<Res> {
             } else {
                 None
             }
-        })?;
-    Some(last.res)
+        });
+    try_res!(last).res
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
 /// It could be a trait or trait alias.
 pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
-    let res = match path_to_res(cx, path) {
-        Some(res) => res,
-        None => return None,
-    };
-
-    match res {
+    match path_to_res(cx, path) {
         Res::Def(DefKind::Trait | DefKind::TraitAlias, trait_id) => Some(trait_id),
-        Res::Err => unreachable!("this trait resolution is impossible: {:?}", &path),
         _ => None,
     }
 }
@@ -1532,10 +1534,11 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
         ExprKind::Call(
             Expr {
                 kind: ExprKind::Path(qpath),
+                hir_id: path_hir_id,
                 ..
             },
             ..,
-        ) => cx.typeck_results().qpath_res(qpath, expr.hir_id).opt_def_id(),
+        ) => cx.typeck_results().qpath_res(qpath, *path_hir_id).opt_def_id(),
         _ => None,
     }
 }
