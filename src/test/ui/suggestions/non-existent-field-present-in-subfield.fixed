@@ -3,7 +3,7 @@
 struct Foo {
     first: Bar,
     _second: u32,
-    _third: u32,
+    _third: Vec<String>,
 }
 
 struct Bar {
@@ -32,7 +32,7 @@ fn main() {
     let d = D { test: e };
     let c = C { c: d };
     let bar = Bar { bar: c };
-    let fooer = Foo { first: bar, _second: 4, _third: 5 };
+    let fooer = Foo { first: bar, _second: 4, _third: Vec::new() };
 
     let _test = &fooer.first.bar.c;
     //~^ ERROR no field

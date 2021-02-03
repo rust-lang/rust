@@ -26,6 +26,8 @@ const U8_MUT2: &u8 = { //~ NOTE
     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
     //~^ WARN [const_err]
     //~| NOTE constant accesses static
+    //~| WARN this was previously accepted by the compiler but is being phased out
+    //~| NOTE
 };
 #[warn(const_err)] //~ NOTE
 const U8_MUT3: &u8 = { //~ NOTE
@@ -33,6 +35,8 @@ const U8_MUT3: &u8 = { //~ NOTE
     //~^ WARN [const_err]
     //~| NOTE constant accesses static
     //~| NOTE in this expansion of panic!
+    //~| WARN this was previously accepted by the compiler but is being phased out
+    //~| NOTE
 };
 
 pub fn test(x: &[u8; 1]) -> bool {

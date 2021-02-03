@@ -645,7 +645,7 @@ impl EmitterWriter {
         margin: Margin,
     ) {
         // Tabs are assumed to have been replaced by spaces in calling code.
-        assert!(!source_string.contains('\t'));
+        debug_assert!(!source_string.contains('\t'));
         let line_len = source_string.len();
         // Create the source line we will highlight.
         let left = margin.left(line_len);

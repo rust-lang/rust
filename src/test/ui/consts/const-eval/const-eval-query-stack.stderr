@@ -11,9 +11,11 @@ note: the lint level is defined here
    |
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-eval-query-stack.rs:23:28
+  --> $DIR/const-eval-query-stack.rs:24:28
    |
 LL |     let x: &'static i32 = &X;
    |                            ^ referenced constant has errors

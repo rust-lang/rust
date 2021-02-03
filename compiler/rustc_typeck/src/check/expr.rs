@@ -1974,7 +1974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             field_path.push(candidate_field.ident.normalize_to_macros_2_0());
             let field_ty = candidate_field.ty(self.tcx, subst);
-            if let Some((nested_fields, _)) = self.get_field_candidates(span, &field_ty) {
+            if let Some((nested_fields, subst)) = self.get_field_candidates(span, &field_ty) {
                 for field in nested_fields.iter() {
                     let ident = field.ident.normalize_to_macros_2_0();
                     if ident == target_field {

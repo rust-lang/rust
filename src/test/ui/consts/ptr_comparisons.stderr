@@ -14,6 +14,8 @@ LL | const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
    | -------------------------------------------------------------------
    |
    = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
   --> $DIR/ptr_comparisons.rs:66:33
@@ -24,22 +26,31 @@ LL | |     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 100
    | |_________________________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^___-
    |                                   |
    |                                   memory access failed: pointer must be in-bounds at offset 1000, but is outside bounds of alloc2 which has size $WORD
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:70:27
+  --> $DIR/ptr_comparisons.rs:72:27
    |
 LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                           |
    |                           "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:75:27
+  --> $DIR/ptr_comparisons.rs:79:27
    |
 LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                           |
    |                           "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: aborting due to 4 previous errors
 

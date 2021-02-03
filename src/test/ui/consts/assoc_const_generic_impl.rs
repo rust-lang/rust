@@ -9,6 +9,7 @@ trait ZeroSized: Sized {
 
 impl<T: Sized> ZeroSized for T {
     const I_AM_ZERO_SIZED: ()  = [()][std::mem::size_of::<Self>()]; //~ WARN any use of this value
+    //~| WARN this was previously accepted by the compiler but is being phased out
     fn requires_zero_size(self) {
         let () = Self::I_AM_ZERO_SIZED; //~ ERROR erroneous constant encountered
         println!("requires_zero_size called");

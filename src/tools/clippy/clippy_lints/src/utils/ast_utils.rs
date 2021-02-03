@@ -247,7 +247,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (ForeignMod(l), ForeignMod(r)) => {
             both(&l.abi, &r.abi, |l, r| eq_str_lit(l, r))
                 && over(&l.items, &r.items, |l, r| eq_item(l, r, eq_foreign_item_kind))
-        }
+        },
         (TyAlias(box TyAliasKind(ld, lg, lb, lt)), TyAlias(box TyAliasKind(rd, rg, rb, rt))) => {
             eq_defaultness(*ld, *rd)
                 && eq_generics(lg, rg)
@@ -259,7 +259,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         },
         (Struct(lv, lg), Struct(rv, rg)) | (Union(lv, lg), Union(rv, rg)) => {
             eq_variant_data(lv, rv) && eq_generics(lg, rg)
-        }
+        },
         (Trait(box TraitKind(la, lu, lg, lb, li)), Trait(box TraitKind(ra, ru, rg, rb, ri))) => {
             la == ra
                 && matches!(lu, Unsafe::No) == matches!(ru, Unsafe::No)
@@ -331,15 +331,10 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
 pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
     use AssocItemKind::*;
     match (l, r) {
-        (Const(ld, lt, le), Const(rd, rt, re)) => {
-            eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re)
-        }
+        (Const(ld, lt, le), Const(rd, rt, re)) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (Fn(box FnKind(ld, lf, lg, lb)), Fn(box FnKind(rd, rf, rg, rb))) => {
-            eq_defaultness(*ld, *rd)
-                && eq_fn_sig(lf, rf)
-                && eq_generics(lg, rg)
-                && both(lb, rb, |l, r| eq_block(l, r))
-        }
+            eq_defaultness(*ld, *rd) && eq_fn_sig(lf, rf) && eq_generics(lg, rg) && both(lb, rb, |l, r| eq_block(l, r))
+        },
         (TyAlias(box TyAliasKind(ld, lg, lb, lt)), TyAlias(box TyAliasKind(rd, rg, rb, rt))) => {
             eq_defaultness(*ld, *rd)
                 && eq_generics(lg, rg)

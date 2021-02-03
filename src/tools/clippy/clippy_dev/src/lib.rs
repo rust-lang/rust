@@ -236,6 +236,10 @@ pub struct FileChange {
 /// `path` is the relative path to the file on which you want to perform the replacement.
 ///
 /// See `replace_region_in_text` for documentation of the other options.
+///
+/// # Panics
+///
+/// Panics if the path could not read or then written
 pub fn replace_region_in_file<F>(
     path: &Path,
     start: &str,
@@ -283,6 +287,10 @@ where
 ///     .new_lines;
 /// assert_eq!("replace_start\na different\ntext\nreplace_end", result);
 /// ```
+///
+/// # Panics
+///
+/// Panics if start or end is not valid regex
 pub fn replace_region_in_text<F>(text: &str, start: &str, end: &str, replace_start: bool, replacements: F) -> FileChange
 where
     F: FnOnce() -> Vec<String>,
@@ -329,6 +337,11 @@ where
 }
 
 /// Returns the path to the Clippy project directory
+///
+/// # Panics
+///
+/// Panics if the current directory could not be retrieved, there was an error reading any of the
+/// Cargo.toml files or ancestor directory is the clippy root directory
 #[must_use]
 pub fn clippy_project_root() -> PathBuf {
     let current_dir = std::env::current_dir().unwrap();
