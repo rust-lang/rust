@@ -38,7 +38,7 @@ fn main() {
     assert_eq!(get(), vec![0, 2, 3, 1]);
 
     let _ = std::panic::catch_unwind(|| {
-        (d(4), &d(5), d(6), &d(7), panic!(InjectedFailure));
+        (d(4), &d(5), d(6), &d(7), panic::panic_any(InjectedFailure));
     });
 
     // here, the temporaries (5/7) live until the end of the
