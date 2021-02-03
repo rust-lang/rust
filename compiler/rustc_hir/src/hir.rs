@@ -1896,6 +1896,26 @@ pub enum MatchSource {
 }
 
 impl MatchSource {
+    pub fn equivalent(&self, other: &Self) -> bool {
+        use MatchSource::*;
+        match (self, other) {
+            (Normal, Normal)
+            | (IfLetGuardDesugar { .. }, IfLetGuardDesugar { .. })
+            | (WhileDesugar, WhileDesugar)
+            | (WhileLetDesugar { .. }, WhileLetDesugar { .. })
+            | (ForLoopDesugar, ForLoopDesugar)
+            | (TryDesugar, TryDesugar)
+            | (AwaitDesugar, AwaitDesugar) => true,
+            (
+                IfLetDesugar { contains_else_clause: l, .. },
+                IfLetDesugar { contains_else_clause: r, .. },
+            ) => l == r,
+            _ => false,
+        }
+    }
+}
+
+impl MatchSource {
     pub fn name(self) -> &'static str {
         use MatchSource::*;
         match self {

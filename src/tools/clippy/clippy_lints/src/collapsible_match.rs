@@ -87,7 +87,7 @@ fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext
         let mut used_visitor = LocalUsedVisitor::new(cx, binding_id);
         if match arm.guard {
             None => true,
-            Some(Guard::If(expr) | Guard::IfLet(_, expr)) => !used_visitor.check_expr(expr),
+            Some(Guard::If(expr) | Guard::IfLet(_, expr, _)) => !used_visitor.check_expr(expr),
         };
         // ...or anywhere in the inner match
         if !arms_inner.iter().any(|arm| used_visitor.check_arm(arm));

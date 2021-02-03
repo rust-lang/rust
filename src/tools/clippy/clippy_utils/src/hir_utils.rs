@@ -177,7 +177,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.name == r.ident.name)
             },
             (&ExprKind::Match(ref le, ref la, ref ls), &ExprKind::Match(ref re, ref ra, ref rs)) => {
-                ls == rs
+                ls.equivalent(rs)
                     && self.eq_expr(le, re)
                     && over(la, ra, |l, r| {
                         self.eq_pat(&l.pat, &r.pat)
