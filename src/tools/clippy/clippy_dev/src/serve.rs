@@ -4,6 +4,9 @@ use std::process::Command;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
+/// # Panics
+///
+/// Panics if the python commands could not be spawned
 pub fn run(port: u16, lint: Option<&str>) -> ! {
     let mut url = Some(match lint {
         None => format!("http://localhost:{}", port),
