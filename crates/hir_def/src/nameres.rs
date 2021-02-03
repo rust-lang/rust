@@ -333,27 +333,7 @@ impl DefMap {
         fn go(buf: &mut String, map: &DefMap, path: &str, module: LocalModuleId) {
             format_to!(buf, "{}\n", path);
 
-            let mut entries: Vec<_> = map.modules[module].scope.resolutions().collect();
-            entries.sort_by_key(|(name, _)| name.clone());
-
-            for (name, def) in entries {
-                format_to!(buf, "{}:", name.map_or("_".to_string(), |name| name.to_string()));
-
-                if def.types.is_some() {
-                    buf.push_str(" t");
-                }
-                if def.values.is_some() {
-                    buf.push_str(" v");
-                }
-                if def.macros.is_some() {
-                    buf.push_str(" m");
-                }
-                if def.is_none() {
-                    buf.push_str(" _");
-                }
-
-                buf.push('\n');
-            }
+            map.modules[module].scope.dump(buf);
 
             for (name, child) in map.modules[module].children.iter() {
                 let path = format!("{}::{}", path, name);
