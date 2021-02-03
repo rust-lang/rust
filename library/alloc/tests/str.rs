@@ -161,6 +161,36 @@ fn test_join_for_different_lengths_with_long_separator() {
 }
 
 #[test]
+fn test_join_isue_80335() {
+    use core::{borrow::Borrow, cell::Cell};
+
+    struct WeirdBorrow {
+        state: Cell<bool>,
+    }
+
+    impl Default for WeirdBorrow {
+        fn default() -> Self {
+            WeirdBorrow { state: Cell::new(false) }
+        }
+    }
+
+    impl Borrow<str> for WeirdBorrow {
+        fn borrow(&self) -> &str {
+            let state = self.state.get();
+            if state {
+                "0"
+            } else {
+                self.state.set(true);
+                "123456"
+            }
+        }
+    }
+
+    let arr: [WeirdBorrow; 3] = Default::default();
+    test_join!("0-0-0", arr, "-");
+}
+
+#[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_unsafe_slice() {
     assert_eq!("ab", unsafe { "abc".get_unchecked(0..2) });
