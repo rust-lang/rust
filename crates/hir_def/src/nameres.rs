@@ -73,7 +73,15 @@ use crate::{
     AstId, BlockId, BlockLoc, LocalModuleId, ModuleDefId, ModuleId,
 };
 
-/// Contains all top-level defs from a macro-expanded crate
+/// Contains the results of (early) name resolution.
+///
+/// A `DefMap` stores the module tree and the definitions that are in scope in every module after
+/// item-level macros have been expanded.
+///
+/// Every crate has a primary `DefMap` whose root is the crate's main file (`main.rs`/`lib.rs`),
+/// computed by the `crate_def_map` query. Additionally, every block expression introduces the
+/// opportunity to write arbitrary item and module hierarchies, and thus gets its own `DefMap` that
+/// is computed by the `block_def_map` query.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DefMap {
     _c: Count<Self>,
@@ -91,6 +99,7 @@ pub struct DefMap {
     diagnostics: Vec<DefDiagnostic>,
 }
 
+/// For `DefMap`s computed for a block expression, this stores its location in the parent map.
 #[derive(Debug, PartialEq, Eq)]
 struct BlockInfo {
     block: BlockId,
