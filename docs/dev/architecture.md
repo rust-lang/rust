@@ -9,9 +9,9 @@ Yet another resource is this playlist with videos about various parts of the ana
 
 https://www.youtube.com/playlist?list=PL85XCvVPmGQho7MZkdW-wtPtuJcFpzycE
 
-Note that the guide and videos are pretty dated, this document should be in generally fresher.
+Note that the guide and videos are pretty dated, this document should be, in general, fresher.
 
-See also this implementation-oriented blog posts:
+See also these implementation-related blog posts:
 
 * https://rust-analyzer.github.io/blog/2019/11/13/find-usages.html
 * https://rust-analyzer.github.io/blog/2020/07/20/three-architectures-for-responsive-ide.html
@@ -27,9 +27,9 @@ On the highest level, rust-analyzer is a thing which accepts input source code f
 
 More specifically, input data consists of a set of test files (`(PathBuf, String)` pairs) and information about project structure, captured in the so called `CrateGraph`.
 The crate graph specifies which files are crate roots, which cfg flags are specified for each crate and what dependencies exist between the crates.
-This the input (ground) state.
+This is the input (ground) state.
 The analyzer keeps all this input data in memory and never does any IO.
-Because the input data are source code, which typically measures in tens of megabytes at most, keeping everything in memory is OK.
+Because the input data is source code, which typically measures in tens of megabytes at most, keeping everything in memory is OK.
 
 A "structured semantic model" is basically an object-oriented representation of modules, functions and types which appear in the source code.
 This representation is fully "resolved": all expressions have types, all references are bound to declarations, etc.
@@ -42,7 +42,7 @@ The underlying engine makes sure that model is computed lazily (on-demand) and c
 
 ## Code Map
 
-This section talks briefly about various important directories an data structures.
+This section talks briefly about various important directories and data structures.
 Pay attention to the **Architecture Invariant** sections.
 They often talk about things which are deliberately absent in the source code.
 
@@ -62,7 +62,7 @@ VS Code plugin.
 ### `libs/`
 
 rust-analyzer independent libraries which we publish to crates.io.
-It not heavily utilized at the moment.
+It's not heavily utilized at the moment.
 
 ### `crates/parser`
 
@@ -110,8 +110,8 @@ in particular: it shows off various methods of working with syntax tree.
 
 See [#93](https://github.com/rust-analyzer/rust-analyzer/pull/93) for an example PR which fixes a bug in the grammar.
 
-**Architecture Invariant:** `syntax` crate is completely independent from the rest of rust-analyzer, it knows nothing about salsa or LSP.
-This is important because it is possible to useful tooling using only syntax tree.
+**Architecture Invariant:** `syntax` crate is completely independent from the rest of rust-analyzer. It knows nothing about salsa or LSP.
+This is important because it is possible to make useful tooling using only the syntax tree.
 Without semantic information, you don't need to be able to _build_ code, which makes the tooling more robust.
 See also https://web.stanford.edu/~mlfbrown/paper.pdf.
 You can view the `syntax` crate as an entry point to rust-analyzer.
@@ -122,7 +122,7 @@ The tree is fully determined by the contents of its syntax nodes, it doesn't nee
 Using the tree as a store for semantic info is convenient in traditional compilers, but doesn't work nicely in the IDE.
 Specifically, assists and refactors require transforming syntax trees, and that becomes awkward if you need to do something with the semantic info.
 
-**Architecture Invariant:** syntax tree is build for a single file.
+**Architecture Invariant:** syntax tree is built for a single file.
 This is to enable parallel parsing of all files.
 
 **Architecture Invariant:**  Syntax trees are by design incomplete and do not enforce well-formedness.
@@ -131,7 +131,7 @@ If an AST method returns an `Option`, it *can* be `None` at runtime, even if thi
 ### `crates/base_db`
 
 We use the [salsa](https://github.com/salsa-rs/salsa) crate for incremental and on-demand computation.
-Roughly, you can think of salsa as a key-value store, but it also can compute derived values using specified functions. The `base_db` crate provides basic infrastructure for interacting with salsa.
+Roughly, you can think of salsa as a key-value store, but it can also compute derived values using specified functions. The `base_db` crate provides basic infrastructure for interacting with salsa.
 Crucially, it defines most of the "input" queries: facts supplied by the client of the analyzer.
 Reading the docs of the `base_db::input` module should be useful: everything else is strictly derived from those inputs.
 
@@ -160,11 +160,11 @@ These crates also define various intermediate representations of the core.
 
 `Body` stores information about expressions.
 
-**Architecture Invariant:** this crates are not, and will never be, an api boundary.
+**Architecture Invariant:** these crates are not, and will never be, an api boundary.
 
-**Architecture Invariant:** these creates explicitly care about being incremental.
+**Architecture Invariant:** these crates explicitly care about being incremental.
 The core invariant we maintain is "typing inside a function's body never invalidates global derived data".
-Ie, if you change body of `foo`, all facts about `bar` should remain intact.
+IE, if you change the body of `foo`, all facts about `bar` should remain intact.
 
 **Architecture Invariant:** hir exists only in context of particular crate instance with specific CFG flags.
 The same syntax may produce several instances of HIR if the crate participates in the crate graph more than once.
@@ -188,12 +188,12 @@ We first resolve the parent _syntax_ node to the parent _hir_ element.
 Then we ask the _hir_ parent what _syntax_ children does it have.
 Then we look for our node in the set of children.
 
-This is the heart of many IDE features, like goto definition, which start with figuring out a hir node at the cursor.
+This is the heart of many IDE features, like goto definition, which start with figuring out the hir node at the cursor.
 This is some kind of (yet unnamed) uber-IDE pattern, as it is present in Roslyn and Kotlin as well.
 
 ### `crates/ide`
 
-The `ide` crate build's on top of `hir` semantic model to provide high-level IDE features like completion or goto definition.
+The `ide` crate builds on top of `hir` semantic model to provide high-level IDE features like completion or goto definition.
 It is an **API Boundary**.
 If you want to use IDE parts of rust-analyzer via LSP, custom flatbuffers-based protocol or just as a library in your text editor, this is the right API.
 
@@ -260,7 +260,7 @@ This crate is responsible for parsing, evaluation and general definition of `cfg
 
 ### `crates/vfs`, `crates/vfs-notify`
 
-These crates implement a virtual fils system.
+These crates implement a virtual file system.
 They provide consistent snapshots of the underlying file system and insulate messy OS paths.
 
 **Architecture Invariant:** vfs doesn't assume a single unified file system.
@@ -319,7 +319,7 @@ That is, rust-analyzer requires unwinding.
 
 ### Testing
 
-Rust Analyzer has three interesting [systems boundaries](https://www.tedinski.com/2018/04/10/making-tests-a-positive-influence-on-design.html) to concentrate tests on.
+Rust Analyzer has three interesting [system boundaries](https://www.tedinski.com/2018/04/10/making-tests-a-positive-influence-on-design.html) to concentrate tests on.
 
 The outermost boundary is the `rust-analyzer` crate, which defines an LSP interface in terms of stdio.
 We do integration testing of this component, by feeding it with a stream of LSP requests and checking responses.
@@ -328,8 +328,8 @@ For this reason, we try to avoid writing too many tests on this boundary: in a s
 Heavy tests are only run when `RUN_SLOW_TESTS` env var is set.
 
 The middle, and most important, boundary is `ide`.
-Unlike `rust-analyzer`, which exposes API, `ide` uses Rust API and is intended to use by various tools.
-Typical test creates an `AnalysisHost`, calls some `Analysis` functions and compares the results against expectation.
+Unlike `rust-analyzer`, which exposes API, `ide` uses Rust API and is intended for use by various tools.
+A typical test creates an `AnalysisHost`, calls some `Analysis` functions and compares the results against expectation.
 
 The innermost and most elaborate boundary is `hir`.
 It has a much richer vocabulary of types than `ide`, but the basic testing setup is the same: we create a database, run some queries, assert result.
@@ -343,7 +343,7 @@ See the `marks` module in the `test_utils` crate for more.
 All required library code must be a part of the tests.
 This ensures fast test execution.
 
-**Architecture Invariant:** tests are data driven and do not test API.
+**Architecture Invariant:** tests are data driven and do not test the API.
 Tests which directly call various API functions are a liability, because they make refactoring the API significantly more complicated.
 So most of the tests look like this:
 
