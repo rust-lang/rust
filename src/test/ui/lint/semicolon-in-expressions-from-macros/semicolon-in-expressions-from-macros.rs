@@ -33,4 +33,9 @@ fn main() {
     fn inner() {
         let _ = foo!(third);
     }
+
+    #[allow(semicolon_in_expressions_from_macros)]
+    async {
+        let _ = foo!(fourth);
+    };
 }
