@@ -798,6 +798,7 @@ body.blur > :not(#help) {
 	float: left;
 	clear: left;
 	display: block;
+	margin-right: 0.5rem;
 }
 #help > div > span {
 	text-align: center;

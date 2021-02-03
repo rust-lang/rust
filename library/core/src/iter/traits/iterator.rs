@@ -1213,7 +1213,7 @@ pub trait Iterator {
     /// the iteration should stop, but wasn't placed back into the iterator.
     ///
     /// Note that unlike [`take_while`] this iterator is **not** fused.
-    /// It is also not specified what this iterator returns after the first` None` is returned.
+    /// It is also not specified what this iterator returns after the first [`None`] is returned.
     /// If you need fused iterator, use [`fuse`].
     ///
     /// [`fuse`]: Iterator::fuse
