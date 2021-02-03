@@ -38,19 +38,13 @@ pub fn rust_files() -> impl Iterator<Item = PathBuf> {
     rust_files_in(&project_root().join("crates"))
 }
 
-pub fn rust_files_in(path: &Path) -> impl Iterator<Item = PathBuf> {
-    let iter = WalkDir::new(path);
-    return iter
-        .into_iter()
-        .filter_entry(|e| !is_hidden(e))
-        .map(|e| e.unwrap())
-        .filter(|e| !e.file_type().is_dir())
-        .map(|e| e.into_path())
-        .filter(|path| path.extension().map(|it| it == "rs").unwrap_or(false));
+pub fn cargo_files() -> impl Iterator<Item = PathBuf> {
+    files_in(&project_root(), "toml")
+        .filter(|path| path.file_name().map(|it| it == "Cargo.toml").unwrap_or(false))
+}
 
-    fn is_hidden(entry: &DirEntry) -> bool {
-        entry.file_name().to_str().map(|s| s.starts_with('.')).unwrap_or(false)
-    }
+pub fn rust_files_in(path: &Path) -> impl Iterator<Item = PathBuf> {
+    files_in(path, "rs")
 }
 
 pub fn run_rustfmt(mode: Mode) -> Result<()> {
@@ -119,4 +113,19 @@ fn date_iso() -> Result<String> {
 
 fn is_release_tag(tag: &str) -> bool {
     tag.len() == "2020-02-24".len() && tag.starts_with(|c: char| c.is_ascii_digit())
+}
+
+fn files_in(path: &Path, ext: &'static str) -> impl Iterator<Item = PathBuf> {
+    let iter = WalkDir::new(path);
+    return iter
+        .into_iter()
+        .filter_entry(|e| !is_hidden(e))
+        .map(|e| e.unwrap())
+        .filter(|e| !e.file_type().is_dir())
+        .map(|e| e.into_path())
+        .filter(move |path| path.extension().map(|it| it == ext).unwrap_or(false));
+
+    fn is_hidden(entry: &DirEntry) -> bool {
+        entry.file_name().to_str().map(|s| s.starts_with('.')).unwrap_or(false)
+    }
 }

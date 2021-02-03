@@ -5,6 +5,7 @@ use std::{
 
 use xshell::{cmd, read_file};
 use xtask::{
+    cargo_files,
     codegen::{self, Mode},
     project_root, run_rustfmt, rust_files,
 };
@@ -91,6 +92,32 @@ fn rust_files_are_tidy() {
         tidy_docs.visit(&path, &text);
     }
     tidy_docs.finish();
+}
+
+#[test]
+fn cargo_files_are_tidy() {
+    for cargo in cargo_files() {
+        let mut section = None;
+        for (line_no, text) in read_file(&cargo).unwrap().lines().enumerate() {
+            let text = text.trim();
+            if text.starts_with("[") {
+                section = Some(text);
+                continue;
+            }
+            if !section.map(|it| it.starts_with("[dependencies")).unwrap_or(false) {
+                continue;
+            }
+            let text: String = text.split_whitespace().collect();
+            if text.contains("path=") && !text.contains("version") {
+                panic!(
+                    "\ncargo internal dependencies should have version.\n\
+                     {}:{}\n",
+                    cargo.display(),
+                    line_no + 1
+                )
+            }
+        }
+    }
 }
 
 #[test]
