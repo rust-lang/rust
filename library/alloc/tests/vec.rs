@@ -931,7 +931,7 @@ fn test_from_iter_specialization_with_iterator_adapters() {
         .map_while(Option::Some)
         .peekable()
         .skip(1)
-        .map(|e| if e != 0 { Ok(e) } else { Err(()) });
+        .map(|e| if e != usize::MAX { Ok(std::num::NonZeroUsize::new(e)) } else { Err(()) });
     assert_in_place_trait(&iter);
     let sink = iter.collect::<Result<Vec<_>, _>>().unwrap();
     let sinkptr = sink.as_ptr();
