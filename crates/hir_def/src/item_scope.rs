@@ -8,6 +8,7 @@ use hir_expand::name::Name;
 use hir_expand::MacroDefKind;
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::format_to;
 use test_utils::mark;
 
 use crate::{
@@ -290,6 +291,30 @@ impl ItemScope {
             }
 
             *vis = Visibility::Module(this_module);
+        }
+    }
+
+    pub(crate) fn dump(&self, buf: &mut String) {
+        let mut entries: Vec<_> = self.resolutions().collect();
+        entries.sort_by_key(|(name, _)| name.clone());
+
+        for (name, def) in entries {
+            format_to!(buf, "{}:", name.map_or("_".to_string(), |name| name.to_string()));
+
+            if def.types.is_some() {
+                buf.push_str(" t");
+            }
+            if def.values.is_some() {
+                buf.push_str(" v");
+            }
+            if def.macros.is_some() {
+                buf.push_str(" m");
+            }
+            if def.is_none() {
+                buf.push_str(" _");
+            }
+
+            buf.push('\n');
         }
     }
 }
