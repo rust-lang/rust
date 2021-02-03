@@ -281,6 +281,7 @@ pub enum ExprKind<'thir, 'tcx> {
         substs: UpvarSubsts<'tcx>,
         upvars: &'thir [Expr<'thir, 'tcx>],
         movability: Option<hir::Movability>,
+        fake_reads: Option<&'thir mut [Expr<'thir, 'tcx>]>,
     },
     Literal {
         literal: &'tcx Const<'tcx>,

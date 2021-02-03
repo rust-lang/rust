@@ -420,7 +420,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
-
                 let place = unpack!(block = this.as_place(block, expr));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
@@ -437,7 +436,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
-
                 let place = unpack!(block = this.as_place(block, expr));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
                 this.cfg.push_assign(block, source_info, destination, rvalue);

@@ -430,6 +430,9 @@ pub struct TypeckResults<'tcx> {
     /// see `MinCaptureInformationMap` for more details.
     pub closure_min_captures: ty::MinCaptureInformationMap<'tcx>,
 
+    /// [FIXME] RFC2229 Change to use HashSet instead of Vec
+    pub closure_fake_reads: FxHashMap<DefId, Vec<HirPlace<'tcx>>>,
+
     /// Stores the type, expression, span and optional scope span of all types
     /// that are live across the yield of this generator (if a generator).
     pub generator_interior_types: ty::Binder<Vec<GeneratorInteriorTypeCause<'tcx>>>,
@@ -464,6 +467,7 @@ impl<'tcx> TypeckResults<'tcx> {
             concrete_opaque_types: Default::default(),
             closure_captures: Default::default(),
             closure_min_captures: Default::default(),
+            closure_fake_reads: Default::default(),
             generator_interior_types: ty::Binder::dummy(Default::default()),
             treat_byte_string_as_slice: Default::default(),
         }
@@ -715,6 +719,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
             ref concrete_opaque_types,
             ref closure_captures,
             ref closure_min_captures,
+            ref closure_fake_reads,
             ref generator_interior_types,
             ref treat_byte_string_as_slice,
         } = *self;
@@ -750,6 +755,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
             concrete_opaque_types.hash_stable(hcx, hasher);
             closure_captures.hash_stable(hcx, hasher);
             closure_min_captures.hash_stable(hcx, hasher);
+            closure_fake_reads.hash_stable(hcx, hasher);
             generator_interior_types.hash_stable(hcx, hasher);
             treat_byte_string_as_slice.hash_stable(hcx, hasher);
         })

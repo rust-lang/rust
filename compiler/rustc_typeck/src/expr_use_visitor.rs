@@ -10,6 +10,7 @@ pub use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId, Projection};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
+// use rustc_hir::Pat;
 use rustc_hir::PatKind;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
@@ -51,6 +52,9 @@ pub trait Delegate<'tcx> {
     // The path at `assignee_place` is being assigned to.
     // `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
+
+    // [FIXME] RFC2229 This should also affect clippy ref: https://github.com/sexxi-goose/rust/pull/27
+    fn fake_read(&mut self, place: PlaceWithHirId<'tcx>);
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -229,7 +233,24 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             hir::ExprKind::Match(ref discr, arms, _) => {
                 let discr_place = return_if_err!(self.mc.cat_expr(&discr));
-                self.borrow_expr(&discr, ty::ImmBorrow);
+
+                // We only want to borrow discr if the pattern contain something other
+                // than wildcards
+                let ExprUseVisitor { ref mc, body_owner: _, delegate: _ } = *self;
+                let mut res = false;
+                for arm in arms.iter() {
+                    return_if_err!(mc.cat_pattern(discr_place.clone(), &arm.pat, |_place, pat| {
+                        if let PatKind::Binding(_, _, _, opt_sub_pat) = pat.kind {
+                            if let None = opt_sub_pat {
+                                res = true;
+                            }
+                        }
+                    }));
+                }
+
+                if res {
+                    self.borrow_expr(&discr, ty::ImmBorrow);
+                }
 
                 // treatment of the discriminant is handled while walking the arms.
                 for arm in arms {
@@ -537,6 +558,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
         debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
 
+        self.delegate.fake_read(discr_place.clone());
+
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
@@ -599,6 +622,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
         debug!("walk_captures({:?})", closure_expr);
 
+        // Over here we walk a closure that is nested inside the current body
+        // If the current body is a closure, then we also want to report back any fake reads,
+        // starting off of variables that are captured by our parent as well.
+
         let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id).to_def_id();
         let upvars = self.tcx().upvars_mentioned(self.body_owner);
 
@@ -611,6 +638,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         if let Some(min_captures) = self.mc.typeck_results.closure_min_captures.get(&closure_def_id)
         {
             for (var_hir_id, min_list) in min_captures.iter() {
+                // Use this as a reference for if we should promote the fake read
                 if upvars.map_or(body_owner_is_closure, |upvars| !upvars.contains_key(var_hir_id)) {
                     // The nested closure might be capturing the current (enclosing) closure's local variables.
                     // We check if the root variable is ever mentioned within the enclosing closure, if not
@@ -635,6 +663,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         place_base,
                         place.projections.clone(),
                     );
+
+                    // [FIXME] RFC2229 We want to created another loop that iterates mc.typeck_results.fake_reads()
+                    // [FIXME] RFC2229 Add tests for nested closures
+                    if body_owner_is_closure {
+                        self.delegate.fake_read(place_with_id.clone());
+                    }
 
                     match capture_info.capture_kind {
                         ty::UpvarCapture::ByValue(_) => {

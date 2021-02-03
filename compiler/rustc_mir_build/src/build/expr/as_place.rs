@@ -17,7 +17,7 @@ use rustc_target::abi::VariantIdx;
 use rustc_index::vec::Idx;
 
 /// The "outermost" place that holds this value.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 crate enum PlaceBase {
     /// Denotes the start of a `Place`.
     Local(Local),
@@ -67,7 +67,7 @@ crate enum PlaceBase {
 ///
 /// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
 /// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 crate struct PlaceBuilder<'tcx> {
     base: PlaceBase,
     projection: Vec<PlaceElem<'tcx>>,
@@ -199,7 +199,7 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
     from_builder: PlaceBuilder<'tcx>,
     tcx: TyCtxt<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
-) -> Result<PlaceBuilder<'tcx>, HirId> {
+) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
     match from_builder.base {
         PlaceBase::Local(_) => Ok(from_builder),
         PlaceBase::Upvar { var_hir_id, closure_def_id, closure_kind } => {
@@ -236,7 +236,7 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
                         var_hir_id, from_builder.projection,
                     );
                 }
-                return Err(var_hir_id);
+                return Err(upvar_resolved_place_builder);
             };
 
             let closure_ty = typeck_results
@@ -288,7 +288,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
         if let PlaceBase::Local(local) = self.base {
             Place { local, projection: tcx.intern_place_elems(&self.projection) }
         } else {
-            self.expect_upvars_resolved(tcx, typeck_results).into_place(tcx, typeck_results)
+            self.try_upvars_resolved(tcx, typeck_results).into_place(tcx, typeck_results)
         }
     }
 
@@ -298,6 +298,17 @@ impl<'tcx> PlaceBuilder<'tcx> {
         typeck_results: &'a ty::TypeckResults<'tcx>,
     ) -> PlaceBuilder<'tcx> {
         to_upvars_resolved_place_builder(self, tcx, typeck_results).unwrap()
+    }
+
+    fn try_upvars_resolved<'a>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        typeck_results: &'a ty::TypeckResults<'tcx>,
+    ) -> PlaceBuilder<'tcx> {
+        match to_upvars_resolved_place_builder(self, tcx, typeck_results) {
+            Ok(upvars_resolved) => upvars_resolved,
+            Err(upvars_unresolved) => upvars_unresolved,
+        }
     }
 
     crate fn base(&self) -> PlaceBase {
