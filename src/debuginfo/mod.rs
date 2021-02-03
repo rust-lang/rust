@@ -383,7 +383,7 @@ fn translate_loc(
     stack_slots: &StackSlots,
 ) -> Option<Expression> {
     match loc {
-        LabelValueLoc::ValueLoc( ValueLoc::Reg(reg)) => {
+        LabelValueLoc::ValueLoc(ValueLoc::Reg(reg)) => {
             let machine_reg = isa.map_dwarf_register(reg).unwrap();
             let mut expr = Expression::new();
             expr.op_reg(gimli::Register(machine_reg));
@@ -407,8 +407,8 @@ fn translate_loc(
         }
         LabelValueLoc::SPOffset(offset) => {
             let mut expr = Expression::new();
-                expr.op_breg(X86_64::RSP, offset);
-                Some(expr)
+            expr.op_breg(X86_64::RSP, offset);
+            Some(expr)
         }
     }
 }
