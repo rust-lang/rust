@@ -1240,36 +1240,6 @@ impl S {
         );
     }
 
-    // it is unclear if this is wanted behaviour
-    // and how this behavour can be implemented
-    #[ignore]
-    #[test]
-    fn method_with_mut_downgrade_to_shared() {
-        check_assist(
-            extract_function,
-            r"
-struct S { f: i32 };
-
-impl S {
-    fn foo(&mut self) -> i32 {
-        $01+self.f$0
-    }
-}",
-            r"
-struct S { f: i32 };
-
-impl S {
-    fn foo(&mut self) -> i32 {
-        self.fun_name()
-    }
-
-    fn $0fun_name(&self) -> i32 {
-        1+self.f
-    }
-}",
-        );
-    }
-
     #[test]
     fn variable_defined_inside_and_used_after_no_ret() {
         check_assist(
