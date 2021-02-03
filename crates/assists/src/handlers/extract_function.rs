@@ -107,13 +107,13 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
     let params = param_pats
         .into_iter()
         .map(|pat| {
-            let ty = pat
-                .pat()
-                .and_then(|pat| ctx.sema.type_of_pat(&pat))
+            let name = pat.name().unwrap().to_string();
+
+            let ty = ctx
+                .sema
+                .type_of_pat(&pat.into())
                 .and_then(|ty| ty.display_source_code(ctx.db(), module.into()).ok())
                 .unwrap_or_else(|| "()".to_string());
-
-            let name = pat.name().unwrap().to_string();
 
             Param { name, ty }
         })
