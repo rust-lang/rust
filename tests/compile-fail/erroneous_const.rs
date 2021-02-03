@@ -9,6 +9,7 @@
 struct PrintName<T>(T);
 impl<T> PrintName<T> {
     const VOID: ! = panic!(); //~WARN any use of this value will cause an error
+    //~^ WARN this was previously accepted
 }
 
 fn no_codegen<T>() {
