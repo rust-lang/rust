@@ -25,7 +25,7 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast::{self as ast, FloatTy, IntTy, NodeId, UintTy};
+use rustc_ast::{self as ast, NodeId};
 use rustc_ast::{Crate, CRATE_NODE_ID};
 use rustc_ast::{ItemKind, Path};
 use rustc_ast_lowering::ResolverAstLowering;
@@ -39,8 +39,7 @@ use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
-use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
-use rustc_hir::TraitCandidate;
+use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::hir::exports::ExportMap;
@@ -834,39 +833,6 @@ impl<'a> NameBinding<'a> {
     }
 }
 
-/// Interns the names of the primitive types.
-///
-/// All other types are defined somewhere and possibly imported, but the primitive ones need
-/// special handling, since they have no place of origin.
-struct PrimitiveTypeTable {
-    primitive_types: FxHashMap<Symbol, PrimTy>,
-}
-
-impl PrimitiveTypeTable {
-    fn new() -> PrimitiveTypeTable {
-        let mut table = FxHashMap::default();
-
-        table.insert(sym::bool, Bool);
-        table.insert(sym::char, Char);
-        table.insert(sym::f32, Float(FloatTy::F32));
-        table.insert(sym::f64, Float(FloatTy::F64));
-        table.insert(sym::isize, Int(IntTy::Isize));
-        table.insert(sym::i8, Int(IntTy::I8));
-        table.insert(sym::i16, Int(IntTy::I16));
-        table.insert(sym::i32, Int(IntTy::I32));
-        table.insert(sym::i64, Int(IntTy::I64));
-        table.insert(sym::i128, Int(IntTy::I128));
-        table.insert(sym::str, Str);
-        table.insert(sym::usize, Uint(UintTy::Usize));
-        table.insert(sym::u8, Uint(UintTy::U8));
-        table.insert(sym::u16, Uint(UintTy::U16));
-        table.insert(sym::u32, Uint(UintTy::U32));
-        table.insert(sym::u64, Uint(UintTy::U64));
-        table.insert(sym::u128, Uint(UintTy::U128));
-        Self { primitive_types: table }
-    }
-}
-
 #[derive(Debug, Default, Clone)]
 pub struct ExternPreludeEntry<'a> {
     extern_crate_item: Option<&'a NameBinding<'a>>,
@@ -911,9 +877,6 @@ pub struct Resolver<'a> {
     /// This binding should be ignored during in-module resolution, so that we don't get
     /// "self-confirming" import resolutions during import validation.
     unusable_binding: Option<&'a NameBinding<'a>>,
-
-    /// The idents for the primitive types.
-    primitive_type_table: PrimitiveTypeTable,
 
     /// Resolutions for nodes that have a single resolution.
     partial_res_map: NodeMap<PartialRes>,
@@ -1283,8 +1246,6 @@ impl<'a> Resolver<'a> {
 
             last_import_segment: false,
             unusable_binding: None,
-
-            primitive_type_table: PrimitiveTypeTable::new(),
 
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
@@ -1994,9 +1955,9 @@ impl<'a> Resolver<'a> {
         }
 
         if ns == TypeNS {
-            if let Some(prim_ty) = self.primitive_type_table.primitive_types.get(&ident.name) {
+            if let Some(prim_ty) = PrimTy::from_name(ident.name) {
                 let binding =
-                    (Res::PrimTy(*prim_ty), ty::Visibility::Public, DUMMY_SP, ExpnId::root())
+                    (Res::PrimTy(prim_ty), ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                         .to_name_binding(self.arenas);
                 return Some(LexicalScopeBinding::Item(binding));
             }
