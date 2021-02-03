@@ -1828,7 +1828,7 @@ impl<T, A: Allocator> Vec<T, A> {
         self.split_at_spare_mut().1
     }
 
-    /// Returns vector content as a slice of `T`, among with the remaining spare
+    /// Returns vector content as a slice of `T`, along with the remaining spare
     /// capacity of the vector as a slice of `MaybeUninit<T>`.
     ///
     /// The returned spare capacity slice can be used to fill the vector with data
