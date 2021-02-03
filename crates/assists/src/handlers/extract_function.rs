@@ -150,6 +150,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
                         return true;
                     }
 
+                    if is_mut_method_call(ctx, path.as_ref()).unwrap_or(false) {
+                        return true;
+                    }
+
                     false
                 });
 
@@ -427,6 +431,17 @@ fn is_mut_ref_expr(path: Option<&ast::Expr>) -> Option<bool> {
     let path = path?;
     let ref_expr = path.syntax().parent().and_then(ast::RefExpr::cast)?;
     Some(ref_expr.mut_token().is_some())
+}
+
+fn is_mut_method_call(ctx: &AssistContext, path: Option<&ast::Expr>) -> Option<bool> {
+    let path = path?;
+    let method_call = path.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
+
+    let func = ctx.sema.resolve_method_call(&method_call)?;
+    let self_param = func.self_param(ctx.db())?;
+    let access = self_param.access(ctx.db());
+
+    Some(matches!(access, hir::Access::Exclusive))
 }
 
 fn fix_param_usages(ctx: &AssistContext, params: &[Param], syntax: &SyntaxNode) -> SyntaxNode {
@@ -1507,6 +1522,107 @@ fn foo() {
 fn $0fun_name(mut n: i32) {
     let v = &mut n;
     *v += 1;
+}",
+        );
+    }
+
+    #[test]
+    fn mut_method_call() {
+        check_assist(
+            extract_function,
+            r"
+trait I {
+    fn inc(&mut self);
+}
+impl I for i32 {
+    fn inc(&mut self) { *self += 1 }
+}
+fn foo() {
+    let mut n = 1;
+    $0n.inc();$0
+}",
+            r"
+trait I {
+    fn inc(&mut self);
+}
+impl I for i32 {
+    fn inc(&mut self) { *self += 1 }
+}
+fn foo() {
+    let mut n = 1;
+    fun_name(n);
+}
+
+fn $0fun_name(mut n: i32) {
+    n.inc();
+}",
+        );
+    }
+
+    #[test]
+    fn shared_method_call() {
+        check_assist(
+            extract_function,
+            r"
+trait I {
+    fn succ(&self);
+}
+impl I for i32 {
+    fn succ(&self) { *self + 1 }
+}
+fn foo() {
+    let mut n = 1;
+    $0n.succ();$0
+}",
+            r"
+trait I {
+    fn succ(&self);
+}
+impl I for i32 {
+    fn succ(&self) { *self + 1 }
+}
+fn foo() {
+    let mut n = 1;
+    fun_name(n);
+}
+
+fn $0fun_name(n: i32) {
+    n.succ();
+}",
+        );
+    }
+
+    #[test]
+    fn mut_method_call_with_other_receiver() {
+        check_assist(
+            extract_function,
+            r"
+trait I {
+    fn inc(&mut self, n: i32);
+}
+impl I for i32 {
+    fn inc(&mut self, n: i32) { *self += n }
+}
+fn foo() {
+    let mut n = 1;
+    $0let mut m = 2;
+    m.inc(n);$0
+}",
+            r"
+trait I {
+    fn inc(&mut self, n: i32);
+}
+impl I for i32 {
+    fn inc(&mut self, n: i32) { *self += n }
+}
+fn foo() {
+    let mut n = 1;
+    fun_name(n);
+}
+
+fn $0fun_name(n: i32) {
+    let mut m = 2;
+    m.inc(n);
 }",
         );
     }
