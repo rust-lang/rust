@@ -801,8 +801,8 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
         DefKind::AnonConst | DefKind::AssocConst | DefKind::Static | DefKind::Const => {
             (true, false)
         }
-        // Closures and functions
-        DefKind::Closure | DefKind::AssocFn | DefKind::Fn => {
+        // Full-fledged functions
+        DefKind::AssocFn | DefKind::Fn => {
             let generics = tcx.generics_of(def_id);
             let needs_inline = (generics.requires_monomorphization(tcx)
                 || tcx.codegen_fn_attrs(def_id).requests_inline())
@@ -811,6 +811,15 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id());
             let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
             (is_const_fn, needs_inline || always_encode_mir)
+        }
+        // Closures can't be const fn.
+        DefKind::Closure => {
+            let generics = tcx.generics_of(def_id);
+            let needs_inline = (generics.requires_monomorphization(tcx)
+                || tcx.codegen_fn_attrs(def_id).requests_inline())
+                && tcx.sess.opts.output_types.should_codegen();
+            let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
+            (false, needs_inline || always_encode_mir)
         }
         // Generators require optimized MIR to compute layout.
         DefKind::Generator => (false, true),
@@ -1206,17 +1215,17 @@ impl EncodeContext<'a, 'tcx> {
             }
             if encode_const {
                 record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- self.tcx.mir_for_ctfe(def_id));
+
+                let abstract_const = self.tcx.mir_abstract_const(def_id);
+                if let Ok(Some(abstract_const)) = abstract_const {
+                    record!(self.tables.mir_abstract_consts[def_id.to_def_id()] <- abstract_const);
+                }
             }
             record!(self.tables.promoted_mir[def_id.to_def_id()] <- self.tcx.promoted_mir(def_id));
 
             let unused = self.tcx.unused_generic_params(def_id);
             if !unused.is_empty() {
                 record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
-            }
-
-            let abstract_const = self.tcx.mir_abstract_const(def_id);
-            if let Ok(Some(abstract_const)) = abstract_const {
-                record!(self.tables.mir_abstract_consts[def_id.to_def_id()] <- abstract_const);
             }
         }
     }
