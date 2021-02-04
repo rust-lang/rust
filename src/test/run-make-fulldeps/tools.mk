@@ -21,6 +21,12 @@ CGREP := "$(S)/src/etc/cat-and-grep.sh"
 # diff with common flags for multi-platform diffs against text output
 DIFF := diff -u --strip-trailing-cr
 
+# CI platforms use `/bin/dash`. When compiling in other environments, the
+# default may be different (for example, may default to `/bin/bash`), and syntax
+# and results could be different. Ensure Makefile `$(shell ...)` invocations
+# always run in `dash`.
+SHELL := /bin/dash
+
 # This is the name of the binary we will generate and run; use this
 # e.g. for `$(CC) -o $(RUN_BINFILE)`.
 RUN_BINFILE = $(TMPDIR)/$(1)
