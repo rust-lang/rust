@@ -64,7 +64,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
     let body = extraction_target(&node, ctx.frange.range)?;
 
-    let vars_used_in_body = vars_used_in_body(&body, &ctx);
+    let vars_used_in_body = vars_used_in_body(ctx, &body);
     let self_param = self_param_from_usages(ctx, &body, &vars_used_in_body);
 
     let anchor = if self_param.is_some() { Anchor::Method } else { Anchor::Freestanding };
@@ -74,6 +74,9 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
     let vars_defined_in_body_and_outlive = vars_defined_in_body_and_outlive(ctx, &body);
     let ret_ty = body_return_ty(ctx, &body)?;
 
+    // FIXME: we compute variables that outlive here just to check `never!` condition
+    //        this requires traversing whole `body` (cheap) and finding all references (expensive)
+    //        maybe we can move this check to `edit` closure somehow?
     if stdx::never!(!vars_defined_in_body_and_outlive.is_empty() && !ret_ty.is_unit()) {
         // We should not have variables that outlive body if we have expression block
         return None;
@@ -201,6 +204,7 @@ impl RetType {
     }
 }
 
+/// Semantically same as `ast::Expr`, but preserves identity when using only part of the Block
 #[derive(Debug)]
 enum FunctionBody {
     Expr(ast::Expr),
@@ -334,6 +338,7 @@ impl HasTokenAtOffset for FunctionBody {
     }
 }
 
+/// node or token's parent
 fn element_to_node(node: SyntaxElement) -> SyntaxNode {
     match node {
         syntax::NodeOrToken::Node(n) => n,
@@ -341,7 +346,26 @@ fn element_to_node(node: SyntaxElement) -> SyntaxNode {
     }
 }
 
+/// Try to guess what user wants to extract
+///
+/// We have basically have two cases:
+/// * We want whole node, like `loop {}`, `2 + 2`, `{ let n = 1; }` exprs.
+///   Then we can use `ast::Expr`
+/// * We want a few statements for a block. E.g.
+///   ```rust,no_run
+///   fn foo() -> i32 {
+///     let m = 1;
+///     $0
+///     let n = 2;
+///     let k = 3;
+///     k + n
+///     $0
+///   }
+///   ```
+///
 fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<FunctionBody> {
+    // we have selected exactly the expr node
+    // wrap it before anything else
     if node.text_range() == selection_range {
         let body = FunctionBody::from_whole_node(node.clone());
         if body.is_some() {
@@ -349,12 +373,18 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
         }
     }
 
+    // we have selected a few statements in a block
+    // so covering_element returns the whole block
     if node.kind() == BLOCK_EXPR {
         let body = FunctionBody::from_range(&node, selection_range);
         if body.is_some() {
             return body;
         }
     }
+
+    // we have selected single statement
+    // `from_whole_node` failed because (let) statement is not and expression
+    // so we try to expand covering_element to parent and repeat the previous
     if let Some(parent) = node.parent() {
         if parent.kind() == BLOCK_EXPR {
             let body = FunctionBody::from_range(&parent, selection_range);
@@ -364,21 +394,13 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
         }
     }
 
-    let body = FunctionBody::from_whole_node(node.clone());
-    if body.is_some() {
-        return body;
-    }
-
-    let body = node.ancestors().find_map(FunctionBody::from_whole_node);
-    if body.is_some() {
-        return body;
-    }
-
-    None
+    // select the closest containing expr (both ifs are used)
+    std::iter::once(node.clone()).chain(node.ancestors()).find_map(FunctionBody::from_whole_node)
 }
 
-/// Returns a vector of local variables that are referenced in `body`
-fn vars_used_in_body(body: &FunctionBody, ctx: &AssistContext) -> Vec<Local> {
+/// list local variables that are referenced in `body`
+fn vars_used_in_body(ctx: &AssistContext, body: &FunctionBody) -> Vec<Local> {
+    // FIXME: currently usages inside macros are not found
     body.descendants()
         .filter_map(ast::NameRef::cast)
         .filter_map(|name_ref| NameRefClass::classify(&ctx.sema, &name_ref))
@@ -391,6 +413,9 @@ fn vars_used_in_body(body: &FunctionBody, ctx: &AssistContext) -> Vec<Local> {
         .collect()
 }
 
+/// find `self` param, that was not defined inside `body`
+///
+/// It should skip `self` params from impls inside `body`
 fn self_param_from_usages(
     ctx: &AssistContext,
     body: &FunctionBody,
@@ -412,12 +437,15 @@ fn self_param_from_usages(
     let self_param = iter.next();
     stdx::always!(
         iter.next().is_none(),
-        "body references two different self params both defined outside"
+        "body references two different self params, both defined outside"
     );
 
     self_param
 }
 
+/// find variables that should be extracted as params
+///
+/// Computes additional info that affects param type and mutability
 fn extracted_function_params(
     ctx: &AssistContext,
     body: &FunctionBody,
@@ -455,6 +483,7 @@ fn has_usages_after_body(usages: &LocalUsages, body: &FunctionBody) -> bool {
     usages.iter().any(|reference| body.preceedes_range(reference.range))
 }
 
+/// checks if relevant var is used with `&mut` access inside body
 fn has_exclusive_usages(ctx: &AssistContext, usages: &LocalUsages, body: &FunctionBody) -> bool {
     usages
         .iter()
@@ -462,27 +491,34 @@ fn has_exclusive_usages(ctx: &AssistContext, usages: &LocalUsages, body: &Functi
         .any(|reference| reference_is_exclusive(reference, body, ctx))
 }
 
+/// checks if this reference requires `&mut` access inside body
 fn reference_is_exclusive(
     reference: &FileReference,
     body: &FunctionBody,
     ctx: &AssistContext,
 ) -> bool {
+    // we directly modify variable with set: `n = 0`, `n += 1`
     if reference.access == Some(ReferenceAccess::Write) {
         return true;
     }
 
-    let path = path_at_offset(body, reference);
+    // we take `&mut` reference to variable: `&mut v`
+    let path = path_element_of_reference(body, reference);
     if is_mut_ref_expr(path.as_ref()).unwrap_or(false) {
         return true;
     }
 
-    if is_mut_method_call(ctx, path.as_ref()).unwrap_or(false) {
+    // we call method with `&mut self` receiver
+    if is_mut_method_call_receiver(ctx, path.as_ref()).unwrap_or(false) {
         return true;
     }
 
     false
 }
 
+/// Container of local varaible usages
+///
+/// Semanticall same as `UsageSearchResult`, but provides more convenient interface
 struct LocalUsages(ide_db::search::UsageSearchResult);
 
 impl LocalUsages {
@@ -510,7 +546,15 @@ impl HasTokenAtOffset for SyntaxNode {
     }
 }
 
-fn path_at_offset(node: &dyn HasTokenAtOffset, reference: &FileReference) -> Option<ast::Expr> {
+/// find relevant `ast::PathExpr` for reference
+///
+/// # Preconditions
+///
+/// `node` must cover `reference`, that is `node.text_range().contains_range(reference.range)`
+fn path_element_of_reference(
+    node: &dyn HasTokenAtOffset,
+    reference: &FileReference,
+) -> Option<ast::Expr> {
     let token = node.token_at_offset(reference.range.start()).right_biased().or_else(|| {
         stdx::never!(false, "cannot find token at variable usage: {:?}", reference);
         None
@@ -529,7 +573,8 @@ fn is_mut_ref_expr(path: Option<&ast::Expr>) -> Option<bool> {
     Some(ref_expr.mut_token().is_some())
 }
 
-fn is_mut_method_call(ctx: &AssistContext, path: Option<&ast::Expr>) -> Option<bool> {
+/// checks if `path` is the receiver in method call that requires `&mut self` access
+fn is_mut_method_call_receiver(ctx: &AssistContext, path: Option<&ast::Expr>) -> Option<bool> {
     let path = path?;
     let method_call = path.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
 
@@ -540,8 +585,10 @@ fn is_mut_method_call(ctx: &AssistContext, path: Option<&ast::Expr>) -> Option<b
     Some(matches!(access, hir::Access::Exclusive))
 }
 
-/// Returns a vector of local variables that are defined in `body`
+/// list local variables defined inside `body`
 fn vars_defined_in_body(body: &FunctionBody, ctx: &AssistContext) -> Vec<Local> {
+    // FIXME: this doesn't work well with macros
+    //        see https://github.com/rust-analyzer/rust-analyzer/pull/7535#discussion_r570048550
     body.descendants()
         .filter_map(ast::IdentPat::cast)
         .filter_map(|let_stmt| ctx.sema.to_def(&let_stmt))
@@ -549,12 +596,14 @@ fn vars_defined_in_body(body: &FunctionBody, ctx: &AssistContext) -> Vec<Local> 
         .collect()
 }
 
+/// list local variables defined inside `body` that should be returned from extracted function
 fn vars_defined_in_body_and_outlive(ctx: &AssistContext, body: &FunctionBody) -> Vec<Local> {
     let mut vars_defined_in_body = vars_defined_in_body(&body, ctx);
     vars_defined_in_body.retain(|var| var_outlives_body(ctx, body, var));
     vars_defined_in_body
 }
 
+/// checks if the relevant local was defined before(outside of) body
 fn is_defined_before(
     ctx: &AssistContext,
     body: &FunctionBody,
@@ -571,6 +620,7 @@ fn either_syntax(value: &Either<ast::IdentPat, ast::SelfParam>) -> &SyntaxNode {
     }
 }
 
+/// checks if local variable is used after(outside of) body
 fn var_outlives_body(ctx: &AssistContext, body: &FunctionBody, var: &Local) -> bool {
     let usages = Definition::Local(*var)
         .usages(&ctx.sema)
@@ -590,12 +640,18 @@ fn body_return_ty(ctx: &AssistContext, body: &FunctionBody) -> Option<RetType> {
         None => Some(RetType::Stmt),
     }
 }
+/// Where to put extracted function definition
 #[derive(Debug)]
 enum Anchor {
+    /// Extract free function and put right after current top-level function
     Freestanding,
+    /// Extract method and put right after current function in the impl-block
     Method,
 }
 
+/// find where to put extracted function definition
+///
+/// Function should be put right after returned node
 fn scope_for_fn_insertion(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNode> {
     match body {
         FunctionBody::Expr(e) => scope_for_fn_insertion_node(e.syntax(), anchor),
@@ -801,6 +857,7 @@ fn format_type(ty: &hir::Type, ctx: &AssistContext, module: hir::Module) -> Stri
     ty.display_source_code(ctx.db(), module.into()).ok().unwrap_or_else(|| "()".to_string())
 }
 
+/// change all usages to account for added `&`/`&mut` for some params
 fn fix_param_usages(ctx: &AssistContext, params: &[Param], syntax: &SyntaxNode) -> SyntaxNode {
     let mut rewriter = SyntaxRewriter::default();
     for param in params {
@@ -812,7 +869,7 @@ fn fix_param_usages(ctx: &AssistContext, params: &[Param], syntax: &SyntaxNode) 
         let usages = usages
             .iter()
             .filter(|reference| syntax.text_range().contains_range(reference.range))
-            .filter_map(|reference| path_at_offset(syntax, reference));
+            .filter_map(|reference| path_element_of_reference(syntax, reference));
         for path in usages {
             match path.syntax().ancestors().skip(1).find_map(ast::Expr::cast) {
                 Some(ast::Expr::MethodCallExpr(_)) => {
@@ -1425,6 +1482,54 @@ fn $0fun_name(n: i32) -> (i32, i32) {
     }
 
     #[test]
+    fn nontrivial_patterns_define_variables() {
+        check_assist(
+            extract_function,
+            r"
+struct Counter(i32);
+fn foo() {
+    $0let Counter(n) = Counter(0);$0
+    let m = n;
+}",
+            r"
+struct Counter(i32);
+fn foo() {
+    let n = fun_name();
+    let m = n;
+}
+
+fn $0fun_name() -> i32 {
+    let Counter(n) = Counter(0);
+    n
+}",
+        );
+    }
+
+    #[test]
+    fn struct_with_two_fields_pattern_define_variables() {
+        check_assist(
+            extract_function,
+            r"
+struct Counter { n: i32, m: i32 };
+fn foo() {
+    $0let Counter { n, m: k } = Counter { n: 1, m: 2 };$0
+    let h = n + k;
+}",
+            r"
+struct Counter { n: i32, m: i32 };
+fn foo() {
+    let (n, k) = fun_name();
+    let h = n + k;
+}
+
+fn $0fun_name() -> (i32, i32) {
+    let Counter { n, m: k } = Counter { n: 1, m: 2 };
+    (n, k)
+}",
+        );
+    }
+
+    #[test]
     fn mut_var_from_outer_scope() {
         check_assist(
             extract_function,
@@ -1753,7 +1858,6 @@ fn $0fun_name(c: Counter) {
 }",
         );
     }
-
 
     #[test]
     fn non_copy_used_after() {
