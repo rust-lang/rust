@@ -146,6 +146,7 @@ impl ItemTree {
                 macro_defs,
                 vis,
                 generics,
+                type_refs,
                 inner_items,
             } = &mut **data;
 
@@ -169,6 +170,8 @@ impl ItemTree {
 
             vis.arena.shrink_to_fit();
             generics.arena.shrink_to_fit();
+            type_refs.arena.shrink_to_fit();
+            type_refs.map.shrink_to_fit();
 
             inner_items.shrink_to_fit();
         }
@@ -279,6 +282,32 @@ static EMPTY_GENERICS: GenericParams = GenericParams {
     where_predicates: Vec::new(),
 };
 
+/// `TypeRef` interner.
+#[derive(Default, Debug, Eq, PartialEq)]
+struct TypeRefStorage {
+    arena: Arena<Arc<TypeRef>>,
+    map: FxHashMap<Arc<TypeRef>, Idx<Arc<TypeRef>>>,
+}
+
+impl TypeRefStorage {
+    // Note: We lie about the `Idx<TypeRef>` to hide the interner details.
+
+    fn intern(&mut self, ty: TypeRef) -> Idx<TypeRef> {
+        if let Some(id) = self.map.get(&ty) {
+            return Idx::from_raw(id.into_raw());
+        }
+
+        let ty = Arc::new(ty);
+        let idx = self.arena.alloc(ty.clone());
+        self.map.insert(ty, idx);
+        Idx::from_raw(idx.into_raw())
+    }
+
+    fn lookup(&self, id: Idx<TypeRef>) -> &TypeRef {
+        &self.arena[Idx::from_raw(id.into_raw())]
+    }
+}
+
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
     imports: Arena<Import>,
@@ -301,6 +330,7 @@ struct ItemTreeData {
 
     vis: ItemVisibilities,
     generics: GenericParamsStorage,
+    type_refs: TypeRefStorage,
 
     inner_items: FxHashMap<FileAstId<ast::BlockExpr>, SmallVec<[ModItem; 1]>>,
 }
@@ -489,6 +519,14 @@ impl Index<GenericParamsId> for ItemTree {
     }
 }
 
+impl Index<Idx<TypeRef>> for ItemTree {
+    type Output = TypeRef;
+
+    fn index(&self, id: Idx<TypeRef>) -> &Self::Output {
+        self.data().type_refs.lookup(id)
+    }
+}
+
 impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     type Output = N;
     fn index(&self, id: FileItemTreeId<N>) -> &N {
@@ -532,9 +570,9 @@ pub struct Function {
     /// Whether the function is located in an `extern` block (*not* whether it is an
     /// `extern "abi" fn`).
     pub is_extern: bool,
-    pub params: Box<[TypeRef]>,
+    pub params: Box<[Idx<TypeRef>]>,
     pub is_varargs: bool,
-    pub ret_type: TypeRef,
+    pub ret_type: Idx<TypeRef>,
     pub ast_id: FileAstId<ast::Fn>,
 }
 
@@ -581,7 +619,7 @@ pub struct Const {
     /// const _: () = ();
     pub name: Option<Name>,
     pub visibility: RawVisibilityId,
-    pub type_ref: TypeRef,
+    pub type_ref: Idx<TypeRef>,
     pub ast_id: FileAstId<ast::Const>,
 }
 
@@ -592,7 +630,7 @@ pub struct Static {
     pub mutable: bool,
     /// Whether the static is in an `extern` block.
     pub is_extern: bool,
-    pub type_ref: TypeRef,
+    pub type_ref: Idx<TypeRef>,
     pub ast_id: FileAstId<ast::Static>,
 }
 
@@ -609,8 +647,8 @@ pub struct Trait {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Impl {
     pub generic_params: GenericParamsId,
-    pub target_trait: Option<TypeRef>,
-    pub target_type: TypeRef,
+    pub target_trait: Option<Idx<TypeRef>>,
+    pub target_type: Idx<TypeRef>,
     pub is_negative: bool,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Impl>,
@@ -623,7 +661,7 @@ pub struct TypeAlias {
     /// Bounds on the type alias itself. Only valid in trait declarations, eg. `type Assoc: Copy;`.
     pub bounds: Box<[TypeBound]>,
     pub generic_params: GenericParamsId,
-    pub type_ref: Option<TypeRef>,
+    pub type_ref: Option<Idx<TypeRef>>,
     pub is_extern: bool,
     pub ast_id: FileAstId<ast::TypeAlias>,
 }
@@ -806,6 +844,6 @@ pub enum Fields {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Field {
     pub name: Name,
-    pub type_ref: TypeRef,
+    pub type_ref: Idx<TypeRef>,
     pub visibility: RawVisibilityId,
 }

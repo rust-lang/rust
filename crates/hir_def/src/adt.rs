@@ -351,7 +351,7 @@ fn lower_field(
 ) -> FieldData {
     FieldData {
         name: field.name.clone(),
-        type_ref: field.type_ref.clone(),
+        type_ref: item_tree[field.type_ref].clone(),
         visibility: item_tree[override_visibility.unwrap_or(field.visibility)].clone(),
     }
 }

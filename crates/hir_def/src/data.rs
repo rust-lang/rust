@@ -41,8 +41,8 @@ impl FunctionData {
 
         Arc::new(FunctionData {
             name: func.name.clone(),
-            params: func.params.to_vec(),
-            ret_type: func.ret_type.clone(),
+            params: func.params.iter().map(|id| item_tree[*id].clone()).collect(),
+            ret_type: item_tree[func.ret_type].clone(),
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()).clone(),
             has_self_param: func.has_self_param,
             has_body: func.has_body,
@@ -75,7 +75,7 @@ impl TypeAliasData {
 
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
-            type_ref: typ.type_ref.clone(),
+            type_ref: typ.type_ref.map(|id| item_tree[id].clone()),
             visibility: item_tree[typ.visibility].clone(),
             is_extern: typ.is_extern,
             bounds: typ.bounds.to_vec(),
@@ -144,8 +144,8 @@ impl ImplData {
 
         let item_tree = db.item_tree(impl_loc.id.file_id);
         let impl_def = &item_tree[impl_loc.id.value];
-        let target_trait = impl_def.target_trait.clone();
-        let target_type = impl_def.target_type.clone();
+        let target_trait = impl_def.target_trait.map(|id| item_tree[id].clone());
+        let target_type = item_tree[impl_def.target_type].clone();
         let is_negative = impl_def.is_negative;
         let module_id = impl_loc.container.module(db);
         let container = AssocContainerId::ImplId(id);
@@ -182,7 +182,7 @@ impl ConstData {
 
         Arc::new(ConstData {
             name: konst.name.clone(),
-            type_ref: konst.type_ref.clone(),
+            type_ref: item_tree[konst.type_ref].clone(),
             visibility: item_tree[konst.visibility].clone(),
         })
     }
@@ -205,7 +205,7 @@ impl StaticData {
 
         Arc::new(StaticData {
             name: Some(statik.name.clone()),
-            type_ref: statik.type_ref.clone(),
+            type_ref: item_tree[statik.type_ref].clone(),
             visibility: item_tree[statik.visibility].clone(),
             mutable: statik.mutable,
             is_extern: statik.is_extern,
