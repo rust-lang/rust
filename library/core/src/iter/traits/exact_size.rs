@@ -13,6 +13,12 @@
 /// implement it. However, you may be able to provide a more performant
 /// implementation than the default, so overriding it in this case makes sense.
 ///
+/// Note that this trait is a safe trait and as such does *not* and *cannot*
+/// guarantee that the returned length is correct. This means that `unsafe`
+/// code **must not** rely on the correctness of [`Iterator::size_hint`]. The
+/// unstable and unsafe [`TrustedLen`](super::marker::TrustedLen) trait gives
+/// this additional guarantee.
+///
 /// [`len`]: ExactSizeIterator::len
 ///
 /// # Examples
