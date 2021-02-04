@@ -2051,7 +2051,7 @@ fn check_manual_flatten<'tcx>(
                         );
                         diag.span_help(
                             inner_expr.span,
-                            "also remove the `if let` statement in the for loop",
+                            "...and remove the `if let` statement in the for loop",
                         );
                     }
                 );

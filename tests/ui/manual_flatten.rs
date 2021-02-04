@@ -25,7 +25,7 @@ fn main() {
     }
 
     // Test for loop over an implicit reference
-    // Note: If `clippy::manual_flatten` is made autofixable, this case will
+    // Note: if `clippy::manual_flatten` is made autofixable, this case will
     // lead to a follow-up lint `clippy::into_iter_on_ref`
     let z = &y;
     for n in z {
@@ -44,6 +44,8 @@ fn main() {
     }
 
     // Using the `None` variant should not trigger the lint
+    // Note: for an autofixable suggestion, the binding in the for loop has to take the
+    // name of the binding in the `if let`
     let z = vec![Some(1), Some(2), Some(3)];
     for n in z {
         if n.is_none() {
