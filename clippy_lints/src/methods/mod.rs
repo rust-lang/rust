@@ -4095,11 +4095,7 @@ fn lint_from_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<
         then {
             // `expr` implements `FromIterator` trait
             let iter_expr = sugg::Sugg::hir(cx, &args[0], "..").maybe_par();
-            let sugg = if higher::range(&args[0]).is_some() {
-                format!("{}.collect::<{}>()", iter_expr, ty)
-            } else {
-                format!("{}.collect()", iter_expr)
-            };
+            let sugg = format!("{}.collect::<{}>()", iter_expr, ty);
             span_lint_and_sugg(
                 cx,
                 FROM_ITER_INSTEAD_OF_COLLECT,

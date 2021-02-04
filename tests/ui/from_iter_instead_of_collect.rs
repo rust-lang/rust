@@ -1,13 +1,16 @@
-#![warn(clippy::from_iter_instead_of_collect)]
+// run-rustfix
 
-use std::collections::{HashMap, VecDeque};
+#![warn(clippy::from_iter_instead_of_collect)]
+#![allow(unused_imports)]
+
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::iter::FromIterator;
 
 fn main() {
     let iter_expr = std::iter::repeat(5).take(5);
-    Vec::from_iter(iter_expr);
+    let _ = Vec::from_iter(iter_expr);
 
-    HashMap::<usize, &i8>::from_iter(vec![5, 5, 5, 5].iter().enumerate());
+    let _ = HashMap::<usize, &i8>::from_iter(vec![5, 5, 5, 5].iter().enumerate());
 
     Vec::from_iter(vec![42u32]);
 
@@ -16,4 +19,16 @@ fn main() {
 
     let mut b = VecDeque::from_iter(0..3);
     b.push_back(4);
+
+    let values = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'd')];
+    let bm = BTreeMap::from_iter(values.iter().cloned());
+    let mut bar = BTreeMap::from_iter(bm.range(0..2));
+    bar.insert(&4, &'e');
+
+    let mut bts = BTreeSet::from_iter(0..3);
+    bts.insert(2);
+    {
+        use std::collections;
+        let _ = collections::BTreeSet::from_iter(0..3);
+    }
 }
