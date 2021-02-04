@@ -63,7 +63,7 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
             if let Some(path) = module.find_use_path(ctx.db, ModuleDef::from(variant)) {
                 // Variants with trivial paths are already added by the existing completion logic,
                 // so we should avoid adding these twice
-                if path.segments.len() > 1 {
+                if path.segments().len() > 1 {
                     acc.add_qualified_enum_variant(ctx, variant, path);
                 }
             }

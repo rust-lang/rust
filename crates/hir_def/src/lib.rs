@@ -662,7 +662,7 @@ impl AsMacroCall for AstIdWithPath<ast::Item> {
             def.as_lazy_macro(
                 db.upcast(),
                 krate,
-                MacroCallKind::Attr(self.ast_id, self.path.segments.last()?.to_string()),
+                MacroCallKind::Attr(self.ast_id, self.path.segments().last()?.to_string()),
             )
             .into(),
         )

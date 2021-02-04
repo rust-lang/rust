@@ -22,8 +22,7 @@ pub enum RawVisibility {
 
 impl RawVisibility {
     pub(crate) const fn private() -> RawVisibility {
-        let path = ModPath { kind: PathKind::Super(0), segments: Vec::new() };
-        RawVisibility::Module(path)
+        RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)))
     }
 
     pub(crate) fn from_ast(
@@ -59,15 +58,15 @@ impl RawVisibility {
                 RawVisibility::Module(path)
             }
             ast::VisibilityKind::PubCrate => {
-                let path = ModPath { kind: PathKind::Crate, segments: Vec::new() };
+                let path = ModPath::from_kind(PathKind::Crate);
                 RawVisibility::Module(path)
             }
             ast::VisibilityKind::PubSuper => {
-                let path = ModPath { kind: PathKind::Super(1), segments: Vec::new() };
+                let path = ModPath::from_kind(PathKind::Super(1));
                 RawVisibility::Module(path)
             }
             ast::VisibilityKind::PubSelf => {
-                let path = ModPath { kind: PathKind::Plain, segments: Vec::new() };
+                let path = ModPath::from_kind(PathKind::Plain);
                 RawVisibility::Module(path)
             }
             ast::VisibilityKind::Pub => RawVisibility::Public,

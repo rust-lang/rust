@@ -1729,7 +1729,7 @@ fn fill_resolve_data(
 ) -> Option<()> {
     let import_edit = item.import_to_add()?;
     let full_import_path = import_edit.import_path.to_string();
-    let imported_name = import_edit.import_path.segments.clone().pop()?.to_string();
+    let imported_name = import_edit.import_path.segments().last()?.to_string();
 
     *resolve_data = Some(
         to_value(CompletionResolveData {

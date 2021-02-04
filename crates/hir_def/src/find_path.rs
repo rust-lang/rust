@@ -36,13 +36,13 @@ const MAX_PATH_LEN: usize = 15;
 
 impl ModPath {
     fn starts_with_std(&self) -> bool {
-        self.segments.first() == Some(&known::std)
+        self.segments().first() == Some(&known::std)
     }
 
     // When std library is present, paths starting with `std::`
     // should be preferred over paths starting with `core::` and `alloc::`
     fn can_start_with_std(&self) -> bool {
-        let first_segment = self.segments.first();
+        let first_segment = self.segments().first();
         first_segment == Some(&known::alloc) || first_segment == Some(&known::core)
     }
 }
@@ -157,7 +157,7 @@ fn find_path_inner(
     if let Some(ModuleDefId::EnumVariantId(variant)) = item.as_module_def_id() {
         if let Some(mut path) = find_path(db, ItemInNs::Types(variant.parent.into()), from) {
             let data = db.enum_data(variant.parent);
-            path.segments.push(data.variants[variant.local_id].name.clone());
+            path.push_segment(data.variants[variant.local_id].name.clone());
             return Some(path);
         }
         // If this doesn't work, it seems we have no way of referring to the
@@ -186,7 +186,7 @@ fn find_path_inner(
                 best_path_len - 1,
                 prefixed,
             ) {
-                path.segments.push(name);
+                path.push_segment(name);
 
                 let new_path = if let Some(best_path) = best_path {
                     select_best_path(best_path, path, prefer_no_std)
@@ -215,7 +215,7 @@ fn find_path_inner(
                     prefixed,
                 )?;
                 mark::hit!(partially_imported);
-                path.segments.push(info.path.segments.last().unwrap().clone());
+                path.push_segment(info.path.segments.last().unwrap().clone());
                 Some(path)
             })
         });

@@ -655,7 +655,7 @@ impl DefCollector<'_> {
                 }
             }
         } else {
-            match import.path.segments.last() {
+            match import.path.segments().last() {
                 Some(last_segment) => {
                     let name = match &import.alias {
                         Some(ImportAlias::Alias(name)) => Some(name.clone()),
@@ -956,7 +956,7 @@ impl DefCollector<'_> {
                 let item_tree = self.db.item_tree(import.file_id);
                 let import_data = &item_tree[import.value];
 
-                match (import_data.path.segments.first(), &import_data.path.kind) {
+                match (import_data.path.segments().first(), &import_data.path.kind) {
                     (Some(krate), PathKind::Plain) | (Some(krate), PathKind::Abs) => {
                         if diagnosed_extern_crates.contains(krate) {
                             continue;

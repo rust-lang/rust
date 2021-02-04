@@ -20,7 +20,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModPath {
     pub kind: PathKind,
-    pub segments: Vec<Name>,
+    segments: Vec<Name>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -53,6 +53,11 @@ impl ModPath {
         ModPath { kind, segments }
     }
 
+    /// Creates a `ModPath` from a `PathKind`, with no extra path segments.
+    pub const fn from_kind(kind: PathKind) -> ModPath {
+        ModPath { kind, segments: Vec::new() }
+    }
+
     /// Calls `cb` with all paths, represented by this use item.
     pub(crate) fn expand_use_item(
         item_src: InFile<ast::Use>,
@@ -62,6 +67,18 @@ impl ModPath {
         if let Some(tree) = item_src.value.use_tree() {
             lower::lower_use_tree(None, tree, hygiene, &mut cb);
         }
+    }
+
+    pub fn segments(&self) -> &[Name] {
+        &self.segments
+    }
+
+    pub fn push_segment(&mut self, segment: Name) {
+        self.segments.push(segment);
+    }
+
+    pub fn pop_segment(&mut self) -> Option<Name> {
+        self.segments.pop()
     }
 
     /// Returns the number of segments in the path (counting special segments like `$crate` and
@@ -78,7 +95,7 @@ impl ModPath {
     }
 
     pub fn is_ident(&self) -> bool {
-        self.kind == PathKind::Plain && self.segments.len() == 1
+        self.as_ident().is_some()
     }
 
     pub fn is_self(&self) -> bool {
@@ -87,10 +104,14 @@ impl ModPath {
 
     /// If this path is a single identifier, like `foo`, return its name.
     pub fn as_ident(&self) -> Option<&Name> {
-        if !self.is_ident() {
+        if self.kind != PathKind::Plain {
             return None;
         }
-        self.segments.first()
+
+        match &*self.segments {
+            [name] => Some(name),
+            _ => None,
+        }
     }
 }
 
