@@ -22,7 +22,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn early_declared_functions(input: TokenStream) -> TokenStream {
-    early_declared_functions::early_declared_functions(input)
+    early_declared_functions::early_declared_functions(input.into()).into()
 }
 
 #[proc_macro]
