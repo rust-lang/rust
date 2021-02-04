@@ -39,6 +39,7 @@ use rustc_session::SessionLintStore;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use rustc_target::abi::LayoutOf;
+use tracing::debug;
 
 use std::cell::Cell;
 use std::slice;
@@ -333,6 +334,20 @@ impl LintStore {
             );
             db.note(&msg);
             db.emit();
+        }
+    }
+
+    /// True if this symbol represents a lint group name.
+    pub fn is_lint_group(&self, lint_name: Symbol) -> bool {
+        debug!(
+            "is_lint_group(lint_name={:?}, lint_groups={:?})",
+            lint_name,
+            self.lint_groups.keys().collect::<Vec<_>>()
+        );
+        let lint_name_str = &*lint_name.as_str();
+        self.lint_groups.contains_key(&lint_name_str) || {
+            let warnings_name_str = crate::WARNINGS.name_lower();
+            lint_name_str == &*warnings_name_str
         }
     }
 
