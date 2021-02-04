@@ -1107,6 +1107,15 @@ where
     }
 }
 
+impl<T, S, A> From<HashMap<T, (), S, A>> for HashSet<T, S, A>
+where
+    A: Allocator + Clone,
+{
+    fn from(map: HashMap<T, (), S, A>) -> Self {
+        Self { map }
+    }
+}
+
 impl<T, S, A> FromIterator<T> for HashSet<T, S, A>
 where
     T: Eq + Hash,
@@ -2036,6 +2045,23 @@ mod test_set {
             i += 1
         }
         assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_from_map() {
+        let mut a = crate::HashMap::new();
+        a.insert(1, ());
+        a.insert(2, ());
+        a.insert(3, ());
+        a.insert(4, ());
+
+        let a: HashSet<_> = a.into();
+
+        assert_eq!(a.len(), 4);
+        assert!(a.contains(&1));
+        assert!(a.contains(&2));
+        assert!(a.contains(&3));
+        assert!(a.contains(&4));
     }
 
     #[test]
