@@ -124,6 +124,7 @@ struct Function {
 #[derive(Debug)]
 struct Param {
     var: Local,
+    ty: hir::Type,
     has_usages_afterwards: bool,
     has_mut_inside_body: bool,
     is_copy: bool,
@@ -437,11 +438,14 @@ fn extracted_function_params(
         })
         .map(|var| {
             let usages = LocalUsages::find(ctx, var);
+            let ty = var.ty(ctx.db());
+            let is_copy = ty.is_copy(ctx.db());
             Param {
                 var,
+                ty,
                 has_usages_afterwards: has_usages_after_body(&usages, body),
                 has_mut_inside_body: has_exclusive_usages(ctx, &usages, body),
-                is_copy: true,
+                is_copy,
             }
         })
         .collect()
@@ -719,7 +723,7 @@ fn format_param_to(fn_def: &mut String, ctx: &AssistContext, module: hir::Module
         param.mut_pattern(),
         param.var.name(ctx.db()).unwrap(),
         param.type_prefix(),
-        format_type(&param.var.ty(ctx.db()), ctx, module)
+        format_type(&param.ty, ctx, module)
     );
 }
 
@@ -1723,6 +1727,55 @@ fn foo() {
 fn $0fun_name(n: i32) {
     let mut m = 2;
     m.inc(n);
+}",
+        );
+    }
+
+    #[test]
+    fn non_copy_without_usages_after() {
+        check_assist(
+            extract_function,
+            r"
+struct Counter(i32);
+fn foo() {
+    let c = Counter(0);
+    $0let n = c.0;$0
+}",
+            r"
+struct Counter(i32);
+fn foo() {
+    let c = Counter(0);
+    fun_name(c);
+}
+
+fn $0fun_name(c: Counter) {
+    let n = c.0;
+}",
+        );
+    }
+
+
+    #[test]
+    fn non_copy_used_after() {
+        check_assist(
+            extract_function,
+            r"
+struct Counter(i32);
+fn foo() {
+    let c = Counter(0);
+    $0let n = c.0;$0
+    let m = c.0;
+}",
+            r"
+struct Counter(i32);
+fn foo() {
+    let c = Counter(0);
+    fun_name(&c);
+    let m = c.0;
+}
+
+fn $0fun_name(c: &Counter) {
+    let n = *c.0;
 }",
         );
     }
