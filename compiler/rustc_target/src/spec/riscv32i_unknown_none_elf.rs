@@ -12,7 +12,7 @@ pub fn target() -> Target {
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
             linker: Some("rust-lld".to_string()),
             cpu: "generic-rv32".to_string(),
-            max_atomic_width: Some(0),
+            max_atomic_width: Some(32),
             atomic_cas: false,
             features: String::new(),
             executables: true,
