@@ -1242,6 +1242,34 @@ impl<T, E> Result<Option<T>, E> {
     }
 }
 
+impl<T, E1, E2> Result<Result<T, E1>, E2> {
+    /// Transposes two nested `Result`s, making the inner error type the outer one.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(transpose_err)]
+    /// #[derive(Debug, Eq, PartialEq)]
+    /// struct Err1;
+    ///
+    /// #[derive(Debug, Eq, PartialEq)]
+    /// struct Err2;
+    ///
+    /// let x: Result<Result<i32, Err1>, Err2> = Ok(Err(Err1));
+    /// let y: Result<Result<i32, Err2>, Err1> = Err(Err1);
+    /// assert_eq!(x.transpose_err(), y);
+    /// ```
+    #[inline]
+    #[unstable(feature = "transpose_err", issue = "81750")]
+    pub fn transpose_err(self) -> Result<Result<T, E2>, E1> {
+        match self {
+            Ok(Ok(x)) => Ok(Ok(x)),
+            Ok(Err(e)) => Err(e),
+            Err(e) => Ok(Err(e)),
+        }
+    }
+}
+
 impl<T, E> Result<Result<T, E>, E> {
     /// Converts from `Result<Result<T, E>, E>` to `Result<T, E>`
     ///
