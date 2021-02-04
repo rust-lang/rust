@@ -48,4 +48,7 @@ weak_lang_items! {
     eh_personality,     EhPersonality,      rust_eh_personality;
     eh_catch_typeinfo,  EhCatchTypeinfo,    rust_eh_catch_typeinfo;
     oom,                Oom,                rust_oom;
+    backtrace_create,   BacktraceCreate,    rust_backtrace_create;
+    backtrace_enabled,  BacktraceEnabled,   rust_backtrace_enabled;
+    backtrace_status,   BacktraceStatus,    rust_backtrace_status;
 }

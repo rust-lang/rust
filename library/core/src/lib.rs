@@ -116,6 +116,7 @@
 #![feature(fundamental)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
+#![feature(linkage)]
 #![feature(link_llvm_intrinsics)]
 #![feature(llvm_asm)]
 #![feature(negative_impls)]

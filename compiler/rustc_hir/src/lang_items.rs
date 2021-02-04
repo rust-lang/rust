@@ -271,6 +271,10 @@ language_item_table! {
     // libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn;
 
+    BacktraceEnabled,        sym::backtrace_enabled,   backtrace_enabled,          Target::Fn;
+    BacktraceCreate,         sym::backtrace_create,    backtrace_create,           Target::Fn;
+    BacktraceStatus,         sym::backtrace_status,    backtrace_status,           Target::Fn;
+
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn;
     BoxFree,                 sym::box_free,            box_free_fn,                Target::Fn;
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn;
