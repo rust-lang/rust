@@ -1,0 +1,16 @@
+
+running 1 test
+test $DIR/issue-81662-shortness.rs - foo (line 6) ... FAILED
+
+failures:
+
+---- $DIR/issue-81662-shortness.rs - foo (line 6) stdout ----
+$DIR/issue-81662-shortness.rs:7:1: error[E0425]: cannot find function `foo` in this scope
+error: aborting due to previous error
+Couldn't compile the test.
+
+failures:
+    $DIR/issue-81662-shortness.rs - foo (line 6)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
