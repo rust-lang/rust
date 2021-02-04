@@ -75,9 +75,10 @@ fn convert_path(prefix: Option<ModPath>, path: ast::Path, hygiene: &Hygiene) -> 
             match hygiene.name_ref_to_name(name_ref) {
                 Either::Left(name) => {
                     // no type args in use
-                    let mut res = prefix.unwrap_or_else(|| ModPath {
-                        kind: segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
-                        segments: Vec::with_capacity(1),
+                    let mut res = prefix.unwrap_or_else(|| {
+                        ModPath::from_kind(
+                            segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
+                        )
                     });
                     res.segments.push(name);
                     res

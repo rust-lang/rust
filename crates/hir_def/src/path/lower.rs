@@ -129,7 +129,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
         }
     }
 
-    let mod_path = ModPath { kind, segments };
+    let mod_path = ModPath::from_segments(kind, segments);
     return Some(Path { type_anchor, mod_path, generic_args });
 
     fn qualifier(path: &ast::Path) -> Option<ast::Path> {
