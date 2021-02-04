@@ -33,7 +33,7 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, Path},
     src::HasSource,
-    AsMacroCall, DefWithBodyId, HasModule, Lookup, ModuleId,
+    AsMacroCall, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleId,
 };
 
 /// A subset of Expander that only deals with cfg attributes. We only need it to
@@ -49,7 +49,7 @@ pub(crate) struct Expander {
     def_map: Arc<DefMap>,
     current_file_id: HirFileId,
     ast_id_map: Arc<AstIdMap>,
-    module: ModuleId,
+    module: LocalModuleId,
     recursion_limit: usize,
 }
 
@@ -94,7 +94,7 @@ impl Expander {
             def_map: crate_def_map,
             current_file_id,
             ast_id_map,
-            module,
+            module: module.local_id,
             recursion_limit: 0,
         }
     }
@@ -197,10 +197,7 @@ impl Expander {
     }
 
     fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroDefId> {
-        self.def_map
-            .resolve_path(db, self.module.local_id, path, BuiltinShadowMode::Other)
-            .0
-            .take_macros()
+        self.def_map.resolve_path(db, self.module, path, BuiltinShadowMode::Other).0.take_macros()
     }
 
     fn ast_id<N: AstNode>(&self, item: &N) -> AstId<N> {
