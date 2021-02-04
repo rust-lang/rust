@@ -461,7 +461,7 @@ impl<'a> InferenceContext<'a> {
                         (ty, variant)
                     }
                     Some(1) => {
-                        let segment = path.mod_path().segments.last().unwrap();
+                        let segment = path.mod_path().segments().last().unwrap();
                         // this could be an enum variant or associated type
                         if let Some((AdtId::EnumId(enum_id), _)) = ty.as_adt() {
                             let enum_data = self.db.enum_data(enum_id);

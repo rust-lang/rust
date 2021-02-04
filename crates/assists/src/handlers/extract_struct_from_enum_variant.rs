@@ -151,8 +151,8 @@ fn insert_import(
         ctx.config.insert_use.prefix_kind,
     );
     if let Some(mut mod_path) = mod_path {
-        mod_path.segments.pop();
-        mod_path.segments.push(variant_hir_name.clone());
+        mod_path.pop_segment();
+        mod_path.push_segment(variant_hir_name.clone());
         let scope = ImportScope::find_insert_use_container(scope_node, &ctx.sema)?;
         *rewriter += insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use.merge);
     }

@@ -164,7 +164,7 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &ModPath,
     ) -> Option<(TypeNs, Option<usize>)> {
-        let first_name = path.segments.first()?;
+        let first_name = path.segments().first()?;
         let skip_to_mod = path.kind != PathKind::Plain;
         for scope in self.scopes.iter().rev() {
             match scope {
@@ -179,7 +179,7 @@ impl Resolver {
 
                 Scope::GenericParams { params, def } => {
                     if let Some(local_id) = params.find_type_by_name(first_name) {
-                        let idx = if path.segments.len() == 1 { None } else { Some(1) };
+                        let idx = if path.segments().len() == 1 { None } else { Some(1) };
                         return Some((
                             TypeNs::GenericParam(TypeParamId { local_id, parent: *def }),
                             idx,
@@ -188,13 +188,13 @@ impl Resolver {
                 }
                 Scope::ImplDefScope(impl_) => {
                     if first_name == &name![Self] {
-                        let idx = if path.segments.len() == 1 { None } else { Some(1) };
+                        let idx = if path.segments().len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::SelfType(*impl_), idx));
                     }
                 }
                 Scope::AdtScope(adt) => {
                     if first_name == &name![Self] {
-                        let idx = if path.segments.len() == 1 { None } else { Some(1) };
+                        let idx = if path.segments().len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::AdtSelfType(*adt), idx));
                     }
                 }
@@ -270,9 +270,9 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &ModPath,
     ) -> Option<ResolveValueResult> {
-        let n_segments = path.segments.len();
+        let n_segments = path.segments().len();
         let tmp = name![self];
-        let first_name = if path.is_self() { &tmp } else { path.segments.first()? };
+        let first_name = if path.is_self() { &tmp } else { path.segments().first()? };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         for scope in self.scopes.iter().rev() {
             match scope {

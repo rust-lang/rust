@@ -45,8 +45,8 @@ impl<'a> EnumRender<'a> {
         let (qualified_name, short_qualified_name) = match &path {
             Some(path) => {
                 let full = path.to_string();
-                let short =
-                    path.segments[path.segments.len().saturating_sub(2)..].iter().join("::");
+                let segments = path.segments();
+                let short = segments[segments.len().saturating_sub(2)..].iter().join("::");
                 (full, short)
             }
             None => (name.to_string(), name.to_string()),

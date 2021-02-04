@@ -24,7 +24,7 @@ pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
     }
 
     segments.extend(
-        path.segments
+        path.segments()
             .iter()
             .map(|segment| make::path_segment(make::name_ref(&segment.to_string()))),
     );

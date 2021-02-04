@@ -240,7 +240,7 @@ impl ItemVisibilities {
     fn alloc(&mut self, vis: RawVisibility) -> RawVisibilityId {
         match &vis {
             RawVisibility::Public => RawVisibilityId::PUB,
-            RawVisibility::Module(path) if path.segments.is_empty() => match &path.kind {
+            RawVisibility::Module(path) if path.segments().is_empty() => match &path.kind {
                 PathKind::Super(0) => RawVisibilityId::PRIV,
                 PathKind::Crate => RawVisibilityId::PUB_CRATE,
                 _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
@@ -251,10 +251,8 @@ impl ItemVisibilities {
 }
 
 static VIS_PUB: RawVisibility = RawVisibility::Public;
-static VIS_PRIV: RawVisibility =
-    RawVisibility::Module(ModPath { kind: PathKind::Super(0), segments: Vec::new() });
-static VIS_PUB_CRATE: RawVisibility =
-    RawVisibility::Module(ModPath { kind: PathKind::Crate, segments: Vec::new() });
+static VIS_PRIV: RawVisibility = RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)));
+static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(ModPath::from_kind(PathKind::Crate));
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct GenericParamsStorage {

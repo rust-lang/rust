@@ -149,7 +149,7 @@ impl DefMap {
         path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
-        let mut segments = path.segments.iter().enumerate();
+        let mut segments = path.segments().iter().enumerate();
         let mut curr_per_ns: PerNs = match path.kind {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
@@ -190,7 +190,7 @@ impl DefMap {
                 // BuiltinShadowMode wasn't Module, then we need to try
                 // resolving it as a builtin.
                 let prefer_module =
-                    if path.segments.len() == 1 { shadow } else { BuiltinShadowMode::Module };
+                    if path.segments().len() == 1 { shadow } else { BuiltinShadowMode::Module };
 
                 log::debug!("resolving {:?} in module", segment);
                 self.resolve_name_in_module(db, original_module, &segment, prefer_module)
@@ -203,10 +203,10 @@ impl DefMap {
                         None => match &self.block {
                             Some(block) => {
                                 // Look up remaining path in parent `DefMap`
-                                let new_path = ModPath {
-                                    kind: PathKind::Super(lvl - i),
-                                    segments: path.segments.clone(),
-                                };
+                                let new_path = ModPath::from_segments(
+                                    PathKind::Super(lvl - i),
+                                    path.segments().to_vec(),
+                                );
                                 log::debug!("`super` path: {} -> {} in parent map", path, new_path);
                                 return block.parent.def_map(db).resolve_path_fp_with_macro(
                                     db,
@@ -258,10 +258,10 @@ impl DefMap {
             curr_per_ns = match curr {
                 ModuleDefId::ModuleId(module) => {
                     if module.krate != self.krate {
-                        let path = ModPath {
-                            segments: path.segments[i..].to_vec(),
-                            kind: PathKind::Super(0),
-                        };
+                        let path = ModPath::from_segments(
+                            PathKind::Super(0),
+                            path.segments()[i..].iter().cloned(),
+                        );
                         log::debug!("resolving {:?} in other crate", path);
                         let defp_map = module.def_map(db);
                         let (def, s) = defp_map.resolve_path(db, module.local_id, &path, shadow);

@@ -332,9 +332,9 @@ impl Builder {
                 label = format!("{} ({})", label, import_to_add.import_path);
             } else {
                 let mut import_path_without_last_segment = import_to_add.import_path.to_owned();
-                let _ = import_path_without_last_segment.segments.pop();
+                let _ = import_path_without_last_segment.pop_segment();
 
-                if !import_path_without_last_segment.segments.is_empty() {
+                if !import_path_without_last_segment.segments().is_empty() {
                     lookup = lookup.or_else(|| Some(label.clone()));
                     insert_text = insert_text.or_else(|| Some(label.clone()));
                     label = format!("{}::{}", import_path_without_last_segment, label);

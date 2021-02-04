@@ -175,7 +175,7 @@ fn compute_fuzzy_completion_order_key(
     user_input_lowercased: &str,
 ) -> usize {
     mark::hit!(certain_fuzzy_order_test);
-    let proposed_import_name = match proposed_mod_path.segments.last() {
+    let proposed_import_name = match proposed_mod_path.segments().last() {
         Some(name) => name.to_string().to_lowercase(),
         None => return usize::MAX,
     };
