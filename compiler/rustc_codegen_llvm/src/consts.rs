@@ -210,7 +210,7 @@ impl CodegenCx<'ll, 'tcx> {
 
         debug!("get_static: sym={} instance={:?} fn_attrs={:?}", sym, instance, fn_attrs);
 
-        let g = if def_id.as_local().is_some() && !self.tcx.is_foreign_item(def_id) {
+        let g = if def_id.is_local() && !self.tcx.is_foreign_item(def_id) {
             let llty = self.layout_of(ty).llvm_type(self);
             if let Some(g) = self.get_declared_value(sym) {
                 if self.val_ty(g) != self.type_ptr_to(llty) {
@@ -241,7 +241,7 @@ impl CodegenCx<'ll, 'tcx> {
             llvm::set_thread_local_mode(g, self.tls_model);
         }
 
-        if def_id.as_local().is_none() {
+        if !def_id.is_local() {
             let needs_dll_storage_attr = self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
