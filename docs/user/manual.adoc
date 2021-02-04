@@ -307,6 +307,52 @@ EOF
 
 See https://sharksforarms.dev/posts/neovim-rust/ for more tips on getting started.
 
+==== vim-lsp
+
+vim-lsp is installed by following https://github.com/prabirshrestha/vim-lsp[the plugin instructions].
+It can be as simple as adding this line to your `.vimrc`:
+
+[source,vim]
+----
+Plug 'prabirshrestha/vim-lsp'
+----
+
+Next you need to register the `rust-analyzer` binary.
+If it is available in `$PATH`, you may want to add this to your `.vimrc`:
+
+[source,vim]
+----
+if executable('rust-analyzer')
+  au User lsp_setup call lsp#register_server({
+        \   'name': 'Rust Language Server',
+        \   'cmd': {server_info->['rust-analyzer']},
+        \   'whitelist': ['rust'],
+        \ })
+endif
+----
+
+There is no dedicated UI for the server configuration, so you would need to send any options as a value of the `initialization_options` field, as described in the <<_configuration,Configuration>> section.
+Here is an example of how to enable the proc-macro support:
+
+[source,vim]
+----
+if executable('rust-analyzer')
+  au User lsp_setup call lsp#register_server({
+        \   'name': 'Rust Language Server',
+        \   'cmd': {server_info->['rust-analyzer']},
+        \   'whitelist': ['rust'],
+        \   'initialization_options': {
+        \     'cargo': {
+        \       'loadOutDirsFromCheck': v:true,
+        \     },
+        \     'procMacro': {
+        \       'enable': v:true,
+        \     },
+        \   },
+        \ })
+endif
+----
+
 === Sublime Text 3
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
