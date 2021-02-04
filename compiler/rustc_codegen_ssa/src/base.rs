@@ -32,9 +32,10 @@ use rustc_session::config::{self, EntryFnType};
 use rustc_session::Session;
 use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
-use std::cmp;
 use std::ops::{Deref, DerefMut};
 use std::time::{Duration, Instant};
+
+use itertools::Itertools;
 
 pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind, signed: bool) -> IntPredicate {
     match op {
@@ -546,12 +547,23 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
     }
 
-    // We sort the codegen units by size. This way we can schedule work for LLVM
-    // a bit more efficiently.
-    let codegen_units = {
-        let mut codegen_units = codegen_units.iter().collect::<Vec<_>>();
-        codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
-        codegen_units
+    // For better throughput during parallel processing by LLVM, we used to sort
+    // CGUs largest to smallest. This would lead to better thread utilization
+    // by, for example, preventing a large CGU from being processed last and
+    // having only one LLVM thread working while the rest remained idle.
+    //
+    // However, this strategy would lead to high memory usage, as it meant the
+    // LLVM-IR for all of the largest CGUs would be resident in memory at once.
+    //
+    // Instead, we can compromise by ordering CGUs such that the largest and
+    // smallest are first, second largest and smallest are next, etc. If there
+    // are large size variations, this can reduce memory usage significantly.
+    let codegen_units: Vec<_> = {
+        let mut sorted_cgus = codegen_units.iter().collect::<Vec<_>>();
+        sorted_cgus.sort_by_cached_key(|cgu| cgu.size_estimate());
+
+        let (first_half, second_half) = sorted_cgus.split_at(sorted_cgus.len() / 2);
+        second_half.iter().rev().interleave(first_half).copied().collect()
     };
 
     // The non-parallel compiler can only translate codegen units to LLVM IR
