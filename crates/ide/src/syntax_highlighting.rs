@@ -72,7 +72,7 @@ pub(crate) fn highlight(
         }
     };
 
-    let mut hl = highlights::Highlights::new(range_to_highlight);
+    let mut hl = highlights::Highlights::new(root.text_range());
     traverse(&mut hl, &sema, &root, range_to_highlight, syntactic_name_ref_highlighting);
     hl.to_vec()
 }
