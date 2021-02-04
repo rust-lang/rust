@@ -1,29 +1,29 @@
-error[E0453]: deny(unused) incompatible with previous forbid
-  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:19:13
+error: deny(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:21:13
    |
 LL |     #![forbid(unused)]
    |               ------ `forbid` level set here
 LL |     #![deny(unused)]
    |             ^^^^^^ overruled by previous forbid
+   |
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
 
-error[E0453]: warn(unused) incompatible with previous forbid
+error: deny(unused) incompatible with previous forbid
   --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:21:13
    |
 LL |     #![forbid(unused)]
    |               ------ `forbid` level set here
-...
-LL |     #![warn(unused)]
+LL |     #![deny(unused)]
    |             ^^^^^^ overruled by previous forbid
-
-error[E0453]: allow(unused) incompatible with previous forbid
-  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:23:14
    |
-LL |     #![forbid(unused)]
-   |               ------ `forbid` level set here
-...
-LL |     #![allow(unused)]
-   |              ^^^^^^ overruled by previous forbid
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0453`.
