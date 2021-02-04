@@ -329,7 +329,6 @@
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
 #![feature(vec_spare_capacity)]
-#![feature(wake_trait)]
 // NB: the above list is sorted to minimize merge conflicts.
 #![default_lib_allocator]
 
@@ -508,7 +507,7 @@ pub mod task {
     pub use core::task::*;
 
     #[doc(inline)]
-    #[unstable(feature = "wake_trait", issue = "69912")]
+    #[stable(feature = "wake_trait", since = "1.51.0")]
     pub use alloc::task::*;
 }
 

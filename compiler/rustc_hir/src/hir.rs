@@ -358,7 +358,7 @@ impl GenericArgs<'_> {
             .iter()
             .filter(|arg| !arg.is_synthetic())
             .map(|arg| arg.span())
-            .fold_first(|span1, span2| span1.to(span2))
+            .reduce(|span1, span2| span1.to(span2))
     }
 
     /// Returns span encompassing arguments and their surrounding `<>` or `()`

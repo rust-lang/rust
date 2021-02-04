@@ -2028,7 +2028,8 @@ pub trait Iterator {
         self.try_fold((), call(f))
     }
 
-    /// An iterator method that applies a function, producing a single, final value.
+    /// Folds every element into an accumulator by applying an operation,
+    /// returning the final result.
     ///
     /// `fold()` takes two arguments: an initial value, and a closure with two
     /// arguments: an 'accumulator', and an element. The closure returns the value that
@@ -2048,6 +2049,9 @@ pub trait Iterator {
     /// Note: `fold()`, and similar methods that traverse the entire iterator,
     /// may not terminate for infinite iterators, even on traits for which a
     /// result is determinable in finite time.
+    ///
+    /// Note: [`reduce()`] can be used to use the first element as the initial
+    /// value, if the accumulator type and item type is the same.
     ///
     /// # Note to Implementors
     ///
@@ -2104,6 +2108,8 @@ pub trait Iterator {
     /// // they're the same
     /// assert_eq!(result, result2);
     /// ```
+    ///
+    /// [`reduce()`]: Iterator::reduce
     #[doc(alias = "reduce")]
     #[doc(alias = "inject")]
     #[inline]
@@ -2120,10 +2126,15 @@ pub trait Iterator {
         accum
     }
 
-    /// The same as [`fold()`], but uses the first element in the
-    /// iterator as the initial value, folding every subsequent element into it.
-    /// If the iterator is empty, return [`None`]; otherwise, return the result
-    /// of the fold.
+    /// Reduces the elements to a single one, by repeatedly applying a reducing
+    /// operation.
+    ///
+    /// If the iterator is empty, returns [`None`]; otherwise, returns the
+    /// result of the reduction.
+    ///
+    /// For iterators with at least one element, this is the same as [`fold()`]
+    /// with the first element of the iterator as the initial value, folding
+    /// every subsequent element into it.
     ///
     /// [`fold()`]: Iterator::fold
     ///
@@ -2132,13 +2143,11 @@ pub trait Iterator {
     /// Find the maximum value:
     ///
     /// ```
-    /// #![feature(iterator_fold_self)]
-    ///
     /// fn find_max<I>(iter: I) -> Option<I::Item>
     ///     where I: Iterator,
     ///           I::Item: Ord,
     /// {
-    ///     iter.fold_first(|a, b| {
+    ///     iter.reduce(|a, b| {
     ///         if a >= b { a } else { b }
     ///     })
     /// }
@@ -2149,8 +2158,8 @@ pub trait Iterator {
     /// assert_eq!(find_max(b.iter()), None);
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_fold_self", issue = "68125")]
-    fn fold_first<F>(mut self, f: F) -> Option<Self::Item>
+    #[stable(feature = "iterator_fold_self", since = "1.51.0")]
+    fn reduce<F>(mut self, f: F) -> Option<Self::Item>
     where
         Self: Sized,
         F: FnMut(Self::Item, Self::Item) -> Self::Item,
@@ -2647,7 +2656,7 @@ pub trait Iterator {
             move |x, y| cmp::max_by(x, y, &mut compare)
         }
 
-        self.fold_first(fold(compare))
+        self.reduce(fold(compare))
     }
 
     /// Returns the element that gives the minimum value from the
@@ -2707,7 +2716,7 @@ pub trait Iterator {
             move |x, y| cmp::min_by(x, y, &mut compare)
         }
 
-        self.fold_first(fold(compare))
+        self.reduce(fold(compare))
     }
 
     /// Reverses an iterator's direction.
