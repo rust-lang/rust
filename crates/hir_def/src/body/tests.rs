@@ -34,7 +34,7 @@ fn check_diagnostics(ra_fixture: &str) {
     db.check_diagnostics();
 }
 
-fn block_def_map_at(ra_fixture: &str) -> Arc<DefMap> {
+fn block_def_map_at(ra_fixture: &str) -> String {
     let (db, position) = crate::test_db::TestDB::with_position(ra_fixture);
 
     let krate = db.crate_graph().iter().next().unwrap();
@@ -51,7 +51,7 @@ fn block_def_map_at(ra_fixture: &str) -> Arc<DefMap> {
                 block = new_block;
             }
             None => {
-                return def_map;
+                return def_map.dump(&db);
             }
         }
     }
@@ -138,8 +138,7 @@ fn block_at_pos(db: &dyn DefDatabase, def_map: &DefMap, position: FilePosition) 
 }
 
 fn check_at(ra_fixture: &str, expect: Expect) {
-    let def_map = block_def_map_at(ra_fixture);
-    let actual = def_map.dump();
+    let actual = block_def_map_at(ra_fixture);
     expect.assert_eq(&actual);
 }
 

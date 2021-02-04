@@ -11,7 +11,9 @@ use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::{expect, Expect};
 use test_utils::mark;
 
-use crate::{db::DefDatabase, nameres::*, test_db::TestDB};
+use crate::{db::DefDatabase, test_db::TestDB};
+
+use super::DefMap;
 
 fn compute_crate_def_map(ra_fixture: &str) -> Arc<DefMap> {
     let db = TestDB::with_files(ra_fixture);
@@ -19,9 +21,14 @@ fn compute_crate_def_map(ra_fixture: &str) -> Arc<DefMap> {
     db.crate_def_map(krate)
 }
 
+fn render_crate_def_map(ra_fixture: &str) -> String {
+    let db = TestDB::with_files(ra_fixture);
+    let krate = db.crate_graph().iter().next().unwrap();
+    db.crate_def_map(krate).dump(&db)
+}
+
 fn check(ra_fixture: &str, expect: Expect) {
-    let def_map = compute_crate_def_map(ra_fixture);
-    let actual = def_map.dump();
+    let actual = render_crate_def_map(ra_fixture);
     expect.assert_eq(&actual);
 }
 
