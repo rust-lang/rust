@@ -69,7 +69,7 @@ fn poison_bad() {
     let mut called = false;
     O.call_once_force(|p| {
         called = true;
-        assert!(p.poisoned())
+        assert!(p.is_poisoned())
     });
     assert!(called);
 
@@ -92,7 +92,7 @@ fn wait_for_force_to_finish() {
     let (tx2, rx2) = channel();
     let t1 = thread::spawn(move || {
         O.call_once_force(|p| {
-            assert!(p.poisoned());
+            assert!(p.is_poisoned());
             tx1.send(()).unwrap();
             rx2.recv().unwrap();
         });
