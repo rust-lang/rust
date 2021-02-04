@@ -73,8 +73,8 @@ impl<K, V> LeafNode<K, V> {
         // be both slightly faster and easier to track in Valgrind.
         unsafe {
             // parent_idx, keys, and vals are all MaybeUninit
-            (&raw mut (*this).parent).write(None);
-            (&raw mut (*this).len).write(0);
+            ptr::addr_of_mut!((*this).parent).write(None);
+            ptr::addr_of_mut!((*this).len).write(0);
         }
     }
 
@@ -117,7 +117,7 @@ impl<K, V> InternalNode<K, V> {
         unsafe {
             let mut node = Box::<Self>::new_uninit();
             // We only need to initialize the data; the edges are MaybeUninit.
-            LeafNode::init(&raw mut (*node.as_mut_ptr()).data);
+            LeafNode::init(ptr::addr_of_mut!((*node.as_mut_ptr()).data));
             node.assume_init()
         }
     }
