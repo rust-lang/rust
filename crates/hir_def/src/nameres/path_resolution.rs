@@ -110,6 +110,7 @@ impl DefMap {
         let mut result = ResolvePathResult::empty(ReachedFixedPoint::No);
         result.segment_index = Some(usize::max_value());
 
+        let mut arc;
         let mut current_map = self;
         loop {
             let new = current_map.resolve_path_fp_with_macro_single(
@@ -131,8 +132,9 @@ impl DefMap {
 
             match &current_map.block {
                 Some(block) => {
-                    current_map = &block.parent;
-                    original_module = block.parent_module;
+                    original_module = block.parent.local_id;
+                    arc = block.parent.def_map(db);
+                    current_map = &*arc;
                 }
                 None => return result,
             }
@@ -152,7 +154,7 @@ impl DefMap {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
                     mark::hit!(macro_dollar_crate_self);
-                    PerNs::types(self.crate_root().into(), Visibility::Public)
+                    PerNs::types(self.crate_root(db).into(), Visibility::Public)
                 } else {
                     let def_map = db.crate_def_map(krate);
                     let module = def_map.module_id(def_map.root);
@@ -160,7 +162,7 @@ impl DefMap {
                     PerNs::types(module.into(), Visibility::Public)
                 }
             }
-            PathKind::Crate => PerNs::types(self.crate_root().into(), Visibility::Public),
+            PathKind::Crate => PerNs::types(self.crate_root(db).into(), Visibility::Public),
             // plain import or absolute path in 2015: crate-relative with
             // fallback to extern prelude (with the simplification in
             // rust-lang/rust#57745)
@@ -206,10 +208,10 @@ impl DefMap {
                                     segments: path.segments.clone(),
                                 };
                                 log::debug!("`super` path: {} -> {} in parent map", path, new_path);
-                                return block.parent.resolve_path_fp_with_macro(
+                                return block.parent.def_map(db).resolve_path_fp_with_macro(
                                     db,
                                     mode,
-                                    block.parent_module,
+                                    block.parent.local_id,
                                     &new_path,
                                     shadow,
                                 );

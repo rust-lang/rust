@@ -100,11 +100,12 @@ pub struct DefMap {
 }
 
 /// For `DefMap`s computed for a block expression, this stores its location in the parent map.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 struct BlockInfo {
+    /// The `BlockId` this `DefMap` was created from.
     block: BlockId,
-    parent: Arc<DefMap>,
-    parent_module: LocalModuleId,
+    /// The containing module.
+    parent: ModuleId,
 }
 
 impl std::ops::Index<LocalModuleId> for DefMap {
@@ -211,17 +212,16 @@ impl DefMap {
         block_id: BlockId,
     ) -> Option<Arc<DefMap>> {
         let block: BlockLoc = db.lookup_intern_block(block_id);
-        let parent = block.module.def_map(db);
 
         let item_tree = db.item_tree(block.ast_id.file_id);
         if item_tree.inner_items_of_block(block.ast_id.value).is_empty() {
             return None;
         }
 
-        let block_info =
-            BlockInfo { block: block_id, parent, parent_module: block.module.local_id };
+        let block_info = BlockInfo { block: block_id, parent: block.module };
 
-        let mut def_map = DefMap::empty(block.module.krate, block_info.parent.edition);
+        let parent_map = block.module.def_map(db);
+        let mut def_map = DefMap::empty(block.module.krate, parent_map.edition);
         def_map.block = Some(block_info);
 
         let def_map = collector::collect_defs(db, def_map, Some(block.ast_id));
@@ -289,9 +289,15 @@ impl DefMap {
         ModuleId { krate: self.krate, local_id, block }
     }
 
-    pub(crate) fn crate_root(&self) -> ModuleId {
-        let (root_map, _) = self.ancestor_maps(self.root).last().unwrap();
-        root_map.module_id(root_map.root)
+    pub(crate) fn crate_root(&self, db: &dyn DefDatabase) -> ModuleId {
+        self.with_ancestor_maps(db, self.root, &mut |def_map, _module| {
+            if def_map.block.is_none() {
+                Some(def_map.module_id(def_map.root))
+            } else {
+                None
+            }
+        })
+        .expect("DefMap chain without root")
     }
 
     pub(crate) fn resolve_path(
@@ -306,26 +312,42 @@ impl DefMap {
         (res.resolved_def, res.segment_index)
     }
 
-    /// Iterates over the containing `DefMap`s, if `self` is a `DefMap` corresponding to a block
-    /// expression.
-    fn ancestor_maps(
+    /// Ascends the `DefMap` hierarchy and calls `f` with every `DefMap` and containing module.
+    ///
+    /// If `f` returns `Some(val)`, iteration is stopped and `Some(val)` is returned. If `f` returns
+    /// `None`, iteration continues.
+    fn with_ancestor_maps<T>(
         &self,
+        db: &dyn DefDatabase,
         local_mod: LocalModuleId,
-    ) -> impl Iterator<Item = (&DefMap, LocalModuleId)> {
-        std::iter::successors(Some((self, local_mod)), |(map, _)| {
-            map.block.as_ref().map(|block| (&*block.parent, block.parent_module))
-        })
+        f: &mut dyn FnMut(&DefMap, LocalModuleId) -> Option<T>,
+    ) -> Option<T> {
+        if let Some(it) = f(self, local_mod) {
+            return Some(it);
+        }
+        let mut block = self.block;
+        while let Some(block_info) = block {
+            let parent = block_info.parent.def_map(db);
+            if let Some(it) = f(&parent, block_info.parent.local_id) {
+                return Some(it);
+            }
+            block = parent.block;
+        }
+
+        None
     }
 
     // FIXME: this can use some more human-readable format (ideally, an IR
     // even), as this should be a great debugging aid.
-    pub fn dump(&self) -> String {
+    pub fn dump(&self, db: &dyn DefDatabase) -> String {
         let mut buf = String::new();
+        let mut arc;
         let mut current_map = self;
         while let Some(block) = &current_map.block {
             go(&mut buf, current_map, "block scope", current_map.root);
             buf.push('\n');
-            current_map = &*block.parent;
+            arc = block.parent.def_map(db);
+            current_map = &*arc;
         }
         go(&mut buf, current_map, "crate", current_map.root);
         return buf;
