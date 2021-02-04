@@ -2183,7 +2183,7 @@ fn lint_expect_fun_call(
         span_replace_word,
         &format!("use of `{}` followed by a function call", name),
         "try this",
-        format!("unwrap_or_else({} {{ panic!({}) }})", closure_args, arg_root_snippet),
+        format!("unwrap_or_else({} {{ panic!(\"{{}}\", {}) }})", closure_args, arg_root_snippet),
         applicability,
     );
 }

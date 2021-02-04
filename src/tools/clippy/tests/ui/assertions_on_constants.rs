@@ -1,3 +1,5 @@
+#![allow(non_fmt_panic)]
+
 macro_rules! assert_const {
     ($len:expr) => {
         assert!($len > 0);
