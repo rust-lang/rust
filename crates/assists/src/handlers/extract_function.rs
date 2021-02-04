@@ -1011,6 +1011,126 @@ fn $0fun_name() {
     }
 
     #[test]
+    fn no_args_if() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    $0if true { }$0
+}"#,
+            r#"
+fn foo() {
+    fun_name();
+}
+
+fn $0fun_name() {
+    if true { }
+}"#,
+        );
+    }
+
+    #[test]
+    fn no_args_if_else() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() -> i32 {
+    $0if true { 1 } else { 2 }$0
+}"#,
+            r#"
+fn foo() -> i32 {
+    fun_name()
+}
+
+fn $0fun_name() -> i32 {
+    if true { 1 } else { 2 }
+}"#,
+        );
+    }
+
+    #[test]
+    fn no_args_if_let_else() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() -> i32 {
+    $0if let true = false { 1 } else { 2 }$0
+}"#,
+            r#"
+fn foo() -> i32 {
+    fun_name()
+}
+
+fn $0fun_name() -> i32 {
+    if let true = false { 1 } else { 2 }
+}"#,
+        );
+    }
+
+    #[test]
+    fn no_args_match() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() -> i32 {
+    $0match true {
+        true => 1,
+        false => 2,
+    }$0
+}"#,
+            r#"
+fn foo() -> i32 {
+    fun_name()
+}
+
+fn $0fun_name() -> i32 {
+    match true {
+        true => 1,
+        false => 2,
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn no_args_while() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    $0while true { }$0
+}"#,
+            r#"
+fn foo() {
+    fun_name();
+}
+
+fn $0fun_name() {
+    while true { }
+}"#,
+        );
+    }
+
+    #[test]
+    fn no_args_for() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    $0for v in &[0, 1] { }$0
+}"#,
+            r#"
+fn foo() {
+    fun_name();
+}
+
+fn $0fun_name() {
+    for v in &[0, 1] { }
+}"#,
+        );
+    }
+
+    #[test]
     fn no_args_from_loop_unit() {
         check_assist(
             extract_function,
