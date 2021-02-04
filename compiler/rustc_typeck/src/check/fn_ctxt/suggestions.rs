@@ -395,7 +395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ExprKind::Block(..) => {
                     err.span_suggestion(
                         cause_span.shrink_to_hi(),
-                        "try adding a semicolon",
+                        "consider using a semicolon here",
                         ";".to_string(),
                         Applicability::MachineApplicable,
                     );
