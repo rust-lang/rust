@@ -464,6 +464,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(in super::super) fn suggest_missing_return_expr(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expr: &'tcx hir::Expr<'tcx>,
+        fn_decl: &hir::FnDecl<'_>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        if !expected.is_unit() {
+            return;
+        }
+        let found = self.resolve_vars_with_obligations(found);
+        if let hir::FnRetTy::Return(ty) = fn_decl.output {
+            let ty = AstConv::ast_ty_to_ty(self, ty);
+            let ty = self.normalize_associated_types_in(expr.span, ty);
+            if self.can_coerce(found, ty) {
+                err.multipart_suggestion(
+                    "you might have meant to return this value",
+                    vec![
+                        (expr.span.shrink_to_lo(), "return ".to_string()),
+                        (expr.span.shrink_to_hi(), ";".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
+    }
+
     pub(in super::super) fn suggest_missing_parentheses(
         &self,
         err: &mut DiagnosticBuilder<'_>,

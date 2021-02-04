@@ -1458,7 +1458,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             fcx.get_fn_decl(parent_id)
         };
 
-        if let (Some((fn_decl, can_suggest)), _) = (fn_decl, pointing_at_return_type) {
+        if let Some((fn_decl, can_suggest)) = fn_decl {
             if expression.is_none() {
                 pointing_at_return_type |= fcx.suggest_missing_return_type(
                     &mut err,
@@ -1472,6 +1472,16 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 fn_output = Some(&fn_decl.output); // `impl Trait` return type
             }
         }
+
+        let parent_id = fcx.tcx.hir().get_parent_item(id);
+        let parent_item = fcx.tcx.hir().get(parent_id);
+
+        if let (Some((expr, _)), Some((fn_decl, _, _))) =
+            (expression, fcx.get_node_fn_decl(parent_item))
+        {
+            fcx.suggest_missing_return_expr(&mut err, expr, fn_decl, expected, found);
+        }
+
         if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.get(), fn_output) {
             self.add_impl_trait_explanation(&mut err, cause, fcx, expected, sp, fn_output);
         }
