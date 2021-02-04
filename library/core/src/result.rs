@@ -229,7 +229,7 @@
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::ops::{self, Deref, DerefMut};
-use crate::{convert, fmt, hint};
+use crate::{fmt, hint};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -298,7 +298,7 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_err(&self) -> bool {
-        !self.is_ok()
+        matches!(*self, Err(_))
     }
 
     /// Returns `true` if the result is an [`Ok`] value containing the given value.
@@ -907,7 +907,10 @@ impl<T: Copy, E> Result<&T, E> {
     /// ```
     #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
     pub fn copied(self) -> Result<T, E> {
-        self.map(|&t| t)
+        match self {
+            Ok(x) => Ok(*x),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -927,7 +930,10 @@ impl<T: Copy, E> Result<&mut T, E> {
     /// ```
     #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
     pub fn copied(self) -> Result<T, E> {
-        self.map(|&mut t| t)
+        match self {
+            Ok(x) => Ok(*x),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -947,7 +953,10 @@ impl<T: Clone, E> Result<&T, E> {
     /// ```
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
     pub fn cloned(self) -> Result<T, E> {
-        self.map(|t| t.clone())
+        match self {
+            Ok(x) => Ok(x.clone()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -967,7 +976,10 @@ impl<T: Clone, E> Result<&mut T, E> {
     /// ```
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
     pub fn cloned(self) -> Result<T, E> {
-        self.map(|t| t.clone())
+        match self {
+            Ok(x) => Ok(x.clone()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -1186,7 +1198,10 @@ impl<T: Deref, E> Result<T, E> {
     /// ```
     #[stable(feature = "inner_deref", since = "1.47.0")]
     pub fn as_deref(&self) -> Result<&T::Target, &E> {
-        self.as_ref().map(|t| t.deref())
+        match self {
+            Ok(x) => Ok(x.deref()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -1211,7 +1226,10 @@ impl<T: DerefMut, E> Result<T, E> {
     /// ```
     #[stable(feature = "inner_deref", since = "1.47.0")]
     pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E> {
-        self.as_mut().map(|t| t.deref_mut())
+        match self {
+            Ok(x) => Ok(x.deref_mut()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -1273,7 +1291,10 @@ impl<T, E> Result<Result<T, E>, E> {
     #[inline]
     #[unstable(feature = "result_flattening", issue = "70142")]
     pub fn flatten(self) -> Result<T, E> {
-        self.and_then(convert::identity)
+        match self {
+            Ok(x) => x,
+            Err(e) => Err(e),
+        }
     }
 }
 

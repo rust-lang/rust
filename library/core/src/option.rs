@@ -1060,7 +1060,10 @@ impl<T: Copy> Option<&T> {
     /// ```
     #[stable(feature = "copied", since = "1.35.0")]
     pub fn copied(self) -> Option<T> {
-        self.map(|&t| t)
+        match self {
+            None => None,
+            Some(t) => Some(*t),
+        }
     }
 }
 
@@ -1079,7 +1082,10 @@ impl<T: Copy> Option<&mut T> {
     /// ```
     #[stable(feature = "copied", since = "1.35.0")]
     pub fn copied(self) -> Option<T> {
-        self.map(|&mut t| t)
+        match self {
+            None => None,
+            Some(t) => Some(*t),
+        }
     }
 }
 
@@ -1098,7 +1104,10 @@ impl<T: Clone> Option<&T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn cloned(self) -> Option<T> {
-        self.map(|t| t.clone())
+        match self {
+            None => None,
+            Some(t) => Some(t.clone()),
+        }
     }
 }
 
@@ -1117,7 +1126,10 @@ impl<T: Clone> Option<&mut T> {
     /// ```
     #[stable(since = "1.26.0", feature = "option_ref_mut_cloned")]
     pub fn cloned(self) -> Option<T> {
-        self.map(|t| t.clone())
+        match self {
+            None => None,
+            Some(t) => Some(t.clone()),
+        }
     }
 }
 
@@ -1259,7 +1271,10 @@ impl<T: Deref> Option<T> {
     /// ```
     #[stable(feature = "option_deref", since = "1.40.0")]
     pub fn as_deref(&self) -> Option<&T::Target> {
-        self.as_ref().map(|t| t.deref())
+        match self {
+            None => None,
+            Some(t) => Some(t.deref()),
+        }
     }
 }
 
@@ -1280,7 +1295,10 @@ impl<T: DerefMut> Option<T> {
     /// ```
     #[stable(feature = "option_deref", since = "1.40.0")]
     pub fn as_deref_mut(&mut self) -> Option<&mut T::Target> {
-        self.as_mut().map(|t| t.deref_mut())
+        match self {
+            None => None,
+            Some(t) => Some(t.deref_mut()),
+        }
     }
 }
 
