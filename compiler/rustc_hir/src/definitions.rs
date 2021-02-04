@@ -52,7 +52,14 @@ impl DefPathTable {
 
             // Continuing with colliding DefPathHashes can lead to correctness
             // issues. We must abort compilation.
-            panic!("Found DefPathHash collsion between {:?} and {:?}", def_path1, def_path2);
+            //
+            // The likelyhood of such a collision is very small, so actually
+            // running into one could be indicative of a poor hash function
+            // being used.
+            //
+            // See the documentation for DefPathHash for more information.
+            panic!("found DefPathHash collsion between {:?} and {:?}. \
+                    Compilation cannot continue.", def_path1, def_path2);
         }
 
         // Assert that all DefPathHashes correctly contain the local crate's
