@@ -145,6 +145,7 @@
     - [Debugging LLVM](./backend/debugging.md)
     - [Backend Agnostic Codegen](./backend/backend-agnostic.md)
     - [Implicit Caller Location](./backend/implicit-caller-location.md)
+- [Libraries and Metadata](./backend/libs-and-metadata.md)
 - [Profile-guided Optimization](./profile-guided-optimization.md)
 - [LLVM Source-Based Code Coverage](./llvm-coverage-instrumentation.md)
 - [Sanitizers Support](./sanitizers.md)
