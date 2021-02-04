@@ -58,8 +58,11 @@ impl DefPathTable {
             // being used.
             //
             // See the documentation for DefPathHash for more information.
-            panic!("found DefPathHash collsion between {:?} and {:?}. \
-                    Compilation cannot continue.", def_path1, def_path2);
+            panic!(
+                "found DefPathHash collsion between {:?} and {:?}. \
+                    Compilation cannot continue.",
+                def_path1, def_path2
+            );
         }
 
         // Assert that all DefPathHashes correctly contain the local crate's
@@ -138,7 +141,7 @@ pub struct DefKey {
 }
 
 impl DefKey {
-    fn compute_stable_hash(&self, parent: DefPathHash) -> DefPathHash {
+    pub(crate) fn compute_stable_hash(&self, parent: DefPathHash) -> DefPathHash {
         let mut hasher = StableHasher::new();
 
         parent.hash(&mut hasher);

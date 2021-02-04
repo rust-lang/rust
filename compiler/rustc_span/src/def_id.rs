@@ -159,6 +159,12 @@ impl DefPathHash {
         StableCrateId(self.0.as_value().0)
     }
 
+    /// Returns the crate-local part of the [DefPathHash].
+    #[inline]
+    pub fn local_hash(&self) -> u64 {
+        self.0.as_value().1
+    }
+
     /// Builds a new [DefPathHash] with the given [StableCrateId] and
     /// `local_hash`, where `local_hash` must be unique within its crate.
     pub fn new(stable_crate_id: StableCrateId, local_hash: u64) -> DefPathHash {
