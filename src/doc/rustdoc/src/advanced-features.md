@@ -47,8 +47,7 @@ all type errors and name resolution errors with function bodies. Note that this 
 work for anything outside a function body: since Rustdoc documents your types, it has to
 know what those types are! For example, this code will work regardless of the platform:
 
-<!-- `ignore` because doc-tests are run with `rustc`, not `rustdoc` -->
-```ignore
+```rust,ignore (platform-specific,rustdoc-specific-behavior)
 pub fn f() {
     use std::os::windows::ffi::OsStrExt;
 }
@@ -56,7 +55,7 @@ pub fn f() {
 
 but this will not, because the unknown type is part of the function signature:
 
-```ignore
+```rust,ignore (platform-specific,rustdoc-specific-behavior)
 pub fn f() -> std::os::windows::ffi::EncodeWide<'static> {
     unimplemented!()
 }
