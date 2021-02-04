@@ -373,8 +373,48 @@ There's no additional checks in CI, formatting and tidy tests are run with `carg
 
 **Architecture Invariant:** tests do not depend on any kind of external resources, they are perfectly reproducible.
 
+### Error Handling
+
+**Architecture Invariant:** core parts of rust-analyzer (`ide`/`hir`) don't interact with the outside world and thus can't fail.
+Only parts touching LSP are allowed to do IO.
+
+Internals of rust-analyzer need to deal with broken code, but this is not an error condition.
+rust-analyzer is robust: various analysis compute `(T, Vec<Error>)` rather than `Result<T, Error>`.
+
+rust-analyzer is a complex long-running process.
+It will always have bugs and panics.
+But a panic in an isolated feature should not bring down the whole process.
+Each LSP-request is protected by a `catch_unwind`.
+We use `always` and `never` macros instead of `assert` to gracefully recover from impossible conditions.
+
 ### Observability
 
-I've run out of steam here :)
 rust-analyzer is a long-running process, so its important to understand what's going on inside.
-We have hierarchical profiler (`RA_PROFILER=1`) and object counting (`RA_COUNT=1`).
+We have several instruments for that.
+
+The event loop that runs rust-analyzer is very explicit.
+Rather than spawning futures or scheduling callbacks (open), the event loop accepts an `enum` of possible events (closed).
+It's easy to see all the things that trigger rust-analyzer processing, together with their performance
+
+rust-analyzer includes a simple hierarchical profiler (`hprof`).
+It is enabled with `RA_PROFILE='*>50` env var (log all (`*`) actions which take more than `50` ms) and produces output like:
+
+```
+85ms - handle_completion
+    68ms - import_on_the_fly
+        67ms - import_assets::search_for_relative_paths
+             0ms - crate_def_map:wait (804 calls)
+             0ms - find_path (16 calls)
+             2ms - find_similar_imports (1 calls)
+             0ms - generic_params_query (334 calls)
+            59ms - trait_solve_query (186 calls)
+         0ms - Semantics::analyze_impl (1 calls)
+         1ms - render_resolution (8 calls)
+     0ms - Semantics::analyze_impl (5 calls)
+```
+
+This is cheap enough to enable in production.
+
+
+Similarly, we save live object counting (`RA_COUNT=1`).
+It is not cheap enough to enable in prod, and this is a bug which should be fixed.
