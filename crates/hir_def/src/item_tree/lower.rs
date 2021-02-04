@@ -364,6 +364,7 @@ impl Ctx {
                 params.push(type_ref);
             }
         }
+        let params = params.into_iter().map(|param| self.data().type_refs.intern(param)).collect();
 
         let mut is_varargs = false;
         if let Some(params) = func.param_list() {
@@ -385,6 +386,8 @@ impl Ctx {
             ret_type
         };
 
+        let ret_type = self.data().type_refs.intern(ret_type);
+
         let has_body = func.body().is_some();
 
         let ast_id = self.source_ast_id_map.ast_id(func);
@@ -396,7 +399,7 @@ impl Ctx {
             has_body,
             is_unsafe: func.unsafe_token().is_some(),
             is_extern: false,
-            params: params.into_boxed_slice(),
+            params,
             is_varargs,
             ret_type,
             ast_id,
@@ -657,6 +660,7 @@ impl Ctx {
                 generics.fill(&self.body_ctx, sm, node);
                 // lower `impl Trait` in arguments
                 for param in &*func.params {
+                    let param = self.data().type_refs.lookup(*param);
                     generics.fill_implicit_impl_trait_args(param);
                 }
             }
@@ -709,11 +713,15 @@ impl Ctx {
         self.data().vis.alloc(vis)
     }
 
-    fn lower_type_ref(&self, type_ref: &ast::Type) -> TypeRef {
-        TypeRef::from_ast(&self.body_ctx, type_ref.clone())
+    fn lower_type_ref(&mut self, type_ref: &ast::Type) -> Idx<TypeRef> {
+        let tyref = TypeRef::from_ast(&self.body_ctx, type_ref.clone());
+        self.data().type_refs.intern(tyref)
     }
-    fn lower_type_ref_opt(&self, type_ref: Option<ast::Type>) -> TypeRef {
-        type_ref.map(|ty| self.lower_type_ref(&ty)).unwrap_or(TypeRef::Error)
+    fn lower_type_ref_opt(&mut self, type_ref: Option<ast::Type>) -> Idx<TypeRef> {
+        match type_ref.map(|ty| self.lower_type_ref(&ty)) {
+            Some(it) => it,
+            None => self.data().type_refs.intern(TypeRef::Error),
+        }
     }
 
     /// Forces the visibility `vis` to be used for all items lowered during execution of `f`.
