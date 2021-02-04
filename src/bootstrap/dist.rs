@@ -1238,7 +1238,8 @@ impl Step for CodegenBackend {
 
         builder.ensure(compile::CodegenBackend { compiler, target, backend });
 
-        let mut tarball = Tarball::new(builder, &format!("rustc-codegen-{}", backend), &target.triple);
+        let mut tarball =
+            Tarball::new(builder, &format!("rustc-codegen-{}", backend), &target.triple);
         if backend == "cranelift" {
             tarball.set_overlay(OverlayKind::RustcCodegenCranelift);
         } else {
@@ -1246,7 +1247,6 @@ impl Step for CodegenBackend {
         }
         tarball.is_preview(true);
         tarball.add_legal_and_readme_to(format!("share/doc/rustc_codegen_{}", backend));
-
 
         let src = builder.sysroot(compiler);
         let backends_src = builder.sysroot_codegen_backends(compiler);
