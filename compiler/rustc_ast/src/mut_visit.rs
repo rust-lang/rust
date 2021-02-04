@@ -28,7 +28,7 @@ pub trait ExpectOne<A: Array> {
 
 impl<A: Array> ExpectOne<A> for SmallVec<A> {
     fn expect_one(self, err: &'static str) -> A::Item {
-        assert!(self.len() == 1, err);
+        assert!(self.len() == 1, "{}", err);
         self.into_iter().next().unwrap()
     }
 }
