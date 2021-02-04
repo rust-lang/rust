@@ -48,14 +48,7 @@ impl<'a, 'tcx> NonAutolinksLinter<'a, 'tcx> {
 }
 
 crate fn check_non_autolinks(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    if !cx.tcx.sess.is_nightly_build() {
-        krate
-    } else {
-        let mut coll =
-            NonAutolinksLinter { cx, regex: Regex::new(URL_REGEX).expect("failed to build regex") };
-
-        coll.fold_crate(krate)
-    }
+    NonAutolinksLinter::new(cx).fold_crate(krate)
 }
 
 impl<'a, 'tcx> DocFolder for NonAutolinksLinter<'a, 'tcx> {
