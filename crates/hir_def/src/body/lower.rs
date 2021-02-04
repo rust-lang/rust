@@ -698,15 +698,15 @@ impl ExprCollector<'_> {
 
     fn collect_block(&mut self, block: ast::BlockExpr) -> ExprId {
         let ast_id = self.expander.ast_id(&block);
-        let block_loc = BlockLoc { ast_id, module: self.expander.module };
+        let block_loc =
+            BlockLoc { ast_id, module: self.expander.def_map.module_id(self.expander.module) };
         let block_id = self.db.intern_block(block_loc);
         let opt_def_map = self.db.block_def_map(block_id);
         let has_def_map = opt_def_map.is_some();
         let def_map = opt_def_map.unwrap_or_else(|| self.expander.def_map.clone());
-        let module =
-            if has_def_map { def_map.module_id(def_map.root()) } else { self.expander.module };
+        let module = if has_def_map { def_map.root() } else { self.expander.module };
         let prev_def_map = mem::replace(&mut self.expander.def_map, def_map);
-        let prev_module = mem::replace(&mut self.expander.module, module);
+        let prev_local_module = mem::replace(&mut self.expander.module, module);
 
         self.collect_stmts_items(block.statements());
         let statements =
@@ -719,7 +719,7 @@ impl ExprCollector<'_> {
         );
 
         self.expander.def_map = prev_def_map;
-        self.expander.module = prev_module;
+        self.expander.module = prev_local_module;
         expr_id
     }
 
@@ -812,7 +812,7 @@ impl ExprCollector<'_> {
                 }
                 Either::Right(e) => {
                     let mac = MacroDefId {
-                        krate: self.expander.module.krate,
+                        krate: self.expander.def_map.krate(),
                         ast_id: Some(self.expander.ast_id(&e)),
                         kind: MacroDefKind::Declarative,
                         local_inner: false,
@@ -852,7 +852,7 @@ impl ExprCollector<'_> {
                     // decide that, we need to try resolving the name.
                     let (resolved, _) = self.expander.def_map.resolve_path(
                         self.db,
-                        self.expander.module.local_id,
+                        self.expander.module,
                         &name.clone().into(),
                         BuiltinShadowMode::Other,
                     );
