@@ -221,6 +221,25 @@ This example will render similarly to this:
 See the specification for the [GitHub Tables extension][tables] for more
 details on the exact syntax supported.
 
+### Task lists
+
+Task lists can be used as a checklist of items that have been completed.
+Example:
+
+```md
+- [x] Complete task
+- [ ] IncComplete task
+```
+
+This will render as
+
+<ul>
+    <li><input type="checkbox"></li>
+    <li><input type="checkbox" checked></li>
+</ul>
+
+See the specification for the [task list extension] for more details.
+
 [`backtrace`]: https://docs.rs/backtrace/0.3.50/backtrace/
 [commonmark markdown specification]: https://commonmark.org/
 [commonmark quick reference]: https://commonmark.org/help/
@@ -234,3 +253,4 @@ details on the exact syntax supported.
 [`std::env`]: https://doc.rust-lang.org/stable/std/env/index.html#functions
 [strikethrough]: https://github.github.com/gfm/#strikethrough-extension-
 [tables]: https://github.github.com/gfm/#tables-extension-
+[task list extension]: https://github.github.com/gfm/#task-list-items-extension-
