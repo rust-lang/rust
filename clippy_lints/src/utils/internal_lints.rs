@@ -841,15 +841,13 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
     // implementations of native types. Check lang items.
     let path_syms: Vec<_> = path.iter().map(|p| Symbol::intern(p)).collect();
     let lang_items = cx.tcx.lang_items();
-    for lang_item in lang_items.items() {
-        if let Some(def_id) = lang_item {
-            let lang_item_path = cx.get_def_path(*def_id);
-            if path_syms.starts_with(&lang_item_path) {
-                if let [item] = &path_syms[lang_item_path.len()..] {
-                    for child in cx.tcx.item_children(*def_id) {
-                        if child.ident.name == *item {
-                            return true;
-                        }
+    for item_def_id in lang_items.items().iter().flatten() {
+        let lang_item_path = cx.get_def_path(*item_def_id);
+        if path_syms.starts_with(&lang_item_path) {
+            if let [item] = &path_syms[lang_item_path.len()..] {
+                for child in cx.tcx.item_children(*item_def_id) {
+                    if child.ident.name == *item {
+                        return true;
                     }
                 }
             }
