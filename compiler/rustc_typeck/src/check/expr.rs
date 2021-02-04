@@ -1460,28 +1460,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     );
                     err.span_label(field.ident.span, "field does not exist");
-                    err.span_label(
+                    err.span_suggestion(
                         ty_span,
-                        format!(
-                            "`{adt}::{variant}` is a tuple {kind_name}, \
-                             use the appropriate syntax: `{adt}::{variant}(/* fields */)`",
+                        &format!(
+                            "`{adt}::{variant}` is a tuple {kind_name}, use the appropriate syntax",
                             adt = ty,
                             variant = variant.ident,
-                            kind_name = kind_name
                         ),
+                        format!(
+                            "{adt}::{variant}(/* fields */)",
+                            adt = ty,
+                            variant = variant.ident,
+                        ),
+                        Applicability::HasPlaceholders,
                     );
                 }
                 _ => {
                     err.span_label(variant.ident.span, format!("`{adt}` defined here", adt = ty));
                     err.span_label(field.ident.span, "field does not exist");
-                    err.span_label(
+                    err.span_suggestion(
                         ty_span,
-                        format!(
-                            "`{adt}` is a tuple {kind_name}, \
-                                 use the appropriate syntax: `{adt}(/* fields */)`",
+                        &format!(
+                            "`{adt}` is a tuple {kind_name}, use the appropriate syntax",
                             adt = ty,
-                            kind_name = kind_name
+                            kind_name = kind_name,
                         ),
+                        format!("{adt}(/* fields */)", adt = ty),
+                        Applicability::HasPlaceholders,
                     );
                 }
             },
