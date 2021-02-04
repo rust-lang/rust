@@ -560,7 +560,8 @@ impl Config {
         config.channel = "dev".to_string();
         config.codegen_tests = true;
         config.rust_dist_src = true;
-        config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
+        config.rust_codegen_backends =
+            vec![INTERNER.intern_str("llvm"), INTERNER.intern_str("cranelift")];
         config.deny_warnings = true;
         config.bindir = "bin".into();
 
