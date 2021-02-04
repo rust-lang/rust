@@ -2,7 +2,7 @@ use rustc_ast::ast::{Label, LitFloatType, LitIntType, LitKind};
 use rustc_hir::{
     self as hir,
     intravisit::{walk_expr, walk_stmt, walk_ty, FnKind, NestedVisitorMap, Visitor},
-    Body, Expr, ExprKind, FnDecl, FnRetTy, Guard, HirId, Lit, Stmt, StmtKind,
+    Body, BodyId, Expr, ExprKind, FnDecl, FnRetTy, Guard, HirId, Lit, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::{
@@ -50,14 +50,29 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DefaultNumericFallback => [DEFAULT_NUMERIC_FALLBACK]);
 
-fn enclosing_body_owner_opt(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<HirId> {
+/// Return the body that includes passed `hir_id` if exists.
+fn enclosing_body_opt(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<BodyId> {
     let hir_map = tcx.hir();
+    let mut trace = vec![(hir_id)];
+
     for (parent, _) in hir_map.parent_iter(hir_id) {
+        trace.push(parent);
         if let Some(body) = hir_map.maybe_body_owned_by(parent) {
-            return Some(hir_map.body_owner(body));
+            if trace.iter().any(|hir_id| *hir_id == body.hir_id) {
+                return Some(body);
+            }
         }
     }
+
     None
+}
+
+fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Option<Ty<'tcx>> {
+    if enclosing_body_opt(cx.tcx, hir_ty.hir_id).is_some() {
+        cx.typeck_results().node_type_opt(hir_ty.hir_id)
+    } else {
+        Some(hir_ty_to_ty(cx.tcx, hir_ty))
+    }
 }
 
 impl LateLintPass<'_> for DefaultNumericFallback {
@@ -68,21 +83,17 @@ impl LateLintPass<'_> for DefaultNumericFallback {
         fn_decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
-        hir_id: HirId,
+        _: HirId,
     ) {
         let ret_ty_bound = match fn_decl.output {
             FnRetTy::DefaultReturn(_) => None,
             FnRetTy::Return(ty) => Some(ty),
         }
         .and_then(|ty| {
-            let mut infer_ty_finder = InferTyFinder::new();
-            infer_ty_finder.visit_ty(ty);
-            if infer_ty_finder.found {
+            if is_infer_included(ty) {
                 None
-            } else if enclosing_body_owner_opt(cx.tcx, hir_id).is_some() {
-                cx.typeck_results().node_type_opt(ty.hir_id)
             } else {
-                Some(hir_ty_to_ty(cx.tcx, ty))
+                ty_from_hir_ty(cx, ty)
             }
         });
 
@@ -114,7 +125,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
         }
     }
 
-    /// Check whether lit cause fallback or not.
+    /// Check whether a passed literal has potential to cause fallback or not.
     fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>) {
         let ty_bound = self.ty_bounds.last().unwrap();
 
@@ -334,12 +345,10 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
         match stmt.kind {
             StmtKind::Local(local) => {
                 let ty = local.ty.and_then(|hir_ty| {
-                    let mut infer_ty_finder = InferTyFinder::new();
-                    infer_ty_finder.visit_ty(hir_ty);
-                    if infer_ty_finder.found {
+                    if is_infer_included(hir_ty) {
                         None
                     } else {
-                        self.cx.typeck_results().node_type_opt(hir_ty.hir_id)
+                        ty_from_hir_ty(self.cx, hir_ty)
                     }
                 });
                 self.ty_bounds.push(ty);
@@ -357,7 +366,13 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
     }
 }
 
-/// Find `hir::TyKind::Infer` is included in passed typed.
+/// Return true if a given ty includes `hir::TyKind::Infer`.
+fn is_infer_included(ty: &hir::Ty<'_>) -> bool {
+    let mut infer_ty_finder = InferTyFinder::new();
+    infer_ty_finder.visit_ty(ty);
+    infer_ty_finder.found
+}
+
 struct InferTyFinder {
     found: bool,
 }
