@@ -180,7 +180,7 @@ fn encodable_substructure(
     match *substr.fields {
         Struct(_, ref fields) => {
             let fn_emit_struct_field_path =
-                cx.def_site_path(&[sym::rustc_serialize, sym::Encodable, sym::emit_struct_field]);
+                cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_struct_field]);
             let mut stmts = Vec::new();
             for (i, &FieldInfo { name, ref self_, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
@@ -222,7 +222,7 @@ fn encodable_substructure(
             };
 
             let fn_emit_struct_path =
-                cx.def_site_path(&[sym::rustc_serialize, sym::Encodable, sym::emit_struct]);
+                cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_struct]);
 
             cx.expr_call_global(
                 trait_span,
@@ -244,11 +244,8 @@ fn encodable_substructure(
             let me = cx.stmt_let(trait_span, false, blkarg, encoder);
             let encoder = cx.expr_ident(trait_span, blkarg);
 
-            let fn_emit_enum_variant_arg_path: Vec<_> = cx.def_site_path(&[
-                sym::rustc_serialize,
-                sym::Encodable,
-                sym::emit_enum_variant_arg,
-            ]);
+            let fn_emit_enum_variant_arg_path: Vec<_> =
+                cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_enum_variant_arg]);
 
             let mut stmts = Vec::new();
             if !fields.is_empty() {
@@ -281,7 +278,7 @@ fn encodable_substructure(
             let name = cx.expr_str(trait_span, variant.ident.name);
 
             let fn_emit_enum_variant_path: Vec<_> =
-                cx.def_site_path(&[sym::rustc_serialize, sym::Encodable, sym::emit_enum_variant]);
+                cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_enum_variant]);
 
             let call = cx.expr_call_global(
                 trait_span,
@@ -297,7 +294,7 @@ fn encodable_substructure(
 
             let blk = cx.lambda1(trait_span, call, blkarg);
             let fn_emit_enum_path: Vec<_> =
-                cx.def_site_path(&[sym::rustc_serialize, sym::Encodable, sym::emit_enum]);
+                cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_enum]);
             let ret = cx.expr_call_global(
                 trait_span,
                 fn_emit_enum_path,
