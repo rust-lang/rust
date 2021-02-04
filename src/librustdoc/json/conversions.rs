@@ -162,8 +162,8 @@ impl From<clean::ItemKind> for ItemEnum {
             ForeignFunctionItem(f) => ItemEnum::FunctionItem(f.into()),
             TraitItem(t) => ItemEnum::TraitItem(t.into()),
             TraitAliasItem(t) => ItemEnum::TraitAliasItem(t.into()),
-            MethodItem(m, _) => ItemEnum::MethodItem(m.into()),
-            TyMethodItem(m) => ItemEnum::MethodItem(m.into()),
+            MethodItem(m, _) => ItemEnum::MethodItem(from_function_method(m, true)),
+            TyMethodItem(m) => ItemEnum::MethodItem(from_function_method(m, false)),
             ImplItem(i) => ItemEnum::ImplItem(i.into()),
             StaticItem(s) => ItemEnum::StaticItem(s.into()),
             ForeignStaticItem(s) => ItemEnum::StaticItem(s.into()),
@@ -435,15 +435,13 @@ impl From<clean::Impl> for Impl {
     }
 }
 
-impl From<clean::Function> for Method {
-    fn from(function: clean::Function) -> Self {
-        let clean::Function { header, decl, generics, all_types: _, ret_types: _ } = function;
-        Method {
-            decl: decl.into(),
-            generics: generics.into(),
-            header: stringify_header(&header),
-            has_body: true,
-        }
+crate fn from_function_method(function: clean::Function, has_body: bool) -> Method {
+    let clean::Function { header, decl, generics, all_types: _, ret_types: _ } = function;
+    Method {
+        decl: decl.into(),
+        generics: generics.into(),
+        header: stringify_header(&header),
+        has_body,
     }
 }
 
