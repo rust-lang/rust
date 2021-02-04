@@ -46,7 +46,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing ref_s[Deref] -> ByValue
+note: Capturing ref_s[Deref] -> UniqueImmBorrow
   --> $DIR/move_closure.rs:20:9
    |
 LL |         *ref_s += 10;
@@ -64,7 +64,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture ref_s[] -> ByValue
+note: Min Capture ref_s[Deref] -> UniqueImmBorrow
   --> $DIR/move_closure.rs:20:9
    |
 LL |         *ref_s += 10;
@@ -82,7 +82,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
+note: Capturing t[(0, 0),Deref,(0, 0)] -> UniqueImmBorrow
   --> $DIR/move_closure.rs:41:9
    |
 LL |         t.0.0 = "new s".into();
@@ -100,7 +100,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture t[(0, 0)] -> ByValue
+note: Min Capture t[(0, 0),Deref,(0, 0)] -> UniqueImmBorrow
   --> $DIR/move_closure.rs:41:9
    |
 LL |         t.0.0 = "new s".into();

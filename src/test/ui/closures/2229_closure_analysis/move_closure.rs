@@ -18,8 +18,8 @@ fn simple_ref() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         *ref_s += 10;
-        //~^ NOTE: Capturing ref_s[Deref] -> ByValue
-        //~| NOTE: Min Capture ref_s[] -> ByValue
+        //~^ NOTE: Capturing ref_s[Deref] -> UniqueImmBorrow
+        //~| NOTE: Min Capture ref_s[Deref] -> UniqueImmBorrow
     };
     c();
 }
@@ -39,8 +39,8 @@ fn struct_contains_ref_to_another_struct() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         t.0.0 = "new s".into();
-        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
-        //~| NOTE: Min Capture t[(0, 0)] -> ByValue
+        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> UniqueImmBorrow
+        //~| NOTE: Min Capture t[(0, 0),Deref,(0, 0)] -> UniqueImmBorrow
     };
 
     c();
