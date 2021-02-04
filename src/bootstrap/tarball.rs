@@ -66,7 +66,7 @@ impl OverlayKind {
                 "compiler/rustc_codegen_cranelift/Readme.md",
                 "compiler/rustc_codegen_cranelift/LICENSE-APACHE",
                 "compiler/rustc_codegen_cranelift/LICENSE-MIT",
-            ]
+            ],
         }
     }
 

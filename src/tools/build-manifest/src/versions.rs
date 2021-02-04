@@ -37,8 +37,9 @@ impl PkgType {
             "rustfmt" | "rustfmt-preview" => PkgType::Rustfmt,
             "llvm-tools" | "llvm-tools-preview" => PkgType::LlvmTools,
             "miri" | "miri-preview" => PkgType::Miri,
-            "rustc-codegen-cranelift"
-            | "rustc-codegen-cranelift-preview" => PkgType::RustcCodegenCranelift,
+            "rustc-codegen-cranelift" | "rustc-codegen-cranelift-preview" => {
+                PkgType::RustcCodegenCranelift
+            }
             other => PkgType::Other(other.into()),
         }
     }
