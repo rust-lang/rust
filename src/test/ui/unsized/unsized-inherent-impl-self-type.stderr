@@ -13,7 +13,7 @@ help: you could relax the implicit `Sized` bound on `Y` if it were used through 
   --> $DIR/unsized-inherent-impl-self-type.rs:5:11
    |
 LL | struct S5<Y>(Y);
-   |           ^  - ...if indirection was used here: `Box<Y>`
+   |           ^  - ...if indirection were used here: `Box<Y>`
    |           |
    |           this could be changed to `Y: ?Sized`...
 

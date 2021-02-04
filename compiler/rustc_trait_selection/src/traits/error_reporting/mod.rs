@@ -1780,7 +1780,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                             multispan.push_span_label(
                                 sp,
                                 format!(
-                                    "...if indirection was used here: `Box<{}>`",
+                                    "...if indirection were used here: `Box<{}>`",
                                     param.name.ident(),
                                 ),
                             );

@@ -13,7 +13,7 @@ help: you could relax the implicit `Sized` bound on `T` if it were used through 
   --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
    |
 LL | struct X<T>(T);
-   |          ^  - ...if indirection was used here: `Box<T>`
+   |          ^  - ...if indirection were used here: `Box<T>`
    |          |
    |          this could be changed to `T: ?Sized`...
 
@@ -68,7 +68,7 @@ help: you could relax the implicit `Sized` bound on `T` if it were used through 
 LL | struct Struct3<T>{
    |                ^ this could be changed to `T: ?Sized`...
 LL |     _t: T,
-   |         - ...if indirection was used here: `Box<T>`
+   |         - ...if indirection were used here: `Box<T>`
 help: consider further restricting `Self`
    |
 LL |     fn func3() -> Struct3<Self> where Self: Sized;
