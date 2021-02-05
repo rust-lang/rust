@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 backtrace = { version = "0.3.44", optional = true }
-always-assert = { version = "0.1.1", features = ["log"] }
+always-assert = { version = "0.1.2", features = ["log"] }
 # Think twice before adding anything here
 
 [features]

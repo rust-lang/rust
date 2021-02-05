@@ -478,6 +478,7 @@ enum Version {
 }
 
 impl Version {
+    /// Returns `true` if the version is [`Minor`].
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
