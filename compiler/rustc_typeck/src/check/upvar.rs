@@ -698,8 +698,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///                             freeing up memory).
     ///
     /// The way this function works is at a given call it looks at type `base_path_ty` of some base
-    /// path say P and then vector of projection slices which represent the different captures
-    /// starting off of P.
+    /// path say P and then list of projection slices which represent the different captures moved
+    /// into the closure starting off of P.
     ///
     /// This will make more sense with an example:
     ///
@@ -842,23 +842,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //   `captured_projs.first().unwrap()` safely.
             // - All entries in `captured_projs` have atleast one projection.
             //   Therefore we can call `captured_projs.first().unwrap().first().unwrap()` safely.
-            ty::Adt(def, _) if def.is_box() => {
-                // We must deref to access paths on top of a Box.
-                assert!(
-                    captured_projs
-                        .iter()
-                        .all(|projs| matches!(projs.first().unwrap().kind, ProjectionKind::Deref))
-                );
 
-                let next_ty = captured_projs.first().unwrap().first().unwrap().ty;
-                let captured_projs = captured_projs.iter().map(|projs| &projs[1..]).collect();
-                self.has_significant_drop_outside_of_captures(
-                    closure_def_id,
-                    closure_span,
-                    next_ty,
-                    captured_projs,
-                )
-            }
+            // We don't capture derefs in case of move captures, which would have be applied to
+            // access any further paths.
+            ty::Adt(def, _) if def.is_box() => unreachable!(),
+            ty::Ref(..) => unreachable!(),
+            ty::RawPtr(..) => unreachable!(),
 
             ty::Adt(def, substs) => {
                 // Multi-varaint enums are captured in entirety,
@@ -929,27 +918,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
             }
 
-            ty::Ref(_, deref_ty, _) => {
-                // Only Derefs can be applied to a Ref
-                assert!(
-                    captured_projs
-                        .iter()
-                        .all(|projs| matches!(projs.first().unwrap().kind, ProjectionKind::Deref))
-                );
-
-                let captured_projs = captured_projs.iter().map(|projs| &projs[1..]).collect();
-                self.has_significant_drop_outside_of_captures(
-                    closure_def_id,
-                    closure_span,
-                    deref_ty,
-                    captured_projs,
-                )
-            }
-
-            // Unsafe Ptrs are captured in their entirety, which would've have been handled in
-            // the case of single empty slice in `captured_projs`.
-            ty::RawPtr(..) => unreachable!(),
-
+            // Anything else would be completely captured and therefore handled already.
             _ => unreachable!(),
         }
     }
