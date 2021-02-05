@@ -2,15 +2,15 @@ use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintEncoder};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{join, Lrc};
+use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items;
 use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::bit_set::GrowableBitSet;
@@ -65,11 +65,6 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     required_source_files: Option<GrowableBitSet<usize>>,
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
-
-    // Determines if MIR used for code generation will be included in the crate
-    // metadata. When emitting only metadata (e.g., cargo check), we can avoid
-    // generating optimized MIR altogether.
-    emit_codegen_mir: bool,
 }
 
 /// If the current crate is a proc-macro, returns early with `Lazy:empty()`.
@@ -580,6 +575,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode the items.
         i = self.position();
         self.encode_def_ids();
+        self.encode_mir();
         self.encode_info_for_items();
         let item_bytes = self.position() - i;
 
@@ -785,6 +781,53 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
     }
 }
 
+/// Whether we should encode MIR.
+///
+/// Computing, optimizing and encoding the MIR is a relatively expensive operation.
+/// We want to avoid this work when not required. Therefore:
+/// - we only compute `mir_for_ctfe` on items with const-eval semantics;
+/// - we skip `optimized_mir` for check runs.
+///
+/// Return a pair, resp. for CTFE and for LLVM.
+fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
+    match tcx.def_kind(def_id) {
+        // Constructors
+        DefKind::Ctor(_, _) => {
+            let mir_opt_base = tcx.sess.opts.output_types.should_codegen()
+                || tcx.sess.opts.debugging_opts.always_encode_mir;
+            (true, mir_opt_base)
+        }
+        // Constants
+        DefKind::AnonConst | DefKind::AssocConst | DefKind::Static | DefKind::Const => {
+            (true, false)
+        }
+        // Full-fledged functions
+        DefKind::AssocFn | DefKind::Fn => {
+            let generics = tcx.generics_of(def_id);
+            let needs_inline = (generics.requires_monomorphization(tcx)
+                || tcx.codegen_fn_attrs(def_id).requests_inline())
+                && tcx.sess.opts.output_types.should_codegen();
+            // Only check the presence of the `const` modifier.
+            let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id());
+            let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
+            (is_const_fn, needs_inline || always_encode_mir)
+        }
+        // Closures can't be const fn.
+        DefKind::Closure => {
+            let generics = tcx.generics_of(def_id);
+            let needs_inline = (generics.requires_monomorphization(tcx)
+                || tcx.codegen_fn_attrs(def_id).requests_inline())
+                && tcx.sess.opts.output_types.should_codegen();
+            let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
+            (false, needs_inline || always_encode_mir)
+        }
+        // Generators require optimized MIR to compute layout.
+        DefKind::Generator => (false, true),
+        // The others don't have MIR.
+        _ => (false, false),
+    }
+}
+
 impl EncodeContext<'a, 'tcx> {
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
@@ -882,11 +925,6 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
-        let opt_mir = tcx.sess.opts.debugging_opts.always_encode_mir || self.emit_codegen_mir;
-        if opt_mir {
-            self.encode_optimized_mir(def_id.expect_local());
-        }
-        self.encode_mir_for_ctfe(def_id.expect_local());
     }
 
     fn encode_info_for_mod(&mut self, id: hir::HirId, md: &hir::Mod<'_>) {
@@ -972,11 +1010,6 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
-        let opt_mir = tcx.sess.opts.debugging_opts.always_encode_mir || self.emit_codegen_mir;
-        if opt_mir {
-            self.encode_optimized_mir(def_id.expect_local());
-        }
-        self.encode_mir_for_ctfe(def_id.expect_local());
     }
 
     fn encode_generics(&mut self, def_id: DefId) {
@@ -1082,34 +1115,6 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
-
-        // This should be kept in sync with `PrefetchVisitor.visit_trait_item`.
-        match trait_item.kind {
-            ty::AssocKind::Type => {}
-            ty::AssocKind::Const => {
-                if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id.expect_local()) {
-                    self.encode_mir_for_ctfe(def_id.expect_local());
-                    self.encode_promoted_mir(def_id.expect_local());
-                }
-            }
-            ty::AssocKind::Fn => {
-                let opt_mir =
-                    tcx.sess.opts.debugging_opts.always_encode_mir || self.emit_codegen_mir;
-                if opt_mir {
-                    if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id.expect_local()) {
-                        self.encode_optimized_mir(def_id.expect_local());
-                        self.encode_promoted_mir(def_id.expect_local());
-                    }
-                }
-            }
-        }
-    }
-
-    fn should_encode_fn_opt_mir(&self, def_id: DefId) -> bool {
-        self.tcx.sess.opts.debugging_opts.always_encode_mir
-            || (self.emit_codegen_mir
-                && (self.tcx.generics_of(def_id).requires_monomorphization(self.tcx)
-                    || self.tcx.codegen_fn_attrs(def_id).requests_inline()))
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) {
@@ -1171,27 +1176,6 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
-
-        // The following part should be kept in sync with `PrefetchVisitor.visit_impl_item`.
-
-        let (mir, mir_const) = match ast_item.kind {
-            hir::ImplItemKind::Const(..) => (false, true),
-            hir::ImplItemKind::Fn(ref sig, _) => {
-                let opt_mir = self.should_encode_fn_opt_mir(def_id);
-                let is_const_fn = sig.header.constness == hir::Constness::Const;
-                (opt_mir, is_const_fn)
-            }
-            hir::ImplItemKind::TyAlias(..) => (false, false),
-        };
-        if mir {
-            self.encode_optimized_mir(def_id.expect_local());
-        }
-        if mir || mir_const {
-            self.encode_promoted_mir(def_id.expect_local());
-        }
-        if mir_const {
-            self.encode_mir_for_ctfe(def_id.expect_local());
-        }
     }
 
     fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Ident]> {
@@ -1202,34 +1186,48 @@ impl EncodeContext<'a, 'tcx> {
         self.lazy(param_names.iter())
     }
 
-    fn encode_mir_for_ctfe(&mut self, def_id: LocalDefId) {
-        debug!("EntryBuilder::encode_mir_for_ctfe({:?})", def_id);
-        record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- self.tcx.mir_for_ctfe(def_id));
-
-        let unused = self.tcx.unused_generic_params(def_id);
-        if !unused.is_empty() {
-            record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
+    fn encode_mir(&mut self) {
+        if self.is_proc_macro {
+            return;
         }
 
-        let abstract_const = self.tcx.mir_abstract_const(def_id);
-        if let Ok(Some(abstract_const)) = abstract_const {
-            record!(self.tables.mir_abstract_consts[def_id.to_def_id()] <- abstract_const);
+        let mut keys_and_jobs = self
+            .tcx
+            .mir_keys(LOCAL_CRATE)
+            .iter()
+            .filter_map(|&def_id| {
+                let (encode_const, encode_opt) = should_encode_mir(self.tcx, def_id);
+                if encode_const || encode_opt {
+                    Some((def_id, encode_const, encode_opt))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        // Sort everything to ensure a stable order for diagnotics.
+        keys_and_jobs.sort_by_key(|&(def_id, _, _)| def_id);
+        for (def_id, encode_const, encode_opt) in keys_and_jobs.into_iter() {
+            debug_assert!(encode_const || encode_opt);
+
+            debug!("EntryBuilder::encode_mir({:?})", def_id);
+            if encode_opt {
+                record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
+            }
+            if encode_const {
+                record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- self.tcx.mir_for_ctfe(def_id));
+
+                let abstract_const = self.tcx.mir_abstract_const(def_id);
+                if let Ok(Some(abstract_const)) = abstract_const {
+                    record!(self.tables.mir_abstract_consts[def_id.to_def_id()] <- abstract_const);
+                }
+            }
+            record!(self.tables.promoted_mir[def_id.to_def_id()] <- self.tcx.promoted_mir(def_id));
+
+            let unused = self.tcx.unused_generic_params(def_id);
+            if !unused.is_empty() {
+                record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
+            }
         }
-    }
-
-    fn encode_optimized_mir(&mut self, def_id: LocalDefId) {
-        debug!("EntryBuilder::encode_optimized_mir({:?})", def_id);
-        record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
-
-        let unused = self.tcx.unused_generic_params(def_id);
-        if !unused.is_empty() {
-            record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
-        }
-    }
-
-    fn encode_promoted_mir(&mut self, def_id: LocalDefId) {
-        debug!("EncodeContext::encode_promoted_mir({:?})", def_id);
-        record!(self.tables.promoted_mir[def_id.to_def_id()] <- self.tcx.promoted_mir(def_id));
     }
 
     // Encodes the inherent implementations of a structure, enumeration, or trait.
@@ -1487,28 +1485,6 @@ impl EncodeContext<'a, 'tcx> {
             }
             _ => {}
         }
-
-        // The following part should be kept in sync with `PrefetchVisitor.visit_item`.
-
-        let (mir, const_mir) = match item.kind {
-            hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => (false, true),
-            hir::ItemKind::Fn(ref sig, ..) => {
-                let opt_mir = self.should_encode_fn_opt_mir(def_id);
-                let is_const_fn = sig.header.constness == hir::Constness::Const;
-                // We don't need the optimized MIR for const fns.
-                (opt_mir, is_const_fn)
-            }
-            _ => (false, false),
-        };
-        if mir {
-            self.encode_optimized_mir(def_id.expect_local());
-        }
-        if mir || const_mir {
-            self.encode_promoted_mir(def_id.expect_local());
-        }
-        if const_mir {
-            self.encode_mir_for_ctfe(def_id.expect_local());
-        }
     }
 
     /// Serialize the text of exported macros
@@ -1550,14 +1526,6 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.fn_sig[def_id] <- substs.as_closure().sig());
         }
         self.encode_generics(def_id.to_def_id());
-        let opt_mir = // FIXME: Optimized MIR is necessary to determine the layout of generators.
-            matches!(ty.kind(), ty::Generator(..))
-            || self.tcx.sess.opts.debugging_opts.always_encode_mir
-            || self.emit_codegen_mir;
-        if opt_mir {
-            self.encode_optimized_mir(def_id);
-            self.encode_promoted_mir(def_id);
-        }
     }
 
     fn encode_info_for_anon_const(&mut self, def_id: LocalDefId) {
@@ -1572,8 +1540,6 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_generics(def_id.to_def_id());
         self.encode_explicit_predicates(def_id.to_def_id());
         self.encode_inferred_outlives(def_id.to_def_id());
-        self.encode_mir_for_ctfe(def_id);
-        self.encode_promoted_mir(def_id);
     }
 
     fn encode_native_libraries(&mut self) -> Lazy<[NativeLib]> {
@@ -2038,90 +2004,25 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 
 /// Used to prefetch queries which will be needed later by metadata encoding.
 /// Only a subset of the queries are actually prefetched to keep this code smaller.
-struct PrefetchVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    mir_keys: &'tcx FxHashSet<LocalDefId>,
-}
-
-impl<'tcx> PrefetchVisitor<'tcx> {
-    fn prefetch_ctfe_mir(&self, def_id: LocalDefId) {
-        if self.mir_keys.contains(&def_id) {
-            self.tcx.ensure().mir_for_ctfe(def_id);
-            self.tcx.ensure().promoted_mir(def_id);
-        }
-    }
-    fn prefetch_mir(&self, def_id: LocalDefId) {
-        if self.mir_keys.contains(&def_id) {
-            self.tcx.ensure().optimized_mir(def_id);
-            self.tcx.ensure().promoted_mir(def_id);
-        }
-    }
-}
-
-impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
-    fn visit_item(&self, item: &hir::Item<'_>) {
-        // This should be kept in sync with `encode_info_for_item`.
-        let tcx = self.tcx;
-        match item.kind {
-            hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => {
-                self.prefetch_ctfe_mir(tcx.hir().local_def_id(item.hir_id))
-            }
-            hir::ItemKind::Fn(ref sig, ..) => {
-                let def_id = tcx.hir().local_def_id(item.hir_id);
-                let opt_mir = tcx.generics_of(def_id.to_def_id()).requires_monomorphization(tcx)
-                    || tcx.codegen_fn_attrs(def_id.to_def_id()).requests_inline();
-                if opt_mir {
-                    self.prefetch_mir(def_id)
-                }
-                if sig.header.constness == hir::Constness::Const {
-                    self.prefetch_ctfe_mir(def_id);
-                }
-            }
-            _ => (),
-        }
+fn prefetch_mir(tcx: TyCtxt<'_>) {
+    if !tcx.sess.opts.output_types.should_codegen() {
+        // We won't emit MIR, so don't prefetch it.
+        return;
     }
 
-    fn visit_trait_item(&self, trait_item: &'v hir::TraitItem<'v>) {
-        // This should be kept in sync with `encode_info_for_trait_item`.
-        let def_id = self.tcx.hir().local_def_id(trait_item.hir_id);
-        match trait_item.kind {
-            hir::TraitItemKind::Type(..) => {}
-            hir::TraitItemKind::Const(..) => {
-                self.prefetch_ctfe_mir(def_id);
-            }
-            hir::TraitItemKind::Fn(..) => {
-                self.prefetch_mir(def_id);
-            }
-        }
-    }
+    par_iter(tcx.mir_keys(LOCAL_CRATE)).for_each(|&def_id| {
+        let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
 
-    fn visit_impl_item(&self, impl_item: &'v hir::ImplItem<'v>) {
-        // This should be kept in sync with `encode_info_for_impl_item`.
-        let tcx = self.tcx;
-        match impl_item.kind {
-            hir::ImplItemKind::Const(..) => {
-                self.prefetch_ctfe_mir(tcx.hir().local_def_id(impl_item.hir_id))
-            }
-            hir::ImplItemKind::Fn(ref sig, _) => {
-                let def_id = tcx.hir().local_def_id(impl_item.hir_id);
-                let opt_mir = tcx.generics_of(def_id.to_def_id()).requires_monomorphization(tcx)
-                    || tcx.codegen_fn_attrs(def_id.to_def_id()).requests_inline();
-                let is_const_fn = sig.header.constness == hir::Constness::Const;
-                if opt_mir {
-                    self.prefetch_mir(def_id)
-                }
-                if is_const_fn {
-                    self.prefetch_ctfe_mir(def_id);
-                }
-            }
-            hir::ImplItemKind::TyAlias(..) => (),
+        if encode_const {
+            tcx.ensure().mir_for_ctfe(def_id);
         }
-    }
-
-    fn visit_foreign_item(&self, _foreign_item: &'v hir::ForeignItem<'v>) {
-        // This should be kept in sync with `encode_info_for_foreign_item`.
-        // Foreign items contain no MIR.
-    }
+        if encode_opt {
+            tcx.ensure().optimized_mir(def_id);
+        }
+        if encode_opt || encode_const {
+            tcx.ensure().promoted_mir(def_id);
+        }
+    })
 }
 
 // NOTE(eddyb) The following comment was preserved for posterity, even
@@ -2161,19 +2062,7 @@ pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
             // Prefetch some queries used by metadata encoding.
             // This is not necessary for correctness, but is only done for performance reasons.
             // It can be removed if it turns out to cause trouble or be detrimental to performance.
-            join(
-                || {
-                    if !tcx.sess.opts.output_types.should_codegen() {
-                        // We won't emit MIR, so don't prefetch it.
-                        return;
-                    }
-                    tcx.hir().krate().par_visit_all_item_likes(&PrefetchVisitor {
-                        tcx,
-                        mir_keys: tcx.mir_keys(LOCAL_CRATE),
-                    });
-                },
-                || tcx.exported_symbols(LOCAL_CRATE),
-            );
+            join(|| prefetch_mir(tcx), || tcx.exported_symbols(LOCAL_CRATE));
         },
     )
     .0
@@ -2206,7 +2095,6 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         required_source_files,
         is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
-        emit_codegen_mir: tcx.sess.opts.output_types.should_codegen(),
     };
 
     // Encode the rustc version string in a predictable location.
