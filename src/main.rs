@@ -195,7 +195,7 @@ mod tests {
     #[should_panic]
     fn fix_without_unstable() {
         let args = "cargo clippy --fix".split_whitespace().map(ToString::to_string);
-        let _ = ClippyCmd::new(args);
+        ClippyCmd::new(args);
     }
 
     #[test]
