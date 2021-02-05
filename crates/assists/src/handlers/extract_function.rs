@@ -13,7 +13,7 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         AstNode,
     },
-    Direction, SyntaxElement,
+    AstToken, Direction, SyntaxElement,
     SyntaxKind::{self, BLOCK_EXPR, BREAK_EXPR, COMMENT, PATH_EXPR, RETURN_EXPR},
     SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, T,
 };
@@ -105,9 +105,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             builder.replace(target_range, format_replacement(ctx, &fun));
 
-            let indent = IndentLevel::from_node(&insert_after);
+            let new_indent = IndentLevel::from_node(&insert_after);
+            let old_indent = fun.body.indent_level();
 
-            let fn_def = format_function(ctx, module, &fun, indent);
+            let fn_def = format_function(ctx, module, &fun, old_indent, new_indent);
             let insert_offset = insert_after.text_range().end();
             builder.insert(insert_offset, fn_def);
         },
@@ -258,6 +259,18 @@ impl FunctionBody {
         }
 
         Some(FunctionBody::Span { elements, leading_indent })
+    }
+
+    fn indent_level(&self) -> IndentLevel {
+        match &self {
+            FunctionBody::Expr(expr) => IndentLevel::from_node(expr.syntax()),
+            FunctionBody::Span { elements, .. } => elements
+                .iter()
+                .filter_map(SyntaxElement::as_node)
+                .map(IndentLevel::from_node)
+                .min_by_key(|level| level.0)
+                .expect("body must contain at least one node"),
+        }
     }
 
     fn tail_expr(&self) -> Option<ast::Expr> {
@@ -747,16 +760,17 @@ fn format_function(
     ctx: &AssistContext,
     module: hir::Module,
     fun: &Function,
-    indent: IndentLevel,
+    old_indent: IndentLevel,
+    new_indent: IndentLevel,
 ) -> String {
     let mut fn_def = String::new();
-    format_to!(fn_def, "\n\n{}fn $0{}(", indent, fun.name);
+    format_to!(fn_def, "\n\n{}fn $0{}(", new_indent, fun.name);
     format_function_param_list_to(&mut fn_def, ctx, module, fun);
     fn_def.push(')');
     format_function_ret_to(&mut fn_def, ctx, module, fun);
     fn_def.push_str(" {");
-    format_function_body_to(&mut fn_def, ctx, indent, fun);
-    format_to!(fn_def, "{}}}", indent);
+    format_function_body_to(&mut fn_def, ctx, old_indent, new_indent, fun);
+    format_to!(fn_def, "{}}}", new_indent);
 
     fn_def
 }
@@ -818,20 +832,32 @@ fn format_function_ret_to(
 fn format_function_body_to(
     fn_def: &mut String,
     ctx: &AssistContext,
-    indent: IndentLevel,
+    old_indent: IndentLevel,
+    new_indent: IndentLevel,
     fun: &Function,
 ) {
     match &fun.body {
         FunctionBody::Expr(expr) => {
             fn_def.push('\n');
-            let expr = expr.indent(indent);
+            let expr = expr.dedent(old_indent).indent(new_indent + 1);
             let expr = fix_param_usages(ctx, &fun.params, expr.syntax());
-            format_to!(fn_def, "{}{}", indent + 1, expr);
+            format_to!(fn_def, "{}{}", new_indent + 1, expr);
             fn_def.push('\n');
         }
         FunctionBody::Span { elements, leading_indent } => {
             format_to!(fn_def, "{}", leading_indent);
-            for element in elements {
+            let new_indent_str = format!("\n{}", new_indent + 1);
+            for mut element in elements {
+                let new_ws;
+                if let Some(ws) = element.as_token().cloned().and_then(ast::Whitespace::cast) {
+                    let text = ws.syntax().text();
+                    if text.contains('\n') {
+                        let new_text = text.replace(&format!("\n{}", old_indent), &new_indent_str);
+                        new_ws = ast::make::tokens::whitespace(&new_text).into();
+                        element = &new_ws;
+                    }
+                }
+
                 match element {
                     syntax::NodeOrToken::Node(node) => {
                         format_to!(fn_def, "{}", fix_param_usages(ctx, &fun.params, node));
@@ -849,9 +875,9 @@ fn format_function_body_to(
 
     match fun.vars_defined_in_body_and_outlive.as_slice() {
         [] => {}
-        [var] => format_to!(fn_def, "{}{}\n", indent + 1, var.name(ctx.db()).unwrap()),
+        [var] => format_to!(fn_def, "{}{}\n", new_indent + 1, var.name(ctx.db()).unwrap()),
         [v0, vs @ ..] => {
-            format_to!(fn_def, "{}({}", indent + 1, v0.name(ctx.db()).unwrap());
+            format_to!(fn_def, "{}({}", new_indent + 1, v0.name(ctx.db()).unwrap());
             for var in vs {
                 format_to!(fn_def, ", {}", var.name(ctx.db()).unwrap());
             }
@@ -2065,6 +2091,68 @@ fn foo() {
 
 fn $0fun_name(c: &Counter) {
     let n = c.0;
+}",
+        );
+    }
+
+    #[test]
+    fn indented_stmts() {
+        check_assist(
+            extract_function,
+            r"
+fn foo() {
+    if true {
+        loop {
+            $0let n = 1;
+            let m = 2;$0
+        }
+    }
+}",
+            r"
+fn foo() {
+    if true {
+        loop {
+            fun_name();
+        }
+    }
+}
+
+fn $0fun_name() {
+    let n = 1;
+    let m = 2;
+}",
+        );
+    }
+
+    #[test]
+    fn indented_stmts_inside_mod() {
+        check_assist(
+            extract_function,
+            r"
+mod bar {
+    fn foo() {
+        if true {
+            loop {
+                $0let n = 1;
+                let m = 2;$0
+            }
+        }
+    }
+}",
+            r"
+mod bar {
+    fn foo() {
+        if true {
+            loop {
+                fun_name();
+            }
+        }
+    }
+
+    fn $0fun_name() {
+        let n = 1;
+        let m = 2;
+    }
 }",
         );
     }
