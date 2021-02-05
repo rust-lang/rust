@@ -1,0 +1,63 @@
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-76535.rs:1:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0107]: missing generics for associated type `SuperTrait::SubType`
+  --> $DIR/issue-76535.rs:7:10
+   |
+LL |     type SubType<'a>: SubTrait;
+   |          ^^^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-76535.rs:7:10
+   |
+LL |     type SubType<'a>: SubTrait;
+   |          ^^^^^^^ --
+help: use angle brackets to add missing lifetime argument
+   |
+LL |     type SubType<'a><'a>: SubTrait;
+   |                 ^^^^
+
+error[E0038]: the trait `SuperTrait` cannot be made into an object
+  --> $DIR/issue-76535.rs:38:14
+   |
+LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` cannot be made into an object
+   |
+   = help: consider moving `get_sub` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-76535.rs:10:37
+   |
+LL | pub trait SuperTrait {
+   |           ---------- this trait cannot be made into an object...
+...
+LL |     fn get_sub<'a>(&'a mut self) -> Self::SubType<'a>;
+   |                                     ^^^^^^^^^^^^^^^^^ ...because method `get_sub` references the `Self` type in its return type
+
+error[E0038]: the trait `SuperTrait` cannot be made into an object
+  --> $DIR/issue-76535.rs:38:57
+   |
+LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` cannot be made into an object
+   |
+   = help: consider moving `get_sub` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-76535.rs:10:37
+   |
+LL | pub trait SuperTrait {
+   |           ---------- this trait cannot be made into an object...
+...
+LL |     fn get_sub<'a>(&'a mut self) -> Self::SubType<'a>;
+   |                                     ^^^^^^^^^^^^^^^^^ ...because method `get_sub` references the `Self` type in its return type
+   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn SuperTrait<SubType = SubStruct<'_>>>>` for `Box<SuperStruct>`
+   = note: required by cast to type `Box<dyn SuperTrait<SubType = SubStruct<'_>>>`
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0038, E0107.
+For more information about an error, try `rustc --explain E0038`.
