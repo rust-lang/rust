@@ -1492,6 +1492,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf.swap_remove_front(2), Some(3));
     /// assert_eq!(buf, [2, 1]);
     /// ```
+    #[doc(alias = "swap_take_front")]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {
         let length = self.len();
@@ -1527,6 +1528,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf.swap_remove_back(0), Some(1));
     /// assert_eq!(buf, [3, 2]);
     /// ```
+    #[doc(alias = "swap_take_back")]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
         let length = self.len();

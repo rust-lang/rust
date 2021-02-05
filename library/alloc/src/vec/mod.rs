@@ -1254,6 +1254,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(v, ["baz", "qux"]);
     /// ```
     #[inline]
+    #[doc(alias = "swap_take")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
         #[cold]
