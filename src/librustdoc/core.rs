@@ -435,7 +435,7 @@ crate fn create_resolver<'a>(
 
     // Before we actually clone it, let's force all the extern'd crates to
     // actually be loaded, just in case they're only referred to inside
-    // intra-doc-links
+    // intra-doc links
     resolver.borrow_mut().access(|resolver| {
         sess.time("load_extern_crates", || {
             for extern_name in &extern_names {
