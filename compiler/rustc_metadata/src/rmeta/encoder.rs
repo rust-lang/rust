@@ -976,6 +976,40 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
     }
 }
 
+fn should_encode_explicit_item_bounds(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::AssocTy | DefKind::OpaqueTy => true,
+        DefKind::Variant
+        | DefKind::TraitAlias
+        | DefKind::Fn
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::Const
+        | DefKind::Static
+        | DefKind::AssocConst
+        | DefKind::AnonConst
+        | DefKind::Impl
+        | DefKind::Closure
+        | DefKind::Generator
+        | DefKind::Mod
+        | DefKind::Field
+        | DefKind::ForeignMod
+        | DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Macro(..)
+        | DefKind::Use
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::ExternCrate => false,
+    }
+}
+
 impl EncodeContext<'a, 'tcx> {
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
@@ -1030,7 +1064,12 @@ impl EncodeContext<'a, 'tcx> {
                     record!(self.tables.fn_sig[def_id] <- sig);
                 }
             }
-            self.encode_explicit_item_bounds(def_id);
+            if should_encode_explicit_item_bounds(def_kind) {
+                let bounds = self.tcx.explicit_item_bounds(def_id);
+                if !bounds.is_empty() {
+                    record!(self.tables.explicit_item_bounds[def_id] <- bounds);
+                }
+            }
         }
         let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
         for (def_id, implementations) in inherent_impls.inherent_impls.iter() {
@@ -1150,14 +1189,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr));
-    }
-
-    fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
-        let bounds = self.tcx.explicit_item_bounds(def_id);
-        if !bounds.is_empty() {
-            record!(self.tables.explicit_item_bounds[def_id] <- bounds);
-        }
     }
 
     fn encode_info_for_trait_item(&mut self, def_id: DefId) {
