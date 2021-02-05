@@ -100,8 +100,8 @@ fn unwrap<T>(t: Option<T>) -> T {
 }
 
 macro_rules! int_impl_common {
-    ($ty:ty, $bits:expr) => {
-        const BITS: u32 = $bits;
+    ($ty:ty) => {
+        const BITS: u32 = <Self>::BITS;
 
         const ZERO: Self = 0;
         const ONE: Self = 1;
@@ -232,7 +232,7 @@ macro_rules! int_impl_common {
 }
 
 macro_rules! int_impl {
-    ($ity:ty, $uty:ty, $bits:expr) => {
+    ($ity:ty, $uty:ty) => {
         impl Int for $uty {
             type OtherSign = $ity;
             type UnsignedInt = $uty;
@@ -253,7 +253,7 @@ macro_rules! int_impl {
                 (self.wrapping_sub(other) as $ity).wrapping_abs() as $uty
             }
 
-            int_impl_common!($uty, $bits);
+            int_impl_common!($uty);
         }
 
         impl Int for $ity {
@@ -280,17 +280,17 @@ macro_rules! int_impl {
                 self.wrapping_sub(other).wrapping_abs() as $uty
             }
 
-            int_impl_common!($ity, $bits);
+            int_impl_common!($ity);
         }
     };
 }
 
-int_impl!(isize, usize, usize::MAX.count_ones());
-int_impl!(i8, u8, 8);
-int_impl!(i16, u16, 16);
-int_impl!(i32, u32, 32);
-int_impl!(i64, u64, 64);
-int_impl!(i128, u128, 128);
+int_impl!(isize, usize);
+int_impl!(i8, u8);
+int_impl!(i16, u16);
+int_impl!(i32, u32);
+int_impl!(i64, u64);
+int_impl!(i128, u128);
 
 /// Trait for integers twice the bit width of another integer. This is implemented for all
 /// primitives except for `u8`, because there is not a smaller primitive.
