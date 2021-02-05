@@ -257,6 +257,33 @@ fn qux(bar: Bar, baz: Baz) {}
 }
 
 #[test]
+fn doctest_extract_function() {
+    check_doc_test(
+        "extract_function",
+        r#####"
+fn main() {
+    let n = 1;
+    $0let m = n + 2;
+    let k = m + n;$0
+    let g = 3;
+}
+"#####,
+        r#####"
+fn main() {
+    let n = 1;
+    fun_name(n);
+    let g = 3;
+}
+
+fn $0fun_name(n: i32) {
+    let m = n + 2;
+    let k = m + n;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_struct_from_enum_variant() {
     check_doc_test(
         "extract_struct_from_enum_variant",
