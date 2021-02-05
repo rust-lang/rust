@@ -1242,7 +1242,7 @@ where
     let _timer = tcx
         .sess
         .prof
-        .extra_verbose_generic_activity("encode_query_results_for", std::any::type_name::<Q>());
+        .extra_verbose_generic_activity("encode_query_results_for", &[std::any::type_name::<Q>()]);
 
     let state = Q::query_state(tcx);
     assert!(state.all_inactive());

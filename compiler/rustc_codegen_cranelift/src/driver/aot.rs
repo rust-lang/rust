@@ -119,6 +119,10 @@ fn reuse_workproduct_for_cgu(
 
 fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodegenResult {
     let cgu = tcx.codegen_unit(cgu_name);
+    let _prof_timer = tcx.prof.extra_verbose_generic_activity(
+        "codegen_module",
+        &[cgu_name.to_string(), cgu.size_estimate().to_string()],
+    );
     let mono_items = cgu.items_in_deterministic_order(tcx);
 
     let mut module = new_module(tcx, cgu_name.as_str().to_string());

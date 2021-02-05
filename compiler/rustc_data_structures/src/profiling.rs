@@ -223,18 +223,18 @@ impl SelfProfilerRef {
     pub fn extra_verbose_generic_activity<'a, A>(
         &'a self,
         event_label: &'static str,
-        event_arg: A,
+        event_args: &[A],
     ) -> VerboseTimingGuard<'a>
     where
         A: Borrow<str> + Into<String>,
     {
         let message = if self.print_extra_verbose_generic_activities {
-            Some(format!("{}({})", event_label, event_arg.borrow()))
+            Some(format!("{}({})", event_label, event_args.join(", ")))
         } else {
             None
         };
 
-        VerboseTimingGuard::start(message, self.generic_activity_with_arg(event_label, event_arg))
+        VerboseTimingGuard::start(message, self.generic_activity_with_args(event_label, event_args))
     }
 
     /// Start profiling a generic activity. Profiling continues until the
@@ -273,18 +273,21 @@ impl SelfProfilerRef {
     }
 
     #[inline(always)]
-    pub fn generic_activity_with_args(
+    pub fn generic_activity_with_args<A>(
         &self,
         event_label: &'static str,
-        event_args: &[String],
-    ) -> TimingGuard<'_> {
+        event_args: &[A],
+    ) -> TimingGuard<'_>
+    where
+        A: Borrow<str> + Into<String>,
+    {
         self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
             let builder = EventIdBuilder::new(&profiler.profiler);
             let event_label = profiler.get_or_alloc_cached_string(event_label);
             let event_id = if profiler.event_filter_mask.contains(EventFilter::FUNCTION_ARGS) {
                 let event_args: Vec<_> = event_args
                     .iter()
-                    .map(|s| profiler.get_or_alloc_cached_string(&s[..]))
+                    .map(|s| profiler.get_or_alloc_cached_string(s.borrow()))
                     .collect();
                 builder.from_label_and_args(event_label, &event_args)
             } else {

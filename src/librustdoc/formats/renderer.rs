@@ -66,7 +66,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     let prof = &tcx.sess.prof;
 
     let (mut format_renderer, mut krate) = prof
-        .extra_verbose_generic_activity("create_renderer", T::descr())
+        .extra_verbose_generic_activity("create_renderer", &[T::descr()])
         .run(|| T::init(krate, options, render_info, edition, cache, tcx))?;
 
     let mut item = match krate.module.take() {
@@ -106,6 +106,6 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
                 .run(|| cx.item(item))?;
         }
     }
-    prof.extra_verbose_generic_activity("renderer_after_krate", T::descr())
+    prof.extra_verbose_generic_activity("renderer_after_krate", &[T::descr()])
         .run(|| format_renderer.after_krate(&krate, diag))
 }

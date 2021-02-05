@@ -620,14 +620,14 @@ pub(crate) unsafe fn optimize(
         {
             let _timer = cgcx.prof.extra_verbose_generic_activity(
                 "LLVM_module_optimize_function_passes",
-                &module.name[..],
+                &[&module.name[..]],
             );
             llvm::LLVMRustRunFunctionPassManager(fpm, llmod);
         }
         {
             let _timer = cgcx.prof.extra_verbose_generic_activity(
                 "LLVM_module_optimize_module_passes",
-                &module.name[..],
+                &[&module.name[..]],
             );
             llvm::LLVMRunPassManager(mpm, llmod);
         }
