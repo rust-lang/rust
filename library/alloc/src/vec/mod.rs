@@ -1341,6 +1341,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(v.remove(1), 2);
     /// assert_eq!(v, [1, 3]);
     /// ```
+    #[doc(alias = "take")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, index: usize) -> T {
         #[cold]
