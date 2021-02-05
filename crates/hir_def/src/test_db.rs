@@ -161,7 +161,7 @@ impl TestDB {
             let node = src.map(|ptr| ptr.to_node(&root));
             let frange = node.as_ref().original_file_range(db);
 
-            let message = d.message().to_owned();
+            let message = d.message();
             actual.entry(frange.file_id).or_default().push((frange.range, message));
         });
 

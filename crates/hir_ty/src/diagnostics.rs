@@ -511,7 +511,7 @@ mod tests {
             // FIXME: macros...
             let file_id = src.file_id.original_file(&db);
             let range = src.value.to_node(&root).text_range();
-            let message = d.message().to_owned();
+            let message = d.message();
             actual.entry(file_id).or_default().push((range, message));
         });
 

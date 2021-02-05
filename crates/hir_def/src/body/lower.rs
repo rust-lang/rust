@@ -712,7 +712,7 @@ impl ExprCollector<'_> {
         let statements =
             block.statements().filter_map(|s| self.collect_stmt(s)).flatten().collect();
         let tail = block.tail_expr().map(|e| self.collect_expr(e));
-        let syntax_node_ptr = AstPtr::new(&block.clone().into());
+        let syntax_node_ptr = AstPtr::new(&block.into());
         let expr_id = self.alloc_expr(
             Expr::Block { id: block_id, statements, tail, label: None },
             syntax_node_ptr,
