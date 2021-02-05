@@ -1,0 +1,20 @@
+- // MIR for `f` before SimplifyCfg-final
++ // MIR for `f` after SimplifyCfg-final
+  
+  fn f() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/loop.rs:3:7: 3:7
+  
+      bb0: {
+-         goto -> bb1;                     // scope 0 at $DIR/loop.rs:4:5: 4:11
+-     }
+- 
+-     bb1: {
+-         goto -> bb1;                     // scope 0 at $DIR/loop.rs:4:5: 4:11
+-     }
+- 
+-     bb2 (cleanup): {
+-         resume;                          // scope 0 at $DIR/loop.rs:3:1: 5:2
++         goto -> bb0;                     // scope 0 at $DIR/loop.rs:4:5: 4:11
+      }
+  }
+  

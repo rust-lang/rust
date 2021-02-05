@@ -200,9 +200,13 @@ pub fn run_passes(
         index += 1;
     };
 
-    for pass_group in passes {
-        for pass in *pass_group {
-            run_pass(*pass);
+    let runs = if mir_phase == MirPhase::Optimization { 2 } else { 1 };
+
+    for _ in 0..runs {
+        for pass_group in passes {
+            for pass in *pass_group {
+                run_pass(*pass);
+            }
         }
     }
 

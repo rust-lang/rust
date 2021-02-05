@@ -24,8 +24,7 @@
           (_1.1: i32) = const 99_i32;      // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:6:5: 6:13
           (_1.0: i32) = const 42_i32;      // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:7:5: 7:13
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:8:9: 8:10
--         _2 = (_1.1: i32);                // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:8:13: 8:16
-+         _2 = const 99_i32;               // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:8:13: 8:16
+          _2 = const 99_i32;               // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:8:13: 8:16
           _0 = const ();                   // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:4:11: 9:2
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:9:1: 9:2
           StorageDead(_1);                 // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:9:1: 9:2
