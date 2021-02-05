@@ -1111,10 +1111,9 @@ impl<'a> Resolver<'a> {
             _,
         ) = binding.kind
         {
-            let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
+            let def_id = self.parent(ctor_def_id).expect("no parent for a constructor");
             let fields = self.field_names.get(&def_id)?;
-            let first_field = fields.first()?; // Handle `struct Foo()`
-            return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
+            return fields.iter().map(|name| name.span).reduce(Span::to); // None for `struct Foo()`
         }
         None
     }
