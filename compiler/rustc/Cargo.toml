@@ -17,7 +17,6 @@ rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 #features = ['unprefixed_malloc_on_supported_platforms']
 
 [dependencies.libmimalloc-sys]
-path = "../../../mimalloc_rust/libmimalloc-sys"
 version = "0.1.19"
 optional = true
 default-features = false
