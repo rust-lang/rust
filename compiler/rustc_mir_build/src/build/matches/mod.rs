@@ -87,7 +87,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn match_expr(
         &mut self,
         destination: Place<'tcx>,
-        destination_scope: Option<region::Scope>,
         span: Span,
         mut block: BasicBlock,
         scrutinee: ExprRef<'tcx>,
@@ -108,7 +107,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         self.lower_match_arms(
             destination,
-            destination_scope,
             scrutinee_place,
             scrutinee_span,
             arm_candidates,
@@ -215,13 +213,76 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    /// Lower the bindings, guards and arm bodies of a `match` expression.
+    ///
+    /// The decision tree should have already been created
+    /// (by [Builder::lower_match_tree]).
+    ///
+    /// `outer_source_info` is the SourceInfo for the whole match.
+    fn lower_match_arms(
+        &mut self,
+        destination: Place<'tcx>,
+        scrutinee_place: Place<'tcx>,
+        scrutinee_span: Span,
+        arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
+        outer_source_info: SourceInfo,
+        fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
+    ) -> BlockAnd<()> {
+        let arm_end_blocks: Vec<_> = arm_candidates
+            .into_iter()
+            .map(|(arm, candidate)| {
+                debug!("lowering arm {:?}\ncandidate = {:?}", arm, candidate);
+
+                let arm_source_info = self.source_info(arm.span);
+                let arm_scope = (arm.scope, arm_source_info);
+                self.in_scope(arm_scope, arm.lint_level, |this| {
+                    let body = this.hir.mirror(arm.body.clone());
+                    let scope = this.declare_bindings(
+                        None,
+                        arm.span,
+                        &arm.pattern,
+                        ArmHasGuard(arm.guard.is_some()),
+                        Some((Some(&scrutinee_place), scrutinee_span)),
+                    );
+
+                    let arm_block = this.bind_pattern(
+                        outer_source_info,
+                        candidate,
+                        arm.guard.as_ref(),
+                        &fake_borrow_temps,
+                        scrutinee_span,
+                        Some(arm.span),
+                        Some(arm.scope),
+                    );
+
+                    if let Some(source_scope) = scope {
+                        this.source_scope = source_scope;
+                    }
+
+                    this.into(destination, arm_block, body)
+                })
+            })
+            .collect();
+
+        // all the arm blocks will rejoin here
+        let end_block = self.cfg.start_new_block();
+
+        for arm_block in arm_end_blocks {
+            self.cfg.goto(unpack!(arm_block), outer_source_info, end_block);
+        }
+
+        self.source_scope = outer_source_info.scope;
+
+        end_block.unit()
+    }
+
     /// Binds the variables and ascribes types for a given `match` arm or
     /// `let` binding.
     ///
     /// Also check if the guard matches, if it's provided.
     /// `arm_scope` should be `Some` if and only if this is called for a
     /// `match` arm.
-    crate fn bind_pattern(
+    fn bind_pattern(
         &mut self,
         outer_source_info: SourceInfo,
         candidate: Candidate<'_, 'tcx>,
@@ -308,14 +369,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
-                let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
-
-                unpack!(block = self.into(place, Some(region_scope), block, initializer));
+                unpack!(block = self.into(place, block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push_fake_read(block, source_info, FakeReadCause::ForLet, place);
 
+                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
 
@@ -342,10 +402,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ascription:
                     thir::pattern::Ascription { user_ty: pat_ascription_ty, variance: _, user_ty_span },
             } => {
-                let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
-                unpack!(block = self.into(place, Some(region_scope), block, initializer));
+                unpack!(block = self.into(place, block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
@@ -383,6 +442,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
 
+                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
 
@@ -629,7 +689,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 #[derive(Debug)]
-pub(super) struct Candidate<'pat, 'tcx> {
+struct Candidate<'pat, 'tcx> {
     /// [`Span`] of the original pattern that gave rise to this candidate.
     span: Span,
 
