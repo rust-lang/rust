@@ -25,6 +25,7 @@ use crate::{utils::find_struct_impl, AssistContext, AssistId, AssistKind, Assist
 // }
 //
 // impl Version {
+//     /// Returns `true` if the version is [`Minor`].
 //     fn is_minor(&self) -> bool {
 //         matches!(self, Self::Minor)
 //     }
@@ -39,6 +40,7 @@ pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext)
         return None;
     }
 
+    let enum_lowercase_name = to_lower_snake_case(&parent_enum.name()?.to_string());
     let fn_name = to_lower_snake_case(&variant_name.to_string());
 
     // Return early if we've found an existing new fn
@@ -64,9 +66,12 @@ pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext)
 
             format_to!(
                 buf,
-                "    {}fn is_{}(&self) -> bool {{
+                "    /// Returns `true` if the {} is [`{}`].
+    {}fn is_{}(&self) -> bool {{
         matches!(self, Self::{})
     }}",
+                enum_lowercase_name,
+                variant_name,
                 vis,
                 fn_name,
                 variant_name
@@ -133,6 +138,7 @@ enum Variant {
 }
 
 impl Variant {
+    /// Returns `true` if the variant is [`Minor`].
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
@@ -180,6 +186,7 @@ enum Variant {
 enum Variant { Undefined }
 
 impl Variant {
+    /// Returns `true` if the variant is [`Undefined`].
     fn is_undefined(&self) -> bool {
         matches!(self, Self::Undefined)
     }
@@ -204,6 +211,7 @@ pub(crate) enum Variant {
 }
 
 impl Variant {
+    /// Returns `true` if the variant is [`Minor`].
     pub(crate) fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
