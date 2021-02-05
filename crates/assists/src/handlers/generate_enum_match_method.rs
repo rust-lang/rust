@@ -1,10 +1,9 @@
-use hir::Adt;
-use stdx::format_to;
+use stdx::{format_to, to_lower_snake_case};
 use syntax::ast::{self, AstNode, NameOwner};
 use syntax::{ast::VisibilityOwner, T};
 use test_utils::mark;
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{utils::find_struct_impl, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: generate_enum_match_method
 //
@@ -40,10 +39,14 @@ pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext)
         return None;
     }
 
-    let fn_name = to_lower_snake_case(&format!("{}", variant_name));
+    let fn_name = to_lower_snake_case(&variant_name.to_string());
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(&ctx, &parent_enum, format!("is_{}", fn_name).as_str())?;
+    let impl_def = find_struct_impl(
+        &ctx,
+        &ast::AdtDef::Enum(parent_enum.clone()),
+        format!("is_{}", fn_name).as_str(),
+    )?;
 
     let target = variant.syntax().text_range();
     acc.add(
@@ -95,94 +98,14 @@ pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext)
 // parameters
 fn generate_impl_text(strukt: &ast::Enum, code: &str) -> String {
     let mut buf = String::with_capacity(code.len());
-    buf.push_str("\n\nimpl");
-    buf.push_str(" ");
+    buf.push_str("\n\nimpl ");
     buf.push_str(strukt.name().unwrap().text());
     format_to!(buf, " {{\n{}\n}}", code);
     buf
 }
 
-fn to_lower_snake_case(s: &str) -> String {
-    let mut buf = String::with_capacity(s.len());
-    let mut prev = false;
-    for c in s.chars() {
-        if c.is_ascii_uppercase() && prev {
-            buf.push('_')
-        }
-        prev = true;
-
-        buf.push(c.to_ascii_lowercase());
-    }
-    buf
-}
-
-// Uses a syntax-driven approach to find any impl blocks for the struct that
-// exist within the module/file
-//
-// Returns `None` if we've found an existing `new` fn
-//
-// FIXME: change the new fn checking to a more semantic approach when that's more
-// viable (e.g. we process proc macros, etc)
-fn find_struct_impl(
-    ctx: &AssistContext,
-    strukt: &ast::Enum,
-    name: &str,
-) -> Option<Option<ast::Impl>> {
-    let db = ctx.db();
-    let module = strukt.syntax().ancestors().find(|node| {
-        ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())
-    })?;
-
-    let struct_def = ctx.sema.to_def(strukt)?;
-
-    let block = module.descendants().filter_map(ast::Impl::cast).find_map(|impl_blk| {
-        let blk = ctx.sema.to_def(&impl_blk)?;
-
-        // FIXME: handle e.g. `struct S<T>; impl<U> S<U> {}`
-        // (we currently use the wrong type parameter)
-        // also we wouldn't want to use e.g. `impl S<u32>`
-        let same_ty = match blk.target_ty(db).as_adt() {
-            Some(def) => def == Adt::Enum(struct_def),
-            None => false,
-        };
-        let not_trait_impl = blk.target_trait(db).is_none();
-
-        if !(same_ty && not_trait_impl) {
-            None
-        } else {
-            Some(impl_blk)
-        }
-    });
-
-    if let Some(ref impl_blk) = block {
-        if has_fn(impl_blk, name) {
-            mark::hit!(test_gen_enum_match_impl_already_exists);
-            return None;
-        }
-    }
-
-    Some(block)
-}
-
-fn has_fn(imp: &ast::Impl, rhs_name: &str) -> bool {
-    if let Some(il) = imp.assoc_item_list() {
-        for item in il.assoc_items() {
-            if let ast::AssocItem::Fn(f) = item {
-                if let Some(name) = f.name() {
-                    if name.text().eq_ignore_ascii_case(rhs_name) {
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-
-    false
-}
-
 #[cfg(test)]
 mod tests {
-    use ide_db::helpers::FamousDefs;
     use test_utils::mark;
 
     use crate::tests::{check_assist, check_assist_not_applicable};
@@ -190,9 +113,7 @@ mod tests {
     use super::*;
 
     fn check_not_applicable(ra_fixture: &str) {
-        let fixture =
-            format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
-        check_assist_not_applicable(generate_enum_match_method, &fixture)
+        check_assist_not_applicable(generate_enum_match_method, ra_fixture)
     }
 
     #[test]
@@ -221,7 +142,6 @@ impl Variant {
 
     #[test]
     fn test_generate_enum_match_already_implemented() {
-        mark::check!(test_gen_enum_match_impl_already_exists);
         check_not_applicable(
             r#"
 enum Variant {
