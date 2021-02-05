@@ -95,16 +95,7 @@ impl Fixture {
             }
         }
 
-        Fixture {
-            path,
-            text: String::new(),
-            krate: krate,
-            deps,
-            cfg_atoms,
-            cfg_key_values,
-            edition,
-            env,
-        }
+        Fixture { path, text: String::new(), krate, deps, cfg_atoms, cfg_key_values, edition, env }
     }
 }
 

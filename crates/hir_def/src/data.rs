@@ -43,7 +43,7 @@ impl FunctionData {
             name: func.name.clone(),
             params: func.params.iter().map(|id| item_tree[*id].clone()).collect(),
             ret_type: item_tree[func.ret_type].clone(),
-            attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()).clone(),
+            attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
             has_self_param: func.has_self_param,
             has_body: func.has_body,
             is_unsafe: func.is_unsafe,
