@@ -781,6 +781,7 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(
 ) {
     visitor.visit_id(type_binding.hir_id);
     visitor.visit_ident(type_binding.ident);
+    visitor.visit_generic_args(type_binding.span, type_binding.gen_args);
     match type_binding.kind {
         TypeBindingKind::Equality { ref ty } => {
             visitor.visit_ty(ty);

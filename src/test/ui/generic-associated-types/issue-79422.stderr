@@ -1,0 +1,54 @@
+error[E0107]: missing generics for associated type `MapLike::VRefCont`
+  --> $DIR/issue-79422.rs:21:10
+   |
+LL |     type VRefCont<'a>: RefCont<'a, V>;
+   |          ^^^^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-79422.rs:21:10
+   |
+LL |     type VRefCont<'a>: RefCont<'a, V>;
+   |          ^^^^^^^^ --
+help: use angle brackets to add missing lifetime argument
+   |
+LL |     type VRefCont<'a><'a>: RefCont<'a, V>;
+   |                  ^^^^
+
+error[E0038]: the trait `MapLike` cannot be made into an object
+  --> $DIR/issue-79422.rs:44:12
+   |
+LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `MapLike` cannot be made into an object
+   |
+   = help: consider moving `get` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-79422.rs:23:38
+   |
+LL | trait MapLike<K, V> {
+   |       ------- this trait cannot be made into an object...
+...
+LL |     fn get<'a>(&'a self, key: &K) -> Option<Self::VRefCont<'a>>;
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `get` references the `Self` type in its return type
+
+error[E0038]: the trait `MapLike` cannot be made into an object
+  --> $DIR/issue-79422.rs:43:13
+   |
+LL |     let m = Box::new(std::collections::BTreeMap::<u8, u8>::new())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `MapLike` cannot be made into an object
+   |
+   = help: consider moving `get` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-79422.rs:23:38
+   |
+LL | trait MapLike<K, V> {
+   |       ------- this trait cannot be made into an object...
+...
+LL |     fn get<'a>(&'a self, key: &K) -> Option<Self::VRefCont<'a>>;
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `get` references the `Self` type in its return type
+   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn MapLike<u8, u8, VRefCont = (dyn RefCont<'_, u8> + 'static)>>>` for `Box<BTreeMap<u8, u8>>`
+   = note: required by cast to type `Box<dyn MapLike<u8, u8, VRefCont = (dyn RefCont<'_, u8> + 'static)>>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0038, E0107.
+For more information about an error, try `rustc --explain E0038`.
