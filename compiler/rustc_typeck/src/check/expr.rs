@@ -995,7 +995,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-            match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
+            match cast::CastCheck::new(self, expr, e, t_expr, t_cast, t.span) {
                 Ok(cast_check) => {
                     deferred_cast_checks.push(cast_check);
                     t_cast

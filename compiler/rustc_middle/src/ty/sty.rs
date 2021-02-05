@@ -1947,6 +1947,11 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
+    pub fn is_raw_ptr(&self) -> bool {
+        matches!(self.kind(), RawPtr(_))
+    }
+
+    #[inline]
     pub fn is_impl_trait(&self) -> bool {
         matches!(self.kind(), Opaque(..))
     }

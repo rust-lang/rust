@@ -84,9 +84,10 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
         );
 
         if let Ok(check) = CastCheck::new(
-            &fn_ctxt, e, from_ty, to_ty,
-            // We won't show any error to the user, so we don't care what the span is here.
-            DUMMY_SP, DUMMY_SP,
+            // We won't show any error to the user, so we don't care about the span and expressions
+            // here
+            &fn_ctxt, e, e, from_ty, to_ty,
+            DUMMY_SP,
         ) {
             let res = check.do_check(&fn_ctxt);
 

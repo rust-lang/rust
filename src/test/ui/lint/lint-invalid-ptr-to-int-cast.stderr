@@ -1,0 +1,163 @@
+warning: casting pointer to `u32`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:7:13
+   |
+LL |     let _ = u16::max as u32;
+   |             ^^^^^^^^^^^^^^^ help: to cast to `u32`, cast to `usize` first: `u16::max as usize as u32`
+   |
+   = note: requested on the command line with `-W invalid-ptr-to-int-cast`
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `u8`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:13:13
+   |
+LL |     let _ = ptr as u8;
+   |             ^^^^^^^^^ help: to cast to `u8`, cast to `usize` first: `ptr as usize as u8`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `u16`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:14:13
+   |
+LL |     let _ = ptr as u16;
+   |             ^^^^^^^^^^ help: to cast to `u16`, cast to `usize` first: `ptr as usize as u16`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `u32`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:15:13
+   |
+LL |     let _ = ptr as u32;
+   |             ^^^^^^^^^^ help: to cast to `u32`, cast to `usize` first: `ptr as usize as u32`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `u128`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:17:13
+   |
+LL |     let _ = ptr as u128;
+   |             ^^^^^^^^^^^ help: to cast to `u128`, cast to `usize` first: `ptr as usize as u128`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `i8`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:18:13
+   |
+LL |     let _ = ptr as i8;
+   |             ^^^^^^^^^ help: to cast to `i8`, cast to `usize` first: `ptr as usize as i8`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `i16`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:19:13
+   |
+LL |     let _ = ptr as i16;
+   |             ^^^^^^^^^^ help: to cast to `i16`, cast to `usize` first: `ptr as usize as i16`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `i32`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:20:13
+   |
+LL |     let _ = ptr as i32;
+   |             ^^^^^^^^^^ help: to cast to `i32`, cast to `usize` first: `ptr as usize as i32`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `i64`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:21:13
+   |
+LL |     let _ = ptr as i64;
+   |             ^^^^^^^^^^ help: to cast to `i64`, cast to `usize` first: `ptr as usize as i64`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `i128`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:22:13
+   |
+LL |     let _ = ptr as i128;
+   |             ^^^^^^^^^^^ help: to cast to `i128`, cast to `usize` first: `ptr as usize as i128`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `u8`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:28:13
+   |
+LL |     let _ = test as u8;
+   |             ^^^^^^^^^^ help: to cast to `u8`, cast to `usize` first: `test as usize as u8`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `u16`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:29:13
+   |
+LL |     let _ = test as u16;
+   |             ^^^^^^^^^^^ help: to cast to `u16`, cast to `usize` first: `test as usize as u16`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `u32`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:30:13
+   |
+LL |     let _ = test as u32;
+   |             ^^^^^^^^^^^ help: to cast to `u32`, cast to `usize` first: `test as usize as u32`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `u128`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:32:13
+   |
+LL |     let _ = test as u128;
+   |             ^^^^^^^^^^^^ help: to cast to `u128`, cast to `usize` first: `test as usize as u128`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `i8`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:33:13
+   |
+LL |     let _ = test as i8;
+   |             ^^^^^^^^^^ help: to cast to `i8`, cast to `usize` first: `test as usize as i8`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `i16`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:34:13
+   |
+LL |     let _ = test as i16;
+   |             ^^^^^^^^^^^ help: to cast to `i16`, cast to `usize` first: `test as usize as i16`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `i32`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:35:13
+   |
+LL |     let _ = test as i32;
+   |             ^^^^^^^^^^^ help: to cast to `i32`, cast to `usize` first: `test as usize as i32`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `i64`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:36:13
+   |
+LL |     let _ = test as i64;
+   |             ^^^^^^^^^^^ help: to cast to `i64`, cast to `usize` first: `test as usize as i64`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `i128`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:37:13
+   |
+LL |     let _ = test as i128;
+   |             ^^^^^^^^^^^^ help: to cast to `i128`, cast to `usize` first: `test as usize as i128`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: casting pointer to `u16`
+  --> $DIR/lint-invalid-ptr-to-int-cast.rs:41:14
+   |
+LL |     let _ = {({ test }) as u16};
+   |              ^^^^^^^^^^^^^^^^^ help: to cast to `u16`, cast to `usize` first: `({ test }) as usize as u16`
+   |
+   = help: pointers should only be cast to `usize` or `u64`
+
+warning: 20 warnings emitted
+

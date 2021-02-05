@@ -2876,6 +2876,46 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `invalid_ptr_to_int_cast` lint triggers if a pointer is cast to any integer type other
+    /// than `usize` or `u64`, since doing so is often a bug.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(invalid_ptr_to_int_cast)]
+    ///
+    /// fn main() {
+    ///     let x = 100_000_000;
+    ///     let y = u16::max as u32; // the user meant the constant `u16::MAX`, rather than the
+    ///                              // function `u16::max`, but this cast is technically permitted,
+    ///                              // so will not produce an error
+    ///     println!("{}", x > y); // prints `false` (unexpectedly)
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The example above shows how a user might accidentally cast a function pointer (rather than
+    /// an integer constant) to an integer type other than `usize` or `u64`. Though this is
+    /// currently permitted by Rust, there is very little reason to cast a pointer to any integer
+    /// other than a `usize` or `u64`. Therefore, any instances of such casts are likely to be
+    /// bugs.
+    ///
+    /// This lint warns against those cases.
+    ///
+    /// In the future, we may want to make this a hard error.
+    ///
+    /// To cast a pointer to an integer type other than `usize` or `u64` without triggering the
+    /// lint, you can first cast to a `usize` and then to the integer type, e.g. `ptr as usize as
+    /// u32`.
+    pub INVALID_PTR_TO_INT_CAST,
+    Allow,
+    "detects pointers casts to integer types other than `usize` or `u64`",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -2960,6 +3000,7 @@ declare_lint_pass! {
         LEGACY_DERIVE_HELPERS,
         PROC_MACRO_BACK_COMPAT,
         OR_PATTERNS_BACK_COMPAT,
+        INVALID_PTR_TO_INT_CAST,
     ]
 }
 
