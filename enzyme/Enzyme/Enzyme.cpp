@@ -110,6 +110,13 @@ bool HandleAutoDiff(T *CI, TargetLibraryInfo &TLI, AAResults &AA,
 
   for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
     Value *res = CI->getArgOperand(i);
+
+    if (truei >= FT->getNumParams()) {
+      EmitFailure("TooManyArgs", CI->getDebugLoc(), CI,
+                  "Had too many arguments to __enzyme_autodiff", *CI,
+                  " - extra arg - ", *res);
+      return false;
+    }
     assert(truei < FT->getNumParams());
     auto PTy = FT->getParamType(truei);
     DIFFE_TYPE ty = DIFFE_TYPE::CONSTANT;
@@ -131,9 +138,10 @@ bool HandleAutoDiff(T *CI, TargetLibraryInfo &TLI, AAResults &AA,
       }
       ++i;
       res = CI->getArgOperand(i);
-    } else if (isa<LoadInst>(res) &&
-               isa<GlobalVariable>(cast<LoadInst>(res)->getOperand(0))) {
-      auto gv = cast<GlobalVariable>(cast<LoadInst>(res)->getOperand(0));
+    } else if ((isa<LoadInst>(res) || isa<CastInst>(res)) &&
+               isa<GlobalVariable>(cast<Instruction>(res)->getOperand(0))) {
+      GlobalVariable *gv =
+          cast<GlobalVariable>(cast<Instruction>(res)->getOperand(0));
       auto MS = gv->getName();
       if (MS == "enzyme_dup") {
         ty = DIFFE_TYPE::DUP_ARG;
