@@ -590,24 +590,21 @@ pub fn print_time_passes_entry(
     end_rss: Option<usize>,
 ) {
     let rss_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as usize;
+    let rss_change_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as i128;
 
     let mem_string = match (start_rss, end_rss) {
         (Some(start_rss), Some(end_rss)) => {
-            // It's tempting to add the change in RSS from start to end, but its somewhat confusing
-            // and misleading when looking at time-passes output. Consider two adjacent entries:
-            //
-            // time:  10.000; rss start:  1000MB, end:  1000MB, change:     0MB     pass1
-            // time:   5.000; rss start:  2000MB, end:  2000MB, change:     0MB     pass2
-            //
-            // If you're looking for jumps in RSS based on the change column, you miss the fact
-            // that a 1GB jump happened between pass1 and pass2 (supposing pass1 and pass2 actually
-            // occur sequentially and pass1 isn't just nested within pass2). It's easy to imagine
-            // someone missing this or being confused by the fact that the change is zero.
+            let change_rss = end_rss as i128 - start_rss as i128;
 
-            format!("; rss: {:>5}MB -> {:>5}MB", rss_to_mb(start_rss), rss_to_mb(end_rss))
+            format!(
+                "; rss: {:>4}MB -> {:>4}MB ({:>+5}MB)",
+                rss_to_mb(start_rss),
+                rss_to_mb(end_rss),
+                rss_change_to_mb(change_rss),
+            )
         }
-        (Some(start_rss), None) => format!("; rss start: {:>5}MB", rss_to_mb(start_rss)),
-        (None, Some(end_rss)) => format!("; rss end: {:5>}MB", rss_to_mb(end_rss)),
+        (Some(start_rss), None) => format!("; rss start: {:>4}MB", rss_to_mb(start_rss)),
+        (None, Some(end_rss)) => format!("; rss end: {:>4}MB", rss_to_mb(end_rss)),
         (None, None) => String::new(),
     };
 

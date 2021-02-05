@@ -1331,16 +1331,16 @@ impl clean::GenericArg {
 }
 
 crate fn display_fn(f: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Display {
-    WithFormatter(Cell::new(Some(f)))
-}
+    struct WithFormatter<F>(Cell<Option<F>>);
 
-struct WithFormatter<F>(Cell<Option<F>>);
-
-impl<F> fmt::Display for WithFormatter<F>
-where
-    F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (self.0.take()).unwrap()(f)
+    impl<F> fmt::Display for WithFormatter<F>
+    where
+        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            (self.0.take()).unwrap()(f)
+        }
     }
+
+    WithFormatter(Cell::new(Some(f)))
 }

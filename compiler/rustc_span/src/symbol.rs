@@ -907,6 +907,7 @@ symbols! {
         register_attr,
         register_tool,
         relaxed_adts,
+        relaxed_struct_unsize,
         rem,
         rem_assign,
         repr,

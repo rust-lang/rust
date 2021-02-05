@@ -362,7 +362,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_angle_bracketed_parameter_data(
+    pub(crate) fn lower_angle_bracketed_parameter_data(
         &mut self,
         data: &AngleBracketedArgs,
         param_mode: ParamMode,
@@ -426,6 +426,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::TypeBinding<'hir> {
         let ident = Ident::with_dummy_span(hir::FN_OUTPUT_NAME);
         let kind = hir::TypeBindingKind::Equality { ty };
-        hir::TypeBinding { hir_id: self.next_id(), span, ident, kind }
+        let args = arena_vec![self;];
+        let bindings = arena_vec![self;];
+        let gen_args = self.arena.alloc(hir::GenericArgs { args, bindings, parenthesized: false });
+        hir::TypeBinding { hir_id: self.next_id(), gen_args, span, ident, kind }
     }
 }

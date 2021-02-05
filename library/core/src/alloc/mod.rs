@@ -11,14 +11,14 @@ pub use self::global::GlobalAlloc;
 pub use self::layout::Layout;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[rustc_deprecated(
-    since = "1.51.0",
+    since = "1.52.0",
     reason = "Name does not follow std convention, use LayoutError",
     suggestion = "LayoutError"
 )]
 #[allow(deprecated, deprecated_in_future)]
 pub use self::layout::LayoutErr;
 
-#[stable(feature = "alloc_layout_error", since = "1.49.0")]
+#[stable(feature = "alloc_layout_error", since = "1.50.0")]
 pub use self::layout::LayoutError;
 
 use crate::fmt;
@@ -342,7 +342,10 @@ pub unsafe trait Allocator {
     ///
     /// The returned adaptor also implements `Allocator` and will simply borrow this.
     #[inline(always)]
-    fn by_ref(&self) -> &Self {
+    fn by_ref(&self) -> &Self
+    where
+        Self: Sized,
+    {
         self
     }
 }

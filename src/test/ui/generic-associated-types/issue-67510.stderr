@@ -1,0 +1,32 @@
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-67510.rs:1:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/issue-67510.rs:8:21
+   |
+LL | fn f(x: Box<dyn X<Y<'a>=&'a ()>>) {}
+   |     -               ^^ undeclared lifetime
+   |     |
+   |     help: consider introducing lifetime `'a` here: `<'a>`
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/issue-67510.rs:8:26
+   |
+LL | fn f(x: Box<dyn X<Y<'a>=&'a ()>>) {}
+   |     -                    ^^ undeclared lifetime
+   |     |
+   |     help: consider introducing lifetime `'a` here: `<'a>`
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0261`.

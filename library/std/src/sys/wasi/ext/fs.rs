@@ -514,3 +514,11 @@ pub fn symlink<P: AsRef<Path>, U: AsRef<Path>>(
         .fd()
         .symlink(osstr2str(old_path.as_ref().as_ref())?, osstr2str(new_path.as_ref().as_ref())?)
 }
+
+/// Create a symbolic link.
+///
+/// This is a convenience API similar to [`std::os::unix::fs::symlink`] and
+/// [`std::os::windows::fs::symlink_file`] and [`symlink_dir`](std::os::windows::fs::symlink_dir).
+pub fn symlink_path<P: AsRef<Path>, U: AsRef<Path>>(old_path: P, new_path: U) -> io::Result<()> {
+    crate::sys::fs::symlink(old_path.as_ref(), new_path.as_ref())
+}

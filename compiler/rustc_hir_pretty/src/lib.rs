@@ -1840,6 +1840,7 @@ impl<'a> State<'a> {
             for binding in generic_args.bindings.iter() {
                 start_or_comma(self);
                 self.print_ident(binding.ident);
+                self.print_generic_args(binding.gen_args, false, false);
                 self.s.space();
                 match generic_args.bindings[0].kind {
                     hir::TypeBindingKind::Equality { ref ty } => {
