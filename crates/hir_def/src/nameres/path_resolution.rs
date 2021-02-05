@@ -108,7 +108,6 @@ impl DefMap {
         shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
         let mut result = ResolvePathResult::empty(ReachedFixedPoint::No);
-        result.segment_index = Some(usize::max_value());
 
         let mut arc;
         let mut current_map = self;
@@ -128,7 +127,11 @@ impl DefMap {
             }
             // FIXME: this doesn't seem right; what if the different namespace resolutions come from different crates?
             result.krate = result.krate.or(new.krate);
-            result.segment_index = result.segment_index.min(new.segment_index);
+            result.segment_index = match (result.segment_index, new.segment_index) {
+                (Some(idx), None) => Some(idx),
+                (Some(old), Some(new)) => Some(old.max(new)),
+                (None, new) => new,
+            };
 
             match &current_map.block {
                 Some(block) => {
