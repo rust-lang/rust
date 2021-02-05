@@ -823,33 +823,59 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     },
                 };
 
+                // FIXME(eddyb) cache this (including computing `unsizing_params`)
+                // by putting it in a query; it would only need the `DefId` as it
+                // looks at declared field types, not anything substituted.
+
                 // The last field of the structure has to exist and contain type/const parameters.
                 let (tail_field, prefix_fields) =
                     def.non_enum_variant().fields.split_last().ok_or(Unimplemented)?;
                 let tail_field_ty = tcx.type_of(tail_field.did);
 
                 let mut unsizing_params = GrowableBitSet::new_empty();
-                let mut found = false;
-                for arg in tail_field_ty.walk() {
-                    if let Some(i) = maybe_unsizing_param_idx(arg) {
-                        unsizing_params.insert(i);
-                        found = true;
-                    }
-                }
-                if !found {
-                    return Err(Unimplemented);
-                }
-
-                // Ensure none of the other fields mention the parameters used
-                // in unsizing.
-                // FIXME(eddyb) cache this (including computing `unsizing_params`)
-                // by putting it in a query; it would only need the `DefId` as it
-                // looks at declared field types, not anything substituted.
-                for field in prefix_fields {
-                    for arg in tcx.type_of(field.did).walk() {
+                if tcx.features().relaxed_struct_unsize {
+                    for arg in tail_field_ty.walk() {
                         if let Some(i) = maybe_unsizing_param_idx(arg) {
-                            if unsizing_params.contains(i) {
-                                return Err(Unimplemented);
+                            unsizing_params.insert(i);
+                        }
+                    }
+
+                    // Ensure none of the other fields mention the parameters used
+                    // in unsizing.
+                    for field in prefix_fields {
+                        for arg in tcx.type_of(field.did).walk() {
+                            if let Some(i) = maybe_unsizing_param_idx(arg) {
+                                unsizing_params.remove(i);
+                            }
+                        }
+                    }
+
+                    if unsizing_params.is_empty() {
+                        return Err(Unimplemented);
+                    }
+                } else {
+                    let mut found = false;
+                    for arg in tail_field_ty.walk() {
+                        if let Some(i) = maybe_unsizing_param_idx(arg) {
+                            unsizing_params.insert(i);
+                            found = true;
+                        }
+                    }
+                    if !found {
+                        return Err(Unimplemented);
+                    }
+
+                    // Ensure none of the other fields mention the parameters used
+                    // in unsizing.
+                    // FIXME(eddyb) cache this (including computing `unsizing_params`)
+                    // by putting it in a query; it would only need the `DefId` as it
+                    // looks at declared field types, not anything substituted.
+                    for field in prefix_fields {
+                        for arg in tcx.type_of(field.did).walk() {
+                            if let Some(i) = maybe_unsizing_param_idx(arg) {
+                                if unsizing_params.contains(i) {
+                                    return Err(Unimplemented);
+                                }
                             }
                         }
                     }
