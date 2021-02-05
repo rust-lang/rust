@@ -7,10 +7,6 @@ LL |     if let Some(x) = a { true } else { false }
    |     |                    expected `()`, found `bool`
    |     expected this to be `()`
    |
-help: consider using a semicolon here
-   |
-LL |     if let Some(x) = a { true } else { false };
-   |                                               ^
 help: you might have meant to return this value
    |
 LL |     if let Some(x) = a { return true; } else { false }
@@ -25,10 +21,6 @@ LL |     if let Some(x) = a { true } else { false }
    |     |                                  expected `()`, found `bool`
    |     expected this to be `()`
    |
-help: consider using a semicolon here
-   |
-LL |     if let Some(x) = a { true } else { false };
-   |                                               ^
 help: you might have meant to return this value
    |
 LL |     if let Some(x) = a { true } else { return false; }

@@ -1450,7 +1450,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             ) {
                 if cond_expr.span.desugaring_kind().is_none() {
                     err.span_label(cond_expr.span, "expected this to be `()`");
-                    fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                    if expr.can_have_side_effects() {
+                        fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                    }
                 }
             }
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))

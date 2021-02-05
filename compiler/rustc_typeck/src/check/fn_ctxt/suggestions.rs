@@ -44,11 +44,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         blk_id: hir::HirId,
     ) -> bool {
         let expr = expr.peel_drop_temps();
-        self.suggest_missing_semicolon(err, expr, expected, cause_span);
+        if expr.can_have_side_effects() {
+            self.suggest_missing_semicolon(err, expr, expected, cause_span);
+        }
         let mut pointing_at_return_type = false;
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             pointing_at_return_type =
                 self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
+            self.suggest_missing_return_expr(err, expr, &fn_decl, expected, found);
         }
         pointing_at_return_type
     }
@@ -392,7 +395,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ExprKind::Loop(..)
                 | ExprKind::If(..)
                 | ExprKind::Match(..)
-                | ExprKind::Block(..) => {
+                | ExprKind::Block(..)
+                    if expression.can_have_side_effects() =>
+                {
                     err.span_suggestion(
                         cause_span.shrink_to_hi(),
                         "consider using a semicolon here",

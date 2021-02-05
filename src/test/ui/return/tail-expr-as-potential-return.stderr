@@ -9,14 +9,6 @@ LL | |     }
    |
    = note: expected unit type `()`
                    found enum `std::result::Result<_, {integer}>`
-help: consider using a semicolon here
-   |
-LL |         Err(42);
-   |                ^
-help: consider using a semicolon here
-   |
-LL |     };
-   |      ^
 help: you might have meant to return this value
    |
 LL |         return Err(42);
