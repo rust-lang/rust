@@ -26,9 +26,10 @@ fn outer() {
 fn use_from_crate() {
     check_at(
         r#"
-struct Struct;
+struct Struct {}
 fn outer() {
-    use Struct;
+    fn Struct() {}
+    use Struct as PlainStruct;
     use crate::Struct as CrateStruct;
     use self::Struct as SelfStruct;
     $0
@@ -36,12 +37,13 @@ fn outer() {
 "#,
         expect![[r#"
             block scope
-            CrateStruct: t v
-            SelfStruct: t v
-            Struct: t v
+            CrateStruct: t
+            PlainStruct: t v
+            SelfStruct: t
+            Struct: v
 
             crate
-            Struct: t v
+            Struct: t
             outer: v
         "#]],
     );
