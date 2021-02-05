@@ -1,4 +1,3 @@
-use hir::Adt;
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
@@ -6,7 +5,7 @@ use syntax::{
     SmolStr, T,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{utils::find_struct_impl, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: generate_new
 //
@@ -38,7 +37,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     };
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(&ctx, &strukt)?;
+    let impl_def = find_struct_impl(&ctx, &ast::AdtDef::Struct(strukt.clone()), "new")?;
 
     let target = strukt.syntax().text_range();
     acc.add(AssistId("generate_new", AssistKind::Generate), "Generate `new`", target, |builder| {
@@ -109,65 +108,6 @@ fn generate_impl_text(strukt: &ast::Struct, code: &str) -> String {
     format_to!(buf, " {{\n{}\n}}\n", code);
 
     buf
-}
-
-// Uses a syntax-driven approach to find any impl blocks for the struct that
-// exist within the module/file
-//
-// Returns `None` if we've found an existing `new` fn
-//
-// FIXME: change the new fn checking to a more semantic approach when that's more
-// viable (e.g. we process proc macros, etc)
-fn find_struct_impl(ctx: &AssistContext, strukt: &ast::Struct) -> Option<Option<ast::Impl>> {
-    let db = ctx.db();
-    let module = strukt.syntax().ancestors().find(|node| {
-        ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())
-    })?;
-
-    let struct_def = ctx.sema.to_def(strukt)?;
-
-    let block = module.descendants().filter_map(ast::Impl::cast).find_map(|impl_blk| {
-        let blk = ctx.sema.to_def(&impl_blk)?;
-
-        // FIXME: handle e.g. `struct S<T>; impl<U> S<U> {}`
-        // (we currently use the wrong type parameter)
-        // also we wouldn't want to use e.g. `impl S<u32>`
-        let same_ty = match blk.target_ty(db).as_adt() {
-            Some(def) => def == Adt::Struct(struct_def),
-            None => false,
-        };
-        let not_trait_impl = blk.target_trait(db).is_none();
-
-        if !(same_ty && not_trait_impl) {
-            None
-        } else {
-            Some(impl_blk)
-        }
-    });
-
-    if let Some(ref impl_blk) = block {
-        if has_new_fn(impl_blk) {
-            return None;
-        }
-    }
-
-    Some(block)
-}
-
-fn has_new_fn(imp: &ast::Impl) -> bool {
-    if let Some(il) = imp.assoc_item_list() {
-        for item in il.assoc_items() {
-            if let ast::AssocItem::Fn(f) = item {
-                if let Some(name) = f.name() {
-                    if name.text().eq_ignore_ascii_case("new") {
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-
-    false
 }
 
 #[cfg(test)]

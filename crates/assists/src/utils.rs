@@ -2,7 +2,7 @@
 
 use std::ops;
 
-use hir::HasSource;
+use hir::{Adt, HasSource};
 use ide_db::{helpers::SnippetCap, RootDatabase};
 use itertools::Itertools;
 use syntax::{
@@ -15,7 +15,10 @@ use syntax::{
     SyntaxNode, TextSize, T,
 };
 
-use crate::ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams};
+use crate::{
+    assist_context::AssistContext,
+    ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
+};
 
 pub(crate) fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
     extract_trivial_expression(&block)
@@ -266,4 +269,72 @@ pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {
     let var_head = first_node_text(var);
 
     pat_head == var_head
+}
+
+// Uses a syntax-driven approach to find any impl blocks for the struct that
+// exist within the module/file
+//
+// Returns `None` if we've found an existing `new` fn
+//
+// FIXME: change the new fn checking to a more semantic approach when that's more
+// viable (e.g. we process proc macros, etc)
+pub(crate) fn find_struct_impl(
+    ctx: &AssistContext,
+    strukt: &ast::AdtDef,
+    name: &str,
+) -> Option<Option<ast::Impl>> {
+    let db = ctx.db();
+    let module = strukt.syntax().ancestors().find(|node| {
+        ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())
+    })?;
+
+    let struct_def = match strukt {
+        ast::AdtDef::Enum(e) => Adt::Enum(ctx.sema.to_def(e)?),
+        ast::AdtDef::Struct(s) => Adt::Struct(ctx.sema.to_def(s)?),
+        ast::AdtDef::Union(u) => Adt::Union(ctx.sema.to_def(u)?),
+    };
+
+    let block = module.descendants().filter_map(ast::Impl::cast).find_map(|impl_blk| {
+        let blk = ctx.sema.to_def(&impl_blk)?;
+
+        // FIXME: handle e.g. `struct S<T>; impl<U> S<U> {}`
+        // (we currently use the wrong type parameter)
+        // also we wouldn't want to use e.g. `impl S<u32>`
+
+        let same_ty = match blk.target_ty(db).as_adt() {
+            Some(def) => def == struct_def,
+            None => false,
+        };
+        let not_trait_impl = blk.target_trait(db).is_none();
+
+        if !(same_ty && not_trait_impl) {
+            None
+        } else {
+            Some(impl_blk)
+        }
+    });
+
+    if let Some(ref impl_blk) = block {
+        if has_fn(impl_blk, name) {
+            return None;
+        }
+    }
+
+    Some(block)
+}
+
+fn has_fn(imp: &ast::Impl, rhs_name: &str) -> bool {
+    if let Some(il) = imp.assoc_item_list() {
+        for item in il.assoc_items() {
+            if let ast::AssocItem::Fn(f) = item {
+                if let Some(name) = f.name() {
+                    if name.text().eq_ignore_ascii_case(rhs_name) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    false
 }
