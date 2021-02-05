@@ -358,8 +358,7 @@ macro_rules! impl_unsigned_int_ops {
 
                         #[inline]
                         fn rem(self, rhs: Self) -> Self::Output {
-                            // TODO there is probably a better way of doing this
-                            if AsRef::<[$scalar]>::as_ref(&rhs)
+                            if rhs.as_slice()
                                 .iter()
                                 .any(|x| *x == 0)
                             {
@@ -435,7 +434,7 @@ macro_rules! impl_unsigned_int_ops {
                         #[inline]
                         fn shl(self, rhs: Self) -> Self::Output {
                             // TODO there is probably a better way of doing this
-                            if AsRef::<[$scalar]>::as_ref(&rhs)
+                            if rhs.as_slice()
                                 .iter()
                                 .copied()
                                 .any(invalid_shift_rhs)
