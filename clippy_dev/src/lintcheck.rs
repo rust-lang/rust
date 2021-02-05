@@ -20,14 +20,17 @@ use serde_json::Value;
 // use this to store the crates when interacting with the crates.toml file
 #[derive(Debug, Serialize, Deserialize)]
 struct CrateList {
-    crates: HashMap<String, Vec<String>>,
+    crates: HashMap<String, TomlCrate>,
 }
 
 // crate data we stored in the toml, can have multiple versions per crate
 // A single TomlCrate is laster mapped to several CrateSources in that case
+#[derive(Debug, Serialize, Deserialize)]
 struct TomlCrate {
     name: String,
-    versions: Vec<String>,
+    versions: Option<Vec<String>>,
+    git_url: Option<String>,
+    git_hash: Option<String>,
 }
 
 // represents an archive we download from crates.io
@@ -114,7 +117,7 @@ impl Crate {
 
         let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir/");
 
-        let all_output = std::process::Command::new(cargo_clippy_path)
+        let all_output = std::process::Command::new(&cargo_clippy_path)
             .env("CARGO_TARGET_DIR", shared_target_dir)
             // lint warnings will look like this:
             // src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
@@ -128,7 +131,12 @@ impl Crate {
             ])
             .current_dir(&self.path)
             .output()
-            .unwrap();
+            .unwrap_or_else(|error| {
+                dbg!(error);
+                dbg!(&cargo_clippy_path);
+                dbg!(&self.path);
+                panic!("something was not found?")
+            });
         let stdout = String::from_utf8_lossy(&all_output.stdout);
         let output_lines = stdout.lines();
         //dbg!(&output_lines);
@@ -160,19 +168,21 @@ fn read_crates() -> Vec<CrateSource> {
     let tomlcrates: Vec<TomlCrate> = crate_list
         .crates
         .into_iter()
-        .map(|(name, versions)| TomlCrate { name, versions })
+        .map(|(_cratename, tomlcrate)| tomlcrate)
         .collect();
 
     // flatten TomlCrates into CrateSources (one TomlCrates may represent several versions of a crate =>
     // multiple Cratesources)
     let mut crate_sources = Vec::new();
     tomlcrates.into_iter().for_each(|tk| {
-        tk.versions.iter().for_each(|ver| {
-            crate_sources.push(CrateSource {
-                name: tk.name.clone(),
-                version: ver.to_string(),
-            });
-        })
+        if let Some(ref versions) = tk.versions {
+            versions.iter().for_each(|ver| {
+                crate_sources.push(CrateSource {
+                    name: tk.name.clone(),
+                    version: ver.to_string(),
+                });
+            })
+        }
     });
     crate_sources
 }
