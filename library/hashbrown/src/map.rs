@@ -2942,6 +2942,10 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// Replaces the entry, returning the old key and value. The new key in the hash map will be
     /// the key used to create this entry.
     ///
+    /// # Panics
+    ///
+    /// Will panic if this OccupiedEntry was created through [`Entry::insert`].
+    ///
     /// # Examples
     ///
     /// ```
@@ -2970,6 +2974,10 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     }
 
     /// Replaces the key in the hash map with the key used to create this entry.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if this OccupiedEntry was created through [`Entry::insert`].
     ///
     /// # Examples
     ///
