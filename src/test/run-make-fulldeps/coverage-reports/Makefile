@@ -1,5 +1,7 @@
+# ignore-test Broken; accidentally silently ignored on Linux CI; FIXME(#81688)
 # needs-profiler-support
 # ignore-windows-gnu
+# min-llvm-version: 11.0
 
 # FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
 # properly. Since we only have GCC on the CI ignore the test for now.
@@ -67,12 +69,7 @@ ifdef RUSTC_BLESS_TEST
 DEBUG_FLAG=--debug
 endif
 
-ifeq ($(LLVM_VERSION_11_PLUS),true)
 all: $(patsubst $(SOURCEDIR)/lib/%.rs,%,$(wildcard $(SOURCEDIR)/lib/*.rs)) $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
-else
-$(info Rust option `-Z instrument-coverage` requires LLVM 11 or higher. Test skipped.)
-all:
-endif
 
 # Ensure there are no `expected` results for tests that may have been removed or renamed
 .PHONY: clear_expected_if_blessed
