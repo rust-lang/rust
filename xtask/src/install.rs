@@ -129,7 +129,7 @@ fn install_client(client_opt: ClientOpt) -> Result<()> {
 
     let installed_extensions = if cfg!(unix) {
         cmd!("npm --version").run().context("`npm` is required to build the VS Code plugin")?;
-        cmd!("npm install").run()?;
+        cmd!("npm ci").run()?;
 
         cmd!("npm run package --scripts-prepend-node-path").run()?;
 
@@ -140,7 +140,7 @@ fn install_client(client_opt: ClientOpt) -> Result<()> {
         cmd!("cmd.exe /c npm --version")
             .run()
             .context("`npm` is required to build the VS Code plugin")?;
-        cmd!("cmd.exe /c npm install").run()?;
+        cmd!("cmd.exe /c npm ci").run()?;
 
         cmd!("cmd.exe /c npm run package").run()?;
 
