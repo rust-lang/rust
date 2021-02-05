@@ -9,8 +9,6 @@ use syntax::{
     SyntaxNode, TextRange, TextSize,
 };
 
-use lazy_static::lazy_static;
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum FoldKind {
     Comment,
@@ -53,17 +51,10 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 // Fold groups of comments
                 if let Some(comment) = ast::Comment::cast(token) {
                     if !visited_comments.contains(&comment) {
-                        // regions are not really comments
-                        use regex::Regex;
-                        lazy_static! {
-                            static ref RE_START: Regex =
-                                Regex::new(r"^\s*//\s*#?region\b").unwrap();
-                            static ref RE_END: Regex =
-                                Regex::new(r"^\s*//\s*#?endregion\b").unwrap();
-                        }
-                        if RE_START.is_match(comment.text()) {
+                        // regions are not real comments
+                        if comment.text().trim().starts_with("// region:") {
                             regions_starts.push(comment.syntax().text_range().start());
-                        } else if RE_END.is_match(comment.text()) {
+                        } else if comment.text().trim().starts_with("// endregion") {
                             if !regions_starts.is_empty() {
                                 res.push(Fold {
                                     range: TextRange::new(
@@ -202,15 +193,10 @@ fn contiguous_range_for_comment(
                 }
                 if let Some(c) = ast::Comment::cast(token) {
                     if c.kind() == group_kind {
-                        // regions are not really comments
-                        use regex::Regex;
-                        lazy_static! {
-                            static ref RE_START: Regex =
-                                Regex::new(r"^\s*//\s*#?region\b").unwrap();
-                            static ref RE_END: Regex =
-                                Regex::new(r"^\s*//\s*#?endregion\b").unwrap();
-                        }
-                        if RE_START.is_match(c.text()) || RE_END.is_match(c.text()) {
+                        // regions are not real comments
+                        if c.text().trim().starts_with("// region:")
+                            || c.text().trim().starts_with("// endregion")
+                        {
                             break;
                         } else {
                             visited.insert(c.clone());
