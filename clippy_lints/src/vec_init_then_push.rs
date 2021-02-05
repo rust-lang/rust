@@ -83,8 +83,11 @@ impl VecPushSearcher {
 }
 
 impl LateLintPass<'_> for VecInitThenPush {
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
+    fn check_block(&mut self, _: &LateContext<'tcx>, _: &'tcx Block<'tcx>) {
         self.searcher = None;
+    }
+
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         if_chain! {
             if !in_external_macro(cx.sess(), local.span);
             if let Some(init) = local.init;
