@@ -281,6 +281,11 @@ impl Inliner<'tcx> {
             return false;
         }
 
+        if self.codegen_fn_attrs.instruction_set != codegen_fn_attrs.instruction_set {
+            debug!("`callee has incompatible instruction set - not inlining");
+            return false;
+        }
+
         let hinted = match codegen_fn_attrs.inline {
             // Just treat inline(always) as a hint for now,
             // there are cases that prevent inlining that we
