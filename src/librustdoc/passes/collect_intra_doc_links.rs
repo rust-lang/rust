@@ -44,7 +44,7 @@ use super::span_of_attrs;
 crate const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
     name: "collect-intra-doc-links",
     run: collect_intra_doc_links,
-    description: "reads a crate's documentation to resolve intra-doc-links",
+    description: "resolves intra-doc links",
 };
 
 crate fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_>) -> Crate {
@@ -981,7 +981,7 @@ impl LinkCollector<'_, '_> {
         let link_text =
             disambiguator.map(|d| d.display_for(path_str)).unwrap_or_else(|| path_str.to_owned());
 
-        // In order to correctly resolve intra-doc-links we need to
+        // In order to correctly resolve intra-doc links we need to
         // pick a base AST node to work from.  If the documentation for
         // this module came from an inner comment (//!) then we anchor
         // our name resolution *inside* the module.  If, on the other
