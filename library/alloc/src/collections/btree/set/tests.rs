@@ -639,6 +639,26 @@ fn test_send() {
     }
 }
 
+#[allow(dead_code)]
+fn test_ord_absence() {
+    fn set<K>(set: BTreeSet<K>) {
+        set.is_empty();
+        set.len();
+        set.iter();
+        set.into_iter();
+    }
+
+    fn set_debug<K: Debug>(set: BTreeSet<K>) {
+        format!("{:?}", set);
+        format!("{:?}", set.iter());
+        format!("{:?}", set.into_iter());
+    }
+
+    fn set_clone<K: Clone>(mut set: BTreeSet<K>) {
+        set.clone_from(&set.clone());
+    }
+}
+
 #[test]
 fn test_append() {
     let mut a = BTreeSet::new();
