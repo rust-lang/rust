@@ -2,10 +2,13 @@ use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
     ast::{self, AstNode, GenericParamsOwner, NameOwner, StructKind, VisibilityOwner},
-    SmolStr, T,
+    SmolStr,
 };
 
-use crate::{utils::find_struct_impl, AssistContext, AssistId, AssistKind, Assists};
+use crate::{
+    utils::{find_impl_block, find_struct_impl},
+    AssistContext, AssistId, AssistKind, Assists,
+};
 
 // Assist: generate_new
 //
@@ -58,17 +61,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         format_to!(buf, "    {}fn new({}) -> Self {{ Self {{ {} }} }}", vis, params, fields);
 
         let start_offset = impl_def
-            .and_then(|impl_def| {
-                buf.push('\n');
-                let start = impl_def
-                    .syntax()
-                    .descendants_with_tokens()
-                    .find(|t| t.kind() == T!['{'])?
-                    .text_range()
-                    .end();
-
-                Some(start)
-            })
+            .and_then(|impl_def| find_impl_block(impl_def, &mut buf))
             .unwrap_or_else(|| {
                 buf = generate_impl_text(&strukt, &buf);
                 strukt.syntax().text_range().end()
@@ -93,7 +86,7 @@ fn generate_impl_text(strukt: &ast::Struct, code: &str) -> String {
     if let Some(type_params) = &type_params {
         format_to!(buf, "{}", type_params.syntax());
     }
-    buf.push_str(" ");
+    buf.push(' ');
     buf.push_str(strukt.name().unwrap().text());
     if let Some(type_params) = type_params {
         let lifetime_params = type_params

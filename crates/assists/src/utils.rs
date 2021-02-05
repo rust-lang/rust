@@ -274,10 +274,11 @@ pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {
 // Uses a syntax-driven approach to find any impl blocks for the struct that
 // exist within the module/file
 //
-// Returns `None` if we've found an existing `new` fn
+// Returns `None` if we've found an existing fn
 //
 // FIXME: change the new fn checking to a more semantic approach when that's more
 // viable (e.g. we process proc macros, etc)
+// FIXME: this partially overlaps with `find_impl_block`
 pub(crate) fn find_struct_impl(
     ctx: &AssistContext,
     strukt: &ast::AdtDef,
@@ -337,4 +338,19 @@ fn has_fn(imp: &ast::Impl, rhs_name: &str) -> bool {
     }
 
     false
+}
+
+/// Find the start of the `impl` block for the given `ast::Impl`.
+//
+// FIXME: add a way to find the end of the `impl` block.
+// FIXME: this partially overlaps with `find_struct_impl`
+pub(crate) fn find_impl_block(impl_def: ast::Impl, buf: &mut String) -> Option<TextSize> {
+    buf.push('\n');
+    let start = impl_def
+        .syntax()
+        .descendants_with_tokens()
+        .find(|t| t.kind() == T!['{'])?
+        .text_range()
+        .end();
+    Some(start)
 }
