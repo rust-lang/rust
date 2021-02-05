@@ -8,4 +8,3 @@ fn foo(x: bool) -> Result<f64, i32> {
     }
     Ok(42.0)
 }
-
