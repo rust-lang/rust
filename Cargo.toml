@@ -18,17 +18,8 @@ members = [
   "src/tools/build-manifest",
   "src/tools/remote-test-client",
   "src/tools/remote-test-server",
-  "src/tools/rust-installer",
   "src/tools/rust-demangler",
-  "src/tools/cargo",
-  "src/tools/cargo/crates/credential/cargo-credential-1password",
-  "src/tools/cargo/crates/credential/cargo-credential-macos-keychain",
-  "src/tools/cargo/crates/credential/cargo-credential-wincred",
   "src/tools/rustdoc",
-  "src/tools/rls",
-  "src/tools/rustfmt",
-  "src/tools/miri",
-  "src/tools/miri/cargo-miri",
   "src/tools/rustdoc-themes",
   "src/tools/unicode-table-generator",
   "src/tools/expand-yaml-anchors",
@@ -81,20 +72,6 @@ gimli.debug = 0
 miniz_oxide.debug = 0
 object.debug = 0
 
-# We want the RLS to use the version of Cargo that we've got vendored in this
-# repository to ensure that the same exact version of Cargo is used by both the
-# RLS and the Cargo binary itself. The RLS depends on Cargo as a git repository
-# so we use a `[patch]` here to override the github repository with our local
-# vendored copy.
-[patch."https://github.com/rust-lang/cargo"]
-cargo = { path = "src/tools/cargo" }
-
-[patch."https://github.com/rust-lang/rustfmt"]
-# Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`
-# that we're shipping as well (to ensure that the rustfmt in RLS and the
-# `rustfmt` executable are the same exact version).
-rustfmt-nightly = { path = "src/tools/rustfmt" }
-
 [patch.crates-io]
 # See comments in `src/tools/rustc-workspace-hack/README.md` for what's going on
 # here
@@ -105,12 +82,6 @@ rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
 rustc-std-workspace-core = { path = 'library/rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
-
-# This crate's integration with libstd is a bit wonky, so we use a submodule
-# instead of a crates.io dependency. Make sure everything else in the repo is
-# also using the submodule, however, so we can avoid duplicate copies of the
-# source code for this crate.
-backtrace = { path = "library/backtrace" }
 
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }
