@@ -3,7 +3,7 @@
 // We test the `align_offset` panic below, make sure we test the interpreter impl and not the "real" one.
 // compile-flags: -Zmiri-symbolic-alignment-check
 #![feature(never_type)]
-#![allow(unconditional_panic)]
+#![allow(unconditional_panic, non_fmt_panic)]
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::cell::Cell;

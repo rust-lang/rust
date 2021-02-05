@@ -1,5 +1,4 @@
 #![feature(never_type)]
-#![feature(wake_trait)]
 
 use std::{future::Future, pin::Pin, task::Poll};
 use std::task::{Wake, Waker, Context};
