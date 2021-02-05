@@ -503,17 +503,42 @@ fn reference_is_exclusive(
     }
 
     // we take `&mut` reference to variable: `&mut v`
-    let path = path_element_of_reference(body, reference);
-    if is_mut_ref_expr(path.as_ref()).unwrap_or(false) {
-        return true;
+    let path = match path_element_of_reference(body, reference) {
+        Some(path) => path,
+        None => return false,
+    };
+
+    expr_require_exclusive_access(ctx, &path).unwrap_or(false)
+}
+
+/// checks if this expr requires `&mut` access, recurses on field access
+fn expr_require_exclusive_access(ctx: &AssistContext, expr: &ast::Expr) -> Option<bool> {
+    let parent = expr.syntax().parent()?;
+
+    if let Some(bin_expr) = ast::BinExpr::cast(parent.clone()) {
+        if bin_expr.op_kind()?.is_assignment() {
+            return Some(bin_expr.lhs()?.syntax() == expr.syntax());
+        }
+        return Some(false);
     }
 
-    // we call method with `&mut self` receiver
-    if is_mut_method_call_receiver(ctx, path.as_ref()).unwrap_or(false) {
-        return true;
+    if let Some(ref_expr) = ast::RefExpr::cast(parent.clone()) {
+        return Some(ref_expr.mut_token().is_some());
     }
 
-    false
+    if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
+        let func = ctx.sema.resolve_method_call(&method_call)?;
+        let self_param = func.self_param(ctx.db())?;
+        let access = self_param.access(ctx.db());
+
+        return Some(matches!(access, hir::Access::Exclusive));
+    }
+
+    if let Some(field) = ast::FieldExpr::cast(parent) {
+        return expr_require_exclusive_access(ctx, &field.into());
+    }
+
+    Some(false)
 }
 
 /// Container of local varaible usages
@@ -565,24 +590,6 @@ fn path_element_of_reference(
     })?;
     stdx::always!(matches!(path, ast::Expr::PathExpr(_)));
     Some(path)
-}
-
-fn is_mut_ref_expr(path: Option<&ast::Expr>) -> Option<bool> {
-    let path = path?;
-    let ref_expr = path.syntax().parent().and_then(ast::RefExpr::cast)?;
-    Some(ref_expr.mut_token().is_some())
-}
-
-/// checks if `path` is the receiver in method call that requires `&mut self` access
-fn is_mut_method_call_receiver(ctx: &AssistContext, path: Option<&ast::Expr>) -> Option<bool> {
-    let path = path?;
-    let method_call = path.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
-
-    let func = ctx.sema.resolve_method_call(&method_call)?;
-    let self_param = func.self_param(ctx.db())?;
-    let access = self_param.access(ctx.db());
-
-    Some(matches!(access, hir::Access::Exclusive))
 }
 
 /// list local variables defined inside `body`
@@ -872,7 +879,7 @@ fn fix_param_usages(ctx: &AssistContext, params: &[Param], syntax: &SyntaxNode) 
             .filter_map(|reference| path_element_of_reference(syntax, reference));
         for path in usages {
             match path.syntax().ancestors().skip(1).find_map(ast::Expr::cast) {
-                Some(ast::Expr::MethodCallExpr(_)) => {
+                Some(ast::Expr::MethodCallExpr(_)) | Some(ast::Expr::FieldExpr(_)) => {
                     // do nothing
                 }
                 Some(ast::Expr::RefExpr(node))
@@ -1673,6 +1680,64 @@ fn $0fun_name(n: &mut i32) {
     }
 
     #[test]
+    fn mut_field_from_outer_scope() {
+        check_assist(
+            extract_function,
+            r"
+struct C { n: i32 }
+fn foo() {
+    let mut c = C { n: 0 };
+    $0c.n += 1;$0
+    let m = c.n + 1;
+}",
+            r"
+struct C { n: i32 }
+fn foo() {
+    let mut c = C { n: 0 };
+    fun_name(&mut c);
+    let m = c.n + 1;
+}
+
+fn $0fun_name(c: &mut C) {
+    c.n += 1;
+}",
+        );
+    }
+
+    #[test]
+    fn mut_nested_field_from_outer_scope() {
+        check_assist(
+            extract_function,
+            r"
+struct P { n: i32}
+struct C { p: P }
+fn foo() {
+    let mut c = C { p: P { n: 0 } };
+    let mut v = C { p: P { n: 0 } };
+    let u = C { p: P { n: 0 } };
+    $0c.p.n += u.p.n;
+    let r = &mut v.p.n;$0
+    let m = c.p.n + v.p.n + u.p.n;
+}",
+            r"
+struct P { n: i32}
+struct C { p: P }
+fn foo() {
+    let mut c = C { p: P { n: 0 } };
+    let mut v = C { p: P { n: 0 } };
+    let u = C { p: P { n: 0 } };
+    fun_name(&mut c, &u, &mut v);
+    let m = c.p.n + v.p.n + u.p.n;
+}
+
+fn $0fun_name(c: &mut C, u: &C, v: &mut C) {
+    c.p.n += u.p.n;
+    let r = &mut v.p.n;
+}",
+        );
+    }
+
+    #[test]
     fn mut_param_many_usages_stmt() {
         check_assist(
             extract_function,
@@ -1999,7 +2064,7 @@ fn foo() {
 }
 
 fn $0fun_name(c: &Counter) {
-    let n = *c.0;
+    let n = c.0;
 }",
         );
     }
