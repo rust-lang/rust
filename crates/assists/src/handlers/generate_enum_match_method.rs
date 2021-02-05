@@ -1,9 +1,12 @@
 use stdx::{format_to, to_lower_snake_case};
+use syntax::ast::VisibilityOwner;
 use syntax::ast::{self, AstNode, NameOwner};
-use syntax::{ast::VisibilityOwner, T};
 use test_utils::mark;
 
-use crate::{utils::find_struct_impl, AssistContext, AssistId, AssistKind, Assists};
+use crate::{
+    utils::{find_impl_block, find_struct_impl},
+    AssistContext, AssistId, AssistKind, Assists,
+};
 
 // Assist: generate_enum_match_method
 //
@@ -61,7 +64,6 @@ pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext)
             }
 
             let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
-
             format_to!(
                 buf,
                 "    {}fn is_{}(&self) -> bool {{
@@ -73,17 +75,7 @@ pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext)
             );
 
             let start_offset = impl_def
-                .and_then(|impl_def| {
-                    buf.push('\n');
-                    let start = impl_def
-                        .syntax()
-                        .descendants_with_tokens()
-                        .find(|t| t.kind() == T!['{'])?
-                        .text_range()
-                        .end();
-
-                    Some(start)
-                })
+                .and_then(|impl_def| find_impl_block(impl_def, &mut buf))
                 .unwrap_or_else(|| {
                     buf = generate_impl_text(&parent_enum, &buf);
                     parent_enum.syntax().text_range().end()
