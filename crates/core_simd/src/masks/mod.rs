@@ -59,6 +59,24 @@ macro_rules! define_opaque_mask {
             }
         }
 
+        impl<const $lanes: usize> From<$inner_ty> for $name<$lanes>
+        where
+            BitMask<$lanes>: LanesAtMost64,
+        {
+            fn from(value: $inner_ty) -> Self {
+                Self(value)
+            }
+        }
+
+        impl<const $lanes: usize> From<$name<$lanes>> for $inner_ty
+        where
+            BitMask<$lanes>: LanesAtMost64,
+        {
+            fn from(value: $name<$lanes>) -> Self {
+                value.0
+            }
+        }
+
         impl<const $lanes: usize> Copy for $name<$lanes> where BitMask<$lanes>: LanesAtMost64 {}
 
         impl<const $lanes: usize> Clone for $name<$lanes> where BitMask<$lanes>: LanesAtMost64 {
