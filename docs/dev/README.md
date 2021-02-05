@@ -114,6 +114,14 @@ npm run lint
 
 Do see [./style.md](./style.md).
 
+# How to ...
+
+* ... add an assist? [#7535](https://github.com/rust-analyzer/rust-analyzer/pull/7535)
+* ... add a new protocol extension? [#4569](https://github.com/rust-analyzer/rust-analyzer/pull/4569)
+* ... add a new configuration option? [#7451](https://github.com/rust-analyzer/rust-analyzer/pull/7451)
+* ... add a new completion? [#6964](https://github.com/rust-analyzer/rust-analyzer/pull/6964)
+* ... allow new syntax in the parser? [#7338](https://github.com/rust-analyzer/rust-analyzer/pull/7338)
+
 # Logging
 
 Logging is done by both rust-analyzer and VS Code, so it might be tricky to
