@@ -433,6 +433,33 @@ struct Point {
 }
 
 #[test]
+fn doctest_generate_enum_match_method() {
+    check_doc_test(
+        "generate_enum_match_method",
+        r#####"
+enum Version {
+ Undefined,
+ Minor$0,
+ Major,
+}
+"#####,
+        r#####"
+enum Version {
+ Undefined,
+ Minor,
+ Major,
+}
+
+impl Version {
+    fn is_minor(&self) -> bool {
+        matches!(self, Self::Minor)
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_from_impl_for_enum() {
     check_doc_test(
         "generate_from_impl_for_enum",
