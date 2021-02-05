@@ -35,3 +35,8 @@ pub fn glorious_old_parser() -> String {
     let path = project_dir().join("bench_data/glorious_old_parser");
     fs::read_to_string(&path).unwrap()
 }
+
+pub fn numerous_macro_rules() -> String {
+    let path = project_dir().join("bench_data/numerous_macro_rules");
+    fs::read_to_string(&path).unwrap()
+}

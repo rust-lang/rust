@@ -901,6 +901,7 @@ version = "0.0.0"
 dependencies = [
  "log",
  "parser",
+ "profile",
  "rustc-hash",
  "smallvec",
  "syntax",
