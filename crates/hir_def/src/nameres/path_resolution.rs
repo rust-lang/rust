@@ -227,7 +227,15 @@ impl DefMap {
                     }
                 }
 
-                PerNs::types(self.module_id(module).into(), Visibility::Public)
+                // Resolve `self` to the containing crate-rooted module if we're a block
+                self.with_ancestor_maps(db, module, &mut |def_map, module| {
+                    if def_map.block.is_some() {
+                        None // keep ascending
+                    } else {
+                        Some(PerNs::types(def_map.module_id(module).into(), Visibility::Public))
+                    }
+                })
+                .expect("block DefMap not rooted in crate DefMap")
             }
             PathKind::Abs => {
                 // 2018-style absolute path -- only extern prelude
