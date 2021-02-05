@@ -32,6 +32,7 @@ fn outer() {
     use Struct as PlainStruct;
     use crate::Struct as CrateStruct;
     use self::Struct as SelfStruct;
+    use super::Struct as SuperStruct;
     $0
 }
 "#,
@@ -41,6 +42,7 @@ fn outer() {
             PlainStruct: t v
             SelfStruct: t
             Struct: v
+            SuperStruct: _
 
             crate
             Struct: t
