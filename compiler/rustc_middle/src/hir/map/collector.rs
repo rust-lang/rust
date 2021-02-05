@@ -81,14 +81,10 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             let Crate {
                 ref item,
                 // These fields are handled separately:
-                exported_macros: _,
                 non_exported_macro_attrs: _,
-                items: _,
-                trait_items: _,
-                impl_items: _,
-                foreign_items: _,
-                bodies: _,
+                owners: _,
                 trait_impls: _,
+                bodies: _,
                 body_ids: _,
                 modules: _,
                 proc_macros: _,

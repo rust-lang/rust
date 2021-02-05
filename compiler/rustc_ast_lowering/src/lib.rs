@@ -101,13 +101,8 @@ struct LoweringContext<'a, 'hir: 'a> {
     arena: &'hir Arena<'hir>,
 
     /// The items being lowered are collected here.
-    items: BTreeMap<hir::ItemId, hir::Item<'hir>>,
-
-    trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem<'hir>>,
-    impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem<'hir>>,
-    foreign_items: BTreeMap<hir::ForeignItemId, hir::ForeignItem<'hir>>,
+    owners: BTreeMap<LocalDefId, hir::OwnerNode<'hir>>,
     bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
-    exported_macros: Vec<hir::MacroDef<'hir>>,
     non_exported_macro_attrs: Vec<ast::Attribute>,
 
     trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
@@ -332,15 +327,11 @@ pub fn lower_crate<'a, 'hir>(
         resolver,
         nt_to_tokenstream,
         arena,
-        items: BTreeMap::new(),
-        trait_items: BTreeMap::new(),
-        impl_items: BTreeMap::new(),
-        foreign_items: BTreeMap::new(),
+        owners: BTreeMap::new(),
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
         attrs: BTreeMap::default(),
-        exported_macros: Vec::new(),
         non_exported_macro_attrs: Vec::new(),
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
@@ -558,14 +549,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
+        let mut owners = IndexVec::new();
+        for (did, node) in self.owners {
+            debug_assert_eq!(did, node.def_id());
+            owners.ensure_contains_elem(did, || None);
+            owners[did] = Some(node);
+        }
+
         let krate = hir::Crate {
             item: module,
-            exported_macros: self.arena.alloc_from_iter(self.exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
-            items: self.items,
-            trait_items: self.trait_items,
-            impl_items: self.impl_items,
-            foreign_items: self.foreign_items,
+            owners,
             bodies: self.bodies,
             body_ids,
             trait_impls: self.trait_impls,
@@ -578,10 +572,41 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn insert_item(&mut self, item: hir::Item<'hir>) -> hir::ItemId {
-        let id = hir::ItemId { def_id: item.def_id };
-        self.items.insert(id, item);
+        let id = item.item_id();
+        let item = self.arena.alloc(item);
+        self.owners.insert(id.def_id, hir::OwnerNode::Item(item));
         self.modules.entry(self.current_module).or_default().items.insert(id);
         id
+    }
+
+    fn insert_foreign_item(&mut self, item: hir::ForeignItem<'hir>) -> hir::ForeignItemId {
+        let id = item.foreign_item_id();
+        let item = self.arena.alloc(item);
+        self.owners.insert(id.def_id, hir::OwnerNode::ForeignItem(item));
+        self.modules.entry(self.current_module).or_default().foreign_items.insert(id);
+        id
+    }
+
+    fn insert_impl_item(&mut self, item: hir::ImplItem<'hir>) -> hir::ImplItemId {
+        let id = item.impl_item_id();
+        let item = self.arena.alloc(item);
+        self.owners.insert(id.def_id, hir::OwnerNode::ImplItem(item));
+        self.modules.entry(self.current_module).or_default().impl_items.insert(id);
+        id
+    }
+
+    fn insert_trait_item(&mut self, item: hir::TraitItem<'hir>) -> hir::TraitItemId {
+        let id = item.trait_item_id();
+        let item = self.arena.alloc(item);
+        self.owners.insert(id.def_id, hir::OwnerNode::TraitItem(item));
+        self.modules.entry(self.current_module).or_default().trait_items.insert(id);
+        id
+    }
+
+    fn insert_macro_def(&mut self, item: hir::MacroDef<'hir>) {
+        let def_id = item.def_id;
+        let item = self.arena.alloc(item);
+        self.owners.insert(def_id, hir::OwnerNode::MacroDef(item));
     }
 
     fn allocate_hir_id_counter(&mut self, owner: NodeId) -> hir::HirId {

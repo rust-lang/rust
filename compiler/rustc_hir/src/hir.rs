@@ -12,6 +12,7 @@ pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
+use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -628,21 +629,10 @@ pub struct ModuleItems {
 #[derive(Debug)]
 pub struct Crate<'hir> {
     pub item: Mod<'hir>,
-    pub exported_macros: &'hir [MacroDef<'hir>],
     // Attributes from non-exported macros, kept only for collecting the library feature list.
     pub non_exported_macro_attrs: &'hir [Attribute],
 
-    // N.B., we use a `BTreeMap` here so that `visit_all_items` iterates
-    // over the ids in increasing order. In principle it should not
-    // matter what order we visit things in, but in *practice* it
-    // does, because it can affect the order in which errors are
-    // detected, which in turn can make UI tests yield
-    // slightly different results.
-    pub items: BTreeMap<ItemId, Item<'hir>>,
-
-    pub trait_items: BTreeMap<TraitItemId, TraitItem<'hir>>,
-    pub impl_items: BTreeMap<ImplItemId, ImplItem<'hir>>,
-    pub foreign_items: BTreeMap<ForeignItemId, ForeignItem<'hir>>,
+    pub owners: IndexVec<LocalDefId, Option<OwnerNode<'hir>>>,
     pub bodies: BTreeMap<BodyId, Body<'hir>>,
     pub trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
 
@@ -668,20 +658,20 @@ pub struct Crate<'hir> {
 }
 
 impl Crate<'hir> {
-    pub fn item(&self, id: ItemId) -> &Item<'hir> {
-        &self.items[&id]
+    pub fn item(&self, id: ItemId) -> &'hir Item<'hir> {
+        self.owners[id.def_id].as_ref().unwrap().expect_item()
     }
 
-    pub fn trait_item(&self, id: TraitItemId) -> &TraitItem<'hir> {
-        &self.trait_items[&id]
+    pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
+        self.owners[id.def_id].as_ref().unwrap().expect_trait_item()
     }
 
-    pub fn impl_item(&self, id: ImplItemId) -> &ImplItem<'hir> {
-        &self.impl_items[&id]
+    pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
+        self.owners[id.def_id].as_ref().unwrap().expect_impl_item()
     }
 
-    pub fn foreign_item(&self, id: ForeignItemId) -> &ForeignItem<'hir> {
-        &self.foreign_items[&id]
+    pub fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
+        self.owners[id.def_id].as_ref().unwrap().expect_foreign_item()
     }
 
     pub fn body(&self, id: BodyId) -> &Body<'hir> {
@@ -702,20 +692,14 @@ impl Crate<'_> {
     where
         V: itemlikevisit::ItemLikeVisitor<'hir>,
     {
-        for item in self.items.values() {
-            visitor.visit_item(item);
-        }
-
-        for trait_item in self.trait_items.values() {
-            visitor.visit_trait_item(trait_item);
-        }
-
-        for impl_item in self.impl_items.values() {
-            visitor.visit_impl_item(impl_item);
-        }
-
-        for foreign_item in self.foreign_items.values() {
-            visitor.visit_foreign_item(foreign_item);
+        for owner in self.owners.iter().filter_map(Option::as_ref) {
+            match owner {
+                OwnerNode::Item(item) => visitor.visit_item(item),
+                OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
+                OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
+                OwnerNode::TraitItem(item) => visitor.visit_trait_item(item),
+                OwnerNode::MacroDef(_) => {}
+            }
         }
     }
 
@@ -724,28 +708,27 @@ impl Crate<'_> {
     where
         V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
     {
-        parallel!(
-            {
-                par_for_each_in(&self.items, |(_, item)| {
-                    visitor.visit_item(item);
-                });
-            },
-            {
-                par_for_each_in(&self.trait_items, |(_, trait_item)| {
-                    visitor.visit_trait_item(trait_item);
-                });
-            },
-            {
-                par_for_each_in(&self.impl_items, |(_, impl_item)| {
-                    visitor.visit_impl_item(impl_item);
-                });
-            },
-            {
-                par_for_each_in(&self.foreign_items, |(_, foreign_item)| {
-                    visitor.visit_foreign_item(foreign_item);
-                });
-            }
-        );
+        par_for_each_in(&self.owners.raw, |owner| match owner {
+            Some(OwnerNode::Item(item)) => visitor.visit_item(item),
+            Some(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
+            Some(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
+            Some(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
+            Some(OwnerNode::MacroDef(_)) | None => {}
+        })
+    }
+
+    pub fn items<'hir>(&'hir self) -> impl Iterator<Item = &'hir Item<'hir>> + 'hir {
+        self.owners.iter().filter_map(|owner| match owner {
+            Some(OwnerNode::Item(item)) => Some(*item),
+            _ => None,
+        })
+    }
+
+    pub fn exported_macros<'hir>(&'hir self) -> impl Iterator<Item = &'hir MacroDef<'hir>> + 'hir {
+        self.owners.iter().filter_map(|owner| match owner {
+            Some(OwnerNode::MacroDef(macro_def)) => Some(*macro_def),
+            _ => None,
+        })
     }
 }
 
@@ -2955,6 +2938,163 @@ pub struct Upvar {
 pub struct TraitCandidate {
     pub def_id: DefId,
     pub import_ids: SmallVec<[LocalDefId; 1]>,
+}
+
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
+pub enum OwnerNode<'hir> {
+    Item(&'hir Item<'hir>),
+    ForeignItem(&'hir ForeignItem<'hir>),
+    TraitItem(&'hir TraitItem<'hir>),
+    ImplItem(&'hir ImplItem<'hir>),
+    MacroDef(&'hir MacroDef<'hir>),
+}
+
+impl<'hir> OwnerNode<'hir> {
+    pub fn ident(&self) -> Ident {
+        match self {
+            OwnerNode::Item(Item { ident, .. })
+            | OwnerNode::ForeignItem(ForeignItem { ident, .. })
+            | OwnerNode::ImplItem(ImplItem { ident, .. })
+            | OwnerNode::TraitItem(TraitItem { ident, .. })
+            | OwnerNode::MacroDef(MacroDef { ident, .. }) => *ident,
+        }
+    }
+
+    pub fn fn_decl(&self) -> Option<&FnDecl<'hir>> {
+        match self {
+            OwnerNode::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
+            | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
+            | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
+            OwnerNode::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Fn(fn_decl, _, _),
+                ..
+            }) => Some(fn_decl),
+            _ => None,
+        }
+    }
+
+    pub fn body_id(&self) -> Option<BodyId> {
+        match self {
+            OwnerNode::TraitItem(TraitItem {
+                kind: TraitItemKind::Fn(_, TraitFn::Provided(body_id)),
+                ..
+            })
+            | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(_, body_id), .. })
+            | OwnerNode::Item(Item { kind: ItemKind::Fn(.., body_id), .. }) => Some(*body_id),
+            _ => None,
+        }
+    }
+
+    pub fn generics(&self) -> Option<&'hir Generics<'hir>> {
+        match self {
+            OwnerNode::TraitItem(TraitItem { generics, .. })
+            | OwnerNode::ImplItem(ImplItem { generics, .. }) => Some(generics),
+            OwnerNode::Item(item) => item.kind.generics(),
+            _ => None,
+        }
+    }
+
+    pub fn def_id(self) -> LocalDefId {
+        match self {
+            OwnerNode::Item(Item { def_id, .. })
+            | OwnerNode::TraitItem(TraitItem { def_id, .. })
+            | OwnerNode::ImplItem(ImplItem { def_id, .. })
+            | OwnerNode::ForeignItem(ForeignItem { def_id, .. })
+            | OwnerNode::MacroDef(MacroDef { def_id, .. }) => *def_id,
+        }
+    }
+
+    pub fn expect_item(self) -> &'hir Item<'hir> {
+        match self {
+            OwnerNode::Item(n) => n,
+            OwnerNode::ForeignItem(_)
+            | OwnerNode::ImplItem(_)
+            | OwnerNode::TraitItem(_)
+            | OwnerNode::MacroDef(_) => panic!(),
+        }
+    }
+
+    pub fn expect_foreign_item(self) -> &'hir ForeignItem<'hir> {
+        match self {
+            OwnerNode::ForeignItem(n) => n,
+            OwnerNode::Item(_)
+            | OwnerNode::ImplItem(_)
+            | OwnerNode::TraitItem(_)
+            | OwnerNode::MacroDef(_) => panic!(),
+        }
+    }
+
+    pub fn expect_impl_item(self) -> &'hir ImplItem<'hir> {
+        match self {
+            OwnerNode::ImplItem(n) => n,
+            OwnerNode::ForeignItem(_)
+            | OwnerNode::Item(_)
+            | OwnerNode::TraitItem(_)
+            | OwnerNode::MacroDef(_) => panic!(),
+        }
+    }
+
+    pub fn expect_trait_item(self) -> &'hir TraitItem<'hir> {
+        match self {
+            OwnerNode::TraitItem(n) => n,
+            OwnerNode::ForeignItem(_)
+            | OwnerNode::ImplItem(_)
+            | OwnerNode::Item(_)
+            | OwnerNode::MacroDef(_) => panic!(),
+        }
+    }
+
+    pub fn expect_macro_def(self) -> &'hir MacroDef<'hir> {
+        match self {
+            OwnerNode::MacroDef(n) => n,
+            OwnerNode::ForeignItem(_)
+            | OwnerNode::ImplItem(_)
+            | OwnerNode::TraitItem(_)
+            | OwnerNode::Item(_) => panic!(),
+        }
+    }
+}
+
+impl<'hir> Into<OwnerNode<'hir>> for &'hir Item<'hir> {
+    fn into(self) -> OwnerNode<'hir> {
+        OwnerNode::Item(self)
+    }
+}
+
+impl<'hir> Into<OwnerNode<'hir>> for &'hir ForeignItem<'hir> {
+    fn into(self) -> OwnerNode<'hir> {
+        OwnerNode::ForeignItem(self)
+    }
+}
+
+impl<'hir> Into<OwnerNode<'hir>> for &'hir ImplItem<'hir> {
+    fn into(self) -> OwnerNode<'hir> {
+        OwnerNode::ImplItem(self)
+    }
+}
+
+impl<'hir> Into<OwnerNode<'hir>> for &'hir TraitItem<'hir> {
+    fn into(self) -> OwnerNode<'hir> {
+        OwnerNode::TraitItem(self)
+    }
+}
+
+impl<'hir> Into<OwnerNode<'hir>> for &'hir MacroDef<'hir> {
+    fn into(self) -> OwnerNode<'hir> {
+        OwnerNode::MacroDef(self)
+    }
+}
+
+impl<'hir> Into<Node<'hir>> for OwnerNode<'hir> {
+    fn into(self) -> Node<'hir> {
+        match self {
+            OwnerNode::Item(n) => Node::Item(n),
+            OwnerNode::ForeignItem(n) => Node::ForeignItem(n),
+            OwnerNode::ImplItem(n) => Node::ImplItem(n),
+            OwnerNode::TraitItem(n) => Node::TraitItem(n),
+            OwnerNode::MacroDef(n) => Node::MacroDef(n),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]

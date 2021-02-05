@@ -83,7 +83,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s or attributes as
         // well (_e.g._, `Copy`), these are wrongly bundled in there too, so we need to fix that by
         // moving them back to their correct locations.
-        'exported_macros: for def in krate.exported_macros {
+        'exported_macros: for def in krate.exported_macros() {
             // The `def` of a macro in `exported_macros` should correspond to either:
             //  - a `#[macro_export] macro_rules!` macro,
             //  - a built-in `derive` (or attribute) macro such as the ones in `::core`,

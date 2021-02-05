@@ -439,7 +439,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         krate.visit_all_item_likes(&mut self.as_deep_visitor());
-        for macro_def in krate.exported_macros {
+        for macro_def in krate.exported_macros() {
             self.visit_macro_def(macro_def);
         }
     }
