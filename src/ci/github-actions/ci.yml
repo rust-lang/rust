@@ -126,12 +126,12 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/should-skip-this.sh
         <<: *step
 
-      - name: configure GitHub Actions to kill the build when outdated
-        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-        with:
-          github_token: "${{ secrets.github_token }}"
-        if: success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'
-        <<: *step
+      #- name: configure GitHub Actions to kill the build when outdated
+      #  uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      #  with:
+      #    github_token: "${{ secrets.github_token }}"
+      #  if: success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'
+      #  <<: *step
 
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
