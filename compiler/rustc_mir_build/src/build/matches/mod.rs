@@ -1422,12 +1422,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match test.kind {
             TestKind::SwitchInt { switch_ty, ref mut options } => {
                 for candidate in candidates.iter() {
-                    if !self.add_cases_to_switch(
-                        &match_place,
-                        candidate,
-                        switch_ty,
-                        options,
-                    ) {
+                    if !self.add_cases_to_switch(&match_place, candidate, switch_ty, options) {
                         break;
                     }
                 }
@@ -1842,14 +1837,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // ```
             //
             // and that is clearly not correct.
-            let by_value_bindings =
-                parent_bindings
-                    .iter()
-                    .flat_map(|(bindings, _)| bindings)
-                    .chain(&candidate.bindings)
-                    .filter(|binding| {
-                        matches!(binding.binding_mode, BindingMode::ByValue )
-                    });
+            let by_value_bindings = parent_bindings
+                .iter()
+                .flat_map(|(bindings, _)| bindings)
+                .chain(&candidate.bindings)
+                .filter(|binding| matches!(binding.binding_mode, BindingMode::ByValue));
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.
             for binding in by_value_bindings.clone() {

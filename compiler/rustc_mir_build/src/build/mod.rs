@@ -76,7 +76,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             kind: hir::TraitItemKind::Const(ty, Some(body_id)),
             ..
         }) => (*body_id, ty.span, None),
-        Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => (*body, tcx.hir().span(*hir_id), None),
+        Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => {
+            (*body, tcx.hir().span(*hir_id), None)
+        }
 
         _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def.did),
     };
@@ -184,7 +186,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 return_ty,
                 return_ty_span,
                 body,
-                span_with_body
+                span_with_body,
             );
             mir.yield_ty = yield_ty;
             mir
@@ -582,7 +584,7 @@ fn construct_fn<'a, 'tcx, A>(
     return_ty: Ty<'tcx>,
     return_ty_span: Span,
     body: &'tcx hir::Body<'tcx>,
-    span_with_body: Span
+    span_with_body: Span,
 ) -> Body<'tcx>
 where
     A: Iterator<Item = ArgInfo<'tcx>>,
@@ -658,7 +660,8 @@ fn construct_const<'a, 'tcx>(
     let owner_id = tcx.hir().body_owner(body_id);
     let def_id = tcx.hir().local_def_id(owner_id);
     let span = tcx.hir().span(owner_id);
-    let mut builder = Builder::new(hir, def_id.to_def_id(), span, 0, Safety::Safe, const_ty, const_ty_span, None);
+    let mut builder =
+        Builder::new(hir, def_id.to_def_id(), span, 0, Safety::Safe, const_ty, const_ty_span, None);
 
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
@@ -698,7 +701,8 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
         hir::BodyOwnerKind::Const => 0,
         hir::BodyOwnerKind::Static(_) => 0,
     };
-    let mut builder = Builder::new(hir, def_id.to_def_id(), span, num_params, Safety::Safe, ty, span, None);
+    let mut builder =
+        Builder::new(hir, def_id.to_def_id(), span, num_params, Safety::Safe, ty, span, None);
     let source_info = builder.source_info(span);
     // Some MIR passes will expect the number of parameters to match the
     // function declaration.

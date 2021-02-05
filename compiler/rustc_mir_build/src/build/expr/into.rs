@@ -275,7 +275,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fields: Vec<_> = if let Some(FruInfo { base, field_types }) = base {
                     let place_builder = unpack!(block = this.as_place_builder(block, base));
 
-
                     // MIR does not natively support FRU, so for each
                     // base-supplied field, generate an operand that
                     // reads it from the base.

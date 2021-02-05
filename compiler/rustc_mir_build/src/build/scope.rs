@@ -458,7 +458,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let breakable_scope = self.scopes.breakable_scopes.pop().unwrap();
         assert!(breakable_scope.region_scope == region_scope);
         let break_block = self.build_exit_tree(breakable_scope.break_drops, None);
-        if let Some(drops) = breakable_scope.continue_drops { self.build_exit_tree(drops, loop_block); }
+        if let Some(drops) = breakable_scope.continue_drops {
+            self.build_exit_tree(drops, loop_block);
+        }
         match (normal_exit_block, break_block) {
             (Some(block), None) | (None, Some(block)) => block,
             (None, None) => self.cfg.start_new_block().unit(),
@@ -1364,7 +1366,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::InlineAsm {.. } => {
+            | TerminatorKind::InlineAsm { .. } => {
                 span_bug!(term.source_info.span, "cannot unwind from {:?}", term.kind)
             }
         }
