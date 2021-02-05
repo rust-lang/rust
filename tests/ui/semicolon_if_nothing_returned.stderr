@@ -1,5 +1,5 @@
 error: add `;` to terminate block
-  --> $DIR/semicolon_if_nothing_returned.rs:7:5
+  --> $DIR/semicolon_if_nothing_returned.rs:8:5
    |
 LL |     println!("Hello")
    |     ^^^^^^^^^^^^^^^^^
@@ -8,10 +8,16 @@ LL |     println!("Hello")
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: add `;` to terminate block
-  --> $DIR/semicolon_if_nothing_returned.rs:11:5
+  --> $DIR/semicolon_if_nothing_returned.rs:12:5
    |
 LL |     get_unit()
    |     ^^^^^^^^^^ help: add `;`: `get_unit();`
 
-error: aborting due to 2 previous errors
+error: add `;` to terminate block
+  --> $DIR/semicolon_if_nothing_returned.rs:17:5
+   |
+LL |     y = x + 1
+   |     ^^^^^^^^^ help: add `;`: `y = x + 1;`
+
+error: aborting due to 3 previous errors
 

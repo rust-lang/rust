@@ -1,9 +1,8 @@
-use crate::utils::{match_def_path, paths, span_lint_and_then, sugg};
+use crate::utils::{in_macro, span_lint_and_then, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -20,13 +19,13 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// fn main() {
-    /// println!("Hello world")
+    ///     println!("Hello world")
     /// }
     /// ```
     /// Use instead:
     /// ```rust
     /// fn main() {
-    /// println!("Hello world");
+    ///     println!("Hello world");
     /// }
     /// ```
     pub SEMICOLON_IF_NOTHING_RETURNED,
@@ -39,10 +38,19 @@ declare_lint_pass!(SemicolonIfNothingReturned => [SEMICOLON_IF_NOTHING_RETURNED]
 impl LateLintPass<'_> for SemicolonIfNothingReturned {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if_chain! {
+            if !in_macro(block.span);
             if let Some(expr) = block.expr;
             let t_expr = cx.typeck_results().expr_ty(expr);
             if t_expr.is_unit();
             then {
+                match expr.kind {
+                    ExprKind::Loop(..) | 
+                    ExprKind::Match(..) | 
+                    ExprKind::Block(..) | 
+                    ExprKind::If(..) if !in_macro(expr.span) => return,
+                   _ => (),
+                }
+
                 let sugg = sugg::Sugg::hir(cx, &expr, "..");
                 let suggestion = format!("{0};", sugg);
                 span_lint_and_then(
