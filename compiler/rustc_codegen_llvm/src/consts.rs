@@ -8,9 +8,7 @@ use crate::value::Value;
 use libc::c_uint;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
     read_target_uint, Allocation, ErrorHandled, GlobalAlloc, Pointer,
@@ -18,7 +16,6 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::sym;
 use rustc_target::abi::{AddressSpace, Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size};
 use tracing::debug;
 
@@ -209,70 +206,42 @@ impl CodegenCx<'ll, 'tcx> {
 
         let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
         let sym = self.tcx.symbol_name(instance).name;
+        let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
 
-        debug!("get_static: sym={} instance={:?}", sym, instance);
+        debug!("get_static: sym={} instance={:?} fn_attrs={:?}", sym, instance, fn_attrs);
 
-        let g = if let Some(local_def_id) = def_id.as_local() {
-            let id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
+        let g = if def_id.is_local() && !self.tcx.is_foreign_item(def_id) {
             let llty = self.layout_of(ty).llvm_type(self);
-            // FIXME: refactor this to work without accessing the HIR
-            let (g, attrs) = match self.tcx.hir().get(id) {
-                Node::Item(&hir::Item { attrs, kind: hir::ItemKind::Static(..), .. }) => {
-                    if let Some(g) = self.get_declared_value(sym) {
-                        if self.val_ty(g) != self.type_ptr_to(llty) {
-                            span_bug!(self.tcx.def_span(def_id), "Conflicting types for static");
-                        }
-                    }
-
-                    let g = self.declare_global(sym, llty);
-
-                    if !self.tcx.is_reachable_non_generic(local_def_id) {
-                        unsafe {
-                            llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
-                        }
-                    }
-
-                    (g, attrs)
+            if let Some(g) = self.get_declared_value(sym) {
+                if self.val_ty(g) != self.type_ptr_to(llty) {
+                    span_bug!(self.tcx.def_span(def_id), "Conflicting types for static");
                 }
+            }
 
-                Node::ForeignItem(&hir::ForeignItem {
-                    ref attrs,
-                    kind: hir::ForeignItemKind::Static(..),
-                    ..
-                }) => {
-                    let fn_attrs = self.tcx.codegen_fn_attrs(local_def_id);
-                    (check_and_apply_linkage(&self, &fn_attrs, ty, sym, def_id), &**attrs)
-                }
+            let g = self.declare_global(sym, llty);
 
-                item => bug!("get_static: expected static, found {:?}", item),
-            };
-
-            debug!("get_static: sym={} attrs={:?}", sym, attrs);
-
-            for attr in attrs {
-                if self.tcx.sess.check_name(attr, sym::thread_local) {
-                    llvm::set_thread_local_mode(g, self.tls_model);
+            if !self.tcx.is_reachable_non_generic(def_id) {
+                unsafe {
+                    llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
                 }
             }
 
             g
         } else {
-            // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
-            debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
+            check_and_apply_linkage(&self, &fn_attrs, ty, sym, def_id)
+        };
 
-            let attrs = self.tcx.codegen_fn_attrs(def_id);
-            let g = check_and_apply_linkage(&self, &attrs, ty, sym, def_id);
+        // Thread-local statics in some other crate need to *always* be linked
+        // against in a thread-local fashion, so we need to be sure to apply the
+        // thread-local attribute locally if it was present remotely. If we
+        // don't do this then linker errors can be generated where the linker
+        // complains that one object files has a thread local version of the
+        // symbol and another one doesn't.
+        if fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
+            llvm::set_thread_local_mode(g, self.tls_model);
+        }
 
-            // Thread-local statics in some other crate need to *always* be linked
-            // against in a thread-local fashion, so we need to be sure to apply the
-            // thread-local attribute locally if it was present remotely. If we
-            // don't do this then linker errors can be generated where the linker
-            // complains that one object files has a thread local version of the
-            // symbol and another one doesn't.
-            if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
-                llvm::set_thread_local_mode(g, self.tls_model);
-            }
-
+        if !def_id.is_local() {
             let needs_dll_storage_attr = self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
@@ -304,8 +273,7 @@ impl CodegenCx<'ll, 'tcx> {
                     }
                 }
             }
-            g
-        };
+        }
 
         if self.use_dll_storage_attrs && self.tcx.is_dllimport_foreign_item(def_id) {
             // For foreign (native) libs we know the exact storage type to use.
