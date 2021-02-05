@@ -345,6 +345,37 @@ impl fmt::Display for CaseType {
     }
 }
 
+#[derive(Debug)]
+pub enum IdentType {
+    Argument,
+    Constant,
+    Enum,
+    Field,
+    Function,
+    StaticVariable,
+    Structure,
+    Variable,
+    Variant,
+}
+
+impl fmt::Display for IdentType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let repr = match self {
+            IdentType::Argument => "Argument",
+            IdentType::Constant => "Constant",
+            IdentType::Enum => "Enum",
+            IdentType::Field => "Field",
+            IdentType::Function => "Function",
+            IdentType::StaticVariable => "Static variable",
+            IdentType::Structure => "Structure",
+            IdentType::Variable => "Variable",
+            IdentType::Variant => "Variant",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
 // Diagnostic: incorrect-ident-case
 //
 // This diagnostic is triggered if an item name doesn't follow https://doc.rust-lang.org/1.0.0/style/style/naming/README.html[Rust naming convention].
@@ -353,7 +384,7 @@ pub struct IncorrectCase {
     pub file: HirFileId,
     pub ident: AstPtr<ast::Name>,
     pub expected_case: CaseType,
-    pub ident_type: String,
+    pub ident_type: IdentType,
     pub ident_text: String,
     pub suggested_text: String,
 }

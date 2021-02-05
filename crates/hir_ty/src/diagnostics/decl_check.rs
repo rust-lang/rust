@@ -23,6 +23,7 @@ use hir_expand::{
     diagnostics::DiagnosticSink,
     name::{AsName, Name},
 };
+use stdx::{always, never};
 use syntax::{
     ast::{self, NameOwner},
     AstNode, AstPtr,
@@ -31,7 +32,7 @@ use test_utils::mark;
 
 use crate::{
     db::HirDatabase,
-    diagnostics::{decl_check::case_conv::*, CaseType, IncorrectCase},
+    diagnostics::{decl_check::case_conv::*, CaseType, IdentType, IncorrectCase},
 };
 
 mod allow {
@@ -40,7 +41,7 @@ mod allow {
     pub(super) const NON_CAMEL_CASE_TYPES: &str = "non_camel_case_types";
 }
 
-pub(super) struct DeclValidator<'a, 'b: 'a> {
+pub(super) struct DeclValidator<'a, 'b> {
     db: &'a dyn HirDatabase,
     krate: CrateId,
     sink: &'a mut DiagnosticSink<'b>,
@@ -77,7 +78,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             AdtId::StructId(struct_id) => self.validate_struct(struct_id),
             AdtId::EnumId(enum_id) => self.validate_enum(enum_id),
             AdtId::UnionId(_) => {
-                // Unions aren't yet supported by this validator.
+                // FIXME: Unions aren't yet supported by this validator.
             }
         }
     }
@@ -111,63 +112,50 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
         // Check the function name.
         let function_name = data.name.to_string();
-        let fn_name_replacement = if let Some(new_name) = to_lower_snake_case(&function_name) {
-            let replacement = Replacement {
-                current_name: data.name.clone(),
-                suggested_text: new_name,
-                expected_case: CaseType::LowerSnakeCase,
-            };
-            Some(replacement)
-        } else {
-            None
-        };
+        let fn_name_replacement = to_lower_snake_case(&function_name).map(|new_name| Replacement {
+            current_name: data.name.clone(),
+            suggested_text: new_name,
+            expected_case: CaseType::LowerSnakeCase,
+        });
 
         // Check the param names.
-        let mut fn_param_replacements = Vec::new();
-
-        for pat_id in body.params.iter().cloned() {
-            let pat = &body[pat_id];
-
-            let param_name = match pat {
-                Pat::Bind { name, .. } => name,
-                _ => continue,
-            };
-
-            let name = param_name.to_string();
-            if let Some(new_name) = to_lower_snake_case(&name) {
-                let replacement = Replacement {
+        let fn_param_replacements = body
+            .params
+            .iter()
+            .filter_map(|&id| match &body[id] {
+                Pat::Bind { name, .. } => Some(name),
+                _ => None,
+            })
+            .filter_map(|param_name| {
+                Some(Replacement {
                     current_name: param_name.clone(),
-                    suggested_text: new_name,
+                    suggested_text: to_lower_snake_case(&param_name.to_string())?,
                     expected_case: CaseType::LowerSnakeCase,
-                };
-                fn_param_replacements.push(replacement);
-            }
-        }
+                })
+            })
+            .collect();
 
         // Check the patterns inside the function body.
-        let mut pats_replacements = Vec::new();
-
-        for (pat_idx, pat) in body.pats.iter() {
-            if body.params.contains(&pat_idx) {
-                // We aren't interested in function parameters, we've processed them above.
-                continue;
-            }
-
-            let bind_name = match pat {
-                Pat::Bind { name, .. } => name,
-                _ => continue,
-            };
-
-            let name = bind_name.to_string();
-            if let Some(new_name) = to_lower_snake_case(&name) {
-                let replacement = Replacement {
-                    current_name: bind_name.clone(),
-                    suggested_text: new_name,
-                    expected_case: CaseType::LowerSnakeCase,
-                };
-                pats_replacements.push((pat_idx, replacement));
-            }
-        }
+        let pats_replacements = body
+            .pats
+            .iter()
+            // We aren't interested in function parameters, we've processed them above.
+            .filter(|(pat_idx, _)| !body.params.contains(&pat_idx))
+            .filter_map(|(id, pat)| match pat {
+                Pat::Bind { name, .. } => Some((id, name)),
+                _ => None,
+            })
+            .filter_map(|(id, bind_name)| {
+                Some((
+                    id,
+                    Replacement {
+                        current_name: bind_name.clone(),
+                        suggested_text: to_lower_snake_case(&bind_name.to_string())?,
+                        expected_case: CaseType::LowerSnakeCase,
+                    },
+                ))
+            })
+            .collect();
 
         // If there is at least one element to spawn a warning on, go to the source map and generate a warning.
         self.create_incorrect_case_diagnostic_for_func(
@@ -199,8 +187,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             let ast_ptr = match fn_src.value.name() {
                 Some(name) => name,
                 None => {
-                    // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
-                    log::error!(
+                    never!(
                         "Replacement ({:?}) was generated for a function without a name: {:?}",
                         replacement,
                         fn_src
@@ -211,7 +198,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
             let diagnostic = IncorrectCase {
                 file: fn_src.file_id,
-                ident_type: "Function".to_string(),
+                ident_type: IdentType::Function,
                 ident: AstPtr::new(&ast_ptr).into(),
                 expected_case: replacement.expected_case,
                 ident_text: replacement.current_name.to_string(),
@@ -225,12 +212,12 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let fn_params_list = match fn_src.value.param_list() {
             Some(params) => params,
             None => {
-                if !fn_param_replacements.is_empty() {
-                    log::error!(
-                        "Replacements ({:?}) were generated for a function parameters which had no parameters list: {:?}",
-                        fn_param_replacements, fn_src
-                    );
-                }
+                always!(
+                    fn_param_replacements.is_empty(),
+                    "Replacements ({:?}) were generated for a function parameters which had no parameters list: {:?}",
+                    fn_param_replacements,
+                    fn_src
+                );
                 return;
             }
         };
@@ -240,23 +227,25 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             // actual params list, but just some of them (ones that named correctly) are skipped.
             let ast_ptr: ast::Name = loop {
                 match fn_params_iter.next() {
-                    Some(element)
-                        if pat_equals_to_name(element.pat(), &param_to_rename.current_name) =>
-                    {
-                        if let ast::Pat::IdentPat(pat) = element.pat().unwrap() {
-                            break pat.name().unwrap();
-                        } else {
-                            // This is critical. If we consider this parameter the expected one,
-                            // it **must** have a name.
-                            panic!(
-                                "Pattern {:?} equals to expected replacement {:?}, but has no name",
-                                element, param_to_rename
-                            );
+                    Some(element) => {
+                        if let Some(ast::Pat::IdentPat(pat)) = element.pat() {
+                            if pat.to_string() == param_to_rename.current_name.to_string() {
+                                if let Some(name) = pat.name() {
+                                    break name;
+                                }
+                                // This is critical. If we consider this parameter the expected one,
+                                // it **must** have a name.
+                                never!(
+                                    "Pattern {:?} equals to expected replacement {:?}, but has no name",
+                                    element,
+                                    param_to_rename
+                                );
+                                return;
+                            }
                         }
                     }
-                    Some(_) => {}
                     None => {
-                        log::error!(
+                        never!(
                             "Replacement ({:?}) was generated for a function parameter which was not found: {:?}",
                             param_to_rename, fn_src
                         );
@@ -267,7 +256,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
             let diagnostic = IncorrectCase {
                 file: fn_src.file_id,
-                ident_type: "Argument".to_string(),
+                ident_type: IdentType::Argument,
                 ident: AstPtr::new(&ast_ptr).into(),
                 expected_case: param_to_rename.expected_case,
                 ident_text: param_to_rename.current_name.to_string(),
@@ -309,8 +298,8 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
                         // We have to check that it's either `let var = ...` or `var @ Variant(_)` statement,
                         // because e.g. match arms are patterns as well.
                         // In other words, we check that it's a named variable binding.
-                        let is_binding = ast::LetStmt::cast(parent.clone()).is_some()
-                            || (ast::MatchArm::cast(parent).is_some()
+                        let is_binding = ast::LetStmt::can_cast(parent.kind())
+                            || (ast::MatchArm::can_cast(parent.kind())
                                 && ident_pat.at_token().is_some());
                         if !is_binding {
                             // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
@@ -319,7 +308,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
                         let diagnostic = IncorrectCase {
                             file: source_ptr.file_id,
-                            ident_type: "Variable".to_string(),
+                            ident_type: IdentType::Variable,
                             ident: AstPtr::new(&name_ast).into(),
                             expected_case: replacement.expected_case,
                             ident_text: replacement.current_name.to_string(),
@@ -341,17 +330,12 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
         // Check the structure name.
         let struct_name = data.name.to_string();
-        let struct_name_replacement = if let Some(new_name) = to_camel_case(&struct_name) {
-            let replacement = Replacement {
+        let struct_name_replacement = if !non_camel_case_allowed {
+            to_camel_case(&struct_name).map(|new_name| Replacement {
                 current_name: data.name.clone(),
                 suggested_text: new_name,
                 expected_case: CaseType::UpperCamelCase,
-            };
-            if non_camel_case_allowed {
-                None
-            } else {
-                Some(replacement)
-            }
+            })
         } else {
             None
         };
@@ -403,8 +387,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             let ast_ptr = match struct_src.value.name() {
                 Some(name) => name,
                 None => {
-                    // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
-                    log::error!(
+                    never!(
                         "Replacement ({:?}) was generated for a structure without a name: {:?}",
                         replacement,
                         struct_src
@@ -415,7 +398,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
             let diagnostic = IncorrectCase {
                 file: struct_src.file_id,
-                ident_type: "Structure".to_string(),
+                ident_type: IdentType::Structure,
                 ident: AstPtr::new(&ast_ptr).into(),
                 expected_case: replacement.expected_case,
                 ident_text: replacement.current_name.to_string(),
@@ -428,12 +411,12 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let struct_fields_list = match struct_src.value.field_list() {
             Some(ast::FieldList::RecordFieldList(fields)) => fields,
             _ => {
-                if !struct_fields_replacements.is_empty() {
-                    log::error!(
-                        "Replacements ({:?}) were generated for a structure fields which had no fields list: {:?}",
-                        struct_fields_replacements, struct_src
-                    );
-                }
+                always!(
+                    struct_fields_replacements.is_empty(),
+                    "Replacements ({:?}) were generated for a structure fields which had no fields list: {:?}",
+                    struct_fields_replacements,
+                    struct_src
+                );
                 return;
             }
         };
@@ -442,13 +425,14 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             // We assume that parameters in replacement are in the same order as in the
             // actual params list, but just some of them (ones that named correctly) are skipped.
             let ast_ptr = loop {
-                match struct_fields_iter.next() {
-                    Some(element) if names_equal(element.name(), &field_to_rename.current_name) => {
-                        break element.name().unwrap()
+                match struct_fields_iter.next().and_then(|field| field.name()) {
+                    Some(field_name) => {
+                        if field_name.as_name() == field_to_rename.current_name {
+                            break field_name;
+                        }
                     }
-                    Some(_) => {}
                     None => {
-                        log::error!(
+                        never!(
                             "Replacement ({:?}) was generated for a structure field which was not found: {:?}",
                             field_to_rename, struct_src
                         );
@@ -459,7 +443,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
             let diagnostic = IncorrectCase {
                 file: struct_src.file_id,
-                ident_type: "Field".to_string(),
+                ident_type: IdentType::Field,
                 ident: AstPtr::new(&ast_ptr).into(),
                 expected_case: field_to_rename.expected_case,
                 ident_text: field_to_rename.current_name.to_string(),
@@ -480,31 +464,24 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
         // Check the enum name.
         let enum_name = data.name.to_string();
-        let enum_name_replacement = if let Some(new_name) = to_camel_case(&enum_name) {
-            let replacement = Replacement {
-                current_name: data.name.clone(),
-                suggested_text: new_name,
-                expected_case: CaseType::UpperCamelCase,
-            };
-            Some(replacement)
-        } else {
-            None
-        };
+        let enum_name_replacement = to_camel_case(&enum_name).map(|new_name| Replacement {
+            current_name: data.name.clone(),
+            suggested_text: new_name,
+            expected_case: CaseType::UpperCamelCase,
+        });
 
         // Check the field names.
-        let mut enum_fields_replacements = Vec::new();
-
-        for (_, variant) in data.variants.iter() {
-            let variant_name = variant.name.to_string();
-            if let Some(new_name) = to_camel_case(&variant_name) {
-                let replacement = Replacement {
+        let enum_fields_replacements = data
+            .variants
+            .iter()
+            .filter_map(|(_, variant)| {
+                Some(Replacement {
                     current_name: variant.name.clone(),
-                    suggested_text: new_name,
+                    suggested_text: to_camel_case(&variant.name.to_string())?,
                     expected_case: CaseType::UpperCamelCase,
-                };
-                enum_fields_replacements.push(replacement);
-            }
-        }
+                })
+            })
+            .collect();
 
         // If there is at least one element to spawn a warning on, go to the source map and generate a warning.
         self.create_incorrect_case_diagnostic_for_enum(
@@ -534,8 +511,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             let ast_ptr = match enum_src.value.name() {
                 Some(name) => name,
                 None => {
-                    // We don't want rust-analyzer to panic over this, but it is definitely some kind of error in the logic.
-                    log::error!(
+                    never!(
                         "Replacement ({:?}) was generated for a enum without a name: {:?}",
                         replacement,
                         enum_src
@@ -546,7 +522,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
             let diagnostic = IncorrectCase {
                 file: enum_src.file_id,
-                ident_type: "Enum".to_string(),
+                ident_type: IdentType::Enum,
                 ident: AstPtr::new(&ast_ptr).into(),
                 expected_case: replacement.expected_case,
                 ident_text: replacement.current_name.to_string(),
@@ -559,12 +535,12 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let enum_variants_list = match enum_src.value.variant_list() {
             Some(variants) => variants,
             _ => {
-                if !enum_variants_replacements.is_empty() {
-                    log::error!(
-                        "Replacements ({:?}) were generated for a enum variants which had no fields list: {:?}",
-                        enum_variants_replacements, enum_src
-                    );
-                }
+                always!(
+                    enum_variants_replacements.is_empty(),
+                    "Replacements ({:?}) were generated for a enum variants which had no fields list: {:?}",
+                    enum_variants_replacements,
+                    enum_src
+                );
                 return;
             }
         };
@@ -573,15 +549,14 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             // We assume that parameters in replacement are in the same order as in the
             // actual params list, but just some of them (ones that named correctly) are skipped.
             let ast_ptr = loop {
-                match enum_variants_iter.next() {
-                    Some(variant)
-                        if names_equal(variant.name(), &variant_to_rename.current_name) =>
-                    {
-                        break variant.name().unwrap()
+                match enum_variants_iter.next().and_then(|v| v.name()) {
+                    Some(variant_name) => {
+                        if variant_name.as_name() == variant_to_rename.current_name {
+                            break variant_name;
+                        }
                     }
-                    Some(_) => {}
                     None => {
-                        log::error!(
+                        never!(
                             "Replacement ({:?}) was generated for a enum variant which was not found: {:?}",
                             variant_to_rename, enum_src
                         );
@@ -592,7 +567,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
             let diagnostic = IncorrectCase {
                 file: enum_src.file_id,
-                ident_type: "Variant".to_string(),
+                ident_type: IdentType::Variant,
                 ident: AstPtr::new(&ast_ptr).into(),
                 expected_case: variant_to_rename.expected_case,
                 ident_text: variant_to_rename.current_name.to_string(),
@@ -637,7 +612,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
         let diagnostic = IncorrectCase {
             file: const_src.file_id,
-            ident_type: "Constant".to_string(),
+            ident_type: IdentType::Constant,
             ident: AstPtr::new(&ast_ptr).into(),
             expected_case: replacement.expected_case,
             ident_text: replacement.current_name.to_string(),
@@ -685,7 +660,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
         let diagnostic = IncorrectCase {
             file: static_src.file_id,
-            ident_type: "Static variable".to_string(),
+            ident_type: IdentType::StaticVariable,
             ident: AstPtr::new(&ast_ptr).into(),
             expected_case: replacement.expected_case,
             ident_text: replacement.current_name.to_string(),
@@ -693,22 +668,6 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         };
 
         self.sink.push(diagnostic);
-    }
-}
-
-fn names_equal(left: Option<ast::Name>, right: &Name) -> bool {
-    if let Some(left) = left {
-        &left.as_name() == right
-    } else {
-        false
-    }
-}
-
-fn pat_equals_to_name(pat: Option<ast::Pat>, name: &Name) -> bool {
-    if let Some(ast::Pat::IdentPat(ident)) = pat {
-        ident.to_string() == name.to_string()
-    } else {
-        false
     }
 }
 
