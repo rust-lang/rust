@@ -111,11 +111,12 @@ use rustc_macros::HashStable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::Endian;
+use rustc_type_ir::Interner;
 
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, Instance, Ty, TyCtxt};
+use crate::ty::{self, Instance, Ty, TyCtxt, TyInterner};
 
 pub use self::error::{
     struct_error, CheckInAllocMsg, ErrorHandled, EvalToAllocationRawResult, EvalToConstValueResult,
@@ -301,7 +302,9 @@ impl<'s> AllocDecodingSession<'s> {
                         AllocDiscriminant::Alloc => {
                             // If this is an allocation, we need to reserve an
                             // `AllocId` so we can decode cyclic graphs.
-                            let alloc_id = decoder.tcx().reserve_alloc_id();
+                            let alloc_id = <TyInterner<'tcx> as Interner<D>>::reserve_alloc_id(
+                                decoder.interner(),
+                            );
                             *entry =
                                 State::InProgress(TinyList::new_single(self.session_id), alloc_id);
                             Some(alloc_id)
@@ -345,7 +348,11 @@ impl<'s> AllocDecodingSession<'s> {
                     // We already have a reserved `AllocId`.
                     let alloc_id = alloc_id.unwrap();
                     trace!("decoded alloc {:?}: {:#?}", alloc_id, alloc);
-                    decoder.tcx().set_alloc_id_same_memory(alloc_id, alloc);
+                    <TyInterner<'tcx> as Interner<D>>::set_alloc_id_same_memory(
+                        decoder.interner(),
+                        alloc_id,
+                        alloc,
+                    );
                     Ok(alloc_id)
                 }
                 AllocDiscriminant::Fn => {
@@ -353,7 +360,10 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("creating fn alloc ID");
                     let instance = ty::Instance::decode(decoder)?;
                     trace!("decoded fn alloc instance: {:?}", instance);
-                    let alloc_id = decoder.tcx().create_fn_alloc(instance);
+                    let alloc_id = <TyInterner<'tcx> as Interner<D>>::create_fn_alloc(
+                        decoder.interner(),
+                        instance,
+                    );
                     Ok(alloc_id)
                 }
                 AllocDiscriminant::Static => {
@@ -361,7 +371,10 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("creating extern static alloc ID");
                     let did = <DefId as Decodable<D>>::decode(decoder)?;
                     trace!("decoded static def-ID: {:?}", did);
-                    let alloc_id = decoder.tcx().create_static_alloc(did);
+                    let alloc_id = <TyInterner<'tcx> as Interner<D>>::create_static_alloc(
+                        decoder.interner(),
+                        did,
+                    );
                     Ok(alloc_id)
                 }
             }
@@ -545,7 +558,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
-    fn set_alloc_id_same_memory(self, id: AllocId, mem: &'tcx Allocation) {
+    pub fn set_alloc_id_same_memory(self, id: AllocId, mem: &'tcx Allocation) {
         self.alloc_map.lock().alloc_map.insert_same(id, GlobalAlloc::Memory(mem));
     }
 }

@@ -23,11 +23,39 @@ pub trait Interner<D: Decoder> {
 
     type Ty;
     type TyKind;
+    type Allocation;
+    type AllocationId;
+
+    type InternedAllocation;
+    type Instance;
+    type DefId;
+
+    type CanonicalVarInfo;
+    type ListCanonicalVarInfo;
+
+    type RegionKind;
+    type Region;
+
+    type Const;
+    type InternedConst;
+    type DefPathHash;
 
     fn mk_predicate(self, binder: Self::BinderPredicateKind) -> Self::Predicate;
     fn mk_ty(self, st: Self::TyKind) -> Self::Ty;
     fn mk_substs<I: InternAs<[Self::GenericArg], Self::ListGenericArg>>(self, iter: I)
     -> I::Output;
+    fn intern_const_alloc(self, alloc: Self::Allocation) -> Self::InternedAllocation;
+    fn reserve_alloc_id(self) -> Self::AllocationId;
+    fn set_alloc_id_same_memory(self, id: Self::AllocationId, mem: Self::InternedAllocation);
+    fn create_fn_alloc(self, instance: Self::Instance) -> Self::AllocationId;
+    fn create_static_alloc(self, static_id: Self::DefId) -> Self::AllocationId;
+    fn intern_canonical_var_infos(
+        self,
+        ts: &[Self::CanonicalVarInfo],
+    ) -> Self::ListCanonicalVarInfo;
+    fn mk_region(self, kind: Self::RegionKind) -> Self::Region;
+    fn mk_const(self, c: Self::Const) -> Self::InternedConst;
+    fn def_path_hash_to_def_id(self, hash: Self::DefPathHash) -> Option<Self::DefId>;
 }
 
 pub trait InternAs<T: ?Sized, R> {

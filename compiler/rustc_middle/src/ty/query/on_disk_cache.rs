@@ -28,6 +28,7 @@ use rustc_span::hygiene::{
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::CachingSourceMapView;
 use rustc_span::{BytePos, ExpnData, SourceFile, Span, DUMMY_SP};
+use rustc_type_ir::Interner;
 use std::collections::hash_map::Entry;
 use std::iter::FromIterator;
 use std::mem;
@@ -909,12 +910,12 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
         // If we get to this point, then all of the query inputs were green,
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
-        Ok(d.tcx()
-            .on_disk_cache
-            .as_ref()
-            .unwrap()
-            .def_path_hash_to_def_id(d.tcx(), def_path_hash)
-            .unwrap())
+
+        let def_if = <TyInterner<'tcx> as Interner<CacheDecoder<'_, '_>>>::def_path_hash_to_def_id(
+            d.interner(),
+            def_path_hash,
+        );
+        Ok(def_if.unwrap())
     }
 }
 
