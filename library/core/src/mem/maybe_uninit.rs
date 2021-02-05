@@ -172,11 +172,42 @@ use crate::ptr;
 ///
 /// ## Initializing a struct field-by-field
 ///
-/// There is currently no supported way to create a raw pointer or reference
-/// to a field of a struct inside `MaybeUninit<Struct>`. That means it is not possible
-/// to create a struct by calling `MaybeUninit::uninit::<Struct>()` and then writing
-/// to its fields.
+/// You can use `MaybeUninit<T>`, and the [`std::ptr::addr_of_mut`] macro, to initialize structs field by field:
 ///
+/// ```rust
+/// use std::mem::MaybeUninit;
+/// use std::ptr::addr_of_mut;
+///
+/// #[derive(Debug, PartialEq)]
+/// pub struct Foo {
+///     name: String,
+///     list: Vec<u8>,
+/// }
+///
+/// let foo = {
+///     let mut uninit: MaybeUninit<Foo> = MaybeUninit::uninit();
+///     let ptr = uninit.as_mut_ptr();
+///
+///     // Initializing the `name` field
+///     unsafe { addr_of_mut!((*ptr).name).write("Bob".to_string()); }
+///
+///     // Initializing the `list` field
+///     // If there is a panic here, then the `String` in the `name` field leaks.
+///     unsafe { addr_of_mut!((*ptr).list).write(vec![0, 1, 2]); }
+///
+///     // All the fields are initialized, so we call `assume_init` to get an initialized Foo.
+///     unsafe { uninit.assume_init() }
+/// };
+///
+/// assert_eq!(
+///     foo,
+///     Foo {
+///         name: "Bob".to_string(),
+///         list: vec![0, 1, 2]
+///     }
+/// );
+/// ```
+/// [`std::ptr::addr_of_mut`]: crate::ptr::addr_of_mut
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Layout
