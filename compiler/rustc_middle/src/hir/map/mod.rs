@@ -554,8 +554,8 @@ impl<'hir> Map<'hir> {
     where
         V: Visitor<'hir>,
     {
-        for id in self.krate().exported_macros {
-            visitor.visit_macro_def(self.expect_macro_def(id.hir_id()));
+        for macro_def in self.krate().exported_macros() {
+            visitor.visit_macro_def(macro_def);
         }
     }
 

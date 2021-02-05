@@ -479,7 +479,7 @@ pub trait Visitor<'v>: Sized {
 /// Walks the contents of a crate. See also `Crate::visit_all_items`.
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
     visitor.visit_mod(&krate.item, krate.item.inner, CRATE_HIR_ID);
-    walk_list!(visitor, visit_macro_def, krate.exported_macros);
+    walk_list!(visitor, visit_macro_def, krate.exported_macros());
     for (&id, attrs) in krate.attrs.iter() {
         for a in *attrs {
             visitor.visit_attribute(id, a)

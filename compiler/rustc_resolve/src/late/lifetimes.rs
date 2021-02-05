@@ -1015,24 +1015,17 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                                 // Ensure that the parent of the def is an item, not HRTB
                                 let parent_id = self.tcx.hir().get_parent_node(hir_id);
-                                let parent_is_item = if let Some(parent_def_id) =
-                                    parent_id.as_owner()
-                                {
-                                    let parent_item_id = hir::ItemId { def_id: parent_def_id };
-                                    let parent_impl_id = hir::ImplItemId { def_id: parent_def_id };
-                                    let parent_trait_id =
-                                        hir::TraitItemId { def_id: parent_def_id };
-                                    let parent_foreign_id =
-                                        hir::ForeignItemId { def_id: parent_def_id };
-                                    let krate = self.tcx.hir().krate();
-
-                                    krate.items.contains_key(&parent_item_id)
-                                        || krate.impl_items.contains_key(&parent_impl_id)
-                                        || krate.trait_items.contains_key(&parent_trait_id)
-                                        || krate.foreign_items.contains_key(&parent_foreign_id)
-                                } else {
-                                    false
-                                };
+                                // FIXME(cjgillot) Can this check be replaced by
+                                // `let parent_is_item = parent_id.is_owner();`?
+                                let parent_is_item =
+                                    if let Some(parent_def_id) = parent_id.as_owner() {
+                                        matches!(
+                                            self.tcx.hir().krate().owners.get(parent_def_id),
+                                            Some(Some(_)),
+                                        )
+                                    } else {
+                                        false
+                                    };
 
                                 if !parent_is_item {
                                     if !self.trait_definition_only {
