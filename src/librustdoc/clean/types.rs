@@ -1087,8 +1087,6 @@ crate struct Function {
     crate decl: FnDecl,
     crate generics: Generics,
     crate header: hir::FnHeader,
-    crate all_types: Vec<(Type, TypeKind)>,
-    crate ret_types: Vec<(Type, TypeKind)>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1304,6 +1302,43 @@ crate enum TypeKind {
     Primitive,
 }
 
+impl From<hir::def::DefKind> for TypeKind {
+    fn from(other: hir::def::DefKind) -> Self {
+        match other {
+            hir::def::DefKind::Enum => Self::Enum,
+            hir::def::DefKind::Fn => Self::Function,
+            hir::def::DefKind::Mod => Self::Module,
+            hir::def::DefKind::Const => Self::Const,
+            hir::def::DefKind::Static => Self::Static,
+            hir::def::DefKind::Struct => Self::Struct,
+            hir::def::DefKind::Union => Self::Union,
+            hir::def::DefKind::Trait => Self::Trait,
+            hir::def::DefKind::TyAlias => Self::Typedef,
+            hir::def::DefKind::TraitAlias => Self::TraitAlias,
+            hir::def::DefKind::Macro(_) => Self::Macro,
+            hir::def::DefKind::ForeignTy
+            | hir::def::DefKind::Variant
+            | hir::def::DefKind::AssocTy
+            | hir::def::DefKind::TyParam
+            | hir::def::DefKind::ConstParam
+            | hir::def::DefKind::Ctor(..)
+            | hir::def::DefKind::AssocFn
+            | hir::def::DefKind::AssocConst
+            | hir::def::DefKind::ExternCrate
+            | hir::def::DefKind::Use
+            | hir::def::DefKind::ForeignMod
+            | hir::def::DefKind::AnonConst
+            | hir::def::DefKind::OpaqueTy
+            | hir::def::DefKind::Field
+            | hir::def::DefKind::LifetimeParam
+            | hir::def::DefKind::GlobalAsm
+            | hir::def::DefKind::Impl
+            | hir::def::DefKind::Closure
+            | hir::def::DefKind::Generator => Self::Foreign,
+        }
+    }
+}
+
 crate trait GetDefId {
     /// Use this method to get the [`DefId`] of a [`clean`] AST node.
     /// This will return [`None`] when called on a primitive [`clean::Type`].
@@ -1367,14 +1402,14 @@ impl Type {
         }
     }
 
-    crate fn generics(&self) -> Option<Vec<Type>> {
+    crate fn generics(&self) -> Option<Vec<&Type>> {
         match *self {
             ResolvedPath { ref path, .. } => path.segments.last().and_then(|seg| {
                 if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
                     Some(
                         args.iter()
                             .filter_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty.clone()),
+                                GenericArg::Type(ty) => Some(ty),
                                 _ => None,
                             })
                             .collect(),

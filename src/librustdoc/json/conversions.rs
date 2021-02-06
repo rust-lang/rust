@@ -238,7 +238,7 @@ fn stringify_header(header: &rustc_hir::FnHeader) -> String {
 
 impl From<clean::Function> for Function {
     fn from(function: clean::Function) -> Self {
-        let clean::Function { decl, generics, header, all_types: _, ret_types: _ } = function;
+        let clean::Function { decl, generics, header } = function;
         Function {
             decl: decl.into(),
             generics: generics.into(),
@@ -435,7 +435,7 @@ impl From<clean::Impl> for Impl {
 }
 
 crate fn from_function_method(function: clean::Function, has_body: bool) -> Method {
-    let clean::Function { header, decl, generics, all_types: _, ret_types: _ } = function;
+    let clean::Function { header, decl, generics } = function;
     Method {
         decl: decl.into(),
         generics: generics.into(),
