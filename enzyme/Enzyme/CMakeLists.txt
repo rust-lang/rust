@@ -84,12 +84,14 @@ else()
 endif()
 endif()
 
-add_library( Enzyme-${LLVM_VERSION_MAJOR}
-    SHARED
-    ${ENZYME_SRC}    
-)
-target_link_libraries(Enzyme-${LLVM_VERSION_MAJOR} LLVM)
-install(TARGETS Enzyme-${LLVM_VERSION_MAJOR} DESTINATION lib)
+if (${ENZYME_EXTERNAL_SHARED_LIB})
+    add_library( Enzyme-${LLVM_VERSION_MAJOR}
+        SHARED
+        ${ENZYME_SRC}    
+    )
+    target_link_libraries(Enzyme-${LLVM_VERSION_MAJOR} LLVM)
+    install(TARGETS Enzyme-${LLVM_VERSION_MAJOR} DESTINATION lib)
+endif()
 
 if (APPLE)
 # Darwin-specific linker flags for loadable modules.

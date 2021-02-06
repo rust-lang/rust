@@ -663,11 +663,11 @@ public:
               Value *inc = lookup(lc.incvar, Builder2);
               if (VectorType *VTy =
                       dyn_cast<VectorType>(SI.getOperand(0)->getType())) {
-                #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 13
                 inc = Builder2.CreateVectorSplat(VTy->getElementCount(), inc);
-                #else
+#else
                 inc = Builder2.CreateVectorSplat(VTy->getNumElements(), inc);
-                #endif
+#endif
               }
               Value *dif = Builder2.CreateSelect(
                   Builder2.CreateICmpEQ(gutils->lookupM(index, EB), inc),
@@ -773,14 +773,15 @@ public:
     getReverseBuilder(Builder2);
 
     auto loaded = diffe(&SVI, Builder2);
-    #if LLVM_VERSION_MAJOR >= 11
-    auto count = cast<VectorType>(SVI.getOperand(0)->getType())->getElementCount();
+#if LLVM_VERSION_MAJOR >= 13
+    auto count =
+        cast<VectorType>(SVI.getOperand(0)->getType())->getElementCount();
     assert(!count.isScalable());
     size_t l1 = count.getKnownMinValue();
-    #else
+#else
     size_t l1 =
         cast<VectorType>(SVI.getOperand(0)->getType())->getNumElements();
-    #endif
+#endif
     uint64_t instidx = 0;
 
     for (size_t idx : SVI.getShuffleMask()) {
@@ -1663,12 +1664,12 @@ public:
         }
         if (!gutils->isConstantValue(orig_ops[1])) {
           auto und = UndefValue::get(orig_ops[1]->getType());
-          auto mask = ConstantAggregateZero::get(
-              VectorType::get(Type::getInt32Ty(und->getContext()),
+          auto mask = ConstantAggregateZero::get(VectorType::get(
+              Type::getInt32Ty(und->getContext()),
 #if LLVM_VERSION_MAJOR >= 11
-                              cast<VectorType>(und->getType())->getElementCount()));
+              cast<VectorType>(und->getType())->getElementCount()));
 #else
-                              cast<VectorType>(und->getType())->getNumElements()));
+              cast<VectorType>(und->getType())->getNumElements()));
 #endif
           auto vec = Builder2.CreateShuffleVector(
               Builder2.CreateInsertElement(und, vdiff, (uint64_t)0), und, mask);

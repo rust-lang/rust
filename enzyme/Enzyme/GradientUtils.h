@@ -233,11 +233,11 @@ public:
     lbuilder.SetInsertPoint(lc.incvar->getNextNode());
     Value *red = lc.incvar;
     if (VectorType *VTy = dyn_cast<VectorType>(val->getType())) {
-      #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 13
       red = lbuilder.CreateVectorSplat(VTy->getElementCount(), red);
-      #else
+#else
       red = lbuilder.CreateVectorSplat(VTy->getNumElements(), red);
-      #endif
+#endif
     }
     if (auto inst = dyn_cast<Instruction>(val)) {
       if (DT.dominates(PN, inst))
@@ -1456,13 +1456,13 @@ if (Atomic) {
 #if LLVM_VERSION_MAJOR >= 9
   AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
   if (auto vt = dyn_cast<VectorType>(dif->getType())) {
-    #if LLVM_VERSION_MAJOR >= 11
-      AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
-          op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
-      if (align)
-        rmw->setAlignment(align.getValue());
-    #else
-    for (size_t i = 0; i < vt->getNumElements(); ++i) {
+#if LLVM_VERSION_MAJOR >= 13
+    assert(!vt->getElementCount().isScalable());
+    size_t numElems = vt->getElementCount().getKnownMinValue();
+#else
+    size_t numElems = vt->getNumElements();
+#endif
+    for (size_t i = 0; i < numElems; ++i) {
       auto vdif = BuilderM.CreateExtractElement(dif, i);
       Value *Idxs[] = {ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
                        ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
@@ -1477,7 +1477,6 @@ if (Atomic) {
                                SyncScope::System);
 #endif
     }
-    #endif
   } else {
 #if LLVM_VERSION_MAJOR >= 11
     AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
