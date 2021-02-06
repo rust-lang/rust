@@ -10,7 +10,7 @@ LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
    |     --- not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `std::result::Result<u32, &Void>`
+   = note: the matched value is of type `Result<u32, &Void>`
 
 error[E0004]: non-exhaustive patterns: type `&Void` is non-empty
   --> $DIR/uninhabited-matches-feature-gated.rs:15:19
@@ -64,7 +64,7 @@ LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
    |     --- not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `std::result::Result<u32, Void>`
+   = note: the matched value is of type `Result<u32, Void>`
 
 error[E0005]: refutable pattern in local binding: `Err(_)` not covered
   --> $DIR/uninhabited-matches-feature-gated.rs:37:9
@@ -79,7 +79,7 @@ LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
-   = note: the matched value is of type `std::result::Result<u32, Void>`
+   = note: the matched value is of type `Result<u32, Void>`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL |     if let Ok(x) = x { /* */ }

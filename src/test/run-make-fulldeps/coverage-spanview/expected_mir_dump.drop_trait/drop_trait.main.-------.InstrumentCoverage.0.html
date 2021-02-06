@@ -109,8 +109,8 @@ For revisions in Pull Requests (PR):
 20:9-20:43: @1[18]: _15 = &amp;(*_20)
 20:9-20:43: @1[19]: _14 = &amp;(*_15)
 20:9-20:43: @1[20]: _13 = move _14 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-20:9-20:43: @1.Call: _8 = Arguments::new_v1(move _9, move _13) -&gt; [return: bb3, unwind: bb11]
-20:9-20:43: @3.Call: _7 = _print(move _8) -&gt; [return: bb4, unwind: bb11]
+20:9-20:43: @1.Call: _8 = std::fmt::Arguments::new_v1(move _9, move _13) -&gt; [return: bb3, unwind: bb11]
+20:9-20:43: @3.Call: _7 = std::io::_print(move _8) -&gt; [return: bb4, unwind: bb11]
 20:9-20:43: @4[5]: _6 = const ()
 21:16-21:22: @4[7]: _0 = std::result::Result::&lt;(), u8&gt;::Err(const 1_u8)"><span class="annotation">@1,3,4,8,9⦊</span>println!("Exiting with error...");</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="20:18-20:41: @1[6]: _21 = const main::promoted[1]
@@ -123,8 +123,8 @@ For revisions in Pull Requests (PR):
 20:9-20:43: @1[18]: _15 = &amp;(*_20)
 20:9-20:43: @1[19]: _14 = &amp;(*_15)
 20:9-20:43: @1[20]: _13 = move _14 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-20:9-20:43: @1.Call: _8 = Arguments::new_v1(move _9, move _13) -&gt; [return: bb3, unwind: bb11]
-20:9-20:43: @3.Call: _7 = _print(move _8) -&gt; [return: bb4, unwind: bb11]
+20:9-20:43: @1.Call: _8 = std::fmt::Arguments::new_v1(move _9, move _13) -&gt; [return: bb3, unwind: bb11]
+20:9-20:43: @3.Call: _7 = std::io::_print(move _8) -&gt; [return: bb4, unwind: bb11]
 20:9-20:43: @4[5]: _6 = const ()
 21:16-21:22: @4[7]: _0 = std::result::Result::&lt;(), u8&gt;::Err(const 1_u8)">        return Err(1)<span class="annotation">⦉@1,3,4,8,9</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()

@@ -84,16 +84,16 @@ For revisions in Pull Requests (PR):
 75:9-75:26: @3[28]: _29 = (_24.0: &amp;&amp;i32)
 75:9-75:26: @3[30]: _30 = (_24.1: &amp;&amp;i32)
 75:9-75:26: @3[33]: _32 = &amp;(*_29)
-75:9-75:26: @3[35]: _33 = &lt;&amp;i32 as Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-75:9-75:26: @3.Call: _31 = ArgumentV1::new::&lt;&amp;i32&gt;(move _32, move _33) -&gt; [return: bb5, unwind: bb14]
+75:9-75:26: @3[35]: _33 = &lt;&amp;i32 as std::fmt::Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+75:9-75:26: @3.Call: _31 = std::fmt::ArgumentV1::new::&lt;&amp;i32&gt;(move _32, move _33) -&gt; [return: bb5, unwind: bb14]
 75:9-75:26: @5[4]: _35 = &amp;(*_30)
-75:9-75:26: @5[6]: _36 = &lt;&amp;i32 as Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-75:9-75:26: @5.Call: _34 = ArgumentV1::new::&lt;&amp;i32&gt;(move _35, move _36) -&gt; [return: bb6, unwind: bb14]
+75:9-75:26: @5[6]: _36 = &lt;&amp;i32 as std::fmt::Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+75:9-75:26: @5.Call: _34 = std::fmt::ArgumentV1::new::&lt;&amp;i32&gt;(move _35, move _36) -&gt; [return: bb6, unwind: bb14]
 75:9-75:26: @6[2]: _23 = [move _31, move _34]
 75:9-75:26: @6[7]: _22 = &amp;_23
 75:9-75:26: @6[8]: _21 = &amp;(*_22)
 75:9-75:26: @6[9]: _20 = move _21 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-75:9-75:26: @6.Call: _15 = Arguments::new_v1(move _16, move _20) -&gt; [return: bb7, unwind: bb14]
+75:9-75:26: @6.Call: _15 = std::fmt::Arguments::new_v1(move _16, move _20) -&gt; [return: bb7, unwind: bb14]
 75:9-75:26: @7.Call: core::panicking::panic_fmt(move _15) -&gt; bb14"><span class="annotation">@3,5,6,7⦊</span>assert_eq!(1, 1);<span class="annotation">⦉@3,5,6,7</span></span><span><span class="code odd" style="--layer: 1" title="75:9-75:26: @4[0]: _2 = const ()"><span class="annotation">⦉@4</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    } else {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="77:9-77:26: @9[0]: _37 = const ()"><span class="annotation">@9⦊</span></span></span><span class="code even" style="--layer: 2" title="77:9-77:26: @8[5]: _72 = const main::promoted[0]
@@ -109,16 +109,16 @@ For revisions in Pull Requests (PR):
 77:9-77:26: @8[28]: _64 = (_59.0: &amp;&amp;i32)
 77:9-77:26: @8[30]: _65 = (_59.1: &amp;&amp;i32)
 77:9-77:26: @8[33]: _67 = &amp;(*_64)
-77:9-77:26: @8[35]: _68 = &lt;&amp;i32 as Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-77:9-77:26: @8.Call: _66 = ArgumentV1::new::&lt;&amp;i32&gt;(move _67, move _68) -&gt; [return: bb10, unwind: bb14]
+77:9-77:26: @8[35]: _68 = &lt;&amp;i32 as std::fmt::Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+77:9-77:26: @8.Call: _66 = std::fmt::ArgumentV1::new::&lt;&amp;i32&gt;(move _67, move _68) -&gt; [return: bb10, unwind: bb14]
 77:9-77:26: @10[4]: _70 = &amp;(*_65)
-77:9-77:26: @10[6]: _71 = &lt;&amp;i32 as Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-77:9-77:26: @10.Call: _69 = ArgumentV1::new::&lt;&amp;i32&gt;(move _70, move _71) -&gt; [return: bb11, unwind: bb14]
+77:9-77:26: @10[6]: _71 = &lt;&amp;i32 as std::fmt::Debug&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;i32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+77:9-77:26: @10.Call: _69 = std::fmt::ArgumentV1::new::&lt;&amp;i32&gt;(move _70, move _71) -&gt; [return: bb11, unwind: bb14]
 77:9-77:26: @11[2]: _58 = [move _66, move _69]
 77:9-77:26: @11[7]: _57 = &amp;_58
 77:9-77:26: @11[8]: _56 = &amp;(*_57)
 77:9-77:26: @11[9]: _55 = move _56 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-77:9-77:26: @11.Call: _50 = Arguments::new_v1(move _51, move _55) -&gt; [return: bb12, unwind: bb14]
+77:9-77:26: @11.Call: _50 = std::fmt::Arguments::new_v1(move _51, move _55) -&gt; [return: bb12, unwind: bb14]
 77:9-77:26: @12.Call: core::panicking::panic_fmt(move _50) -&gt; bb14"><span class="annotation">@8,10,11,12⦊</span>assert_eq!(1, 2);<span class="annotation">⦉@8,10,11,12</span></span><span><span class="code even" style="--layer: 1" title="77:9-77:26: @9[0]: _37 = const ()"><span class="annotation">⦉@9</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span></span>
 <span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="79:2-79:2: @13.Return: return"><span class="annotation">@13⦊</span>‸<span class="annotation">⦉@13</span></span></span></span></div>

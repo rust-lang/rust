@@ -1,7 +1,7 @@
 - // MIR for `float_to_exponential_common` before ConstProp
 + // MIR for `float_to_exponential_common` after ConstProp
   
-  fn float_to_exponential_common(_1: &mut Formatter, _2: &T, _3: bool) -> std::result::Result<(), std::fmt::Error> {
+  fn float_to_exponential_common(_1: &mut Formatter, _2: &T, _3: bool) -> Result<(), std::fmt::Error> {
       debug fmt => _1;                     // in scope 0 at $DIR/funky_arms.rs:11:35: 11:38
       debug num => _2;                     // in scope 0 at $DIR/funky_arms.rs:11:60: 11:63
       debug upper => _3;                   // in scope 0 at $DIR/funky_arms.rs:11:69: 11:74

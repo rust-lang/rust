@@ -87,10 +87,10 @@ For revisions in Pull Requests (PR):
 10:16-10:29: @3[6]: _5 = Gt(move _6, const 7_u32)"><span class="annotation">@3⦊</span>countdown &gt; 7<span class="annotation">⦉@3</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="11:9-11:23: @4[0]: _7 = CheckedSub(_1, const 4_u32)
 11:9-11:23: @6[0]: _1 = move (_7.0: u32)
-12:9-12:10: @6[1]: _4 = const B"><span class="annotation">@4,6⦊</span>countdown -= 4;</span></span>
+12:9-12:10: @6[1]: _4 = const main::B"><span class="annotation">@4,6⦊</span>countdown -= 4;</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:23: @4[0]: _7 = CheckedSub(_1, const 4_u32)
 11:9-11:23: @6[0]: _1 = move (_7.0: u32)
-12:9-12:10: @6[1]: _4 = const B">        B<span class="annotation">⦉@4,6</span></span></span><span class="code" style="--layer: 0"></span></span>
+12:9-12:10: @6[1]: _4 = const main::B">        B<span class="annotation">⦉@4,6</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    } else if </span><span><span class="code even" style="--layer: 1" title="13:15-13:24: @5[2]: _9 = _1
 13:15-13:28: @5[3]: _8 = Gt(move _9, const 2_u32)"><span class="annotation">@5⦊</span>countdown &gt; 2<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        if </span><span><span class="code odd" style="--layer: 1" title="14:12-14:21: @7[5]: _14 = _1
@@ -239,8 +239,8 @@ For revisions in Pull Requests (PR):
 73:9-73:29: @74[21]: _92 = &amp;(*_112)
 73:9-73:29: @74[22]: _91 = &amp;(*_92)
 73:9-73:29: @74[23]: _90 = move _91 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-73:9-73:29: @74.Call: _85 = Arguments::new_v1(move _86, move _90) -&gt; [return: bb87, unwind: bb112]
-73:9-73:29: @87.Call: _84 = _print(move _85) -&gt; [return: bb88, unwind: bb112]
+73:9-73:29: @74.Call: _85 = std::fmt::Arguments::new_v1(move _86, move _90) -&gt; [return: bb87, unwind: bb112]
+73:9-73:29: @87.Call: _84 = std::io::_print(move _85) -&gt; [return: bb88, unwind: bb112]
 73:9-73:29: @88[5]: _83 = const ()
 74:9-74:15: @88[7]: _0 = const ()"><span class="annotation">@74,87,88⦊</span>should_be_reachable = countdown;</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="72:35-72:44: @74[1]: _82 = _62
@@ -255,8 +255,8 @@ For revisions in Pull Requests (PR):
 73:9-73:29: @74[21]: _92 = &amp;(*_112)
 73:9-73:29: @74[22]: _91 = &amp;(*_92)
 73:9-73:29: @74[23]: _90 = move _91 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-73:9-73:29: @74.Call: _85 = Arguments::new_v1(move _86, move _90) -&gt; [return: bb87, unwind: bb112]
-73:9-73:29: @87.Call: _84 = _print(move _85) -&gt; [return: bb88, unwind: bb112]
+73:9-73:29: @74.Call: _85 = std::fmt::Arguments::new_v1(move _86, move _90) -&gt; [return: bb87, unwind: bb112]
+73:9-73:29: @87.Call: _84 = std::io::_print(move _85) -&gt; [return: bb88, unwind: bb112]
 73:9-73:29: @88[5]: _83 = const ()
 74:9-74:15: @88[7]: _0 = const ()">        println!("reached");</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="72:35-72:44: @74[1]: _82 = _62
@@ -271,8 +271,8 @@ For revisions in Pull Requests (PR):
 73:9-73:29: @74[21]: _92 = &amp;(*_112)
 73:9-73:29: @74[22]: _91 = &amp;(*_92)
 73:9-73:29: @74[23]: _90 = move _91 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-73:9-73:29: @74.Call: _85 = Arguments::new_v1(move _86, move _90) -&gt; [return: bb87, unwind: bb112]
-73:9-73:29: @87.Call: _84 = _print(move _85) -&gt; [return: bb88, unwind: bb112]
+73:9-73:29: @74.Call: _85 = std::fmt::Arguments::new_v1(move _86, move _90) -&gt; [return: bb87, unwind: bb112]
+73:9-73:29: @87.Call: _84 = std::io::_print(move _85) -&gt; [return: bb88, unwind: bb112]
 73:9-73:29: @88[5]: _83 = const ()
 74:9-74:15: @88[7]: _0 = const ()">        return<span class="annotation">⦉@74,87,88</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    };</span></span>
