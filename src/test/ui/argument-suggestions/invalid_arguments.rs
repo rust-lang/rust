@@ -11,7 +11,7 @@ fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
 fn main() {
   // Providing an incorrect argument for a single parameter function
   one_arg(1.0); //~ ERROR arguments to this function are incorrect
-  
+
   // Providing one or two invalid arguments to a two parameter function
   two_arg_same(1, ""); //~ ERROR arguments to this function are incorrect
   two_arg_same("", 1); //~ ERROR arguments to this function are incorrect
@@ -34,10 +34,10 @@ fn main() {
   three_arg_repeat(X {}, 1, ""); //~ ERROR arguments to this function are incorrect
   three_arg_repeat(1, X {}, ""); //~ ERROR arguments to this function are incorrect
   three_arg_repeat(1, 1, X {}); //~ ERROR arguments to this function are incorrect
- 
+
   three_arg_repeat(X {}, X {}, ""); //~ ERROR arguments to this function are incorrect
   three_arg_repeat(X {}, 1, X {}); //~ ERROR arguments to this function are incorrect
   three_arg_repeat(1, X {}, X{}); //~ ERROR arguments to this function are incorrect
-  
+
   three_arg_repeat(X {}, X {}, X {}); //~ ERROR arguments to this function are incorrect
 }

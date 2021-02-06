@@ -10,7 +10,7 @@ fn main() {
   one_arg(); //~ ERROR arguments to this function are incorrect
   // The headers here show the types expected,
   // with formatting to emphasize which arguments are missing
-  /*         i32     f32    */ 
+  /*         i32     f32    */
   two_same(               ); //~ ERROR arguments to this function are incorrect
   two_same(   1           ); //~ ERROR arguments to this function are incorrect
   two_diff(               ); //~ ERROR arguments to this function are incorrect
@@ -29,12 +29,12 @@ fn main() {
   three_diff(                   ""  ); //~ ERROR arguments to this function are incorrect
   three_diff(          1.0          ); //~ ERROR arguments to this function are incorrect
   three_diff(   1                   ); //~ ERROR arguments to this function are incorrect
-  
+
   /*              i32     f32     f32     &str   */
   four_repeated(                               ); //~ ERROR arguments to this function are incorrect
   four_repeated(   1,                     ""   ); //~ ERROR arguments to this function are incorrect
 
-  /*        i32     f32     i32     f32     &str   */
-  complex(                                       ); //~ ERROR arguments to this function are incorrect
-  complex(   1,                             ""   ); //~ ERROR arguments to this function are incorrect
+  /*        i32   f32   i32   f32   &str   */
+  complex(                               ); //~ ERROR arguments to this function are incorrect
+  complex(   1,                     ""   ); //~ ERROR arguments to this function are incorrect
 }

@@ -19,10 +19,8 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::Session;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::{self, MultiSpan, Span};
-use rustc_span::{
-    symbol::{sym, Ident},
-};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
 
 use std::cmp;
@@ -234,7 +232,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let check_compatible = |arg_idx, input_idx| {
             let formal_input_ty: Ty<'tcx> = formal_input_tys[input_idx];
             let expected_input_ty: Ty<'tcx> = expected_input_tys[input_idx];
-            
 
             // If either is an error type, we defy the usual convention and consider them to *not* be
             // coercible.  This prevents our error message heuristic from trying to pass errors into
@@ -245,11 +242,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let provided_arg: &hir::Expr<'tcx> = &provided_args[arg_idx];
             let expectation = Expectation::rvalue_hint(self, expected_input_ty);
-            // TODO: check that this is safe; I don't believe this commits any of the obligations, but I can't be sure.
+            // FIXME: check that this is safe; I don't believe this commits any of the obligations, but I can't be sure.
             //
             //   I had another method of "soft" type checking before,
             //   but it was failing to find the type of some expressions (like "")
-            //   so I prodded this method and made it pub(super) so I could call it, and it seems to work well. 
+            //   so I prodded this method and made it pub(super) so I could call it, and it seems to work well.
             let checked_ty = self.check_expr_kind(provided_arg, expectation);
 
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
@@ -381,20 +378,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 eliminate_arg(mat, ai, arg_idx);
             };
 
-            let eliminate_satisfied = |mat: &mut Vec<Vec<bool>>, ii: &mut Vec<usize>, ai: &mut Vec<usize>| -> Vec<(usize, usize)> {
+            let eliminate_satisfied = |mat: &mut Vec<Vec<bool>>,
+                                       ii: &mut Vec<usize>,
+                                       ai: &mut Vec<usize>|
+             -> Vec<(usize, usize)> {
                 let mut i = cmp::min(ii.len(), ai.len());
                 let mut eliminated = vec![];
                 while i > 0 {
                     let idx = i - 1;
                     if mat[idx][idx] {
                         eliminated.push((ai[idx], ii[idx]));
-                        satisfy_input(
-                            mat,
-                            ii,
-                            ai,
-                            idx,
-                            idx,
-                        );
+                        satisfy_input(mat, ii, ai, idx, idx);
                     }
                     i -= 1;
                 }
@@ -508,8 +502,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     loop {
                         stack.push(j);
                         // Look for params this one could slot into
-                        let compat: Vec<_> =
-                            mat[j].iter().enumerate().filter_map(|(i, &c)| if c { Some(i) } else { None }).collect();
+                        let compat: Vec<_> = mat[j]
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(i, &c)| if c { Some(i) } else { None })
+                            .collect();
                         if compat.len() != 1 {
                             // this could go into multiple slots, don't bother exploring both
                             is_cycle = false;
@@ -570,7 +567,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Without this elimination, the first argument causes the second argument
             // to show up as both a missing input and extra argument, rather than
             // just an invalid type.
-            for (arg, inp) in eliminate_satisfied(&mut compatibility_matrix, &mut input_indexes, &mut arg_indexes) {
+            for (arg, inp) in
+                eliminate_satisfied(&mut compatibility_matrix, &mut input_indexes, &mut arg_indexes)
+            {
                 let arg_span = provided_args[arg].span;
                 let arg_text = source_map.span_to_snippet(arg_span).unwrap();
                 suggested_inputs[inp] = Some(arg_text);
@@ -595,14 +594,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             "".into()
                         };
-                        labels.push((provided_args[idx].span, format!("expected {}{}", expected_ty, provided_ty)));
+                        labels.push((
+                            provided_args[idx].span,
+                            format!("expected {}{}", expected_ty, provided_ty),
+                        ));
                         suggestion_text = match suggestion_text {
                             None => Some("provide an argument of the correct type"),
-                            Some(_) => Some("did you mean")
+                            Some(_) => Some("did you mean"),
                         };
                         eliminate_input(&mut compatibility_matrix, &mut input_indexes, idx);
                         eliminate_arg(&mut compatibility_matrix, &mut arg_indexes, idx);
-                    },
+                    }
                     Some(Issue::Extra(idx)) => {
                         // Eliminate the argument (without touching any inputs)
                         let arg_type = if let Some((_, ty)) = final_arg_types[idx] {
@@ -610,13 +612,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             "".into()
                         };
-                        labels.push((provided_args[idx].span, format!("argument{} unexpected", arg_type)));
+                        labels.push((
+                            provided_args[idx].span,
+                            format!("argument{} unexpected", arg_type),
+                        ));
                         suggestion_text = match suggestion_text {
                             None => Some("remove the extra argument"),
-                            Some(_) => Some("did you mean")
+                            Some(_) => Some("did you mean"),
                         };
                         eliminate_arg(&mut compatibility_matrix, &mut arg_indexes, idx);
-                    },
+                    }
                     Some(Issue::Missing(idx)) => {
                         let input_idx = input_indexes[idx];
                         let expected_ty = expected_input_tys[input_idx];
@@ -639,10 +644,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         labels.push((span, format!("an argument of type {} is missing", input_ty)));
                         suggestion_text = match suggestion_text {
                             None => Some("provide the argument"),
-                            Some(_) => Some("did you mean")
+                            Some(_) => Some("did you mean"),
                         };
                         eliminate_input(&mut compatibility_matrix, &mut input_indexes, idx);
-                    },
+                    }
                     Some(Issue::Swap(idx, other)) => {
                         let input_idx = input_indexes[idx];
                         let other_input_idx = input_indexes[other];
@@ -655,23 +660,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         suggested_inputs[input_idx] = Some(second_snippet);
                         suggested_inputs[other_input_idx] = Some(first_snippet);
 
-                        let first_expected_ty = self.resolve_vars_if_possible(expected_input_tys[input_idx]);
+                        let first_expected_ty =
+                            self.resolve_vars_if_possible(expected_input_tys[input_idx]);
                         let first_provided_ty = if let Some((ty, _)) = final_arg_types[arg_idx] {
                             format!(",found {}", ty)
                         } else {
                             "".into()
                         };
-                        labels.push((first_span, format!("expected {}{}", first_expected_ty, first_provided_ty)));
-                        let other_expected_ty = self.resolve_vars_if_possible(expected_input_tys[other_input_idx]);
-                        let other_provided_ty = if let Some((ty, _)) = final_arg_types[other_arg_idx] {
-                            format!(",found {}", ty)
-                        } else {
-                            "".into()
-                        };
-                        labels.push((second_span, format!("expected {}{}", other_expected_ty, other_provided_ty)));
+                        labels.push((
+                            first_span,
+                            format!("expected {}{}", first_expected_ty, first_provided_ty),
+                        ));
+                        let other_expected_ty =
+                            self.resolve_vars_if_possible(expected_input_tys[other_input_idx]);
+                        let other_provided_ty =
+                            if let Some((ty, _)) = final_arg_types[other_arg_idx] {
+                                format!(",found {}", ty)
+                            } else {
+                                "".into()
+                            };
+                        labels.push((
+                            second_span,
+                            format!("expected {}{}", other_expected_ty, other_provided_ty),
+                        ));
                         suggestion_text = match suggestion_text {
                             None => Some("swap these arguments"),
-                            Some(_) => Some("did you mean")
+                            Some(_) => Some("did you mean"),
                         };
 
                         let (min, max) = (cmp::min(idx, other), cmp::max(idx, other));
@@ -689,15 +703,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             max - 1, // Subtract 1 because we already removed the "min" row
                             min,
                         );
-                    },
+                    }
                     Some(Issue::Permutation(args)) => {
                         // FIXME: If satisfy_input ever did anything non-trivial (emit obligations to help type checking, for example)
                         // we'd want to call this function with the correct arg/input pairs, but for now, we just throw them in a bucket.
                         // This works because they force a cycle, so each row is guaranteed to also be a column
-                        let mut idxs: Vec<usize> =
-                            args.iter()
-                                .filter_map(|&a| a)
-                                .collect();
+                        let mut idxs: Vec<usize> = args.iter().filter_map(|&a| a).collect();
 
                         let mut real_idxs = vec![None; provided_arg_count];
                         for (src, dst) in args.iter().enumerate().filter(|(_, &a)| a.is_some()) {
@@ -705,21 +716,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let dst_arg = arg_indexes[dst.unwrap()];
                             let dest_input = input_indexes[dst.unwrap()];
                             let src_span = provided_args[src_arg].span;
-                            suggested_inputs[dest_input] = Some(source_map.span_to_snippet(src_span).unwrap());
+                            suggested_inputs[dest_input] =
+                                Some(source_map.span_to_snippet(src_span).unwrap());
 
-                            let expected_ty = self.resolve_vars_if_possible(expected_input_tys[dest_input]);
+                            let expected_ty =
+                                self.resolve_vars_if_possible(expected_input_tys[dest_input]);
                             let provided_ty = if let Some((ty, _)) = final_arg_types[dst_arg] {
                                 format!(",found {}", ty)
                             } else {
                                 "".into()
                             };
-                            labels.push((provided_args[dst_arg].span, format!("expected {}{}", expected_ty, provided_ty)));
+                            labels.push((
+                                provided_args[dst_arg].span,
+                                format!("expected {}{}", expected_ty, provided_ty),
+                            ));
                             real_idxs[src_arg] = Some(dst_arg);
                         }
 
                         suggestion_text = match suggestion_text {
                             None => Some("reorder these arguments"),
-                            Some(_) => Some("did you mean")
+                            Some(_) => Some("did you mean"),
                         };
 
                         idxs.sort();
@@ -733,11 +749,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 i,
                             );
                         }
-                    },
+                    }
                     None => {
                         // We didn't find any issues, so we need to push the algorithm forward
                         // First, eliminate any arguments that currently satisfy their inputs
-                        for (arg, inp) in eliminate_satisfied(&mut compatibility_matrix, &mut input_indexes, &mut arg_indexes) {
+                        for (arg, inp) in eliminate_satisfied(
+                            &mut compatibility_matrix,
+                            &mut input_indexes,
+                            &mut arg_indexes,
+                        ) {
                             let arg_span = provided_args[arg].span;
                             let arg_text = source_map.span_to_snippet(arg_span).unwrap();
                             suggested_inputs[inp] = Some(arg_text);
@@ -748,16 +768,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let issue_count = labels.len();
             if issue_count > 0 {
-
                 // Now construct our error from the various things we've labeled
                 let mut err = struct_span_err!(
                     tcx.sess,
                     call_span,
-                    E0059, // FIXME: Choose a different code?
+                    E0308, // FIXME: Choose a different code?
                     "{}arguments to this function are incorrect",
                     if issue_count > 1 { "multiple " } else { "" }
                 );
-                
+
                 // If we have less than 5 things to say, it would be useful to call out exactly what's wrong
                 if issue_count <= 5 {
                     for (span, label) in labels {

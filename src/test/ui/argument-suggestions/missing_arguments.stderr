@@ -309,8 +309,8 @@ LL |   four_repeated(1, {f32}, {f32}, "");
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:38:3
    |
-LL |   complex(                                       );
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |   complex(                               );
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |   |
    |   an argument of type i32 is missing
    |   an argument of type f32 is missing
@@ -331,10 +331,10 @@ LL |   complex({i32}, {f32}, {i32}, {f32}, {&str});
 error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:39:3
    |
-LL |   complex(   1,                             ""   );
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--^^^^
-   |   |                                         |
-   |   |                                         an argument of type f32 is missing
+LL |   complex(   1,                     ""   );
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--^^^^
+   |   |                                 |
+   |   |                                 an argument of type f32 is missing
    |   an argument of type i32 is missing
    |   an argument of type f32 is missing
    |
