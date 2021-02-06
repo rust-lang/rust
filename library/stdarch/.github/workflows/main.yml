@@ -91,6 +91,7 @@ jobs:
 
         # macOS targets
         #- x86_64-apple-darwin
+        - aarch64-apple-darwin
         # FIXME: gh-actions build environment doesn't have linker support
         # - i686-apple-darwin
 
@@ -132,6 +133,9 @@ jobs:
           os: ubuntu-latest
         #- target: wasm32-wasi
         #  os: ubuntu-latest
+        - target: aarch64-apple-darwin
+          os: macos-latest
+          norun: true
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-latest
         # Temporarily disabled because otool crashes with "Out of memory", seems Github CI issue
@@ -184,6 +188,12 @@ jobs:
         rustup default nightly
         rustup target add ${{ matrix.target }}
       if: "!endsWith(matrix.target, 'emulated')"
+    - name: Setup (aarch64-apple-darwin)
+      run: |
+        sudo xcode-select -s /Applications/Xcode_12.2.app/
+        echo "SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path)" >> $GITHUB_ENV
+        echo "MACOS_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version)" >> $GITHUB_ENV
+      if: matrix.target == 'aarch64-apple-darwin'
     - run: cargo generate-lockfile
 
     # Configure some env vars based on matrix configuration
