@@ -1582,10 +1582,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["flatten", "map"] => lint_map_flatten(cx, expr, arg_lists[1]),
             ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0], method_spans[1]),
             ["is_some", "position"] => {
-                lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0], method_spans[1]);
+                lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["is_some", "rposition"] => {
-                lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1]);
+                lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
@@ -1601,17 +1601,17 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["count", "map"] => lint_suspicious_map(cx, expr),
             ["assume_init"] => lint_maybe_uninit(cx, &arg_lists[0][0], expr),
             ["unwrap_or", arith @ ("checked_add" | "checked_sub" | "checked_mul")] => {
-                manual_saturating_arithmetic::lint(cx, expr, &arg_lists, &arith["checked_".len()..]);
+                manual_saturating_arithmetic::lint(cx, expr, &arg_lists, &arith["checked_".len()..])
             },
             ["add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub"] => {
-                check_pointer_offset(cx, expr, arg_lists[0]);
+                check_pointer_offset(cx, expr, arg_lists[0])
             },
             ["is_file", ..] => lint_filetype_is_file(cx, expr, arg_lists[0]),
             ["map", "as_ref"] => {
-                lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], false, self.msrv.as_ref());
+                lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], false, self.msrv.as_ref())
             },
             ["map", "as_mut"] => {
-                lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], true, self.msrv.as_ref());
+                lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], true, self.msrv.as_ref())
             },
             ["unwrap_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "unwrap_or"),
             ["get_or_insert_with", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "get_or_insert"),
@@ -2446,16 +2446,16 @@ fn lint_unnecessary_fold(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: 
     if let hir::ExprKind::Lit(ref lit) = fold_args[1].kind {
         match lit.node {
             ast::LitKind::Bool(false) => {
-                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Or, "any", true);
+                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Or, "any", true)
             },
             ast::LitKind::Bool(true) => {
-                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::And, "all", true);
+                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::And, "all", true)
             },
             ast::LitKind::Int(0, _) => {
-                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Add, "sum", false);
+                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Add, "sum", false)
             },
             ast::LitKind::Int(1, _) => {
-                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Mul, "product", false);
+                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Mul, "product", false)
             },
             _ => (),
         }

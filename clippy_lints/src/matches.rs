@@ -1046,7 +1046,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
                 "try this",
                 suggestion[0].clone(),
                 Applicability::MaybeIncorrect,
-            );
+            )
         };
 
         span_lint_and_sugg(
@@ -1057,7 +1057,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
             "try this",
             suggestion.join(" | "),
             Applicability::MaybeIncorrect,
-        );
+        )
     }
 }
 
@@ -1156,7 +1156,7 @@ fn check_match_as_ref(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
                     cast,
                 ),
                 applicability,
-            );
+            )
         }
     }
 }

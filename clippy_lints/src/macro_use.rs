@@ -206,9 +206,9 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         let mut suggestions = vec![];
         for ((root, span), path) in used {
             if path.len() == 1 {
-                suggestions.push((span, format!("{}::{}", root, path[0])));
+                suggestions.push((span, format!("{}::{}", root, path[0])))
             } else {
-                suggestions.push((span, format!("{}::{{{}}}", root, path.join(", "))));
+                suggestions.push((span, format!("{}::{{{}}}", root, path.join(", "))))
             }
         }
 
@@ -225,7 +225,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
                     "remove the attribute and import the macro directly, try",
                     help,
                     Applicability::MaybeIncorrect,
-                );
+                )
             }
         }
     }

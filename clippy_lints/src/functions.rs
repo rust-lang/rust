@@ -270,7 +270,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                     _,
                 )
                 | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _, _) => {
-                    self.check_arg_number(cx, decl, span.with_hi(decl.output.span().hi()));
+                    self.check_arg_number(cx, decl, span.with_hi(decl.output.span().hi()))
                 },
                 _ => {},
             }
@@ -434,7 +434,7 @@ impl<'tcx> Functions {
                 TOO_MANY_LINES,
                 span,
                 &format!("this function has too many lines ({}/{})", line_count, self.max_lines),
-            );
+            )
         }
     }
 
@@ -707,7 +707,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                 }
             },
             Assign(ref target, ..) | AssignOp(_, ref target, _) | AddrOf(_, hir::Mutability::Mut, ref target) => {
-                self.mutates_static |= is_mutated_static(self.cx, target);
+                self.mutates_static |= is_mutated_static(self.cx, target)
             },
             _ => {},
         }

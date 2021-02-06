@@ -122,7 +122,7 @@ fn lint_needless_cloning(cx: &LateContext<'_>, root: Span, receiver: Span) {
         "remove the `map` call",
         String::new(),
         Applicability::MachineApplicable,
-    );
+    )
 }
 
 fn lint(cx: &LateContext<'_>, replace: Span, root: Span, copied: bool) {
@@ -139,7 +139,7 @@ fn lint(cx: &LateContext<'_>, replace: Span, root: Span, copied: bool) {
                 snippet_with_applicability(cx, root, "..", &mut applicability)
             ),
             applicability,
-        );
+        )
     } else {
         span_lint_and_sugg(
             cx,
@@ -152,6 +152,6 @@ fn lint(cx: &LateContext<'_>, replace: Span, root: Span, copied: bool) {
                 snippet_with_applicability(cx, root, "..", &mut applicability)
             ),
             applicability,
-        );
+        )
     }
 }

@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
                                 Applicability::MachineApplicable,
                             );
                         },
-                    );
+                    )
                 }
             }
         }

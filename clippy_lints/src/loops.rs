@@ -1426,7 +1426,7 @@ fn detect_same_item_push<'tcx>(
                 "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
                 item_str, vec_str, item_str
             ),
-        );
+        )
     }
 
     if !matches!(pat.kind, PatKind::Wild) {
@@ -1714,7 +1714,7 @@ fn lint_iter_method(cx: &LateContext<'_>, args: &[Expr<'_>], arg: &Expr<'_>, met
         "to write this more concisely, try",
         format!("&{}{}", muta, object),
         applicability,
-    );
+    )
 }
 
 fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr: &Expr<'_>) {
@@ -1753,7 +1753,7 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr:
                         },
                     );
                     if TyS::same_type(receiver_ty_adjusted, ref_receiver_ty) {
-                        lint_iter_method(cx, args, arg, method_name);
+                        lint_iter_method(cx, args, arg, method_name)
                     }
                 }
             } else if method_name == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
@@ -2075,10 +2075,10 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
         if let ty::BorrowKind::MutBorrow = bk {
             if let PlaceBase::Local(id) = cmt.place.base {
                 if Some(id) == self.hir_id_low {
-                    self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id));
+                    self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id))
                 }
                 if Some(id) == self.hir_id_high {
-                    self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id));
+                    self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id))
                 }
             }
         }
@@ -2087,10 +2087,10 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
     fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         if let PlaceBase::Local(id) = cmt.place.base {
             if Some(id) == self.hir_id_low {
-                self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id));
+                self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id))
             }
             if Some(id) == self.hir_id_high {
-                self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id));
+                self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id))
             }
         }
     }
@@ -2543,10 +2543,10 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                         }
                     },
                     ExprKind::Assign(ref lhs, _, _) if lhs.hir_id == expr.hir_id => {
-                        *state = IncrementVisitorVarState::DontWarn;
+                        *state = IncrementVisitorVarState::DontWarn
                     },
                     ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
-                        *state = IncrementVisitorVarState::DontWarn;
+                        *state = IncrementVisitorVarState::DontWarn
                     },
                     _ => (),
                 }
@@ -2670,7 +2670,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                         }
                     },
                     ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
-                        self.state = InitializeVisitorState::DontWarn;
+                        self.state = InitializeVisitorState::DontWarn
                     },
                     _ => (),
                 }
@@ -2815,7 +2815,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
                 return;
             }
         }
-        walk_pat(self, pat);
+        walk_pat(self, pat)
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

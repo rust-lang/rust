@@ -103,7 +103,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SemanticUseSelfVisitor<'a, 'tcx> {
             }
         }
 
-        walk_ty(self, hir_ty);
+        walk_ty(self, hir_ty)
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
