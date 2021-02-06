@@ -254,7 +254,10 @@ impl Builder {
         t!(self.checksums.store_cache());
     }
 
-    /// If a tool does not pass its tests, don't ship it.
+    /// If a tool does not pass its tests on *any* of Linux and Windows, don't ship
+    /// it on *all* targets, because tools like Miri can "cross-run" programs for
+    /// different targets, for example, run a program for `x86_64-pc-windows-msvc`
+    /// on `x86_64-unknown-linux-gnu`.
     /// Right now, we do this only for Miri.
     fn check_toolstate(&mut self) {
         for file in &["toolstates-linux.json", "toolstates-windows.json"] {
