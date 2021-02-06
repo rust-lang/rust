@@ -14,7 +14,7 @@ help: you could relax the implicit `Sized` bound on `T` if it were used through 
 LL | struct Vec<T> {
    |            ^ this could be changed to `T: ?Sized`...
 LL |     t: T,
-   |        - ...if indirection was used here: `Box<T>`
+   |        - ...if indirection were used here: `Box<T>`
 
 error: aborting due to previous error
 
