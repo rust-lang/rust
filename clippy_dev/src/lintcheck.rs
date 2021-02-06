@@ -16,6 +16,7 @@ use std::{fmt, fs::write, path::PathBuf};
 use clap::ArgMatches;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+//use git2::Repository;
 
 // use this to store the crates when interacting with the crates.toml file
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,12 +36,13 @@ struct TomlCrate {
 
 // represents an archive we download from crates.io
 #[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
-struct CrateSource {
-    name: String,
-    version: String,
+enum CrateSource {
+    CratesIo { name: String, version: String },
+    Git { name: String, url: String, commit: String },
 }
 
 // represents the extracted sourcecode of a crate
+// we actually don't need to special-case git repos here because it does not matter for clippy, yay! (clippy only needs a simple path)
 #[derive(Debug)]
 struct Crate {
     version: String,
@@ -72,40 +74,70 @@ impl std::fmt::Display for ClippyWarning {
 
 impl CrateSource {
     fn download_and_extract(&self) -> Crate {
-        let extract_dir = PathBuf::from("target/lintcheck/crates");
-        let krate_download_dir = PathBuf::from("target/lintcheck/downloads");
+        match self {
+            CrateSource::CratesIo { name, version } => {
+                let extract_dir = PathBuf::from("target/lintcheck/crates");
+                let krate_download_dir = PathBuf::from("target/lintcheck/downloads");
 
-        // url to download the crate from crates.io
-        let url = format!(
-            "https://crates.io/api/v1/crates/{}/{}/download",
-            self.name, self.version
-        );
-        println!("Downloading and extracting {} {} from {}", self.name, self.version, url);
-        let _ = std::fs::create_dir("target/lintcheck/");
-        let _ = std::fs::create_dir(&krate_download_dir);
-        let _ = std::fs::create_dir(&extract_dir);
+                // url to download the crate from crates.io
+                let url = format!("https://crates.io/api/v1/crates/{}/{}/download", name, version);
+                println!("Downloading and extracting {} {} from {}", name, version, url);
+                let _ = std::fs::create_dir("target/lintcheck/");
+                let _ = std::fs::create_dir(&krate_download_dir);
+                let _ = std::fs::create_dir(&extract_dir);
 
-        let krate_file_path = krate_download_dir.join(format!("{}-{}.crate.tar.gz", &self.name, &self.version));
-        // don't download/extract if we already have done so
-        if !krate_file_path.is_file() {
-            // create a file path to download and write the crate data into
-            let mut krate_dest = std::fs::File::create(&krate_file_path).unwrap();
-            let mut krate_req = ureq::get(&url).call().unwrap().into_reader();
-            // copy the crate into the file
-            std::io::copy(&mut krate_req, &mut krate_dest).unwrap();
+                let krate_file_path = krate_download_dir.join(format!("{}-{}.crate.tar.gz", name, version));
+                // don't download/extract if we already have done so
+                if !krate_file_path.is_file() {
+                    // create a file path to download and write the crate data into
+                    let mut krate_dest = std::fs::File::create(&krate_file_path).unwrap();
+                    let mut krate_req = ureq::get(&url).call().unwrap().into_reader();
+                    // copy the crate into the file
+                    std::io::copy(&mut krate_req, &mut krate_dest).unwrap();
 
-            // unzip the tarball
-            let ungz_tar = flate2::read::GzDecoder::new(std::fs::File::open(&krate_file_path).unwrap());
-            // extract the tar archive
-            let mut archive = tar::Archive::new(ungz_tar);
-            archive.unpack(&extract_dir).expect("Failed to extract!");
-        }
-        // crate is extracted, return a new Krate object which contains the path to the extracted
-        // sources that clippy can check
-        Crate {
-            version: self.version.clone(),
-            name: self.name.clone(),
-            path: extract_dir.join(format!("{}-{}/", self.name, self.version)),
+                    // unzip the tarball
+                    let ungz_tar = flate2::read::GzDecoder::new(std::fs::File::open(&krate_file_path).unwrap());
+                    // extract the tar archive
+                    let mut archive = tar::Archive::new(ungz_tar);
+                    archive.unpack(&extract_dir).expect("Failed to extract!");
+                }
+                // crate is extracted, return a new Krate object which contains the path to the extracted
+                // sources that clippy can check
+                Crate {
+                    version: version.clone(),
+                    name: name.clone(),
+                    path: extract_dir.join(format!("{}-{}/", name, version)),
+                }
+            },
+            CrateSource::Git { name, url, commit } => {
+                let repo_path = {
+                    let mut repo_path = PathBuf::from("target/lintcheck/downloads");
+                    // add a -git suffix in case we have the same crate from crates.io and a git repo
+                    repo_path.push(format!("{}-git", name));
+                    repo_path
+                };
+                // clone the repo if we have not done so
+                if !repo_path.is_dir() {
+                    Command::new("git")
+                        .arg("clone")
+                        .arg(url)
+                        .arg(&repo_path)
+                        .output()
+                        .expect("Failed to clone git repo!");
+                }
+                // check out the commit/branch/whatever
+                Command::new("git")
+                    .arg("checkout")
+                    .arg(commit)
+                    .output()
+                    .expect("Failed to check out commit");
+
+                Crate {
+                    version: commit.clone(),
+                    name: name.clone(),
+                    path: repo_path,
+                }
+            },
         }
     }
 }
@@ -175,13 +207,29 @@ fn read_crates() -> Vec<CrateSource> {
     // multiple Cratesources)
     let mut crate_sources = Vec::new();
     tomlcrates.into_iter().for_each(|tk| {
+        // if we have multiple versions, save each one
         if let Some(ref versions) = tk.versions {
             versions.iter().for_each(|ver| {
-                crate_sources.push(CrateSource {
+                crate_sources.push(CrateSource::CratesIo {
                     name: tk.name.clone(),
                     version: ver.to_string(),
                 });
             })
+        }
+        // otherwise, we should have a git source
+        if tk.git_url.is_some() && tk.git_hash.is_some() {
+            crate_sources.push(CrateSource::Git {
+                name: tk.name.clone(),
+                url: tk.git_url.clone().unwrap(),
+                commit: tk.git_hash.clone().unwrap(),
+            });
+        }
+        // if we have a version as well as a git data OR only one git data, something is funky
+        if tk.versions.is_some() && (tk.git_url.is_some() || tk.git_hash.is_some())
+            || tk.git_hash.is_some() != tk.git_url.is_some()
+        {
+            dbg!(tk);
+            unreachable!("Failed to translate TomlCrate into CrateSource!");
         }
     });
     crate_sources
@@ -239,13 +287,13 @@ pub fn run(clap_config: &ArgMatches) {
 
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
         // if we don't have the specified crated in the .toml, throw an error
-        if !crates.iter().any(|krate| krate.name == only_one_crate) {
+        /*   if !crates.iter().any(|krate| krate.name == only_one_crate) {
             eprintln!(
                 "ERROR: could not find crate '{}' in clippy_dev/lintcheck_crates.toml",
                 only_one_crate
             );
             std::process::exit(1);
-        }
+        } */ //@FIXME
 
         // only check a single crate that was passed via cmdline
         crates
