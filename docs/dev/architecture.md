@@ -75,7 +75,7 @@ Original [libsyntax parser](https://github.com/rust-lang/rust/blob/6b99adeb11313
 
 **Architecture Invariant:** the parser is independent of the particular tree structure and particular representation of the tokens.
 It transforms one flat stream of events into another flat stream of events.
-Token independence allows us to pares out both text-based source code and `tt`-based macro input.
+Token independence allows us to parse out both text-based source code and `tt`-based macro input.
 Tree independence allows us to more easily vary the syntax tree implementation.
 It should also unlock efficient light-parsing approaches.
 For example, you can extract the set of names defined in a file (for typo correction) without building a syntax tree.
