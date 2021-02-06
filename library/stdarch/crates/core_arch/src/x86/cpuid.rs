@@ -55,26 +55,33 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     let ebx;
     let ecx;
     let edx;
+
     #[cfg(target_arch = "x86")]
     {
-        llvm_asm!("cpuid"
-                  : "={eax}"(eax), "={ebx}"(ebx), "={ecx}"(ecx), "={edx}"(edx)
-                  : "{eax}"(leaf), "{ecx}"(sub_leaf)
-                  : :);
+        asm!(
+            "cpuid",
+            inlateout("eax") leaf => eax,
+            lateout("ebx") ebx,
+            inlateout("ecx") sub_leaf => ecx,
+            lateout("edx") edx,
+            options(nostack, preserves_flags),
+        );
     }
     #[cfg(target_arch = "x86_64")]
     {
-        // x86-64 uses %rbx as the base register, so preserve it.
+        // x86-64 uses `rbx` as the base register, so preserve it.
         // This works around a bug in LLVM with ASAN enabled:
         // https://bugs.llvm.org/show_bug.cgi?id=17907
-        llvm_asm!(r#"
-                  mov %rbx, %rsi
-                  cpuid
-                  xchg %rbx, %rsi
-                  "#
-                  : "={eax}"(eax), "={esi}"(ebx), "={ecx}"(ecx), "={edx}"(edx)
-                  : "{eax}"(leaf), "{ecx}"(sub_leaf)
-                  : :);
+        asm!(
+            "mov rsi, rbx",
+            "cpuid",
+            "xchg rsi, rbx",
+            inlateout("eax") leaf => eax,
+            lateout("esi") ebx,
+            inlateout("ecx") sub_leaf => ecx,
+            lateout("edx") edx,
+            options(nostack, preserves_flags),
+        );
     }
     CpuidResult { eax, ebx, ecx, edx }
 }

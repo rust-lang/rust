@@ -4,6 +4,7 @@
 #![allow(unused_features)]
 #![allow(incomplete_features)]
 #![feature(
+    asm,
     const_fn,
     const_fn_union,
     const_fn_transmute,
