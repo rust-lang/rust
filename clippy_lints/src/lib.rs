@@ -1180,7 +1180,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box redundant_else::RedundantElse);
     store.register_late_pass(|| box create_dir::CreateDir);
     store.register_early_pass(|| box needless_arbitrary_self_type::NeedlessArbitrarySelfType);
-    let cargo_ignore_publish = conf._cargo_ignore_publish;
+    let cargo_ignore_publish = conf.cargo_ignore_publish;
     store.register_late_pass(move || box cargo_common_metadata::CargoCommonMetadata::new(cargo_ignore_publish));
     store.register_late_pass(|| box multiple_crate_versions::MultipleCrateVersions);
     store.register_late_pass(|| box wildcard_dependencies::WildcardDependencies);

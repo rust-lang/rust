@@ -174,7 +174,7 @@ define_Conf! {
     /// Lint: UNREADABLE_LITERAL. Should the fraction of a decimal be linted to include separators.
     (unreadable_literal_lint_fractions, "unreadable_literal_lint_fractions": bool, true),
     /// Lint: _CARGO_COMMON_METADATA. For internal testing only, ignores the current `publish` settings in the Cargo manifest.
-    (_cargo_ignore_publish, "_cargo_ignore_publish": bool, false),
+    (cargo_ignore_publish, "cargo_ignore_publish": bool, false),
 }
 
 impl Default for Conf {
