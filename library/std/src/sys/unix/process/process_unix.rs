@@ -8,7 +8,9 @@ use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
-use crate::sync::atomic::{AtomicBool, Ordering};
+
+#[cfg(target_os = "linux")]
+use crate::os::linux::process::PidFd;
 
 #[cfg(target_os = "linux")]
 use crate::sys::weak::syscall;
@@ -66,7 +68,7 @@ impl Command {
         // in its own process. Thus the parent drops the lock guard while the child
         // forgets it to avoid unlocking it on a new thread, which would be invalid.
         let env_lock = sys::os::env_read_lock();
-        let (pid, pidfd) = self.do_fork()?;
+        let (pid, pidfd) = unsafe { self.do_fork()? };
 
         if pid == 0 {
             crate::panic::always_abort();
@@ -95,7 +97,7 @@ impl Command {
         drop(env_lock);
         drop(output);
 
-        let mut p = Process { pid, status: None, pidfd };
+        let mut p = Process::new(pid, pidfd);
         let mut bytes = [0; 8];
 
         // loop to handle EINTR
@@ -127,84 +129,91 @@ impl Command {
         }
     }
 
-    // Attempts to fork the process. If successful, returns
-    // Ok((0, -1)) in the child, and Ok((child_pid, child_pidfd)) in the parent.
-    fn do_fork(&mut self) -> Result<(libc::c_long, libc::pid_t), io::Error> {
-        // If we fail to create a pidfd for any reason, this will
-        // stay as -1, which indicates an error
-        let mut pidfd: libc::pid_t = -1;
-
-        // On Linux, attempt to use the `clone3` syscall, which
-        // supports more argument (in particular, the ability to create a pidfd).
-        // If this fails, we will fall through this block to a call to `fork()`
-        cfg_if::cfg_if! {
-            if #[cfg(target_os = "linux")] {
-                static HAS_CLONE3: AtomicBool = AtomicBool::new(true);
-
-                const CLONE_PIDFD: u64 = 0x00001000;
-
-                #[repr(C)]
-                struct clone_args {
-                    flags: u64,
-                    pidfd: u64,
-                    child_tid: u64,
-                    parent_tid: u64,
-                    exit_signal: u64,
-                    stack: u64,
-                    stack_size: u64,
-                    tls: u64,
-                    set_tid: u64,
-                    set_tid_size: u64,
-                    cgroup: u64,
-                }
-
-                syscall! {
-                    fn clone3(cl_args: *mut clone_args, len: libc::size_t) -> libc::c_long
-                }
-
-                if HAS_CLONE3.load(Ordering::Relaxed) {
-                    let mut flags = 0;
-                    if self.make_pidfd {
-                        flags |= CLONE_PIDFD;
-                    }
-
-                    let mut args = clone_args {
-                        flags,
-                        pidfd: &mut pidfd as *mut libc::pid_t as u64,
-                        child_tid: 0,
-                        parent_tid: 0,
-                        exit_signal: libc::SIGCHLD as u64,
-                        stack: 0,
-                        stack_size: 0,
-                        tls: 0,
-                        set_tid: 0,
-                        set_tid_size: 0,
-                        cgroup: 0
-                    };
-
-                    let args_ptr = &mut args as *mut clone_args;
-                    let args_size = crate::mem::size_of::<clone_args>();
-
-                    let res = cvt(unsafe { clone3(args_ptr, args_size) });
-                    match res {
-                        Ok(n) => return Ok((n, pidfd)),
-                        Err(e) => match e.raw_os_error() {
-                            // Multiple threads can race to execute this store,
-                            // but that's fine - that just means that multiple threads
-                            // will have tried and failed to execute the same syscall,
-                            // with no other side effects.
-                            Some(libc::ENOSYS) => HAS_CLONE3.store(false, Ordering::Relaxed),
-                            _ => return Err(e)
-                        }
-                    }
-                }
-            }
-        }
-        // If we get here, we are either not on Linux,
-        // or we are on Linux and the 'clone3' syscall does not exist
-        cvt(unsafe { libc::fork() }.into()).map(|res| (res, pidfd))
+    // Attempts to fork the process. If successful, returns Ok((0, -1))
+    // in the child, and Ok((child_pid, -1)) in the parent.
+    #[cfg(not(target_os = "linux"))]
+    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+        cvt(libc::fork()).map(|res| (res, -1))
     }
 
+    // Attempts to fork the process. If successful, returns Ok((0, -1))
+    // in the child, and Ok((child_pid, child_pidfd)) in the parent.
+    #[cfg(target_os = "linux")]
+    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+        use crate::sync::atomic::{AtomicBool, Ordering};
+
+        static HAS_CLONE3: AtomicBool = AtomicBool::new(true);
+        const CLONE_PIDFD: u64 = 0x00001000;
+
+        #[repr(C)]
+        struct clone_args {
+            flags: u64,
+            pidfd: u64,
+            child_tid: u64,
+            parent_tid: u64,
+            exit_signal: u64,
+            stack: u64,
+            stack_size: u64,
+            tls: u64,
+            set_tid: u64,
+            set_tid_size: u64,
+            cgroup: u64,
+        }
+
+        syscall! {
+            fn clone3(cl_args: *mut clone_args, len: libc::size_t) -> libc::c_long
+        }
+
+        // If we fail to create a pidfd for any reason, this will
+        // stay as -1, which indicates an error.
+        let mut pidfd: pid_t = -1;
+
+        // Attempt to use the `clone3` syscall, which supports more arguments
+        // (in particular, the ability to create a pidfd). If this fails,
+        // we will fall through this block to a call to `fork()`
+        if HAS_CLONE3.load(Ordering::Relaxed) {
+            let mut flags = 0;
+            if self.get_create_pidfd() {
+                flags |= CLONE_PIDFD;
+            }
+
+            let mut args = clone_args {
+                flags,
+                pidfd: &mut pidfd as *mut pid_t as u64,
+                child_tid: 0,
+                parent_tid: 0,
+                exit_signal: libc::SIGCHLD as u64,
+                stack: 0,
+                stack_size: 0,
+                tls: 0,
+                set_tid: 0,
+                set_tid_size: 0,
+                cgroup: 0,
+            };
+
+            let args_ptr = &mut args as *mut clone_args;
+            let args_size = crate::mem::size_of::<clone_args>();
+
+            let res = cvt(clone3(args_ptr, args_size));
+            match res {
+                Ok(n) => return Ok((n as pid_t, pidfd)),
+                Err(e) => match e.raw_os_error() {
+                    // Multiple threads can race to execute this store,
+                    // but that's fine - that just means that multiple threads
+                    // will have tried and failed to execute the same syscall,
+                    // with no other side effects.
+                    Some(libc::ENOSYS) => HAS_CLONE3.store(false, Ordering::Relaxed),
+                    // Fallback to fork if `EPERM` is returned. (e.g. blocked by seccomp)
+                    Some(libc::EPERM) => {}
+                    _ => return Err(e),
+                },
+            }
+        }
+
+        // If we get here, the 'clone3' syscall does not exist
+        // or we do not have permission to call it
+        cvt(libc::fork()).map(|res| (res, pidfd))
+    }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         let envp = self.capture_env();
@@ -360,6 +369,8 @@ impl Command {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "freebsd",
+        all(target_os = "linux", target_env = "gnu"),
+        all(target_os = "linux", target_env = "musl"),
     )))]
     fn posix_spawn(
         &mut self,
@@ -374,6 +385,8 @@ impl Command {
     #[cfg(any(
         target_os = "macos",
         target_os = "freebsd",
+        all(target_os = "linux", target_env = "gnu"),
+        all(target_os = "linux", target_env = "musl"),
     ))]
     fn posix_spawn(
         &mut self,
@@ -388,6 +401,7 @@ impl Command {
             || (self.env_saw_path() && !self.program_is_path())
             || !self.get_closures().is_empty()
             || self.get_groups().is_some()
+            || self.get_create_pidfd()
         {
             return Ok(None);
         }
@@ -432,7 +446,7 @@ impl Command {
             None => None,
         };
 
-        let mut p = Process { pid: 0, status: None };
+        let mut p = Process::new(0, -1);
 
         struct PosixSpawnFileActions<'a>(&'a mut MaybeUninit<libc::posix_spawn_file_actions_t>);
 
@@ -522,14 +536,26 @@ pub struct Process {
     pid: pid_t,
     status: Option<ExitStatus>,
     // On Linux, stores the pidfd created for this child.
-    // This is -1 if the user did not request pidfd creation,
+    // This is None if the user did not request pidfd creation,
     // or if the pidfd could not be created for some reason
     // (e.g. the `clone3` syscall was not available).
     #[cfg(target_os = "linux")]
-    pidfd: libc::c_int,
+    pidfd: Option<PidFd>,
 }
 
 impl Process {
+    #[cfg(target_os = "linux")]
+    fn new(pid: pid_t, pidfd: pid_t) -> Self {
+        use crate::sys_common::FromInner;
+        let pidfd = (pidfd >= 0).then(|| PidFd::from_inner(sys::fd::FileDesc::new(pidfd)));
+        Process { pid, status: None, pidfd }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn new(pid: pid_t, _pidfd: pid_t) -> Self {
+        Process { pid, status: None }
+    }
+
     pub fn id(&self) -> u32 {
         self.pid as u32
     }
@@ -669,12 +695,18 @@ impl ExitStatusError {
 #[cfg(target_os = "linux")]
 #[unstable(feature = "linux_pidfd", issue = "none")]
 impl crate::os::linux::process::ChildExt for crate::process::Child {
-    fn pidfd(&self) -> crate::io::Result<i32> {
-        if self.handle.pidfd > 0 {
-            Ok(self.handle.pidfd)
-        } else {
-            Err(crate::io::Error::from(crate::io::ErrorKind::Other))
-        }
+    fn pidfd(&self) -> io::Result<&PidFd> {
+        self.handle
+            .pidfd
+            .as_ref()
+            .ok_or_else(|| Error::new(ErrorKind::Other, "No pidfd was created."))
+    }
+
+    fn take_pidfd(&mut self) -> io::Result<PidFd> {
+        self.handle
+            .pidfd
+            .take()
+            .ok_or_else(|| Error::new(ErrorKind::Other, "No pidfd was created."))
     }
 }
 

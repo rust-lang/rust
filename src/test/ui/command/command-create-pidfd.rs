@@ -1,13 +1,13 @@
 // run-pass
-// linux-only - pidfds are a linux-specific concept
+// only-linux - pidfds are a linux-specific concept
 
 #![feature(linux_pidfd)]
 use std::os::linux::process::{CommandExt, ChildExt};
 use std::process::Command;
 
 fn main() {
-    // We don't assert the precise value, since the standard libarary
-    // may be opened other file descriptors before our code ran.
+    // We don't assert the precise value, since the standard library
+    // might have opened other file descriptors before our code runs.
     let _ = Command::new("echo")
         .create_pidfd(true)
         .spawn()

@@ -79,7 +79,8 @@ pub struct Command {
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
-    pub(crate) make_pidfd: bool,
+    #[cfg(target_os = "linux")]
+    create_pidfd: bool,
 }
 
 // Create a new type for argv, so that we can make it `Send` and `Sync`
@@ -125,6 +126,7 @@ pub enum Stdio {
 }
 
 impl Command {
+    #[cfg(not(target_os = "linux"))]
     pub fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
         let program = os2c(program, &mut saw_nul);
@@ -142,7 +144,28 @@ impl Command {
             stdin: None,
             stdout: None,
             stderr: None,
-            make_pidfd: false,
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn new(program: &OsStr) -> Command {
+        let mut saw_nul = false;
+        let program = os2c(program, &mut saw_nul);
+        Command {
+            argv: Argv(vec![program.as_ptr(), ptr::null()]),
+            args: vec![program.clone()],
+            program,
+            env: Default::default(),
+            cwd: None,
+            uid: None,
+            gid: None,
+            saw_nul,
+            closures: Vec::new(),
+            groups: None,
+            stdin: None,
+            stdout: None,
+            stderr: None,
+            create_pidfd: false,
         }
     }
 
@@ -178,9 +201,21 @@ impl Command {
     pub fn groups(&mut self, groups: &[gid_t]) {
         self.groups = Some(Box::from(groups));
     }
-    
+
+    #[cfg(target_os = "linux")]
     pub fn create_pidfd(&mut self, val: bool) {
-        self.make_pidfd = val;
+        self.create_pidfd = val;
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    #[allow(dead_code)]
+    pub fn get_create_pidfd(&self) -> bool {
+        false
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn get_create_pidfd(&self) -> bool {
+        self.create_pidfd
     }
 
     pub fn saw_nul(&self) -> bool {
