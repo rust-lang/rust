@@ -263,7 +263,18 @@ where
                 return TryGetJob::Cycle(value);
             }
 
-            let cached = try_get_cached(tcx, cache, key, |value, index| (value.clone(), index))
+            let cached = cache
+                .cache
+                .lookup(cache, &key, |value, index| {
+                    if unlikely!(tcx.profiler().enabled()) {
+                        tcx.profiler().query_cache_hit(index.into());
+                    }
+                    #[cfg(debug_assertions)]
+                    {
+                        cache.cache_hits.fetch_add(1, Ordering::Relaxed);
+                    }
+                    (value.clone(), index)
+                })
                 .unwrap_or_else(|_| panic!("value must be in cache after waiting"));
 
             if let Some(prof_timer) = _query_blocked_prof_timer.take() {
@@ -374,7 +385,7 @@ where
 /// It returns the shard index and a lock guard to the shard,
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
-fn try_get_cached<'a, CTX, C, R, OnHit>(
+pub fn try_get_cached<'a, CTX, C, R, OnHit>(
     tcx: CTX,
     cache: &'a QueryCacheStore<C>,
     key: &C::Key,
@@ -384,7 +395,7 @@ fn try_get_cached<'a, CTX, C, R, OnHit>(
 where
     C: QueryCache,
     CTX: QueryContext,
-    OnHit: FnOnce(&C::Stored, DepNodeIndex) -> R,
+    OnHit: FnOnce(&C::Stored) -> R,
 {
     cache.cache.lookup(cache, &key, |value, index| {
         if unlikely!(tcx.profiler().enabled()) {
@@ -394,7 +405,8 @@ where
         {
             cache.cache_hits.fetch_add(1, Ordering::Relaxed);
         }
-        on_hit(value, index)
+        tcx.dep_graph().read_index(index);
+        on_hit(value)
     })
 }
 
@@ -632,6 +644,7 @@ fn get_query_impl<CTX, C>(
     cache: &QueryCacheStore<C>,
     span: Span,
     key: C::Key,
+    lookup: QueryLookup,
     query: &QueryVtable<CTX, C::Key, C::Value>,
 ) -> C::Stored
 where
@@ -639,14 +652,7 @@ where
     C: QueryCache,
     C::Key: crate::dep_graph::DepNodeParams<CTX>,
 {
-    let cached = try_get_cached(tcx, cache, &key, |value, index| {
-        tcx.dep_graph().read_index(index);
-        value.clone()
-    });
-    match cached {
-        Ok(value) => value,
-        Err(lookup) => try_execute_query(tcx, state, cache, span, key, lookup, query),
-    }
+    try_execute_query(tcx, state, cache, span, key, lookup, query)
 }
 
 /// Ensure that either this query has all green inputs or been executed.
@@ -705,9 +711,14 @@ fn force_query_impl<CTX, C>(
 {
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
-
-    let cached = try_get_cached(tcx, cache, &key, |_, _| {
-        // Cache hit, do nothing
+    let cached = cache.cache.lookup(cache, &key, |_, index| {
+        if unlikely!(tcx.profiler().enabled()) {
+            tcx.profiler().query_cache_hit(index.into());
+        }
+        #[cfg(debug_assertions)]
+        {
+            cache.cache_hits.fetch_add(1, Ordering::Relaxed);
+        }
     });
 
     let lookup = match cached {
@@ -731,7 +742,13 @@ pub enum QueryMode {
     Ensure,
 }
 
-pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
+pub fn get_query<Q, CTX>(
+    tcx: CTX,
+    span: Span,
+    key: Q::Key,
+    lookup: QueryLookup,
+    mode: QueryMode,
+) -> Option<Q::Stored>
 where
     Q: QueryDescription<CTX>,
     Q::Key: crate::dep_graph::DepNodeParams<CTX>,
@@ -745,7 +762,8 @@ where
     }
 
     debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
-    let value = get_query_impl(tcx, Q::query_state(tcx), Q::query_cache(tcx), span, key, query);
+    let value =
+        get_query_impl(tcx, Q::query_state(tcx), Q::query_cache(tcx), span, key, lookup, query);
     Some(value)
 }
 
