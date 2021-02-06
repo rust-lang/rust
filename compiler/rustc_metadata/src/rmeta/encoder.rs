@@ -947,6 +947,9 @@ impl EncodeContext<'a, 'tcx> {
                     record!(self.tables.inferred_outlives[def_id] <- inferred_outlives);
                 }
             }
+            if let DefKind::Trait | DefKind::TraitAlias = def_kind {
+                record!(self.tables.super_predicates[def_id] <- self.tcx.super_predicates_of(def_id));
+            }
         }
         let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
         for (def_id, implementations) in inherent_impls.inherent_impls.iter() {
@@ -1090,11 +1093,6 @@ impl EncodeContext<'a, 'tcx> {
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-    }
-
-    fn encode_super_predicates(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_super_predicates({:?})", def_id);
-        record!(self.tables.super_predicates[def_id] <- self.tcx.super_predicates_of(def_id));
     }
 
     fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
@@ -1492,12 +1490,6 @@ impl EncodeContext<'a, 'tcx> {
             if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
                 record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
             }
-        }
-        match item.kind {
-            hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => {
-                self.encode_super_predicates(def_id);
-            }
-            _ => {}
         }
     }
 
