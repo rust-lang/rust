@@ -7,6 +7,9 @@ use crate::unicode::{self, conversions};
 
 use super::*;
 
+/// If 6th bit set ascii is upper case.
+const ASCII_CASE_MASK: u8 = 0b10_0000u8;
+
 #[lang = "char"]
 impl char {
     /// The highest valid code point a `char` can have.
@@ -1090,8 +1093,7 @@ impl char {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> char {
-        // 6th bit dictates ascii case.
-        if self.is_ascii_lowercase() { ((*self as u8) & !0b10_0000u8) as char } else { *self }
+        if self.is_ascii_lowercase() { ((*self as u8) & !ASCII_CASE_MASK) as char } else { *self }
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -1119,8 +1121,7 @@ impl char {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> char {
-        // 6th bit dictates ascii case.
-        if self.is_ascii_uppercase() { ((*self as u8) | 0b10_0000u8) as char } else { *self }
+        if self.is_ascii_uppercase() { ((*self as u8) | ASCII_CASE_MASK) as char } else { *self }
     }
 
     /// Checks that two values are an ASCII case-insensitive match.
