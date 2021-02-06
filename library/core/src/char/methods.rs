@@ -1090,7 +1090,8 @@ impl char {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> char {
-        if self.is_ascii() { (*self as u8).to_ascii_uppercase() as char } else { *self }
+        // 6th bit dictates ascii case.
+        if self.is_ascii_lowercase() { ((*self as u8) & !0b10_0000u8) as char } else { *self }
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -1118,7 +1119,8 @@ impl char {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> char {
-        if self.is_ascii() { (*self as u8).to_ascii_lowercase() as char } else { *self }
+        // 6th bit dictates ascii case.
+        if self.is_ascii_uppercase() { ((*self as u8) | 0b10_0000u8) as char } else { *self }
     }
 
     /// Checks that two values are an ASCII case-insensitive match.
