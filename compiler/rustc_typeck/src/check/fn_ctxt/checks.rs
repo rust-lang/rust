@@ -557,7 +557,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // As we encounter issues, keep track of what we want to provide for the suggestion
             let mut suggested_inputs: Vec<Option<String>> = vec![None; minimum_input_count];
-            let mut issues = vec![];
+            let mut labels = vec![];
+            let mut suggestion_text = None;
             let source_map = self.sess().source_map();
 
             // Before we start looking for issues, eliminate any arguments that are already satisfied,
@@ -589,15 +590,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             suggested_inputs[input_idx] = Some(format!("{{{}}}", input_ty));
                         }
-                        issues.push(Issue::Invalid(arg_indexes[idx]));
+                        let provided_ty = if let Some((ty, _)) = final_arg_types[idx] {
+                            format!(", found {}", ty)
+                        } else {
+                            "".into()
+                        };
+                        labels.push((provided_args[idx].span, format!("expected {}{}", expected_ty, provided_ty)));
+                        suggestion_text = match suggestion_text {
+                            None => Some("provide an argument of the correct type"),
+                            Some(_) => Some("did you mean")
+                        };
                         eliminate_input(&mut compatibility_matrix, &mut input_indexes, idx);
                         eliminate_arg(&mut compatibility_matrix, &mut arg_indexes, idx);
-                    }
+                    },
                     Some(Issue::Extra(idx)) => {
                         // Eliminate the argument (without touching any inputs)
-                        issues.push(Issue::Extra(arg_indexes[idx]));
+                        let arg_type = if let Some((_, ty)) = final_arg_types[idx] {
+                            format!(" of type {}", ty)
+                        } else {
+                            "".into()
+                        };
+                        labels.push((provided_args[idx].span, format!("argument{} unexpected", arg_type)));
+                        suggestion_text = match suggestion_text {
+                            None => Some("remove the extra argument"),
+                            Some(_) => Some("did you mean")
+                        };
                         eliminate_arg(&mut compatibility_matrix, &mut arg_indexes, idx);
-                    }
+                    },
                     Some(Issue::Missing(idx)) => {
                         let input_idx = input_indexes[idx];
                         let expected_ty = expected_input_tys[input_idx];
@@ -607,9 +626,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             suggested_inputs[input_idx] = Some(format!("{{{}}}", input_ty));
                         }
-                        issues.push(Issue::Missing(input_indexes[idx]));
+                        // NOTE: Because we might be re-arranging arguments, might have extra arguments, etc.
+                        // It's hard to *really* know where we should provide this error label, so this is a
+                        // decent heuristic
+                        let span = if input_idx < provided_arg_count {
+                            let arg_span = provided_args[input_idx].span;
+                            Span::new(arg_span.lo(), arg_span.hi(), arg_span.ctxt())
+                        } else {
+                            // Otherwise just label the whole function
+                            call_span
+                        };
+                        labels.push((span, format!("an argument of type {} is missing", input_ty)));
+                        suggestion_text = match suggestion_text {
+                            None => Some("provide the argument"),
+                            Some(_) => Some("did you mean")
+                        };
                         eliminate_input(&mut compatibility_matrix, &mut input_indexes, idx);
-                    }
+                    },
                     Some(Issue::Swap(idx, other)) => {
                         let input_idx = input_indexes[idx];
                         let other_input_idx = input_indexes[other];
@@ -622,7 +655,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         suggested_inputs[input_idx] = Some(second_snippet);
                         suggested_inputs[other_input_idx] = Some(first_snippet);
 
-                        issues.push(Issue::Swap(arg_idx, other_arg_idx));
+                        let first_expected_ty = self.resolve_vars_if_possible(expected_input_tys[input_idx]);
+                        let first_provided_ty = if let Some((ty, _)) = final_arg_types[arg_idx] {
+                            format!(",found {}", ty)
+                        } else {
+                            "".into()
+                        };
+                        labels.push((first_span, format!("expected {}{}", first_expected_ty, first_provided_ty)));
+                        let other_expected_ty = self.resolve_vars_if_possible(expected_input_tys[other_input_idx]);
+                        let other_provided_ty = if let Some((ty, _)) = final_arg_types[other_arg_idx] {
+                            format!(",found {}", ty)
+                        } else {
+                            "".into()
+                        };
+                        labels.push((second_span, format!("expected {}{}", other_expected_ty, other_provided_ty)));
+                        suggestion_text = match suggestion_text {
+                            None => Some("swap these arguments"),
+                            Some(_) => Some("did you mean")
+                        };
 
                         let (min, max) = (cmp::min(idx, other), cmp::max(idx, other));
                         satisfy_input(
@@ -639,7 +689,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             max - 1, // Subtract 1 because we already removed the "min" row
                             min,
                         );
-                    }
+                    },
                     Some(Issue::Permutation(args)) => {
                         // FIXME: If satisfy_input ever did anything non-trivial (emit obligations to help type checking, for example)
                         // we'd want to call this function with the correct arg/input pairs, but for now, we just throw them in a bucket.
@@ -656,10 +706,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let dest_input = input_indexes[dst.unwrap()];
                             let src_span = provided_args[src_arg].span;
                             suggested_inputs[dest_input] = Some(source_map.span_to_snippet(src_span).unwrap());
+
+                            let expected_ty = self.resolve_vars_if_possible(expected_input_tys[dest_input]);
+                            let provided_ty = if let Some((ty, _)) = final_arg_types[dst_arg] {
+                                format!(",found {}", ty)
+                            } else {
+                                "".into()
+                            };
+                            labels.push((provided_args[dst_arg].span, format!("expected {}{}", expected_ty, provided_ty)));
                             real_idxs[src_arg] = Some(dst_arg);
                         }
 
-                        issues.push(Issue::Permutation(real_idxs));
+                        suggestion_text = match suggestion_text {
+                            None => Some("reorder these arguments"),
+                            Some(_) => Some("did you mean")
+                        };
+
                         idxs.sort();
                         idxs.reverse();
                         for i in idxs {
@@ -671,7 +733,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 i,
                             );
                         }
-                    }
+                    },
                     None => {
                         // We didn't find any issues, so we need to push the algorithm forward
                         // First, eliminate any arguments that currently satisfy their inputs
@@ -684,7 +746,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             }
 
-            let issue_count = issues.len();
+            let issue_count = labels.len();
             if issue_count > 0 {
 
                 // Now construct our error from the various things we've labeled
@@ -695,6 +757,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "{}arguments to this function are incorrect",
                     if issue_count > 1 { "multiple " } else { "" }
                 );
+                
+                // If we have less than 5 things to say, it would be useful to call out exactly what's wrong
+                if issue_count <= 5 {
+                    for (span, label) in labels {
+                        err.span_label(span, label);
+                    }
+                }
 
                 // Call out where the function is defined
                 let mut fn_name: String = "".to_string();
@@ -718,30 +787,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                // And add a series of suggestions
-                // FIXME: for simpler cases, this might be overkill
-                if issues.len() > 0 {
-                    let suggestion_text = Some("make these changes");
-                    let mut suggestion = format!("{}(", fn_name).to_string();
-                    for (idx, input) in suggested_inputs.iter().enumerate() {
-                        if let Some(sug) = input {
-                            suggestion += sug;
-                        } else {
-                            suggestion += "??";
-                        }
-                        if idx < minimum_input_count - 1 {
-                            suggestion += ", ";
-                        }
+                // And add a suggestion block for all of the parameters
+                let mut suggestion = format!("{}(", fn_name).to_string();
+                for (idx, input) in suggested_inputs.iter().enumerate() {
+                    if let Some(sug) = input {
+                        suggestion += sug;
+                    } else {
+                        suggestion += "??";
                     }
-                    suggestion += ")";
-                    if let Some(suggestion_text) = suggestion_text {
-                        err.span_suggestion_verbose(
-                            call_span,
-                            suggestion_text,
-                            suggestion,
-                            Applicability::HasPlaceholders,
-                        );
+                    if idx < minimum_input_count - 1 {
+                        suggestion += ", ";
                     }
+                }
+                suggestion += ")";
+                if let Some(suggestion_text) = suggestion_text {
+                    err.span_suggestion_verbose(
+                        call_span,
+                        suggestion_text,
+                        suggestion,
+                        Applicability::HasPlaceholders,
+                    );
                 }
 
                 err.emit();

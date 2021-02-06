@@ -2,14 +2,17 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:10:3
    |
 LL |   two_args(1, "", X {});
-   |   ^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^-^^^^^^^^^^^
+   |            |
+   |            expected f32, found i32
+   |            argument of type i32 unexpected
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:5:4
    |
 LL | fn two_args(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
-help: make these changes
+help: did you mean
    |
 LL |   two_args(1, {f32});
    |   ^^^^^^^^^^^^^^^^^^
@@ -18,14 +21,18 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:11:3
    |
 LL |   three_args(1, "", X {}, "");
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^-^^--^^^^^^^^^^^
+   |              |  |
+   |              |  an argument of type f32 is missing
+   |              |  argument of type f32 unexpected
+   |              argument of type i32 unexpected
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: make these changes
+help: did you mean
    |
 LL |   three_args(1, {f32}, "");
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -34,14 +41,17 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:14:3
    |
 LL |   three_args(1, X {});
-   |   ^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^-^^^^^^^
+   |   |          |
+   |   |          expected f32, found i32
+   |   an argument of type &str is missing
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: make these changes
+help: did you mean
    |
 LL |   three_args(1, {f32}, {&str});
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,14 +60,17 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:17:3
    |
 LL |   three_args(1, "", X {});
-   |   ^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^--^^^^^^^
+   |                 |
+   |                 an argument of type f32 is missing
+   |                 argument of type f32 unexpected
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: make these changes
+help: did you mean
    |
 LL |   three_args(1, {f32}, "");
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,14 +79,18 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:20:3
    |
 LL |   three_args("", X {}, 1);
-   |   ^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^--^^^^^^^^-^
+   |              |         |
+   |              |         expected &str,found {integer}
+   |              expected i32,found &'static str
+   |              expected f32, found &'static str
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: make these changes
+help: did you mean
    |
 LL |   three_args(1, {f32}, "");
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -82,14 +99,18 @@ error[E0059]: multiple arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:23:3
    |
 LL |   three_args("", 1);
-   |   ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^--^^-^
+   |              |   |
+   |              |   an argument of type f32 is missing
+   |              |   expected &str,found {integer}
+   |              expected i32,found &'static str
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
-help: make these changes
+help: did you mean
    |
 LL |   three_args(1, {f32}, "");
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
