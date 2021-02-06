@@ -1,5 +1,5 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::query::plumbing::{QueryLookup, QueryState};
+use crate::query::plumbing::{QueryCacheStore, QueryLookup};
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
@@ -31,13 +31,13 @@ pub trait QueryCache: QueryStorage {
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
-    fn lookup<'s, D, Q, R, OnHit>(
+    fn lookup<'s, R, OnHit>(
         &self,
-        state: &'s QueryState<D, Q, Self>,
+        state: &'s QueryCacheStore<Self>,
         key: &Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
         on_hit: OnHit,
-    ) -> Result<R, QueryLookup<'s, D, Q, Self::Key, Self::Sharded>>
+    ) -> Result<R, QueryLookup<'s, Self::Sharded>>
     where
         OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R;
 
@@ -93,17 +93,17 @@ where
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<'s, D, Q, R, OnHit>(
+    fn lookup<'s, R, OnHit>(
         &self,
-        state: &'s QueryState<D, Q, Self>,
+        state: &'s QueryCacheStore<Self>,
         key: &K,
         on_hit: OnHit,
-    ) -> Result<R, QueryLookup<'s, D, Q, K, Self::Sharded>>
+    ) -> Result<R, QueryLookup<'s, Self::Sharded>>
     where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
     {
         let lookup = state.get_lookup(key);
-        let result = lookup.lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
+        let result = lookup.lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&value.0, value.1);
@@ -176,17 +176,17 @@ where
     type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<'s, D, Q, R, OnHit>(
+    fn lookup<'s, R, OnHit>(
         &self,
-        state: &'s QueryState<D, Q, Self>,
+        state: &'s QueryCacheStore<Self>,
         key: &K,
         on_hit: OnHit,
-    ) -> Result<R, QueryLookup<'s, D, Q, K, Self::Sharded>>
+    ) -> Result<R, QueryLookup<'s, Self::Sharded>>
     where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
     {
         let lookup = state.get_lookup(key);
-        let result = lookup.lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
+        let result = lookup.lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&&value.0, value.1);

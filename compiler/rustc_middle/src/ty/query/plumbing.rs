@@ -355,6 +355,11 @@ macro_rules! define_queries {
             $(pub type $name<$tcx> = <query_storage::$name<$tcx> as QueryStorage>::Stored;)*
         }
 
+        #[derive(Default)]
+        pub struct QueryCaches<$tcx> {
+            $($(#[$attr])* $name: QueryCacheStore<query_storage::$name<$tcx>>,)*
+        }
+
         $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
             type Key = $($K)*;
             type Value = $V;
@@ -370,8 +375,15 @@ macro_rules! define_queries {
             type Cache = query_storage::$name<$tcx>;
 
             #[inline(always)]
-            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, <TyCtxt<$tcx> as QueryContext>::Query, Self::Cache> {
+            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, Query<$tcx>, Self::Key> {
                 &tcx.queries.$name
+            }
+
+            #[inline(always)]
+            fn query_cache<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryCacheStore<Self::Cache>
+                where 'tcx:'a
+            {
+                &tcx.query_caches.$name
             }
 
             #[inline]
@@ -479,7 +491,7 @@ macro_rules! define_queries {
                     alloc_self_profile_query_strings_for_query_cache(
                         self,
                         stringify!($name),
-                        &self.queries.$name,
+                        &self.query_caches.$name,
                         &mut string_cache,
                     );
                 })*
@@ -525,8 +537,8 @@ macro_rules! define_queries_struct {
 
             $($(#[$attr])*  $name: QueryState<
                 crate::dep_graph::DepKind,
-                <TyCtxt<$tcx> as QueryContext>::Query,
-                query_storage::$name<$tcx>,
+                Query<$tcx>,
+                query_keys::$name<$tcx>,
             >,)*
         }
 
