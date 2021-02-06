@@ -46,3 +46,10 @@ fn foobar(x: i32) {
         y = x + 1;
     }
 }
+
+fn loop_test(x: i32) {
+    let y: i32;
+    for &ext in &["stdout", "stderr", "fixed"] {
+        println!("{}", ext);
+    }
+}

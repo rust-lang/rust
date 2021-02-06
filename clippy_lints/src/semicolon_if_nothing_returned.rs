@@ -1,7 +1,7 @@
-use crate::utils::{in_macro, span_lint_and_then, sugg};
+use crate::utils::{in_macro, span_lint_and_sugg, sugg, snippet_with_macro_callsite};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -11,7 +11,6 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** The semicolon might be optional but when
     /// extending the block with new code, it doesn't require a change in previous last line.
-    /// It's also more idiomatic.
     ///
     /// **Known problems:** None.
     ///
@@ -29,7 +28,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub SEMICOLON_IF_NOTHING_RETURNED,
-    pedantic,
+    restriction,
     "add a semicolon if nothing is returned"
 }
 
@@ -42,31 +41,25 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
             if let Some(expr) = block.expr;
             let t_expr = cx.typeck_results().expr_ty(expr);
             if t_expr.is_unit();
+            if let snippet = snippet_with_macro_callsite(cx, expr.span, "}");
+            if !snippet.ends_with('}');
             then {
-                match expr.kind {
-                    ExprKind::Loop(..) | 
-                    ExprKind::Match(..) | 
-                    ExprKind::Block(..) | 
-                    ExprKind::If(..) if !in_macro(expr.span) => return,
-                   _ => (),
+                // filter out the desugared `for` loop
+                if let ExprKind::DropTemps(..) = &expr.kind {
+                    return;
                 }
 
                 let sugg = sugg::Sugg::hir(cx, &expr, "..");
                 let suggestion = format!("{0};", sugg);
-                span_lint_and_then(
+                span_lint_and_sugg(
                     cx,
                     SEMICOLON_IF_NOTHING_RETURNED,
                     expr.span,
-                    "add `;` to terminate block",
-                    | diag | {
-                        diag.span_suggestion(
-                            expr.span,
-                            "add `;`",
-                            suggestion,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                )
+                    "consider adding a `;` to the last statement for consistent formatting",
+                    "add a `;` here",
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
     }
