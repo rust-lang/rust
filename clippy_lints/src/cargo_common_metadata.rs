@@ -93,7 +93,8 @@ impl LateLintPass<'_> for CargoCommonMetadata {
         let metadata = unwrap_cargo_metadata!(cx, CARGO_COMMON_METADATA, false);
 
         for package in metadata.packages {
-            // we want to skip the lint if publish is `None` (`publish = false`) or if the vector is empty (`publish = []`)
+            // only run the lint if publish is `None` (`publish = true` or skipped entirely)
+            // or if the vector isn't empty (`publish = ["something"]`)
             if package.publish.as_ref().filter(|publish| publish.is_empty()).is_none() || self.ignore_publish {
                 if is_empty_vec(&package.authors) {
                     missing_warning(cx, &package, "package.authors");
