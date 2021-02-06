@@ -49,12 +49,12 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
                     return;
                 }
 
-                let sugg = sugg::Sugg::hir(cx, &expr, "..");
+                let sugg = sugg::Sugg::hir_with_macro_callsite(cx, &expr, "..");
                 let suggestion = format!("{0};", sugg);
                 span_lint_and_sugg(
                     cx,
                     SEMICOLON_IF_NOTHING_RETURNED,
-                    expr.span,
+                    expr.span.source_callsite(),
                     "consider adding a `;` to the last statement for consistent formatting",
                     "add a `;` here",
                     suggestion,

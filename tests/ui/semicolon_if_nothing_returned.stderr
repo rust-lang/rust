@@ -2,10 +2,9 @@ error: consider adding a `;` to the last statement for consistent formatting
   --> $DIR/semicolon_if_nothing_returned.rs:8:5
    |
 LL |     println!("Hello")
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^ help: add a `;` here: `println!("Hello");`
    |
    = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: consider adding a `;` to the last statement for consistent formatting
   --> $DIR/semicolon_if_nothing_returned.rs:12:5
