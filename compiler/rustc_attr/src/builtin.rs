@@ -74,7 +74,7 @@ pub enum InlineAttr {
     Never,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
 pub enum InstructionSetAttr {
     ArmA32,
     ArmT32,
