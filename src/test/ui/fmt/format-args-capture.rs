@@ -5,6 +5,7 @@
 fn main() {
     named_argument_takes_precedence_to_captured();
     formatting_parameters_can_be_captured();
+    capture_raw_strings_and_idents();
 
     #[cfg(panic = "unwind")]
     {
@@ -23,6 +24,16 @@ fn named_argument_takes_precedence_to_captured() {
 
     let s = format!("{}-{bar}-{foo}", "positional", bar="named");
     assert_eq!(&s, "positional-named-captured");
+}
+
+fn capture_raw_strings_and_idents() {
+    let r#type = "apple";
+    let s = format!(r#"The fruit is an {type}"#);
+    assert_eq!(&s, "The fruit is an apple");
+
+    let r#type = "orange";
+    let s = format!(r"The fruit is an {type}");
+    assert_eq!(&s, "The fruit is an orange");
 }
 
 #[cfg(panic = "unwind")]
