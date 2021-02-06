@@ -1,4 +1,4 @@
-use crate::utils::{constants, snippet_opt, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use crate::utils::{snippet_opt, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use rustc_ast::ast::{
     BindingMode, Expr, ExprKind, GenericParamKind, Generics, Lit, LitFloatType, LitIntType, LitKind, Mutability,
     NodeId, Pat, PatKind, UnOp,
@@ -6,6 +6,7 @@ use rustc_ast::ast::{
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
+use rustc_hir::PrimTy;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -264,13 +265,12 @@ impl EarlyLintPass for MiscEarlyLints {
     fn check_generics(&mut self, cx: &EarlyContext<'_>, gen: &Generics) {
         for param in &gen.params {
             if let GenericParamKind::Type { .. } = param.kind {
-                let name = param.ident.as_str();
-                if constants::BUILTIN_TYPES.contains(&&*name) {
+                if let Some(prim_ty) = PrimTy::from_name(param.ident.name) {
                     span_lint(
                         cx,
                         BUILTIN_TYPE_SHADOW,
                         param.ident.span,
-                        &format!("this generic shadows the built-in type `{}`", name),
+                        &format!("this generic shadows the built-in type `{}`", prim_ty.name()),
                     );
                 }
             }
