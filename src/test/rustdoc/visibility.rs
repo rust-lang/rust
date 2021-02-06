@@ -42,3 +42,35 @@ mod a {
         struct FooBPriv;
     }
 }
+
+// @has 'foo/trait.PubTrait.html' '//pre' 'pub trait PubTrait'
+//
+// @has 'foo/trait.PubTrait.html' '//pre' 'type Type;'
+// @!has 'foo/trait.PubTrait.html' '//pre' 'pub type Type;'
+//
+// @has 'foo/trait.PubTrait.html' '//pre' 'const CONST: usize;'
+// @!has 'foo/trait.PubTrait.html' '//pre' 'pub const CONST: usize;'
+//
+// @has 'foo/trait.PubTrait.html' '//pre' 'fn function();'
+// @!has 'foo/trait.PubTrait.html' '//pre' 'pub fn function();'
+
+pub trait PubTrait {
+    type Type;
+    const CONST: usize;
+    fn function();
+}
+
+// @has 'foo/struct.FooPublic.html' '//code' 'type Type'
+// @!has 'foo/struct.FooPublic.html' '//code' 'pub type Type'
+//
+// @has 'foo/struct.FooPublic.html' '//code' 'const CONST: usize'
+// @!has 'foo/struct.FooPublic.html' '//code' 'pub const CONST: usize'
+//
+// @has 'foo/struct.FooPublic.html' '//code' 'fn function()'
+// @!has 'foo/struct.FooPublic.html' '//code' 'pub fn function()'
+
+impl PubTrait for FooPublic {
+    type Type = usize;
+    const CONST: usize = 0;
+    fn function() {}
+}

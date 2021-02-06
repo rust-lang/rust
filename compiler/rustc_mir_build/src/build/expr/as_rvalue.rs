@@ -12,8 +12,6 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
 
-use std::slice;
-
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current
     /// scope expression.
@@ -115,19 +113,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
-                // Initialize the box contents. No scope is needed since the
-                // `Box` is already scheduled to be dropped.
+                // initialize the box contents:
                 unpack!(
-                    block = this.into(
-                        this.hir.tcx().mk_place_deref(Place::from(result)),
-                        None,
-                        block,
-                        value,
-                    )
+                    block =
+                        this.into(this.hir.tcx().mk_place_deref(Place::from(result)), block, value)
                 );
-                let result_operand = Operand::Move(Place::from(result));
-                this.record_operands_moved(slice::from_ref(&result_operand));
-                block.and(Rvalue::Use(result_operand))
+                block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
@@ -171,7 +162,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|f| unpack!(block = this.as_operand(block, scope, f)))
                     .collect();
 
-                this.record_operands_moved(&fields);
                 block.and(Rvalue::Aggregate(box AggregateKind::Array(el_ty), fields))
             }
             ExprKind::Tuple { fields } => {
@@ -182,7 +172,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|f| unpack!(block = this.as_operand(block, scope, f)))
                     .collect();
 
-                this.record_operands_moved(&fields);
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
             ExprKind::Closure { closure_id, substs, upvars, movability } => {
@@ -234,7 +223,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     UpvarSubsts::Closure(substs) => box AggregateKind::Closure(closure_id, substs),
                 };
-                this.record_operands_moved(&operands);
                 block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {

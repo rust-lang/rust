@@ -7,7 +7,8 @@ use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_span::{sym, InnerSpan};
 
 declare_lint! {
-    /// The `panic_fmt` lint detects `panic!("..")` with `{` or `}` in the string literal.
+    /// The `non_fmt_panic` lint detects `panic!("..")` with `{` or `}` in the string literal
+    /// when it is not used as a format string.
     ///
     /// ### Example
     ///
@@ -23,13 +24,13 @@ declare_lint! {
     /// with a single argument does not use `format_args!()`.
     /// A future edition of Rust will interpret this string as format string,
     /// which would break this.
-    PANIC_FMT,
+    NON_FMT_PANIC,
     Warn,
     "detect braces in single-argument panic!() invocations",
     report_in_external_macro
 }
 
-declare_lint_pass!(PanicFmt => [PANIC_FMT]);
+declare_lint_pass!(PanicFmt => [NON_FMT_PANIC]);
 
 impl<'tcx> LateLintPass<'tcx> for PanicFmt {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
@@ -92,7 +93,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                             [] => vec![fmt_span],
                             v => v.iter().map(|span| fmt_span.from_inner(*span)).collect(),
                         };
-                        cx.struct_span_lint(PANIC_FMT, arg_spans, |lint| {
+                        cx.struct_span_lint(NON_FMT_PANIC, arg_spans, |lint| {
                             let mut l = lint.build(match n_arguments {
                                 1 => "panic message contains an unused formatting placeholder",
                                 _ => "panic message contains unused formatting placeholders",
@@ -129,7 +130,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                             Some(v) if v.len() == 1 => "panic message contains a brace",
                             _ => "panic message contains braces",
                         };
-                        cx.struct_span_lint(PANIC_FMT, brace_spans.unwrap_or(vec![expn.call_site]), |lint| {
+                        cx.struct_span_lint(NON_FMT_PANIC, brace_spans.unwrap_or(vec![expn.call_site]), |lint| {
                             let mut l = lint.build(msg);
                             l.note("this message is not used as a format string, but will be in a future Rust edition");
                             if expn.call_site.contains(arg.span) {

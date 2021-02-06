@@ -1096,7 +1096,10 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     AssocTypeItem(bounds.clean(cx), default.clean(cx))
                 }
             };
-            Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
+            let what_rustc_thinks =
+                Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
+            // Trait items always inherit the trait's visibility -- we don't want to show `pub`.
+            Item { visibility: Inherited, ..what_rustc_thinks }
         })
     }
 }
@@ -1124,7 +1127,21 @@ impl Clean<Item> for hir::ImplItem<'_> {
                     TypedefItem(Typedef { type_, generics: Generics::default(), item_type }, true)
                 }
             };
-            Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
+
+            let what_rustc_thinks =
+                Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
+            let parent_item = cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(self.hir_id));
+            if let hir::ItemKind::Impl { of_trait, .. } = &parent_item.kind {
+                if of_trait.is_some() {
+                    // Trait impl items always inherit the impl's visibility --
+                    // we don't want to show `pub`.
+                    Item { visibility: Inherited, ..what_rustc_thinks }
+                } else {
+                    what_rustc_thinks
+                }
+            } else {
+                panic!("found impl item with non-impl parent {:?}", parent_item);
+            }
         })
     }
 }
