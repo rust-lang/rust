@@ -165,14 +165,15 @@ impl Crate {
             .current_dir(&self.path)
             .output()
             .unwrap_or_else(|error| {
-                dbg!(error);
-                dbg!(&cargo_clippy_path);
-                dbg!(&self.path);
-                panic!("something was not found?")
+                panic!(
+                    "Encountered error:\n{:?}\ncargo_clippy_path: {}\ncrate path:{}\n",
+                    error,
+                    &cargo_clippy_path.display(),
+                    &self.path.display()
+                );
             });
         let stdout = String::from_utf8_lossy(&all_output.stdout);
         let output_lines = stdout.lines();
-        //dbg!(&output_lines);
         let warnings: Vec<ClippyWarning> = output_lines
             .into_iter()
             // get all clippy warnings
@@ -229,7 +230,7 @@ fn read_crates() -> Vec<CrateSource> {
         if tk.versions.is_some() && (tk.git_url.is_some() || tk.git_hash.is_some())
             || tk.git_hash.is_some() != tk.git_url.is_some()
         {
-            dbg!(&tk);
+            eprintln!("tomlkrate: {:?}", tk);
             if tk.git_hash.is_some() != tk.git_url.is_some() {
                 panic!("Encountered TomlCrate with only one of git_hash and git_url!")
             }
