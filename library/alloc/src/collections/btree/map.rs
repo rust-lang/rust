@@ -1151,21 +1151,23 @@ impl<K, V> BTreeMap<K, V> {
         right
     }
 
-    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    /// Creates an iterator that visits all elements (key-value pairs) in
+    /// ascending key order and uses a closure to determine if an element should
+    /// be removed. If the closure returns `true`, the element is removed from
+    /// the map and yielded. If the closure returns `false`, or panics, the
+    /// element remains in the map and will not be yielded.
     ///
-    /// If the closure returns true, the element is removed from the map and yielded.
-    /// If the closure returns false, or panics, the element remains in the map and will not be
-    /// yielded.
+    /// The iterator also lets you mutate the value of each element in the
+    /// closure, regardless of whether you choose to keep or remove it.
     ///
-    /// Note that `drain_filter` lets you mutate every value in the filter closure, regardless of
-    /// whether you choose to keep or remove it.
+    /// If the iterator is only partially consumed or not consumed at all, each
+    /// of the remaining elements is still subjected to the closure, which may
+    /// change its value and, by returning `true`, have the element removed and
+    /// dropped.
     ///
-    /// If the iterator is only partially consumed or not consumed at all, each of the remaining
-    /// elements will still be subjected to the closure and removed and dropped if it returns true.
-    ///
-    /// It is unspecified how many more elements will be subjected to the closure
-    /// if a panic occurs in the closure, or a panic occurs while dropping an element,
-    /// or if the `DrainFilter` value is leaked.
+    /// It is unspecified how many more elements will be subjected to the
+    /// closure if a panic occurs in the closure, or a panic occurs while
+    /// dropping an element, or if the `DrainFilter` value is leaked.
     ///
     /// # Examples
     ///
