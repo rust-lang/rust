@@ -37,7 +37,7 @@ pub trait QueryCache: QueryStorage {
         key: &Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
         on_hit: OnHit,
-    ) -> Result<R, QueryLookup<'s, Self::Sharded>>
+    ) -> Result<R, QueryLookup>
     where
         OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R;
 
@@ -98,12 +98,12 @@ where
         state: &'s QueryCacheStore<Self>,
         key: &K,
         on_hit: OnHit,
-    ) -> Result<R, QueryLookup<'s, Self::Sharded>>
+    ) -> Result<R, QueryLookup>
     where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
     {
-        let lookup = state.get_lookup(key);
-        let result = lookup.lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
+        let (lookup, lock) = state.get_lookup(key);
+        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&value.0, value.1);
@@ -181,12 +181,12 @@ where
         state: &'s QueryCacheStore<Self>,
         key: &K,
         on_hit: OnHit,
-    ) -> Result<R, QueryLookup<'s, Self::Sharded>>
+    ) -> Result<R, QueryLookup>
     where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
     {
-        let lookup = state.get_lookup(key);
-        let result = lookup.lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
+        let (lookup, lock) = state.get_lookup(key);
+        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&&value.0, value.1);

@@ -46,10 +46,9 @@ impl<C: QueryCache> Default for QueryCacheStore<C> {
 }
 
 /// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
-pub struct QueryLookup<'tcx, C> {
+pub struct QueryLookup {
     pub(super) key_hash: u64,
     shard: usize,
-    pub(super) lock: LockGuard<'tcx, C>,
 }
 
 // We compute the key's hash once and then use it for both the
@@ -62,11 +61,14 @@ fn hash_for_shard<K: Hash>(key: &K) -> u64 {
 }
 
 impl<C: QueryCache> QueryCacheStore<C> {
-    pub(super) fn get_lookup<'tcx>(&'tcx self, key: &C::Key) -> QueryLookup<'tcx, C::Sharded> {
+    pub(super) fn get_lookup<'tcx>(
+        &'tcx self,
+        key: &C::Key,
+    ) -> (QueryLookup, LockGuard<'tcx, C::Sharded>) {
         let key_hash = hash_for_shard(key);
         let shard = get_shard_index_by_hash(key_hash);
         let lock = self.shards.get_shard_by_index(shard).lock();
-        QueryLookup { key_hash, shard, lock }
+        (QueryLookup { key_hash, shard }, lock)
     }
 
     pub fn iter_results<R>(
@@ -178,19 +180,18 @@ where
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    fn try_start<'a, 'b, CTX>(
+    fn try_start<'b, CTX>(
         tcx: CTX,
         state: &'b QueryState<CTX::DepKind, CTX::Query, C::Key>,
         cache: &'b QueryCacheStore<C>,
         span: Span,
         key: &C::Key,
-        lookup: QueryLookup<'a, C::Sharded>,
+        lookup: QueryLookup,
         query: &QueryVtable<CTX, C::Key, C::Value>,
     ) -> TryGetJob<'b, CTX::DepKind, CTX::Query, C>
     where
         CTX: QueryContext,
     {
-        mem::drop(lookup.lock);
         let shard = lookup.shard;
         let mut state_lock = state.shards.get_shard_by_index(shard).lock();
         let lock = &mut *state_lock;
@@ -379,7 +380,7 @@ fn try_get_cached<'a, CTX, C, R, OnHit>(
     key: &C::Key,
     // `on_hit` can be called while holding a lock to the query cache
     on_hit: OnHit,
-) -> Result<R, QueryLookup<'a, C::Sharded>>
+) -> Result<R, QueryLookup>
 where
     C: QueryCache,
     CTX: QueryContext,
@@ -403,7 +404,7 @@ fn try_execute_query<CTX, C>(
     cache: &QueryCacheStore<C>,
     span: Span,
     key: C::Key,
-    lookup: QueryLookup<'_, C::Sharded>,
+    lookup: QueryLookup,
     query: &QueryVtable<CTX, C::Key, C::Value>,
 ) -> C::Stored
 where
