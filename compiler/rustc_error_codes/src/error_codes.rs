@@ -285,6 +285,7 @@ E0537: include_str!("./error_codes/E0537.md"),
 E0538: include_str!("./error_codes/E0538.md"),
 E0539: include_str!("./error_codes/E0539.md"),
 E0541: include_str!("./error_codes/E0541.md"),
+E0542: include_str!("./error_codes/E0542.md"),
 E0546: include_str!("./error_codes/E0546.md"),
 E0550: include_str!("./error_codes/E0550.md"),
 E0551: include_str!("./error_codes/E0551.md"),
@@ -602,7 +603,6 @@ E0781: include_str!("./error_codes/E0781.md"),
     E0523,
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
-    E0542, // missing 'since'
     E0543, // missing 'reason'
     E0544, // multiple stability levels
     E0545, // incorrect 'issue'
