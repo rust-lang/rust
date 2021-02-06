@@ -16,7 +16,6 @@ use std::{fmt, fs::write, path::PathBuf};
 use clap::ArgMatches;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-//use git2::Repository;
 
 // use this to store the crates when interacting with the crates.toml file
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,7 +41,8 @@ enum CrateSource {
 }
 
 // represents the extracted sourcecode of a crate
-// we actually don't need to special-case git repos here because it does not matter for clippy, yay! (clippy only needs a simple path)
+// we actually don't need to special-case git repos here because it does not matter for clippy, yay!
+// (clippy only needs a simple path)
 #[derive(Debug)]
 struct Crate {
     version: String,
@@ -229,7 +229,10 @@ fn read_crates() -> Vec<CrateSource> {
         if tk.versions.is_some() && (tk.git_url.is_some() || tk.git_hash.is_some())
             || tk.git_hash.is_some() != tk.git_url.is_some()
         {
-            dbg!(tk);
+            dbg!(&tk);
+            if tk.git_hash.is_some() != tk.git_url.is_some() {
+                panic!("Encountered TomlCrate with only one of git_hash and git_url!")
+            }
             unreachable!("Failed to translate TomlCrate into CrateSource!");
         }
     });
@@ -287,14 +290,20 @@ pub fn run(clap_config: &ArgMatches) {
     let crates = read_crates();
 
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
-        // if we don't have the specified crated in the .toml, throw an error
-        /*   if !crates.iter().any(|krate| krate.name == only_one_crate) {
+        // if we don't have the specified crate in the .toml, throw an error
+        if !crates.iter().any(|krate| {
+            let name = match krate {
+                CrateSource::CratesIo { name, .. } => name,
+                CrateSource::Git { name, .. } => name,
+            };
+            name == only_one_crate
+        }) {
             eprintln!(
                 "ERROR: could not find crate '{}' in clippy_dev/lintcheck_crates.toml",
                 only_one_crate
             );
             std::process::exit(1);
-        } */ //@FIXME
+        }
 
         // only check a single crate that was passed via cmdline
         crates

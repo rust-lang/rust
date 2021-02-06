@@ -1,4 +1,4 @@
-clippy 0.1.51 (3e4179766 2021-02-03)
+clippy 0.1.51 (7f5bb7fd0 2021-02-06)
 
 cargo-0.49.0//home/matthias/.rustup/toolchains/nightly-2021-02-03-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:409:34 clippy::match_same_arms "this `match` has identical arm bodies"
 cargo-0.49.0/build.rs:1:null clippy::cargo_common_metadata "package `cargo` is missing `package.categories` metadata"
@@ -855,6 +855,7 @@ cargo-0.49.0/src/cargo/ops/cargo_install.rs:37:1 clippy::missing_errors_doc "doc
 cargo-0.49.0/src/cargo/ops/cargo_install.rs:454:22 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/ops/cargo_install.rs:483:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
 cargo-0.49.0/src/cargo/ops/cargo_install.rs:683:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+cargo-0.49.0/src/cargo/ops/cargo_install.rs:708:5 clippy::manual_flatten "unnecessary `if let` since only the `Some` variant of the iterator element is used"
 cargo-0.49.0/src/cargo/ops/cargo_new.rs:101:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/ops/cargo_new.rs:245:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
 cargo-0.49.0/src/cargo/ops/cargo_new.rs:251:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
@@ -3216,7 +3217,7 @@ ripgrep-12.1.1/crates/core/search.rs:533:5 clippy::cast_precision_loss "casting 
 ripgrep-12.1.1/crates/core/subject.rs:20:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 ripgrep-12.1.1/crates/core/subject.rs:4:1 clippy::single_component_path_imports "this import is redundant"
 syn-1.0.54/build.rs:1:null clippy::cargo_common_metadata "package `syn` is missing `package.keywords` metadata"
-syn-1.0.54/build.rs:1:null clippy::multiple_crate_versions "could not read cargo metadata: `cargo metadata` exited with an error:  Downloading crates ...\n  Downloaded httparse v1.3.5\n  Downloaded tokio v0.2.25\n  Downloaded syn-test-suite v0.0.0\nerror: failed to verify the checksum of `syn-test-suite v0.0.0`"
+syn-1.0.54/build.rs:1:null clippy::multiple_crate_versions "could not read cargo metadata: `cargo metadata` exited with an error:  Downloading crates ...\n  Downloaded syn-test-suite v0.0.0\nerror: failed to verify the checksum of `syn-test-suite v0.0.0`"
 syn-1.0.54/src/generics.rs:174:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 syn-1.0.54/src/lib.rs:1:null clippy::cargo_common_metadata "package `syn` is missing `package.keywords` metadata"
 syn-1.0.54/src/lib.rs:1:null clippy::multiple_crate_versions "could not read cargo metadata: `cargo metadata` exited with an error:  Downloading crates ...\n  Downloaded syn-test-suite v0.0.0\nerror: failed to verify the checksum of `syn-test-suite v0.0.0`"
@@ -3425,6 +3426,7 @@ clippy::explicit_deref_methods 1
 clippy::from_iter_instead_of_collect 1
 clippy::from_over_into 1
 clippy::int_plus_one 1
+clippy::manual_flatten 1
 clippy::manual_saturating_arithmetic 1
 clippy::mem_replace_with_default 1
 clippy::nonminimal_bool 1
