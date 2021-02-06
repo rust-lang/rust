@@ -4,7 +4,7 @@ error: unconstrained generic constant
 LL |   b: [f32; complex_maths(N)],
    |      ^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: try adding a `where` bound using this expression: where [u8; complex_maths(N)]: Sized
+help: try adding a `where` bound using this expression: `where [u8; complex_maths(N)]: Sized`
   --> $DIR/no_where_clause.rs:10:12
    |
 LL |   b: [f32; complex_maths(N)],

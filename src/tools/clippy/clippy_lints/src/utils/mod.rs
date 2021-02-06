@@ -8,7 +8,6 @@ pub mod author;
 pub mod camel_case;
 pub mod comparisons;
 pub mod conf;
-pub mod constants;
 mod diagnostics;
 pub mod eager_or_lazy;
 pub mod higher;
