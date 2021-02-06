@@ -12,6 +12,7 @@ bitflags = {name = "bitflags", versions = ['1.2.1']}
 libc = {name = "libc", versions = ['0.2.81']}
 log = {name = "log", versions = ['0.4.11']}
 proc-macro2 = {name = "proc-macro2", versions = ['1.0.24']}
+puffin = {name = "puffin", git_url = "https://github.com/EmbarkStudios/puffin", git_hash = "02dd4a3"}
 quote = {name = "quote", versions = ['1.0.7']}
 rand = {name = "rand", versions = ['0.7.3']}
 rand_core = {name = "rand_core", versions = ['0.6.0']}

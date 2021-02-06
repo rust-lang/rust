@@ -2086,6 +2086,61 @@ proc-macro2-1.0.24/src/parse.rs:808:15 clippy::explicit_iter_loop "it is more co
 proc-macro2-1.0.24/src/wrapper.rs:415:24 clippy::trivially_copy_pass_by_ref "this argument (4 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)"
 proc-macro2-1.0.24/src/wrapper.rs:429:23 clippy::trivially_copy_pass_by_ref "this argument (4 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)"
 proc-macro2-1.0.24/src/wrapper.rs:492:17 clippy::trivially_copy_pass_by_ref "this argument (4 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:158:15 clippy::cast_precision_loss "casting `i64` to `f32` causes a loss of precision (`i64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:175:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:183:5 clippy::too_many_lines "this function has too many lines (115/100)"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:1:5 clippy::wildcard_imports "usage of wildcard import"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:207:16 clippy::collapsible_else_if "this `else { if .. }` block can be collapsed"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:271:67 clippy::cast_precision_loss "casting `i64` to `f32` causes a loss of precision (`i64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:2:5 clippy::wildcard_imports "usage of wildcard import"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:376:29 clippy::cast_precision_loss "casting `i64` to `f32` causes a loss of precision (`i64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:381:44 clippy::cast_precision_loss "casting `i64` to `f32` causes a loss of precision (`i64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:453:9 clippy::similar_names "binding's name is too similar to existing binding"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:540:14 clippy::cast_possible_truncation "casting `f64` to `f32` may truncate the value"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:551:5 clippy::cast_precision_loss "casting `i64` to `f64` causes a loss of precision (`i64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:584:39 clippy::cast_precision_loss "casting `usize` to `f32` causes a loss of precision (`usize` is 32 or 64 bits wide, but `f32`'s mantissa is only 23 bits wide)"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:59:26 clippy::unsafe_derive_deserialize "you are deriving `serde::Deserialize` on a type that has methods using `unsafe`"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:61:1 clippy::module_name_repetitions "item name ends with its containing module's name"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:627:39 clippy::cast_precision_loss "casting `usize` to `f32` causes a loss of precision (`usize` is 32 or 64 bits wide, but `f32`'s mantissa is only 23 bits wide)"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:674:47 clippy::cast_precision_loss "casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)"
+puffin-02dd4a3/puffin-imgui/src/ui.rs:690:9 clippy::cast_precision_loss "casting `usize` to `f32` causes a loss of precision (`usize` is 32 or 64 bits wide, but `f32`'s mantissa is only 23 bits wide)"
+puffin-02dd4a3/puffin/src/data.rs:102:25 clippy::cast_possible_truncation "casting `usize` to `u8` may truncate the value"
+puffin-02dd4a3/puffin/src/data.rs:112:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/data.rs:116:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+puffin-02dd4a3/puffin/src/data.rs:137:24 clippy::match_same_arms "this `match` has identical arm bodies"
+puffin-02dd4a3/puffin/src/data.rs:177:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+puffin-02dd4a3/puffin/src/data.rs:211:21 clippy::cast_possible_truncation "casting `u64` to `usize` may truncate the value on targets with 32-bit wide pointers"
+puffin-02dd4a3/puffin/src/data.rs:24:5 clippy::wildcard_imports "usage of wildcard import"
+puffin-02dd4a3/puffin/src/data.rs:75:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+puffin-02dd4a3/puffin/src/lib.rs:113:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/lib.rs:147:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+puffin-02dd4a3/puffin/src/lib.rs:147:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+puffin-02dd4a3/puffin/src/lib.rs:165:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+puffin-02dd4a3/puffin/src/lib.rs:200:21 clippy::default_trait_access "calling `Stream::default()` is more clear than this expression"
+puffin-02dd4a3/puffin/src/lib.rs:257:78 clippy::default_trait_access "calling `std::cell::RefCell::default()` is more clear than this expression"
+puffin-02dd4a3/puffin/src/lib.rs:297:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/lib.rs:302:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/lib.rs:308:28 clippy::default_trait_access "calling `FullProfileData::default()` is more clear than this expression"
+puffin-02dd4a3/puffin/src/lib.rs:316:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/lib.rs:321:5 clippy::cast_possible_truncation "casting `u128` to `i64` may truncate the value"
+puffin-02dd4a3/puffin/src/lib.rs:348:28 clippy::default_trait_access "calling `std::marker::PhantomData::default()` is more clear than this expression"
+puffin-02dd4a3/puffin/src/lib.rs:359:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/lib.rs:375:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/lib.rs:376:5 clippy::option_if_let_else "use Option::map_or instead of an if let/else"
+puffin-02dd4a3/puffin/src/lib.rs:377:9 clippy::option_if_let_else "use Option::map_or instead of an if let/else"
+puffin-02dd4a3/puffin/src/lib.rs:406:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/lib.rs:408:5 clippy::option_if_let_else "use Option::map_or instead of an if let/else"
+puffin-02dd4a3/puffin/src/lib.rs:69:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/lib.rs:73:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/lib.rs:77:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/merge.rs:21:1 clippy::module_name_repetitions "item name starts with its containing module's name"
+puffin-02dd4a3/puffin/src/merge.rs:28:1 clippy::module_name_repetitions "item name starts with its containing module's name"
+puffin-02dd4a3/puffin/src/merge.rs:28:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
+puffin-02dd4a3/puffin/src/merge.rs:35:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+puffin-02dd4a3/puffin/src/merge.rs:35:1 clippy::module_name_repetitions "item name starts with its containing module's name"
+puffin-02dd4a3/puffin/src/merge.rs:64:43 clippy::default_trait_access "calling `std::vec::Vec::default()` is more clear than this expression"
+puffin-02dd4a3/puffin/src/merge.rs:65:54 clippy::default_trait_access "calling `std::collections::HashMap::default()` is more clear than this expression"
+puffin-02dd4a3/puffin/src/merge.rs:9:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 quote-1.0.7/src/ext.rs:10:1 clippy::module_name_repetitions "item name ends with its containing module's name"
 quote-1.0.7/src/ext.rs:7:5 clippy::doc_markdown "you should put `TokenStream` between ticks in the documentation"
 quote-1.0.7/src/ident_fragment.rs:13:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -3383,6 +3438,7 @@ clippy::should_implement_trait 1
 clippy::stable_sort_primitive 1
 clippy::unit_arg 1
 clippy::unnecessary_lazy_evaluations 1
+clippy::unsafe_derive_deserialize 1
 clippy::used_underscore_binding 1
 clippy::verbose_bit_mask 1
 clippy::while_let_on_iterator 1
@@ -3410,7 +3466,6 @@ clippy::ptr_arg 3
 clippy::zero_ptr 3
 clippy::let_underscore_drop 4
 clippy::too_many_arguments 4
-clippy::collapsible_else_if 5
 clippy::explicit_iter_loop 5
 clippy::field_reassign_with_default 5
 clippy::identity_op 5
@@ -3419,6 +3474,7 @@ clippy::match_like_matches_macro 5
 clippy::needless_return 5
 clippy::new_without_default 5
 clippy::ptr_as_ptr 5
+clippy::collapsible_else_if 6
 clippy::manual_strip 6
 clippy::non_ascii_literal 6
 clippy::single_component_path_imports 6
@@ -3436,12 +3492,11 @@ clippy::missing_safety_doc 10
 clippy::needless_doctest_main 10
 clippy::multiple_crate_versions 11
 clippy::needless_lifetimes 12
-clippy::option_if_let_else 12
 clippy::cargo_common_metadata 13
 clippy::shadow_unrelated 13
 clippy::linkedlist 14
 clippy::single_char_add_str 14
-clippy::default_trait_access 16
+clippy::option_if_let_else 15
 clippy::needless_pass_by_value 18
 clippy::upper_case_acronyms 18
 clippy::cast_possible_wrap 19
@@ -3452,26 +3507,27 @@ clippy::unusual_byte_groupings 19
 clippy::map_unwrap_or 20
 clippy::struct_excessive_bools 20
 clippy::redundant_static_lifetimes 21
+clippy::default_trait_access 22
 clippy::cast_lossless 23
 clippy::trivially_copy_pass_by_ref 26
 clippy::redundant_else 29
-clippy::too_many_lines 31
-clippy::cast_precision_loss 35
+clippy::too_many_lines 32
 clippy::if_not_else 35
 clippy::enum_glob_use 40
 clippy::unseparated_literal_suffix 41
+clippy::cast_precision_loss 44
 clippy::single_match_else 45
 clippy::inline_always 59
-clippy::match_same_arms 64
-clippy::similar_names 77
-clippy::cast_possible_truncation 91
-clippy::missing_panics_doc 106
+clippy::match_same_arms 65
+clippy::similar_names 78
+clippy::cast_possible_truncation 95
+clippy::missing_panics_doc 108
 clippy::redundant_field_names 111
 clippy::redundant_closure_for_method_calls 135
-clippy::module_name_repetitions 137
 clippy::items_after_statements 139
-clippy::wildcard_imports 160
+clippy::module_name_repetitions 142
+clippy::wildcard_imports 163
 clippy::doc_markdown 178
-clippy::missing_errors_doc 338
+clippy::missing_errors_doc 343
 clippy::unreadable_literal 365
-clippy::must_use_candidate 552
+clippy::must_use_candidate 565

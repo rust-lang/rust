@@ -118,6 +118,7 @@ impl CrateSource {
                 };
                 // clone the repo if we have not done so
                 if !repo_path.is_dir() {
+                    println!("Cloning {} and checking out {}", url, commit);
                     Command::new("git")
                         .arg("clone")
                         .arg(url)
