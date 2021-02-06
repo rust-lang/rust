@@ -434,7 +434,6 @@ impl From<clean::Impl> for Impl {
     }
 }
 
-<<<<<<< HEAD
 crate fn from_function_method(function: clean::Function, has_body: bool) -> Method {
     let clean::Function { header, decl, generics, all_types: _, ret_types: _ } = function;
     Method {
