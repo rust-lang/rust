@@ -10,7 +10,7 @@ For extremely low-level manipulations and performance reasons, one
 might wish to control the CPU directly. Rust supports using inline
 assembly to do this via the `llvm_asm!` macro.
 
-```rust,ignore
+```rust,ignore (pseudo-code)
 llvm_asm!(assembly template
    : output operands
    : input operands
