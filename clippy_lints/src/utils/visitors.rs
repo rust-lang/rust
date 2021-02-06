@@ -87,7 +87,7 @@ where
         }
 
         fn visit_stmt(&mut self, stmt: &'hir hir::Stmt<'_>) {
-            intravisit::walk_stmt(&mut *self.inside_stmt(true), stmt)
+            intravisit::walk_stmt(&mut *self.inside_stmt(true), stmt);
         }
 
         fn visit_expr(&mut self, expr: &'hir hir::Expr<'_>) {

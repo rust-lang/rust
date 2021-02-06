@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
         match expr.kind {
             ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) => {
                 for arg in args {
-                    check_closure(cx, arg)
+                    check_closure(cx, arg);
                 }
             },
             _ => (),

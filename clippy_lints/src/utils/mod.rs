@@ -464,7 +464,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec
                     return None;
                 }
                 matched.push(&**args); // build up `matched` backwards
-                current = &args[0] // go to parent expression
+                current = &args[0]; // go to parent expression
             } else {
                 return None;
             }

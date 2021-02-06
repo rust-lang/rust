@@ -69,7 +69,7 @@ fn check_ident(cx: &EarlyContext<'_>, ident: &Ident) {
             "consider making the acronym lowercase, except the initial letter",
             corrected,
             Applicability::MaybeIncorrect,
-        )
+        );
     }
 }
 

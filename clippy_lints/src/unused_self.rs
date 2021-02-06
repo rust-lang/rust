@@ -94,7 +94,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnusedSelfVisitor<'a, 'tcx> {
             return;
         }
         if let Res::Local(hir_id) = &path.res {
-            self.uses_self = self.self_hir_id == hir_id
+            self.uses_self = self.self_hir_id == hir_id;
         }
         walk_path(self, path);
     }

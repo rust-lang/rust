@@ -1,7 +1,7 @@
-use crate::utils::{in_macro, span_lint_and_then, sugg};
+use crate::utils::{in_macro, span_lint_and_sugg, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -42,31 +42,25 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
             if let Some(expr) = block.expr;
             let t_expr = cx.typeck_results().expr_ty(expr);
             if t_expr.is_unit();
+            if let Ok(snippet) = cx.tcx.sess.source_map().span_to_snippet(expr.span.source_callsite());
+            if !snippet.ends_with('}');
             then {
-                match expr.kind {
-                    ExprKind::Loop(..) | 
-                    ExprKind::Match(..) | 
-                    ExprKind::Block(..) | 
-                    ExprKind::If(..) if !in_macro(expr.span) => return,
-                   _ => (),
+                // filter out the desugared `for` loop
+                if let ExprKind::DropTemps(..) = &expr.kind {
+                    return;
                 }
 
                 let sugg = sugg::Sugg::hir(cx, &expr, "..");
                 let suggestion = format!("{0};", sugg);
-                span_lint_and_then(
+                span_lint_and_sugg(
                     cx,
                     SEMICOLON_IF_NOTHING_RETURNED,
                     expr.span,
-                    "add `;` to terminate block",
-                    | diag | {
-                        diag.span_suggestion(
-                            expr.span,
-                            "add `;`",
-                            suggestion,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                )
+                    "Consider adding a `;` to the last statement for consistent formatting",
+                    "add a `;` here",
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
     }

@@ -265,7 +265,7 @@ fn emit_suggestion(cx: &EarlyContext<'_>, span: Span, sugg: String, applicabilit
         "I think you meant",
         sugg,
         applicability,
-    )
+    );
 }
 
 fn ident_swap_sugg(
@@ -476,7 +476,7 @@ impl Add for IdentLocation {
 
 impl AddAssign for IdentLocation {
     fn add_assign(&mut self, other: Self) {
-        *self = *self + other
+        *self = *self + other;
     }
 }
 
@@ -507,7 +507,7 @@ impl Add for IdentDifference {
 
 impl AddAssign for IdentDifference {
     fn add_assign(&mut self, other: Self) {
-        *self = *self + other
+        *self = *self + other;
     }
 }
 

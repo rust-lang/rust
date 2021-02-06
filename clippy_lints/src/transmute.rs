@@ -463,7 +463,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                                     Applicability::Unspecified,
                                 );
                             },
-                        )
+                        );
                     },
                     (ty::Ref(_, ty_from, from_mutbl), ty::Ref(_, ty_to, to_mutbl)) => {
                         if_chain! {
@@ -519,7 +519,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                                                 Applicability::Unspecified,
                                             );
                                         },
-                                    )
+                                    );
                                 }
                             }
                         }
@@ -552,7 +552,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                                     Applicability::Unspecified,
                                 );
                             },
-                        )
+                        );
                     },
                     (ty::Int(_) | ty::Uint(_), ty::Float(_)) if !const_context => span_lint_and_then(
                         cx,
