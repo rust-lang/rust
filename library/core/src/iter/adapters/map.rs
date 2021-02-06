@@ -60,6 +60,7 @@ pub struct Map<I, F> {
     iter: I,
     f: F,
 }
+
 impl<I, F> Map<I, F> {
     pub(in crate::iter) fn new(iter: I, f: F) -> Map<I, F> {
         Map { iter, f }
