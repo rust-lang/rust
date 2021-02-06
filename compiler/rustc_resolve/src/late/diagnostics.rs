@@ -1212,8 +1212,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             // Add primitive types to the mix
             if filter_fn(Res::PrimTy(PrimTy::Bool)) {
                 names.extend(
-                    self.r.primitive_type_table.primitive_types.iter().map(|(name, prim_ty)| {
-                        TypoSuggestion::from_res(*name, Res::PrimTy(*prim_ty))
+                    PrimTy::ALL.iter().map(|prim_ty| {
+                        TypoSuggestion::from_res(prim_ty.name(), Res::PrimTy(*prim_ty))
                     }),
                 )
             }
