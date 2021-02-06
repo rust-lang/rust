@@ -1,4 +1,4 @@
-use crate::utils::{in_macro, span_lint_and_sugg, sugg, snippet_with_macro_callsite};
+use crate::utils::{in_macro, snippet_with_macro_callsite, span_lint_and_sugg, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, ExprKind};
