@@ -1,5 +1,23 @@
 use crate::sys::rwlock as imp;
 
+enum GuardType {
+    Read,
+    Write,
+}
+
+pub struct RWLockGuard(&'static RWLock, GuardType);
+
+impl Drop for RWLockGuard {
+    fn drop(&mut self) {
+        unsafe {
+            match &self.1 {
+                GuardType::Read => self.0.read_unlock(),
+                GuardType::Write => self.0.write_unlock(),
+            }
+        }
+    }
+}
+
 /// An OS-based reader-writer lock.
 ///
 /// This structure is entirely unsafe and serves as the lowest layer of a
@@ -26,6 +44,19 @@ impl RWLock {
         self.0.read()
     }
 
+    /// Acquires shared access to the underlying lock, blocking the current
+    /// thread to do so.
+    ///
+    /// The lock is automatically unlocked when the returned guard is dropped.
+    ///
+    /// Behavior is undefined if the rwlock has been moved between this and any
+    /// previous method call.
+    #[inline]
+    pub unsafe fn read_with_guard(&'static self) -> RWLockGuard {
+        self.read();
+        RWLockGuard(&self, GuardType::Read)
+    }
+
     /// Attempts to acquire shared access to this lock, returning whether it
     /// succeeded or not.
     ///
@@ -46,6 +77,19 @@ impl RWLock {
     #[inline]
     pub unsafe fn write(&self) {
         self.0.write()
+    }
+
+    /// Acquires write access to the underlying lock, blocking the current thread
+    /// to do so.
+    ///
+    /// The lock is automatically unlocked when the returned guard is dropped.
+    ///
+    /// Behavior is undefined if the rwlock has been moved between this and any
+    /// previous method call.
+    #[inline]
+    pub unsafe fn write_with_guard(&'static self) -> RWLockGuard {
+        self.write();
+        RWLockGuard(&self, GuardType::Write)
     }
 
     /// Attempts to acquire exclusive access to this lock, returning whether it
