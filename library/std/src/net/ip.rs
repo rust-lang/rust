@@ -1399,7 +1399,6 @@ impl Ipv6Addr {
     #[inline]
     pub const fn is_unspecified(&self) -> bool {
         u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
-            || if let Some(v4_addr) = self.to_ipv4() { v4_addr.is_unspecified() } else { false }
     }
 
     /// Returns [`true`] if this is a loopback address (::1).
