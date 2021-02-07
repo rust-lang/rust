@@ -738,7 +738,7 @@ fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult
 fn never_loop_block(block: &Block<'_>, main_loop_id: HirId) -> NeverLoopResult {
     let stmts = block.stmts.iter().map(stmt_to_expr);
     let expr = once(block.expr.as_deref());
-    let mut iter = stmts.chain(expr).filter_map(|e| e);
+    let mut iter = stmts.chain(expr).flatten();
     never_loop_expr_seq(&mut iter, main_loop_id)
 }
 

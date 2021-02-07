@@ -1,4 +1,5 @@
 mod bind_instead_of_map;
+mod filter_map_identity;
 mod inefficient_to_string;
 mod inspect_for_each;
 mod manual_saturating_arithmetic;
@@ -1466,6 +1467,29 @@ declare_clippy_lint! {
     "using `.inspect().for_each()`, which can be replaced with `.for_each()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `filter_map(|x| x)`.
+    ///
+    /// **Why is this bad?** Readability, this can be written more concisely by using `flatten`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// # let iter = vec![Some(1)].into_iter();
+    /// iter.filter_map(|x| x);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let iter = vec![Some(1)].into_iter();
+    /// iter.flatten();
+    /// ```
+    pub FILTER_MAP_IDENTITY,
+    complexity,
+    "call to `filter_map` where `flatten` is sufficient"
+}
+
 pub struct Methods {
     msrv: Option<RustcVersion>,
 }
@@ -1503,6 +1527,7 @@ impl_lint_pass!(Methods => [
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
     FILTER_MAP,
+    FILTER_MAP_IDENTITY,
     MANUAL_FILTER_MAP,
     MANUAL_FIND_MAP,
     FILTER_MAP_NEXT,
@@ -1596,7 +1621,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
             ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
             ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0], method_spans[0]),
-            ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
+            ["filter_map", ..] => {
+                unnecessary_filter_map::lint(cx, expr, arg_lists[0]);
+                filter_map_identity::check(cx, expr, arg_lists[0], method_spans[0]);
+            },
             ["count", "map"] => lint_suspicious_map(cx, expr),
             ["assume_init"] => lint_maybe_uninit(cx, &arg_lists[0][0], expr),
             ["unwrap_or", arith @ ("checked_add" | "checked_sub" | "checked_mul")] => {
