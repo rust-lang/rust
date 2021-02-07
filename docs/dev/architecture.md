@@ -258,7 +258,7 @@ They are independent from the rest of the code.
 `mbe` crate contains tools for transforming between syntax trees and token tree.
 And it also handles the actual parsing and expansion of declarative macro (a-la "Macros By Example" or mbe).
 
-For proc macros, the client-server model are used to run proc-macro.
+For proc macros, the client-server model are used.
 We pass an argument `--proc-macro` to `rust-analyzer` binary to start a separate process  (`proc_macro_srv`).
 And the client (`proc_macro_api`) provides an interface to talk to that server separately.
 
