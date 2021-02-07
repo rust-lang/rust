@@ -4,21 +4,21 @@ use std::ops::Add;
 
 struct A<B>(B);
 
-impl<B> Add for A<B> where B: Add + Add<Output = B> {
+impl<B> Add for A<B> where B: Add {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        A(self.0 + rhs.0) //~ ERROR mismatched types
+        struct A<B>(B);({B}) //~ ERROR arguments to this function are incorrect
     }
 }
 
 struct C<B>(B);
 
-impl<B: Add + Add<Output = B>> Add for C<B> {
+impl<B: Add> Add for C<B> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        Self(self.0 + rhs.0) //~ ERROR mismatched types
+        struct C<B>(B);({B}) //~ ERROR arguments to this function are incorrect
     }
 }
 

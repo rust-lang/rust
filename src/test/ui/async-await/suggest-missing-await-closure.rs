@@ -14,7 +14,7 @@ async fn suggest_await_in_async_closure() {
     async || {
         let x = make_u32();
         take_u32(x)
-        //~^ ERROR mismatched types [E0308]
+        //~^ ERROR arguments to this function are incorrect [E0308]
         //~| HELP consider `await`ing on the `Future`
         //~| SUGGESTION .await
     };

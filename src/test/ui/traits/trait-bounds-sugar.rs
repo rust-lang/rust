@@ -9,7 +9,7 @@ fn b(_x: &'static (dyn Foo + 'static)) {
 }
 
 fn c(x: Box<dyn Foo + Sync>) {
-    a(x); //~ ERROR mismatched types
+    a(x); //~ ERROR arguments to this function are incorrect
 }
 
 fn d(x: &'static (dyn Foo + Sync)) {

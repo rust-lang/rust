@@ -16,24 +16,53 @@ error: documentation comments cannot be applied to function parameters
 LL |     /// Other
    |     ^^^^^^^^^ doc comments are not allowed here
 
-error[E0308]: mismatched types
-  --> $DIR/fn-arg-doc-comment.rs:18:7
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/fn-arg-doc-comment.rs:18:5
    |
 LL |     f("", "");
-   |       ^^ expected `u8`, found `&str`
-
-error[E0308]: mismatched types
-  --> $DIR/fn-arg-doc-comment.rs:18:11
+   |     ^^--^^^^^
+   |       |
+   |       expected `u8`, found `&'static str`
+   |       expected `u8`, found `&'static str`
    |
-LL |     f("", "");
-   |           ^^ expected `u8`, found `&str`
+note: function defined here
+  --> $DIR/fn-arg-doc-comment.rs:1:8
+   |
+LL |   pub fn f(
+   |          ^
+LL | /     /// Comment
+LL | |
+LL | |
+LL | |     id: u8,
+   | |__________-
+LL | /     /// Other
+LL | |
+LL | |
+LL | |     a: u8,
+   | |_________-
+help: did you mean
+   |
+LL |     f({u8}, {u8});
+   |     ^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/fn-arg-doc-comment.rs:23:9
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/fn-arg-doc-comment.rs:23:5
    |
 LL |     bar("");
-   |         ^^ expected `i32`, found `&str`
+   |     ^^^^--^
+   |         |
+   |         expected `i32`, found `&'static str`
+   |
+note: function defined here
+  --> $DIR/fn-arg-doc-comment.rs:12:4
+   |
+LL | fn bar(id: #[allow(dead_code)] i32) {}
+   |    ^^^ ---------------------------
+help: provide an argument of the correct type
+   |
+LL |     bar({i32});
+   |     ^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

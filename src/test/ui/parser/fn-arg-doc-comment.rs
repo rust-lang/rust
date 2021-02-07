@@ -16,11 +16,11 @@ fn bar(id: #[allow(dead_code)] i32) {}
 fn main() {
     // verify that the parser recovered and properly typechecked the args
     f("", "");
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     //~| NOTE expected `u8`, found `&str`
     //~| ERROR mismatched types
     //~| NOTE expected `u8`, found `&str`
     bar("");
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     //~| NOTE expected `i32`, found `&str`
 }

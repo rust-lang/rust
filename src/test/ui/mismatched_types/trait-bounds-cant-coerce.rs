@@ -10,7 +10,7 @@ fn c(x: Box<dyn Foo + Sync + Send>) {
 }
 
 fn d(x: Box<dyn Foo>) {
-    a(x); //~ ERROR mismatched types [E0308]
+    a(x); //~ ERROR arguments to this function are incorrect [E0308]
 }
 
 fn main() { }

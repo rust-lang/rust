@@ -14,62 +14,62 @@ fn take_range(_r: &impl RangeBounds<i8>) {}
 
 fn main() {
     take_range(std::ops::Range { start: 0, end: 1 });
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &std::ops::Range { start: 0, end: 1 }
 
     take_range(::std::ops::Range { start: 0, end: 1 });
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &::std::ops::Range { start: 0, end: 1 }
 
     take_range(std::ops::RangeFrom { start: 1 });
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &std::ops::RangeFrom { start: 1 }
 
     take_range(::std::ops::RangeFrom { start: 1 });
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &::std::ops::RangeFrom { start: 1 }
 
     take_range(std::ops::RangeFull {});
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &std::ops::RangeFull {}
 
     take_range(::std::ops::RangeFull {});
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &::std::ops::RangeFull {}
 
     take_range(std::ops::RangeInclusive::new(0, 1));
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &std::ops::RangeInclusive::new(0, 1)
 
     take_range(::std::ops::RangeInclusive::new(0, 1));
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &::std::ops::RangeInclusive::new(0, 1)
 
     take_range(std::ops::RangeTo { end: 5 });
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &std::ops::RangeTo { end: 5 }
 
     take_range(::std::ops::RangeTo { end: 5 });
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &::std::ops::RangeTo { end: 5 }
 
     take_range(std::ops::RangeToInclusive { end: 5 });
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &std::ops::RangeToInclusive { end: 5 }
 
     take_range(::std::ops::RangeToInclusive { end: 5 });
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider borrowing here
     //~| SUGGESTION &::std::ops::RangeToInclusive { end: 5 }
 }

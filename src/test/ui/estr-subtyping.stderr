@@ -1,11 +1,20 @@
-error[E0308]: mismatched types
-  --> $DIR/estr-subtyping.rs:10:15
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/estr-subtyping.rs:10:4
    |
 LL |    wants_uniq(x);
-   |               ^
+   |    ^^^^^^^^^^^-^
    |               |
-   |               expected struct `String`, found `&str`
-   |               help: try using a conversion method: `x.to_string()`
+   |               expected `String`, found `&str`
+   |
+note: function defined here
+  --> $DIR/estr-subtyping.rs:1:4
+   |
+LL | fn wants_uniq(x: String) { }
+   |    ^^^^^^^^^^ ---------
+help: provide an argument of the correct type
+   |
+LL |    wants_uniq({String});
+   |    ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

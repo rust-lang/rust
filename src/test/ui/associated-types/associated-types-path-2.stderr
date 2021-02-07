@@ -1,13 +1,20 @@
-error[E0308]: mismatched types
-  --> $DIR/associated-types-path-2.rs:19:14
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/associated-types-path-2.rs:19:5
    |
 LL |     f1(2i32, 4i32);
-   |              ^^^^ expected `u32`, found `i32`
+   |     ^^^----^^^^^^^
+   |        |
+   |        expected `_`, found `i32`
    |
-help: change the type of the numeric literal from `i32` to `u32`
+note: function defined here
+  --> $DIR/associated-types-path-2.rs:13:8
    |
-LL |     f1(2i32, 4u32);
-   |              ^^^^
+LL | pub fn f1<T: Foo>(a: T, x: T::A) {}
+   |        ^^         ----  -------
+help: provide an argument of the correct type
+   |
+LL |     f1(2i32, {u32});
+   |     ^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `u32: Foo` is not satisfied
   --> $DIR/associated-types-path-2.rs:29:5

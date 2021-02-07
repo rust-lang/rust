@@ -1,26 +1,38 @@
-error[E0308]: mismatched types
-  --> $DIR/issue-73553-misinterp-range-literal.rs:12:10
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-73553-misinterp-range-literal.rs:12:5
    |
 LL |     demo(tell(1)..tell(10));
-   |          ^^^^^^^^^^^^^^^^^
+   |     ^^^^^-----------------^
    |          |
-   |          expected reference, found struct `std::ops::Range`
-   |          help: consider borrowing here: `&(tell(1)..tell(10))`
+   |          expected `&std::ops::Range<usize>`, found `std::ops::Range<_>`
    |
-   = note: expected reference `&std::ops::Range<usize>`
-                 found struct `std::ops::Range<usize>`
+note: function defined here
+  --> $DIR/issue-73553-misinterp-range-literal.rs:3:4
+   |
+LL | fn demo(r: &Range) {
+   |    ^^^^ ---------
+help: provide an argument of the correct type
+   |
+LL |     demo({&std::ops::Range<usize>});
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/issue-73553-misinterp-range-literal.rs:14:10
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-73553-misinterp-range-literal.rs:14:5
    |
 LL |     demo(1..10);
-   |          ^^^^^
+   |     ^^^^^-----^
    |          |
-   |          expected reference, found struct `std::ops::Range`
-   |          help: consider borrowing here: `&(1..10)`
+   |          expected `&std::ops::Range<usize>`, found `std::ops::Range<_>`
    |
-   = note: expected reference `&std::ops::Range<usize>`
-                 found struct `std::ops::Range<{integer}>`
+note: function defined here
+  --> $DIR/issue-73553-misinterp-range-literal.rs:3:4
+   |
+LL | fn demo(r: &Range) {
+   |    ^^^^ ---------
+help: provide an argument of the correct type
+   |
+LL |     demo({&std::ops::Range<usize>});
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

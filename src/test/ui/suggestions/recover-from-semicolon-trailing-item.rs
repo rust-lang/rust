@@ -12,5 +12,5 @@ fn main() {
     let _: usize = X {};
     //~^ ERROR mismatched types
     foo("");
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }

@@ -4,9 +4,9 @@ fn foo2(_: i32) {}
 
 fn main() {
     foo(1u8);
-//~^ ERROR mismatched types
+//~^ ERROR arguments to this function are incorrect
     foo1(2f32);
-//~^ ERROR mismatched types
+//~^ ERROR arguments to this function are incorrect
     foo2(3i16);
-//~^ ERROR mismatched types
+//~^ ERROR arguments to this function are incorrect
 }

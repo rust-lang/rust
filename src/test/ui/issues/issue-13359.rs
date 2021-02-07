@@ -4,10 +4,10 @@ fn bar(_s: u32) { }
 
 fn main() {
     foo(1*(1 as isize));
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     //~| expected `i16`, found `isize`
 
     bar(1*(1 as usize));
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     //~| expected `u32`, found `usize`
 }

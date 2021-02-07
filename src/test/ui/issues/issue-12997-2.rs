@@ -6,4 +6,4 @@
 
 #[bench]
 fn bar(x: isize) { }
-//~^ ERROR mismatched types
+//~^ ERROR arguments to this function are incorrect

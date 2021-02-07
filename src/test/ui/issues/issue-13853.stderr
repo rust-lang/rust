@@ -16,17 +16,23 @@ error[E0599]: no method named `iter` found for reference `&G` in the current sco
 LL |     for node in graph.iter() {
    |                       ^^^^ method not found in `&G`
 
-error[E0308]: mismatched types
-  --> $DIR/issue-13853.rs:37:13
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-13853.rs:37:5
    |
 LL |     iterate(graph);
-   |             ^^^^^
+   |     ^^^^^^^^-----^
    |             |
-   |             expected reference, found struct `Vec`
-   |             help: consider borrowing here: `&graph`
+   |             expected `&_`, found `Vec<Stuff>`
    |
-   = note: expected reference `&_`
-                 found struct `Vec<Stuff>`
+note: function defined here
+  --> $DIR/issue-13853.rs:26:4
+   |
+LL | fn iterate<N: Node, G: Graph<N>>(graph: &G) {
+   |    ^^^^^^^                       ---------
+help: provide an argument of the correct type
+   |
+LL |     iterate({&_});
+   |     ^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

@@ -21,273 +21,273 @@ fn main() {
 
     foo::<usize>(x_usize);
     foo::<usize>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<usize>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<usize>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<usize>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<usize>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<usize>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<usize>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<usize>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<usize>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     // foo::<usize>(x_f64);
     // foo::<usize>(x_f32);
 
     foo::<isize>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<isize>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<isize>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<isize>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<isize>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<isize>(x_isize);
     foo::<isize>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<isize>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<isize>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<isize>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     // foo::<isize>(x_f64);
     // foo::<isize>(x_f32);
 
     foo::<u64>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u64>(x_u64);
     foo::<u64>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u64>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u64>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u64>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u64>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u64>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u64>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u64>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     // foo::<u64>(x_f64);
     // foo::<u64>(x_f32);
 
     foo::<i64>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i64>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i64>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i64>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i64>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i64>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i64>(x_i64);
     foo::<i64>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i64>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i64>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     // foo::<i64>(x_f64);
     // foo::<i64>(x_f32);
 
     foo::<u32>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u32>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u32>(x_u32);
     foo::<u32>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u32>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u32>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u32>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u32>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u32>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u32>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     // foo::<u32>(x_f64);
     // foo::<u32>(x_f32);
 
     foo::<i32>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i32>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i32>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i32>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i32>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i32>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i32>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i32>(x_i32);
     foo::<i32>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i32>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     // foo::<i32>(x_f64);
     // foo::<i32>(x_f32);
 
     foo::<u16>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u16>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u16>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u16>(x_u16);
     foo::<u16>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u16>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u16>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u16>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u16>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u16>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     // foo::<u16>(x_f64);
     // foo::<u16>(x_f32);
 
     foo::<i16>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i16>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i16>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i16>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i16>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i16>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i16>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i16>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i16>(x_i16);
     foo::<i16>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     // foo::<i16>(x_f64);
     // foo::<i16>(x_f32);
 
     foo::<u8>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u8>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u8>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u8>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u8>(x_u8);
     foo::<u8>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u8>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u8>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u8>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<u8>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     // foo::<u8>(x_f64);
     // foo::<u8>(x_f32);
 
     foo::<i8>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i8>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i8>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i8>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i8>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i8>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i8>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i8>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i8>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i8>(x_i8);
     // foo::<i8>(x_f64);
     // foo::<i8>(x_f32);
 
     foo::<f64>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f64>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f64>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f64>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f64>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f64>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f64>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f64>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f64>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f64>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f64>(x_f64);
     foo::<f64>(x_f32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 
     foo::<f32>(x_usize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f32>(x_u64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f32>(x_u32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f32>(x_u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f32>(x_u8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f32>(x_isize);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f32>(x_i64);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f32>(x_i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f32>(x_i16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<f32>(x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     // foo::<f32>(x_f64);
     foo::<f32>(x_f32);
 
     foo::<u32>(x_u8 as u16);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo::<i32>(-x_i8);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }

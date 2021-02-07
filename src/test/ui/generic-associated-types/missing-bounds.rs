@@ -8,7 +8,7 @@ impl<B> Add for A<B> where B: Add {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        A(self.0 + rhs.0) //~ ERROR mismatched types
+        A(self.0 + rhs.0) //~ ERROR arguments to this function are incorrect
     }
 }
 
@@ -18,7 +18,7 @@ impl<B: Add> Add for C<B> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        Self(self.0 + rhs.0) //~ ERROR mismatched types
+        Self(self.0 + rhs.0) //~ ERROR arguments to this function are incorrect
     }
 }
 

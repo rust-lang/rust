@@ -590,13 +590,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             suggested_inputs[input_idx] = Some(format!("{{{}}}", input_ty));
                         }
                         let provided_ty = if let Some((ty, _)) = final_arg_types[idx] {
-                            format!(", found {}", ty)
+                            format!(", found `{}`", ty)
                         } else {
                             "".into()
                         };
                         labels.push((
                             provided_args[idx].span,
-                            format!("expected {}{}", expected_ty, provided_ty),
+                            format!("expected `{}`{}", expected_ty, provided_ty),
                         ));
                         suggestion_text = match suggestion_text {
                             None => Some("provide an argument of the correct type"),
@@ -663,25 +663,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let first_expected_ty =
                             self.resolve_vars_if_possible(expected_input_tys[input_idx]);
                         let first_provided_ty = if let Some((ty, _)) = final_arg_types[arg_idx] {
-                            format!(",found {}", ty)
+                            format!(",found `{}`", ty)
                         } else {
                             "".into()
                         };
                         labels.push((
                             first_span,
-                            format!("expected {}{}", first_expected_ty, first_provided_ty),
+                            format!("expected `{}`{}", first_expected_ty, first_provided_ty),
                         ));
                         let other_expected_ty =
                             self.resolve_vars_if_possible(expected_input_tys[other_input_idx]);
                         let other_provided_ty =
                             if let Some((ty, _)) = final_arg_types[other_arg_idx] {
-                                format!(",found {}", ty)
+                                format!(",found `{}`", ty)
                             } else {
                                 "".into()
                             };
                         labels.push((
                             second_span,
-                            format!("expected {}{}", other_expected_ty, other_provided_ty),
+                            format!("expected `{}`{}", other_expected_ty, other_provided_ty),
                         ));
                         suggestion_text = match suggestion_text {
                             None => Some("swap these arguments"),
@@ -722,13 +722,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let expected_ty =
                                 self.resolve_vars_if_possible(expected_input_tys[dest_input]);
                             let provided_ty = if let Some((ty, _)) = final_arg_types[dst_arg] {
-                                format!(",found {}", ty)
+                                format!(",found `{}`", ty)
                             } else {
                                 "".into()
                             };
                             labels.push((
                                 provided_args[dst_arg].span,
-                                format!("expected {}{}", expected_ty, provided_ty),
+                                format!("expected `{}`{}", expected_ty, provided_ty),
                             ));
                             real_idxs[src_arg] = Some(dst_arg);
                         }
@@ -773,8 +773,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.sess,
                     call_span,
                     E0308, // FIXME: Choose a different code?
-                    "{}arguments to this function are incorrect",
-                    if issue_count > 1 { "multiple " } else { "" }
+                    "arguments to this function are incorrect",
                 );
 
                 // If we have less than 5 things to say, it would be useful to call out exactly what's wrong

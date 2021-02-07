@@ -3,5 +3,5 @@
 fn foo(a: u32) -> u32 { a }
 
 fn main() {
-    println!("{}", foo(10i32)); //~ ERROR mismatched types
+    println!("{}", foo(10i32)); //~ ERROR arguments to this function are incorrect
 }

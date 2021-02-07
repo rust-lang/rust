@@ -1,13 +1,26 @@
-error[E0061]: this function takes 2 arguments but 1 argument was supplied
-  --> $DIR/issue-3044.rs:3:23
+error[E0308]: mismatched types
+  --> $DIR/issue-3044.rs:3:35
    |
 LL |       needlesArr.iter().fold(|x, y| {
-   |  _______________________^^^^_-
-   | |                       |
-   | |                       expected 2 arguments
+   |  ___________________________________^
 LL | |     });
-   | |_____- supplied 1 argument
+   | |_____^ expected closure, found `()`
+   |
+   = note: expected closure `[closure@$DIR/issue-3044.rs:3:28: 4:6]`
+            found unit type `()`
 
-error: aborting due to previous error
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-3044.rs:3:23
+   |
+LL |     needlesArr.iter().fold(|x, y| {
+   |                       ^^^^ an argument of type _ is missing
+   |
+help: provide the argument
+   |
+LL |     needlesArr.iter().(|x, y| {
+LL |     }, {_})(|x, y| {
+   |
 
-For more information about this error, try `rustc --explain E0061`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

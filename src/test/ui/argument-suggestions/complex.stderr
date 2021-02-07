@@ -1,4 +1,4 @@
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/complex.rs:14:3
    |
 LL |   complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
@@ -16,4 +16,4 @@ LL |   complex({u32}, &"", {E}, F::X2, G{}, X {}, Y {}, Z {});
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0059`.
+For more information about this error, try `rustc --explain E0308`.

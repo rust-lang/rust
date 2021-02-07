@@ -1,4 +1,4 @@
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:7:3
    |
 LL |   empty("");
@@ -16,7 +16,7 @@ help: remove the extra argument
 LL |   empty();
    |   ^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:9:3
    |
 LL |   one_arg(1, 1);
@@ -34,7 +34,7 @@ help: remove the extra argument
 LL |   one_arg(1);
    |   ^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:10:3
    |
 LL |   one_arg(1, "");
@@ -52,7 +52,7 @@ help: remove the extra argument
 LL |   one_arg(1);
    |   ^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:11:3
    |
 LL |   one_arg(1, "", 1.0);
@@ -71,7 +71,7 @@ help: did you mean
 LL |   one_arg(1);
    |   ^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:13:3
    |
 LL |   two_arg_same(1, 1, 1);
@@ -89,7 +89,7 @@ help: remove the extra argument
 LL |   two_arg_same(1, 1);
    |   ^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:14:3
    |
 LL |   two_arg_same(1, 1, 1.0);
@@ -107,7 +107,7 @@ help: remove the extra argument
 LL |   two_arg_same(1, 1);
    |   ^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:16:3
    |
 LL |   two_arg_diff(1, 1, "");
@@ -125,7 +125,7 @@ help: remove the extra argument
 LL |   two_arg_diff(1, "");
    |   ^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:17:3
    |
 LL |   two_arg_diff(1, "", "");
@@ -143,7 +143,7 @@ help: remove the extra argument
 LL |   two_arg_diff(1, "");
    |   ^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:18:3
    |
 LL |   two_arg_diff(1, 1, "", "");
@@ -162,7 +162,7 @@ help: did you mean
 LL |   two_arg_diff(1, "");
    |   ^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:19:3
    |
 LL |   two_arg_diff(1, "", 1, "");
@@ -181,7 +181,7 @@ help: did you mean
 LL |   two_arg_diff(1, "");
    |   ^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:22:3
    |
 LL |   two_arg_same(1, 1,     "");
@@ -199,7 +199,7 @@ help: remove the extra argument
 LL |   two_arg_same(1, 1);
    |   ^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:23:3
    |
 LL |   two_arg_diff(1, 1,     "");
@@ -217,7 +217,7 @@ help: remove the extra argument
 LL |   two_arg_diff(1, "");
    |   ^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:24:3
    |
 LL | /   two_arg_same(
@@ -238,7 +238,7 @@ help: remove the extra argument
 LL |   two_arg_same(1, 1);
    |   ^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/extra_arguments.rs:30:3
    |
 LL | /   two_arg_diff(
@@ -261,4 +261,4 @@ LL |   two_arg_diff(1, "");
 
 error: aborting due to 14 previous errors
 
-For more information about this error, try `rustc --explain E0059`.
+For more information about this error, try `rustc --explain E0308`.

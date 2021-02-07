@@ -1,6 +1,6 @@
 fn main() {
     let array = [1, 2, 3];
-    test(array.len()); //~ ERROR mismatched types
+    test(array.len()); //~ ERROR arguments to this function are incorrect
 }
 
 fn test(length: u32) {

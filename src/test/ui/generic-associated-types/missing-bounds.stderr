@@ -1,34 +1,38 @@
-error[E0308]: mismatched types
-  --> $DIR/missing-bounds.rs:11:11
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/missing-bounds.rs:11:9
    |
-LL | impl<B> Add for A<B> where B: Add {
-   |      - this type parameter
-...
 LL |         A(self.0 + rhs.0)
-   |           ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
+   |         ^^--------------^
+   |           |
+   |           expected `B`, found `<B as Add<_>>::Output`
    |
-   = note: expected type parameter `B`
-             found associated type `<B as Add>::Output`
-help: consider further restricting this bound
+note: tuple struct defined here
+  --> $DIR/missing-bounds.rs:5:1
    |
-LL | impl<B> Add for A<B> where B: Add + Add<Output = B> {
-   |                                   ^^^^^^^^^^^^^^^^^
+LL | struct A<B>(B);
+   | ^^^^^^^^^^^^^^^
+help: provide an argument of the correct type
+   |
+LL |         struct A<B>(B);({B})
+   |         ^^^^^^^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/missing-bounds.rs:21:14
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/missing-bounds.rs:21:9
    |
-LL | impl<B: Add> Add for C<B> {
-   |      - this type parameter
-...
 LL |         Self(self.0 + rhs.0)
-   |              ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
+   |         ^^^^^--------------^
+   |              |
+   |              expected `B`, found `<B as Add<_>>::Output`
    |
-   = note: expected type parameter `B`
-             found associated type `<B as Add>::Output`
-help: consider further restricting this bound
+note: tuple struct defined here
+  --> $DIR/missing-bounds.rs:15:1
    |
-LL | impl<B: Add + Add<Output = B>> Add for C<B> {
-   |             ^^^^^^^^^^^^^^^^^
+LL | struct C<B>(B);
+   | ^^^^^^^^^^^^^^^
+help: provide an argument of the correct type
+   |
+LL |         struct C<B>(B);({B})
+   |         ^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: cannot add `B` to `B`
   --> $DIR/missing-bounds.rs:31:21

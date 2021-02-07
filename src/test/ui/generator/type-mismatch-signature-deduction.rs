@@ -10,7 +10,7 @@ fn foo() -> impl Generator<Return = i32> { //~ ERROR type mismatch
 
         yield ();
 
-        5 //~ ERROR mismatched types [E0308]
+        5 //~ ERROR arguments to this function are incorrect [E0308]
     }
 }
 

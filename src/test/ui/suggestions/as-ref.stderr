@@ -1,34 +1,74 @@
-error[E0308]: mismatched types
-  --> $DIR/as-ref.rs:6:27
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/as-ref.rs:6:17
    |
 LL |   opt.map(|arg| takes_ref(arg));
-   |       ---                 ^^^ expected `&Foo`, found struct `Foo`
-   |       |
-   |       help: consider using `as_ref` instead: `as_ref().map`
+   |                 ^^^^^^^^^^---^
+   |                           |
+   |                           expected `&Foo`, found `Foo`
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:2:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: provide an argument of the correct type
+   |
+LL |   opt.map(|arg| takes_ref({&Foo}));
+   |                 ^^^^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/as-ref.rs:8:37
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/as-ref.rs:8:27
    |
 LL |   opt.and_then(|arg| Some(takes_ref(arg)));
-   |       --------                      ^^^ expected `&Foo`, found struct `Foo`
-   |       |
-   |       help: consider using `as_ref` instead: `as_ref().and_then`
+   |                           ^^^^^^^^^^---^
+   |                                     |
+   |                                     expected `&Foo`, found `Foo`
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:2:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: provide an argument of the correct type
+   |
+LL |   opt.and_then(|arg| Some(takes_ref({&Foo})));
+   |                           ^^^^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/as-ref.rs:11:27
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/as-ref.rs:11:17
    |
 LL |   opt.map(|arg| takes_ref(arg));
-   |       ---                 ^^^ expected `&Foo`, found struct `Foo`
-   |       |
-   |       help: consider using `as_ref` instead: `as_ref().map`
+   |                 ^^^^^^^^^^---^
+   |                           |
+   |                           expected `&Foo`, found `Foo`
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:2:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: provide an argument of the correct type
+   |
+LL |   opt.map(|arg| takes_ref({&Foo}));
+   |                 ^^^^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/as-ref.rs:13:35
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/as-ref.rs:13:25
    |
 LL |   opt.and_then(|arg| Ok(takes_ref(arg)));
-   |       --------                    ^^^ expected `&Foo`, found struct `Foo`
-   |       |
-   |       help: consider using `as_ref` instead: `as_ref().and_then`
+   |                         ^^^^^^^^^^---^
+   |                                   |
+   |                                   expected `&Foo`, found `Foo`
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:2:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: provide an argument of the correct type
+   |
+LL |   opt.and_then(|arg| Ok(takes_ref({&Foo})));
+   |                         ^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/as-ref.rs:16:27

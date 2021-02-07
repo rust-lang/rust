@@ -1,6 +1,6 @@
 fn f() { }
 struct S(Box<dyn FnMut()>);
-pub static C: S = S(f); //~ ERROR mismatched types
+pub static C: S = S(f); //~ ERROR arguments to this function are incorrect
 
 
 fn g() { }

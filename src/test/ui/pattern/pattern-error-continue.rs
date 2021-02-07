@@ -26,7 +26,7 @@ fn main() {
         _ => ()
     }
     f(true);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     //~| expected `char`, found `bool`
 
     match () {

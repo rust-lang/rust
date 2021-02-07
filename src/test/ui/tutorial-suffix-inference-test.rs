@@ -7,10 +7,10 @@ fn main() {
 
     identity_u8(x);  // after this, `x` is assumed to have type `u8`
     identity_u16(x);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     //~| expected `u16`, found `u8`
     identity_u16(y);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     //~| expected `u16`, found `i32`
 
     let a = 3;
@@ -19,6 +19,6 @@ fn main() {
 
     identity_i(a); // ok
     identity_u16(a);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     //~| expected `u16`, found `isize`
 }

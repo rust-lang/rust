@@ -11,5 +11,5 @@ fn main() {
     v.insert(3u8, 1u8);
 
     test(&v);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }

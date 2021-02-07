@@ -1,6 +1,6 @@
 fn foo<F: FnMut()>() {
     let _: Box<F> = Box::new(|| ());
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }
 
 fn main() {}

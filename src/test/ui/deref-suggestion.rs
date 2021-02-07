@@ -1,18 +1,18 @@
 macro_rules! borrow {
-    ($x:expr) => { &$x } //~ ERROR mismatched types
+    ($x:expr) => { &$x } //~ ERROR arguments to this function are incorrect
 }
 
 fn foo(_: String) {}
 
 fn foo2(s: &String) {
     foo(s);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }
 
 fn foo3(_: u32) {}
 fn foo4(u: &u32) {
     foo3(u);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }
 
 struct S<'a> {
@@ -28,13 +28,13 @@ fn main() {
     let r_s = &s;
     foo2(r_s);
     foo(&"aaa".to_owned());
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo(&mut "aaa".to_owned());
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     foo3(borrow!(0));
     foo4(&0);
     assert_eq!(3i32, &3i32);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     let u = 3;
     let s = S { u };
     //~^ ERROR mismatched types

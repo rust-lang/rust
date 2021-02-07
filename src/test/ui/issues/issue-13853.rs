@@ -34,5 +34,5 @@ pub fn main() {
 
     graph.push(Stuff);
 
-    iterate(graph); //~ ERROR mismatched types
+    iterate(graph); //~ ERROR arguments to this function are incorrect
 }

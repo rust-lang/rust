@@ -14,5 +14,5 @@ fn print_x(_: &dyn Foo<Item=bool>, extra: &str) {
 
 fn main() {
     print_x(X);
-    //~^ ERROR E0061
+    //~^ ERROR arguments to this function are incorrect
 }

@@ -10,11 +10,13 @@ fn main() {
     }
 
     match Blah::A(1, 1, 2) {
-        Blah::A(_, x, y) | Blah::B(x, y) => {} //~ ERROR mismatched types
+        Blah::A(_, x, y) | Blah::B(x, y) => {}
+        //~^ ERROR mismatched types
     }
 
     match Some(Blah::A(1, 1, 2)) {
-        Some(Blah::A(_, x, y) | Blah::B(x, y)) => {} //~ ERROR mismatched types
+        Some(Blah::A(_, x, y) | Blah::B(x, y)) => {}
+        //~^ ERROR mismatched types
     }
 
     match (0u8, 1u16) {

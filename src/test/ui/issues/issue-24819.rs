@@ -3,7 +3,7 @@ use std::collections::HashSet;
 fn main() {
     let mut v = Vec::new();
     foo(&mut v);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     //~| expected struct `HashSet`, found struct `Vec`
 }
 

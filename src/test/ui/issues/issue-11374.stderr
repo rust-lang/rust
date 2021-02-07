@@ -1,14 +1,18 @@
-error[E0308]: mismatched types
-  --> $DIR/issue-11374.rs:26:15
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-11374.rs:26:7
    |
 LL |     c.read_to(v);
-   |               ^
-   |               |
-   |               expected `&mut [u8]`, found struct `Vec`
-   |               help: consider mutably borrowing here: `&mut v`
+   |       ^^^^^^^ - expected `&mut [u8]`, found `Vec<_>`
    |
-   = note: expected mutable reference `&mut [u8]`
-                         found struct `Vec<_>`
+note: associated function defined here
+  --> $DIR/issue-11374.rs:13:12
+   |
+LL |     pub fn read_to(&mut self, vec: &mut [u8]) {
+   |            ^^^^^^^ ---------  --------------
+help: provide an argument of the correct type
+   |
+LL |     c.read_to({&mut [u8]})(v);
+   |       ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

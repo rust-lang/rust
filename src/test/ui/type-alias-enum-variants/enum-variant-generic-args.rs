@@ -11,12 +11,12 @@ type AliasFixed = Enum<()>;
 impl<T> Enum<T> {
     fn ts_variant() {
         Self::TSVariant(());
-        //~^ ERROR mismatched types [E0308]
+        //~^ ERROR arguments to this function are incorrect [E0308]
         Self::TSVariant::<()>(());
         //~^ ERROR type arguments are not allowed for this type [E0109]
         Self::<()>::TSVariant(());
         //~^ ERROR type arguments are not allowed for this type [E0109]
-        //~^^ ERROR mismatched types [E0308]
+        //~^^ ERROR arguments to this function are incorrect [E0308]
         Self::<()>::TSVariant::<()>(());
         //~^ ERROR type arguments are not allowed for this type [E0109]
         //~^^ ERROR type arguments are not allowed for this type [E0109]

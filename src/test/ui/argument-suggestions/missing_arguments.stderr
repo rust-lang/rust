@@ -1,4 +1,4 @@
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:10:3
    |
 LL |   one_arg();
@@ -14,7 +14,7 @@ help: provide the argument
 LL |   one_arg({i32});
    |   ^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:14:3
    |
 LL |   two_same(               );
@@ -33,7 +33,7 @@ help: did you mean
 LL |   two_same({i32}, {i32});
    |   ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:15:3
    |
 LL |   two_same(   1           );
@@ -49,7 +49,7 @@ help: provide the argument
 LL |   two_same(1, {i32});
    |   ^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:16:3
    |
 LL |   two_diff(               );
@@ -68,7 +68,7 @@ help: did you mean
 LL |   two_diff({i32}, {f32});
    |   ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:17:3
    |
 LL |   two_diff(   1           );
@@ -84,7 +84,7 @@ help: provide the argument
 LL |   two_diff(1, {f32});
    |   ^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:18:3
    |
 LL |   two_diff(          1.0  );
@@ -102,7 +102,7 @@ help: provide the argument
 LL |   two_diff({i32}, 1.0);
    |   ^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:21:3
    |
 LL |   three_same(                       );
@@ -122,7 +122,7 @@ help: did you mean
 LL |   three_same({i32}, {i32}, {i32});
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:22:3
    |
 LL |   three_same(   1                   );
@@ -141,7 +141,7 @@ help: did you mean
 LL |   three_same(1, {i32}, {i32});
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:23:3
    |
 LL |   three_same(   1,      1           );
@@ -157,7 +157,7 @@ help: provide the argument
 LL |   three_same(1, 1, {i32});
    |   ^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:26:3
    |
 LL |   three_diff(          1.0,     ""  );
@@ -175,7 +175,7 @@ help: provide the argument
 LL |   three_diff({i32}, 1.0, "");
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:27:3
    |
 LL |   three_diff(   1,              ""  );
@@ -193,7 +193,7 @@ help: provide the argument
 LL |   three_diff(1, {f32}, "");
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:28:3
    |
 LL |   three_diff(   1,     1.0          );
@@ -209,7 +209,7 @@ help: provide the argument
 LL |   three_diff(1, 1.0, {&str});
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:29:3
    |
 LL |   three_diff(                   ""  );
@@ -228,7 +228,7 @@ help: did you mean
 LL |   three_diff({i32}, {f32}, "");
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:30:3
    |
 LL |   three_diff(          1.0          );
@@ -247,7 +247,7 @@ help: did you mean
 LL |   three_diff({i32}, 1.0, {&str});
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:31:3
    |
 LL |   three_diff(   1                   );
@@ -266,7 +266,7 @@ help: did you mean
 LL |   three_diff(1, {f32}, {&str});
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:34:3
    |
 LL |   four_repeated(                               );
@@ -287,7 +287,7 @@ help: did you mean
 LL |   four_repeated({i32}, {f32}, {f32}, {&str});
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:35:3
    |
 LL |   four_repeated(   1,                     ""   );
@@ -306,7 +306,7 @@ help: did you mean
 LL |   four_repeated(1, {f32}, {f32}, "");
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:38:3
    |
 LL |   complex(                               );
@@ -328,7 +328,7 @@ help: did you mean
 LL |   complex({i32}, {f32}, {i32}, {f32}, {&str});
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0059]: multiple arguments to this function are incorrect
+error[E0308]: arguments to this function are incorrect
   --> $DIR/missing_arguments.rs:39:3
    |
 LL |   complex(   1,                     ""   );
@@ -350,4 +350,4 @@ LL |   complex(1, {f32}, {i32}, {f32}, "");
 
 error: aborting due to 19 previous errors
 
-For more information about this error, try `rustc --explain E0059`.
+For more information about this error, try `rustc --explain E0308`.

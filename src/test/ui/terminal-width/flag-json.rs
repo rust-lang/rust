@@ -5,5 +5,5 @@
 
 fn main() {
     let _: () = 42;
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }

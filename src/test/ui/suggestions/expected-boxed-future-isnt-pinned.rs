@@ -19,7 +19,7 @@ fn bar<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> 
 }
 
 fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
-    Pin::new(x) //~ ERROR mismatched types
+    Pin::new(x) //~ ERROR arguments to this function are incorrect
     //~^ ERROR E0277
 }
 

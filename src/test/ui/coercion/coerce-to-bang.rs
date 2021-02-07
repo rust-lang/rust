@@ -4,7 +4,7 @@ fn foo(x: usize, y: !, z: usize) { }
 
 fn call_foo_a() {
     foo(return, 22, 44);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }
 
 fn call_foo_b() {
@@ -15,7 +15,7 @@ fn call_foo_b() {
 fn call_foo_c() {
     // This test fails because the divergence happens **after** the
     // coercion to `!`:
-    foo(22, 44, return); //~ ERROR mismatched types
+    foo(22, 44, return); //~ ERROR arguments to this function are incorrect
 }
 
 fn call_foo_d() {
@@ -24,7 +24,7 @@ fn call_foo_d() {
     let b = 22;
     let c = 44;
     foo(a, b, c); // ... and hence a reference to `a` is expected to diverge.
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }
 
 fn call_foo_e() {
@@ -33,7 +33,7 @@ fn call_foo_e() {
     let a = return;
     let b = 22;
     let c = 44;
-    foo(a, b, c); //~ ERROR mismatched types
+    foo(a, b, c); //~ ERROR arguments to this function are incorrect
 }
 
 fn call_foo_f() {
@@ -42,28 +42,29 @@ fn call_foo_f() {
     let a: usize = return;
     let b = 22;
     let c = 44;
-    foo(a, b, c); //~ ERROR mismatched types
+    foo(a, b, c); //~ ERROR arguments to this function are incorrect
 }
 
 fn array_a() {
     // Return is coerced to `!` just fine, but `22` cannot be.
-    let x: [!; 2] = [return, 22]; //~ ERROR mismatched types
+    let x: [!; 2] = [return, 22]; //~ ERROR arguments to this function are incorrect
 }
 
 fn array_b() {
     // Error: divergence has not yet occurred.
-    let x: [!; 2] = [22, return]; //~ ERROR mismatched types
+    let x: [!; 2] = [22, return]; //~ ERROR arguments to this function are incorrect
 }
 
 fn tuple_a() {
     // No divergence at all.
-    let x: (usize, !, usize) = (22, 44, 66); //~ ERROR mismatched types
+    let x: (usize, !, usize) = (22, 44, 66);
+    //~^ ERROR arguments to this function are incorrect
 }
 
 fn tuple_b() {
     // Divergence happens before coercion: OK
     let x: (usize, !, usize) = (return, 44, 66);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }
 
 fn tuple_c() {
@@ -73,7 +74,8 @@ fn tuple_c() {
 
 fn tuple_d() {
     // Error: divergence happens too late
-    let x: (usize, !, usize) = (22, 44, return); //~ ERROR mismatched types
+    let x: (usize, !, usize) = (22, 44, return);
+    //~^ ERROR arguments to this function are incorrect
 }
 
 fn main() { }

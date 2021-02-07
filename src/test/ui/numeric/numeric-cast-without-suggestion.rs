@@ -14,25 +14,25 @@ fn main() {
     let x_f64: f64 = 11.0;
     let x_f32: f32 = 12.0;
 
-    foo::<usize>(x_f64); //~ ERROR mismatched types
-    foo::<usize>(x_f32); //~ ERROR mismatched types
-    foo::<isize>(x_f64); //~ ERROR mismatched types
-    foo::<isize>(x_f32); //~ ERROR mismatched types
-    foo::<u64>(x_f64); //~ ERROR mismatched types
-    foo::<u64>(x_f32); //~ ERROR mismatched types
-    foo::<i64>(x_f64); //~ ERROR mismatched types
-    foo::<i64>(x_f32); //~ ERROR mismatched types
-    foo::<u32>(x_f64); //~ ERROR mismatched types
-    foo::<u32>(x_f32); //~ ERROR mismatched types
-    foo::<i32>(x_f64); //~ ERROR mismatched types
-    foo::<i32>(x_f32); //~ ERROR mismatched types
-    foo::<u16>(x_f64); //~ ERROR mismatched types
-    foo::<u16>(x_f32); //~ ERROR mismatched types
-    foo::<i16>(x_f64); //~ ERROR mismatched types
-    foo::<i16>(x_f32); //~ ERROR mismatched types
-    foo::<u8>(x_f64); //~ ERROR mismatched types
-    foo::<u8>(x_f32); //~ ERROR mismatched types
-    foo::<i8>(x_f64); //~ ERROR mismatched types
-    foo::<i8>(x_f32); //~ ERROR mismatched types
-    foo::<f32>(x_f64); //~ ERROR mismatched types
+    foo::<usize>(x_f64); //~ ERROR arguments to this function are incorrect
+    foo::<usize>(x_f32); //~ ERROR arguments to this function are incorrect
+    foo::<isize>(x_f64); //~ ERROR arguments to this function are incorrect
+    foo::<isize>(x_f32); //~ ERROR arguments to this function are incorrect
+    foo::<u64>(x_f64); //~ ERROR arguments to this function are incorrect
+    foo::<u64>(x_f32); //~ ERROR arguments to this function are incorrect
+    foo::<i64>(x_f64); //~ ERROR arguments to this function are incorrect
+    foo::<i64>(x_f32); //~ ERROR arguments to this function are incorrect
+    foo::<u32>(x_f64); //~ ERROR arguments to this function are incorrect
+    foo::<u32>(x_f32); //~ ERROR arguments to this function are incorrect
+    foo::<i32>(x_f64); //~ ERROR arguments to this function are incorrect
+    foo::<i32>(x_f32); //~ ERROR arguments to this function are incorrect
+    foo::<u16>(x_f64); //~ ERROR arguments to this function are incorrect
+    foo::<u16>(x_f32); //~ ERROR arguments to this function are incorrect
+    foo::<i16>(x_f64); //~ ERROR arguments to this function are incorrect
+    foo::<i16>(x_f32); //~ ERROR arguments to this function are incorrect
+    foo::<u8>(x_f64); //~ ERROR arguments to this function are incorrect
+    foo::<u8>(x_f32); //~ ERROR arguments to this function are incorrect
+    foo::<i8>(x_f64); //~ ERROR arguments to this function are incorrect
+    foo::<i8>(x_f32); //~ ERROR arguments to this function are incorrect
+    foo::<f32>(x_f64); //~ ERROR arguments to this function are incorrect
 }

@@ -17,7 +17,7 @@ LL |         let _: i32 = 'inner: loop { break 'inner };
    |                                     help: give it a value of the expected type: `break 'inner 42`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-labeled-break-value.rs:9:45
+  --> $DIR/loop-labeled-break-value.rs:10:45
    |
 LL |         let _: i32 = 'inner2: loop { loop { break 'inner2 } };
    |                                             ^^^^^^^^^^^^^

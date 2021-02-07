@@ -14,11 +14,11 @@ fn main() {
     {
         extern crate crate_a1 as a;
         a::try_foo(foo2);
-        //~^ ERROR mismatched types
+        //~^ ERROR arguments to this function are incorrect
         //~| perhaps two different versions of crate `crate_a1`
         //~| expected struct `main::a::Foo`
         a::try_bar(bar2);
-        //~^ ERROR mismatched types
+        //~^ ERROR arguments to this function are incorrect
         //~| perhaps two different versions of crate `crate_a1`
         //~| expected trait `main::a::Bar`
         //~| expected struct `Box<(dyn main::a::Bar + 'static)>`

@@ -1,18 +1,25 @@
-error[E0061]: this function takes 0 arguments but 1 argument was supplied
-  --> $DIR/issue-26094.rs:10:17
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-26094.rs:3:9
    |
 LL |         $other(None)
-   |                ---- supplied 1 argument
+   |         ^^^^^^^----^
+   |                |
+   |                argument unexpected
 ...
 LL |     some_macro!(some_function);
-   |                 ^^^^^^^^^^^^^ expected 0 arguments
+   |     --------------------------- in this macro invocation
    |
 note: function defined here
   --> $DIR/issue-26094.rs:7:4
    |
 LL | fn some_function() {}
    |    ^^^^^^^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the extra argument
+   |
+LL |         some_function()
+   |         ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0061`.
+For more information about this error, try `rustc --explain E0308`.

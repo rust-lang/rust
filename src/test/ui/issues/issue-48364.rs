@@ -1,6 +1,6 @@
 fn foo() -> bool {
     b"".starts_with(stringify!(foo))
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }
 
 fn main() {}

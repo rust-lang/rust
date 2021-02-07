@@ -8,5 +8,5 @@ fn call_bare(f: fn(&str)) {
 fn main() {
     let string = "world!";
     let f = |s: &str| println!("{}{}", s, string);
-    call_bare(f)    //~ ERROR mismatched types
+    call_bare(f)    //~ ERROR arguments to this function are incorrect
 }

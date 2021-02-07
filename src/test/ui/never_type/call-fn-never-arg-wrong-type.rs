@@ -7,5 +7,5 @@ fn foo(x: !) -> ! {
 }
 
 fn main() {
-    foo("wow"); //~ ERROR mismatched types
+    foo("wow"); //~ ERROR arguments to this function are incorrect
 }

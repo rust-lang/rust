@@ -25,21 +25,6 @@ LL |     Box::new(x)
               found struct `Box<F>`
    = help: use `Box::pin`
 
-error[E0308]: mismatched types
-  --> $DIR/expected-boxed-future-isnt-pinned.rs:22:14
-   |
-LL | fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
-   |        - this type parameter
-LL |     Pin::new(x)
-   |              ^
-   |              |
-   |              expected struct `Box`, found type parameter `F`
-   |              help: store this in the heap by calling `Box::new`: `Box::new(x)`
-   |
-   = note:      expected struct `Box<dyn Future<Output = i32> + Send>`
-           found type parameter `F`
-   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
-
 error[E0277]: `dyn Future<Output = i32> + Send` cannot be unpinned
   --> $DIR/expected-boxed-future-isnt-pinned.rs:22:5
    |
@@ -47,6 +32,19 @@ LL |     Pin::new(x)
    |     ^^^^^^^^ the trait `Unpin` is not implemented for `dyn Future<Output = i32> + Send`
    |
    = note: required by `Pin::<P>::new`
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:22:5
+   |
+LL |     Pin::new(x)
+   |     ^^^^^^^^^-^
+   |              |
+   |              expected `Box<dyn Future<Output = i32> + Send>`, found `F`
+   |
+help: provide an argument of the correct type
+   |
+LL |     ({Box<dyn Future<Output = i32> + Send>})
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `dyn Future<Output = i32> + Send` cannot be unpinned
   --> $DIR/expected-boxed-future-isnt-pinned.rs:27:5

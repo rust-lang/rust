@@ -1,20 +1,28 @@
-error[E0308]: mismatched types
-  --> $DIR/type-mismatch-same-crate-name.rs:16:20
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/type-mismatch-same-crate-name.rs:16:9
    |
 LL |         a::try_foo(foo2);
-   |                    ^^^^ expected struct `main::a::Foo`, found a different struct `main::a::Foo`
+   |         ^^^^^^^^^^^----^
+   |                    |
+   |                    expected `main::a::Foo`, found `main::a::Foo`
    |
-   = note: perhaps two different versions of crate `crate_a1` are being used?
+help: provide an argument of the correct type
+   |
+LL |         ({main::a::Foo});
+   |         ^^^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/type-mismatch-same-crate-name.rs:20:20
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/type-mismatch-same-crate-name.rs:20:9
    |
 LL |         a::try_bar(bar2);
-   |                    ^^^^ expected trait `main::a::Bar`, found a different trait `main::a::Bar`
+   |         ^^^^^^^^^^^----^
+   |                    |
+   |                    expected `Box<(dyn main::a::Bar + 'static)>`, found `Box<dyn main::a::Bar>`
    |
-   = note: expected struct `Box<(dyn main::a::Bar + 'static)>`
-              found struct `Box<dyn main::a::Bar>`
-   = note: perhaps two different versions of crate `crate_a1` are being used?
+help: provide an argument of the correct type
+   |
+LL |         ({Box<(dyn main::a::Bar + 'static)>});
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -7,7 +7,7 @@ fn has_uniq(x: String) {
 }
 
 fn has_slice(x: &str) {
-   wants_uniq(x); //~ ERROR mismatched types
+   wants_uniq(x); //~ ERROR arguments to this function are incorrect
    wants_slice(x);
 }
 

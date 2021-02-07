@@ -24,13 +24,13 @@ impl Car for ModelU { }
 
 fn dent<C:Car>(c: C, color: C::Color) { c.chip_paint(color) }
 fn a() { dent(ModelT, Black); }
-fn b() { dent(ModelT, Blue); } //~ ERROR mismatched types
-fn c() { dent(ModelU, Black); } //~ ERROR mismatched types
+fn b() { dent(ModelT, Blue); } //~ ERROR arguments to this function are incorrect
+fn c() { dent(ModelU, Black); } //~ ERROR arguments to this function are incorrect
 fn d() { dent(ModelU, Blue); }
 
 fn e() { ModelT.chip_paint(Black); }
-fn f() { ModelT.chip_paint(Blue); } //~ ERROR mismatched types
-fn g() { ModelU.chip_paint(Black); } //~ ERROR mismatched types
+fn f() { ModelT.chip_paint(Blue); } //~ ERROR arguments to this function are incorrect
+fn g() { ModelU.chip_paint(Black); } //~ ERROR arguments to this function are incorrect
 fn h() { ModelU.chip_paint(Blue); }
 
 pub fn main() { }

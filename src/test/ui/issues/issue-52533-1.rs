@@ -7,5 +7,5 @@ fn gimme(_: impl for<'a, 'b, 'c> FnOnce(&'a Foo<'a, 'b, u32>,
 
 fn main() {
     gimme(|x, y| y)
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR mismatched types
 }

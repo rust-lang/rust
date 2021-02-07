@@ -12,7 +12,7 @@ async fn dont_suggest_await_in_closure() {
     || {
         let x = make_u32();
         take_u32(x)
-        //~^ ERROR mismatched types [E0308]
+        //~^ ERROR arguments to this function are incorrect [E0308]
     };
 }
 

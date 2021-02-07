@@ -2,7 +2,7 @@
 // regression test for #8005
 
 macro_rules! test { () => { fn foo() -> i32 { 1; } } }
-                                           //~^ ERROR mismatched types
+//~^ ERROR mismatched types
 
 fn no_return() -> i32 {} //~ ERROR mismatched types
 

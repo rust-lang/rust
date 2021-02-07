@@ -1,14 +1,12 @@
-error[E0308]: mismatched types
-  --> $DIR/signature.rs:10:1
+error[E0308]: arguments to this function are incorrect
    |
-LL | / pub unsafe extern fn foo(a: i32, b: u32) -> u32 {
-LL | |
-LL | |     loop {}
-LL | | }
-   | |_^ expected normal fn, found unsafe fn
+help: provide an argument of the correct type
    |
-   = note: expected fn pointer `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
-                 found fn item `unsafe extern "C" fn(i32, u32) -> u32 {foo}`
+LL | (pub unsafe extern fn foo(a: i32, b: u32) -> u32 {
+LL |
+LL |     loop {}
+LL | }, , {fn(proc_macro::TokenStream) -> proc_macro::TokenStream})// force-host
+   |
 
 error: aborting due to previous error
 

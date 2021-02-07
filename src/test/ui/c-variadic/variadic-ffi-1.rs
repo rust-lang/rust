@@ -17,8 +17,10 @@ fn main() {
         foo();  //~ ERROR this function takes at least 2 arguments but 0 arguments were supplied
         foo(1); //~ ERROR this function takes at least 2 arguments but 1 argument was supplied
 
-        let x: unsafe extern "C" fn(f: isize, x: u8) = foo; //~ ERROR mismatched types
-        let y: extern "C" fn(f: isize, x: u8, ...) = bar; //~ ERROR mismatched types
+        let x: unsafe extern "C" fn(f: isize, x: u8) = foo;
+        //~^ ERROR arguments to this function are incorrect
+        let y: extern "C" fn(f: isize, x: u8, ...) = bar;
+        //~^ ERROR arguments to this function are incorrect
 
         foo(1, 2, 3f32); //~ ERROR can't pass
         foo(1, 2, true); //~ ERROR can't pass

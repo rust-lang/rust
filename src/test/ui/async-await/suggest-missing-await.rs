@@ -10,7 +10,7 @@ async fn make_u32() -> u32 {
 async fn suggest_await_in_async_fn() {
     let x = make_u32();
     take_u32(x)
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP consider `await`ing on the `Future`
     //~| SUGGESTION .await
 }
@@ -20,7 +20,7 @@ async fn dummy() {}
 #[allow(unused)]
 async fn suggest_await_in_async_fn_return() {
     dummy()
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR arguments to this function are incorrect [E0308]
     //~| HELP try adding a semicolon
     //~| HELP consider `await`ing on the `Future`
     //~| SUGGESTION .await

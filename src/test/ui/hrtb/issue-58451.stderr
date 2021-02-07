@@ -1,17 +1,19 @@
-error[E0061]: this function takes 1 argument but 0 arguments were supplied
+error[E0308]: arguments to this function are incorrect
   --> $DIR/issue-58451.rs:12:9
    |
 LL |     f(&[f()]);
-   |         ^-- supplied 0 arguments
-   |         |
-   |         expected 1 argument
+   |         ^^^ an argument of type _ is missing
    |
 note: function defined here
   --> $DIR/issue-58451.rs:5:4
    |
 LL | fn f<I>(i: I)
    |    ^    ----
+help: provide the argument
+   |
+LL |     f(&[f({_})]);
+   |         ^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0061`.
+For more information about this error, try `rustc --explain E0308`.

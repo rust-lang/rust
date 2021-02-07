@@ -1,47 +1,92 @@
-error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:6:17
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/coerce-to-bang.rs:6:5
    |
 LL |     foo(return, 22, 44);
-   |                 ^^ expected `!`, found integer
+   |     ^^^^------^^^^^^^^^
+   |         |
+   |         expected `!`, found `!`
    |
-   = note: expected type `!`
-              found type `{integer}`
+note: function defined here
+  --> $DIR/coerce-to-bang.rs:3:4
+   |
+LL | fn foo(x: usize, y: !, z: usize) { }
+   |    ^^^ --------  ----  --------
+help: provide an argument of the correct type
+   |
+LL |     foo(return, {!}, 44);
+   |     ^^^^^^^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:18:13
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/coerce-to-bang.rs:18:5
    |
 LL |     foo(22, 44, return);
-   |             ^^ expected `!`, found integer
+   |     ^^^^--^^^^^^^^^^^^^
+   |         |
+   |         expected `!`, found `usize`
    |
-   = note: expected type `!`
-              found type `{integer}`
+note: function defined here
+  --> $DIR/coerce-to-bang.rs:3:4
+   |
+LL | fn foo(x: usize, y: !, z: usize) { }
+   |    ^^^ --------  ----  --------
+help: provide an argument of the correct type
+   |
+LL |     foo(22, {!}, return);
+   |     ^^^^^^^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:26:12
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/coerce-to-bang.rs:26:5
    |
 LL |     foo(a, b, c); // ... and hence a reference to `a` is expected to diverge.
-   |            ^ expected `!`, found integer
+   |     ^^^^-^^^^^^^
+   |         |
+   |         expected `!`, found `!`
    |
-   = note: expected type `!`
-              found type `{integer}`
+note: function defined here
+  --> $DIR/coerce-to-bang.rs:3:4
+   |
+LL | fn foo(x: usize, y: !, z: usize) { }
+   |    ^^^ --------  ----  --------
+help: provide an argument of the correct type
+   |
+LL |     foo(a, {!}, c); // ... and hence a reference to `a` is expected to diverge.
+   |     ^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:36:12
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/coerce-to-bang.rs:36:5
    |
 LL |     foo(a, b, c);
-   |            ^ expected `!`, found integer
+   |     ^^^^-^^^^^^^
+   |         |
+   |         expected `!`, found `_`
    |
-   = note: expected type `!`
-              found type `{integer}`
+note: function defined here
+  --> $DIR/coerce-to-bang.rs:3:4
+   |
+LL | fn foo(x: usize, y: !, z: usize) { }
+   |    ^^^ --------  ----  --------
+help: provide an argument of the correct type
+   |
+LL |     foo(a, {!}, c);
+   |     ^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:45:12
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/coerce-to-bang.rs:45:5
    |
 LL |     foo(a, b, c);
-   |            ^ expected `!`, found integer
+   |     ^^^^-^^^^^^^
+   |         |
+   |         expected `!`, found `usize`
    |
-   = note: expected type `!`
-              found type `{integer}`
+note: function defined here
+  --> $DIR/coerce-to-bang.rs:3:4
+   |
+LL | fn foo(x: usize, y: !, z: usize) { }
+   |    ^^^ --------  ----  --------
+help: provide an argument of the correct type
+   |
+LL |     foo(a, {!}, c);
+   |     ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:50:21
@@ -73,7 +118,7 @@ LL |     let x: (usize, !, usize) = (22, 44, 66);
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:65:41
+  --> $DIR/coerce-to-bang.rs:66:41
    |
 LL |     let x: (usize, !, usize) = (return, 44, 66);
    |                                         ^^ expected `!`, found integer
@@ -82,7 +127,7 @@ LL |     let x: (usize, !, usize) = (return, 44, 66);
               found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-to-bang.rs:76:37
+  --> $DIR/coerce-to-bang.rs:77:37
    |
 LL |     let x: (usize, !, usize) = (22, 44, return);
    |                                     ^^ expected `!`, found integer

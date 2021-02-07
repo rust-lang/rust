@@ -10,7 +10,7 @@ fn tell(x: usize) -> usize {
 
 fn main() {
     demo(tell(1)..tell(10));
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     demo(1..10);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
 }

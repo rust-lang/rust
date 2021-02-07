@@ -1,11 +1,20 @@
-error[E0308]: mismatched types
-  --> $DIR/issue-61106.rs:3:9
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-61106.rs:3:5
    |
 LL |     foo(x.clone());
-   |         ^^^^^^^^^
+   |     ^^^^---------^
    |         |
-   |         expected `&str`, found struct `String`
-   |         help: consider borrowing here: `&x`
+   |         expected `&str`, found `String`
+   |
+note: function defined here
+  --> $DIR/issue-61106.rs:6:4
+   |
+LL | fn foo(_: &str) {}
+   |    ^^^ -------
+help: provide an argument of the correct type
+   |
+LL |     foo({&str});
+   |     ^^^^^^^^^^^
 
 error: aborting due to previous error
 

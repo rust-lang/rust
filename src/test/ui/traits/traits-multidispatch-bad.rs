@@ -16,7 +16,7 @@ where T : Convert<U>
 }
 
 fn a() {
-    test(22i32, 44i32); //~ ERROR mismatched types
+    test(22i32, 44i32); //~ ERROR arguments to this function are incorrect
 }
 
 fn main() {}

@@ -1,8 +1,20 @@
-error[E0308]: mismatched types
-  --> $DIR/terr-in-field.rs:13:14
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/terr-in-field.rs:13:5
    |
 LL |     want_foo(b);
-   |              ^ expected struct `Foo`, found struct `Bar`
+   |     ^^^^^^^^^-^
+   |              |
+   |              expected `Foo`, found `Bar`
+   |
+note: function defined here
+  --> $DIR/terr-in-field.rs:11:4
+   |
+LL | fn want_foo(f: Foo) {}
+   |    ^^^^^^^^ ------
+help: provide an argument of the correct type
+   |
+LL |     want_foo({Foo});
+   |     ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

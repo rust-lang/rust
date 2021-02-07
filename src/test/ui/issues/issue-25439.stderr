@@ -1,14 +1,21 @@
-error[E0644]: closure/generator type that references itself
-  --> $DIR/issue-25439.rs:8:9
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-25439.rs:8:5
    |
 LL |     fix(|_, x| x);
-   |         ^^^^^^^^ cyclic type of infinite size
+   |     ^^^^--------^
+   |         |
+   |         expected `_`
    |
-   = note: closures cannot capture themselves or take themselves as argument;
-           this error may be the result of a recent compiler bug-fix,
-           see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
-           for more information
+note: function defined here
+  --> $DIR/issue-25439.rs:3:4
+   |
+LL | fn fix<F>(f: F) -> i32 where F: Fn(Helper<F>, i32) -> i32 {
+   |    ^^^    ----
+help: provide an argument of the correct type
+   |
+LL |     fix({_});
+   |     ^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0644`.
+For more information about this error, try `rustc --explain E0308`.

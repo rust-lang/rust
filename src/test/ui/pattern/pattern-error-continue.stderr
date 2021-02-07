@@ -32,11 +32,23 @@ LL |     match 'c' {
 LL |         S { .. } => (),
    |         ^^^^^^^^ expected `char`, found struct `S`
 
-error[E0308]: mismatched types
-  --> $DIR/pattern-error-continue.rs:28:7
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/pattern-error-continue.rs:28:5
    |
 LL |     f(true);
-   |       ^^^^ expected `char`, found `bool`
+   |     ^^----^
+   |       |
+   |       expected `char`, found `bool`
+   |
+note: function defined here
+  --> $DIR/pattern-error-continue.rs:13:4
+   |
+LL | fn f(_c: char) {}
+   |    ^ --------
+help: provide an argument of the correct type
+   |
+LL |     f({char});
+   |     ^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

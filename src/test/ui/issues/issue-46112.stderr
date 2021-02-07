@@ -1,14 +1,15 @@
-error[E0308]: mismatched types
-  --> $DIR/issue-46112.rs:9:21
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-46112.rs:9:18
    |
 LL | fn main() { test(Ok(())); }
-   |                     ^^
+   |                  ^^^--^
    |                     |
-   |                     expected enum `Option`, found `()`
-   |                     help: try using a variant of the expected enum: `Some(())`
+   |                     expected `Option<()>`, found `()`
    |
-   = note:   expected enum `Option<()>`
-           found unit type `()`
+help: provide an argument of the correct type
+   |
+LL | fn main() { test(({Option<()>})); }
+   |                  ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -11,32 +11,32 @@ trait Trait<T = Self> {
 }
 
 fn foo(_: impl Trait, x: impl Trait) {
-    qux(x.func()) //~ ERROR mismatched types
+    qux(x.func()) //~ ERROR arguments to this function are incorrect
 }
 
 fn bar<T: Trait>(x: T) {
-    qux(x.func()) //~ ERROR mismatched types
+    qux(x.func()) //~ ERROR arguments to this function are incorrect
 }
 
 fn foo2(x: impl Trait<i32>) {
-    qux(x.func()) //~ ERROR mismatched types
+    qux(x.func()) //~ ERROR arguments to this function are incorrect
 }
 
 fn bar2<T: Trait<i32>>(x: T) {
-    x.funk(3); //~ ERROR mismatched types
-    qux(x.func()) //~ ERROR mismatched types
+    x.funk(3); //~ ERROR arguments to this function are incorrect
+    qux(x.func()) //~ ERROR arguments to this function are incorrect
 }
 
 fn baz<D: std::fmt::Debug, T: Trait<A = D>>(x: T) {
-    qux(x.func()) //~ ERROR mismatched types
+    qux(x.func()) //~ ERROR arguments to this function are incorrect
 }
 
 fn bat(x: &mut dyn Trait<(), A = ()>) {
-    qux(x.func()) //~ ERROR mismatched types
+    qux(x.func()) //~ ERROR arguments to this function are incorrect
 }
 
 fn ban<T>(x: T) where T: Trait {
-    qux(x.func()) //~ ERROR mismatched types
+    qux(x.func()) //~ ERROR arguments to this function are incorrect
 }
 
 fn qux(_: usize) {}

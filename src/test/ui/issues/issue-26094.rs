@@ -8,6 +8,6 @@ fn some_function() {} //~ NOTE defined here
 
 fn main() {
     some_macro!(some_function);
-    //~^ ERROR this function takes 0 arguments but 1 argument was supplied
-    //~| NOTE expected 0 arguments
+    //~^ ERROR arguments to this function are incorrect
+    //~| NOTE argument unexpected
 }

@@ -6,7 +6,7 @@ fn main() {
     let name = "Foo";
     let x = Some(&[name]);
     let msg = foo(x);
-    //~^ ERROR mismatched types
+    //~^ ERROR arguments to this function are incorrect
     //~| expected enum `Option<&[&str]>`
     //~| found enum `Option<&[&str; 1]>`
     //~| expected slice `[&str]`, found array `[&str; 1]`
