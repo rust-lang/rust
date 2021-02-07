@@ -1,4 +1,5 @@
 mod bind_instead_of_map;
+mod bytes_nth;
 mod filter_map_identity;
 mod inefficient_to_string;
 mod inspect_for_each;
@@ -1490,6 +1491,28 @@ declare_clippy_lint! {
     "call to `filter_map` where `flatten` is sufficient"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for the use of `.bytes().nth()`.
+    ///
+    /// **Why is this bad?** `.as_bytes().get()` is more efficient and more
+    /// readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let _ = "Hello".bytes().nth(3);;
+    ///
+    /// // Good
+    /// let _ = "Hello".as_bytes().get(3);
+    /// ```
+    pub BYTES_NTH,
+    style,
+    "replace `.bytes().nth()` with `.as_bytes().get()`"
+}
+
 pub struct Methods {
     msrv: Option<RustcVersion>,
 }
@@ -1537,6 +1560,7 @@ impl_lint_pass!(Methods => [
     ITER_NEXT_SLICE,
     ITER_NTH,
     ITER_NTH_ZERO,
+    BYTES_NTH,
     ITER_SKIP_NEXT,
     GET_UNWRAP,
     STRING_EXTEND_CHARS,
@@ -1614,6 +1638,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
+            ["nth", "bytes"] => bytes_nth::lints(cx, expr, &arg_lists[1]),
             ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
             ["step_by", ..] => lint_step_by(cx, expr, arg_lists[0]),
             ["next", "skip"] => lint_iter_skip_next(cx, expr, arg_lists[1]),

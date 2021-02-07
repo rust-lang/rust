@@ -1,0 +1,9 @@
+// run-rustfix
+
+#![warn(clippy::bytes_nth)]
+
+fn main() {
+    let _ = "Hello".as_bytes().get(3);
+
+    let _ = String::from("Hello").as_bytes().get(3);
+}

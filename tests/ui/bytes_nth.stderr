@@ -1,0 +1,16 @@
+error: called `.byte().nth()` on a `str`
+  --> $DIR/bytes_nth.rs:6:13
+   |
+LL |     let _ = "Hello".bytes().nth(3);
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try calling `.as_bytes().get()`: `"Hello".as_bytes().get(3)`
+   |
+   = note: `-D clippy::bytes-nth` implied by `-D warnings`
+
+error: called `.byte().nth()` on a `String`
+  --> $DIR/bytes_nth.rs:8:13
+   |
+LL |     let _ = String::from("Hello").bytes().nth(3);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try calling `.as_bytes().get()`: `String::from("Hello").as_bytes().get(3)`
+
+error: aborting due to 2 previous errors
+
