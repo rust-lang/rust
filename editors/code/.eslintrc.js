@@ -33,6 +33,7 @@ module.exports = {
             "error",
             "always"
         ],
-        "@typescript-eslint/no-unnecessary-type-assertion": "error"
+        "@typescript-eslint/no-unnecessary-type-assertion": "error",
+        "@typescript-eslint/no-floating-promises": "error"
     }
 };
