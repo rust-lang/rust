@@ -1,7 +1,7 @@
 use crate::utils::{
     attr_by_name, attrs::is_proc_macro, is_must_use_ty, is_trait_impl_item, is_type_diagnostic_item, iter_input_pats,
-    last_path_segment, match_def_path, must_use_attr, return_ty, snippet, snippet_opt, span_lint, span_lint_and_help,
-    span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
+    last_path_segment, match_def_path, must_use_attr, path_to_local, return_ty, snippet, snippet_opt, span_lint,
+    span_lint_and_help, span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
-use rustc_hir::{def::Res, def_id::DefId};
+use rustc_hir::{def::Res, def_id::DefId, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
@@ -658,16 +658,14 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr<'_>) {
-        if let hir::ExprKind::Path(ref qpath) = ptr.kind {
-            if let Res::Local(id) = self.cx.qpath_res(qpath, ptr.hir_id) {
-                if self.ptrs.contains(&id) {
-                    span_lint(
-                        self.cx,
-                        NOT_UNSAFE_PTR_ARG_DEREF,
-                        ptr.span,
-                        "this public function dereferences a raw pointer but is not marked `unsafe`",
-                    );
-                }
+        if let Some(id) = path_to_local(ptr) {
+            if self.ptrs.contains(&id) {
+                span_lint(
+                    self.cx,
+                    NOT_UNSAFE_PTR_ARG_DEREF,
+                    ptr.span,
+                    "this public function dereferences a raw pointer but is not marked `unsafe`",
+                );
             }
         }
     }
@@ -698,7 +696,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                             arg.span,
                             &mut tys,
                         )
-                        && is_mutated_static(self.cx, arg)
+                        && is_mutated_static(arg)
                     {
                         self.mutates_static = true;
                         return;
@@ -707,7 +705,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                 }
             },
             Assign(ref target, ..) | AssignOp(_, ref target, _) | AddrOf(_, hir::Mutability::Mut, ref target) => {
-                self.mutates_static |= is_mutated_static(self.cx, target)
+                self.mutates_static |= is_mutated_static(target)
             },
             _ => {},
         }
@@ -718,12 +716,13 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
     }
 }
 
-fn is_mutated_static(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
+fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
     use hir::ExprKind::{Field, Index, Path};
 
     match e.kind {
-        Path(ref qpath) => !matches!(cx.qpath_res(qpath, e.hir_id), Res::Local(_)),
-        Field(ref inner, _) | Index(ref inner, _) => is_mutated_static(cx, inner),
+        Path(QPath::Resolved(_, path)) => !matches!(path.res, Res::Local(_)),
+        Path(_) => true,
+        Field(ref inner, _) | Index(ref inner, _) => is_mutated_static(inner),
         _ => false,
     }
 }
