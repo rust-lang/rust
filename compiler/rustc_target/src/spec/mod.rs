@@ -614,7 +614,7 @@ impl fmt::Display for SanitizerSet {
                 _ => panic!("unrecognized sanitizer {:?}", s),
             };
             if !first {
-                f.write_str(",")?;
+                f.write_str(", ")?;
             }
             f.write_str(name)?;
             first = false;
@@ -1219,6 +1219,13 @@ pub struct TargetOptions {
     /// How to handle split debug information, if at all. Specifying `None` has
     /// target-specific meaning.
     pub split_debuginfo: SplitDebuginfo,
+
+    /// The sanitizers supported by this target
+    ///
+    /// Note that the support here is at a codegen level. If the machine code with sanitizer
+    /// enabled can generated on this target, but the necessary supporting libraries are not
+    /// distributed with the target, the sanitizer should still appear in this list for the target.
+    pub supported_sanitizers: SanitizerSet,
 }
 
 impl Default for TargetOptions {
@@ -1320,6 +1327,7 @@ impl Default for TargetOptions {
             eh_frame_header: true,
             has_thumb_interworking: false,
             split_debuginfo: SplitDebuginfo::Off,
+            supported_sanitizers: SanitizerSet::empty(),
         }
     }
 }
