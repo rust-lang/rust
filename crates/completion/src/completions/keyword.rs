@@ -259,6 +259,7 @@ mod tests {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw let
                 kw mod
                 kw const
@@ -285,6 +286,7 @@ mod tests {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw let
                 kw mod
                 kw const
@@ -311,6 +313,7 @@ mod tests {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw let
                 kw else
                 kw else if
@@ -344,6 +347,7 @@ fn quux() -> i32 {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw unsafe
                 kw return
             "#]],
@@ -392,6 +396,7 @@ fn quux() -> i32 {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw let
                 kw mod
                 kw const
@@ -550,6 +555,7 @@ pub mod future {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw return
             "#]],
         )
@@ -608,6 +614,7 @@ fn foo() {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw return
             "#]],
         );
