@@ -76,7 +76,8 @@ async function tryActivate(context: vscode.ExtensionContext) {
     // This a horribly, horribly wrong way to deal with this problem.
     ctx = await Ctx.create(config, context, serverPath, workspaceFolder.uri.fsPath);
 
-    setContextValue(RUST_PROJECT_CONTEXT_NAME, true);
+    setContextValue(RUST_PROJECT_CONTEXT_NAME, true)
+        .then(() => {}, console.error);
 
     // Commands which invokes manually via command palette, shortcut, etc.
 
@@ -142,7 +143,8 @@ async function tryActivate(context: vscode.ExtensionContext) {
 }
 
 export async function deactivate() {
-    setContextValue(RUST_PROJECT_CONTEXT_NAME, undefined);
+    setContextValue(RUST_PROJECT_CONTEXT_NAME, undefined)
+        .then(() => {}, console.error);
     await ctx?.client.stop();
     ctx = undefined;
 }
@@ -186,7 +188,8 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     }).catch((e) => {
         log.error(e);
         if (state.releaseId === undefined) { // Show error only for the initial download
-            vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly ${e}`);
+            vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly ${e}`)
+                .then(() => {}, console.error);
         }
         return undefined;
     });
@@ -305,7 +308,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
             "If you feel that your platform should be supported, please create an issue " +
             "about that [here](https://github.com/rust-analyzer/rust-analyzer/issues) and we " +
             "will consider it."
-        );
+        ).then(() => {}, console.error);
         return undefined;
     }
     const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
@@ -433,6 +436,7 @@ function warnAboutExtensionConflicts() {
         vscode.window.showWarningMessage(
             `You have both the ${fst[0]} (${fst[1]}) and ${sec[0]} (${sec[1]}) ` +
             "plugins enabled. These are known to conflict and cause various functions of " +
-            "both plugins to not work correctly. You should disable one of them.", "Got it");
+            "both plugins to not work correctly. You should disable one of them.", "Got it")
+            .then(() => {}, console.error);
     };
 }

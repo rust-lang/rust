@@ -78,7 +78,8 @@ async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<v
 
     if (!debugEngine) {
         vscode.window.showErrorMessage(`Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)`
-            + ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) extension for debugging.`);
+            + ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) extension for debugging.`)
+            .then(() => {}, console.error);
         return;
     }
 

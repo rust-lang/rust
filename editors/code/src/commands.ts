@@ -129,7 +129,8 @@ export function joinLines(ctx: Ctx): Cmd {
             client.protocol2CodeConverter.asTextEdits(items).forEach((edit: any) => {
                 builder.replace(edit.range, edit.newText);
             });
-        });
+        })
+        .then(() => {}, console.error);
     };
 }
 
@@ -246,7 +247,8 @@ export function ssr(ctx: Ctx): Cmd {
             });
 
             await vscode.workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));
-        });
+        })
+        .then(() => {}, console.error);
     };
 }
 
@@ -465,7 +467,8 @@ export function showReferences(ctx: Ctx): Cmd {
                 vscode.Uri.parse(uri),
                 client.protocol2CodeConverter.asPosition(position),
                 locations.map(client.protocol2CodeConverter.asLocation),
-            );
+            )
+            .then(() => {}, console.error);
         }
     };
 }
@@ -477,7 +480,8 @@ export function applyActionGroup(_ctx: Ctx): Cmd {
         vscode.commands.executeCommand(
             'rust-analyzer.resolveCodeAction',
             selectedAction.arguments,
-        );
+        )
+        .then(() => {}, console.error);
     };
 }
 
@@ -510,7 +514,8 @@ export function openDocs(ctx: Ctx): Cmd {
         const doclink = await client.sendRequest(ra.openDocs, { position, textDocument });
 
         if (doclink != null) {
-            vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(doclink));
+            vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(doclink))
+                .then(() => {}, console.error);
         }
     };
 
