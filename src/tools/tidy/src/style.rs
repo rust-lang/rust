@@ -173,7 +173,6 @@ fn skip_markdown_path(path: &Path) -> bool {
         "src/doc/nomicon",
         "src/doc/reference",
         "src/doc/rust-by-example",
-        "src/doc/rustc-dev-guide",
     ];
     SKIP_MD.iter().any(|p| path.ends_with(p))
 }

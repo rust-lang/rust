@@ -413,7 +413,6 @@ impl<'a> Builder<'a> {
                 test::UnstableBook,
                 test::RustcBook,
                 test::LintDocs,
-                test::RustcGuide,
                 test::EmbeddedBook,
                 test::EditionGuide,
                 test::Rustfmt,

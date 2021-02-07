@@ -1537,34 +1537,6 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct RustcGuide;
-
-impl Step for RustcGuide {
-    type Output = ();
-    const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/doc/rustc-dev-guide")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustcGuide);
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let src = builder.src.join("src/doc/rustc-dev-guide");
-        let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        let toolstate = if try_run(builder, rustbook_cmd.arg("linkcheck").arg(&src)) {
-            ToolState::TestPass
-        } else {
-            ToolState::TestFail
-        };
-        builder.save_toolstate("rustc-dev-guide", toolstate);
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateLibrustc {
     compiler: Compiler,
     target: TargetSelection,
