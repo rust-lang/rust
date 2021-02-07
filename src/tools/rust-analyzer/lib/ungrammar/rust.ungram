@@ -217,7 +217,10 @@ Union =
   'union' Name GenericParamList? WhereClause?
   RecordFieldList
 
-AdtDef =
+// A Data Type.
+//
+// Not used directly in the grammar, but handy to have anyway.
+Adt =
   Enum
 | Struct
 | Union
