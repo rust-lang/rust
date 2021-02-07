@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [1.4.36] 2021-02-07
+
+### Changed
+
+- `rustc-ap-*` crates updated to v705.0.0
+
+### Install/Download Options
+- **crates.io package** - *pending*
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.36](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.36)
+- **Build from source** - [Tag v1.4.36](https://github.com/rust-lang/rustfmt/tree/v1.4.36), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.35] 2021-02-03
 
 ### Changed
@@ -10,7 +22,7 @@
 
 ### Install/Download Options
 - **crates.io package** - *pending*
-- **rustup (nightly)** - *pending*
+- **rustup (nightly)** - *n/a (superseded by [v1.4.36](#1436-2021-02-07))
 - **GitHub Release Binaries** - [Release v1.4.35](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.35)
 - **Build from source** - [Tag v1.4.35](https://github.com/rust-lang/rustfmt/tree/v1.4.35), see instructions for how to [install rustfmt from source][install-from-source]
 
