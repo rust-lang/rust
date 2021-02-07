@@ -258,8 +258,13 @@ They are independent from the rest of the code.
 `mbe` crate contains tools for transforming between syntax trees and token tree.
 And it also handles the actual parsing and expansion of declarative macro (a-la "Macros By Example" or mbe).
 
-For proc macros, we pass the token trees by loading the corresponding dynamic library (which built by `cargo`).
-That's why the client (`proc_macro_api`) and server (`proc_macro_srv`) model are used to run proc-macro in separate process in background.
+For proc macros, the client-server model are used.
+We pass an argument `--proc-macro` to `rust-analyzer` binary to start a separate process  (`proc_macro_srv`).
+And the client (`proc_macro_api`) provides an interface to talk to that server separately.
+
+And then token trees are passed from client, and the server will load the corresponding dynamic library (which built by `cargo`).
+And due to the fact the api for getting result from proc macro are always unstable in `rustc`,
+we maintain our own copy (and paste) of that part of code to allow us to build the whole thing in stable rust.
  
  **Architecture Invariant:**
 Bad proc macros may panic or segfault accidentally. So we run it in another process and recover it from fatal error.
