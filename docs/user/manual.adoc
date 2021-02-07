@@ -331,6 +331,16 @@ If you get an error saying `No such file or directory: 'rust-analyzer'`, see the
 GNOME Builder 3.37.1 and newer has native `rust-analyzer` support.
 If the LSP binary is not available, GNOME Builder can install it when opening a Rust file.
 
+
+=== Eclipse IDE
+
+Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
+
+Support for Rust development in the Eclipse IDE is provided by link:https://github.com/eclipse/corrosion[Eclipse Corrosion].
+While it currently uses RLS as default, you can successfully configure it so the IDE will use `rust-analyzer` instead.
+To do so, with an Eclipse IDE where Corrosion is installed, just go to __Window > Preferences > Rust__ and edit the __Path to Rust Language Server__ entry to reference the path to `rust-analyzer`.
+You'll need to close and reopen all .rs and Cargo files, or to restart the IDE, for this change to take effect.
+
 == Configuration
 
 **Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs[config.rs]
