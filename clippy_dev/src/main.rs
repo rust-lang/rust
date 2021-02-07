@@ -62,6 +62,13 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .value_name("CRATE")
                 .long("only")
                 .help("only process a single crate of the list"),
+        )
+        .arg(
+            Arg::with_name("crates-toml")
+                .takes_value(true)
+                .value_name("CRATES-SOURCES-TOML-PATH")
+                .long("crates-toml")
+                .help("set the path for a crates.toml where lintcheck should read the sources from"),
         );
 
     let app = App::new("Clippy developer tooling")

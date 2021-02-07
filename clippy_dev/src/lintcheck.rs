@@ -192,8 +192,8 @@ fn build_clippy() {
 }
 
 // get a list of CrateSources we want to check from a "lintcheck_crates.toml" file.
-fn read_crates() -> Vec<CrateSource> {
-    let toml_path = PathBuf::from("clippy_dev/lintcheck_crates.toml");
+fn read_crates(toml_path: Option<&str>) -> Vec<CrateSource> {
+    let toml_path = PathBuf::from(toml_path.unwrap_or("clippy_dev/lintcheck_crates.toml"));
     let toml_content: String =
         std::fs::read_to_string(&toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: CrateList =
@@ -288,7 +288,7 @@ pub fn run(clap_config: &ArgMatches) {
     // download and extract the crates, then run clippy on them and collect clippys warnings
     // flatten into one big list of warnings
 
-    let crates = read_crates();
+    let crates = read_crates(clap_config.value_of("crates-toml"));
 
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
         // if we don't have the specified crate in the .toml, throw an error
