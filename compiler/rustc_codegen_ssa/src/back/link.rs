@@ -6,7 +6,7 @@ use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::{EncodedMetadata, LibSource};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo};
-use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SanitizerSet};
+use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
@@ -16,7 +16,7 @@ use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
-use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target};
+use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
 
 use super::archive::ArchiveBuilder;
 use super::command::Command;

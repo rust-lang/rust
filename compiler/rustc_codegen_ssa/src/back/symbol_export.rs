@@ -15,7 +15,8 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{SymbolName, TyCtxt};
-use rustc_session::config::{CrateType, SanitizerSet};
+use rustc_session::config::CrateType;
+use rustc_target::spec::SanitizerSet;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types())

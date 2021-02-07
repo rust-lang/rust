@@ -37,6 +37,7 @@
 use crate::abi::Endian;
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::json::{Json, ToJson};
 use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeMap;
@@ -511,38 +512,6 @@ impl fmt::Display for SplitDebuginfo {
     }
 }
 
-macro_rules! supported_targets {
-    ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
-        $(mod $module;)+
-
-        /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($($triple),+),+];
-
-        fn load_builtin(target: &str) -> Option<Target> {
-            let mut t = match target {
-                $( $($triple)|+ => $module::target(), )+
-                _ => return None,
-            };
-            t.is_builtin = true;
-            debug!("got builtin target: {:?}", t);
-            Some(t)
-        }
-
-        #[cfg(test)]
-        mod tests {
-            mod tests_impl;
-
-            // Cannot put this into a separate file without duplication, make an exception.
-            $(
-                #[test] // `#[test]`
-                fn $module() {
-                    tests_impl::test_target(super::$module::target());
-                }
-            )+
-        }
-    };
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum StackProbeType {
     /// Don't emit any stack probes.
@@ -618,6 +587,92 @@ impl ToJson for StackProbeType {
             .collect(),
         })
     }
+}
+
+bitflags::bitflags! {
+    #[derive(Default, Encodable, Decodable)]
+    pub struct SanitizerSet: u8 {
+        const ADDRESS = 1 << 0;
+        const LEAK    = 1 << 1;
+        const MEMORY  = 1 << 2;
+        const THREAD  = 1 << 3;
+        const HWADDRESS = 1 << 4;
+    }
+}
+
+/// Formats a sanitizer set as a comma separated list of sanitizers' names.
+impl fmt::Display for SanitizerSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut first = true;
+        for s in *self {
+            let name = match s {
+                SanitizerSet::ADDRESS => "address",
+                SanitizerSet::LEAK => "leak",
+                SanitizerSet::MEMORY => "memory",
+                SanitizerSet::THREAD => "thread",
+                SanitizerSet::HWADDRESS => "hwaddress",
+                _ => panic!("unrecognized sanitizer {:?}", s),
+            };
+            if !first {
+                f.write_str(",")?;
+            }
+            f.write_str(name)?;
+            first = false;
+        }
+        Ok(())
+    }
+}
+
+impl IntoIterator for SanitizerSet {
+    type Item = SanitizerSet;
+    type IntoIter = std::vec::IntoIter<SanitizerSet>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        [SanitizerSet::ADDRESS, SanitizerSet::LEAK, SanitizerSet::MEMORY, SanitizerSet::THREAD, SanitizerSet::HWADDRESS]
+            .iter()
+            .copied()
+            .filter(|&s| self.contains(s))
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+}
+
+impl<CTX> HashStable<CTX> for SanitizerSet {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.bits().hash_stable(ctx, hasher);
+    }
+}
+
+macro_rules! supported_targets {
+    ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
+        $(mod $module;)+
+
+        /// List of supported targets
+        pub const TARGETS: &[&str] = &[$($($triple),+),+];
+
+        fn load_builtin(target: &str) -> Option<Target> {
+            let mut t = match target {
+                $( $($triple)|+ => $module::target(), )+
+                _ => return None,
+            };
+            t.is_builtin = true;
+            debug!("got builtin target: {:?}", t);
+            Some(t)
+        }
+
+        #[cfg(test)]
+        mod tests {
+            mod tests_impl;
+
+            // Cannot put this into a separate file without duplication, make an exception.
+            $(
+                #[test] // `#[test]`
+                fn $module() {
+                    tests_impl::test_target(super::$module::target());
+                }
+            )+
+        }
+    };
 }
 
 supported_targets! {

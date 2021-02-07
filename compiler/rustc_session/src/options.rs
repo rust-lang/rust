@@ -5,7 +5,7 @@ use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLibKind;
 
-use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy};
+use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{RelocModel, RelroLevel, SplitDebuginfo, TargetTriple, TlsModel};
 
 use rustc_feature::UnstableFeatures;

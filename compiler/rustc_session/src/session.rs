@@ -1,7 +1,7 @@
 use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
-use crate::config::{self, CrateType, OutputType, PrintRequest, SanitizerSet, SwitchWithOptPath};
+use crate::config::{self, CrateType, OutputType, PrintRequest, SwitchWithOptPath};
 use crate::filesearch;
 use crate::lint::{self, LintId};
 use crate::parse::ParseSess;
@@ -28,7 +28,7 @@ use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, S
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
-use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple, TlsModel};
+use rustc_target::spec::{SanitizerSet, SplitDebuginfo, Target, TargetTriple, TlsModel};
 
 use std::cell::{self, RefCell};
 use std::env;
