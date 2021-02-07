@@ -1,12 +1,15 @@
 use crate::sys::rwlock as imp;
 
+#[cfg(unix)]
 enum GuardType {
     Read,
     Write,
 }
 
+#[cfg(unix)]
 pub struct RWLockGuard(&'static RWLock, GuardType);
 
+#[cfg(unix)]
 impl Drop for RWLockGuard {
     fn drop(&mut self) {
         unsafe {
@@ -52,6 +55,7 @@ impl RWLock {
     /// Behavior is undefined if the rwlock has been moved between this and any
     /// previous method call.
     #[inline]
+    #[cfg(unix)]
     pub unsafe fn read_with_guard(&'static self) -> RWLockGuard {
         self.read();
         RWLockGuard(&self, GuardType::Read)
@@ -87,6 +91,7 @@ impl RWLock {
     /// Behavior is undefined if the rwlock has been moved between this and any
     /// previous method call.
     #[inline]
+    #[cfg(unix)]
     pub unsafe fn write_with_guard(&'static self) -> RWLockGuard {
         self.write();
         RWLockGuard(&self, GuardType::Write)
