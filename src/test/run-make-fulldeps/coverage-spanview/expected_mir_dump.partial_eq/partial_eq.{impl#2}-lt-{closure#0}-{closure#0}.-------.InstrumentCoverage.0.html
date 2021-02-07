@@ -74,9 +74,9 @@ For revisions in Pull Requests (PR):
 8:5-8:17: @0[4]: _3 = &amp;(*_4)
 8:5-8:17: @0[7]: _6 = &amp;(*(*(_1.1: &amp;&amp;usize)))
 8:5-8:17: @0[8]: _5 = &amp;(*_6)
-8:5-8:17: @0.Call: _2 = &lt;usize as PartialOrd&gt;::partial_cmp(move _3, move _5) -&gt; [return: bb1, unwind: bb3]
-8:5-8:17: @1[3]: _7 = Greater
-8:5-8:17: @1.Call: _0 = Option::&lt;std::cmp::Ordering&gt;::unwrap_or(move _2, move _7) -&gt; [return: bb2, unwind: bb3]
+8:5-8:17: @0.Call: _2 = &lt;usize as std::cmp::PartialOrd&gt;::partial_cmp(move _3, move _5) -&gt; [return: bb1, unwind: bb3]
+8:5-8:17: @1[3]: _7 = std::cmp::Ordering::Greater
+8:5-8:17: @1.Call: _0 = std::option::Option::&lt;std::cmp::Ordering&gt;::unwrap_or(move _2, move _7) -&gt; [return: bb2, unwind: bb3]
 8:5-8:17: @2.Return: return"><span class="annotation">@0,1,2⦊</span>patch: usize<span class="annotation">⦉@0,1,2</span></span></span></span></div>
 </body>
 </html>

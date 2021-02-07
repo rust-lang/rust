@@ -499,7 +499,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         krate = sources::render(&dst, &mut scx, krate)?;
 
         // Build our search index
-        let index = build_index(&krate, &mut cache);
+        let index = build_index(&krate, &mut cache, tcx);
 
         let mut cx = Context {
             current: Vec::new(),

@@ -9,6 +9,7 @@ use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, DefIdTree};
 use rustc_session::Session;
@@ -718,10 +719,9 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::BuiltinTypes => {
-                    let primitive_types = &this.primitive_type_table.primitive_types;
-                    suggestions.extend(primitive_types.iter().flat_map(|(name, prim_ty)| {
+                    suggestions.extend(PrimTy::ALL.iter().filter_map(|prim_ty| {
                         let res = Res::PrimTy(*prim_ty);
-                        filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
+                        filter_fn(res).then_some(TypoSuggestion::from_res(prim_ty.name(), res))
                     }))
                 }
             }

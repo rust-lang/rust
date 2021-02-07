@@ -81,8 +81,8 @@ For revisions in Pull Requests (PR):
 149:9-149:31: @0[17]: _11 = &amp;(*_14)
 149:9-149:31: @0[18]: _10 = &amp;(*_11)
 149:9-149:31: @0[19]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-149:9-149:31: @0.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb1, unwind: bb3]
-149:9-149:31: @1.Call: _3 = _print(move _4) -&gt; [return: bb2, unwind: bb3]
+149:9-149:31: @0.Call: _4 = std::fmt::Arguments::new_v1(move _5, move _9) -&gt; [return: bb1, unwind: bb3]
+149:9-149:31: @1.Call: _3 = std::io::_print(move _4) -&gt; [return: bb2, unwind: bb3]
 149:9-149:31: @2[5]: _0 = const ()
 149:33-149:33: @2.Return: return"><span class="annotation">@0,1,2⦊</span>{ println!("not called") }<span class="annotation">⦉@0,1,2</span></span></span></span></div>
 </body>

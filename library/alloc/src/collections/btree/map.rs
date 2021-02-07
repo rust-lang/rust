@@ -11,7 +11,6 @@ use core::ptr;
 use super::borrow::DormantMutRef;
 use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
 use super::search::SearchResult::*;
-use super::unwrap_unchecked;
 
 mod entry;
 pub use entry::{Entry, OccupiedEntry, VacantEntry};
@@ -1151,21 +1150,23 @@ impl<K, V> BTreeMap<K, V> {
         right
     }
 
-    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    /// Creates an iterator that visits all elements (key-value pairs) in
+    /// ascending key order and uses a closure to determine if an element should
+    /// be removed. If the closure returns `true`, the element is removed from
+    /// the map and yielded. If the closure returns `false`, or panics, the
+    /// element remains in the map and will not be yielded.
     ///
-    /// If the closure returns true, the element is removed from the map and yielded.
-    /// If the closure returns false, or panics, the element remains in the map and will not be
-    /// yielded.
+    /// The iterator also lets you mutate the value of each element in the
+    /// closure, regardless of whether you choose to keep or remove it.
     ///
-    /// Note that `drain_filter` lets you mutate every value in the filter closure, regardless of
-    /// whether you choose to keep or remove it.
+    /// If the iterator is only partially consumed or not consumed at all, each
+    /// of the remaining elements is still subjected to the closure, which may
+    /// change its value and, by returning `true`, have the element removed and
+    /// dropped.
     ///
-    /// If the iterator is only partially consumed or not consumed at all, each of the remaining
-    /// elements will still be subjected to the closure and removed and dropped if it returns true.
-    ///
-    /// It is unspecified how many more elements will be subjected to the closure
-    /// if a panic occurs in the closure, or a panic occurs while dropping an element,
-    /// or if the `DrainFilter` value is leaked.
+    /// It is unspecified how many more elements will be subjected to the
+    /// closure if a panic occurs in the closure, or a panic occurs while
+    /// dropping an element, or if the `DrainFilter` value is leaked.
     ///
     /// # Examples
     ///
@@ -1431,7 +1432,7 @@ impl<K, V> Drop for IntoIter<K, V> {
 
                 unsafe {
                     let mut node =
-                        unwrap_unchecked(ptr::read(&self.0.front)).into_node().forget_type();
+                        ptr::read(&self.0.front).unwrap_unchecked().into_node().forget_type();
                     while let Some(parent) = node.deallocate_and_ascend() {
                         node = parent.into_node().forget_type();
                     }
@@ -1756,7 +1757,7 @@ impl<'a, K, V> Range<'a, K, V> {
     }
 
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        unsafe { unwrap_unchecked(self.front.as_mut()).next_unchecked() }
+        unsafe { self.front.as_mut().unwrap_unchecked().next_unchecked() }
     }
 }
 
@@ -1845,7 +1846,7 @@ impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
 
 impl<'a, K, V> Range<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        unsafe { unwrap_unchecked(self.back.as_mut()).next_back_unchecked() }
+        unsafe { self.back.as_mut().unwrap_unchecked().next_back_unchecked() }
     }
 }
 
@@ -1891,7 +1892,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
     }
 
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        unsafe { unwrap_unchecked(self.front.as_mut()).next_unchecked() }
+        unsafe { self.front.as_mut().unwrap_unchecked().next_unchecked() }
     }
 
     /// Returns an iterator of references over the remaining items.
@@ -1921,7 +1922,7 @@ impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 impl<'a, K, V> RangeMut<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        unsafe { unwrap_unchecked(self.back.as_mut()).next_back_unchecked() }
+        unsafe { self.back.as_mut().unwrap_unchecked().next_back_unchecked() }
     }
 }
 

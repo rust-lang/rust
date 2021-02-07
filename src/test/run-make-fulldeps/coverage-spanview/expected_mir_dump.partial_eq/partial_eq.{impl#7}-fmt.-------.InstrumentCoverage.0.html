@@ -76,7 +76,7 @@ For revisions in Pull Requests (PR):
 4:17-4:22: @0[9]: _7 = &amp;mut (*_2)
 4:17-4:22: @0[12]: _9 = const &quot;Version&quot;
 4:17-4:22: @0[13]: _8 = &amp;(*_9)
-4:17-4:22: @0.Call: _6 = Formatter::debug_struct(move _7, move _8) -&gt; [return: bb1, unwind: bb6]
+4:17-4:22: @0.Call: _6 = std::fmt::Formatter::debug_struct(move _7, move _8) -&gt; [return: bb1, unwind: bb6]
 4:17-4:22: @1[2]: FakeRead(ForLet, _6)
 4:17-4:22: @1[7]: _12 = &amp;mut _6
 4:17-4:22: @1[8]: _11 = &amp;mut (*_12)
@@ -86,7 +86,7 @@ For revisions in Pull Requests (PR):
 4:17-4:22: @1[18]: _17 = &amp;_18
 4:17-4:22: @1[19]: _16 = &amp;(*_17)
 4:17-4:22: @1[20]: _15 = move _16 as &amp;dyn std::fmt::Debug (Pointer(Unsize))
-4:17-4:22: @1.Call: _10 = DebugStruct::field(move _11, move _13, move _15) -&gt; [return: bb2, unwind: bb6]
+4:17-4:22: @1.Call: _10 = std::fmt::DebugStruct::field(move _11, move _13, move _15) -&gt; [return: bb2, unwind: bb6]
 4:17-4:22: @2[11]: _21 = &amp;mut _6
 4:17-4:22: @2[12]: _20 = &amp;mut (*_21)
 4:17-4:22: @2[15]: _23 = const &quot;minor&quot;
@@ -95,7 +95,7 @@ For revisions in Pull Requests (PR):
 4:17-4:22: @2[22]: _26 = &amp;_27
 4:17-4:22: @2[23]: _25 = &amp;(*_26)
 4:17-4:22: @2[24]: _24 = move _25 as &amp;dyn std::fmt::Debug (Pointer(Unsize))
-4:17-4:22: @2.Call: _19 = DebugStruct::field(move _20, move _22, move _24) -&gt; [return: bb3, unwind: bb6]
+4:17-4:22: @2.Call: _19 = std::fmt::DebugStruct::field(move _20, move _22, move _24) -&gt; [return: bb3, unwind: bb6]
 4:17-4:22: @3[11]: _30 = &amp;mut _6
 4:17-4:22: @3[12]: _29 = &amp;mut (*_30)
 4:17-4:22: @3[15]: _32 = const &quot;patch&quot;
@@ -104,10 +104,10 @@ For revisions in Pull Requests (PR):
 4:17-4:22: @3[22]: _35 = &amp;_36
 4:17-4:22: @3[23]: _34 = &amp;(*_35)
 4:17-4:22: @3[24]: _33 = move _34 as &amp;dyn std::fmt::Debug (Pointer(Unsize))
-4:17-4:22: @3.Call: _28 = DebugStruct::field(move _29, move _31, move _33) -&gt; [return: bb4, unwind: bb6]
+4:17-4:22: @3.Call: _28 = std::fmt::DebugStruct::field(move _29, move _31, move _33) -&gt; [return: bb4, unwind: bb6]
 4:17-4:22: @4[10]: _38 = &amp;mut _6
 4:17-4:22: @4[11]: _37 = &amp;mut (*_38)
-4:17-4:22: @4.Call: _0 = DebugStruct::finish(move _37) -&gt; [return: bb5, unwind: bb6]
+4:17-4:22: @4.Call: _0 = std::fmt::DebugStruct::finish(move _37) -&gt; [return: bb5, unwind: bb6]
 4:22-4:22: @5.Return: return"><span class="annotation">@0,1,2,3,4,5⦊</span>Debug<span class="annotation">⦉@0,1,2,3,4,5</span></span></span></span></div>
 </body>
 </html>

@@ -21,6 +21,7 @@ use rustc_expand::expand::{AstFragment, Invocation, InvocationKind};
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id;
+use rustc_hir::PrimTy;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::{SOFT_UNSTABLE, UNUSED_MACROS};
@@ -796,12 +797,10 @@ impl<'a> Resolver<'a> {
                         }
                         result
                     }
-                    Scope::BuiltinTypes => {
-                        match this.primitive_type_table.primitive_types.get(&ident.name).cloned() {
-                            Some(prim_ty) => ok(Res::PrimTy(prim_ty), DUMMY_SP, this.arenas),
-                            None => Err(Determinacy::Determined),
-                        }
-                    }
+                    Scope::BuiltinTypes => match PrimTy::from_name(ident.name) {
+                        Some(prim_ty) => ok(Res::PrimTy(prim_ty), DUMMY_SP, this.arenas),
+                        None => Err(Determinacy::Determined),
+                    },
                 };
 
                 match result {

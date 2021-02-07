@@ -27,7 +27,6 @@ use crate::{
     },
     time::{TestTimeOptions, TimeThreshold},
 };
-use std::any::TypeId;
 use std::sync::mpsc::channel;
 use std::time::Duration;
 
@@ -198,6 +197,7 @@ fn test_should_panic_bad_message() {
 #[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_non_string_message_type() {
     use crate::tests::TrFailedMsg;
+    use std::any::TypeId;
     fn f() {
         std::panic::panic_any(1i32);
     }

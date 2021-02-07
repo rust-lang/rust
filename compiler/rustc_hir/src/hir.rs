@@ -2058,6 +2058,28 @@ pub enum PrimTy {
 }
 
 impl PrimTy {
+    /// All of the primitive types
+    pub const ALL: [Self; 17] = [
+        // any changes here should also be reflected in `PrimTy::from_name`
+        Self::Int(IntTy::I8),
+        Self::Int(IntTy::I16),
+        Self::Int(IntTy::I32),
+        Self::Int(IntTy::I64),
+        Self::Int(IntTy::I128),
+        Self::Int(IntTy::Isize),
+        Self::Uint(UintTy::U8),
+        Self::Uint(UintTy::U16),
+        Self::Uint(UintTy::U32),
+        Self::Uint(UintTy::U64),
+        Self::Uint(UintTy::U128),
+        Self::Uint(UintTy::Usize),
+        Self::Float(FloatTy::F32),
+        Self::Float(FloatTy::F64),
+        Self::Bool,
+        Self::Char,
+        Self::Str,
+    ];
+
     pub fn name_str(self) -> &'static str {
         match self {
             PrimTy::Int(i) => i.name_str(),
@@ -2078,6 +2100,33 @@ impl PrimTy {
             PrimTy::Bool => sym::bool,
             PrimTy::Char => sym::char,
         }
+    }
+
+    /// Returns the matching `PrimTy` for a `Symbol` such as "str" or "i32".
+    /// Returns `None` if no matching type is found.
+    pub fn from_name(name: Symbol) -> Option<Self> {
+        let ty = match name {
+            // any changes here should also be reflected in `PrimTy::ALL`
+            sym::i8 => Self::Int(IntTy::I8),
+            sym::i16 => Self::Int(IntTy::I16),
+            sym::i32 => Self::Int(IntTy::I32),
+            sym::i64 => Self::Int(IntTy::I64),
+            sym::i128 => Self::Int(IntTy::I128),
+            sym::isize => Self::Int(IntTy::Isize),
+            sym::u8 => Self::Uint(UintTy::U8),
+            sym::u16 => Self::Uint(UintTy::U16),
+            sym::u32 => Self::Uint(UintTy::U32),
+            sym::u64 => Self::Uint(UintTy::U64),
+            sym::u128 => Self::Uint(UintTy::U128),
+            sym::usize => Self::Uint(UintTy::Usize),
+            sym::f32 => Self::Float(FloatTy::F32),
+            sym::f64 => Self::Float(FloatTy::F64),
+            sym::bool => Self::Bool,
+            sym::char => Self::Char,
+            sym::str => Self::Str,
+            _ => return None,
+        };
+        Some(ty)
     }
 }
 

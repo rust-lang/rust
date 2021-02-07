@@ -39,7 +39,7 @@ $ .\hello.exe # on Windows
 Note that we only ever pass `rustc` the *crate root*, not every file we wish
 to compile. For example, if we had a `main.rs` that looked like this:
 
-```rust,ignore
+```rust,ignore (needs-multiple-files)
 mod foo;
 
 fn main() {
@@ -49,7 +49,7 @@ fn main() {
 
 And a `foo.rs` that had this:
 
-```rust,ignore
+```rust,no_run
 pub fn hello() {
     println!("Hello, world!");
 }

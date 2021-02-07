@@ -117,7 +117,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                         {
                             err.span_help(
                                 tcx.def_span(def.did),
-                                &format!("try adding a `where` bound using this expression: where [u8; {}]: Sized", snippet),
+                                &format!("try adding a `where` bound using this expression: `where [u8; {}]: Sized`", snippet),
                             );
                         } else {
                             err.span_help(

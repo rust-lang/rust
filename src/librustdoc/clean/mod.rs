@@ -928,8 +928,7 @@ impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::Bo
     fn clean(&self, cx: &DocContext<'_>) -> Function {
         let (generics, decl) =
             enter_impl_trait(cx, || (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx)));
-        let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-        Function { decl, generics, header: self.0.header, all_types, ret_types }
+        Function { decl, generics, header: self.0.header }
     }
 }
 
@@ -1043,21 +1042,7 @@ impl Clean<PolyTrait> for hir::PolyTraitRef<'_> {
 
 impl Clean<TypeKind> for hir::def::DefKind {
     fn clean(&self, _: &DocContext<'_>) -> TypeKind {
-        match *self {
-            hir::def::DefKind::Mod => TypeKind::Module,
-            hir::def::DefKind::Struct => TypeKind::Struct,
-            hir::def::DefKind::Union => TypeKind::Union,
-            hir::def::DefKind::Enum => TypeKind::Enum,
-            hir::def::DefKind::Trait => TypeKind::Trait,
-            hir::def::DefKind::TyAlias => TypeKind::Typedef,
-            hir::def::DefKind::ForeignTy => TypeKind::Foreign,
-            hir::def::DefKind::TraitAlias => TypeKind::TraitAlias,
-            hir::def::DefKind::Fn => TypeKind::Function,
-            hir::def::DefKind::Const => TypeKind::Const,
-            hir::def::DefKind::Static => TypeKind::Static,
-            hir::def::DefKind::Macro(_) => TypeKind::Macro,
-            _ => TypeKind::Foreign,
-        }
+        (*self).into()
     }
 }
 
@@ -1082,9 +1067,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     let (generics, decl) = enter_impl_trait(cx, || {
                         (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                     });
-                    let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-                    let mut t =
-                        Function { header: sig.header, decl, generics, all_types, ret_types };
+                    let mut t = Function { header: sig.header, decl, generics };
                     if t.header.constness == hir::Constness::Const
                         && is_unstable_const_fn(cx.tcx, local_did).is_some()
                     {
@@ -1196,7 +1179,6 @@ impl Clean<Item> for ty::AssocItem {
                     ty::ImplContainer(_) => true,
                     ty::TraitContainer(_) => self.defaultness.has_value(),
                 };
-                let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
                 if provided {
                     let constness = if is_min_const_fn(cx.tcx, self.def_id) {
                         hir::Constness::Const
@@ -1218,8 +1200,6 @@ impl Clean<Item> for ty::AssocItem {
                                 constness,
                                 asyncness,
                             },
-                            all_types,
-                            ret_types,
                         },
                         defaultness,
                     )
@@ -1233,8 +1213,6 @@ impl Clean<Item> for ty::AssocItem {
                             constness: hir::Constness::NotConst,
                             asyncness: hir::IsAsync::NotAsync,
                         },
-                        all_types,
-                        ret_types,
                     })
                 }
             }
@@ -2274,7 +2252,6 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                     let (generics, decl) = enter_impl_trait(cx, || {
                         (generics.clean(cx), (&**decl, &names[..]).clean(cx))
                     });
-                    let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
                     ForeignFunctionItem(Function {
                         decl,
                         generics,
@@ -2284,8 +2261,6 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                             constness: hir::Constness::NotConst,
                             asyncness: hir::IsAsync::NotAsync,
                         },
-                        all_types,
-                        ret_types,
                     })
                 }
                 hir::ForeignItemKind::Static(ref ty, mutability) => ForeignStaticItem(Static {

@@ -203,7 +203,7 @@
           StorageLive(_44);                // scope 7 at $SRC_DIR/core/src/panic.rs:LL:COL
           StorageLive(_45);                // scope 7 at $SRC_DIR/core/src/panic.rs:LL:COL
           _45 = _38;                       // scope 7 at $SRC_DIR/core/src/panic.rs:LL:COL
-          _44 = transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>(move _45) -> bb5; // scope 7 at $SRC_DIR/core/src/panic.rs:LL:COL
+          _44 = transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error>>(move _45) -> bb5; // scope 7 at $SRC_DIR/core/src/panic.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/panic.rs:LL:COL
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) -> for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> {std::intrinsics::transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>}, val: Value(Scalar(<ZST>)) }
@@ -252,7 +252,7 @@
           StorageLive(_48);                // scope 9 at $SRC_DIR/core/src/panic.rs:LL:COL
           StorageLive(_49);                // scope 9 at $SRC_DIR/core/src/panic.rs:LL:COL
           _49 = _41;                       // scope 9 at $SRC_DIR/core/src/panic.rs:LL:COL
-          _48 = transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>(move _49) -> bb7; // scope 9 at $SRC_DIR/core/src/panic.rs:LL:COL
+          _48 = transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error>>(move _49) -> bb7; // scope 9 at $SRC_DIR/core/src/panic.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/panic.rs:LL:COL
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) -> for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> {std::intrinsics::transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>}, val: Value(Scalar(<ZST>)) }

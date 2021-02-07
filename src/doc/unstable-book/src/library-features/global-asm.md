@@ -24,17 +24,18 @@ conventions of the assembler in your toolchain.
 
 A simple usage looks like this:
 
-```rust,ignore
-# #![feature(global_asm)]
-# you also need relevant target_arch cfgs
+```rust,ignore (requires-external-file)
+#![feature(global_asm)]
+# // you also need relevant target_arch cfgs
 global_asm!(include_str!("something_neato.s"));
 ```
 
 And a more complicated usage looks like this:
 
-```rust,ignore
-# #![feature(global_asm)]
-# #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+```rust,no_run
+#![feature(global_asm)]
+# #[cfg(any(target_arch="x86", target_arch="x86_64"))]
+# mod x86 {
 
 pub mod sally {
     global_asm!(r#"
@@ -64,6 +65,7 @@ pub mod harry {
     #[no_mangle]
     pub unsafe extern "C" fn quux() {}
 }
+# }
 ```
 
 You may use `global_asm!` multiple times, anywhere in your crate, in

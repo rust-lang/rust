@@ -8,7 +8,7 @@ The tracking issue for this feature is: [#42877]
 
 This is a part of [RFC0401]. According to the RFC, there should be an implementation like this:
 
-```rust,ignore
+```rust,ignore (partial-example)
 impl<..., T, U: ?Sized> Unsized<(..., U)> for (..., T) where T: Unsized<U> {}
 ```
 
