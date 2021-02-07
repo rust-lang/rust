@@ -252,12 +252,12 @@ declare_lint! {
 
 This `declare_lint!` macro creates the relevant data structures. Remove it. You
 will also find that there is a mention of `OVERLAPPING_INHERENT_IMPLS` later in
-the file as [part of a `lint_array!`][lintarraysource]; remove it too,
+the file as [part of a `lint_array!`][lintarraysource]; remove it too.
 
 [lintarraysource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc/lint/builtin.rs#L252-L290
 
-Next, you see see [a reference to `OVERLAPPING_INHERENT_IMPLS` in
-`rustc_lint/src/lib.rs`][futuresource]. This defining the lint as a "future
+Next, you see [a reference to `OVERLAPPING_INHERENT_IMPLS` in
+`rustc_lint/src/lib.rs`][futuresource]. This is defining the lint as a "future
 compatibility lint":
 
 ```rust
