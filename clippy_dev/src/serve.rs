@@ -34,7 +34,7 @@ pub fn run(port: u16, lint: Option<&str>) -> ! {
                 // Give some time for python to start
                 thread::sleep(Duration::from_millis(500));
                 // Launch browser after first export.py has completed and http.server is up
-                let _ = opener::open(url);
+                let _result = opener::open(url);
             });
         }
         thread::sleep(Duration::from_millis(1000));
