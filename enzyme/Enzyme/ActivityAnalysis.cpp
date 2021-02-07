@@ -1023,7 +1023,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       // UpHypothesis.ConstantValues.insert(val);
       UpHypothesis->insertConstantsFrom(*Hypothesis);
       assert(directions & UP);
-      bool ActiveUp = !isa<Argument>(Val) && !UpHypothesis->isInstructionInactiveFromOrigin(TR, Val);
+      bool ActiveUp = !isa<Argument>(Val) &&
+                      !UpHypothesis->isInstructionInactiveFromOrigin(TR, Val);
 
       // Case b) can occur if:
       //    1) this memory is used as part of an active return
@@ -1604,7 +1605,8 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
           (isa<CallInst>(inst) && AA.onlyReadsMemory(cast<CallInst>(inst)))) {
         // if not written to memory and returning a known constant, this
         // cannot be actively returned/stored
-        if (inst->getParent()->getParent() == TR.info.Function && isConstantValue(TR, a)) {
+        if (inst->getParent()->getParent() == TR.info.Function &&
+            isConstantValue(TR, a)) {
           continue;
         }
         // if not written to memory and returning a value itself

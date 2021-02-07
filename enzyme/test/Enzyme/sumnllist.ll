@@ -104,11 +104,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[postidx]] = add nuw nsw i64 %[[preidx]], 1
 ; CHECK-NEXT:   %[[added:.+]] = shl nuw nsw i64 %[[postidx]], 3
 ; CHECK-NEXT:   %[[postrealloc]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[added]])
-; CHECK-NEXT:   %[[todoublep:.+]] = bitcast i8* %[[postrealloc]] to double**
-; CHECK-NEXT:   %"values'ipg" = getelementptr inbounds %struct.n, %struct.n* %[[valstruct]], i64 0, i32 0
-; CHECK-NEXT:   %[[ipload:.+]] = load double*, double** %"values'ipg", align 8
-; CHECK-NEXT:   %[[cache:.+]] = getelementptr inbounds double*, double** %[[todoublep]], i64 %[[preidx]]
-; CHECK-NEXT:   store double* %[[ipload]], double** %[[cache]]
+; CHECK-NEXT:   %[[tostructp:.+]] = bitcast i8* %[[postrealloc]] to %struct.n**
+; CHECK-NEXT:   %[[cache:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[tostructp]], i64 %[[preidx]]
+; CHECK-NEXT:   store %struct.n* %[[valstruct]], %struct.n** %[[cache]]
 ; CHECK-NEXT:   br label %for.body5
 
 ; CHECK: for.cond.cleanup4:                                ; preds = %for.body5
@@ -142,13 +140,16 @@ attributes #4 = { nounwind }
 
 ; CHECK: [[invertforcondcleanup]]:
 ; CHECK-NEXT:   %[[antivar]] = phi i64 [ %[[isub]], %incinvertfor.cond1.preheader ], [ %[[preidx]], %for.cond.cleanup4 ]
-; CHECK-NEXT:   %[[toload:.+]] = getelementptr inbounds double*, double** %[[todoublep]], i64 %[[antivar]]
+; CHECK-NEXT:   %[[toload:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[tostructp]], i64 %[[antivar]]
 ; CHECK-NEXT:   br label %invertfor.body5
 
 ; CHECK: invertfor.body5:
 ; CHECK-NEXT:   %[[mantivar:.+]] = phi i64 [ %times, %[[invertforcondcleanup]] ], [ %[[idxsub:.+]], %incinvertfor.body5 ]
 ; //NOTE this should be LICM'd outside this loop (but LICM doesn't handle invariant group at the momeny :'( )
-; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %[[toload]], align 8, !invariant.group
+; CHECK-NEXT:   %[[lstructiv:.+]] = load %struct.n*, %struct.n** %[[toload]], align 8, !invariant.group
+; //NOTE this should be LICM'd outside this loop (but LICM doesn't handle invariant group at the momeny :'( )
+; CHECK-NEXT:   %"values'ipg_unwrap" = getelementptr inbounds %struct.n, %struct.n* %[[lstructiv]], i64 0, i32 0
+; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %"values'ipg_unwrap", align 8, !invariant.group
 ; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %[[loadediv]], i64 %[[mantivar]]
 ; CHECK-NEXT:   %[[arrayload:.+]] = load double, double* %[[arrayidxipg]]
 ; CHECK-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %differeturn

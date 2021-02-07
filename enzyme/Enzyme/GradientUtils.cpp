@@ -430,28 +430,23 @@ endCheck:
   }
 
   if (auto inst = dyn_cast<Instruction>(val)) {
-    // if (BuilderM.GetInsertBlock() != inversionAllocs && !(
-    // (reverseBlocks.find(BuilderM.GetInsertBlock()) != reverseBlocks.end())
-    // && /*inLoop*/getContext(inst->getParent(), lc)) ) {
     if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
       if (BuilderM.GetInsertBlock()->size() &&
           BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
         if (DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
-          // llvm::errs() << "allowed " << *inst << "from domination\n";
           assert(inst->getType() == val->getType());
           return inst;
         }
       } else {
         if (DT.dominates(inst, BuilderM.GetInsertBlock())) {
-          // llvm::errs() << "allowed " << *inst << "from block domination\n";
           assert(inst->getType() == val->getType());
           return inst;
         }
       }
     }
-    EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
-                "Cannot unwrap ", *val);
-    // LoopContext lc;
+    if (EnzymePrintPerf)
+      EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
+                  "Cannot unwrap ", *val);
   }
   return nullptr;
 }
@@ -922,7 +917,7 @@ void GradientUtils::forceContexts() {
 
 bool GradientUtils::legalRecompute(const Value *val,
                                    const ValueToValueMapTy &available,
-                                   IRBuilder<> *BuilderM) const {
+                                   IRBuilder<> *BuilderM, bool reverse) const {
   if (available.count(val)) {
     return true;
   }
@@ -930,9 +925,9 @@ bool GradientUtils::legalRecompute(const Value *val,
   if (isa<PHINode>(val)) {
     if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(val))) {
       return legalRecompute(
-          dli, available,
-          BuilderM); // TODO ADD && !TR.intType(getOriginal(dli),
-                     // /*mustfind*/false).isPossibleFloat();
+          dli, available, BuilderM,
+          reverse); // TODO ADD && !TR.intType(getOriginal(dli),
+                    // /*mustfind*/false).isPossibleFloat();
     }
     // if (SE.isSCEVable(phi->getType())) {
     // auto scev =
@@ -959,7 +954,7 @@ bool GradientUtils::legalRecompute(const Value *val,
     // If this is an already unwrapped value, legal to recompute again.
     if (unwrappedLoads.find(li) != unwrappedLoads.end())
       return legalRecompute(unwrappedLoads.find(li)->second, available,
-                            BuilderM);
+                            BuilderM, reverse);
 
     const Instruction *orig = nullptr;
     if (li->getParent()->getParent() == oldFunc) {
@@ -986,19 +981,27 @@ bool GradientUtils::legalRecompute(const Value *val,
       if (!found->second)
         return true;
       // if insertion block of this function:
-      if (mode == DerivativeMode::Both && BuilderM &&
-          reverseBlocks.find(BuilderM->GetInsertBlock()) !=
-              reverseBlocks.end()) {
-        Instruction *origEnd = const_cast<Instruction *>(
-            (const Instruction *)reverseBlocks.find(BuilderM->GetInsertBlock())
-                ->second->getTerminator());
-        if (OrigDT.dominates(const_cast<Instruction *>(orig), origEnd)) {
+      BasicBlock *fwdBlockIfReverse = nullptr;
+      if (BuilderM) {
+        fwdBlockIfReverse = BuilderM->GetInsertBlock();
+        if (!reverse) {
+          for (auto pair : reverseBlocks) {
+            if (pair.second == BuilderM->GetInsertBlock()) {
+              fwdBlockIfReverse = pair.first;
+              reverse = true;
+              break;
+            }
+          }
+        }
+        if (fwdBlockIfReverse->getParent() != oldFunc)
+          fwdBlockIfReverse =
+              cast_or_null<BasicBlock>(isOriginal(fwdBlockIfReverse));
+      }
+      if (mode == DerivativeMode::Both && fwdBlockIfReverse) {
+        if (reverse) {
           bool failed = false;
-
-          allInstructionsBetween(
-              const_cast<GradientUtils *>(this)->LI,
-              const_cast<Instruction *>(orig), origEnd,
-              [&](Instruction *I) -> bool {
+          allFollowersOf(
+              const_cast<Instruction *>(orig), [&](Instruction *I) -> bool {
                 if (I->mayWriteToMemory() &&
                     writesToMemoryReadBy(
                         OrigAA, /*maybeReader*/ const_cast<Instruction *>(orig),
@@ -1017,12 +1020,47 @@ bool GradientUtils::legalRecompute(const Value *val,
               });
           if (!failed)
             return true;
+        } else {
+          Instruction *origStart = &*BuilderM->GetInsertPoint();
+          do {
+            if (Instruction *og = isOriginal(origStart)) {
+              origStart = og;
+              break;
+            }
+            origStart = origStart->getNextNode();
+          } while (true);
+          if (OrigDT.dominates(origStart, const_cast<Instruction *>(orig))) {
+            bool failed = false;
+
+            allInstructionsBetween(
+                const_cast<GradientUtils *>(this)->LI, origStart,
+                const_cast<Instruction *>(orig), [&](Instruction *I) -> bool {
+                  if (I->mayWriteToMemory() &&
+                      writesToMemoryReadBy(
+                          OrigAA,
+                          /*maybeReader*/ const_cast<Instruction *>(orig),
+                          /*maybeWriter*/ I)) {
+                    failed = true;
+                    if (EnzymePrintPerf) {
+                      EmitWarning("UncacheableLoad", orig->getDebugLoc(),
+                                  oldFunc, orig->getParent(),
+                                  "Load must be recomputed ", *orig, " in ",
+                                  BuilderM->GetInsertBlock()->getName(),
+                                  " due to ", *I);
+                    }
+                    return /*earlyBreak*/ true;
+                  }
+                  return /*earlyBreak*/ false;
+                });
+            if (!failed)
+              return true;
+          }
         }
       }
       return false;
     } else {
       if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(li))) {
-        return legalRecompute(dli, available, BuilderM);
+        return legalRecompute(dli, available, BuilderM, reverse);
       }
 
       // TODO mark all the explicitly legal nodes (caches, etc)
@@ -1317,22 +1355,23 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
   if (isa<Argument>(oval) && cast<Argument>(oval)->hasByValAttr()) {
     IRBuilder<> bb(inversionAllocs);
     AllocaInst *antialloca = bb.CreateAlloca(
-        cast<PointerType>(oval->getType())->getElementType(), cast<PointerType>(oval->getType())->getPointerAddressSpace(),
-        nullptr, oval->getName() + "'ipa");
+        cast<PointerType>(oval->getType())->getElementType(),
+        cast<PointerType>(oval->getType())->getPointerAddressSpace(), nullptr,
+        oval->getName() + "'ipa");
     invertedPointers[oval] = antialloca;
-    auto dst_arg = bb.CreateBitCast(
-        antialloca, Type::getInt8PtrTy(oval->getContext()));
-    auto val_arg =
-        ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);
+    auto dst_arg =
+        bb.CreateBitCast(antialloca, Type::getInt8PtrTy(oval->getContext()));
+    auto val_arg = ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);
     auto len_arg = ConstantInt::get(
         Type::getInt64Ty(oval->getContext()),
-        M->getDataLayout().getTypeAllocSizeInBits(cast<PointerType>(oval->getType())->getElementType()) /
+        M->getDataLayout().getTypeAllocSizeInBits(
+            cast<PointerType>(oval->getType())->getElementType()) /
             8);
     auto volatile_arg = ConstantInt::getFalse(oval->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
-    auto align_arg = ConstantInt::get(
-        Type::getInt32Ty(oval->getContext()), antialloca->getAlignment());
+    auto align_arg = ConstantInt::get(Type::getInt32Ty(oval->getContext()),
+                                      antialloca->getAlignment());
     Value *args[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
 #else
     Value *args[] = {dst_arg, val_arg, len_arg, volatile_arg};
@@ -2033,9 +2072,10 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     }
   }
 
-  // if (scopeMap.find(inst) == scopeMap.end())
-  //  llvm::errs() << "forcing cache of " << *inst << "lrc: " << lrc << " src: "
-  //  << src << "\n";
+  if (scopeMap.find(inst) == scopeMap.end() && EnzymePrintPerf)
+    EmitWarning("Uncacheable", inst->getDebugLoc(), newFunc, inst->getParent(),
+                "Caching instruction ", *inst, " legalRecompute: ", lrc,
+                " shouldRecompute: ", src);
   if (auto origInst = isOriginal(inst))
     if (auto li = dyn_cast<LoadInst>(inst)) {
 #if LLVM_VERSION_MAJOR >= 12

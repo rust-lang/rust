@@ -34,8 +34,6 @@
 
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
-#include "llvm/ADT/SetVector.h"
-
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Type.h"

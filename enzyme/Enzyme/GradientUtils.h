@@ -62,12 +62,12 @@
 
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/IR/DebugInfoMetadata.h"
 #include "ActivityAnalysis.h"
 #include "CacheUtility.h"
 #include "EnzymeLogic.h"
 #include "LibraryFuncs.h"
+#include "llvm/IR/DebugInfoMetadata.h"
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
 
@@ -404,7 +404,7 @@ private:
 
 public:
   bool legalRecompute(const Value *val, const ValueToValueMapTy &available,
-                      IRBuilder<> *BuilderM) const;
+                      IRBuilder<> *BuilderM, bool reverse = false) const;
   bool shouldRecompute(const Value *val, const ValueToValueMapTy &available,
                        IRBuilder<> *BuilderM);
 
@@ -957,11 +957,6 @@ public:
         builderLoop = builderLoop->getParentLoop();
       }
 
-      // llvm::errs() << " fb: " << forwardBlock->getName() << " fblf: " <<
-      // LI.getLoopFor(forwardBlock)->getHeader()->getName()
-      //  << " lch: " << lc.header->getName() << " icl=" << isChildLoop << "
-      //  inst: " << *inst << "\n";
-
       if (!isChildLoop) {
         // llvm::errs() << "manually performing lcssa for instruction" << *inst
         // << " in block " << BuilderM.GetInsertBlock()->getName() << "\n";
@@ -1351,10 +1346,10 @@ public:
     return addedSelect;
   }
 
-  void
-  freeCache(llvm::BasicBlock *forwardPreheader, const SubLimitType &sublimits,
-            int i, llvm::AllocaInst *alloc, llvm::ConstantInt *byteSizeOfType,
-            llvm::Value *storeInto, llvm::MDNode *InvariantMD) override {
+  void freeCache(llvm::BasicBlock *forwardPreheader,
+                 const SubLimitType &sublimits, int i, llvm::AllocaInst *alloc,
+                 llvm::ConstantInt *byteSizeOfType, llvm::Value *storeInto,
+                 llvm::MDNode *InvariantMD) override {
     assert(reverseBlocks.find(forwardPreheader) != reverseBlocks.end());
     assert(reverseBlocks[forwardPreheader]);
     IRBuilder<> tbuild(reverseBlocks[forwardPreheader]);
@@ -1399,7 +1394,8 @@ public:
                                  Type::getInt8PtrTy(newFunc->getContext())),
         tbuild.GetInsertBlock()));
     if (newFunc->getSubprogram())
-    ci->setDebugLoc(DILocation::get(newFunc->getContext(), 0, 0, newFunc->getSubprogram(), 0));
+      ci->setDebugLoc(DILocation::get(newFunc->getContext(), 0, 0,
+                                      newFunc->getSubprogram(), 0));
     ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
     if (ci->getParent() == nullptr) {
       tbuild.Insert(ci);

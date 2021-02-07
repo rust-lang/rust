@@ -535,8 +535,8 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
         }
         if (MaxIterations != SE.getCouldNotCompute()) {
           if (EL.ExactNotTaken != SE.getCouldNotCompute()) {
-            MaxIterations = SE.getUMaxFromMismatchedTypes(MaxIterations,
-                                                          EL.ExactNotTaken);
+            MaxIterations =
+                SE.getUMaxFromMismatchedTypes(MaxIterations, EL.ExactNotTaken);
           }
         }
 
@@ -584,7 +584,9 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
     if (EnzymePrintPerf)
       llvm::errs() << "SE could not compute loop limit of "
                    << L->getHeader()->getName() << " "
-                   << L->getHeader()->getParent()->getName() << " lim: " << *Limit << " maxlim: " << *MaxIterations << "\n";
+                   << L->getHeader()->getParent()->getName()
+                   << " lim: " << *Limit << " maxlim: " << *MaxIterations
+                   << "\n";
 
     LimitVar = createCacheForScope(LimitContext(loopContexts[L].preheader),
                                    CanonicalIV->getType(), "loopLimit",
@@ -1029,8 +1031,15 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
       // loop of triangular iteration domain) Handle this case like a dynamic
       // loop and create a new chunk.
       if (limitMinus1 == nullptr) {
-        EmitWarning("NoOuterLimit", cast<Instruction>(contexts[i].maxLimit)->getDebugLoc(), newFunc, cast<Instruction>(contexts[i].maxLimit)->getParent(),
-          "Could not compute outermost loop limit by moving value ", *contexts[i].maxLimit, " computed at block",  contexts[i].header->getName(), " function ", contexts[i].header->getParent()->getName());
+        if (EnzymePrintPerf)
+          EmitWarning("NoOuterLimit",
+                      cast<Instruction>(contexts[i].maxLimit)->getDebugLoc(),
+                      newFunc,
+                      cast<Instruction>(contexts[i].maxLimit)->getParent(),
+                      "Could not compute outermost loop limit by moving value ",
+                      *contexts[i].maxLimit, " computed at block",
+                      contexts[i].header->getName(), " function ",
+                      contexts[i].header->getParent()->getName());
         allocationPreheaders[i] = contexts[i].preheader;
         allocationBuilder.SetInsertPoint(&allocationPreheaders[i]->back());
         limitMinus1 = unwrapM(contexts[i].maxLimit, allocationBuilder, prevMap,

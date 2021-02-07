@@ -194,7 +194,8 @@ bool is_load_uncacheable(
             }
           }
         }
-        if (called && (isCertainMallocOrFree(called) || isMemFreeLibMFunction(called->getName()))) {
+        if (called && (isCertainMallocOrFree(called) ||
+                       isMemFreeLibMFunction(called->getName()))) {
           return false;
         }
       }

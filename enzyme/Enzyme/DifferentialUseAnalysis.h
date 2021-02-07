@@ -165,11 +165,13 @@ bool is_value_needed_in_reverse(
           //   write in reverse) or we need this value for the reverse pass (we
           //   conservatively assume that if legal it is recomputed and not
           //   stored)
+          IRBuilder<> IB(gutils->getNewFromOriginal(ci->getParent()));
           if (!gutils->isConstantInstruction(ci) ||
               !gutils->isConstantValue(
                   const_cast<Value *>((const Value *)ci)) ||
               (ci->mayWriteToMemory() && topLevel) ||
-              (gutils->legalRecompute(ci, ValueToValueMapTy(), nullptr) &&
+              (gutils->legalRecompute(ci, ValueToValueMapTy(), &IB,
+                                      /*reverse*/ true) &&
                is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel, seen,
                                               oldUnreachable))) {
             return seen[idx] = true;
@@ -295,10 +297,12 @@ bool is_value_needed_in_reverse(
       //   it may write memory and is topLevel (and thus we need to do the write
       //   in reverse) or we need this value for the reverse pass (we
       //   conservatively assume that if legal it is recomputed and not stored)
+      IRBuilder<> IB(gutils->getNewFromOriginal(ci->getParent()));
       if (!gutils->isConstantInstruction(ci) ||
           !gutils->isConstantValue(const_cast<Value *>((const Value *)ci)) ||
           (ci->mayWriteToMemory() && topLevel) ||
-          (gutils->legalRecompute(ci, ValueToValueMapTy(), nullptr) &&
+          (gutils->legalRecompute(ci, ValueToValueMapTy(), &IB,
+                                  /*reverse*/ true) &&
            is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel, seen,
                                           oldUnreachable))) {
         return seen[idx] = true;
