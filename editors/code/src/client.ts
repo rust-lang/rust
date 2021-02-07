@@ -11,7 +11,7 @@ export interface Env {
 }
 
 function renderCommand(cmd: ra.CommandLink) {
-    return `[${cmd.title}](command:${cmd.command}?${encodeURIComponent(JSON.stringify(cmd.arguments))} '${cmd.tooltip!}')`;
+    return `[${cmd.title}](command:${cmd.command}?${encodeURIComponent(JSON.stringify(cmd.arguments))} '${cmd.tooltip}')`;
 }
 
 function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownString {

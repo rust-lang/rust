@@ -87,11 +87,11 @@ async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<v
         debugOutput.show(true);
     }
 
-    const isMultiFolderWorkspace = vscode.workspace.workspaceFolders!.length > 1;
-    const firstWorkspace = vscode.workspace.workspaceFolders![0]; // folder exists or RA is not active.
+    const isMultiFolderWorkspace = vscode.workspace.workspaceFolders.length > 1;
+    const firstWorkspace = vscode.workspace.workspaceFolders[0]; // folder exists or RA is not active.
     const workspace = !isMultiFolderWorkspace || !runnable.args.workspaceRoot ?
         firstWorkspace :
-        vscode.workspace.workspaceFolders!.find(w => runnable.args.workspaceRoot?.includes(w.uri.fsPath)) || firstWorkspace;
+        vscode.workspace.workspaceFolders.find(w => runnable.args.workspaceRoot?.includes(w.uri.fsPath)) || firstWorkspace;
 
     const wsFolder = path.normalize(workspace.uri.fsPath);
     const workspaceQualifier = isMultiFolderWorkspace ? `:${workspace.name}` : '';
