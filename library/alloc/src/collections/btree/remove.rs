@@ -1,6 +1,5 @@
 use super::map::MIN_LEN;
 use super::node::{marker, ForceResult::*, Handle, LeftOrRight::*, NodeRef};
-use super::unwrap_unchecked;
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
     /// Removes a key-value pair from the tree, and returns that pair, as well as
@@ -77,12 +76,12 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         // the element we were asked to remove. Prefer the left adjacent KV,
         // for the reasons listed in `choose_parent_kv`.
         let left_leaf_kv = self.left_edge().descend().last_leaf_edge().left_kv();
-        let left_leaf_kv = unsafe { unwrap_unchecked(left_leaf_kv.ok()) };
+        let left_leaf_kv = unsafe { left_leaf_kv.ok().unwrap_unchecked() };
         let (left_kv, left_hole) = left_leaf_kv.remove_leaf_kv(handle_emptied_internal_root);
 
         // The internal node may have been stolen from or merged. Go back right
         // to find where the original KV ended up.
-        let mut internal = unsafe { unwrap_unchecked(left_hole.next_kv().ok()) };
+        let mut internal = unsafe { left_hole.next_kv().ok().unwrap_unchecked() };
         let old_kv = internal.replace_kv(left_kv.0, left_kv.1);
         let pos = internal.next_leaf_edge();
         (old_kv, pos)
