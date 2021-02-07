@@ -254,6 +254,17 @@ A single `rust-analyzer` process can serve many projects, so it is important tha
 These crates implement macros as token tree -> token tree transforms.
 They are independent from the rest of the code.
 
+`tt` crate defined `TokenTree`, a single token or a delimited sequence of token trees.
+`mbe` crate contains tools for transforming between syntax trees and token tree.
+And it also handles the actual parsing and expansion of declarative macro (a-la "Macros By Example" or mbe).
+
+For proc macros, we pass the token trees by loading the corresponding dynamic library (which built by `cargo`).
+That's why the client (`proc_macro_api`) and server (`proc_macro_srv`) model are used to run proc-macro in separate process in background.
+ 
+ **Architecture Invariant:**
+Bad proc macros may panic or segfault accidentally. So we run it in another process and recover it from fatal error.
+And they may be non-deterministic which conflict how `salsa` works, so special attention is required.
+
 ### `crates/cfg`
 
 This crate is responsible for parsing, evaluation and general definition of `cfg` attributes.
