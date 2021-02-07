@@ -15,30 +15,22 @@ pub fn expand_deriving_partial_eq(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    // structures are equal if all fields are equal, and non equal, if
-    // any fields are not equal or if the enum variants are different
-    fn cs_op(
-        cx: &mut ExtCtxt<'_>,
-        span: Span,
-        substr: &Substructure<'_>,
-        op: BinOpKind,
-        combiner: BinOpKind,
-        base: bool,
-    ) -> P<Expr> {
+    // structures are equal if all fields are equal, and non equal otherwise.
+    fn cs_eq(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
         let op = |cx: &mut ExtCtxt<'_>, span: Span, self_f: P<Expr>, other_fs: &[P<Expr>]| {
             let other_f = match other_fs {
                 [o_f] => o_f,
                 _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`"),
             };
 
-            cx.expr_binary(span, op, self_f, other_f.clone())
+            cx.expr_binary(span, BinOpKind::Eq, self_f, other_f.clone())
         };
 
         cs_fold1(
             true, // use foldl
             |cx, span, subexpr, self_f, other_fs| {
                 let eq = op(cx, span, self_f, other_fs);
-                cx.expr_binary(span, combiner, subexpr, eq)
+                cx.expr_binary(span, BinOpKind::And, subexpr, eq)
             },
             |cx, args| {
                 match args {
@@ -46,21 +38,14 @@ pub fn expand_deriving_partial_eq(
                         // Special-case the base case to generate cleaner code.
                         op(cx, span, self_f, other_fs)
                     }
-                    None => cx.expr_bool(span, base),
+                    None => cx.expr_bool(span, true),
                 }
             },
-            Box::new(|cx, span, _, _| cx.expr_bool(span, !base)),
+            Box::new(|cx, span, _, _| cx.expr_bool(span, false)),
             cx,
             span,
             substr,
         )
-    }
-
-    fn cs_eq(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
-        cs_op(cx, span, substr, BinOpKind::Eq, BinOpKind::And, true)
-    }
-    fn cs_ne(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
-        cs_op(cx, span, substr, BinOpKind::Ne, BinOpKind::Or, false)
     }
 
     macro_rules! md {
@@ -89,14 +74,6 @@ pub fn expand_deriving_partial_eq(
         push,
     );
 
-    // avoid defining `ne` if we can
-    // c-like enums, enums without any fields and structs without fields
-    // can safely define only `eq`.
-    let mut methods = vec![md!(sym::eq, cs_eq)];
-    if !is_type_without_fields(item) {
-        methods.push(md!(sym::ne, cs_ne));
-    }
-
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
@@ -105,7 +82,7 @@ pub fn expand_deriving_partial_eq(
         generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: false,
-        methods,
+        methods: vec![md!(sym::eq, cs_eq)],
         associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
