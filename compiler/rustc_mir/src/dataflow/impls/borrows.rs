@@ -11,7 +11,6 @@ use crate::borrow_check::{
 use crate::dataflow::{self, fmt::DebugWithContext, GenKill};
 
 use std::fmt;
-use std::rc::Rc;
 
 rustc_index::newtype_index! {
     pub struct BorrowIndex {
@@ -30,11 +29,8 @@ pub struct Borrows<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
 
-    borrow_set: Rc<BorrowSet<'tcx>>,
+    borrow_set: &'a BorrowSet<'tcx>,
     borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
-
-    /// NLL region inference context with which NLL queries should be resolved
-    _nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
 }
 
 struct StackEntry {
@@ -47,12 +43,12 @@ struct OutOfScopePrecomputer<'a, 'tcx> {
     visited: BitSet<mir::BasicBlock>,
     visit_stack: Vec<StackEntry>,
     body: &'a Body<'tcx>,
-    regioncx: Rc<RegionInferenceContext<'tcx>>,
+    regioncx: &'a RegionInferenceContext<'tcx>,
     borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
 }
 
 impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
-    fn new(body: &'a Body<'tcx>, regioncx: Rc<RegionInferenceContext<'tcx>>) -> Self {
+    fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         OutOfScopePrecomputer {
             visited: BitSet::new_empty(body.basic_blocks().len()),
             visit_stack: vec![],
@@ -147,10 +143,10 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
-        nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
-        borrow_set: Rc<BorrowSet<'tcx>>,
+        nonlexical_regioncx: &'a RegionInferenceContext<'tcx>,
+        borrow_set: &'a BorrowSet<'tcx>,
     ) -> Self {
-        let mut prec = OutOfScopePrecomputer::new(body, nonlexical_regioncx.clone());
+        let mut prec = OutOfScopePrecomputer::new(body, nonlexical_regioncx);
         for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
             let borrow_region = borrow_data.region.to_region_vid();
             let location = borrow_data.reserve_location;
@@ -163,7 +159,6 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             body,
             borrow_set,
             borrows_out_of_scope_at_location: prec.borrows_out_of_scope_at_location,
-            _nonlexical_regioncx: nonlexical_regioncx,
         }
     }
 
