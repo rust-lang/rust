@@ -497,6 +497,7 @@ public:
 
     std::set<CallInst *> toLower;
     std::set<InvokeInst *> toLowerI;
+    std::set<CallInst *> InactiveCalls;
   retry:;
     for (BasicBlock &BB : F) {
       for (Instruction &I : BB) {
@@ -556,6 +557,9 @@ public:
               CI->addParamAttr(i, Attribute::NoCapture);
             }
           }
+        }
+        if (Fn && Fn->getName().contains("__enzyme_call_inactive")) {
+          InactiveCalls.insert(CI);
         }
         if (Fn && (Fn->getName() == "__fd_sincos_1" ||
                    Fn->getName() == "__fd_cos_1" ||
@@ -715,6 +719,26 @@ public:
       }
     }
 
+    for (auto CI : InactiveCalls) {
+      IRBuilder<> B(CI);
+      Value *fn = CI->getArgOperand(0);
+      SmallVector<Value *, 4> Args;
+      SmallVector<Type *, 4> ArgTypes;
+      for (size_t i = 1; i < CI->getNumArgOperands(); ++i) {
+        Args.push_back(CI->getArgOperand(i));
+        ArgTypes.push_back(CI->getArgOperand(i)->getType());
+      }
+      auto FT = FunctionType::get(CI->getType(), ArgTypes, /*varargs*/ false);
+      if (fn->getType() != FT) {
+        fn = B.CreatePointerCast(fn, PointerType::getUnqual(FT));
+      }
+      auto Rep = B.CreateCall(FT, fn, Args);
+      Rep->addAttribute(AttributeList::FunctionIndex,
+                        Attribute::get(Rep->getContext(), "enzyme_inactive"));
+      CI->replaceAllUsesWith(Rep);
+      CI->eraseFromParent();
+      Changed = true;
+    }
     for (auto CI : toLower) {
       successful &= HandleAutoDiff(CI, TLI, AA, PostOpt);
       Changed = true;
