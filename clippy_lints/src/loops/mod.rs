@@ -1,13 +1,16 @@
+mod manual_flatten;
+mod utils;
+
 use crate::consts::constant;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::mutated_variables;
 use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    indent_of, is_in_panic_handler, is_integer_const, is_no_std_crate, is_ok_ctor, is_refutable, is_some_ctor,
-    is_type_diagnostic_item, last_path_segment, match_trait_method, match_type, multispan_sugg, path_to_local,
-    path_to_local_id, paths, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
-    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
+    indent_of, is_in_panic_handler, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item,
+    last_path_segment, match_trait_method, match_type, multispan_sugg, path_to_local, path_to_local_id, paths,
+    single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
+    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -31,6 +34,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::iter::{once, Iterator};
 use std::mem;
+use utils::make_iterator_snippet;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for for-loops that manually copy items between
@@ -862,7 +866,7 @@ fn check_for_loop<'tcx>(
     check_for_mut_range_bound(cx, arg, body);
     check_for_single_element_loop(cx, pat, arg, body, expr);
     detect_same_item_push(cx, pat, arg, body, expr);
-    check_manual_flatten(cx, pat, arg, body, span);
+    manual_flatten::lint(cx, pat, arg, body, span);
 }
 
 // this function assumes the given expression is a `for` loop.
@@ -1839,42 +1843,6 @@ fn check_for_loop_explicit_counter<'tcx>(
     }
 }
 
-/// If `arg` was the argument to a `for` loop, return the "cleanest" way of writing the
-/// actual `Iterator` that the loop uses.
-fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic_ref: &mut Applicability) -> String {
-    let impls_iterator = get_trait_def_id(cx, &paths::ITERATOR).map_or(false, |id| {
-        implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[])
-    });
-    if impls_iterator {
-        format!(
-            "{}",
-            sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_par()
-        )
-    } else {
-        // (&x).into_iter() ==> x.iter()
-        // (&mut x).into_iter() ==> x.iter_mut()
-        match &arg.kind {
-            ExprKind::AddrOf(BorrowKind::Ref, mutability, arg_inner)
-                if has_iter_method(cx, cx.typeck_results().expr_ty(&arg_inner)).is_some() =>
-            {
-                let meth_name = match mutability {
-                    Mutability::Mut => "iter_mut",
-                    Mutability::Not => "iter",
-                };
-                format!(
-                    "{}.{}()",
-                    sugg::Sugg::hir_with_applicability(cx, &arg_inner, "_", applic_ref).maybe_par(),
-                    meth_name,
-                )
-            }
-            _ => format!(
-                "{}.into_iter()",
-                sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_par()
-            ),
-        }
-    }
-}
-
 /// Checks for the `FOR_KV_MAP` lint.
 fn check_for_loop_over_map_kv<'tcx>(
     cx: &LateContext<'tcx>,
@@ -1960,77 +1928,6 @@ fn check_for_single_element_loop<'tcx>(
                 format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0)), target.name, list_item_name, block_str),
                 Applicability::MachineApplicable
             )
-        }
-    }
-}
-
-/// Check for unnecessary `if let` usage in a for loop where only the `Some` or `Ok` variant of the
-/// iterator element is used.
-fn check_manual_flatten<'tcx>(
-    cx: &LateContext<'tcx>,
-    pat: &'tcx Pat<'_>,
-    arg: &'tcx Expr<'_>,
-    body: &'tcx Expr<'_>,
-    span: Span,
-) {
-    if let ExprKind::Block(ref block, _) = body.kind {
-        // Ensure the `if let` statement is the only expression or statement in the for-loop
-        let inner_expr = if block.stmts.len() == 1 && block.expr.is_none() {
-            let match_stmt = &block.stmts[0];
-            if let StmtKind::Semi(inner_expr) = match_stmt.kind {
-                Some(inner_expr)
-            } else {
-                None
-            }
-        } else if block.stmts.is_empty() {
-            block.expr
-        } else {
-            None
-        };
-
-        if_chain! {
-            if let Some(inner_expr) = inner_expr;
-            if let ExprKind::Match(
-                ref match_expr, ref match_arms, MatchSource::IfLetDesugar{ contains_else_clause: false }
-            ) = inner_expr.kind;
-            // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
-            if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
-            if path_to_local_id(match_expr, pat_hir_id);
-            // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
-            if let PatKind::TupleStruct(QPath::Resolved(None, path), _, _) = match_arms[0].pat.kind;
-            let some_ctor = is_some_ctor(cx, path.res);
-            let ok_ctor = is_ok_ctor(cx, path.res);
-            if some_ctor || ok_ctor;
-            let if_let_type = if some_ctor { "Some" } else { "Ok" };
-
-            then {
-                // Prepare the error message
-                let msg = format!("unnecessary `if let` since only the `{}` variant of the iterator element is used", if_let_type);
-
-                // Prepare the help message
-                let mut applicability = Applicability::MaybeIncorrect;
-                let arg_snippet = make_iterator_snippet(cx, arg, &mut applicability);
-
-                span_lint_and_then(
-                    cx,
-                    MANUAL_FLATTEN,
-                    span,
-                    &msg,
-                    |diag| {
-                        let sugg = format!("{}.flatten()", arg_snippet);
-                        diag.span_suggestion(
-                            arg.span,
-                            "try",
-                            sugg,
-                            Applicability::MaybeIncorrect,
-                        );
-                        diag.span_help(
-                            inner_expr.span,
-                            "...and remove the `if let` statement in the for loop",
-                        );
-                    }
-                );
-            }
         }
     }
 }
