@@ -51,9 +51,9 @@
 #include "TBAA.h"
 
 /// Maximum offset for type trees to keep
-llvm::cl::opt<ssize_t> MaxIntOffset("enzyme-max-int-offset", cl::init(100),
-                                    cl::Hidden,
-                                    cl::desc("Maximum type tree offset"));
+llvm::cl::opt<int> MaxIntOffset("enzyme-max-int-offset", cl::init(100),
+                                cl::Hidden,
+                                cl::desc("Maximum type tree offset"));
 
 const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
     {"cos", Intrinsic::cos},
