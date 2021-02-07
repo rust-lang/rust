@@ -1,7 +1,6 @@
-use ide_db::{
-    defs::Definition,
-    search::{FileReference, ReferenceKind},
-};
+use std::collections::HashMap;
+
+use ide_db::{defs::Definition, search::FileReference};
 use syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
@@ -68,44 +67,51 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
 
     let wrap_in_parens = usages
         .references
-        .values()
-        .flatten()
-        .map(|&FileReference { range, .. }| {
-            let usage_node =
-                ctx.covering_node_for_range(range).ancestors().find_map(ast::PathExpr::cast)?;
-            let usage_parent_option = usage_node.syntax().parent().and_then(ast::Expr::cast);
-            let usage_parent = match usage_parent_option {
-                Some(u) => u,
-                None => return Ok(false),
-            };
+        .iter()
+        .map(|(&file_id, refs)| {
+            refs.iter()
+                .map(|&FileReference { range, .. }| {
+                    let usage_node = ctx
+                        .covering_node_for_range(range)
+                        .ancestors()
+                        .find_map(ast::PathExpr::cast)?;
+                    let usage_parent_option =
+                        usage_node.syntax().parent().and_then(ast::Expr::cast);
+                    let usage_parent = match usage_parent_option {
+                        Some(u) => u,
+                        None => return Ok(false),
+                    };
 
-            Ok(!matches!(
-                (&initializer_expr, usage_parent),
-                (ast::Expr::CallExpr(_), _)
-                    | (ast::Expr::IndexExpr(_), _)
-                    | (ast::Expr::MethodCallExpr(_), _)
-                    | (ast::Expr::FieldExpr(_), _)
-                    | (ast::Expr::TryExpr(_), _)
-                    | (ast::Expr::RefExpr(_), _)
-                    | (ast::Expr::Literal(_), _)
-                    | (ast::Expr::TupleExpr(_), _)
-                    | (ast::Expr::ArrayExpr(_), _)
-                    | (ast::Expr::ParenExpr(_), _)
-                    | (ast::Expr::PathExpr(_), _)
-                    | (ast::Expr::BlockExpr(_), _)
-                    | (ast::Expr::EffectExpr(_), _)
-                    | (_, ast::Expr::CallExpr(_))
-                    | (_, ast::Expr::TupleExpr(_))
-                    | (_, ast::Expr::ArrayExpr(_))
-                    | (_, ast::Expr::ParenExpr(_))
-                    | (_, ast::Expr::ForExpr(_))
-                    | (_, ast::Expr::WhileExpr(_))
-                    | (_, ast::Expr::BreakExpr(_))
-                    | (_, ast::Expr::ReturnExpr(_))
-                    | (_, ast::Expr::MatchExpr(_))
-            ))
+                    Ok(!matches!(
+                        (&initializer_expr, usage_parent),
+                        (ast::Expr::CallExpr(_), _)
+                            | (ast::Expr::IndexExpr(_), _)
+                            | (ast::Expr::MethodCallExpr(_), _)
+                            | (ast::Expr::FieldExpr(_), _)
+                            | (ast::Expr::TryExpr(_), _)
+                            | (ast::Expr::RefExpr(_), _)
+                            | (ast::Expr::Literal(_), _)
+                            | (ast::Expr::TupleExpr(_), _)
+                            | (ast::Expr::ArrayExpr(_), _)
+                            | (ast::Expr::ParenExpr(_), _)
+                            | (ast::Expr::PathExpr(_), _)
+                            | (ast::Expr::BlockExpr(_), _)
+                            | (ast::Expr::EffectExpr(_), _)
+                            | (_, ast::Expr::CallExpr(_))
+                            | (_, ast::Expr::TupleExpr(_))
+                            | (_, ast::Expr::ArrayExpr(_))
+                            | (_, ast::Expr::ParenExpr(_))
+                            | (_, ast::Expr::ForExpr(_))
+                            | (_, ast::Expr::WhileExpr(_))
+                            | (_, ast::Expr::BreakExpr(_))
+                            | (_, ast::Expr::ReturnExpr(_))
+                            | (_, ast::Expr::MatchExpr(_))
+                    ))
+                })
+                .collect::<Result<_, _>>()
+                .map(|b| (file_id, b))
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<HashMap<_, Vec<_>>, _>>()?;
 
     let init_str = initializer_expr.syntax().text().to_string();
     let init_in_paren = format!("({})", &init_str);
@@ -117,16 +123,20 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         target,
         move |builder| {
             builder.delete(delete_range);
-            for (reference, should_wrap) in usages.references.values().flatten().zip(wrap_in_parens)
-            {
-                let replacement =
-                    if should_wrap { init_in_paren.clone() } else { init_str.clone() };
-                match reference.kind {
-                    ReferenceKind::FieldShorthandForLocal => {
-                        mark::hit!(inline_field_shorthand);
-                        builder.insert(reference.range.end(), format!(": {}", replacement))
+            for (file_id, references) in usages.references {
+                let root = ctx.sema.parse(file_id);
+                for (&should_wrap, reference) in wrap_in_parens[&file_id].iter().zip(references) {
+                    let replacement =
+                        if should_wrap { init_in_paren.clone() } else { init_str.clone() };
+                    match &reference.as_name_ref(root.syntax()) {
+                        Some(name_ref)
+                            if ast::RecordExprField::for_field_name(name_ref).is_some() =>
+                        {
+                            mark::hit!(inline_field_shorthand);
+                            builder.insert(reference.range.end(), format!(": {}", replacement));
+                        }
+                        _ => builder.replace(reference.range, replacement),
                     }
-                    _ => builder.replace(reference.range, replacement),
                 }
             }
         },

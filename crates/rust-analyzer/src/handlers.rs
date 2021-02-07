@@ -827,18 +827,23 @@ pub(crate) fn handle_references(
         Some(refs) => refs,
     };
 
-    let locations = if params.context.include_declaration {
-        refs.references_with_declaration()
-            .file_ranges()
-            .filter_map(|frange| to_proto::location(&snap, frange).ok())
-            .collect()
+    let decl = if params.context.include_declaration {
+        Some(FileRange {
+            file_id: refs.declaration.nav.file_id,
+            range: refs.declaration.nav.focus_or_full_range(),
+        })
     } else {
-        // Only iterate over the references if include_declaration was false
-        refs.references()
-            .file_ranges()
-            .filter_map(|frange| to_proto::location(&snap, frange).ok())
-            .collect()
+        None
     };
+    let locations = refs
+        .references
+        .into_iter()
+        .flat_map(|(file_id, refs)| {
+            refs.into_iter().map(move |(range, _)| FileRange { file_id, range })
+        })
+        .chain(decl)
+        .filter_map(|frange| to_proto::location(&snap, frange).ok())
+        .collect();
 
     Ok(Some(locations))
 }
@@ -1214,8 +1219,11 @@ pub(crate) fn handle_code_lens_resolve(
                 .find_all_refs(position, None)
                 .unwrap_or(None)
                 .map(|r| {
-                    r.references()
-                        .file_ranges()
+                    r.references
+                        .into_iter()
+                        .flat_map(|(file_id, ranges)| {
+                            ranges.into_iter().map(move |(range, _)| FileRange { file_id, range })
+                        })
                         .filter_map(|frange| to_proto::location(&snap, frange).ok())
                         .collect_vec()
                 })
@@ -1259,17 +1267,26 @@ pub(crate) fn handle_document_highlight(
         Some(refs) => refs,
     };
 
+    let decl = if refs.declaration.nav.file_id == position.file_id {
+        Some(DocumentHighlight {
+            range: to_proto::range(&line_index, refs.declaration.nav.focus_or_full_range()),
+            kind: refs.declaration.access.map(to_proto::document_highlight_kind),
+        })
+    } else {
+        None
+    };
+
     let res = refs
-        .references_with_declaration()
         .references
         .get(&position.file_id)
         .map(|file_refs| {
             file_refs
                 .into_iter()
-                .map(|r| DocumentHighlight {
-                    range: to_proto::range(&line_index, r.range),
-                    kind: r.access.map(to_proto::document_highlight_kind),
+                .map(|&(range, access)| DocumentHighlight {
+                    range: to_proto::range(&line_index, range),
+                    kind: access.map(to_proto::document_highlight_kind),
                 })
+                .chain(decl)
                 .collect()
         })
         .unwrap_or_default();

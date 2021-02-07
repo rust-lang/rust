@@ -11,13 +11,14 @@
 
 pub(crate) mod rename;
 
-use either::Either;
 use hir::Semantics;
 use ide_db::{
+    base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
-    search::{FileReference, ReferenceAccess, ReferenceKind, SearchScope, UsageSearchResult},
+    search::{ReferenceAccess, SearchScope},
     RootDatabase,
 };
+use rustc_hash::FxHashMap;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
@@ -28,32 +29,14 @@ use crate::{display::TryToNav, FilePosition, NavigationTarget};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
-    declaration: Declaration,
-    references: UsageSearchResult,
+    pub declaration: Declaration,
+    pub references: FxHashMap<FileId, Vec<(TextRange, Option<ReferenceAccess>)>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Declaration {
-    nav: NavigationTarget,
-    kind: ReferenceKind,
-    access: Option<ReferenceAccess>,
-}
-
-impl ReferenceSearchResult {
-    pub fn references(self) -> UsageSearchResult {
-        self.references
-    }
-
-    pub fn references_with_declaration(mut self) -> UsageSearchResult {
-        let decl_ref = FileReference {
-            range: self.declaration.nav.focus_or_full_range(),
-            kind: self.declaration.kind,
-            access: self.declaration.access,
-        };
-        let file_id = self.declaration.nav.file_id;
-        self.references.references.entry(file_id).or_default().push(decl_ref);
-        self.references
-    }
+    pub nav: NavigationTarget,
+    pub access: Option<ReferenceAccess>,
 }
 
 pub(crate) fn find_all_refs(
@@ -64,83 +47,76 @@ pub(crate) fn find_all_refs(
     let _p = profile::span("find_all_refs");
     let syntax = sema.parse(position.file_id).syntax().clone();
 
-    let (opt_name, search_kind) = if let Some(name) =
+    let (opt_name, ctor_filter): (_, Option<fn(&_) -> bool>) = if let Some(name) =
         get_struct_def_name_for_struct_literal_search(&sema, &syntax, position)
     {
-        (Some(name), ReferenceKind::StructLiteral)
+        (
+            Some(name),
+            Some(|name_ref| is_record_lit_name_ref(name_ref) || is_call_expr_name_ref(name_ref)),
+        )
     } else if let Some(name) = get_enum_def_name_for_struct_literal_search(&sema, &syntax, position)
     {
-        (Some(name), ReferenceKind::EnumLiteral)
+        (Some(name), Some(is_enum_lit_name_ref))
     } else {
-        (
-            sema.find_node_at_offset_with_descend::<ast::Name>(&syntax, position.offset),
-            ReferenceKind::Other,
-        )
+        (sema.find_node_at_offset_with_descend::<ast::Name>(&syntax, position.offset), None)
     };
 
-    let def = find_name(&sema, &syntax, position, opt_name)?;
+    let def = find_def(&sema, &syntax, position, opt_name)?;
 
     let mut usages = def.usages(sema).set_scope(search_scope).all();
-    usages
-        .references
-        .values_mut()
-        .for_each(|it| it.retain(|r| search_kind == ReferenceKind::Other || search_kind == r.kind));
-    usages.references.retain(|_, it| !it.is_empty());
-
+    if let Some(ctor_filter) = ctor_filter {
+        // filter for constructor-literals
+        usages.references.iter_mut().for_each(|(&file_id, it)| {
+            let root = sema.parse(file_id);
+            let root = root.syntax();
+            it.retain(|reference| {
+                reference.as_name_ref(root).map_or(false, |name_ref| ctor_filter(&name_ref))
+            })
+        });
+        usages.references.retain(|_, it| !it.is_empty());
+    }
     let nav = def.try_to_nav(sema.db)?;
     let decl_range = nav.focus_or_full_range();
 
-    let mut kind = ReferenceKind::Other;
-    if let Definition::Local(local) = def {
-        match local.source(sema.db).value {
-            Either::Left(pat) => {
-                if matches!(
-                    pat.syntax().parent().and_then(ast::RecordPatField::cast),
-                    Some(pat_field) if pat_field.name_ref().is_none()
-                ) {
-                    kind = ReferenceKind::FieldShorthandForLocal;
-                }
-            }
-            Either::Right(_) => kind = ReferenceKind::SelfParam,
-        }
-    } else if matches!(
-        def,
-        Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
-    ) {
-        kind = ReferenceKind::Lifetime;
-    };
+    let declaration = Declaration { nav, access: decl_access(&def, &syntax, decl_range) };
+    let references = usages
+        .into_iter()
+        .map(|(file_id, refs)| {
+            (file_id, refs.into_iter().map(|file_ref| (file_ref.range, file_ref.access)).collect())
+        })
+        .collect();
 
-    let declaration = Declaration { nav, kind, access: decl_access(&def, &syntax, decl_range) };
-
-    Some(ReferenceSearchResult { declaration, references: usages })
+    Some(ReferenceSearchResult { declaration, references })
 }
 
-fn find_name(
+fn find_def(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
     opt_name: Option<ast::Name>,
 ) -> Option<Definition> {
-    let def = if let Some(name) = opt_name {
-        NameClass::classify(sema, &name)?.referenced_or_defined(sema.db)
+    if let Some(name) = opt_name {
+        let class = NameClass::classify(sema, &name)?;
+        Some(class.referenced_or_defined(sema.db))
     } else if let Some(lifetime) =
         sema.find_node_at_offset_with_descend::<ast::Lifetime>(&syntax, position.offset)
     {
-        if let Some(def) =
+        let def = if let Some(def) =
             NameRefClass::classify_lifetime(sema, &lifetime).map(|class| class.referenced(sema.db))
         {
             def
         } else {
             NameClass::classify_lifetime(sema, &lifetime)?.referenced_or_defined(sema.db)
-        }
+        };
+        Some(def)
     } else if let Some(name_ref) =
         sema.find_node_at_offset_with_descend::<ast::NameRef>(&syntax, position.offset)
     {
-        NameRefClass::classify(sema, &name_ref)?.referenced(sema.db)
+        let class = NameRefClass::classify(sema, &name_ref)?;
+        Some(class.referenced(sema.db))
     } else {
-        return None;
-    };
-    Some(def)
+        None
+    }
 }
 
 fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Option<ReferenceAccess> {
@@ -216,6 +192,43 @@ fn get_enum_def_name_for_struct_literal_search(
     None
 }
 
+fn is_call_expr_name_ref(name_ref: &ast::NameRef) -> bool {
+    name_ref
+        .syntax()
+        .ancestors()
+        .find_map(ast::CallExpr::cast)
+        .and_then(|c| match c.expr()? {
+            ast::Expr::PathExpr(p) => {
+                Some(p.path()?.segment()?.name_ref().as_ref() == Some(name_ref))
+            }
+            _ => None,
+        })
+        .unwrap_or(false)
+}
+
+fn is_record_lit_name_ref(name_ref: &ast::NameRef) -> bool {
+    name_ref
+        .syntax()
+        .ancestors()
+        .find_map(ast::RecordExpr::cast)
+        .and_then(|l| l.path())
+        .and_then(|p| p.segment())
+        .map(|p| p.name_ref().as_ref() == Some(name_ref))
+        .unwrap_or(false)
+}
+
+fn is_enum_lit_name_ref(name_ref: &ast::NameRef) -> bool {
+    name_ref
+        .syntax()
+        .ancestors()
+        .find_map(ast::PathExpr::cast)
+        .and_then(|p| p.path())
+        .and_then(|p| p.qualifier())
+        .and_then(|p| p.segment())
+        .map(|p| p.name_ref().as_ref() == Some(name_ref))
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
@@ -240,9 +253,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo Struct FileId(0) 0..26 7..10 Other
+                Foo Struct FileId(0) 0..26 7..10
 
-                FileId(0) 101..104 StructLiteral
+                FileId(0) 101..104
             "#]],
         );
     }
@@ -258,10 +271,10 @@ struct Foo$0 {}
 }
 "#,
             expect![[r#"
-                Foo Struct FileId(0) 0..13 7..10 Other
+                Foo Struct FileId(0) 0..13 7..10
 
-                FileId(0) 41..44 Other
-                FileId(0) 54..57 StructLiteral
+                FileId(0) 41..44
+                FileId(0) 54..57
             "#]],
         );
     }
@@ -277,9 +290,9 @@ struct Foo<T> $0{}
 }
 "#,
             expect![[r#"
-                Foo Struct FileId(0) 0..16 7..10 Other
+                Foo Struct FileId(0) 0..16 7..10
 
-                FileId(0) 64..67 StructLiteral
+                FileId(0) 64..67
             "#]],
         );
     }
@@ -296,9 +309,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo Struct FileId(0) 0..16 7..10 Other
+                Foo Struct FileId(0) 0..16 7..10
 
-                FileId(0) 54..57 StructLiteral
+                FileId(0) 54..57
             "#]],
         );
     }
@@ -317,9 +330,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo Enum FileId(0) 0..26 5..8 Other
+                Foo Enum FileId(0) 0..26 5..8
 
-                FileId(0) 63..66 EnumLiteral
+                FileId(0) 63..66
             "#]],
         );
     }
@@ -338,10 +351,10 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo Enum FileId(0) 0..26 5..8 Other
+                Foo Enum FileId(0) 0..26 5..8
 
-                FileId(0) 50..53 Other
-                FileId(0) 63..66 EnumLiteral
+                FileId(0) 50..53
+                FileId(0) 63..66
             "#]],
         );
     }
@@ -360,9 +373,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo Enum FileId(0) 0..32 5..8 Other
+                Foo Enum FileId(0) 0..32 5..8
 
-                FileId(0) 73..76 EnumLiteral
+                FileId(0) 73..76
             "#]],
         );
     }
@@ -381,9 +394,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo Enum FileId(0) 0..33 5..8 Other
+                Foo Enum FileId(0) 0..33 5..8
 
-                FileId(0) 70..73 EnumLiteral
+                FileId(0) 70..73
             "#]],
         );
     }
@@ -404,12 +417,12 @@ fn main() {
     i = 5;
 }"#,
             expect![[r#"
-                i Local FileId(0) 20..25 24..25 Other Write
+                i Local FileId(0) 20..25 24..25 Write
 
-                FileId(0) 50..51 Other Write
-                FileId(0) 54..55 Other Read
-                FileId(0) 76..77 Other Write
-                FileId(0) 94..95 Other Write
+                FileId(0) 50..51 Write
+                FileId(0) 54..55 Read
+                FileId(0) 76..77 Write
+                FileId(0) 94..95 Write
             "#]],
         );
     }
@@ -428,10 +441,10 @@ fn bar() {
 }
 "#,
             expect![[r#"
-                spam Local FileId(0) 19..23 19..23 Other
+                spam Local FileId(0) 19..23 19..23
 
-                FileId(0) 34..38 Other Read
-                FileId(0) 41..45 Other Read
+                FileId(0) 34..38 Read
+                FileId(0) 41..45 Read
             "#]],
         );
     }
@@ -443,9 +456,9 @@ fn bar() {
 fn foo(i : u32) -> u32 { i$0 }
 "#,
             expect![[r#"
-                i ValueParam FileId(0) 7..8 7..8 Other
+                i ValueParam FileId(0) 7..8 7..8
 
-                FileId(0) 25..26 Other Read
+                FileId(0) 25..26 Read
             "#]],
         );
     }
@@ -457,9 +470,9 @@ fn foo(i : u32) -> u32 { i$0 }
 fn foo(i$0 : u32) -> u32 { i }
 "#,
             expect![[r#"
-                i ValueParam FileId(0) 7..8 7..8 Other
+                i ValueParam FileId(0) 7..8 7..8
 
-                FileId(0) 25..26 Other Read
+                FileId(0) 25..26 Read
             "#]],
         );
     }
@@ -478,9 +491,9 @@ fn main(s: Foo) {
 }
 "#,
             expect![[r#"
-                spam Field FileId(0) 17..30 21..25 Other
+                spam Field FileId(0) 17..30 21..25
 
-                FileId(0) 67..71 Other Read
+                FileId(0) 67..71 Read
             "#]],
         );
     }
@@ -495,7 +508,7 @@ impl Foo {
 }
 "#,
             expect![[r#"
-                f Function FileId(0) 27..43 30..31 Other
+                f Function FileId(0) 27..43 30..31
 
             "#]],
         );
@@ -512,7 +525,7 @@ enum Foo {
 }
 "#,
             expect![[r#"
-                B Variant FileId(0) 22..23 22..23 Other
+                B Variant FileId(0) 22..23 22..23
 
             "#]],
         );
@@ -529,7 +542,7 @@ enum Foo {
 }
 "#,
             expect![[r#"
-                field Field FileId(0) 26..35 26..31 Other
+                field Field FileId(0) 26..35 26..31
 
             "#]],
         );
@@ -570,10 +583,10 @@ fn f() {
 }
 "#,
             expect![[r#"
-                Foo Struct FileId(1) 17..51 28..31 Other
+                Foo Struct FileId(1) 17..51 28..31
 
-                FileId(0) 53..56 StructLiteral
-                FileId(2) 79..82 StructLiteral
+                FileId(0) 53..56
+                FileId(2) 79..82
             "#]],
         );
     }
@@ -600,9 +613,9 @@ pub struct Foo {
 }
 "#,
             expect![[r#"
-                foo Module FileId(1) 0..35 Other
+                foo Module FileId(1) 0..35
 
-                FileId(0) 14..17 Other
+                FileId(0) 14..17
             "#]],
         );
     }
@@ -628,10 +641,10 @@ pub(super) struct Foo$0 {
 }
 "#,
             expect![[r#"
-                Foo Struct FileId(2) 0..41 18..21 Other
+                Foo Struct FileId(2) 0..41 18..21
 
-                FileId(1) 20..23 Other
-                FileId(1) 47..50 StructLiteral
+                FileId(1) 20..23
+                FileId(1) 47..50
             "#]],
         );
     }
@@ -656,10 +669,10 @@ pub(super) struct Foo$0 {
             code,
             None,
             expect![[r#"
-                quux Function FileId(0) 19..35 26..30 Other
+                quux Function FileId(0) 19..35 26..30
 
-                FileId(1) 16..20 StructLiteral
-                FileId(2) 16..20 StructLiteral
+                FileId(1) 16..20
+                FileId(2) 16..20
             "#]],
         );
 
@@ -667,9 +680,9 @@ pub(super) struct Foo$0 {
             code,
             Some(SearchScope::single_file(FileId(2))),
             expect![[r#"
-                quux Function FileId(0) 19..35 26..30 Other
+                quux Function FileId(0) 19..35 26..30
 
-                FileId(2) 16..20 StructLiteral
+                FileId(2) 16..20
             "#]],
         );
     }
@@ -687,10 +700,10 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                m1 Macro FileId(0) 0..46 29..31 Other
+                m1 Macro FileId(0) 0..46 29..31
 
-                FileId(0) 63..65 StructLiteral
-                FileId(0) 73..75 StructLiteral
+                FileId(0) 63..65
+                FileId(0) 73..75
             "#]],
         );
     }
@@ -705,10 +718,10 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                i Local FileId(0) 19..24 23..24 Other Write
+                i Local FileId(0) 19..24 23..24 Write
 
-                FileId(0) 34..35 Other Write
-                FileId(0) 38..39 Other Read
+                FileId(0) 34..35 Write
+                FileId(0) 38..39 Read
             "#]],
         );
     }
@@ -727,10 +740,10 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                f Field FileId(0) 15..21 15..16 Other
+                f Field FileId(0) 15..21 15..16
 
-                FileId(0) 55..56 RecordFieldExprOrPat Read
-                FileId(0) 68..69 Other Write
+                FileId(0) 55..56 Read
+                FileId(0) 68..69 Write
             "#]],
         );
     }
@@ -745,9 +758,9 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                i Local FileId(0) 19..20 19..20 Other
+                i Local FileId(0) 19..20 19..20
 
-                FileId(0) 26..27 Other Write
+                FileId(0) 26..27 Write
             "#]],
         );
     }
@@ -769,9 +782,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                new Function FileId(0) 54..81 61..64 Other
+                new Function FileId(0) 54..81 61..64
 
-                FileId(0) 126..129 StructLiteral
+                FileId(0) 126..129
             "#]],
         );
     }
@@ -791,10 +804,10 @@ use crate::f;
 fn g() { f(); }
 "#,
             expect![[r#"
-                f Function FileId(0) 22..31 25..26 Other
+                f Function FileId(0) 22..31 25..26
 
-                FileId(1) 11..12 Other
-                FileId(1) 24..25 StructLiteral
+                FileId(1) 11..12
+                FileId(1) 24..25
             "#]],
         );
     }
@@ -814,9 +827,9 @@ fn f(s: S) {
 }
 "#,
             expect![[r#"
-                field Field FileId(0) 15..24 15..20 Other
+                field Field FileId(0) 15..24 15..20
 
-                FileId(0) 68..73 FieldShorthandForField Read
+                FileId(0) 68..73 Read
             "#]],
         );
     }
@@ -838,9 +851,9 @@ fn f(e: En) {
 }
 "#,
             expect![[r#"
-                field Field FileId(0) 32..41 32..37 Other
+                field Field FileId(0) 32..41 32..37
 
-                FileId(0) 102..107 FieldShorthandForField Read
+                FileId(0) 102..107 Read
             "#]],
         );
     }
@@ -862,9 +875,9 @@ fn f() -> m::En {
 }
 "#,
             expect![[r#"
-                field Field FileId(0) 56..65 56..61 Other
+                field Field FileId(0) 56..65 56..61
 
-                FileId(0) 125..130 RecordFieldExprOrPat Read
+                FileId(0) 125..130 Read
             "#]],
         );
     }
@@ -887,10 +900,10 @@ impl Foo {
 }
 "#,
             expect![[r#"
-                self SelfParam FileId(0) 47..51 47..51 SelfParam
+                self SelfParam FileId(0) 47..51 47..51
 
-                FileId(0) 71..75 Other Read
-                FileId(0) 152..156 Other Read
+                FileId(0) 71..75 Read
+                FileId(0) 152..156 Read
             "#]],
         );
     }
@@ -908,9 +921,9 @@ impl Foo {
 }
 "#,
             expect![[r#"
-                self SelfParam FileId(0) 47..51 47..51 SelfParam
+                self SelfParam FileId(0) 47..51 47..51
 
-                FileId(0) 63..67 Other Read
+                FileId(0) 63..67 Read
             "#]],
         );
     }
@@ -926,7 +939,7 @@ impl Foo {
         let mut actual = String::new();
         {
             let decl = refs.declaration;
-            format_to!(actual, "{} {:?}", decl.nav.debug_render(), decl.kind);
+            format_to!(actual, "{}", decl.nav.debug_render());
             if let Some(access) = decl.access {
                 format_to!(actual, " {:?}", access)
             }
@@ -934,9 +947,9 @@ impl Foo {
         }
 
         for (file_id, references) in refs.references {
-            for r in references {
-                format_to!(actual, "{:?} {:?} {:?}", file_id, r.range, r.kind);
-                if let Some(access) = r.access {
+            for (range, access) in references {
+                format_to!(actual, "{:?} {:?}", file_id, range);
+                if let Some(access) = access {
                     format_to!(actual, " {:?}", access);
                 }
                 actual += "\n";
@@ -957,13 +970,13 @@ fn foo<'a, 'b: 'a>(x: &'a$0 ()) -> &'a () where &'a (): Foo<'a> {
 }
 "#,
             expect![[r#"
-                'a LifetimeParam FileId(0) 55..57 55..57 Lifetime
+                'a LifetimeParam FileId(0) 55..57 55..57
 
-                FileId(0) 63..65 Lifetime
-                FileId(0) 71..73 Lifetime
-                FileId(0) 82..84 Lifetime
-                FileId(0) 95..97 Lifetime
-                FileId(0) 106..108 Lifetime
+                FileId(0) 63..65
+                FileId(0) 71..73
+                FileId(0) 82..84
+                FileId(0) 95..97
+                FileId(0) 106..108
             "#]],
         );
     }
@@ -975,10 +988,10 @@ fn foo<'a, 'b: 'a>(x: &'a$0 ()) -> &'a () where &'a (): Foo<'a> {
 type Foo<'a, T> where T: 'a$0 = &'a T;
 "#,
             expect![[r#"
-                'a LifetimeParam FileId(0) 9..11 9..11 Lifetime
+                'a LifetimeParam FileId(0) 9..11 9..11
 
-                FileId(0) 25..27 Lifetime
-                FileId(0) 31..33 Lifetime
+                FileId(0) 25..27
+                FileId(0) 31..33
             "#]],
         );
     }
@@ -997,11 +1010,11 @@ impl<'a> Foo<'a> for &'a () {
 }
 "#,
             expect![[r#"
-                'a LifetimeParam FileId(0) 47..49 47..49 Lifetime
+                'a LifetimeParam FileId(0) 47..49 47..49
 
-                FileId(0) 55..57 Lifetime
-                FileId(0) 64..66 Lifetime
-                FileId(0) 89..91 Lifetime
+                FileId(0) 55..57
+                FileId(0) 64..66
+                FileId(0) 89..91
             "#]],
         );
     }
@@ -1017,9 +1030,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                a Local FileId(0) 59..60 59..60 Other
+                a Local FileId(0) 59..60 59..60
 
-                FileId(0) 80..81 Other Read
+                FileId(0) 80..81 Read
             "#]],
         );
     }
@@ -1035,9 +1048,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                a Local FileId(0) 59..60 59..60 Other
+                a Local FileId(0) 59..60 59..60
 
-                FileId(0) 80..81 Other Read
+                FileId(0) 80..81 Read
             "#]],
         );
     }
@@ -1056,10 +1069,10 @@ fn foo<'a>() -> &'a () {
 }
 "#,
             expect![[r#"
-                'a Label FileId(0) 29..32 29..31 Lifetime
+                'a Label FileId(0) 29..32 29..31
 
-                FileId(0) 80..82 Lifetime
-                FileId(0) 108..110 Lifetime
+                FileId(0) 80..82
+                FileId(0) 108..110
             "#]],
         );
     }
@@ -1073,9 +1086,9 @@ fn foo<const FOO$0: usize>() -> usize {
 }
 "#,
             expect![[r#"
-                FOO ConstParam FileId(0) 7..23 13..16 Other
+                FOO ConstParam FileId(0) 7..23 13..16
 
-                FileId(0) 42..45 Other
+                FileId(0) 42..45
             "#]],
         );
     }
@@ -1089,9 +1102,9 @@ trait Foo {
 }
 "#,
             expect![[r#"
-                Self TypeParam FileId(0) 6..9 6..9 Other
+                Self TypeParam FileId(0) 6..9 6..9
 
-                FileId(0) 26..30 Other
+                FileId(0) 26..30
             "#]],
         );
     }

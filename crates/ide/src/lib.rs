@@ -73,7 +73,7 @@ pub use crate::{
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     markup::Markup,
     prime_caches::PrimeCachesProgress,
-    references::{rename::RenameError, Declaration, ReferenceSearchResult},
+    references::{rename::RenameError, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
     syntax_highlighting::{
         tags::{Highlight, HlMod, HlMods, HlPunct, HlTag},
@@ -94,7 +94,7 @@ pub use ide_db::{
     call_info::CallInfo,
     label::Label,
     line_index::{LineCol, LineIndex},
-    search::{FileReference, ReferenceAccess, ReferenceKind, SearchScope},
+    search::{FileReference, ReferenceAccess, SearchScope},
     source_change::{FileSystemEdit, SourceChange},
     symbol_index::Query,
     RootDatabase,
