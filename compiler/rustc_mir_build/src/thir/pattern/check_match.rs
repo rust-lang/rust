@@ -1,6 +1,6 @@
-use super::usefulness::Usefulness::*;
 use super::usefulness::{
-    compute_match_usefulness, expand_pattern, MatchArm, MatchCheckCtxt, UsefulnessReport,
+    compute_match_usefulness, expand_pattern, MatchArm, MatchCheckCtxt, Reachability,
+    UsefulnessReport,
 };
 use super::{PatCtxt, PatKind, PatternError};
 
@@ -398,10 +398,11 @@ fn report_arm_reachability<'p, 'tcx>(
     report: &UsefulnessReport<'p, 'tcx>,
     source: hir::MatchSource,
 ) {
+    use Reachability::*;
     let mut catchall = None;
     for (arm_index, (arm, is_useful)) in report.arm_usefulness.iter().enumerate() {
         match is_useful {
-            NotUseful => {
+            Unreachable => {
                 match source {
                     hir::MatchSource::WhileDesugar => bug!(),
 
@@ -430,17 +431,16 @@ fn report_arm_reachability<'p, 'tcx>(
                     hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
                 }
             }
-            Useful(unreachables) if unreachables.is_empty() => {}
+            Reachable(unreachables) if unreachables.is_empty() => {}
             // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
-            Useful(unreachables) => {
-                let mut unreachables: Vec<_> = unreachables.iter().collect();
+            Reachable(unreachables) => {
+                let mut unreachables = unreachables.clone();
                 // Emit lints in the order in which they occur in the file.
                 unreachables.sort_unstable();
                 for span in unreachables {
                     unreachable_pattern(cx.tcx, span, arm.hir_id, None);
                 }
             }
-            UsefulWithWitness(_) => bug!(),
         }
         if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
             catchall = Some(arm.pat.span);

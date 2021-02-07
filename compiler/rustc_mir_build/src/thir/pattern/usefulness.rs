@@ -288,6 +288,7 @@ use super::{Pat, PatKind};
 use super::{PatternFoldable, PatternFolder};
 
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::OnceCell;
 
 use rustc_arena::TypedArena;
@@ -344,6 +345,12 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     pub(super) is_top_level: bool,
 }
 
+impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PatCtxt").field("ty", &self.ty).finish()
+    }
+}
+
 crate fn expand_pattern<'tcx>(pat: Pat<'tcx>) -> Pat<'tcx> {
     LiteralExpander.fold_pattern(&pat)
 }
@@ -379,11 +386,32 @@ impl<'tcx> Pat<'tcx> {
     pub(super) fn is_wildcard(&self) -> bool {
         matches!(*self.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
     }
+
+    fn is_or_pat(&self) -> bool {
+        matches!(*self.kind, PatKind::Or { .. })
+    }
+
+    /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
+    fn expand_or_pat(&self) -> Vec<&Self> {
+        fn expand<'p, 'tcx>(pat: &'p Pat<'tcx>, vec: &mut Vec<&'p Pat<'tcx>>) {
+            if let PatKind::Or { pats } = pat.kind.as_ref() {
+                for pat in pats {
+                    expand(pat, vec);
+                }
+            } else {
+                vec.push(pat)
+            }
+        }
+
+        let mut pats = Vec::new();
+        expand(self, &mut pats);
+        pats
+    }
 }
 
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
 /// works well.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct PatStack<'p, 'tcx> {
     pats: SmallVec<[&'p Pat<'tcx>; 2]>,
     /// Cache for the constructor of the head
@@ -419,23 +447,14 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         self.pats.iter().copied()
     }
 
-    // If the first pattern is an or-pattern, expand this pattern. Otherwise, return `None`.
-    fn expand_or_pat(&self) -> Option<Vec<Self>> {
-        if self.is_empty() {
-            None
-        } else if let PatKind::Or { pats } = &*self.head().kind {
-            Some(
-                pats.iter()
-                    .map(|pat| {
-                        let mut new_patstack = PatStack::from_pattern(pat);
-                        new_patstack.pats.extend_from_slice(&self.pats[1..]);
-                        new_patstack
-                    })
-                    .collect(),
-            )
-        } else {
-            None
-        }
+    // Recursively expand the first pattern into its subpatterns. Only useful if the pattern is an
+    // or-pattern. Panics if `self` is empty.
+    fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, 'tcx>> + Captures<'a> {
+        self.head().expand_or_pat().into_iter().map(move |pat| {
+            let mut new_patstack = PatStack::from_pattern(pat);
+            new_patstack.pats.extend_from_slice(&self.pats[1..]);
+            new_patstack
+        })
     }
 
     /// This computes `S(self.head_ctor(), self)`. See top of the file for explanations.
@@ -475,6 +494,17 @@ impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
     }
 }
 
+/// Pretty-printing for matrix row.
+impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "+")?;
+        for pat in self.iter() {
+            write!(f, " {} +", pat)?;
+        }
+        Ok(())
+    }
+}
+
 /// A 2D matrix.
 #[derive(Clone, PartialEq)]
 pub(super) struct Matrix<'p, 'tcx> {
@@ -491,13 +521,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.patterns.get(0).map(|r| r.len())
     }
 
-    /// Pushes a new row to the matrix. If the row starts with an or-pattern, this expands it.
+    /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
+    /// expands it.
     fn push(&mut self, row: PatStack<'p, 'tcx>) {
-        if let Some(rows) = row.expand_or_pat() {
-            for row in rows {
-                // We recursively expand the or-patterns of the new rows.
-                // This is necessary as we might have `0 | (1 | 2)` or e.g., `x @ 0 | x @ (1 | 2)`.
-                self.push(row)
+        if !row.is_empty() && row.head().is_or_pat() {
+            for row in row.expand_or_pat() {
+                self.patterns.push(row);
             }
         } else {
             self.patterns.push(row);
@@ -543,17 +572,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 /// Pretty-printer for matrices of patterns, example:
 ///
 /// ```text
-/// +++++++++++++++++++++++++++++
 /// + _     + []                +
-/// +++++++++++++++++++++++++++++
 /// + true  + [First]           +
-/// +++++++++++++++++++++++++++++
 /// + true  + [Second(true)]    +
-/// +++++++++++++++++++++++++++++
 /// + false + [_]               +
-/// +++++++++++++++++++++++++++++
 /// + _     + [_, _, tail @ ..] +
-/// +++++++++++++++++++++++++++++
 /// ```
 impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -561,17 +584,14 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
 
         let Matrix { patterns: m, .. } = self;
         let pretty_printed_matrix: Vec<Vec<String>> =
-            m.iter().map(|row| row.iter().map(|pat| format!("{:?}", pat)).collect()).collect();
+            m.iter().map(|row| row.iter().map(|pat| format!("{}", pat)).collect()).collect();
 
-        let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0);
+        let column_count = m.iter().map(|row| row.len()).next().unwrap_or(0);
         assert!(m.iter().all(|row| row.len() == column_count));
         let column_widths: Vec<usize> = (0..column_count)
             .map(|col| pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0))
             .collect();
 
-        let total_width = column_widths.iter().cloned().sum::<usize>() + column_count * 3 + 1;
-        let br = "+".repeat(total_width);
-        write!(f, "{}\n", br)?;
         for row in pretty_printed_matrix {
             write!(f, "+")?;
             for (column, pat_str) in row.into_iter().enumerate() {
@@ -580,7 +600,6 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
                 write!(f, " +")?;
             }
             write!(f, "\n")?;
-            write!(f, "{}\n", br)?;
         }
         Ok(())
     }
@@ -600,183 +619,318 @@ impl<'p, 'tcx> FromIterator<PatStack<'p, 'tcx>> for Matrix<'p, 'tcx> {
     }
 }
 
-/// Represents a set of `Span`s closed under the containment relation. That is, if a `Span` is
-/// contained in the set then all `Span`s contained in it are also implicitly contained in the set.
-/// In particular this means that when intersecting two sets, taking the intersection of some span
-/// and one of its subspans returns the subspan, whereas a simple `HashSet` would have returned an
-/// empty intersection.
-/// It is assumed that two spans don't overlap without one being contained in the other; in other
-/// words, that the inclusion structure forms a tree and not a DAG.
-/// Intersection is not very efficient. It compares everything pairwise. If needed it could be made
-/// faster by sorting the `Span`s and merging cleverly.
-#[derive(Debug, Clone, Default)]
-pub(crate) struct SpanSet {
-    /// The minimal set of `Span`s required to represent the whole set. If A and B are `Span`s in
-    /// the `SpanSet`, and A is a descendant of B, then only B will be in `root_spans`.
-    /// Invariant: the spans are disjoint.
-    root_spans: Vec<Span>,
+/// Given a pattern or a pattern-stack, this struct captures a set of its subpatterns. We use that
+/// to track reachable sub-patterns arising from or-patterns. In the absence of or-patterns this
+/// will always be either `Empty` (the whole pattern is unreachable) or `Full` (the whole pattern
+/// is reachable). When there are or-patterns, some subpatterns may be reachable while others
+/// aren't. In this case the whole pattern still counts as reachable, but we will lint the
+/// unreachable subpatterns.
+///
+/// This supports a limited set of operations, so not all possible sets of subpatterns can be
+/// represented. That's ok, we only want the ones that make sense for our usage.
+///
+/// What we're doing is illustrated by this:
+/// ```
+/// match (true, 0) {
+///     (true, 0) => {}
+///     (_, 1) => {}
+///     (true | false, 0 | 1) => {}
+/// }
+/// ```
+/// When we try the alternatives of the `true | false` or-pattern, the last `0` is reachable in the
+/// `false` alternative but not the `true`. So overall it is reachable. By contrast, the last `1`
+/// is not reachable in either alternative, so we want to signal this to the user.
+/// Therefore we take the union of sets of reachable patterns coming from different alternatives in
+/// order to figure out which subpatterns are overall reachable.
+///
+/// Invariant: we try to construct the smallest representation we can. In particular if
+/// `self.is_empty()` we ensure that `self` is `Empty`, and same with `Full`. This is not important
+/// for correctness currently.
+#[derive(Debug, Clone)]
+enum SubPatSet<'p, 'tcx> {
+    /// The empty set. This means the pattern is unreachable.
+    Empty,
+    /// The set containing the full pattern.
+    Full,
+    /// If the pattern is a pattern with a constructor or a pattern-stack, we store a set for each
+    /// of its subpatterns. Missing entries in the map are implicitly full, because that's the
+    /// common case.
+    Seq { subpats: FxHashMap<usize, SubPatSet<'p, 'tcx>> },
+    /// If the pattern is an or-pattern, we store a set for each of its alternatives. Missing
+    /// entries in the map are implicitly empty. Note: we always flatten nested or-patterns.
+    Alt {
+        subpats: FxHashMap<usize, SubPatSet<'p, 'tcx>>,
+        /// Counts the total number of alternatives in the pattern
+        alt_count: usize,
+        /// We keep the pattern around to retrieve spans.
+        pat: &'p Pat<'tcx>,
+    },
 }
 
-impl SpanSet {
-    /// Creates an empty set.
-    fn new() -> Self {
-        Self::default()
+impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
+    fn full() -> Self {
+        SubPatSet::Full
+    }
+    fn empty() -> Self {
+        SubPatSet::Empty
     }
 
-    /// Tests whether the set is empty.
-    pub(crate) fn is_empty(&self) -> bool {
-        self.root_spans.is_empty()
+    fn is_empty(&self) -> bool {
+        match self {
+            SubPatSet::Empty => true,
+            SubPatSet::Full => false,
+            // If any subpattern in a sequence is unreachable, the whole pattern is unreachable.
+            SubPatSet::Seq { subpats } => subpats.values().any(|set| set.is_empty()),
+            // An or-pattern is reachable if any of its alternatives is.
+            SubPatSet::Alt { subpats, .. } => subpats.values().all(|set| set.is_empty()),
+        }
     }
 
-    /// Iterate over the disjoint list of spans at the roots of this set.
-    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = Span> + Captures<'a> {
-        self.root_spans.iter().copied()
+    fn is_full(&self) -> bool {
+        match self {
+            SubPatSet::Empty => false,
+            SubPatSet::Full => true,
+            // The whole pattern is reachable only when all its alternatives are.
+            SubPatSet::Seq { subpats } => subpats.values().all(|sub_set| sub_set.is_full()),
+            // The whole or-pattern is reachable only when all its alternatives are.
+            SubPatSet::Alt { subpats, alt_count, .. } => {
+                subpats.len() == *alt_count && subpats.values().all(|set| set.is_full())
+            }
+        }
     }
 
-    /// Tests whether the set contains a given Span.
-    fn contains(&self, span: Span) -> bool {
-        self.iter().any(|root_span| root_span.contains(span))
-    }
-
-    /// Add a span to the set if we know the span has no intersection in this set.
-    fn push_nonintersecting(&mut self, new_span: Span) {
-        self.root_spans.push(new_span);
-    }
-
-    fn intersection_mut(&mut self, other: &Self) {
-        if self.is_empty() || other.is_empty() {
-            *self = Self::new();
+    /// Union `self` with `other`, mutating `self`.
+    fn union(&mut self, other: Self) {
+        use SubPatSet::*;
+        // Union with full stays full; union with empty changes nothing.
+        if self.is_full() || other.is_empty() {
+            return;
+        } else if self.is_empty() {
+            *self = other;
+            return;
+        } else if other.is_full() {
+            *self = Full;
             return;
         }
-        // Those that were in `self` but not contained in `other`
-        let mut leftover = SpanSet::new();
-        // We keep the elements in `self` that are also in `other`.
-        self.root_spans.retain(|span| {
-            let retain = other.contains(*span);
-            if !retain {
-                leftover.root_spans.push(*span);
+
+        match (&mut *self, other) {
+            (Seq { subpats: s_set }, Seq { subpats: mut o_set }) => {
+                s_set.retain(|i, s_sub_set| {
+                    // Missing entries count as full.
+                    let o_sub_set = o_set.remove(&i).unwrap_or(Full);
+                    s_sub_set.union(o_sub_set);
+                    // We drop full entries.
+                    !s_sub_set.is_full()
+                });
+                // Everything left in `o_set` is missing from `s_set`, i.e. counts as full. Since
+                // unioning with full returns full, we can drop those entries.
             }
-            retain
-        });
-        // We keep the elements in `other` that are also in the original `self`. You might think
-        // this is not needed because `self` already contains the intersection. But those aren't
-        // just sets of things. If `self = [a]`, `other = [b]` and `a` contains `b`, then `b`
-        // belongs in the intersection but we didn't catch it in the filtering above. We look at
-        // `leftover` instead of the full original `self` to avoid duplicates.
-        for span in other.iter() {
-            if leftover.contains(span) {
-                self.root_spans.push(span);
+            (Alt { subpats: s_set, .. }, Alt { subpats: mut o_set, .. }) => {
+                s_set.retain(|i, s_sub_set| {
+                    // Missing entries count as empty.
+                    let o_sub_set = o_set.remove(&i).unwrap_or(Empty);
+                    s_sub_set.union(o_sub_set);
+                    // We drop empty entries.
+                    !s_sub_set.is_empty()
+                });
+                // Everything left in `o_set` is missing from `s_set`, i.e. counts as empty. Since
+                // unioning with empty changes nothing, we can take those entries as is.
+                s_set.extend(o_set);
+            }
+            _ => bug!(),
+        }
+
+        if self.is_full() {
+            *self = Full;
+        }
+    }
+
+    /// Returns a list of the spans of the unreachable subpatterns. If `self` is empty (i.e. the
+    /// whole pattern is unreachable) we return `None`.
+    fn list_unreachable_spans(&self) -> Option<Vec<Span>> {
+        /// Panics if `set.is_empty()`.
+        fn fill_spans(set: &SubPatSet<'_, '_>, spans: &mut Vec<Span>) {
+            match set {
+                SubPatSet::Empty => bug!(),
+                SubPatSet::Full => {}
+                SubPatSet::Seq { subpats } => {
+                    for (_, sub_set) in subpats {
+                        fill_spans(sub_set, spans);
+                    }
+                }
+                SubPatSet::Alt { subpats, pat, alt_count, .. } => {
+                    let expanded = pat.expand_or_pat();
+                    for i in 0..*alt_count {
+                        let sub_set = subpats.get(&i).unwrap_or(&SubPatSet::Empty);
+                        if sub_set.is_empty() {
+                            // Found a unreachable subpattern.
+                            spans.push(expanded[i].span);
+                        } else {
+                            fill_spans(sub_set, spans);
+                        }
+                    }
+                }
             }
         }
+
+        if self.is_empty() {
+            return None;
+        }
+        if self.is_full() {
+            // No subpatterns are unreachable.
+            return Some(Vec::new());
+        }
+        let mut spans = Vec::new();
+        fill_spans(self, &mut spans);
+        Some(spans)
+    }
+
+    /// When `self` refers to a patstack that was obtained from specialization, after running
+    /// `unspecialize` it will refer to the original patstack before specialization.
+    fn unspecialize(self, arity: usize) -> Self {
+        use SubPatSet::*;
+        match self {
+            Full => Full,
+            Empty => Empty,
+            Seq { subpats } => {
+                // We gather the first `arity` subpatterns together and shift the remaining ones.
+                let mut new_subpats = FxHashMap::default();
+                let mut new_subpats_first_col = FxHashMap::default();
+                for (i, sub_set) in subpats {
+                    if i < arity {
+                        // The first `arity` indices are now part of the pattern in the first
+                        // column.
+                        new_subpats_first_col.insert(i, sub_set);
+                    } else {
+                        // Indices after `arity` are simply shifted
+                        new_subpats.insert(i - arity + 1, sub_set);
+                    }
+                }
+                // If `new_subpats_first_col` has no entries it counts as full, so we can omit it.
+                if !new_subpats_first_col.is_empty() {
+                    new_subpats.insert(0, Seq { subpats: new_subpats_first_col });
+                }
+                Seq { subpats: new_subpats }
+            }
+            Alt { .. } => bug!(), // `self` is a patstack
+        }
+    }
+
+    /// When `self` refers to a patstack that was obtained from splitting an or-pattern, after
+    /// running `unspecialize` it will refer to the original patstack before splitting.
+    ///
+    /// For example:
+    /// ```
+    /// match Some(true) {
+    ///     Some(true) => {}
+    ///     None | Some(true | false) => {}
+    /// }
+    /// ```
+    /// Here `None` would return the full set and `Some(true | false)` would return the set
+    /// containing `false`. After `unsplit_or_pat`, we want the set to contain `None` and `false`.
+    /// This is what this function does.
+    fn unsplit_or_pat(mut self, alt_id: usize, alt_count: usize, pat: &'p Pat<'tcx>) -> Self {
+        use SubPatSet::*;
+        if self.is_empty() {
+            return Empty;
+        }
+
+        // Subpatterns coming from inside the or-pattern alternative itself, e.g. in `None | Some(0
+        // | 1)`.
+        let set_first_col = match &mut self {
+            Full => Full,
+            Seq { subpats } => subpats.remove(&0).unwrap_or(Full),
+            Empty => unreachable!(),
+            Alt { .. } => bug!(), // `self` is a patstack
+        };
+        let mut subpats_first_col = FxHashMap::default();
+        subpats_first_col.insert(alt_id, set_first_col);
+        let set_first_col = Alt { subpats: subpats_first_col, pat, alt_count };
+
+        let mut subpats = match self {
+            Full => FxHashMap::default(),
+            Seq { subpats } => subpats,
+            Empty => unreachable!(),
+            Alt { .. } => bug!(), // `self` is a patstack
+        };
+        subpats.insert(0, set_first_col);
+        Seq { subpats }
     }
 }
 
+/// This carries the results of computing usefulness, as described at the top of the file. When
+/// checking usefulness of a match branch, we use the `NoWitnesses` variant, which also keeps track
+/// of potential unreachable sub-patterns (in the presence of or-patterns). When checking
+/// exhaustiveness of a whole match, we use the `WithWitnesses` variant, which carries a list of
+/// witnesses of non-exhaustiveness when there are any.
+/// Which variant to use is dictated by `WitnessPreference`.
 #[derive(Clone, Debug)]
-crate enum Usefulness<'tcx> {
-    /// Pontentially carries a set of sub-branches that have been found to be unreachable. Used
-    /// only in the presence of or-patterns, otherwise it stays empty.
-    Useful(SpanSet),
-    /// Carries a list of witnesses of non-exhaustiveness.
-    UsefulWithWitness(Vec<Witness<'tcx>>),
-    NotUseful,
+enum Usefulness<'p, 'tcx> {
+    /// Carries a set of subpatterns that have been found to be reachable. If empty, this indicates
+    /// the whole pattern is unreachable. If not, this indicates that the pattern is reachable but
+    /// that some sub-patterns may be unreachable (due to or-patterns). In the absence of
+    /// or-patterns this will always be either `Empty` (the whole pattern is unreachable) or `Full`
+    /// (the whole pattern is reachable).
+    NoWitnesses(SubPatSet<'p, 'tcx>),
+    /// Carries a list of witnesses of non-exhaustiveness. If empty, indicates that the whole
+    /// pattern is unreachable.
+    WithWitnesses(Vec<Witness<'tcx>>),
 }
 
-impl<'tcx> Usefulness<'tcx> {
+impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     fn new_useful(preference: WitnessPreference) -> Self {
         match preference {
-            ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
-            LeaveOutWitness => Useful(Default::default()),
+            ConstructWitness => WithWitnesses(vec![Witness(vec![])]),
+            LeaveOutWitness => NoWitnesses(SubPatSet::full()),
+        }
+    }
+    fn new_not_useful(preference: WitnessPreference) -> Self {
+        match preference {
+            ConstructWitness => WithWitnesses(vec![]),
+            LeaveOutWitness => NoWitnesses(SubPatSet::empty()),
+        }
+    }
+
+    /// Combine usefulnesses from two branches. This is an associative operation.
+    fn extend(&mut self, other: Self) {
+        match (&mut *self, other) {
+            (WithWitnesses(_), WithWitnesses(o)) if o.is_empty() => {}
+            (WithWitnesses(s), WithWitnesses(o)) if s.is_empty() => *self = WithWitnesses(o),
+            (WithWitnesses(s), WithWitnesses(o)) => s.extend(o),
+            (NoWitnesses(s), NoWitnesses(o)) => s.union(o),
+            _ => unreachable!(),
         }
     }
 
     /// When trying several branches and each returns a `Usefulness`, we need to combine the
     /// results together.
-    fn merge(usefulnesses: impl Iterator<Item = Self>) -> Self {
-        // If we have detected some unreachable sub-branches, we only want to keep them when they
-        // were unreachable in _all_ branches. Eg. in the following, the last `true` is unreachable
-        // in the second branch of the first or-pattern, but not otherwise. Therefore we don't want
-        // to lint that it is unreachable.
-        // ```
-        // match (true, true) {
-        //     (true, true) => {}
-        //     (false | true, false | true) => {}
-        // }
-        // ```
-        // Here however we _do_ want to lint that the last `false` is unreachable. So we don't want
-        // to intersect the spans that come directly from the or-pattern, since each branch of the
-        // or-pattern brings a new disjoint pattern.
-        // ```
-        // match None {
-        //     Some(false) => {}
-        //     None | Some(true | false) => {}
-        // }
-        // ```
-
-        // Is `None` when no branch was useful. Will often be `Some(Spanset::new())` because the
-        // sets are only non-empty in the presence of or-patterns.
-        let mut unreachables: Option<SpanSet> = None;
-        // Witnesses of usefulness, if any.
-        let mut witnesses = Vec::new();
-
+    fn merge(pref: WitnessPreference, usefulnesses: impl Iterator<Item = Self>) -> Self {
+        let mut ret = Self::new_not_useful(pref);
         for u in usefulnesses {
-            match u {
-                Useful(spans) if spans.is_empty() => {
-                    // Once we reach the empty set, more intersections won't change the result.
-                    return Useful(SpanSet::new());
-                }
-                Useful(spans) => {
-                    if let Some(unreachables) = &mut unreachables {
-                        if !unreachables.is_empty() {
-                            unreachables.intersection_mut(&spans);
-                        }
-                        if unreachables.is_empty() {
-                            return Useful(SpanSet::new());
-                        }
-                    } else {
-                        unreachables = Some(spans);
-                    }
-                }
-                NotUseful => {}
-                UsefulWithWitness(wits) => {
-                    witnesses.extend(wits);
+            ret.extend(u);
+            if let NoWitnesses(subpats) = &ret {
+                if subpats.is_full() {
+                    // Once we reach the full set, more unions won't change the result.
+                    return ret;
                 }
             }
         }
-
-        if !witnesses.is_empty() {
-            UsefulWithWitness(witnesses)
-        } else if let Some(unreachables) = unreachables {
-            Useful(unreachables)
-        } else {
-            NotUseful
-        }
+        ret
     }
 
     /// After calculating the usefulness for a branch of an or-pattern, call this to make this
     /// usefulness mergeable with those from the other branches.
-    fn unsplit_or_pat(self, this_span: Span, or_pat_spans: &[Span]) -> Self {
+    fn unsplit_or_pat(self, alt_id: usize, alt_count: usize, pat: &'p Pat<'tcx>) -> Self {
         match self {
-            Useful(mut spans) => {
-                // We register the spans of the other branches of this or-pattern as being
-                // unreachable from this one. This ensures that intersecting together the sets of
-                // spans returns what we want.
-                // Until we optimize `SpanSet` however, intersecting this entails a number of
-                // comparisons quadratic in the number of branches.
-                for &span in or_pat_spans {
-                    if span != this_span {
-                        spans.push_nonintersecting(span);
-                    }
-                }
-                Useful(spans)
-            }
-            x => x,
+            NoWitnesses(subpats) => NoWitnesses(subpats.unsplit_or_pat(alt_id, alt_count, pat)),
+            WithWitnesses(_) => bug!(),
         }
     }
 
     /// After calculating usefulness after a specialization, call this to recontruct a usefulness
     /// that makes sense for the matrix pre-specialization. This new usefulness can then be merged
     /// with the results of specializing with the other constructors.
-    fn apply_constructor<'p>(
+    fn apply_constructor(
         self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
         matrix: &Matrix<'p, 'tcx>, // used to compute missing ctors
@@ -784,7 +938,8 @@ impl<'tcx> Usefulness<'tcx> {
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Self {
         match self {
-            UsefulWithWitness(witnesses) => {
+            WithWitnesses(witnesses) if witnesses.is_empty() => WithWitnesses(witnesses),
+            WithWitnesses(witnesses) => {
                 let new_witnesses = if matches!(ctor, Constructor::Missing) {
                     let mut split_wildcard = SplitWildcard::new(pcx);
                     split_wildcard.split(pcx, matrix.head_ctors(pcx.cx));
@@ -814,9 +969,9 @@ impl<'tcx> Usefulness<'tcx> {
                         .map(|witness| witness.apply_constructor(pcx, &ctor, ctor_wild_subpatterns))
                         .collect()
                 };
-                UsefulWithWitness(new_witnesses)
+                WithWitnesses(new_witnesses)
             }
-            x => x,
+            NoWitnesses(subpats) => NoWitnesses(subpats.unspecialize(ctor_wild_subpatterns.len())),
         }
     }
 }
@@ -924,6 +1079,7 @@ impl<'tcx> Witness<'tcx> {
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
+#[instrument(skip(cx, matrix, witness_preference, hir_id, is_under_guard, is_top_level))]
 fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
@@ -932,9 +1088,9 @@ fn is_useful<'p, 'tcx>(
     hir_id: HirId,
     is_under_guard: bool,
     is_top_level: bool,
-) -> Usefulness<'tcx> {
+) -> Usefulness<'p, 'tcx> {
+    debug!("matrix,v={:?}{:?}", matrix, v);
     let Matrix { patterns: rows, .. } = matrix;
-    debug!("is_useful({:#?}, {:#?})", matrix, v);
 
     // The base case. We are pattern-matching on () and the return value is
     // based on whether our matrix has a row or not.
@@ -942,12 +1098,14 @@ fn is_useful<'p, 'tcx>(
     // first and then, if v is non-empty, the return value is based on whether
     // the type of the tuple we're checking is inhabited or not.
     if v.is_empty() {
-        return if rows.is_empty() {
+        let ret = if rows.is_empty() {
             Usefulness::new_useful(witness_preference)
         } else {
-            NotUseful
+            Usefulness::new_not_useful(witness_preference)
         };
-    };
+        debug!(?ret);
+        return ret;
+    }
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
@@ -955,16 +1113,15 @@ fn is_useful<'p, 'tcx>(
     let ty = matrix.heads().next().map_or(v.head().ty, |r| r.ty);
     let pcx = PatCtxt { cx, ty, span: v.head().span, is_top_level };
 
-    debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", pcx.ty, v.head());
-
     // If the first pattern is an or-pattern, expand it.
-    let ret = if let Some(vs) = v.expand_or_pat() {
-        let subspans: Vec<_> = vs.iter().map(|v| v.head().span).collect();
-        // We expand the or pattern, trying each of its branches in turn and keeping careful track
-        // of possible unreachable sub-branches.
+    let ret = if v.head().is_or_pat() {
+        debug!("expanding or-pattern");
+        let v_head = v.head();
+        let vs: Vec<_> = v.expand_or_pat().collect();
+        let alt_count = vs.len();
+        // We try each or-pattern branch in turn.
         let mut matrix = matrix.clone();
-        let usefulnesses = vs.into_iter().map(|v| {
-            let v_span = v.head().span;
+        let usefulnesses = vs.into_iter().enumerate().map(|(i, v)| {
             let usefulness =
                 is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
             // If pattern has a guard don't add it to the matrix.
@@ -973,9 +1130,9 @@ fn is_useful<'p, 'tcx>(
                 // branches like `Some(_) | Some(0)`.
                 matrix.push(v);
             }
-            usefulness.unsplit_or_pat(v_span, &subspans)
+            usefulness.unsplit_or_pat(i, alt_count, v_head)
         });
-        Usefulness::merge(usefulnesses)
+        Usefulness::merge(witness_preference, usefulnesses)
     } else {
         let v_ctor = v.head_ctor(cx);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
@@ -993,6 +1150,7 @@ fn is_useful<'p, 'tcx>(
         // witness the usefulness of `v`.
         let start_matrix = &matrix;
         let usefulnesses = split_ctors.into_iter().map(|ctor| {
+            debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
             let spec_matrix =
@@ -1002,9 +1160,9 @@ fn is_useful<'p, 'tcx>(
                 is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false);
             usefulness.apply_constructor(pcx, start_matrix, &ctor, &ctor_wild_subpatterns)
         });
-        Usefulness::merge(usefulnesses)
+        Usefulness::merge(witness_preference, usefulnesses)
     };
-    debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
+    debug!(?ret);
     ret
 }
 
@@ -1017,10 +1175,21 @@ crate struct MatchArm<'p, 'tcx> {
     crate has_guard: bool,
 }
 
+/// Indicates whether or not a given arm is reachable.
+#[derive(Clone, Debug)]
+crate enum Reachability {
+    /// The arm is reachable. This additionally carries a set of or-pattern branches that have been
+    /// found to be unreachable despite the overall arm being reachable. Used only in the presence
+    /// of or-patterns, otherwise it stays empty.
+    Reachable(Vec<Span>),
+    /// The arm is unreachable.
+    Unreachable,
+}
+
 /// The output of checking a match for exhaustiveness and arm reachability.
 crate struct UsefulnessReport<'p, 'tcx> {
     /// For each arm of the input, whether that arm is reachable after the arms above it.
-    crate arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Usefulness<'tcx>)>,
+    crate arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Reachability)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
     crate non_exhaustiveness_witnesses: Vec<super::Pat<'tcx>>,
@@ -1048,7 +1217,14 @@ crate fn compute_match_usefulness<'p, 'tcx>(
             if !arm.has_guard {
                 matrix.push(v);
             }
-            (arm, usefulness)
+            let reachability = match usefulness {
+                NoWitnesses(subpats) if subpats.is_empty() => Reachability::Unreachable,
+                NoWitnesses(subpats) => {
+                    Reachability::Reachable(subpats.list_unreachable_spans().unwrap())
+                }
+                WithWitnesses(..) => bug!(),
+            };
+            (arm, reachability)
         })
         .collect();
 
@@ -1056,15 +1232,8 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness = is_useful(cx, &matrix, &v, ConstructWitness, scrut_hir_id, false, true);
     let non_exhaustiveness_witnesses = match usefulness {
-        NotUseful => vec![], // Wildcard pattern isn't useful, so the match is exhaustive.
-        UsefulWithWitness(pats) => {
-            if pats.is_empty() {
-                bug!("Exhaustiveness check returned no witnesses")
-            } else {
-                pats.into_iter().map(|w| w.single_pattern()).collect()
-            }
-        }
-        Useful(_) => bug!(),
+        WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
+        NoWitnesses(_) => bug!(),
     };
     UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses }
 }

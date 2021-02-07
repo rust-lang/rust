@@ -48,6 +48,25 @@ fn main() {
         (1 | 1,) => {} //~ ERROR unreachable
         _ => {}
     }
+    match 0 {
+        (0 | 1) | 1 => {} //~ ERROR unreachable
+        _ => {}
+    }
+    match 0 {
+        // We get two errors because recursive or-pattern expansion means we don't notice the two
+        // errors span a whole pattern. This could be better but doesn't matter much
+        0 | (0 | 0) => {}
+        //~^ ERROR unreachable
+        //~| ERROR unreachable
+        _ => {}
+    }
+    match None {
+        // There is only one error that correctly points to the whole subpattern
+        Some(0) |
+            Some( //~ ERROR unreachable
+                0 | 0) => {}
+        _ => {}
+    }
     match [0; 2] {
         [0
             | 0 //~ ERROR unreachable
@@ -84,8 +103,8 @@ fn main() {
     }
     macro_rules! t_or_f {
         () => {
-            (true // FIXME: should be unreachable
-                        | false)
+            (true //~ ERROR unreachable
+            | false)
         };
     }
     match (true, None) {

@@ -723,8 +723,6 @@ impl<'tcx> Constructor<'tcx> {
     where
         'tcx: 'a,
     {
-        debug!("Constructor::split({:#?})", self);
-
         match self {
             Wildcard => {
                 let mut split_wildcard = SplitWildcard::new(pcx);
