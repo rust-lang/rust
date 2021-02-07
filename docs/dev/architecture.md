@@ -39,6 +39,14 @@ The client can submit a small delta of input data (typically, a change to a sing
 
 The underlying engine makes sure that model is computed lazily (on-demand) and can be quickly updated for small modifications.
 
+## Entry Points
+
+`crates/rust-analyzer/src/bin/main.rs` contains the main function which spawns LSP.
+This is *the* entry point, but it front-loads a lot of complexity, so its fine to just skim through it.
+
+`crates/rust-analyzer/src/handlers.rs` implements all LSP requests and is a great place to start if you are already familiar with LSP.
+
+`Analysis` and `AnalysisHost` types define the main API.
 
 ## Code Map
 
@@ -265,7 +273,7 @@ And the client (`proc_macro_api`) provides an interface to talk to that server s
 And then token trees are passed from client, and the server will load the corresponding dynamic library (which built by `cargo`).
 And due to the fact the api for getting result from proc macro are always unstable in `rustc`,
 we maintain our own copy (and paste) of that part of code to allow us to build the whole thing in stable rust.
- 
+
  **Architecture Invariant:**
 Bad proc macros may panic or segfault accidentally. So we run it in another process and recover it from fatal error.
 And they may be non-deterministic which conflict how `salsa` works, so special attention is required.
