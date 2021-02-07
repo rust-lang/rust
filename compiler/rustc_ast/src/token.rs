@@ -835,16 +835,6 @@ impl Nonterminal {
                                 .map_or(false, |p| p.starts_with(prefix))
                     };
 
-                    if (macro_name == sym::impl_macros
-                        && matches_prefix("time-macros-impl", "lib.rs"))
-                        || (macro_name == sym::arrays && matches_prefix("js-sys", "lib.rs"))
-                    {
-                        let snippet = source_map.span_to_snippet(orig_span);
-                        if snippet.as_deref() == Ok("$name") {
-                            return Some((*ident, *is_raw));
-                        }
-                    }
-
                     if macro_name == sym::tuple_from_req
                         && (matches_prefix("actix-web", "extract.rs")
                             || matches_prefix("actori-web", "extract.rs"))
