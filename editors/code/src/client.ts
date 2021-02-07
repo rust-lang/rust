@@ -138,7 +138,7 @@ export function createClient(serverPath: string, cwd: string, extraEnv: Env): lc
                                 command: "rust-analyzer.applyActionGroup",
                                 title: "",
                                 arguments: [items.map((item) => {
-                                    return { label: item.title, arguments: item.command!!.arguments!![0] };
+                                    return { label: item.title, arguments: item.command.arguments[0] };
                                 })],
                             };
 

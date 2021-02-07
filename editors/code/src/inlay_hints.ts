@@ -36,7 +36,7 @@ export function activateInlayHints(ctx: Ctx) {
         maybeUpdater.onConfigChange, maybeUpdater, ctx.subscriptions
     );
 
-    maybeUpdater.onConfigChange();
+    maybeUpdater.onConfigChange().catch(console.error);
 }
 
 const typeHints = createHintStyle("type");

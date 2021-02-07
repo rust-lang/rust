@@ -66,7 +66,7 @@ export async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick,
             quickPick.onDidHide(() => close()),
             quickPick.onDidAccept(() => close(quickPick.selectedItems[0])),
             quickPick.onDidTriggerButton((_button) => {
-                (async () => await makeDebugConfig(ctx, quickPick.activeItems[0].runnable))();
+                makeDebugConfig(ctx, quickPick.activeItems[0].runnable).catch(console.error);
                 close();
             }),
             quickPick.onDidChangeActive((active) => {
