@@ -440,6 +440,7 @@ crate fn from_function_method(function: clean::Function, has_body: bool) -> Meth
         decl: decl.into(),
         generics: generics.into(),
         header: stringify_header(&header),
+        abi: header.abi.to_string(),
         has_body,
     }
 }
