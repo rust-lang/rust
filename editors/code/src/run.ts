@@ -146,7 +146,8 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         overrideCargo: runnable.args.overrideCargo,
     };
 
-    const target = vscode.workspace.workspaceFolders[0]; // safe, see main activate()
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()
     const cargoTask = await tasks.buildCargoTask(target, definition, runnable.label, args, config.cargoRunner, true);
     cargoTask.presentationOptions.clear = true;
 
