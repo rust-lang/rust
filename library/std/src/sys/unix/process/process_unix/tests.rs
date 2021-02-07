@@ -1,3 +1,7 @@
+use crate::os::unix::process::{CommandExt, ExitStatusExt};
+use crate::panic::catch_unwind;
+use crate::process::Command;
+
 #[test]
 fn exitstatus_display_tests() {
     // In practice this is the same on every Unix.
@@ -27,4 +31,23 @@ fn exitstatus_display_tests() {
     if cfg!(all(target_os = "linux", target_env = "gnu")) {
         t(0x000ff, "unrecognised wait status: 255 0xff");
     }
+}
+
+#[test]
+fn test_command_fork_no_unwind() {
+    let got = catch_unwind(|| {
+        let mut c = Command::new("echo");
+        c.arg("hi");
+        unsafe {
+            c.pre_exec(|| panic!("{}", "crash now!"));
+        }
+        let st = c.status().expect("failed to get command status");
+        dbg!(st);
+        st
+    });
+    dbg!(&got);
+    let status = got.expect("panic unexpectedly propagated");
+    dbg!(status);
+    let signal = status.signal().expect("expected child process to die of signal");
+    assert!(signal == libc::SIGABRT || signal == libc::SIGILL);
 }
