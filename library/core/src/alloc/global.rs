@@ -20,24 +20,51 @@ use crate::ptr;
 ///
 /// # Example
 ///
-/// ```no_run
-/// use std::alloc::{GlobalAlloc, Layout, alloc};
-/// use std::ptr::null_mut;
+/// ```
+/// use std::alloc::{GlobalAlloc, Layout};
+/// use std::cell::UnsafeCell;
+/// use std::process::abort;
+/// use std::sync::atomic::{Ordering, AtomicUsize};
 ///
-/// struct MyAllocator;
-///
-/// unsafe impl GlobalAlloc for MyAllocator {
-///     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 { null_mut() }
-///     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
+/// const ARENA: usize = 100 * 1024;
+/// struct SimpleAllocator {
+///     arena: UnsafeCell<[u8; ARENA]>,
+///     counter: AtomicUsize,
 /// }
 ///
 /// #[global_allocator]
-/// static A: MyAllocator = MyAllocator;
+/// static ALLOCATOR: SimpleAllocator = SimpleAllocator {
+///     arena: UnsafeCell::new([0x55; ARENA]),
+///     counter: AtomicUsize::new(0),
+/// };
+///
+/// unsafe impl Sync for SimpleAllocator { }
+///
+/// unsafe impl GlobalAlloc for SimpleAllocator {
+///     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+///         let align_mask = layout.align() - 1;
+///         let size = layout.size();
+///         let mut result = 0;
+///         let mut new = 0;
+///         self.counter.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |mut counter| {
+///             counter += align_mask;
+///             counter &= !align_mask;
+///             result = counter;
+///             counter += size;
+///             new = counter;
+///             Some(counter)
+///         }).unwrap();
+///         if new > ARENA { abort(); }
+///         (self.arena.get() as *mut u8).add(result)
+///     }
+///     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
+///     }
+/// }
 ///
 /// fn main() {
-///     unsafe {
-///         assert!(alloc(Layout::new::<u32>()).is_null())
-///     }
+///     let _s = format!("allocating a string!");
+///     let sofar = ALLOCATOR.counter.load(Ordering::Acquire);
+///     println!("allocated so far: {}", sofar);
 /// }
 /// ```
 ///
