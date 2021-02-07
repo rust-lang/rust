@@ -285,13 +285,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_eq_type(&e, ty);
                 ty
             }
-            ExprKind::If(ref cond, ref then_expr, ref opt_else_expr) => self.check_then_else(
-                &cond,
-                then_expr,
-                opt_else_expr.as_ref().map(|e| &**e),
-                expr.span,
-                expected,
-            ),
+            ExprKind::If(cond, then_expr, opt_else_expr) => {
+                self.check_then_else(cond, then_expr, opt_else_expr, expr.span, expected)
+            }
             ExprKind::DropTemps(ref e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(ref args) => self.check_expr_array(args, expected, expr),
             ExprKind::ConstBlock(ref anon_const) => self.to_const(anon_const).ty,
