@@ -1790,13 +1790,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let mut v = Vec::with_capacity(10);
     /// v.extend([1, 2, 3].iter().cloned());
     /// let slice = v.clone().into_boxed_slice();
-    /// let static_ref = Box::leak(slice);
     ///
     /// unsafe {
-    ///     let p = v.as_mut_ptr();
-    ///     let len = v.len();
-    ///     let rebuilt = Vec::from_raw_parts(p, len, static_ref.len());
-    ///     assert_eq!(rebuilt.capacity(), 3);
+    ///     let p = slice.as_ptr();
+    ///     let rebuilt = std::slice::from_raw_parts(p, slice.len());
+    ///     assert_eq!(rebuilt.len(), 3);
     /// }
     /// ```
     #[stable(feature = "vec_leak", since = "1.47.0")]
