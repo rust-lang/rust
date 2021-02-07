@@ -18,13 +18,13 @@ error: malformed `derive` attribute input
   --> $DIR/malformed-special-attrs.rs:7:1
    |
 LL | #[derive]
-   | ^^^^^^^^^ help: missing traits to be derived: `#[derive(Trait1, Trait2, ...)]`
+   | ^^^^^^^^^ help: must be of the form: `#[derive(Trait1, Trait2, ...)]`
 
 error: malformed `derive` attribute input
   --> $DIR/malformed-special-attrs.rs:10:1
    |
 LL | #[derive = ""]
-   | ^^^^^^^^^^^^^^ help: missing traits to be derived: `#[derive(Trait1, Trait2, ...)]`
+   | ^^^^^^^^^^^^^^ help: must be of the form: `#[derive(Trait1, Trait2, ...)]`
 
 error: aborting due to 4 previous errors
 

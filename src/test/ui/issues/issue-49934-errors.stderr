@@ -1,15 +1,14 @@
-error[E0774]: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-49934-errors.rs:1:8
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/issue-49934-errors.rs:1:10
    |
 LL | fn foo<#[derive(Debug)] T>() {
-   |        ^^^^^^^^^^^^^^^^
+   |          ^^^^^^ not a non-macro attribute
 
-error[E0774]: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-49934-errors.rs:4:9
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/issue-49934-errors.rs:3:11
    |
 LL |         #[derive(Debug)]
-   |         ^^^^^^^^^^^^^^^^
+   |           ^^^^^^ not a non-macro attribute
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0774`.

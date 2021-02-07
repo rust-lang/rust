@@ -14,8 +14,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
-use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand};
-use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::base::{Indeterminate, ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind};
 use rustc_feature::is_builtin_attr_name;
@@ -24,7 +23,8 @@ use rustc_hir::def_id;
 use rustc_hir::PrimTy;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
-use rustc_session::lint::builtin::{SOFT_UNSTABLE, UNUSED_MACROS};
+use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNUSED_MACROS};
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -227,7 +227,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
         invoc: &Invocation,
         eager_expansion_root: ExpnId,
         force: bool,
-    ) -> Result<InvocationRes, Indeterminate> {
+    ) -> Result<Lrc<SyntaxExtension>, Indeterminate> {
         let invoc_id = invoc.expansion_data.id;
         let parent_scope = match self.invocation_parent_scopes.get(&invoc_id) {
             Some(parent_scope) => *parent_scope,
@@ -244,65 +244,15 @@ impl<'a> ResolverExpand for Resolver<'a> {
             }
         };
 
-        let (path, kind, inner_attr, derives, after_derive) = match invoc.kind {
-            InvocationKind::Attr { ref attr, ref derives, after_derive, .. } => (
+        let (path, kind, inner_attr, derives) = match invoc.kind {
+            InvocationKind::Attr { ref attr, ref derives, .. } => (
                 &attr.get_normal_item().path,
                 MacroKind::Attr,
                 attr.style == ast::AttrStyle::Inner,
                 self.arenas.alloc_ast_paths(derives),
-                after_derive,
             ),
-            InvocationKind::Bang { ref mac, .. } => {
-                (&mac.path, MacroKind::Bang, false, &[][..], false)
-            }
-            InvocationKind::Derive { ref path, .. } => {
-                (path, MacroKind::Derive, false, &[][..], false)
-            }
-            InvocationKind::DeriveContainer { ref derives, .. } => {
-                // Block expansion of the container until we resolve all derives in it.
-                // This is required for two reasons:
-                // - Derive helper attributes are in scope for the item to which the `#[derive]`
-                //   is applied, so they have to be produced by the container's expansion rather
-                //   than by individual derives.
-                // - Derives in the container need to know whether one of them is a built-in `Copy`.
-                // FIXME: Try to avoid repeated resolutions for derives here and in expansion.
-                let mut exts = Vec::new();
-                let mut helper_attrs = Vec::new();
-                for path in derives {
-                    exts.push(
-                        match self.resolve_macro_path(
-                            path,
-                            Some(MacroKind::Derive),
-                            &parent_scope,
-                            true,
-                            force,
-                        ) {
-                            Ok((Some(ext), _)) => {
-                                let span = path
-                                    .segments
-                                    .last()
-                                    .unwrap()
-                                    .ident
-                                    .span
-                                    .normalize_to_macros_2_0();
-                                helper_attrs.extend(
-                                    ext.helper_attrs.iter().map(|name| Ident::new(*name, span)),
-                                );
-                                if ext.builtin_name == Some(sym::Copy) {
-                                    self.containers_deriving_copy.insert(invoc_id);
-                                }
-                                ext
-                            }
-                            Ok(_) | Err(Determinacy::Determined) => {
-                                self.dummy_ext(MacroKind::Derive)
-                            }
-                            Err(Determinacy::Undetermined) => return Err(Indeterminate),
-                        },
-                    )
-                }
-                self.helper_attrs.insert(invoc_id, helper_attrs);
-                return Ok(InvocationRes::DeriveContainer(exts));
-            }
+            InvocationKind::Bang { ref mac, .. } => (&mac.path, MacroKind::Bang, false, &[][..]),
+            InvocationKind::Derive { ref path, .. } => (path, MacroKind::Derive, false, &[][..]),
         };
 
         // Derives are not included when `invocations` are collected, so we have to add them here.
@@ -328,14 +278,41 @@ impl<'a> ResolverExpand for Resolver<'a> {
         ));
 
         if let Res::Def(_, _) = res {
-            if after_derive {
-                self.session.span_err(span, "macro attributes must be placed before `#[derive]`");
-            }
             let normal_module_def_id = self.macro_def_scope(invoc_id).nearest_parent_mod;
             self.definitions.add_parent_module_of_macro_def(invoc_id, normal_module_def_id);
+
+            // Gate macro attributes in `#[derive]` output.
+            if !self.session.features_untracked().macro_attributes_in_derive_output
+                && kind == MacroKind::Attr
+                && ext.builtin_name != Some(sym::derive)
+            {
+                let mut expn_id = parent_scope.expansion;
+                loop {
+                    // Helper attr table is a quick way to determine whether the attr is `derive`.
+                    if self.helper_attrs.contains_key(&expn_id) {
+                        feature_err(
+                            &self.session.parse_sess,
+                            sym::macro_attributes_in_derive_output,
+                            path.span,
+                            "macro attributes in `#[derive]` output are unstable",
+                        )
+                        .emit();
+                        break;
+                    } else {
+                        let expn_data = expn_id.expn_data();
+                        match expn_data.kind {
+                            ExpnKind::Root
+                            | ExpnKind::Macro(MacroKind::Bang | MacroKind::Derive, _) => {
+                                break;
+                            }
+                            _ => expn_id = expn_data.parent,
+                        }
+                    }
+                }
+            }
         }
 
-        Ok(InvocationRes::Single(ext))
+        Ok(ext)
     }
 
     fn check_unused_macros(&mut self) {
@@ -344,7 +321,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
         }
     }
 
-    fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId {
+    fn lint_node_id(&self, expn_id: ExpnId) -> NodeId {
         // FIXME - make this more precise. This currently returns the NodeId of the
         // nearest closing item - we should try to return the closest parent of the ExpnId
         self.invocation_parents
@@ -354,6 +331,63 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool {
         self.containers_deriving_copy.contains(&expn_id)
+    }
+
+    fn resolve_derives(
+        &mut self,
+        expn_id: ExpnId,
+        derives: Vec<ast::Path>,
+        force: bool,
+    ) -> Result<(), Indeterminate> {
+        // Block expansion of the container until we resolve all derives in it.
+        // This is required for two reasons:
+        // - Derive helper attributes are in scope for the item to which the `#[derive]`
+        //   is applied, so they have to be produced by the container's expansion rather
+        //   than by individual derives.
+        // - Derives in the container need to know whether one of them is a built-in `Copy`.
+        // FIXME: Try to cache intermediate results to avoid resolving same derives multiple times.
+        let parent_scope = self.invocation_parent_scopes[&expn_id];
+        let mut exts = Vec::new();
+        let mut helper_attrs = Vec::new();
+        let mut has_derive_copy = false;
+        for path in derives {
+            exts.push((
+                match self.resolve_macro_path(
+                    &path,
+                    Some(MacroKind::Derive),
+                    &parent_scope,
+                    true,
+                    force,
+                ) {
+                    Ok((Some(ext), _)) => {
+                        let span =
+                            path.segments.last().unwrap().ident.span.normalize_to_macros_2_0();
+                        helper_attrs
+                            .extend(ext.helper_attrs.iter().map(|name| Ident::new(*name, span)));
+                        has_derive_copy |= ext.builtin_name == Some(sym::Copy);
+                        ext
+                    }
+                    Ok(_) | Err(Determinacy::Determined) => self.dummy_ext(MacroKind::Derive),
+                    Err(Determinacy::Undetermined) => return Err(Indeterminate),
+                },
+                path,
+            ))
+        }
+        self.derive_resolutions.insert(expn_id, exts);
+        self.helper_attrs.insert(expn_id, helper_attrs);
+        // Mark this derive as having `Copy` either if it has `Copy` itself or if its parent derive
+        // has `Copy`, to support cases like `#[derive(Clone, Copy)] #[derive(Debug)]`.
+        if has_derive_copy || self.has_derive_copy(parent_scope.expansion) {
+            self.containers_deriving_copy.insert(expn_id);
+        }
+        Ok(())
+    }
+
+    fn take_derive_resolutions(
+        &mut self,
+        expn_id: ExpnId,
+    ) -> Option<Vec<(Lrc<SyntaxExtension>, ast::Path)>> {
+        self.derive_resolutions.remove(&expn_id)
     }
 
     // The function that implements the resolution logic of `#[cfg_accessible(path)]`.
@@ -818,6 +852,8 @@ impl<'a> Resolver<'a> {
                                 let is_builtin = |res| {
                                     matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Builtin(..)))
                                 };
+                                let derive_helper =
+                                    Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
                                 let derive_helper_compat =
                                     Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat);
 
@@ -826,7 +862,7 @@ impl<'a> Resolver<'a> {
                                 } else if is_builtin(innermost_res) || is_builtin(res) {
                                     Some(AmbiguityKind::BuiltinAttr)
                                 } else if innermost_res == derive_helper_compat
-                                    || res == derive_helper_compat
+                                    || res == derive_helper_compat && innermost_res != derive_helper
                                 {
                                     Some(AmbiguityKind::DeriveHelper)
                                 } else if innermost_flags.contains(Flags::MACRO_RULES)
@@ -992,6 +1028,15 @@ impl<'a> Resolver<'a> {
                     let res = binding.res();
                     let seg = Segment::from_ident(ident);
                     check_consistency(self, &[seg], ident.span, kind, initial_res, res);
+                    if res == Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat) {
+                        self.lint_buffer.buffer_lint_with_diagnostic(
+                            LEGACY_DERIVE_HELPERS,
+                            self.lint_node_id(parent_scope.expansion),
+                            ident.span,
+                            "derive helper attribute is used before it is introduced",
+                            BuiltinLintDiagnostics::LegacyDeriveHelpers(binding.span),
+                        );
+                    }
                 }
                 Err(..) => {
                     let expected = kind.descr_expected();
@@ -1078,7 +1123,7 @@ impl<'a> Resolver<'a> {
     crate fn check_reserved_macro_name(&mut self, ident: Ident, res: Res) {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
-        if ident.name == sym::cfg || ident.name == sym::cfg_attr || ident.name == sym::derive {
+        if ident.name == sym::cfg || ident.name == sym::cfg_attr {
             let macro_kind = self.get_macro(res).map(|ext| ext.macro_kind());
             if macro_kind.is_some() && sub_namespace_match(macro_kind, Some(MacroKind::Attr)) {
                 self.session.span_err(

@@ -1,6 +1,8 @@
+// check-pass
+
 #![deny(unused)]
 
-#[derive()] //~ ERROR unused attribute
+#[derive()] // OK
 struct _Bar;
 
 pub fn main() {}

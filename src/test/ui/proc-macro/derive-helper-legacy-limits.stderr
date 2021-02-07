@@ -1,0 +1,8 @@
+error: cannot find attribute `empty_helper` in this scope
+  --> $DIR/derive-helper-legacy-limits.rs:17:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -69,6 +69,11 @@ pub use crate::macros::builtin::{
     bench, global_allocator, test, test_case, RustcDecodable, RustcEncodable,
 };
 
+#[cfg(not(bootstrap))]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(no_inline)]
+pub use crate::macros::builtin::derive;
+
 #[unstable(
     feature = "cfg_accessible",
     issue = "64797",

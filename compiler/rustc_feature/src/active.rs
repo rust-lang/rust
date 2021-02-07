@@ -634,6 +634,10 @@ declare_features! (
 
     /// Lessens the requirements for structs to implement `Unsize`.
     (active, relaxed_struct_unsize, "1.51.0", Some(1), None),
+
+    /// Allows macro attributes to observe output of `#[derive]`.
+    (active, macro_attributes_in_derive_output, "1.51.0", Some(81119), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

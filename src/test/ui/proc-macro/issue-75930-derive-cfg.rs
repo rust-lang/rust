@@ -13,7 +13,8 @@
 #[macro_use]
 extern crate test_macros;
 
-#[print_helper(a)]
+#[print_helper(a)] //~ WARN derive helper attribute is used before it is introduced
+                   //~| WARN this was previously accepted
 #[cfg_attr(not(FALSE), allow(dead_code))]
 #[print_attr]
 #[derive(Print)]
