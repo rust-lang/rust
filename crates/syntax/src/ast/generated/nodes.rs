@@ -1401,15 +1401,15 @@ pub enum FieldList {
     TupleFieldList(TupleFieldList),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AdtDef {
+pub enum Adt {
     Enum(Enum),
     Struct(Struct),
     Union(Union),
 }
-impl ast::AttrsOwner for AdtDef {}
-impl ast::GenericParamsOwner for AdtDef {}
-impl ast::NameOwner for AdtDef {}
-impl ast::VisibilityOwner for AdtDef {}
+impl ast::AttrsOwner for Adt {}
+impl ast::GenericParamsOwner for Adt {}
+impl ast::NameOwner for Adt {}
+impl ast::VisibilityOwner for Adt {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
     Const(Const),
@@ -3394,16 +3394,16 @@ impl AstNode for FieldList {
         }
     }
 }
-impl From<Enum> for AdtDef {
-    fn from(node: Enum) -> AdtDef { AdtDef::Enum(node) }
+impl From<Enum> for Adt {
+    fn from(node: Enum) -> Adt { Adt::Enum(node) }
 }
-impl From<Struct> for AdtDef {
-    fn from(node: Struct) -> AdtDef { AdtDef::Struct(node) }
+impl From<Struct> for Adt {
+    fn from(node: Struct) -> Adt { Adt::Struct(node) }
 }
-impl From<Union> for AdtDef {
-    fn from(node: Union) -> AdtDef { AdtDef::Union(node) }
+impl From<Union> for Adt {
+    fn from(node: Union) -> Adt { Adt::Union(node) }
 }
-impl AstNode for AdtDef {
+impl AstNode for Adt {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ENUM | STRUCT | UNION => true,
@@ -3412,18 +3412,18 @@ impl AstNode for AdtDef {
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            ENUM => AdtDef::Enum(Enum { syntax }),
-            STRUCT => AdtDef::Struct(Struct { syntax }),
-            UNION => AdtDef::Union(Union { syntax }),
+            ENUM => Adt::Enum(Enum { syntax }),
+            STRUCT => Adt::Struct(Struct { syntax }),
+            UNION => Adt::Union(Union { syntax }),
             _ => return None,
         };
         Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            AdtDef::Enum(it) => &it.syntax,
-            AdtDef::Struct(it) => &it.syntax,
-            AdtDef::Union(it) => &it.syntax,
+            Adt::Enum(it) => &it.syntax,
+            Adt::Struct(it) => &it.syntax,
+            Adt::Union(it) => &it.syntax,
         }
     }
 }
@@ -3571,7 +3571,7 @@ impl std::fmt::Display for FieldList {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for AdtDef {
+impl std::fmt::Display for Adt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

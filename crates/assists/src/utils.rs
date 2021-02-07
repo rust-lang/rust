@@ -281,7 +281,7 @@ pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {
 // FIXME: this partially overlaps with `find_impl_block`
 pub(crate) fn find_struct_impl(
     ctx: &AssistContext,
-    strukt: &ast::AdtDef,
+    strukt: &ast::Adt,
     name: &str,
 ) -> Option<Option<ast::Impl>> {
     let db = ctx.db();
@@ -290,9 +290,9 @@ pub(crate) fn find_struct_impl(
     })?;
 
     let struct_def = match strukt {
-        ast::AdtDef::Enum(e) => Adt::Enum(ctx.sema.to_def(e)?),
-        ast::AdtDef::Struct(s) => Adt::Struct(ctx.sema.to_def(s)?),
-        ast::AdtDef::Union(u) => Adt::Union(ctx.sema.to_def(u)?),
+        ast::Adt::Enum(e) => Adt::Enum(ctx.sema.to_def(e)?),
+        ast::Adt::Struct(s) => Adt::Struct(ctx.sema.to_def(s)?),
+        ast::Adt::Union(u) => Adt::Union(ctx.sema.to_def(u)?),
     };
 
     let block = module.descendants().filter_map(ast::Impl::cast).find_map(|impl_blk| {

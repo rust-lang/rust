@@ -26,7 +26,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let cap = ctx.config.snippet_cap?;
-    let nominal = ctx.find_node_at_offset::<ast::AdtDef>()?;
+    let nominal = ctx.find_node_at_offset::<ast::Adt>()?;
     let node_start = derive_insertion_offset(&nominal)?;
     let target = nominal.syntax().text_range();
     acc.add(
@@ -58,7 +58,7 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext) -> Option<
 }
 
 // Insert `derive` after doc comments.
-fn derive_insertion_offset(nominal: &ast::AdtDef) -> Option<TextSize> {
+fn derive_insertion_offset(nominal: &ast::Adt) -> Option<TextSize> {
     let non_ws_child = nominal
         .syntax()
         .children_with_tokens()

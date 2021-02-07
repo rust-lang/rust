@@ -26,7 +26,7 @@ pub(crate) fn add_lifetime_to_type(acc: &mut Assists, ctx: &AssistContext) -> Op
         return None;
     }
 
-    let node = ctx.find_node_at_offset::<ast::AdtDef>()?;
+    let node = ctx.find_node_at_offset::<ast::Adt>()?;
     let has_lifetime = node
         .generic_param_list()
         .map(|gen_list| gen_list.lifetime_params().count() > 0)
@@ -66,9 +66,9 @@ pub(crate) fn add_lifetime_to_type(acc: &mut Assists, ctx: &AssistContext) -> Op
     )
 }
 
-fn fetch_borrowed_types(node: &ast::AdtDef) -> Option<Vec<RefType>> {
+fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<RefType>> {
     let ref_types: Vec<RefType> = match node {
-        ast::AdtDef::Enum(enum_) => {
+        ast::Adt::Enum(enum_) => {
             let variant_list = enum_.variant_list()?;
             variant_list
                 .variants()
@@ -80,11 +80,11 @@ fn fetch_borrowed_types(node: &ast::AdtDef) -> Option<Vec<RefType>> {
                 .flatten()
                 .collect()
         }
-        ast::AdtDef::Struct(strukt) => {
+        ast::Adt::Struct(strukt) => {
             let field_list = strukt.field_list()?;
             find_ref_types_from_field_list(&field_list)?
         }
-        ast::AdtDef::Union(un) => {
+        ast::Adt::Union(un) => {
             let record_field_list = un.record_field_list()?;
             record_field_list
                 .fields()

@@ -23,7 +23,7 @@ pub(crate) fn goto_implementation(
 
     let krate = sema.to_module_def(position.file_id)?.krate();
 
-    if let Some(nominal_def) = find_node_at_offset::<ast::AdtDef>(&syntax, position.offset) {
+    if let Some(nominal_def) = find_node_at_offset::<ast::Adt>(&syntax, position.offset) {
         return Some(RangeInfo::new(
             nominal_def.syntax().text_range(),
             impls_for_def(&sema, &nominal_def, krate)?,
@@ -40,13 +40,13 @@ pub(crate) fn goto_implementation(
 
 fn impls_for_def(
     sema: &Semantics<RootDatabase>,
-    node: &ast::AdtDef,
+    node: &ast::Adt,
     krate: Crate,
 ) -> Option<Vec<NavigationTarget>> {
     let ty = match node {
-        ast::AdtDef::Struct(def) => sema.to_def(def)?.ty(sema.db),
-        ast::AdtDef::Enum(def) => sema.to_def(def)?.ty(sema.db),
-        ast::AdtDef::Union(def) => sema.to_def(def)?.ty(sema.db),
+        ast::Adt::Struct(def) => sema.to_def(def)?.ty(sema.db),
+        ast::Adt::Enum(def) => sema.to_def(def)?.ty(sema.db),
+        ast::Adt::Union(def) => sema.to_def(def)?.ty(sema.db),
     };
 
     let impls = Impl::all_in_crate(sema.db, krate);

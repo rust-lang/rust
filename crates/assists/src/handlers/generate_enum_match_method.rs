@@ -49,7 +49,7 @@ pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext)
     // Return early if we've found an existing new fn
     let impl_def = find_struct_impl(
         &ctx,
-        &ast::AdtDef::Enum(parent_enum.clone()),
+        &ast::Adt::Enum(parent_enum.clone()),
         format!("is_{}", fn_name).as_str(),
     )?;
 
