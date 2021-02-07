@@ -7332,54 +7332,13 @@ pub unsafe fn _mm512_mask_shufflelo_epi16(
     a: __m512i,
     imm8: i32,
 ) -> __m512i {
-    let imm8 = (imm8 & 0xFF) as u8;
-    let a = a.as_i16x32();
-    macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
-            #[rustfmt::skip]
-                        simd_shuffle32(a, a, [
-                            0+$x01, 0+$x23, 0+$x45, 0+$x67, 4, 5, 6, 7, 8+$x01, 8+$x23, 8+$x45, 8+$x67, 12, 13, 14, 15,
-                            16+$x01, 16+$x23, 16+$x45, 16+$x67, 20, 21, 22, 23, 24+$x01, 24+$x23, 24+$x45, 24+$x67, 28, 29, 30, 31,
-                        ])
+    macro_rules! call {
+        ($imm8:expr) => {
+            _mm512_shufflelo_epi16(a, $imm8)
         };
     }
-    macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
-            match (imm8 >> 6) & 0b11 {
-                0b00 => shuffle_done!($x01, $x23, $x45, 0),
-                0b01 => shuffle_done!($x01, $x23, $x45, 1),
-                0b10 => shuffle_done!($x01, $x23, $x45, 2),
-                _ => shuffle_done!($x01, $x23, $x45, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
-            match (imm8 >> 4) & 0b11 {
-                0b00 => shuffle_x67!($x01, $x23, 0),
-                0b01 => shuffle_x67!($x01, $x23, 1),
-                0b10 => shuffle_x67!($x01, $x23, 2),
-                _ => shuffle_x67!($x01, $x23, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x23 {
-        ($x01:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => shuffle_x45!($x01, 0),
-                0b01 => shuffle_x45!($x01, 1),
-                0b10 => shuffle_x45!($x01, 2),
-                _ => shuffle_x45!($x01, 3),
-            }
-        };
-    }
-    let r: i16x32 = match imm8 & 0b11 {
-        0b00 => shuffle_x23!(0),
-        0b01 => shuffle_x23!(1),
-        0b10 => shuffle_x23!(2),
-        _ => shuffle_x23!(3),
-    };
-    transmute(simd_select_bitmask(k, r, src.as_i16x32()))
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(simd_select_bitmask(k, r.as_i16x32(), src.as_i16x32()))
 }
 
 /// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from from a to dst, using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -7390,58 +7349,14 @@ pub unsafe fn _mm512_mask_shufflelo_epi16(
 #[cfg_attr(test, assert_instr(vpshuflw, imm8 = 0))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_shufflelo_epi16(k: __mmask32, a: __m512i, imm8: i32) -> __m512i {
-    let imm8 = (imm8 & 0xFF) as u8;
-    let a = a.as_i16x32();
-    macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
-            #[rustfmt::skip]
-                        simd_shuffle32(a, a, [
-                            0+$x01, 0+$x23, 0+$x45, 0+$x67, 4, 5, 6, 7, 8+$x01, 8+$x23, 8+$x45, 8+$x67, 12, 13, 14, 15,
-                            16+$x01, 16+$x23, 16+$x45, 16+$x67, 20, 21, 22, 23, 24+$x01, 24+$x23, 24+$x45, 24+$x67, 28, 29, 30, 31,
-                        ])
+    macro_rules! call {
+        ($imm8:expr) => {
+            _mm512_shufflelo_epi16(a, $imm8)
         };
     }
-    macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
-            match (imm8 >> 6) & 0b11 {
-                0b00 => shuffle_done!($x01, $x23, $x45, 0),
-                0b01 => shuffle_done!($x01, $x23, $x45, 1),
-                0b10 => shuffle_done!($x01, $x23, $x45, 2),
-                _ => shuffle_done!($x01, $x23, $x45, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
-            match (imm8 >> 4) & 0b11 {
-                0b00 => shuffle_x67!($x01, $x23, 0),
-                0b01 => shuffle_x67!($x01, $x23, 1),
-                0b10 => shuffle_x67!($x01, $x23, 2),
-                _ => shuffle_x67!($x01, $x23, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x23 {
-        ($x01:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => shuffle_x45!($x01, 0),
-                0b01 => shuffle_x45!($x01, 1),
-                0b10 => shuffle_x45!($x01, 2),
-                _ => shuffle_x45!($x01, 3),
-            }
-        };
-    }
-    let r: i16x32 = match imm8 & 0b11 {
-        0b00 => shuffle_x23!(0),
-        0b01 => shuffle_x23!(1),
-        0b10 => shuffle_x23!(2),
-        _ => shuffle_x23!(3),
-    };
-    transmute(simd_select_bitmask(
-        k,
-        r,
-        _mm512_setzero_si512().as_i16x32(),
-    ))
+    let r = constify_imm8_sae!(imm8, call);
+    let zero = _mm512_setzero_si512().as_i16x32();
+    transmute(simd_select_bitmask(k, r.as_i16x32(), zero))
 }
 
 /// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -7595,54 +7510,13 @@ pub unsafe fn _mm512_mask_shufflehi_epi16(
     a: __m512i,
     imm8: i32,
 ) -> __m512i {
-    let imm8 = (imm8 & 0xFF) as u8;
-    let a = a.as_i16x32();
-    macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
-            #[rustfmt::skip]
-                        simd_shuffle32(a, a, [
-                            0, 1, 2, 3, 4+$x01, 4+$x23, 4+$x45, 4+$x67, 8, 9, 10, 11, 12+$x01, 12+$x23, 12+$x45, 12+$x67,
-                            16, 17, 18, 19, 20+$x01, 20+$x23, 20+$x45, 20+$x67, 24, 25, 26, 27, 28+$x01, 28+$x23, 28+$x45, 28+$x67,
-                        ])
+    macro_rules! call {
+        ($imm8:expr) => {
+            _mm512_shufflehi_epi16(a, $imm8)
         };
     }
-    macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
-            match (imm8 >> 6) & 0b11 {
-                0b00 => shuffle_done!($x01, $x23, $x45, 0),
-                0b01 => shuffle_done!($x01, $x23, $x45, 1),
-                0b10 => shuffle_done!($x01, $x23, $x45, 2),
-                _ => shuffle_done!($x01, $x23, $x45, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
-            match (imm8 >> 4) & 0b11 {
-                0b00 => shuffle_x67!($x01, $x23, 0),
-                0b01 => shuffle_x67!($x01, $x23, 1),
-                0b10 => shuffle_x67!($x01, $x23, 2),
-                _ => shuffle_x67!($x01, $x23, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x23 {
-        ($x01:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => shuffle_x45!($x01, 0),
-                0b01 => shuffle_x45!($x01, 1),
-                0b10 => shuffle_x45!($x01, 2),
-                _ => shuffle_x45!($x01, 3),
-            }
-        };
-    }
-    let r: i16x32 = match imm8 & 0b11 {
-        0b00 => shuffle_x23!(0),
-        0b01 => shuffle_x23!(1),
-        0b10 => shuffle_x23!(2),
-        _ => shuffle_x23!(3),
-    };
-    transmute(simd_select_bitmask(k, r, src.as_i16x32()))
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(simd_select_bitmask(k, r.as_i16x32(), src.as_i16x32()))
 }
 
 /// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from from a to dst, using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -7653,58 +7527,14 @@ pub unsafe fn _mm512_mask_shufflehi_epi16(
 #[cfg_attr(test, assert_instr(vpshufhw, imm8 = 0))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_shufflehi_epi16(k: __mmask32, a: __m512i, imm8: i32) -> __m512i {
-    let imm8 = (imm8 & 0xFF) as u8;
-    let a = a.as_i16x32();
-    macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
-            #[rustfmt::skip]
-                        simd_shuffle32(a, a, [
-                            0, 1, 2, 3, 4+$x01, 4+$x23, 4+$x45, 4+$x67, 8, 9, 10, 11, 12+$x01, 12+$x23, 12+$x45, 12+$x67,
-                            16, 17, 18, 19, 20+$x01, 20+$x23, 20+$x45, 20+$x67, 24, 25, 26, 27, 28+$x01, 28+$x23, 28+$x45, 28+$x67,
-                        ])
+    macro_rules! call {
+        ($imm8:expr) => {
+            _mm512_shufflehi_epi16(a, $imm8)
         };
     }
-    macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
-            match (imm8 >> 6) & 0b11 {
-                0b00 => shuffle_done!($x01, $x23, $x45, 0),
-                0b01 => shuffle_done!($x01, $x23, $x45, 1),
-                0b10 => shuffle_done!($x01, $x23, $x45, 2),
-                _ => shuffle_done!($x01, $x23, $x45, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
-            match (imm8 >> 4) & 0b11 {
-                0b00 => shuffle_x67!($x01, $x23, 0),
-                0b01 => shuffle_x67!($x01, $x23, 1),
-                0b10 => shuffle_x67!($x01, $x23, 2),
-                _ => shuffle_x67!($x01, $x23, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x23 {
-        ($x01:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => shuffle_x45!($x01, 0),
-                0b01 => shuffle_x45!($x01, 1),
-                0b10 => shuffle_x45!($x01, 2),
-                _ => shuffle_x45!($x01, 3),
-            }
-        };
-    }
-    let r: i16x32 = match imm8 & 0b11 {
-        0b00 => shuffle_x23!(0),
-        0b01 => shuffle_x23!(1),
-        0b10 => shuffle_x23!(2),
-        _ => shuffle_x23!(3),
-    };
-    transmute(simd_select_bitmask(
-        k,
-        r,
-        _mm512_setzero_si512().as_i16x32(),
-    ))
+    let r = constify_imm8_sae!(imm8, call);
+    let zero = _mm512_setzero_si512().as_i16x32();
+    transmute(simd_select_bitmask(k, r.as_i16x32(), zero))
 }
 
 /// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -9446,59 +9276,13 @@ pub unsafe fn _mm512_mask_alignr_epi8(
     b: __m512i,
     imm8: i32,
 ) -> __m512i {
-    // If palignr is shifting the pair of vectors more than the size of two
-    // lanes, emit zero.
-    if imm8 > 32 {
-        return _mm512_set1_epi8(0);
-    }
-    // If palignr is shifting the pair of input vectors more than one lane,
-    // but less than two lanes, convert to shifting in zeroes.
-    let (a, b, imm8) = if imm8 > 16 {
-        (_mm512_set1_epi8(0), a, imm8 - 16)
-    } else {
-        (a, b, imm8)
-    };
-    let a = a.as_i8x64();
-    let b = b.as_i8x64();
-    #[rustfmt::skip]
-    macro_rules! shuffle {
+    macro_rules! call {
         ($imm8:expr) => {
-            simd_shuffle64(
-                b,
-                a,
-                [
-                    0 + ($imm8+48), 1 + ($imm8+48), 2 + ($imm8+48), 3 + ($imm8+48), 4 + ($imm8+48), 5 + ($imm8+48), 6 + ($imm8+48), 7 + ($imm8+48),
-                    8 + ($imm8+48), 9 + ($imm8+48), 10 + ($imm8+48), 11 + ($imm8+48), 12 + ($imm8+48), 13 + ($imm8+48), 14 + ($imm8+48), 15 + ($imm8+48),
-                    16 + ($imm8+32), 17 + ($imm8+32), 18 + ($imm8+32), 19 + ($imm8+32), 20 + ($imm8+32), 21 + ($imm8+32), 22 + ($imm8+32), 23 + ($imm8+32),
-                    24 + ($imm8+32), 25 + ($imm8+32), 26 + ($imm8+32), 27 + ($imm8+32), 28 + ($imm8+32), 29 + ($imm8+32), 30 + ($imm8+32), 31 + ($imm8+32),
-                    32 + ($imm8+16), 33 + ($imm8+16), 34 + ($imm8+16), 35 + ($imm8+16), 36 + ($imm8+16), 37 + ($imm8+16), 38 + ($imm8+16), 39 + ($imm8+16),
-                    40 + ($imm8+16), 41 + ($imm8+16), 42 + ($imm8+16), 43 + ($imm8+16), 44 + ($imm8+16), 45 + ($imm8+16), 46 + ($imm8+16), 47 + ($imm8+16),
-                    48 + $imm8, 49 + $imm8, 50 + $imm8, 51 + $imm8, 52 + $imm8, 53 + $imm8, 54 + $imm8, 55 + $imm8,
-                    56 + $imm8, 57 + $imm8, 58 + $imm8, 59 + $imm8, 60 + $imm8, 61 + $imm8, 62 + $imm8, 63 + $imm8,
-                ],
-            )
+            _mm512_alignr_epi8(a, b, $imm8)
         };
     }
-    let r: i8x64 = match imm8 {
-        0 => shuffle!(0),
-        1 => shuffle!(1),
-        2 => shuffle!(2),
-        3 => shuffle!(3),
-        4 => shuffle!(4),
-        5 => shuffle!(5),
-        6 => shuffle!(6),
-        7 => shuffle!(7),
-        8 => shuffle!(8),
-        9 => shuffle!(9),
-        10 => shuffle!(10),
-        11 => shuffle!(11),
-        12 => shuffle!(12),
-        13 => shuffle!(13),
-        14 => shuffle!(14),
-        15 => shuffle!(15),
-        _ => shuffle!(16),
-    };
-    transmute(simd_select_bitmask(k, r, src.as_i8x64()))
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(simd_select_bitmask(k, r.as_i8x64(), src.as_i8x64()))
 }
 
 /// Concatenate pairs of 16-byte blocks in a and b into a 32-byte temporary result, shift the result right by imm8 bytes, and store the low 16 bytes in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -9509,59 +9293,14 @@ pub unsafe fn _mm512_mask_alignr_epi8(
 #[cfg_attr(test, assert_instr(vpalignr, imm8 = 1))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_maskz_alignr_epi8(k: __mmask64, a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    // If palignr is shifting the pair of vectors more than the size of two
-    // lanes, emit zero.
-    if imm8 > 32 {
-        return _mm512_set1_epi8(0);
-    }
-    // If palignr is shifting the pair of input vectors more than one lane,
-    // but less than two lanes, convert to shifting in zeroes.
-    let (a, b, imm8) = if imm8 > 16 {
-        (_mm512_set1_epi8(0), a, imm8 - 16)
-    } else {
-        (a, b, imm8)
-    };
-    let a = a.as_i8x64();
-    let b = b.as_i8x64();
-    #[rustfmt::skip]
-    macro_rules! shuffle {
+    macro_rules! call {
         ($imm8:expr) => {
-            simd_shuffle64(
-                b,
-                a,
-                [
-                    0 + ($imm8+48), 1 + ($imm8+48), 2 + ($imm8+48), 3 + ($imm8+48), 4 + ($imm8+48), 5 + ($imm8+48), 6 + ($imm8+48), 7 + ($imm8+48),
-                    8 + ($imm8+48), 9 + ($imm8+48), 10 + ($imm8+48), 11 + ($imm8+48), 12 + ($imm8+48), 13 + ($imm8+48), 14 + ($imm8+48), 15 + ($imm8+48),
-                    16 + ($imm8+32), 17 + ($imm8+32), 18 + ($imm8+32), 19 + ($imm8+32), 20 + ($imm8+32), 21 + ($imm8+32), 22 + ($imm8+32), 23 + ($imm8+32),
-                    24 + ($imm8+32), 25 + ($imm8+32), 26 + ($imm8+32), 27 + ($imm8+32), 28 + ($imm8+32), 29 + ($imm8+32), 30 + ($imm8+32), 31 + ($imm8+32),
-                    32 + ($imm8+16), 33 + ($imm8+16), 34 + ($imm8+16), 35 + ($imm8+16), 36 + ($imm8+16), 37 + ($imm8+16), 38 + ($imm8+16), 39 + ($imm8+16),
-                    40 + ($imm8+16), 41 + ($imm8+16), 42 + ($imm8+16), 43 + ($imm8+16), 44 + ($imm8+16), 45 + ($imm8+16), 46 + ($imm8+16), 47 + ($imm8+16),
-                    48 + $imm8, 49 + $imm8, 50 + $imm8, 51 + $imm8, 52 + $imm8, 53 + $imm8, 54 + $imm8, 55 + $imm8,
-                    56 + $imm8, 57 + $imm8, 58 + $imm8, 59 + $imm8, 60 + $imm8, 61 + $imm8, 62 + $imm8, 63 + $imm8,
-                ],
-            )
+            _mm512_alignr_epi8(a, b, $imm8)
         };
     }
-    let r: i8x64 = match imm8 {
-        0 => shuffle!(0),
-        1 => shuffle!(1),
-        2 => shuffle!(2),
-        3 => shuffle!(3),
-        4 => shuffle!(4),
-        5 => shuffle!(5),
-        6 => shuffle!(6),
-        7 => shuffle!(7),
-        8 => shuffle!(8),
-        9 => shuffle!(9),
-        10 => shuffle!(10),
-        11 => shuffle!(11),
-        12 => shuffle!(12),
-        13 => shuffle!(13),
-        14 => shuffle!(14),
-        15 => shuffle!(15),
-        _ => shuffle!(16),
-    };
-    transmute(simd_select_bitmask(k, r, _mm512_setzero_si512().as_i8x64()))
+    let r = constify_imm8_sae!(imm8, call);
+    let zero = _mm512_setzero_si512().as_i8x64();
+    transmute(simd_select_bitmask(k, r.as_i8x64(), zero))
 }
 
 /// Concatenate pairs of 16-byte blocks in a and b into a 32-byte temporary result, shift the result right by imm8 bytes, and store the low 16 bytes in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -9645,11 +9384,8 @@ pub unsafe fn _mm_maskz_alignr_epi8(k: __mmask16, a: __m128i, b: __m128i, imm8: 
         };
     }
     let r = constify_imm8_sae!(imm8, call);
-    transmute(simd_select_bitmask(
-        k,
-        r.as_i8x16(),
-        _mm_setzero_si128().as_i8x16(),
-    ))
+    let zero = _mm_setzero_si128().as_i8x16();
+    transmute(simd_select_bitmask(k, r.as_i8x16(), zero))
 }
 
 #[allow(improper_ctypes)]
