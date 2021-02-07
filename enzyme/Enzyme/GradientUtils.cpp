@@ -45,6 +45,10 @@
 
 #include <algorithm>
 
+llvm::cl::opt<bool>
+    EnzymeNewCache("enzyme-new-cache", cl::init(true), cl::Hidden,
+                   cl::desc("Use new cache decision algorithm"));
+
 Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                               const ValueToValueMapTy &available,
                               UnwrapMode mode) {
@@ -1024,73 +1028,77 @@ bool GradientUtils::shouldRecompute(const Value *val,
   // llvm::errs() << " considering recompute of " << *val << "\n";
   const Instruction *inst = cast<Instruction>(val);
 
-  // if this has operands that need to be loaded and haven't already been loaded
-  // TODO, just cache this
-  for (auto &op : inst->operands()) {
-    if (!legalRecompute(op, available)) {
+  if (EnzymeNewCache) {
+    // if this has operands that need to be loaded and haven't already been loaded
+    // TODO, just cache this
+    for (auto &op : inst->operands()) {
+      if (!legalRecompute(op, available)) {
 
-      // If this is a load from cache already, dont force a cache of this
-      if (isa<LoadInst>(op) && CacheLookups.count(cast<LoadInst>(op)))
-        continue;
+        // If this is a load from cache already, dont force a cache of this
+        if (isa<LoadInst>(op) && CacheLookups.count(cast<LoadInst>(op)))
+          continue;
 
-      // If a previously cached this operand, don't let it trigger the
-      // heuristic for caching this value instead.
-      if (scopeMap.find(op) != scopeMap.end())
-        continue;
+        // If a previously cached this operand, don't let it trigger the
+        // heuristic for caching this value instead.
+        if (scopeMap.find(op) != scopeMap.end())
+          continue;
 
-      // If the actually uncacheable operand is in a different loop scope
-      // don't cache this value instead as it may require more memory
-      LoopContext lc1;
-      LoopContext lc2;
-      bool inLoop1 =
-          getContext(const_cast<Instruction *>(inst)->getParent(), lc1);
-      bool inLoop2 = getContext(cast<Instruction>(op)->getParent(), lc2);
-      if (inLoop1 != inLoop2 || (inLoop1 && (lc1.header != lc2.header))) {
-        continue;
-      }
+        // If the actually uncacheable operand is in a different loop scope
+        // don't cache this value instead as it may require more memory
+        LoopContext lc1;
+        LoopContext lc2;
+        bool inLoop1 =
+            getContext(const_cast<Instruction *>(inst)->getParent(), lc1);
+        bool inLoop2 = getContext(cast<Instruction>(op)->getParent(), lc2);
+        if (inLoop1 != inLoop2 || (inLoop1 && (lc1.header != lc2.header))) {
+          continue;
+        }
 
-      // If a placeholder phi for inversion (and we know from above not
-      // recomputable)
-      if (!isa<PHINode>(op) && dyn_cast_or_null<LoadInst>(hasUninverted(op))) {
-        goto forceCache;
-      }
+        // If a placeholder phi for inversion (and we know from above not
+        // recomputable)
+        if (!isa<PHINode>(op) && dyn_cast_or_null<LoadInst>(hasUninverted(op))) {
+          goto forceCache;
+        }
 
-      // Even if cannot recompute (say a phi node), don't force a reload if it
-      // is possible to just use this instruction from forward pass without
-      // issue
-      if (auto i2 = dyn_cast<Instruction>(op)) {
-        if (!i2->mayReadOrWriteMemory()) {
-          LoopContext lc;
-          bool inLoop = const_cast<GradientUtils *>(this)->getContext(
-              i2->getParent(), lc);
-          if (!inLoop) {
-            if (i2->getParent() == &newFunc->getEntryBlock()) {
-              continue;
-            }
-            // TODO upgrade this to be all returns that this could enter from
-            bool legal = true;
-            for (auto &BB : *oldFunc) {
-              if (isa<ReturnInst>(BB.getTerminator())) {
-                BasicBlock *returningBlock =
-                    cast<BasicBlock>(getNewFromOriginal(&BB));
-                if (i2->getParent() == returningBlock)
-                  continue;
-                if (!DT.dominates(i2, returningBlock)) {
-                  legal = false;
-                  break;
+        // Even if cannot recompute (say a phi node), don't force a reload if it
+        // is possible to just use this instruction from forward pass without
+        // issue
+        if (auto i2 = dyn_cast<Instruction>(op)) {
+          if (!i2->mayReadOrWriteMemory()) {
+            LoopContext lc;
+            bool inLoop = const_cast<GradientUtils *>(this)->getContext(
+                i2->getParent(), lc);
+            if (!inLoop) {
+              if (i2->getParent() == &newFunc->getEntryBlock()) {
+                continue;
+              }
+              // TODO upgrade this to be all returns that this could enter from
+              bool legal = true;
+              for (auto &BB : *oldFunc) {
+                if (isa<ReturnInst>(BB.getTerminator())) {
+                  BasicBlock *returningBlock =
+                      cast<BasicBlock>(getNewFromOriginal(&BB));
+                  if (i2->getParent() == returningBlock)
+                    continue;
+                  if (!DT.dominates(i2, returningBlock)) {
+                    legal = false;
+                    break;
+                  }
                 }
               }
-            }
-            if (legal) {
-              continue;
+              if (legal) {
+                continue;
+              }
             }
           }
         }
+      forceCache:;
+        if (EnzymePrintPerf) {
+          EmitWarning("ChosenCache", inst->getDebugLoc(), oldFunc, inst->getParent(),
+                      "Choosing to cache use ", *inst, " due to ", *op);
+        }
+        return false;
       }
-    forceCache:;
-      // llvm::errs() << "shouldn't recompute " << *inst << "because of illegal
-      // redo op: " << *op << "\n";
-      return false;
     }
   }
 
