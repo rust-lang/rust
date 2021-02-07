@@ -188,11 +188,24 @@ struct Diagnostic {
 }
 
 macro_rules! encode_fields {
-    ($enc:expr, $s:expr, $idx:expr, [ $($name:ident),+$(,)? ]) => {
+    (
+        $enc:expr,                  // encoder
+        $idx:expr,                  // starting field index
+        $struct:expr,               // struct we're serializing
+        $struct_name:ident,         // struct name
+        [ $($name:ident),+$(,)? ],  // fields to encode
+        [ $($ignore:ident),+$(,)? ] // fields we're skipping
+    ) => {
         {
+            // Pattern match to make sure all fields are accounted for
+            let $struct_name { $($name,)+ $($ignore: _,)+ } = $struct;
             let mut idx = $idx;
             $(
-                $enc.emit_struct_field(stringify!($name), idx, |enc| $s.$name.encode(enc))?;
+                $enc.emit_struct_field(
+                    stringify!($name),
+                    idx,
+                    |enc| $name.encode(enc),
+                )?;
                 idx += 1;
             )+
             idx
@@ -206,9 +219,23 @@ impl<E: Encoder> Encodable<E> for Diagnostic {
         s.emit_struct("diagnostic", 7, |s| {
             let mut idx = 0;
 
-            idx = encode_fields!(s, self, idx, [message, code, level, spans, children, rendered]);
+            idx = encode_fields!(
+                s,
+                idx,
+                self,
+                Self,
+                [message, code, level, spans, children, rendered],
+                [tool_metadata]
+            );
             if self.tool_metadata.is_set() {
-                idx = encode_fields!(s, self, idx, [tool_metadata]);
+                idx = encode_fields!(
+                    s,
+                    idx,
+                    self,
+                    Self,
+                    [tool_metadata],
+                    [message, code, level, spans, children, rendered]
+                );
             }
 
             let _ = idx;
