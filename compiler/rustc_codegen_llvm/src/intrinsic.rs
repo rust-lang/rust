@@ -1009,7 +1009,7 @@ fn generic_simd_intrinsic(
     }
 
     fn simd_simple_float_intrinsic(
-        name: &str,
+        name: Symbol,
         in_elem: &::rustc_middle::ty::TyS<'_>,
         in_ty: &::rustc_middle::ty::TyS<'_>,
         in_len: u64,
@@ -1036,93 +1036,69 @@ fn generic_simd_intrinsic(
                 }
             }
         }
-        let ety = match in_elem.kind() {
-            ty::Float(f) if f.bit_width() == 32 => {
-                if in_len < 2 || in_len > 16 {
+
+        let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
+            let elem_ty = bx.cx.type_float_from_ty(*f);
+            match f.bit_width() {
+                32 => ("f32", elem_ty),
+                64 => ("f64", elem_ty),
+                _ => {
                     return_error!(
-                        "unsupported floating-point vector `{}` with length `{}` \
-                         out-of-range [2, 16]",
-                        in_ty,
-                        in_len
+                        "unsupported element type `{}` of floating-point vector `{}`",
+                        f.name_str(),
+                        in_ty
                     );
                 }
-                "f32"
             }
-            ty::Float(f) if f.bit_width() == 64 => {
-                if in_len < 2 || in_len > 8 {
-                    return_error!(
-                        "unsupported floating-point vector `{}` with length `{}` \
-                                   out-of-range [2, 8]",
-                        in_ty,
-                        in_len
-                    );
-                }
-                "f64"
-            }
-            ty::Float(f) => {
-                return_error!(
-                    "unsupported element type `{}` of floating-point vector `{}`",
-                    f.name_str(),
-                    in_ty
-                );
-            }
-            _ => {
-                return_error!("`{}` is not a floating-point type", in_ty);
-            }
+        } else {
+            return_error!("`{}` is not a floating-point type", in_ty);
         };
 
-        let llvm_name = &format!("llvm.{0}.v{1}{2}", name, in_len, ety);
-        let intrinsic = bx.get_intrinsic(&llvm_name);
-        let c =
-            bx.call(intrinsic, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
+        let vec_ty = bx.type_vector(elem_ty, in_len);
+
+        let (intr_name, fn_ty) = match name {
+            sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fcos => ("cos", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fabs => ("fabs", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_ceil => ("ceil", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fexp => ("exp", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fexp2 => ("exp2", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_flog10 => ("log10", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_flog2 => ("log2", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_flog => ("log", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fpowi => ("powi", bx.type_func(&[vec_ty, bx.type_i32()], vec_ty)),
+            sym::simd_fpow => ("pow", bx.type_func(&[vec_ty, vec_ty], vec_ty)),
+            sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
+            _ => return_error!("unrecognized intrinsic `{}`", name),
+        };
+
+        let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
+        let f = bx.declare_cfn(&llvm_name, llvm::UnnamedAddr::No, fn_ty);
+        let c = bx.call(f, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
         unsafe { llvm::LLVMRustSetHasUnsafeAlgebra(c) };
         Ok(c)
     }
 
-    match name {
-        sym::simd_fsqrt => {
-            return simd_simple_float_intrinsic("sqrt", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_fsin => {
-            return simd_simple_float_intrinsic("sin", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_fcos => {
-            return simd_simple_float_intrinsic("cos", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_fabs => {
-            return simd_simple_float_intrinsic("fabs", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_floor => {
-            return simd_simple_float_intrinsic("floor", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_ceil => {
-            return simd_simple_float_intrinsic("ceil", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_fexp => {
-            return simd_simple_float_intrinsic("exp", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_fexp2 => {
-            return simd_simple_float_intrinsic("exp2", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_flog10 => {
-            return simd_simple_float_intrinsic("log10", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_flog2 => {
-            return simd_simple_float_intrinsic("log2", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_flog => {
-            return simd_simple_float_intrinsic("log", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_fpowi => {
-            return simd_simple_float_intrinsic("powi", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_fpow => {
-            return simd_simple_float_intrinsic("pow", in_elem, in_ty, in_len, bx, span, args);
-        }
-        sym::simd_fma => {
-            return simd_simple_float_intrinsic("fma", in_elem, in_ty, in_len, bx, span, args);
-        }
-        _ => { /* fallthrough */ }
+    if std::matches!(
+        name,
+        sym::simd_fsqrt
+            | sym::simd_fsin
+            | sym::simd_fcos
+            | sym::simd_fabs
+            | sym::simd_floor
+            | sym::simd_ceil
+            | sym::simd_fexp
+            | sym::simd_fexp2
+            | sym::simd_flog10
+            | sym::simd_flog2
+            | sym::simd_flog
+            | sym::simd_fpowi
+            | sym::simd_fpow
+            | sym::simd_fma
+    ) {
+        return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
     }
 
     // FIXME: use:
@@ -1278,12 +1254,12 @@ fn generic_simd_intrinsic(
             format!("llvm.masked.gather.{}.{}", llvm_elem_vec_str, llvm_pointer_vec_str);
         let f = bx.declare_cfn(
             &llvm_intrinsic,
+            llvm::UnnamedAddr::No,
             bx.type_func(
                 &[llvm_pointer_vec_ty, alignment_ty, mask_ty, llvm_elem_vec_ty],
                 llvm_elem_vec_ty,
             ),
         );
-        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[args[1].immediate(), alignment, mask, args[0].immediate()], None);
         return Ok(v);
     }
@@ -1408,9 +1384,9 @@ fn generic_simd_intrinsic(
             format!("llvm.masked.scatter.{}.{}", llvm_elem_vec_str, llvm_pointer_vec_str);
         let f = bx.declare_cfn(
             &llvm_intrinsic,
+            llvm::UnnamedAddr::No,
             bx.type_func(&[llvm_elem_vec_ty, llvm_pointer_vec_ty, alignment_ty, mask_ty], ret_t),
         );
-        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[args[0].immediate(), args[1].immediate(), alignment, mask], None);
         return Ok(v);
     }
@@ -1714,8 +1690,11 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         );
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
-        let f = bx.declare_cfn(&llvm_intrinsic, bx.type_func(&[vec_ty, vec_ty], vec_ty));
-        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
+        let f = bx.declare_cfn(
+            &llvm_intrinsic,
+            llvm::UnnamedAddr::No,
+            bx.type_func(&[vec_ty, vec_ty], vec_ty),
+        );
         let v = bx.call(f, &[lhs, rhs], None);
         return Ok(v);
     }

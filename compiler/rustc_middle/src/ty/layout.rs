@@ -188,6 +188,13 @@ pub const FAT_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const FAT_PTR_EXTRA: usize = 1;
 
+/// The maximum supported number of lanes in a SIMD vector.
+///
+/// This value is selected based on backend support:
+/// * LLVM does not appear to have a vector width limit.
+/// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
+pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
+
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
@@ -717,10 +724,22 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 };
 
                 // SIMD vectors of zero length are not supported.
+                // Additionally, lengths are capped at 2^16 as a fixed maximum backends must
+                // support.
                 //
                 // Can't be caught in typeck if the array length is generic.
                 if e_len == 0 {
                     tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
+                } else if !e_len.is_power_of_two() {
+                    tcx.sess.fatal(&format!(
+                        "monomorphising SIMD type `{}` of non-power-of-two length",
+                        ty
+                    ));
+                } else if e_len > MAX_SIMD_LANES {
+                    tcx.sess.fatal(&format!(
+                        "monomorphising SIMD type `{}` of length greater than {}",
+                        ty, MAX_SIMD_LANES,
+                    ));
                 }
 
                 // Compute the ABI of the element type:

@@ -12,6 +12,7 @@ use rustc_hir::{ItemKind, Node};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::layout::MAX_SIMD_LANES;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
 use rustc_middle::ty::{self, ParamEnv, RegionKind, ToPredicate, Ty, TyCtxt};
@@ -1134,6 +1135,38 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                     .emit();
                 return;
             }
+
+            let len = if let ty::Array(_ty, c) = e.kind() {
+                c.try_eval_usize(tcx, tcx.param_env(def.did))
+            } else {
+                Some(fields.len() as u64)
+            };
+            if let Some(len) = len {
+                if len == 0 {
+                    struct_span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty").emit();
+                    return;
+                } else if !len.is_power_of_two() {
+                    struct_span_err!(
+                        tcx.sess,
+                        sp,
+                        E0075,
+                        "SIMD vector length must be a power of two"
+                    )
+                    .emit();
+                    return;
+                } else if len > MAX_SIMD_LANES {
+                    struct_span_err!(
+                        tcx.sess,
+                        sp,
+                        E0075,
+                        "SIMD vector cannot have more than {} elements",
+                        MAX_SIMD_LANES,
+                    )
+                    .emit();
+                    return;
+                }
+            }
+
             match e.kind() {
                 ty::Param(_) => { /* struct<T>(T, T, T, T) is ok */ }
                 _ if e.is_machine() => { /* struct(u8, u8, u8, u8) is ok */ }

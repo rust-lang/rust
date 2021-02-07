@@ -4,25 +4,43 @@ error[E0075]: SIMD vector cannot be empty
 LL | struct empty;
    | ^^^^^^^^^^^^^
 
-error[E0076]: SIMD vector should be homogeneous
+error[E0075]: SIMD vector cannot be empty
   --> $DIR/simd-type.rs:10:1
+   |
+LL | struct empty2([f32; 0]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0075]: SIMD vector length must be a power of two
+  --> $DIR/simd-type.rs:13:1
+   |
+LL | struct pow2([f32; 7]);
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0076]: SIMD vector should be homogeneous
+  --> $DIR/simd-type.rs:16:1
    |
 LL | struct i64f64(i64, f64);
    | ^^^^^^^^^^^^^^^^^^^^^^^^ SIMD elements must have the same type
 
 error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
-  --> $DIR/simd-type.rs:15:1
+  --> $DIR/simd-type.rs:21:1
    |
 LL | struct FooV(Foo, Foo);
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
-  --> $DIR/simd-type.rs:18:1
+  --> $DIR/simd-type.rs:24:1
    |
 LL | struct FooV2([Foo; 2]);
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error[E0075]: SIMD vector cannot have more than 32768 elements
+  --> $DIR/simd-type.rs:27:1
+   |
+LL | struct TooBig([f32; 65536]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0075, E0076, E0077.
 For more information about an error, try `rustc --explain E0075`.
