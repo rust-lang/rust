@@ -25,4 +25,13 @@ struct S3 {
     field: [u8; #[identity_attr] 10], //~ ERROR macro attributes in `#[derive]` output are unstable
 }
 
+#[derive(Empty)]
+struct S4 {
+    field: [u8; {
+        #[derive(Empty)] // OK, not gated
+        struct Inner;
+        10
+    }]
+}
+
 fn main() {}

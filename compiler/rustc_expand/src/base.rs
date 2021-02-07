@@ -141,6 +141,9 @@ impl Annotatable {
     }
 
     crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
+        // Tokens of an attribute target may be invalidated by some outer `#[derive]` performing
+        // "full configuration" (attributes following derives on the same item should be the most
+        // common case), that's why synthesizing tokens is allowed.
         nt_to_tokenstream(&self.into_nonterminal(), sess, CanSynthesizeMissingTokens::Yes)
     }
 
