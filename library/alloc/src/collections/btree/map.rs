@@ -11,7 +11,6 @@ use core::ptr;
 use super::borrow::DormantMutRef;
 use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
 use super::search::SearchResult::*;
-use super::unwrap_unchecked;
 
 mod entry;
 pub use entry::{Entry, OccupiedEntry, VacantEntry};
@@ -1433,7 +1432,7 @@ impl<K, V> Drop for IntoIter<K, V> {
 
                 unsafe {
                     let mut node =
-                        unwrap_unchecked(ptr::read(&self.0.front)).into_node().forget_type();
+                        ptr::read(&self.0.front).unwrap_unchecked().into_node().forget_type();
                     while let Some(parent) = node.deallocate_and_ascend() {
                         node = parent.into_node().forget_type();
                     }
@@ -1758,7 +1757,7 @@ impl<'a, K, V> Range<'a, K, V> {
     }
 
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        unsafe { unwrap_unchecked(self.front.as_mut()).next_unchecked() }
+        unsafe { self.front.as_mut().unwrap_unchecked().next_unchecked() }
     }
 }
 
@@ -1847,7 +1846,7 @@ impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
 
 impl<'a, K, V> Range<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        unsafe { unwrap_unchecked(self.back.as_mut()).next_back_unchecked() }
+        unsafe { self.back.as_mut().unwrap_unchecked().next_back_unchecked() }
     }
 }
 
@@ -1893,7 +1892,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
     }
 
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        unsafe { unwrap_unchecked(self.front.as_mut()).next_unchecked() }
+        unsafe { self.front.as_mut().unwrap_unchecked().next_unchecked() }
     }
 
     /// Returns an iterator of references over the remaining items.
@@ -1923,7 +1922,7 @@ impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 impl<'a, K, V> RangeMut<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        unsafe { unwrap_unchecked(self.back.as_mut()).next_back_unchecked() }
+        unsafe { self.back.as_mut().unwrap_unchecked().next_back_unchecked() }
     }
 }
 
