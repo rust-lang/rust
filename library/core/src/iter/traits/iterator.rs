@@ -1540,8 +1540,8 @@ pub trait Iterator {
     /// ```compile_fail,E0382
     /// let a = [1, 2, 3, 4, 5];
     /// let mut iter = a.iter();
-    /// let sum: i32 = iter.take(3).fold(0, |acc, i| acc + i);
     ///
+    /// let sum: i32 = iter.take(3).fold(0, |acc, i| acc + i);
     /// assert_eq!(sum, 6);
     ///
     /// // Error! We can't use `iter` again because it was moved
@@ -1554,9 +1554,9 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut iter = a.iter();
+    ///
     /// // We add in a call to `by_ref` here so `iter` isn't moved.
     /// let sum: i32 = iter.by_ref().take(3).fold(0, |acc, i| acc + i);
-    ///
     /// assert_eq!(sum, 6);
     ///
     /// // And now we can use `iter` again because we still own it.
