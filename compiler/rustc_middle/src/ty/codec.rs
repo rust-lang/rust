@@ -222,10 +222,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
                 decoder.with_position(shorthand, Ty::decode)
             })
         } else {
-            Ok(<TyInterner<'tcx> as Interner<D>>::mk_ty(
-                decoder.interner(),
-                ty::TyKind::decode(decoder)?,
-            ))
+            Ok(decoder.interner().mk_ty(ty::TyKind::decode(decoder)?))
         }
     }
 }
@@ -248,8 +245,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<ty::PredicateKind<'tc
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Predicate<'tcx> {
     fn decode(decoder: &mut D) -> Result<ty::Predicate<'tcx>, D::Error> {
         let predicate_kind = Decodable::decode(decoder)?;
-        let predicate =
-            <TyInterner<'tcx> as Interner<D>>::mk_predicate(decoder.interner(), predicate_kind);
+        let predicate = decoder.interner().mk_predicate(predicate_kind);
         Ok(predicate)
     }
 }
@@ -257,10 +253,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Predicate<'tcx> {
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for SubstsRef<'tcx> {
     fn decode(decoder: &mut D) -> Result<Self, D::Error> {
         let len = decoder.read_usize()?;
-        Ok(<TyInterner<'tcx> as Interner<D>>::mk_substs(
-            decoder.interner(),
-            (0..len).map(|_| Decodable::decode(decoder)),
-        )?)
+        Ok(decoder.interner().mk_substs((0..len).map(|_| Decodable::decode(decoder)))?)
     }
 }
 
@@ -276,10 +269,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for mir::Place<'tcx> {
 
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Region<'tcx> {
     fn decode(decoder: &mut D) -> Result<Self, D::Error> {
-        Ok(<TyInterner<'tcx> as Interner<D>>::mk_region(
-            decoder.interner(),
-            Decodable::decode(decoder)?,
-        ))
+        Ok(decoder.interner().mk_region(Decodable::decode(decoder)?))
     }
 }
 
@@ -288,10 +278,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for CanonicalVarInfos<'tcx> {
         let len = decoder.read_usize()?;
         let interned: Result<Vec<CanonicalVarInfo<'tcx>>, _> =
             (0..len).map(|_| Decodable::decode(decoder)).collect();
-        Ok(<TyInterner<'tcx> as Interner<D>>::intern_canonical_var_infos(
-            decoder.interner(),
-            interned?.as_slice(),
-        ))
+        Ok(decoder.interner().intern_canonical_var_infos(interned?.as_slice()))
     }
 }
 
@@ -336,25 +323,21 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
 {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
-        decoder.tcx().mk_poly_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))
+        Ok(decoder
+            .interner()
+            .mk_poly_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
     }
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::Const<'tcx> {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
-        Ok(<TyInterner<'tcx> as Interner<D>>::mk_const(
-            decoder.interner(),
-            Decodable::decode(decoder)?,
-        ))
+        Ok(decoder.interner().mk_const(Decodable::decode(decoder)?))
     }
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for Allocation {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
-        Ok(<TyInterner<'tcx> as Interner<D>>::intern_const_alloc(
-            decoder.interner(),
-            Decodable::decode(decoder)?,
-        ))
+        Ok(decoder.interner().intern_const_alloc(Decodable::decode(decoder)?))
     }
 }
 

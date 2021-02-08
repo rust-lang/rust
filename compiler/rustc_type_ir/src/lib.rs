@@ -9,16 +9,18 @@ extern crate rustc_macros;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
-use rustc_serialize::{Decodable, Decoder};
 use smallvec::SmallVec;
 use std::fmt;
 use std::mem::discriminant;
 
-pub trait Interner<D: Decoder> {
+pub trait Interner {
     type GenericArg;
     type ListGenericArg;
 
-    type Predicate: Decodable<D>;
+    type ExistentialPredicate;
+    type ListExistentialPredicate;
+
+    type Predicate;
     type BinderPredicateKind;
 
     type Ty;
@@ -53,6 +55,12 @@ pub trait Interner<D: Decoder> {
         self,
         ts: &[Self::CanonicalVarInfo],
     ) -> Self::ListCanonicalVarInfo;
+    fn mk_poly_existential_predicates<
+        I: InternAs<[Self::ExistentialPredicate], Self::ListExistentialPredicate>,
+    >(
+        self,
+        iter: I,
+    ) -> I::Output;
     fn mk_region(self, kind: Self::RegionKind) -> Self::Region;
     fn mk_const(self, c: Self::Const) -> Self::InternedConst;
     fn def_path_hash_to_def_id(self, hash: Self::DefPathHash) -> Option<Self::DefId>;

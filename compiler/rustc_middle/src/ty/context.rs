@@ -18,11 +18,11 @@ use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
-    self, codec::TyDecoder, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
-    Const, ConstVid, DefIdTree, ExistentialPredicate, FloatTy, FloatVar, FloatVid,
-    GenericParamDefKind, InferConst, InferTy, Instance, IntTy, IntVar, IntVid, List, ParamConst,
-    ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind, ProjectionTy, Region, RegionKind,
-    ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy, Visibility,
+    self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig, Const, ConstVid,
+    DefIdTree, ExistentialPredicate, FloatTy, FloatVar, FloatVid, GenericParamDefKind, InferConst,
+    InferTy, Instance, IntTy, IntVar, IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate,
+    PredicateInner, PredicateKind, ProjectionTy, Region, RegionKind, ReprOptions,
+    TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy, Visibility,
 };
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -47,10 +47,7 @@ use rustc_hir::{
 };
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
-use rustc_serialize::{
-    opaque::{FileEncodeResult, FileEncoder},
-    Decoder,
-};
+use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Session;
@@ -77,9 +74,12 @@ pub struct TyInterner<'tcx> {
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
-impl<'tcx, D: Decoder + TyDecoder<'tcx>> Interner<D> for TyInterner<'tcx> {
+impl<'tcx> Interner for TyInterner<'tcx> {
     type GenericArg = GenericArg<'tcx>;
     type ListGenericArg = &'tcx List<GenericArg<'tcx>>;
+
+    type ExistentialPredicate = ty::Binder<ExistentialPredicate<'tcx>>;
+    type ListExistentialPredicate = &'tcx List<Binder<ExistentialPredicate<'tcx>>>;
 
     type Predicate = Predicate<'tcx>;
     type BinderPredicateKind = Binder<PredicateKind<'tcx>>;
@@ -118,6 +118,15 @@ impl<'tcx, D: Decoder + TyDecoder<'tcx>> Interner<D> for TyInterner<'tcx> {
         iter: I,
     ) -> I::Output {
         self.tcx.mk_substs(iter)
+    }
+
+    fn mk_poly_existential_predicates<
+        I: InternAs<[Self::ExistentialPredicate], Self::ListExistentialPredicate>,
+    >(
+        self,
+        iter: I,
+    ) -> I::Output {
+        self.tcx.mk_poly_existential_predicates(iter)
     }
 
     fn intern_const_alloc(self, alloc: Self::Allocation) -> Self::InternedAllocation {

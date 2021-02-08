@@ -911,10 +911,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
 
-        let def_if = <TyInterner<'tcx> as Interner<CacheDecoder<'_, '_>>>::def_path_hash_to_def_id(
-            d.interner(),
-            def_path_hash,
-        );
+        let def_if = d.interner().def_path_hash_to_def_id(def_path_hash);
         Ok(def_if.unwrap())
     }
 }
