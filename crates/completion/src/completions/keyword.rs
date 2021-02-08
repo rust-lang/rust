@@ -88,6 +88,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword(ctx, acc, "loop", "loop {$0}");
         add_keyword(ctx, acc, "if", "if $0 {}");
         add_keyword(ctx, acc, "if let", "if let $1 = $0 {}");
+        add_keyword(ctx, acc, "for", "for $1 in $0 {}");
     }
 
     if ctx.if_is_prev || ctx.block_expr_parent {
@@ -258,6 +259,7 @@ mod tests {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw let
                 kw mod
                 kw const
@@ -284,6 +286,7 @@ mod tests {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw let
                 kw mod
                 kw const
@@ -310,6 +313,7 @@ mod tests {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw let
                 kw else
                 kw else if
@@ -343,6 +347,7 @@ fn quux() -> i32 {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw unsafe
                 kw return
             "#]],
@@ -391,6 +396,7 @@ fn quux() -> i32 {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw let
                 kw mod
                 kw const
@@ -549,6 +555,7 @@ pub mod future {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw return
             "#]],
         )
@@ -607,6 +614,7 @@ fn foo() {
                 kw loop
                 kw if
                 kw if let
+                kw for
                 kw return
             "#]],
         );
