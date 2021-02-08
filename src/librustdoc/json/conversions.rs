@@ -14,6 +14,7 @@ use rustdoc_json_types::*;
 use crate::clean;
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
+use std::collections::HashSet;
 
 impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
@@ -225,19 +226,19 @@ crate fn from_ctor_kind(struct_type: CtorKind) -> StructType {
     }
 }
 
-crate fn from_fn_header(header: &rustc_hir::FnHeader) -> Vec<Modifiers> {
-    let mut v = Vec::new();
+crate fn from_fn_header(header: &rustc_hir::FnHeader) -> HashSet<Modifiers> {
+    let mut v = HashSet::new();
 
     if let rustc_hir::Unsafety::Unsafe = header.unsafety {
-        v.push(Modifiers::Unsafe);
+        v.insert(Modifiers::Unsafe);
     }
 
     if let rustc_hir::IsAsync::Async = header.asyncness {
-        v.push(Modifiers::Async);
+        v.insert(Modifiers::Async);
     }
 
     if let rustc_hir::Constness::Const = header.constness {
-        v.push(Modifiers::Const);
+        v.insert(Modifiers::Const);
     }
 
     v
@@ -372,9 +373,11 @@ impl From<clean::BareFunctionDecl> for FunctionPointer {
         let clean::BareFunctionDecl { unsafety, generic_params, decl, abi } = bare_decl;
         FunctionPointer {
             header: if let rustc_hir::Unsafety::Unsafe = unsafety {
-                vec![Modifiers::Unsafe]
+                let mut hs = HashSet::new();
+                hs.insert(Modifiers::Unsafe);
+                hs
             } else {
-                vec![]
+                HashSet::new()
             },
             generic_params: generic_params.into_iter().map(Into::into).collect(),
             decl: decl.into(),
