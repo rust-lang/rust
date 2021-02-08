@@ -57,7 +57,12 @@ impl AnalysisStatsCmd {
         };
 
         let mut db_load_sw = self.stop_watch();
-        let (host, vfs) = load_cargo(&self.path, self.load_output_dirs, self.with_proc_macro)?;
+        let (host, vfs) = load_cargo(
+            &self.path,
+            &Default::default(),
+            self.load_output_dirs,
+            self.with_proc_macro,
+        )?;
         let db = host.raw_database();
         eprintln!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
 

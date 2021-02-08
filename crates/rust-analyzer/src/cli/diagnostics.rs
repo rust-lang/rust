@@ -26,7 +26,7 @@ fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
 }
 
 pub fn diagnostics(path: &Path, load_output_dirs: bool, with_proc_macro: bool) -> Result<()> {
-    let (host, _vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
+    let (host, _vfs) = load_cargo(path, &Default::default(), load_output_dirs, with_proc_macro)?;
     let db = host.raw_database();
     let analysis = host.analysis();
 

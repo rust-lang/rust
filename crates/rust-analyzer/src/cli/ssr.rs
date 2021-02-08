@@ -5,7 +5,7 @@ use ssr::{MatchFinder, SsrPattern, SsrRule};
 
 pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
     use ide_db::base_db::SourceDatabaseExt;
-    let (host, vfs) = load_cargo(&std::env::current_dir()?, true, true)?;
+    let (host, vfs) = load_cargo(&std::env::current_dir()?, &Default::default(), true, true)?;
     let db = host.raw_database();
     let mut match_finder = MatchFinder::at_first_file(db)?;
     for rule in rules {
@@ -28,7 +28,7 @@ pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
 pub fn search_for_patterns(patterns: Vec<SsrPattern>, debug_snippet: Option<String>) -> Result<()> {
     use ide_db::base_db::SourceDatabaseExt;
     use ide_db::symbol_index::SymbolsDatabase;
-    let (host, _vfs) = load_cargo(&std::env::current_dir()?, true, true)?;
+    let (host, _vfs) = load_cargo(&std::env::current_dir()?, &Default::default(), true, true)?;
     let db = host.raw_database();
     let mut match_finder = MatchFinder::at_first_file(db)?;
     for pattern in patterns {

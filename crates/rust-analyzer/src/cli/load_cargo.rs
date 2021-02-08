@@ -15,12 +15,13 @@ use crate::reload::{ProjectFolders, SourceRootConfig};
 
 pub fn load_cargo(
     root: &Path,
+    config: &CargoConfig,
     load_out_dirs_from_check: bool,
     with_proc_macro: bool,
 ) -> Result<(AnalysisHost, vfs::Vfs)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
-    let ws = ProjectWorkspace::load(root, &CargoConfig::default(), &|_| {})?;
+    let ws = ProjectWorkspace::load(root, config, &|_| {})?;
 
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
@@ -116,7 +117,7 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let (host, _vfs) = load_cargo(path, false, false).unwrap();
+        let (host, _vfs) = load_cargo(path, &Default::default(), false, false).unwrap();
         let n_crates = Crate::all(host.raw_database()).len();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);

@@ -59,7 +59,12 @@ impl BenchCmd {
 
         let start = Instant::now();
         eprint!("loading: ");
-        let (mut host, vfs) = load_cargo(&self.path, self.load_output_dirs, self.with_proc_macro)?;
+        let (mut host, vfs) = load_cargo(
+            &self.path,
+            &Default::default(),
+            self.load_output_dirs,
+            self.with_proc_macro,
+        )?;
         eprintln!("{:?}\n", start.elapsed());
 
         let file_id = {
