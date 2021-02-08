@@ -522,7 +522,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -548,7 +548,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);")]
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -573,7 +573,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -599,7 +599,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);")]
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -876,7 +876,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);")]
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_wrapping_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -901,7 +901,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);")]
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -924,7 +924,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);")]
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_wrapping_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -950,7 +950,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);")]
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1185,7 +1185,7 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_unstable(feature = "const_overflowing_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
@@ -1215,7 +1215,7 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
@@ -1242,7 +1242,7 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_unstable(feature = "const_overflowing_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
@@ -1272,7 +1272,7 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
@@ -1456,7 +1456,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer type")]
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1484,7 +1484,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer type")]
         /// ```
         #[stable(feature = "euclidean_division", since = "1.38.0")]
-        #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
+        #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.51.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
