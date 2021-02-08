@@ -10,25 +10,26 @@ use hir_def::{
     builtin_type::{IntBitness, Signedness},
     lang_item::LangItemTarget,
     type_ref::Mutability,
-    AssocContainerId, AssocItemId, FunctionId, HasModule, ImplId, Lookup, TraitId,
+    AssocContainerId, AssocItemId, FunctionId, GenericDefId, HasModule, ImplId, Lookup, ModuleId,
+    TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::Substs;
 use crate::{
     autoderef,
     db::HirDatabase,
     primitive::{FloatBitness, FloatTy, IntTy},
     utils::all_super_traits,
-    ApplicationTy, Canonical, DebruijnIndex, InEnvironment, TraitEnvironment, TraitRef, Ty, TyKind,
-    TypeCtor, TypeWalk,
+    ApplicationTy, Canonical, DebruijnIndex, InEnvironment, Substs, TraitEnvironment, TraitRef, Ty,
+    TyKind, TypeCtor, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TyFingerprint {
     Apply(TypeCtor),
+    Dyn(TraitId),
 }
 
 impl TyFingerprint {
@@ -38,6 +39,7 @@ impl TyFingerprint {
     pub(crate) fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
         match ty {
             Ty::Apply(a_ty) => Some(TyFingerprint::Apply(a_ty.ctor)),
+            Ty::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_)),
             _ => None,
         }
     }
@@ -245,18 +247,15 @@ impl Ty {
             }};
         }
 
+        let mod_to_crate_ids = |module: ModuleId| Some(std::iter::once(module.krate()).collect());
+
         let lang_item_targets = match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
                 TypeCtor::Adt(def_id) => {
-                    return Some(std::iter::once(def_id.module(db.upcast()).krate()).collect())
+                    return mod_to_crate_ids(def_id.module(db.upcast()));
                 }
                 TypeCtor::ForeignType(type_alias_id) => {
-                    return Some(
-                        std::iter::once(
-                            type_alias_id.lookup(db.upcast()).module(db.upcast()).krate(),
-                        )
-                        .collect(),
-                    )
+                    return mod_to_crate_ids(type_alias_id.lookup(db.upcast()).module(db.upcast()));
                 }
                 TypeCtor::Bool => lang_item_crate!("bool"),
                 TypeCtor::Char => lang_item_crate!("char"),
@@ -272,6 +271,11 @@ impl Ty {
                 TypeCtor::RawPtr(Mutability::Mut) => lang_item_crate!("mut_ptr"),
                 _ => return None,
             },
+            Ty::Dyn(_) => {
+                return self.dyn_trait().and_then(|trait_| {
+                    mod_to_crate_ids(GenericDefId::TraitId(trait_).module(db.upcast()))
+                });
+            }
             _ => return None,
         };
         let res = lang_item_targets
@@ -285,6 +289,7 @@ impl Ty {
         Some(res)
     }
 }
+
 /// Look up the method with the given name, returning the actual autoderefed
 /// receiver type (but without autoref applied yet).
 pub(crate) fn lookup_method(
