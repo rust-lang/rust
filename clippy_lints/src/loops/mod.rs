@@ -1,4 +1,5 @@
 mod for_loop_arg;
+mod for_loop_explicit_counter;
 mod for_loop_over_map_kv;
 mod for_loop_range;
 mod for_mut_range_bound;
@@ -32,7 +33,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use std::iter::{once, Iterator};
-use utils::make_iterator_snippet;
+use utils::{get_span_of_entire_for_loop, make_iterator_snippet};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for for-loops that manually copy items between
@@ -857,7 +858,7 @@ fn check_for_loop<'tcx>(
     let is_manual_memcpy_triggered = detect_manual_memcpy(cx, pat, arg, body, expr);
     if !is_manual_memcpy_triggered {
         for_loop_range::check_for_loop_range(cx, pat, arg, body, expr);
-        check_for_loop_explicit_counter(cx, pat, arg, body, expr);
+        for_loop_explicit_counter::check_for_loop_explicit_counter(cx, pat, arg, body, expr);
     }
     for_loop_arg::check_for_loop_arg(cx, pat, arg, expr);
     for_loop_over_map_kv::check_for_loop_over_map_kv(cx, pat, arg, body, expr);
@@ -865,17 +866,6 @@ fn check_for_loop<'tcx>(
     check_for_single_element_loop(cx, pat, arg, body, expr);
     detect_same_item_push(cx, pat, arg, body, expr);
     manual_flatten::check_manual_flatten(cx, pat, arg, body, span);
-}
-
-// this function assumes the given expression is a `for` loop.
-fn get_span_of_entire_for_loop(expr: &Expr<'_>) -> Span {
-    // for some reason this is the only way to get the `Span`
-    // of the entire `for` loop
-    if let ExprKind::Match(_, arms, _) = &expr.kind {
-        arms[0].body.span
-    } else {
-        unreachable!()
-    }
 }
 
 /// a wrapper of `Sugg`. Besides what `Sugg` do, this removes unnecessary `0`;
@@ -1468,55 +1458,6 @@ fn detect_same_item_push<'tcx>(
                     },
                     ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item),
                     _ => {},
-                }
-            }
-        }
-    }
-}
-
-// To trigger the EXPLICIT_COUNTER_LOOP lint, a variable must be
-// incremented exactly once in the loop body, and initialized to zero
-// at the start of the loop.
-fn check_for_loop_explicit_counter<'tcx>(
-    cx: &LateContext<'tcx>,
-    pat: &'tcx Pat<'_>,
-    arg: &'tcx Expr<'_>,
-    body: &'tcx Expr<'_>,
-    expr: &'tcx Expr<'_>,
-) {
-    // Look for variables that are incremented once per loop iteration.
-    let mut increment_visitor = IncrementVisitor::new(cx);
-    walk_expr(&mut increment_visitor, body);
-
-    // For each candidate, check the parent block to see if
-    // it's initialized to zero at the start of the loop.
-    if let Some(block) = get_enclosing_block(&cx, expr.hir_id) {
-        for id in increment_visitor.into_results() {
-            let mut initialize_visitor = InitializeVisitor::new(cx, expr, id);
-            walk_block(&mut initialize_visitor, block);
-
-            if_chain! {
-                if let Some((name, initializer)) = initialize_visitor.get_result();
-                if is_integer_const(cx, initializer, 0);
-                then {
-                    let mut applicability = Applicability::MachineApplicable;
-
-                    let for_span = get_span_of_entire_for_loop(expr);
-
-                    span_lint_and_sugg(
-                        cx,
-                        EXPLICIT_COUNTER_LOOP,
-                        for_span.with_hi(arg.span.hi()),
-                        &format!("the variable `{}` is used as a loop counter", name),
-                        "consider using",
-                        format!(
-                            "for ({}, {}) in {}.enumerate()",
-                            name,
-                            snippet_with_applicability(cx, pat.span, "item", &mut applicability),
-                            make_iterator_snippet(cx, arg, &mut applicability),
-                        ),
-                        applicability,
-                    );
                 }
             }
         }
