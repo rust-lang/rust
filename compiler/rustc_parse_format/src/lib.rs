@@ -730,7 +730,7 @@ fn find_skips_from_snippet(
     str_style: Option<usize>,
 ) -> (Vec<usize>, bool) {
     let snippet = match snippet {
-        Some(ref s) if s.starts_with('"') || s.starts_with("r#") => s,
+        Some(ref s) if s.starts_with('"') || s.starts_with("r\"") || s.starts_with("r#") => s,
         _ => return (vec![], false),
     };
 
