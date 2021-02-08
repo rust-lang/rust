@@ -73,7 +73,6 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, FormatRenderer, Impl, RenderMode};
 use crate::html::escape::Escape;
-use crate::html::format::fmt_impl_for_trait_page;
 use crate::html::format::Function;
 use crate::html::format::{href, print_default_space, print_generic_bounds, WhereClause};
 use crate::html::format::{print_abi_with_space, Buffer, PrintWithSpace};
@@ -1138,7 +1137,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                     None
                 } else {
                     Some(Implementor {
-                        text: imp.inner_impl().print(cx.cache()).to_string(),
+                        text: imp.inner_impl().print(cx.cache(), false).to_string(),
                         synthetic: imp.inner_impl().synthetic,
                         types: collect_paths_for_type(imp.inner_impl().for_.clone(), cx.cache()),
                     })
@@ -2550,8 +2549,8 @@ fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cache: &Cache) ->
 }
 
 fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cache: &Cache) -> Ordering {
-    let lhs = format!("{}", lhs.inner_impl().print(cache));
-    let rhs = format!("{}", rhs.inner_impl().print(cache));
+    let lhs = format!("{}", lhs.inner_impl().print(cache, false));
+    let rhs = format!("{}", rhs.inner_impl().print(cache, false));
 
     // lhs and rhs are formatted as HTML, which may be unnecessary
     compare_names(&lhs, &rhs)
@@ -3698,7 +3697,7 @@ fn spotlight_decl(decl: &clean::FnDecl, cache: &Cache) -> String {
                     write!(
                         &mut out,
                         "<span class=\"where fmt-newline\">{}</span>",
-                        impl_.print(cache)
+                        impl_.print(cache, false)
                     );
                     let t_did = impl_.trait_.def_id_full(cache).unwrap();
                     for it in &impl_.items {
@@ -3771,7 +3770,7 @@ fn render_impl(
         };
         if let Some(use_absolute) = use_absolute {
             write!(w, "<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">", id, aliases);
-            fmt_impl_for_trait_page(&i.inner_impl(), w, use_absolute, cx.cache());
+            write!(w, "{}", i.inner_impl().print(cx.cache(), use_absolute));
             if show_def_docs {
                 for it in &i.inner_impl().items {
                     if let clean::TypedefItem(ref tydef, _) = *it.kind {
@@ -3796,7 +3795,7 @@ fn render_impl(
                 "<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">{}</code>",
                 id,
                 aliases,
-                i.inner_impl().print(cx.cache())
+                i.inner_impl().print(cx.cache(), false)
             );
         }
         write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
