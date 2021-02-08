@@ -194,6 +194,8 @@ $ pacman -S rust-analyzer
 
 === Emacs
 
+Note this excellent https://robert.kra.hn/posts/2021-02-07_rust-with-emacs/[guide] from https://github.com/rksm[@rksm].
+
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
 Emacs support is maintained as part of the https://github.com/emacs-lsp/lsp-mode[Emacs-LSP] package in https://github.com/emacs-lsp/lsp-mode/blob/master/lsp-rust.el[lsp-rust.el].
