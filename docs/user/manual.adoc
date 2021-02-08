@@ -307,6 +307,52 @@ EOF
 
 See https://sharksforarms.dev/posts/neovim-rust/ for more tips on getting started.
 
+==== vim-lsp
+
+vim-lsp is installed by following https://github.com/prabirshrestha/vim-lsp[the plugin instructions].
+It can be as simple as adding this line to your `.vimrc`:
+
+[source,vim]
+----
+Plug 'prabirshrestha/vim-lsp'
+----
+
+Next you need to register the `rust-analyzer` binary.
+If it is available in `$PATH`, you may want to add this to your `.vimrc`:
+
+[source,vim]
+----
+if executable('rust-analyzer')
+  au User lsp_setup call lsp#register_server({
+        \   'name': 'Rust Language Server',
+        \   'cmd': {server_info->['rust-analyzer']},
+        \   'whitelist': ['rust'],
+        \ })
+endif
+----
+
+There is no dedicated UI for the server configuration, so you would need to send any options as a value of the `initialization_options` field, as described in the <<_configuration,Configuration>> section.
+Here is an example of how to enable the proc-macro support:
+
+[source,vim]
+----
+if executable('rust-analyzer')
+  au User lsp_setup call lsp#register_server({
+        \   'name': 'Rust Language Server',
+        \   'cmd': {server_info->['rust-analyzer']},
+        \   'whitelist': ['rust'],
+        \   'initialization_options': {
+        \     'cargo': {
+        \       'loadOutDirsFromCheck': v:true,
+        \     },
+        \     'procMacro': {
+        \       'enable': v:true,
+        \     },
+        \   },
+        \ })
+endif
+----
+
 === Sublime Text 3
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
@@ -335,13 +381,35 @@ If the LSP binary is not available, GNOME Builder can install it when opening a 
 
 **Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs[config.rs]
 
-rust-analyzer is configured via LSP messages, which means that it's up to the editor to decide on the exact format and location of configuration files.
-Please consult your editor's documentation to learn how to configure LSP servers.
+The <<_installation,Installation>> section contains details on configuration for some of the editors.
+In general `rust-analyzer` is configured via LSP messages, which means that it's up to the editor to decide on the exact format and location of configuration files.
 
-To verify which configuration is actually used by rust-analyzer, set `RA_LOG` environment variable to `rust_analyzer=info` and look for config-related messages.
-Logs should show both the JSON that rust-analyzer sees as well as the updated config.
+Some clients, such as <<vs-code,VS Code>> or <<coc-rust-analyzer,COC plugin in Vim>> provide `rust-analyzer` specific configuration UIs. Others may require you to know a bit more about the interaction with `rust-analyzer`.
 
-This is the list of config options rust-analyzer supports:
+For the later category, it might help to know that the initial configuration is specified as a value of the `intializationOptions` field of the https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize[`InitializeParams` message, in the LSP protocol].
+The spec says that the field type is `any?`, but `rust-analyzer` is looking for a JSON object that is constructed using settings from the list below.
+Name of the setting, ignoring the `rust-analyzer.` prefix, is used as a path, and value of the setting becomes the JSON property value.
+
+For example, a very common configuration is to enable proc-macro support, can be achieved by sending this JSON:
+
+[source,json]
+----
+{
+  "cargo": {
+    "loadOutDirsFromCheck": true,
+  },
+  "procMacro": {
+    "enable": true,
+  }
+}
+----
+
+Please consult your editor's documentation to learn more about how to configure https://microsoft.github.io/language-server-protocol/[LSP servers].
+
+To verify which configuration is actually used by `rust-analyzer`, set `RA_LOG` environment variable to `rust_analyzer=info` and look for config-related messages.
+Logs should show both the JSON that `rust-analyzer` sees as well as the updated config.
+
+This is the list of config options `rust-analyzer` supports:
 
 include::./generated_config.adoc[]
 
