@@ -975,6 +975,33 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for use of `obj.method().for_each(closure)` if obj doesn't
+    /// implelement `Iterator` and `method()` returns `Impl Iterator` type.
+    ///
+    /// **Why is this bad?** Excessive use of `for_each` reduces redability, using `for` loop is
+    /// clearer and more concise.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let v = vec![0, 1, 2];
+    /// v.iter().for_each(|elem| println!("{}", elem));
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let v = vec![0, 1, 2];
+    /// for elem in v.iter() {
+    ///     println!("{}", elem);
+    /// }
+    /// ```
+    pub EXCESSIVE_FOR_EACH,
+    style,
+    "using `.iter().for_each(|x| {..})` when using `for` loop would work instead"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for use of `.get().unwrap()` (or
     /// `.get_mut().unwrap`) on a standard library type which implements `Index`
     ///
@@ -1661,6 +1688,7 @@ impl_lint_pass!(Methods => [
     ITER_NTH_ZERO,
     BYTES_NTH,
     ITER_SKIP_NEXT,
+    EXCESSIVE_FOR_EACH,
     GET_UNWRAP,
     STRING_EXTEND_CHARS,
     ITER_CLONED_COLLECT,
@@ -1807,6 +1835,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["to_os_string", ..] => implicit_clone::check(cx, expr, sym::OsStr),
             ["to_path_buf", ..] => implicit_clone::check(cx, expr, sym::Path),
             ["to_vec", ..] => implicit_clone::check(cx, expr, sym::slice),
+            ["for_each", ..] => excessive_for_each::lint(cx, expr, &arg_lists),
             _ => {},
         }
 

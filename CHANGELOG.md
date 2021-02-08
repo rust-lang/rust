@@ -2192,6 +2192,7 @@ Released 2018-09-13
 [`eq_op`]: https://rust-lang.github.io/rust-clippy/master/index.html#eq_op
 [`erasing_op`]: https://rust-lang.github.io/rust-clippy/master/index.html#erasing_op
 [`eval_order_dependence`]: https://rust-lang.github.io/rust-clippy/master/index.html#eval_order_dependence
+[`excessive_for_each`]: https://rust-lang.github.io/rust-clippy/master/index.html#excessive_for_each
 [`excessive_precision`]: https://rust-lang.github.io/rust-clippy/master/index.html#excessive_precision
 [`exhaustive_enums`]: https://rust-lang.github.io/rust-clippy/master/index.html#exhaustive_enums
 [`exhaustive_structs`]: https://rust-lang.github.io/rust-clippy/master/index.html#exhaustive_structs
