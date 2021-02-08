@@ -3124,7 +3124,12 @@ impl<'test> TestCx<'test> {
                     errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
                 }
                 if !self.props.dont_check_compiler_stderr {
-                    errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+                    let kind = if self.props.stderr_per_bitwidth {
+                        format!("{}bit.stderr", get_pointer_width(&self.config.target))
+                    } else {
+                        String::from("stderr")
+                    };
+                    errors += self.compare_output(&kind, &normalized_stderr, &expected_stderr);
                 }
             }
             TestOutput::Run => {
