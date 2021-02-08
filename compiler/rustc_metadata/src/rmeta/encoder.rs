@@ -572,10 +572,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let tcx = self.tcx;
 
+        // Encode MIR.
+        i = self.position();
+        self.encode_mir();
+        let mir_bytes = self.position() - i;
+
         // Encode the items.
         i = self.position();
         self.encode_def_ids();
-        self.encode_mir();
         self.encode_info_for_items();
         let item_bytes = self.position() - i;
 
@@ -700,6 +704,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("    exp. symbols bytes: {}", exported_symbols_bytes);
             println!("  def-path table bytes: {}", def_path_table_bytes);
             println!(" proc-macro-data-bytes: {}", proc_macro_data_bytes);
+            println!("             mir bytes: {}", mir_bytes);
             println!("            item bytes: {}", item_bytes);
             println!("           table bytes: {}", tables_bytes);
             println!("         hygiene bytes: {}", hygiene_bytes);
