@@ -112,6 +112,7 @@ top_level_options!(
         borrowck_mode: BorrowckMode [UNTRACKED],
         cg: CodegenOptions [TRACKED],
         externs: Externs [UNTRACKED],
+        extern_dep_specs: ExternDepSpecs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
         // An optional name to use as the crate for std during std injection,
         // written `extern crate name as std`. Defaults to `std`. Used by

@@ -21,7 +21,9 @@ use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
-use rustc_errors::{add_elided_lifetime_in_path_suggestion, struct_span_err, Applicability};
+use rustc_errors::{
+    add_elided_lifetime_in_path_suggestion, struct_span_err, Applicability, SuggestionStyle,
+};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -32,7 +34,8 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_serialize::json::Json;
+use rustc_session::lint::{BuiltinLintDiagnostics, ExternDepSpec};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_session::SessionLintStore;
@@ -638,6 +641,30 @@ pub trait LintContext: Sized {
                 }
                 BuiltinLintDiagnostics::LegacyDeriveHelpers(span) => {
                     db.span_label(span, "the attribute is introduced here");
+                }
+                BuiltinLintDiagnostics::ExternDepSpec(krate, loc) => {
+                    let json = match loc {
+                        ExternDepSpec::Json(json) => {
+                            db.help(&format!("remove unnecessary dependency `{}`", krate));
+                            json
+                        }
+                        ExternDepSpec::Raw(raw) => {
+                            db.help(&format!("remove unnecessary dependency `{}` at `{}`", krate, raw));
+                            db.span_suggestion_with_style(
+                                DUMMY_SP,
+                                "raw extern location",
+                                raw.clone(),
+                                Applicability::Unspecified,
+                                SuggestionStyle::CompletelyHidden,
+                            );
+                            Json::String(raw)
+                        }
+                    };
+                    db.tool_only_suggestion_with_metadata(
+                        "json extern location",
+                        Applicability::Unspecified,
+                        json
+                    );
                 }
             }
             // Rewrap `db`, and pass control to the user.

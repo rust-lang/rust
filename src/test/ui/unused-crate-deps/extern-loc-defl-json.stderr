@@ -1,0 +1,17 @@
+{"message":"external crate `bar` unused in `extern_loc_defl_json`: remove the dependency or add `use bar as _;`","code":{"code":"unused_crate_dependencies","explanation":null},"level":"warning","spans":[{"file_name":"$DIR/extern-loc-defl-json.rs","byte_start":146,"byte_end":146,"line_start":7,"line_end":7,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"#![warn(unused_crate_dependencies)]","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[{"message":"the lint level is defined here","code":null,"level":"note","spans":[{"file_name":"$DIR/extern-loc-defl-json.rs","byte_start":154,"byte_end":179,"line_start":7,"line_end":7,"column_start":9,"column_end":34,"is_primary":true,"text":[{"text":"#![warn(unused_crate_dependencies)]","highlight_start":9,"highlight_end":34}],"label":null,"suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[],"rendered":null},{"message":"remove unnecessary dependency `bar`","code":null,"level":"help","spans":[],"children":[],"rendered":null},{"message":"json extern location","code":null,"level":"help","spans":[],"children":[],"rendered":null,"tool_metadata":{"name":"bar"}}],"rendered":"warning: external crate `bar` unused in `extern_loc_defl_json`: remove the dependency or add `use bar as _;`
+  --> $DIR/extern-loc-defl-json.rs:7:1
+   |
+LL | #![warn(unused_crate_dependencies)]
+   | ^
+   |
+note: the lint level is defined here
+  --> $DIR/extern-loc-defl-json.rs:7:9
+   |
+LL | #![warn(unused_crate_dependencies)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: remove unnecessary dependency `bar`
+
+"}
+{"message":"1 warning emitted","code":null,"level":"warning","spans":[],"children":[],"rendered":"warning: 1 warning emitted
+
+"}
