@@ -3,12 +3,9 @@
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
-use crate::unicode::{self, conversions};
+use crate::unicode::{self, conversions, ASCII_CASE_MASK};
 
 use super::*;
-
-/// If 6th bit set ascii is upper case.
-const ASCII_CASE_MASK: u8 = 0b10_0000u8;
 
 #[lang = "char"]
 impl char {
