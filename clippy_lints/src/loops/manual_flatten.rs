@@ -8,7 +8,7 @@ use rustc_span::source_map::Span;
 
 /// Check for unnecessary `if let` usage in a for loop where only the `Some` or `Ok` variant of the
 /// iterator element is used.
-pub(super) fn lint<'tcx>(
+pub(super) fn check_manual_flatten<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
     arg: &'tcx Expr<'_>,
