@@ -1726,7 +1726,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
-            let pat = this.parse_pat(PARAM_EXPECTED)?;
+            let pat = this.parse_pat_no_top_alt(PARAM_EXPECTED)?;
             let ty = if this.eat(&token::Colon) {
                 this.parse_ty()?
             } else {
@@ -1803,7 +1803,7 @@ impl<'a> Parser<'a> {
     /// The `let` token has already been eaten.
     fn parse_let_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_token.span;
-        let pat = self.parse_top_pat(GateOr::No, RecoverComma::Yes)?;
+        let pat = self.parse_pat_allow_top_alt(None, GateOr::No, RecoverComma::Yes)?;
         self.expect(&token::Eq)?;
         let expr = self.with_res(self.restrictions | Restrictions::NO_STRUCT_LITERAL, |this| {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
@@ -1866,7 +1866,7 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        let pat = self.parse_top_pat(GateOr::Yes, RecoverComma::Yes)?;
+        let pat = self.parse_pat_allow_top_alt(None, GateOr::Yes, RecoverComma::Yes)?;
         if !self.eat_keyword(kw::In) {
             self.error_missing_in_for_loop();
         }
@@ -1977,7 +1977,7 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
-            let pat = this.parse_top_pat(GateOr::No, RecoverComma::Yes)?;
+            let pat = this.parse_pat_allow_top_alt(None, GateOr::No, RecoverComma::Yes)?;
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
                 let cond = this.parse_expr()?;

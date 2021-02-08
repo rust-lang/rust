@@ -14,6 +14,7 @@ use crate::lexer::UnmatchedBrace;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 use diagnostics::Error;
+pub use pat::{GateOr, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
