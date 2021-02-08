@@ -532,10 +532,15 @@ impl<'a> StringReader<'a> {
             if let Err(err) = result {
                 let span_with_quotes =
                     self.mk_sp(content_start - BytePos(1), content_end + BytePos(1));
+                let (start, end) = (range.start as u32, range.end as u32);
+                let lo = content_start + BytePos(start);
+                let hi = lo + BytePos(end - start);
+                let span = self.mk_sp(lo, hi);
                 emit_unescape_error(
                     &self.sess.span_diagnostic,
                     lit_content,
                     span_with_quotes,
+                    span,
                     mode,
                     range,
                     err,
