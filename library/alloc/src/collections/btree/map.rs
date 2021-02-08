@@ -500,11 +500,8 @@ impl<K, V> BTreeMap<K, V> {
     /// assert!(a.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self)
-    where
-        K: Ord,
-    {
-        *self = BTreeMap::new();
+    pub fn clear(&mut self) {
+        *self = BTreeMap { root: None, length: 0 };
     }
 
     /// Returns a reference to the value corresponding to the key.
@@ -1227,10 +1224,7 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[inline]
     #[unstable(feature = "map_into_keys_values", issue = "75294")]
-    pub fn into_keys(self) -> IntoKeys<K, V>
-    where
-        K: Ord,
-    {
+    pub fn into_keys(self) -> IntoKeys<K, V> {
         IntoKeys { inner: self.into_iter() }
     }
 
@@ -1253,10 +1247,7 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[inline]
     #[unstable(feature = "map_into_keys_values", issue = "75294")]
-    pub fn into_values(self) -> IntoValues<K, V>
-    where
-        K: Ord,
-    {
+    pub fn into_values(self) -> IntoValues<K, V> {
         IntoValues { inner: self.into_iter() }
     }
 }

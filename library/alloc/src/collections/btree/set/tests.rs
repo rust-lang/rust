@@ -641,9 +641,10 @@ fn test_send() {
 
 #[allow(dead_code)]
 fn test_ord_absence() {
-    fn set<K>(set: BTreeSet<K>) {
+    fn set<K>(mut set: BTreeSet<K>) {
         set.is_empty();
         set.len();
+        set.clear();
         set.iter();
         set.into_iter();
     }

@@ -1711,12 +1711,19 @@ fn test_ord_absence() {
     fn map<K>(mut map: BTreeMap<K, ()>) {
         map.is_empty();
         map.len();
+        map.clear();
         map.iter();
         map.iter_mut();
         map.keys();
         map.values();
         map.values_mut();
-        map.into_iter();
+        if true {
+            map.into_values();
+        } else if true {
+            map.into_iter();
+        } else {
+            map.into_keys();
+        }
     }
 
     fn map_debug<K: Debug>(mut map: BTreeMap<K, ()>) {
@@ -1726,7 +1733,13 @@ fn test_ord_absence() {
         format!("{:?}", map.keys());
         format!("{:?}", map.values());
         format!("{:?}", map.values_mut());
-        format!("{:?}", map.into_iter());
+        if true {
+            format!("{:?}", map.into_iter());
+        } else if true {
+            format!("{:?}", map.into_keys());
+        } else {
+            format!("{:?}", map.into_values());
+        }
     }
 
     fn map_clone<K: Clone>(mut map: BTreeMap<K, ()>) {
