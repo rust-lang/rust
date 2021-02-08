@@ -34,7 +34,7 @@ could be useful for debugging.
 
 When you have an ICE (panic in the compiler), you can set
 `RUST_BACKTRACE=1` to get the stack trace of the `panic!` like in
-normal Rust programs.  IIRC backtraces **don't work** on MinGW,
+normal Rust programs. IIRC backtraces **don't work** on MinGW,
 sorry. If you have trouble or the backtraces are full of `unknown`,
 you might want to find some way to use Linux, Mac, or MSVC on Windows.
 
@@ -82,7 +82,7 @@ stack backtrace:
 
 If you want to get a backtrace to the point where the compiler emits an
 error message, you can pass the `-Z treat-err-as-bug=n`, which will make
-the compiler panic on the `nth` error on `delay_span_bug.` If you leave
+the compiler panic on the `nth` error on `delay_span_bug`. If you leave
 off `=n`, the compiler will assume `1` for `n` and thus panic on the
 first error it encounters.
 
