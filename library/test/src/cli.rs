@@ -10,7 +10,7 @@ use super::time::TestTimeOptions;
 #[derive(Debug)]
 pub struct TestOpts {
     pub list: bool,
-    pub filter: Option<String>,
+    pub filters: Vec<String>,
     pub filter_exact: bool,
     pub force_run_in_process: bool,
     pub exclude_should_panic: bool,
@@ -148,12 +148,13 @@ fn optgroups() -> getopts::Options {
 }
 
 fn usage(binary: &str, options: &getopts::Options) {
-    let message = format!("Usage: {} [OPTIONS] [FILTER]", binary);
+    let message = format!("Usage: {} [OPTIONS] [FILTERS...]", binary);
     println!(
         r#"{usage}
 
 The FILTER string is tested against the name of all tests, and only those
-tests whose names contain the filter are run.
+tests whose names contain the filter are run. Multiple filter strings may
+be passed, which will run all tests matching any of the filters.
 
 By default, all tests are run in parallel. This can be altered with the
 --test-threads flag or the RUST_TEST_THREADS environment variable when running
@@ -243,7 +244,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
 
     let logfile = get_log_file(&matches)?;
     let run_ignored = get_run_ignored(&matches, include_ignored)?;
-    let filter = get_filter(&matches)?;
+    let filters = matches.free.clone();
     let nocapture = get_nocapture(&matches)?;
     let test_threads = get_test_threads(&matches)?;
     let color = get_color_config(&matches)?;
@@ -253,7 +254,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
 
     let test_opts = TestOpts {
         list,
-        filter,
+        filters,
         filter_exact: exact,
         force_run_in_process,
         exclude_should_panic,
@@ -395,12 +396,6 @@ fn get_run_ignored(matches: &getopts::Matches, include_ignored: bool) -> OptPart
     };
 
     Ok(run_ignored)
-}
-
-fn get_filter(matches: &getopts::Matches) -> OptPartRes<Option<String>> {
-    let filter = if !matches.free.is_empty() { Some(matches.free[0].clone()) } else { None };
-
-    Ok(filter)
 }
 
 fn get_allow_unstable(matches: &getopts::Matches) -> OptPartRes<bool> {

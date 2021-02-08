@@ -396,8 +396,8 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     };
 
     // Remove tests that don't match the test filter
-    if let Some(ref filter) = opts.filter {
-        filtered.retain(|test| matches_filter(test, filter));
+    if !opts.filters.is_empty() {
+        filtered.retain(|test| opts.filters.iter().any(|filter| matches_filter(test, filter)));
     }
 
     // Skip tests that match any of the skip filters
