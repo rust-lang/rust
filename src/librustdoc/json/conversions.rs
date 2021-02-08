@@ -225,15 +225,22 @@ crate fn from_ctor_kind(struct_type: CtorKind) -> StructType {
     }
 }
 
-fn stringify_header(header: &rustc_hir::FnHeader) -> String {
-    let mut s = String::from(header.unsafety.prefix_str());
-    if header.asyncness == rustc_hir::IsAsync::Async {
-        s.push_str("async ")
+crate fn from_fn_header(header: &rustc_hir::FnHeader) -> Vec<Modifiers> {
+    let mut v = Vec::new();
+
+    if let rustc_hir::Unsafety::Unsafe = header.unsafety {
+        v.push(Modifiers::Unsafe);
     }
-    if header.constness == rustc_hir::Constness::Const {
-        s.push_str("const ")
+
+    if let rustc_hir::IsAsync::Async = header.asyncness {
+        v.push(Modifiers::Async);
     }
-    s
+
+    if let rustc_hir::Constness::Const = header.constness {
+        v.push(Modifiers::Const);
+    }
+
+    v
 }
 
 impl From<clean::Function> for Function {
@@ -242,7 +249,7 @@ impl From<clean::Function> for Function {
         Function {
             decl: decl.into(),
             generics: generics.into(),
-            header: stringify_header(&header),
+            header: from_fn_header(&header),
             abi: header.abi.to_string(),
         }
     }
@@ -364,7 +371,11 @@ impl From<clean::BareFunctionDecl> for FunctionPointer {
     fn from(bare_decl: clean::BareFunctionDecl) -> Self {
         let clean::BareFunctionDecl { unsafety, generic_params, decl, abi } = bare_decl;
         FunctionPointer {
-            is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
+            header: if let rustc_hir::Unsafety::Unsafe = unsafety {
+                vec![Modifiers::Unsafe]
+            } else {
+                vec![]
+            },
             generic_params: generic_params.into_iter().map(Into::into).collect(),
             decl: decl.into(),
             abi: abi.to_string(),
@@ -439,7 +450,7 @@ crate fn from_function_method(function: clean::Function, has_body: bool) -> Meth
     Method {
         decl: decl.into(),
         generics: generics.into(),
-        header: stringify_header(&header),
+        header: from_fn_header(&header),
         abi: header.abi.to_string(),
         has_body,
     }

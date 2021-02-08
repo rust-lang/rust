@@ -108,7 +108,7 @@ def check_type(ty):
     elif ty["kind"] == "function_pointer":
         for param in ty["inner"]["generic_params"]:
             check_generic_param(param)
-        check_decl(ty["inner"]["inner"])
+        check_decl(ty["inner"]["decl"])
     elif ty["kind"] == "qualified_path":
         check_type(ty["inner"]["self_type"])
         check_type(ty["inner"]["trait"])
