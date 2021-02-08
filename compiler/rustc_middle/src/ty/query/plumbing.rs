@@ -277,14 +277,14 @@ macro_rules! define_queries {
                 }
             }
 
-            pub fn describe(&self, tcx: TyCtxt<$tcx>) -> Cow<'static, str> {
+            pub fn describe(&self, tcx: TyCtxt<$tcx>) -> String {
                 let (r, name) = match *self {
                     $(Query::$name(key) => {
                         (queries::$name::describe(tcx, key), stringify!($name))
                     })*
                 };
                 if tcx.sess.verbose() {
-                    format!("{} [{}]", r, name).into()
+                    format!("{} [{}]", r, name)
                 } else {
                     r
                 }
