@@ -2,6 +2,8 @@
 //! the `clean` types but with some fields removed or stringified to simplify the output and not
 //! expose unstable compiler internals.
 
+#![allow(rustc::default_hash_types)]
+
 use std::convert::From;
 
 use rustc_ast::ast;
