@@ -491,7 +491,7 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     extern "C" {
         static mut environ: *const *const c_char;
     }
-    &mut environ
+    ptr::addr_of_mut!(environ)
 }
 
 pub unsafe fn env_rwlock(readonly: bool) -> RWLockGuard {
