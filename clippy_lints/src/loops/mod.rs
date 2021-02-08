@@ -3,6 +3,7 @@ mod for_loop_explicit_counter;
 mod for_loop_over_map_kv;
 mod for_loop_range;
 mod for_mut_range_bound;
+mod for_single_element_loop;
 mod manual_flatten;
 mod utils;
 
@@ -10,9 +11,9 @@ use crate::consts::constant;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    get_enclosing_block, get_parent_expr, get_trait_def_id, higher, implements_trait, indent_of, is_in_panic_handler,
+    get_enclosing_block, get_parent_expr, get_trait_def_id, higher, implements_trait, is_in_panic_handler,
     is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
-    match_type, path_to_local, path_to_local_id, paths, single_segment_path, snippet, snippet_with_applicability,
+    match_type, path_to_local, path_to_local_id, paths, snippet, snippet_with_applicability,
     snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
 };
 use if_chain::if_chain;
@@ -863,7 +864,7 @@ fn check_for_loop<'tcx>(
     for_loop_arg::check_for_loop_arg(cx, pat, arg, expr);
     for_loop_over_map_kv::check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     for_mut_range_bound::check_for_mut_range_bound(cx, arg, body);
-    check_for_single_element_loop(cx, pat, arg, body, expr);
+    for_single_element_loop::check_for_single_element_loop(cx, pat, arg, body, expr);
     detect_same_item_push(cx, pat, arg, body, expr);
     manual_flatten::check_manual_flatten(cx, pat, arg, body, span);
 }
@@ -1460,42 +1461,6 @@ fn detect_same_item_push<'tcx>(
                     _ => {},
                 }
             }
-        }
-    }
-}
-
-fn check_for_single_element_loop<'tcx>(
-    cx: &LateContext<'tcx>,
-    pat: &'tcx Pat<'_>,
-    arg: &'tcx Expr<'_>,
-    body: &'tcx Expr<'_>,
-    expr: &'tcx Expr<'_>,
-) {
-    if_chain! {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arg_expr) = arg.kind;
-        if let PatKind::Binding(.., target, _) = pat.kind;
-        if let ExprKind::Array([arg_expression]) = arg_expr.kind;
-        if let ExprKind::Path(ref list_item) = arg_expression.kind;
-        if let Some(list_item_name) = single_segment_path(list_item).map(|ps| ps.ident.name);
-        if let ExprKind::Block(ref block, _) = body.kind;
-        if !block.stmts.is_empty();
-
-        then {
-            let for_span = get_span_of_entire_for_loop(expr);
-            let mut block_str = snippet(cx, block.span, "..").into_owned();
-            block_str.remove(0);
-            block_str.pop();
-
-
-            span_lint_and_sugg(
-                cx,
-                SINGLE_ELEMENT_LOOP,
-                for_span,
-                "for loop over a single element",
-                "try",
-                format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0)), target.name, list_item_name, block_str),
-                Applicability::MachineApplicable
-            )
         }
     }
 }
