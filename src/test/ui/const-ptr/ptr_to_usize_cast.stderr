@@ -1,10 +1,10 @@
 error: any use of this value will cause an error
-  --> $DIR/issue-51559.rs:4:33
+  --> $DIR/ptr_to_usize_cast.rs:6:36
    |
-LL | pub const FOO: usize = unsafe { BAR as usize };
-   | --------------------------------^^^^^^^^^^^^---
-   |                                 |
-   |                                 cannot cast pointer to integer because it was not created by cast from integer
+LL |     const _ERROR: usize = unsafe { &0 as *const i32 as usize };
+   |     -------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                    |
+   |                                    cannot cast pointer to integer because it was not created by cast from integer
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

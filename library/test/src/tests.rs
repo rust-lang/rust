@@ -34,7 +34,7 @@ impl TestOpts {
     fn new() -> TestOpts {
         TestOpts {
             list: false,
-            filter: None,
+            filters: vec![],
             filter_exact: false,
             force_run_in_process: false,
             exclude_should_panic: false,
@@ -473,43 +473,60 @@ pub fn exact_filter_match() {
     }
 
     let substr =
-        filter_tests(&TestOpts { filter: Some("base".into()), ..TestOpts::new() }, tests());
-    assert_eq!(substr.len(), 4);
-
-    let substr = filter_tests(&TestOpts { filter: Some("bas".into()), ..TestOpts::new() }, tests());
+        filter_tests(&TestOpts { filters: vec!["base".into()], ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 4);
 
     let substr =
-        filter_tests(&TestOpts { filter: Some("::test".into()), ..TestOpts::new() }, tests());
+        filter_tests(&TestOpts { filters: vec!["bas".into()], ..TestOpts::new() }, tests());
+    assert_eq!(substr.len(), 4);
+
+    let substr =
+        filter_tests(&TestOpts { filters: vec!["::test".into()], ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 3);
 
     let substr =
-        filter_tests(&TestOpts { filter: Some("base::test".into()), ..TestOpts::new() }, tests());
+        filter_tests(&TestOpts { filters: vec!["base::test".into()], ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 3);
+
+    let substr = filter_tests(
+        &TestOpts { filters: vec!["test1".into(), "test2".into()], ..TestOpts::new() },
+        tests(),
+    );
+    assert_eq!(substr.len(), 2);
 
     let exact = filter_tests(
-        &TestOpts { filter: Some("base".into()), filter_exact: true, ..TestOpts::new() },
+        &TestOpts { filters: vec!["base".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 1);
 
     let exact = filter_tests(
-        &TestOpts { filter: Some("bas".into()), filter_exact: true, ..TestOpts::new() },
+        &TestOpts { filters: vec!["bas".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 0);
 
     let exact = filter_tests(
-        &TestOpts { filter: Some("::test".into()), filter_exact: true, ..TestOpts::new() },
+        &TestOpts { filters: vec!["::test".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 0);
 
     let exact = filter_tests(
-        &TestOpts { filter: Some("base::test".into()), filter_exact: true, ..TestOpts::new() },
+        &TestOpts { filters: vec!["base::test".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 1);
+
+    let exact = filter_tests(
+        &TestOpts {
+            filters: vec!["base".into(), "base::test".into()],
+            filter_exact: true,
+            ..TestOpts::new()
+        },
+        tests(),
+    );
+    assert_eq!(exact.len(), 2);
 }
 
 #[test]

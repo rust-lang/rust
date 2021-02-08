@@ -539,7 +539,7 @@ impl SourceMap {
 
     pub fn is_line_before_span_empty(&self, sp: Span) -> bool {
         match self.span_to_prev_source(sp) {
-            Ok(s) => s.split('\n').last().map_or(false, |l| l.trim_start().is_empty()),
+            Ok(s) => s.rsplit_once('\n').unwrap_or(("", &s)).1.trim_start().is_empty(),
             Err(_) => false,
         }
     }
@@ -632,10 +632,11 @@ impl SourceMap {
     pub fn span_to_margin(&self, sp: Span) -> Option<usize> {
         match self.span_to_prev_source(sp) {
             Err(_) => None,
-            Ok(source) => source
-                .split('\n')
-                .last()
-                .map(|last_line| last_line.len() - last_line.trim_start().len()),
+            Ok(source) => {
+                let last_line = source.rsplit_once('\n').unwrap_or(("", &source)).1;
+
+                Some(last_line.len() - last_line.trim_start().len())
+            }
         }
     }
 
@@ -651,7 +652,7 @@ impl SourceMap {
     pub fn span_extend_to_prev_char(&self, sp: Span, c: char, accept_newlines: bool) -> Span {
         if let Ok(prev_source) = self.span_to_prev_source(sp) {
             let prev_source = prev_source.rsplit(c).next().unwrap_or("");
-            if !prev_source.is_empty() && (!prev_source.contains('\n') || accept_newlines) {
+            if !prev_source.is_empty() && (accept_newlines || !prev_source.contains('\n')) {
                 return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
             }
         }
@@ -673,7 +674,7 @@ impl SourceMap {
                 let prev_source = prev_source.rsplit(&pat).next().unwrap_or("").trim_start();
                 if prev_source.is_empty() && sp.lo().0 != 0 {
                     return sp.with_lo(BytePos(sp.lo().0 - 1));
-                } else if !prev_source.contains('\n') || accept_newlines {
+                } else if accept_newlines || !prev_source.contains('\n') {
                     return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
                 }
             }
@@ -693,7 +694,7 @@ impl SourceMap {
     pub fn span_extend_to_next_char(&self, sp: Span, c: char, accept_newlines: bool) -> Span {
         if let Ok(next_source) = self.span_to_next_source(sp) {
             let next_source = next_source.split(c).next().unwrap_or("");
-            if !next_source.is_empty() && (!next_source.contains('\n') || accept_newlines) {
+            if !next_source.is_empty() && (accept_newlines || !next_source.contains('\n')) {
                 return sp.with_hi(BytePos(sp.hi().0 + next_source.len() as u32));
             }
         }

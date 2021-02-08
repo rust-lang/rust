@@ -240,8 +240,8 @@ pub struct Config {
     /// Run ignored tests
     pub run_ignored: bool,
 
-    /// Only run tests that match this filter
-    pub filter: Option<String>,
+    /// Only run tests that match these filters
+    pub filters: Vec<String>,
 
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
