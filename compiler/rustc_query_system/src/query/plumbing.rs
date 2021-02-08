@@ -50,7 +50,6 @@ pub struct QueryState<D, Q, C: QueryCache> {
 }
 
 impl<D, Q, C: QueryCache> QueryState<D, Q, C> {
-    #[inline]
     pub(super) fn get_lookup<'tcx>(
         &'tcx self,
         key: &C::Key,
@@ -84,7 +83,6 @@ where
     Q: Clone,
     C: QueryCache,
 {
-    #[inline(always)]
     pub fn iter_results<R>(
         &self,
         f: impl for<'a> FnOnce(
@@ -94,7 +92,6 @@ where
         self.cache.iter(&self.shards, |shard| &mut shard.cache, f)
     }
 
-    #[inline(always)]
     pub fn all_inactive(&self) -> bool {
         let shards = self.shards.lock_shards();
         shards.iter().all(|shard| shard.active.is_empty())
@@ -270,7 +267,6 @@ where
 
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    #[inline(always)]
     fn complete(self, result: C::Value, dep_node_index: DepNodeIndex) -> C::Stored {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
@@ -294,7 +290,6 @@ where
     }
 }
 
-#[inline(always)]
 fn with_diagnostics<F, R>(f: F) -> (R, ThinVec<Diagnostic>)
 where
     F: FnOnce(Option<&Lock<ThinVec<Diagnostic>>>) -> R,
@@ -362,7 +357,6 @@ where
 /// It returns the shard index and a lock guard to the shard,
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
-#[inline(always)]
 fn try_get_cached<CTX, C, R, OnHit, OnMiss>(
     tcx: CTX,
     state: &QueryState<CTX::DepKind, CTX::Query, C>,
@@ -394,7 +388,6 @@ where
     )
 }
 
-#[inline(always)]
 fn try_execute_query<CTX, C>(
     tcx: CTX,
     state: &QueryState<CTX::DepKind, CTX::Query, C>,
@@ -727,7 +720,6 @@ fn force_query_impl<CTX, C>(
     );
 }
 
-#[inline(always)]
 pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Stored
 where
     Q: QueryDescription<CTX>,
@@ -739,7 +731,6 @@ where
     get_query_impl(tcx, Q::query_state(tcx), span, key, &Q::VTABLE)
 }
 
-#[inline(always)]
 pub fn ensure_query<Q, CTX>(tcx: CTX, key: Q::Key)
 where
     Q: QueryDescription<CTX>,
@@ -749,7 +740,6 @@ where
     ensure_query_impl(tcx, Q::query_state(tcx), key, &Q::VTABLE)
 }
 
-#[inline(always)]
 pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: Span, dep_node: DepNode<CTX::DepKind>)
 where
     Q: QueryDescription<CTX>,
