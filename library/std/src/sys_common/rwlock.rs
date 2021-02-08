@@ -1,26 +1,5 @@
 use crate::sys::rwlock as imp;
 
-#[cfg(unix)]
-enum GuardType {
-    Read,
-    Write,
-}
-
-#[cfg(unix)]
-pub struct RWLockGuard(&'static RWLock, GuardType);
-
-#[cfg(unix)]
-impl Drop for RWLockGuard {
-    fn drop(&mut self) {
-        unsafe {
-            match &self.1 {
-                GuardType::Read => self.0.read_unlock(),
-                GuardType::Write => self.0.write_unlock(),
-            }
-        }
-    }
-}
-
 /// An OS-based reader-writer lock.
 ///
 /// This structure is entirely unsafe and serves as the lowest layer of a
@@ -47,20 +26,6 @@ impl RWLock {
         self.0.read()
     }
 
-    /// Acquires shared access to the underlying lock, blocking the current
-    /// thread to do so.
-    ///
-    /// The lock is automatically unlocked when the returned guard is dropped.
-    ///
-    /// Behavior is undefined if the rwlock has been moved between this and any
-    /// previous method call.
-    #[inline]
-    #[cfg(unix)]
-    pub unsafe fn read_with_guard(&'static self) -> RWLockGuard {
-        self.read();
-        RWLockGuard(&self, GuardType::Read)
-    }
-
     /// Attempts to acquire shared access to this lock, returning whether it
     /// succeeded or not.
     ///
@@ -81,20 +46,6 @@ impl RWLock {
     #[inline]
     pub unsafe fn write(&self) {
         self.0.write()
-    }
-
-    /// Acquires write access to the underlying lock, blocking the current thread
-    /// to do so.
-    ///
-    /// The lock is automatically unlocked when the returned guard is dropped.
-    ///
-    /// Behavior is undefined if the rwlock has been moved between this and any
-    /// previous method call.
-    #[inline]
-    #[cfg(unix)]
-    pub unsafe fn write_with_guard(&'static self) -> RWLockGuard {
-        self.write();
-        RWLockGuard(&self, GuardType::Write)
     }
 
     /// Attempts to acquire exclusive access to this lock, returning whether it
@@ -133,5 +84,65 @@ impl RWLock {
     #[inline]
     pub unsafe fn destroy(&self) {
         self.0.destroy()
+    }
+}
+
+// the cfg annotations only exist due to dead code warnings. the code itself is portable
+#[cfg(unix)]
+pub struct StaticRWLock(RWLock);
+
+#[cfg(unix)]
+impl StaticRWLock {
+    pub const fn new() -> StaticRWLock {
+        StaticRWLock(RWLock::new())
+    }
+
+    /// Acquires shared access to the underlying lock, blocking the current
+    /// thread to do so.
+    ///
+    /// The lock is automatically unlocked when the returned guard is dropped.
+    #[inline]
+    pub fn read_with_guard(&'static self) -> RWLockGuard {
+        // Safety: All methods require static references, therefore self
+        // cannot be moved between invocations.
+        unsafe {
+            self.0.read();
+        }
+        RWLockGuard(&self.0, GuardType::Read)
+    }
+
+    /// Acquires write access to the underlying lock, blocking the current thread
+    /// to do so.
+    ///
+    /// The lock is automatically unlocked when the returned guard is dropped.
+    #[inline]
+    pub fn write_with_guard(&'static self) -> RWLockGuard {
+        // Safety: All methods require static references, therefore self
+        // cannot be moved between invocations.
+        unsafe {
+            self.0.write();
+        }
+        RWLockGuard(&self.0, GuardType::Write)
+    }
+}
+
+#[cfg(unix)]
+enum GuardType {
+    Read,
+    Write,
+}
+
+#[cfg(unix)]
+pub struct RWLockGuard(&'static RWLock, GuardType);
+
+#[cfg(unix)]
+impl Drop for RWLockGuard {
+    fn drop(&mut self) {
+        unsafe {
+            match &self.1 {
+                GuardType::Read => self.0.read_unlock(),
+                GuardType::Write => self.0.write_unlock(),
+            }
+        }
     }
 }

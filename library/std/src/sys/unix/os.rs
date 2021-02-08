@@ -22,7 +22,7 @@ use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
 use crate::sys_common::mutex::{StaticMutex, StaticMutexGuard};
-use crate::sys_common::rwlock::{RWLock, RWLockGuard};
+use crate::sys_common::rwlock::{RWLockGuard, StaticRWLock};
 use crate::vec;
 
 use libc::{c_char, c_int, c_void};
@@ -494,16 +494,17 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     ptr::addr_of_mut!(environ)
 }
 
-pub unsafe fn env_rwlock(readonly: bool) -> RWLockGuard {
-    static ENV_LOCK: RWLock = RWLock::new();
-    if readonly { ENV_LOCK.read_with_guard() } else { ENV_LOCK.write_with_guard() }
+static ENV_LOCK: StaticRWLock = StaticRWLock::new();
+
+pub fn env_read_lock() -> RWLockGuard {
+    ENV_LOCK.read_with_guard()
 }
 
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
     unsafe {
-        let _guard = env_rwlock(true);
+        let _guard = env_read_lock();
         let mut environ = *environ();
         let mut result = Vec::new();
         if !environ.is_null() {
@@ -540,7 +541,7 @@ pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     // always None as well
     let k = CString::new(k.as_bytes())?;
     unsafe {
-        let _guard = env_rwlock(true);
+        let _guard = env_read_lock();
         let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
         let ret = if s.is_null() {
             None
@@ -556,7 +557,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let v = CString::new(v.as_bytes())?;
 
     unsafe {
-        let _guard = env_rwlock(false);
+        let _guard = ENV_LOCK.write_with_guard();
         cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
     }
 }
@@ -565,7 +566,7 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
     unsafe {
-        let _guard = env_rwlock(false);
+        let _guard = ENV_LOCK.write_with_guard();
         cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
     }
 }
