@@ -1,9 +1,0 @@
-error[E0599]: no method named `foo` found for reference `&i32` in the current scope
-  --> $DIR/trait-impl-1.rs:15:7
-   |
-LL |     x.foo();
-   |       ^^^ method not found in `&i32`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0599`.

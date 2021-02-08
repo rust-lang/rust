@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `&Baz: Happy` is not satisfied
+  --> $DIR/multiple-0.rs:34:9
+   |
+LL | fn foo<T>(_: T) where T: Happy {}
+   |                          ----- required by this bound in `foo`
+...
+LL |     foo(&baz);
+   |         ^^^^
+   |         |
+   |         the trait `Happy` is not implemented for `&Baz`
+   |         help: consider adding dereference here: `&***baz`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
