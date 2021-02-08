@@ -1311,6 +1311,9 @@ impl<'a> State<'a> {
                     true,
                     item.span,
                 );
+                if macro_def.body.need_semicolon() {
+                    self.word(";");
+                }
             }
         }
         self.ann.post(self, AnnNode::Item(item))
