@@ -20,6 +20,14 @@ use Entry::*;
 /// We might temporarily have fewer elements during methods.
 pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 
+// A tree in a `BTreeMap` is a tree in the `node` module with addtional invariants:
+// - Keys must appear in ascending order (according to the key's type).
+// - If the root node is internal, it must contain at least 1 element.
+// - Every non-root node contains at least MIN_LEN elements.
+//
+// An empty map may be represented both by the absense of a root node or by a
+// root node that is an empty leaf.
+
 /// A map based on a B-Tree.
 ///
 /// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
@@ -1131,20 +1139,12 @@ impl<K, V> BTreeMap<K, V> {
         let total_num = self.len();
         let left_root = self.root.as_mut().unwrap(); // unwrap succeeds because not empty
 
-        let mut right = Self::new();
-        let right_root = Self::ensure_is_owned(&mut right.root);
+        let right_root = left_root.split_off(key);
 
-        left_root.split_off(right_root, key);
+        let (new_left_len, right_len) = Root::calc_split_length(total_num, &left_root, &right_root);
+        self.length = new_left_len;
 
-        if left_root.height() < right_root.height() {
-            self.length = left_root.reborrow().calc_length();
-            right.length = total_num - self.len();
-        } else {
-            right.length = right_root.reborrow().calc_length();
-            self.length = total_num - right.len();
-        }
-
-        right
+        BTreeMap { root: Some(right_root), length: right_len }
     }
 
     /// Creates an iterator that visits all elements (key-value pairs) in
