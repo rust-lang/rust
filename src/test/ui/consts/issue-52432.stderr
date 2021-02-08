@@ -20,7 +20,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/issue-52432.rs:7:10
    |
 LL |     [(); &(static || {}) as *const _ as usize];
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot cast pointer to integer because it was not created by cast from integer
 
 error: aborting due to 4 previous errors
 
