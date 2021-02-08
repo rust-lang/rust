@@ -1,11 +1,19 @@
 //! Applies structured search replace rules from the command line.
 
-use crate::cli::{load_cargo::load_cargo, Result};
+use crate::cli::{
+    load_cargo::{load_cargo, LoadCargoConfig},
+    Result,
+};
 use ssr::{MatchFinder, SsrPattern, SsrRule};
 
 pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
     use ide_db::base_db::SourceDatabaseExt;
-    let (host, vfs) = load_cargo(&std::env::current_dir()?, true, true)?;
+    let load_cargo_config = LoadCargoConfig {
+        cargo_config: Default::default(),
+        load_out_dirs_from_check: true,
+        with_proc_macro: true,
+    };
+    let (host, vfs) = load_cargo(&std::env::current_dir()?, &load_cargo_config)?;
     let db = host.raw_database();
     let mut match_finder = MatchFinder::at_first_file(db)?;
     for rule in rules {
@@ -28,7 +36,12 @@ pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
 pub fn search_for_patterns(patterns: Vec<SsrPattern>, debug_snippet: Option<String>) -> Result<()> {
     use ide_db::base_db::SourceDatabaseExt;
     use ide_db::symbol_index::SymbolsDatabase;
-    let (host, _vfs) = load_cargo(&std::env::current_dir()?, true, true)?;
+    let load_cargo_config = LoadCargoConfig {
+        cargo_config: Default::default(),
+        load_out_dirs_from_check: true,
+        with_proc_macro: true,
+    };
+    let (host, _vfs) = load_cargo(&std::env::current_dir()?, &load_cargo_config)?;
     let db = host.raw_database();
     let mut match_finder = MatchFinder::at_first_file(db)?;
     for pattern in patterns {
