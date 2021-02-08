@@ -1010,9 +1010,18 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ItemInfo> {
         let impl_span = self.token.span;
         let mut err = self.expected_ident_found();
-        let mut impl_info = self.parse_item_impl(attrs, defaultness)?;
+
+        // Only try to recover if this is implementing a trait for a type
+        let mut impl_info = match self.parse_item_impl(attrs, defaultness) {
+            Ok(impl_info) => impl_info,
+            Err(mut recovery_error) => {
+                // Recovery failed, raise the "expected identifier" error
+                recovery_error.cancel();
+                return Err(err);
+            }
+        };
+
         match impl_info.1 {
-            // only try to recover if this is implementing a trait for a type
             ItemKind::Impl(box ImplKind {
                 of_trait: Some(ref trai), ref mut constness, ..
             }) => {
@@ -1030,6 +1039,7 @@ impl<'a> Parser<'a> {
             ItemKind::Impl { .. } => return Err(err),
             _ => unreachable!(),
         }
+
         Ok(impl_info)
     }
 
