@@ -21,4 +21,6 @@ impl Foo {
     // @has - "$.index[*][?(@.name=='const_unsafe_meth')].inner.header[*]" '"const"'
     // @has - "$.index[*][?(@.name=='const_unsafe_meth')].inner.header[*]" '"unsafe"'
     pub const unsafe fn const_unsafe_meth() {}
+
+    // It's impossible for a method to be both const and async, so no test for that
 }

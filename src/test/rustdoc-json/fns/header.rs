@@ -18,3 +18,5 @@ pub async unsafe fn async_unsafe_fn() {}
 // @has - "$.index[*][?(@.name=='const_unsafe_fn')].inner.header[*]" '"const"'
 // @has - "$.index[*][?(@.name=='const_unsafe_fn')].inner.header[*]" '"unsafe"'
 pub const unsafe fn const_unsafe_fn() {}
+
+// It's impossible for a function to be both const and async, so no test for that
