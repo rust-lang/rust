@@ -26,7 +26,8 @@ use crate::ptr;
 /// use std::ptr::null_mut;
 /// use std::sync::atomic::{AtomicUsize, Ordering::{Acquire, SeqCst}};
 ///
-/// const ARENA: usize = 100 * 1024;
+/// const ARENA: usize = 128 * 1024;
+/// #[repr(C, align(131072))] // 131072 == ARENA.
 /// struct SimpleAllocator {
 ///     arena: UnsafeCell<[u8; ARENA]>,
 ///     remaining: AtomicUsize, // we allocate from the top, counting down
@@ -43,14 +44,15 @@ use crate::ptr;
 /// unsafe impl GlobalAlloc for SimpleAllocator {
 ///     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
 ///         let size = layout.size();
+///         let align = layout.align();
 ///
 ///         // Both align==0 and align not power of 2 will mangle remaining (or panic), causing UB.
 ///         // This is allowed by the `GlobalAllocator` and `Layout` contracts.
-///         let align_mask_to_round_down = !(layout.align() - 1);
+///         let align_mask_to_round_down = !(align - 1);
 ///
 ///         let mut allocated = 0;
 ///         if self.remaining.fetch_update(SeqCst, SeqCst, |mut remaining| {
-///             if size > remaining {
+///             if size > remaining || align > ARENA { // align may be > size !
 ///                 return None
 ///             }
 ///             remaining -= size;
