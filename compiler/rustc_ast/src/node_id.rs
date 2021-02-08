@@ -18,9 +18,9 @@ rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeId);
 /// The [`NodeId`] used to represent the root of the crate.
 pub const CRATE_NODE_ID: NodeId = NodeId::from_u32(0);
 
-/// When parsing and doing expansions, we initially give all AST nodes this AST
-/// [`NodeId`]. Then later, during expansion, we renumber them to have small,
-/// positive IDs.
+/// When parsing and at the beginning of doing expansions, we initially give all AST nodes
+/// this dummy AST [`NodeId`]. Then, during a later phase of expansion, we renumber them
+/// to have small, positive IDs.
 pub const DUMMY_NODE_ID: NodeId = NodeId::MAX;
 
 impl NodeId {
