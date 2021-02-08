@@ -23,38 +23,47 @@ use crate::ptr;
 /// ```
 /// use std::alloc::{GlobalAlloc, Layout};
 /// use std::cell::UnsafeCell;
+/// use std::ptr::null_mut;
 /// use std::process::abort;
-/// use std::sync::atomic::{Ordering, AtomicUsize};
+/// use std::sync::atomic::{AtomicUsize, Ordering::{Acquire, Release, SeqCst}};
 ///
 /// const ARENA: usize = 100 * 1024;
 /// struct SimpleAllocator {
 ///     arena: UnsafeCell<[u8; ARENA]>,
-///     counter: AtomicUsize,
+///     counter: AtomicUsize, // we allocate from the top, counting down
 /// }
 ///
 /// #[global_allocator]
 /// static ALLOCATOR: SimpleAllocator = SimpleAllocator {
 ///     arena: UnsafeCell::new([0x55; ARENA]),
-///     counter: AtomicUsize::new(0),
+///     counter: AtomicUsize::new(ARENA),
 /// };
 ///
 /// unsafe impl Sync for SimpleAllocator { }
 ///
 /// unsafe impl GlobalAlloc for SimpleAllocator {
 ///     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-///         let align_mask = layout.align() - 1;
 ///         let size = layout.size();
+///         if size > ARENA { // We must prevent arithmetic overflow even with huge sizes
+///             return null_mut();
+///         }
+///
+///         // Both align==0 and align not power of 2 will mangle counter and cause UB.
+///         // This is allowed by the `GlobalAllocator` and `Layout` contracts.
+///         let align_mask = !layout.align().wrapping_sub(1);
+///
 ///         let mut result = 0;
-///         let mut new = 0;
-///         self.counter.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |mut counter| {
-///             counter += align_mask;
-///             counter &= !align_mask;
+///         self.counter.fetch_update(SeqCst, SeqCst, |mut counter| {
+///             counter = counter.wrapping_sub(size);
+///             counter &= align_mask;
 ///             result = counter;
-///             counter += size;
-///             new = counter;
 ///             Some(counter)
-///         }).unwrap();
-///         if new > ARENA { abort(); }
+///         }).unwrap_or_else(|_| abort()); // Impossible, but just in case: panic is UB here.
+///
+///         if result > ARENA { // wrapped
+///             self.counter.store(!0, Release); // Prevents eventual overflow.
+///             return null_mut();
+///         }
 ///         (self.arena.get() as *mut u8).add(result)
 ///     }
 ///     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
@@ -63,8 +72,8 @@ use crate::ptr;
 ///
 /// fn main() {
 ///     let _s = format!("allocating a string!");
-///     let sofar = ALLOCATOR.counter.load(Ordering::Acquire);
-///     println!("allocated so far: {}", sofar);
+///     let sofar = ALLOCATOR.counter.load(Acquire);
+///     println!("allocated so far: {}", ARENA - sofar);
 /// }
 /// ```
 ///
