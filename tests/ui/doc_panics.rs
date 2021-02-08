@@ -93,3 +93,8 @@ fn inner_body_private(opt: Option<u32>) {
         }
     });
 }
+
+/// This is okay because unreachable
+pub fn unreachable() {
+    unreachable!("This function panics")
+}

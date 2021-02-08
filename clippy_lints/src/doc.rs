@@ -1,6 +1,6 @@
 use crate::utils::{
-    implements_trait, is_entrypoint_fn, is_type_diagnostic_item, match_panic_def_id, method_chain_args, return_ty,
-    span_lint, span_lint_and_note,
+    implements_trait, is_entrypoint_fn, is_expn_of, is_type_diagnostic_item, match_panic_def_id, method_chain_args,
+    return_ty, span_lint, span_lint_and_note,
 };
 use if_chain::if_chain;
 use itertools::Itertools;
@@ -699,6 +699,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
             if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.kind;
             if let Some(path_def_id) = path.res.opt_def_id();
             if match_panic_def_id(self.cx, path_def_id);
+            if is_expn_of(expr.span, "unreachable").is_none();
             then {
                 self.panic_span = Some(expr.span);
             }
