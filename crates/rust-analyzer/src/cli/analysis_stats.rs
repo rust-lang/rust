@@ -25,8 +25,10 @@ use stdx::format_to;
 use syntax::AstNode;
 
 use crate::cli::{
-    load_cargo::load_cargo, print_memory_usage, progress_report::ProgressReport, report_metric,
-    Result, Verbosity,
+    load_cargo::{load_cargo, LoadCargoConfig},
+    print_memory_usage,
+    progress_report::ProgressReport,
+    report_metric, Result, Verbosity,
 };
 use profile::StopWatch;
 
@@ -57,12 +59,12 @@ impl AnalysisStatsCmd {
         };
 
         let mut db_load_sw = self.stop_watch();
-        let (host, vfs) = load_cargo(
-            &self.path,
-            &Default::default(),
-            self.load_output_dirs,
-            self.with_proc_macro,
-        )?;
+        let load_cargo_config = LoadCargoConfig {
+            cargo_config: Default::default(),
+            load_out_dirs_from_check: self.load_output_dirs,
+            with_proc_macro: self.with_proc_macro,
+        };
+        let (host, vfs) = load_cargo(&self.path, &load_cargo_config)?;
         let db = host.raw_database();
         eprintln!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
 

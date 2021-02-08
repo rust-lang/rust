@@ -13,15 +13,16 @@ use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
 use crate::reload::{ProjectFolders, SourceRootConfig};
 
-pub fn load_cargo(
-    root: &Path,
-    config: &CargoConfig,
-    load_out_dirs_from_check: bool,
-    with_proc_macro: bool,
-) -> Result<(AnalysisHost, vfs::Vfs)> {
+pub struct LoadCargoConfig {
+    pub cargo_config: CargoConfig,
+    pub load_out_dirs_from_check: bool,
+    pub with_proc_macro: bool,
+}
+
+pub fn load_cargo(root: &Path, config: &LoadCargoConfig) -> Result<(AnalysisHost, vfs::Vfs)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
-    let ws = ProjectWorkspace::load(root, config, &|_| {})?;
+    let ws = ProjectWorkspace::load(root, &config.cargo_config, &|_| {})?;
 
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
@@ -31,14 +32,14 @@ pub fn load_cargo(
         Box::new(loader)
     };
 
-    let proc_macro_client = if with_proc_macro {
+    let proc_macro_client = if config.with_proc_macro {
         let path = std::env::current_exe()?;
         Some(ProcMacroClient::extern_process(path, &["proc-macro"]).unwrap())
     } else {
         None
     };
 
-    let build_data = if load_out_dirs_from_check {
+    let build_data = if config.load_out_dirs_from_check {
         let mut collector = BuildDataCollector::default();
         ws.collect_build_data_configs(&mut collector);
         Some(collector.collect(&|_| {})?)
@@ -117,7 +118,13 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let (host, _vfs) = load_cargo(path, &Default::default(), false, false).unwrap();
+        let load_cargo_config = LoadCargoConfig {
+            cargo_config: Default::default(),
+            load_out_dirs_from_check: false,
+            with_proc_macro: false,
+        };
+
+        let (host, _vfs) = load_cargo(path, &load_cargo_config).unwrap();
         let n_crates = Crate::all(host.raw_database()).len();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);

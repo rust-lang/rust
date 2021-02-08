@@ -10,7 +10,10 @@ use hir::{db::HirDatabase, Crate, Module};
 use ide::{DiagnosticsConfig, Severity};
 use ide_db::base_db::SourceDatabaseExt;
 
-use crate::cli::{load_cargo::load_cargo, Result};
+use crate::cli::{
+    load_cargo::{load_cargo, LoadCargoConfig},
+    Result,
+};
 
 fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
     let mut worklist: Vec<_> =
@@ -25,8 +28,17 @@ fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
     modules
 }
 
-pub fn diagnostics(path: &Path, load_output_dirs: bool, with_proc_macro: bool) -> Result<()> {
-    let (host, _vfs) = load_cargo(path, &Default::default(), load_output_dirs, with_proc_macro)?;
+pub fn diagnostics(
+    path: &Path,
+    load_out_dirs_from_check: bool,
+    with_proc_macro: bool,
+) -> Result<()> {
+    let load_cargo_config = LoadCargoConfig {
+        cargo_config: Default::default(),
+        load_out_dirs_from_check,
+        with_proc_macro,
+    };
+    let (host, _vfs) = load_cargo(path, &load_cargo_config)?;
     let db = host.raw_database();
     let analysis = host.analysis();
 
