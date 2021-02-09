@@ -6,45 +6,72 @@ use std::collections::*;
 fn main() {
     // Should trigger this lint: Vec.
     let vec: Vec<i32> = Vec::new();
-    vec.iter().for_each(|v| println!("{}", v));
+    let mut acc = 0;
+    vec.iter().for_each(|v| {
+        acc += v;
+    });
 
     // Should trigger this lint: &Vec.
     let vec_ref = &vec;
-    vec_ref.iter().for_each(|v| println!("{}", v));
+    vec_ref.iter().for_each(|v| {
+        acc += v;
+    });
 
     // Should trigger this lint: VecDeque.
     let vec_deq: VecDeque<i32> = VecDeque::new();
-    vec_deq.iter().for_each(|v| println!("{}", v));
+    vec_deq.iter().for_each(|v| {
+        acc += v;
+    });
 
     // Should trigger this lint: LinkedList.
     let list: LinkedList<i32> = LinkedList::new();
-    list.iter().for_each(|v| println!("{}", v));
+    list.iter().for_each(|v| {
+        acc += v;
+    });
 
     // Should trigger this lint: HashMap.
     let mut hash_map: HashMap<i32, i32> = HashMap::new();
-    hash_map.iter().for_each(|(k, v)| println!("{}: {}", k, v));
-    hash_map.iter_mut().for_each(|(k, v)| println!("{}: {}", k, v));
-    hash_map.keys().for_each(|k| println!("{}", k));
-    hash_map.values().for_each(|v| println!("{}", v));
+    hash_map.iter().for_each(|(k, v)| {
+        acc += k + v;
+    });
+    hash_map.iter_mut().for_each(|(k, v)| {
+        acc += *k + *v;
+    });
+    hash_map.keys().for_each(|k| {
+        acc += k;
+    });
+    hash_map.values().for_each(|v| {
+        acc += v;
+    });
 
     // Should trigger this lint: HashSet.
     let hash_set: HashSet<i32> = HashSet::new();
-    hash_set.iter().for_each(|v| println!("{}", v));
+    hash_set.iter().for_each(|v| {
+        acc += v;
+    });
 
     // Should trigger this lint: BTreeSet.
     let btree_set: BTreeSet<i32> = BTreeSet::new();
-    btree_set.iter().for_each(|v| println!("{}", v));
+    btree_set.iter().for_each(|v| {
+        acc += v;
+    });
 
     // Should trigger this lint: BinaryHeap.
     let binary_heap: BinaryHeap<i32> = BinaryHeap::new();
-    binary_heap.iter().for_each(|v| println!("{}", v));
+    binary_heap.iter().for_each(|v| {
+        acc += v;
+    });
 
     // Should trigger this lint: Array.
     let s = [1, 2, 3];
-    s.iter().for_each(|v| println!("{}", v));
+    s.iter().for_each(|v| {
+        acc += v;
+    });
 
     // Should trigger this lint. Slice.
-    vec.as_slice().iter().for_each(|v| println!("{}", v));
+    vec.as_slice().iter().for_each(|v| {
+        acc += v;
+    });
 
     // Should trigger this lint with notes that say "change `return` to `continue`".
     vec.iter().for_each(|v| {
@@ -83,6 +110,9 @@ fn main() {
     // Should NOT trigger this lint in case the receiver of `iter` is a user defined type.
     let my_collection = MyCollection { v: vec![] };
     my_collection.iter().for_each(|v| println!("{}", v));
+
+    // Should NOT trigger this lint in case the closure body is not a `ExprKind::Block`.
+    vec.iter().for_each(|x| acc += x);
 }
 
 struct MyCollection {

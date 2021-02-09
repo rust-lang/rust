@@ -28,8 +28,9 @@ pub(super) fn lint(cx: &LateContext<'_>, expr: &'tcx Expr<'_>, args: &[&[Expr<'_
         if match_trait_method(cx, expr, &paths::ITERATOR);
         if is_target_ty(cx, cx.typeck_results().expr_ty(iter_receiver));
         if let ExprKind::Closure(_, _, body_id, ..) = for_each_arg.kind;
+        let body = cx.tcx.hir().body(body_id);
+        if let ExprKind::Block(..) = body.value.kind;
         then {
-            let body = cx.tcx.hir().body(body_id);
             let mut ret_span_collector = RetSpanCollector::new();
             ret_span_collector.visit_expr(&body.value);
 

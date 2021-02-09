@@ -1,85 +1,111 @@
 error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:9:5
+  --> $DIR/excessive_for_each.rs:10:5
    |
-LL |     vec.iter().for_each(|v| println!("{}", v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in vec.iter() { .. }`
+LL | /     vec.iter().for_each(|v| {
+LL | |         acc += v;
+LL | |     });
+   | |______^ help: try: `for v in vec.iter() { .. }`
    |
    = note: `-D clippy::excessive-for-each` implied by `-D warnings`
 
 error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:13:5
+  --> $DIR/excessive_for_each.rs:16:5
    |
-LL |     vec_ref.iter().for_each(|v| println!("{}", v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in vec_ref.iter() { .. }`
+LL | /     vec_ref.iter().for_each(|v| {
+LL | |         acc += v;
+LL | |     });
+   | |______^ help: try: `for v in vec_ref.iter() { .. }`
 
 error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:17:5
+  --> $DIR/excessive_for_each.rs:22:5
    |
-LL |     vec_deq.iter().for_each(|v| println!("{}", v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in vec_deq.iter() { .. }`
-
-error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:21:5
-   |
-LL |     list.iter().for_each(|v| println!("{}", v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in list.iter() { .. }`
-
-error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:25:5
-   |
-LL |     hash_map.iter().for_each(|(k, v)| println!("{}: {}", k, v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for (k, v) in hash_map.iter() { .. }`
-
-error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:26:5
-   |
-LL |     hash_map.iter_mut().for_each(|(k, v)| println!("{}: {}", k, v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for (k, v) in hash_map.iter_mut() { .. }`
-
-error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:27:5
-   |
-LL |     hash_map.keys().for_each(|k| println!("{}", k));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for k in hash_map.keys() { .. }`
+LL | /     vec_deq.iter().for_each(|v| {
+LL | |         acc += v;
+LL | |     });
+   | |______^ help: try: `for v in vec_deq.iter() { .. }`
 
 error: excessive use of `for_each`
   --> $DIR/excessive_for_each.rs:28:5
    |
-LL |     hash_map.values().for_each(|v| println!("{}", v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in hash_map.values() { .. }`
+LL | /     list.iter().for_each(|v| {
+LL | |         acc += v;
+LL | |     });
+   | |______^ help: try: `for v in list.iter() { .. }`
 
 error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:32:5
+  --> $DIR/excessive_for_each.rs:34:5
    |
-LL |     hash_set.iter().for_each(|v| println!("{}", v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in hash_set.iter() { .. }`
+LL | /     hash_map.iter().for_each(|(k, v)| {
+LL | |         acc += k + v;
+LL | |     });
+   | |______^ help: try: `for (k, v) in hash_map.iter() { .. }`
 
 error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:36:5
+  --> $DIR/excessive_for_each.rs:37:5
    |
-LL |     btree_set.iter().for_each(|v| println!("{}", v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in btree_set.iter() { .. }`
+LL | /     hash_map.iter_mut().for_each(|(k, v)| {
+LL | |         acc += *k + *v;
+LL | |     });
+   | |______^ help: try: `for (k, v) in hash_map.iter_mut() { .. }`
 
 error: excessive use of `for_each`
   --> $DIR/excessive_for_each.rs:40:5
    |
-LL |     binary_heap.iter().for_each(|v| println!("{}", v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in binary_heap.iter() { .. }`
+LL | /     hash_map.keys().for_each(|k| {
+LL | |         acc += k;
+LL | |     });
+   | |______^ help: try: `for k in hash_map.keys() { .. }`
 
 error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:44:5
+  --> $DIR/excessive_for_each.rs:43:5
    |
-LL |     s.iter().for_each(|v| println!("{}", v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in s.iter() { .. }`
+LL | /     hash_map.values().for_each(|v| {
+LL | |         acc += v;
+LL | |     });
+   | |______^ help: try: `for v in hash_map.values() { .. }`
 
 error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:47:5
+  --> $DIR/excessive_for_each.rs:49:5
    |
-LL |     vec.as_slice().iter().for_each(|v| println!("{}", v));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in vec.as_slice().iter() { .. }`
+LL | /     hash_set.iter().for_each(|v| {
+LL | |         acc += v;
+LL | |     });
+   | |______^ help: try: `for v in hash_set.iter() { .. }`
 
 error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:50:5
+  --> $DIR/excessive_for_each.rs:55:5
+   |
+LL | /     btree_set.iter().for_each(|v| {
+LL | |         acc += v;
+LL | |     });
+   | |______^ help: try: `for v in btree_set.iter() { .. }`
+
+error: excessive use of `for_each`
+  --> $DIR/excessive_for_each.rs:61:5
+   |
+LL | /     binary_heap.iter().for_each(|v| {
+LL | |         acc += v;
+LL | |     });
+   | |______^ help: try: `for v in binary_heap.iter() { .. }`
+
+error: excessive use of `for_each`
+  --> $DIR/excessive_for_each.rs:67:5
+   |
+LL | /     s.iter().for_each(|v| {
+LL | |         acc += v;
+LL | |     });
+   | |______^ help: try: `for v in s.iter() { .. }`
+
+error: excessive use of `for_each`
+  --> $DIR/excessive_for_each.rs:72:5
+   |
+LL | /     vec.as_slice().iter().for_each(|v| {
+LL | |         acc += v;
+LL | |     });
+   | |______^ help: try: `for v in vec.as_slice().iter() { .. }`
+
+error: excessive use of `for_each`
+  --> $DIR/excessive_for_each.rs:77:5
    |
 LL | /     vec.iter().for_each(|v| {
 LL | |         if *v == 10 {
@@ -91,13 +117,13 @@ LL | |     });
    | |______^ help: try: `for v in vec.iter() { .. }`
    |
 note: change `return` to `continue` in the loop body
-  --> $DIR/excessive_for_each.rs:52:13
+  --> $DIR/excessive_for_each.rs:79:13
    |
 LL |             return;
    |             ^^^^^^
 
 error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:59:5
+  --> $DIR/excessive_for_each.rs:86:5
    |
 LL | /     vec.iter().for_each(|v| {
 LL | |         for i in 0..*v {
@@ -109,12 +135,12 @@ LL | |     });
    | |______^ help: try: `'outer: for v in vec.iter() { .. }`
    |
 note: change `return` to `continue 'outer` in the loop body
-  --> $DIR/excessive_for_each.rs:62:17
+  --> $DIR/excessive_for_each.rs:89:17
    |
 LL |                 return;
    |                 ^^^^^^
 note: change `return` to `continue` in the loop body
-  --> $DIR/excessive_for_each.rs:68:13
+  --> $DIR/excessive_for_each.rs:95:13
    |
 LL |             return;
    |             ^^^^^^
