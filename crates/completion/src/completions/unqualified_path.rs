@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use hir::{Adt, ModuleDef, ScopeDef, Type};
+use hir::{known, Adt, ModuleDef, ScopeDef, Type};
 use syntax::AstNode;
 use test_utils::mark;
 
@@ -58,6 +58,18 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
             // Otherwise fall back to the enum's definition site.
             enum_data.module(ctx.db)
         };
+
+        if let Some(impl_) = ctx.impl_def.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
+            if impl_.target_ty(ctx.db) == *ty {
+                for &variant in &variants {
+                    let self_path = hir::ModPath::from_segments(
+                        hir::PathKind::Plain,
+                        iter::once(known::SELF_TYPE).chain(iter::once(variant.name(ctx.db))),
+                    );
+                    acc.add_qualified_enum_variant(ctx, variant, self_path.clone());
+                }
+            }
+        }
 
         for variant in variants {
             if let Some(path) = module.find_use_path(ctx.db, ModuleDef::from(variant)) {
@@ -724,6 +736,28 @@ fn f() -> m::E { V$0 }
                 ev m::E::V ()
                 md m
                 fn f()     -> E
+            "#]],
+        )
+    }
+
+    #[test]
+    fn completes_enum_variant_impl() {
+        check(
+            r#"
+enum Foo { Bar, Baz, Quux }
+impl Foo {
+    fn foo() { let foo: Foo = Q$0 }
+}
+"#,
+            expect![[r#"
+                ev Self::Bar  ()
+                ev Self::Baz  ()
+                ev Self::Quux ()
+                ev Foo::Bar   ()
+                ev Foo::Baz   ()
+                ev Foo::Quux  ()
+                sp Self
+                en Foo
             "#]],
         )
     }
