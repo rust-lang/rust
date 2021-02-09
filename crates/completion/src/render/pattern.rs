@@ -49,13 +49,17 @@ pub(crate) fn render_variant_pat(
     ctx: RenderContext<'_>,
     variant: hir::Variant,
     local_name: Option<Name>,
+    path: Option<hir::ModPath>,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_variant_pat");
 
     let fields = variant.fields(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(&ctx, &fields, variant)?;
 
-    let name = local_name.unwrap_or_else(|| variant.name(ctx.db())).to_string();
+    let name = match &path {
+        Some(path) => path.to_string(),
+        None => local_name.unwrap_or_else(|| variant.name(ctx.db())).to_string(),
+    };
     let pat = render_pat(&ctx, &name, variant.kind(ctx.db()), &visible_fields, fields_omitted)?;
 
     Some(build_completion(ctx, name, pat, variant))

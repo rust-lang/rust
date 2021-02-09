@@ -11,6 +11,12 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
         return;
     }
 
+    if let Some(ty) = &ctx.expected_type {
+        super::complete_enum_variants(acc, ctx, ty, |acc, ctx, variant, path| {
+            acc.add_qualified_variant_pat(ctx, variant, path)
+        });
+    }
+
     // FIXME: ideally, we should look at the type we are matching against and
     // suggest variants + auto-imports
     ctx.scope.process_all_names(&mut |name, res| {
@@ -283,6 +289,28 @@ impl Foo {
             expect![[r#"
                 bn Self Self($1)$0
                 bn Foo  Foo($1)$0
+            "#]],
+        )
+    }
+
+    #[test]
+    fn completes_qualified_variant() {
+        check_snippet(
+            r#"
+enum Foo {
+    Bar { baz: i32 }
+}
+impl Foo {
+    fn foo() {
+        match {Foo::Bar { baz: 0 }} {
+            B$0
+        }
+    }
+}
+    "#,
+            expect![[r#"
+                bn Self::Bar Self::Bar { baz$1 }$0
+                bn Foo::Bar  Foo::Bar { baz$1 }$0
             "#]],
         )
     }
