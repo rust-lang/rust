@@ -4,6 +4,9 @@
 Code repository for the [Portable SIMD Project Group](https://github.com/rust-lang/project-portable-simd).
 Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for our contributing guidelines.
 
+The docs for this crate are published from the main branch.
+You can [read them here][docs].
+
 If you have questions about SIMD, we have begun writing a [guide][simd-guide].
 We can also be found on [Zulip][zulip-project-portable-simd].
 
@@ -29,3 +32,4 @@ The `mask` types are "truthy" values, but they use the number of bits in their n
 [simd-guide]: ./beginners-guide.md
 [zulip-project-portable-simd]: https://rust-lang.zulipchat.com/#narrow/stream/257879-project-portable-simd
 [stdarch]: https://github.com/rust-lang/stdarch
+[docs]: https://rust-lang.github.io/stdsimd/core_simd
