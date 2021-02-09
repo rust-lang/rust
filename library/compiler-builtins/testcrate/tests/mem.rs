@@ -1,6 +1,8 @@
 extern crate compiler_builtins;
 use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
 
+const WORD_SIZE: usize = core::mem::size_of::<usize>();
+
 #[test]
 fn memcpy_3() {
     let mut arr: [u8; 12] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
@@ -129,5 +131,132 @@ fn memcmp_ne() {
     unsafe {
         assert!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 8) < 0);
         assert!(memcmp(arr2.as_ptr(), arr1.as_ptr(), 8) > 0);
+    }
+}
+
+#[derive(Clone, Copy)]
+struct AlignedStorage<const N: usize>([u8; N], [usize; 0]);
+
+fn gen_arr<const N: usize>() -> AlignedStorage<N> {
+    let mut ret = AlignedStorage::<N>([0; N], []);
+    for i in 0..N {
+        ret.0[i] = i as u8;
+    }
+    ret
+}
+
+#[test]
+fn memmove_forward_misaligned_nonaligned_start() {
+    let mut arr = gen_arr::<32>();
+    let mut reference = arr;
+    unsafe {
+        let src = arr.0.as_ptr().offset(6);
+        let dst = arr.0.as_mut_ptr().offset(3);
+        assert_eq!(memmove(dst, src, 17), dst);
+        reference.0.copy_within(6..6 + 17, 3);
+        assert_eq!(arr.0, reference.0);
+    }
+}
+
+#[test]
+fn memmove_forward_misaligned_aligned_start() {
+    let mut arr = gen_arr::<32>();
+    let mut reference = arr;
+    unsafe {
+        let src = arr.0.as_ptr().offset(6);
+        let dst = arr.0.as_mut_ptr().add(0);
+        assert_eq!(memmove(dst, src, 17), dst);
+        reference.0.copy_within(6..6 + 17, 0);
+        assert_eq!(arr.0, reference.0);
+    }
+}
+
+#[test]
+fn memmove_forward_aligned() {
+    let mut arr = gen_arr::<32>();
+    let mut reference = arr;
+    unsafe {
+        let src = arr.0.as_ptr().add(3 + WORD_SIZE);
+        let dst = arr.0.as_mut_ptr().add(3);
+        assert_eq!(memmove(dst, src, 17), dst);
+        reference
+            .0
+            .copy_within(3 + WORD_SIZE..3 + WORD_SIZE + 17, 3);
+        assert_eq!(arr.0, reference.0);
+    }
+}
+
+#[test]
+fn memmove_backward_misaligned_nonaligned_start() {
+    let mut arr = gen_arr::<32>();
+    let mut reference = arr;
+    unsafe {
+        let src = arr.0.as_ptr().offset(3);
+        let dst = arr.0.as_mut_ptr().offset(6);
+        assert_eq!(memmove(dst, src, 17), dst);
+        reference.0.copy_within(3..3 + 17, 6);
+        assert_eq!(arr.0, reference.0);
+    }
+}
+
+#[test]
+fn memmove_backward_misaligned_aligned_start() {
+    let mut arr = gen_arr::<32>();
+    let mut reference = arr;
+    unsafe {
+        let src = arr.0.as_ptr().offset(3);
+        let dst = arr.0.as_mut_ptr().add(WORD_SIZE);
+        assert_eq!(memmove(dst, src, 17), dst);
+        reference.0.copy_within(3..3 + 17, WORD_SIZE);
+        assert_eq!(arr.0, reference.0);
+    }
+}
+
+#[test]
+fn memmove_backward_aligned() {
+    let mut arr = gen_arr::<32>();
+    let mut reference = arr;
+    unsafe {
+        let src = arr.0.as_ptr().add(3);
+        let dst = arr.0.as_mut_ptr().add(3 + WORD_SIZE);
+        assert_eq!(memmove(dst, src, 17), dst);
+        reference.0.copy_within(3..3 + 17, 3 + WORD_SIZE);
+        assert_eq!(arr.0, reference.0);
+    }
+}
+
+#[test]
+fn memset_backward_misaligned_nonaligned_start() {
+    let mut arr = gen_arr::<32>();
+    let mut reference = arr;
+    unsafe {
+        let ptr = arr.0.as_mut_ptr().offset(6);
+        assert_eq!(memset(ptr, 0xCC, 17), ptr);
+        core::ptr::write_bytes(reference.0.as_mut_ptr().add(6), 0xCC, 17);
+        assert_eq!(arr.0, reference.0);
+    }
+}
+
+#[test]
+fn memset_backward_misaligned_aligned_start() {
+    let mut arr = gen_arr::<32>();
+    let mut reference = arr;
+    unsafe {
+        let ptr = arr.0.as_mut_ptr().add(WORD_SIZE);
+        assert_eq!(memset(ptr, 0xCC, 17), ptr);
+        core::ptr::write_bytes(reference.0.as_mut_ptr().add(WORD_SIZE), 0xCC, 17);
+        assert_eq!(arr.0, reference.0);
+    }
+}
+
+#[test]
+fn memset_backward_aligned() {
+    let mut arr = gen_arr::<32>();
+    let mut reference = arr;
+    unsafe {
+        let ptr = arr.0.as_mut_ptr().add(3 + WORD_SIZE);
+        assert_eq!(memset(ptr, 0xCC, 17), ptr);
+        core::ptr::write_bytes(reference.0.as_mut_ptr().add(3 + WORD_SIZE), 0xCC, 17);
+        assert_eq!(arr.0, reference.0);
     }
 }
