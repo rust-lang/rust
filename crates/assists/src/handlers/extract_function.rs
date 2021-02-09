@@ -1,3 +1,6 @@
+use std::{fmt, iter};
+
+use ast::make;
 use either::Either;
 use hir::{HirDisplay, Local};
 use ide_db::{
@@ -82,10 +85,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
         return None;
     }
 
-    let target_range = match &body {
-        FunctionBody::Expr(expr) => expr.syntax().text_range(),
-        FunctionBody::Span { .. } => ctx.frange.range,
-    };
+    let target_range = body.text_range();
 
     acc.add(
         AssistId("extract_function", crate::AssistKind::RefactorExtract),
@@ -209,7 +209,7 @@ impl RetType {
 #[derive(Debug)]
 enum FunctionBody {
     Expr(ast::Expr),
-    Span { elements: Vec<SyntaxElement>, leading_indent: String },
+    Span { parent: ast::BlockExpr, text_range: TextRange },
 }
 
 impl FunctionBody {
@@ -226,58 +226,28 @@ impl FunctionBody {
         }
     }
 
-    fn from_range(node: &SyntaxNode, range: TextRange) -> Option<FunctionBody> {
-        let mut first = node.token_at_offset(range.start()).left_biased()?;
-        let last = node.token_at_offset(range.end()).right_biased()?;
-
-        let mut leading_indent = String::new();
-
-        let leading_trivia = first
-            .siblings_with_tokens(Direction::Prev)
-            .skip(1)
-            .take_while(|e| e.kind() == SyntaxKind::WHITESPACE && e.as_token().is_some());
-
-        for e in leading_trivia {
-            let token = e.as_token().unwrap();
-            let text = token.text();
-            match text.rfind('\n') {
-                Some(pos) => {
-                    leading_indent = text[pos..].to_owned();
-                    break;
-                }
-                None => first = token.clone(),
-            }
-        }
-
-        let mut elements: Vec<_> = first
-            .siblings_with_tokens(Direction::Next)
-            .take_while(|e| e.as_token() != Some(&last))
-            .collect();
-
-        if !(last.kind() == SyntaxKind::WHITESPACE && last.text().lines().count() <= 2) {
-            elements.push(last.into());
-        }
-
-        Some(FunctionBody::Span { elements, leading_indent })
+    fn from_range(node: SyntaxNode, text_range: TextRange) -> Option<FunctionBody> {
+        let block = ast::BlockExpr::cast(node)?;
+        Some(Self::Span { parent: block, text_range })
     }
 
     fn indent_level(&self) -> IndentLevel {
         match &self {
             FunctionBody::Expr(expr) => IndentLevel::from_node(expr.syntax()),
-            FunctionBody::Span { elements, .. } => elements
-                .iter()
-                .filter_map(SyntaxElement::as_node)
-                .map(IndentLevel::from_node)
-                .min_by_key(|level| level.0)
-                .expect("body must contain at least one node"),
+            FunctionBody::Span { parent, .. } => IndentLevel::from_node(parent.syntax()),
         }
     }
 
     fn tail_expr(&self) -> Option<ast::Expr> {
         match &self {
             FunctionBody::Expr(expr) => Some(expr.clone()),
-            FunctionBody::Span { elements, .. } => {
-                elements.iter().rev().find_map(|e| e.as_node()).cloned().and_then(ast::Expr::cast)
+            FunctionBody::Span { parent, text_range } => {
+                let tail_expr = parent.tail_expr()?;
+                if text_range.contains_range(tail_expr.syntax().text_range()) {
+                    Some(tail_expr)
+                } else {
+                    None
+                }
             }
         }
     }
@@ -285,11 +255,11 @@ impl FunctionBody {
     fn descendants(&self) -> impl Iterator<Item = SyntaxNode> + '_ {
         match self {
             FunctionBody::Expr(expr) => Either::Right(expr.syntax().descendants()),
-            FunctionBody::Span { elements, .. } => Either::Left(
-                elements
-                    .iter()
-                    .filter_map(SyntaxElement::as_node)
-                    .flat_map(SyntaxNode::descendants),
+            FunctionBody::Span { parent, text_range } => Either::Left(
+                parent
+                    .syntax()
+                    .descendants()
+                    .filter(move |it| text_range.contains_range(it.text_range())),
             ),
         }
     }
@@ -297,10 +267,7 @@ impl FunctionBody {
     fn text_range(&self) -> TextRange {
         match self {
             FunctionBody::Expr(expr) => expr.syntax().text_range(),
-            FunctionBody::Span { elements, .. } => TextRange::new(
-                elements.first().unwrap().text_range().start(),
-                elements.last().unwrap().text_range().end(),
-            ),
+            FunctionBody::Span { parent: _, text_range } => *text_range,
         }
     }
 
@@ -321,30 +288,27 @@ impl HasTokenAtOffset for FunctionBody {
     fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<SyntaxToken> {
         match self {
             FunctionBody::Expr(expr) => expr.syntax().token_at_offset(offset),
-            FunctionBody::Span { elements, .. } => {
-                stdx::always!(self.text_range().contains(offset));
-                let mut iter = elements
-                    .iter()
-                    .filter(|element| element.text_range().contains_inclusive(offset));
-                let element1 = iter.next().expect("offset does not fall into body");
-                let element2 = iter.next();
-                stdx::always!(iter.next().is_none(), "> 2 tokens at offset");
-                let t1 = match element1 {
-                    syntax::NodeOrToken::Node(node) => node.token_at_offset(offset),
-                    syntax::NodeOrToken::Token(token) => TokenAtOffset::Single(token.clone()),
-                };
-                let t2 = element2.map(|e| match e {
-                    syntax::NodeOrToken::Node(node) => node.token_at_offset(offset),
-                    syntax::NodeOrToken::Token(token) => TokenAtOffset::Single(token.clone()),
-                });
-
-                match t2 {
-                    Some(t2) => match (t1.clone().right_biased(), t2.clone().left_biased()) {
-                        (Some(e1), Some(e2)) => TokenAtOffset::Between(e1, e2),
-                        (Some(_), None) => t1,
-                        (None, _) => t2,
-                    },
-                    None => t1,
+            FunctionBody::Span { parent, text_range } => {
+                match parent.syntax().token_at_offset(offset) {
+                    TokenAtOffset::None => TokenAtOffset::None,
+                    TokenAtOffset::Single(t) => {
+                        if text_range.contains_range(t.text_range()) {
+                            TokenAtOffset::Single(t)
+                        } else {
+                            TokenAtOffset::None
+                        }
+                    }
+                    TokenAtOffset::Between(a, b) => {
+                        match (
+                            text_range.contains_range(a.text_range()),
+                            text_range.contains_range(b.text_range()),
+                        ) {
+                            (true, true) => TokenAtOffset::Between(a, b),
+                            (true, false) => TokenAtOffset::Single(a),
+                            (false, true) => TokenAtOffset::Single(b),
+                            (false, false) => TokenAtOffset::None,
+                        }
+                    }
                 }
             }
         }
@@ -389,7 +353,7 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
     // we have selected a few statements in a block
     // so covering_element returns the whole block
     if node.kind() == BLOCK_EXPR {
-        let body = FunctionBody::from_range(&node, selection_range);
+        let body = FunctionBody::from_range(node.clone(), selection_range);
         if body.is_some() {
             return body;
         }
@@ -400,7 +364,7 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
     // so we try to expand covering_element to parent and repeat the previous
     if let Some(parent) = node.parent() {
         if parent.kind() == BLOCK_EXPR {
-            let body = FunctionBody::from_range(&parent, selection_range);
+            let body = FunctionBody::from_range(parent, selection_range);
             if body.is_some() {
                 return body;
             }
@@ -642,13 +606,9 @@ fn either_syntax(value: &Either<ast::IdentPat, ast::SelfParam>) -> &SyntaxNode {
 
 /// checks if local variable is used after(outside of) body
 fn var_outlives_body(ctx: &AssistContext, body: &FunctionBody, var: &Local) -> bool {
-    let usages = Definition::Local(*var)
-        .usages(&ctx.sema)
-        .in_scope(SearchScope::single_file(ctx.frange.file_id))
-        .all();
-    let mut usages = usages.iter().flat_map(|(_, rs)| rs.iter());
-
-    usages.any(|reference| body.preceedes_range(reference.range))
+    let usages = LocalUsages::find(ctx, *var);
+    let has_usages = usages.iter().any(|reference| body.preceedes_range(reference.range));
+    has_usages
 }
 
 fn body_return_ty(ctx: &AssistContext, body: &FunctionBody) -> Option<RetType> {
@@ -675,10 +635,7 @@ enum Anchor {
 fn scope_for_fn_insertion(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNode> {
     match body {
         FunctionBody::Expr(e) => scope_for_fn_insertion_node(e.syntax(), anchor),
-        FunctionBody::Span { elements, .. } => {
-            let node = elements.iter().find_map(|e| e.as_node())?;
-            scope_for_fn_insertion_node(&node, anchor)
-        }
+        FunctionBody::Span { parent, .. } => scope_for_fn_insertion_node(parent.syntax(), anchor),
     }
 }
 
@@ -768,9 +725,8 @@ fn format_function(
     format_function_param_list_to(&mut fn_def, ctx, module, fun);
     fn_def.push(')');
     format_function_ret_to(&mut fn_def, ctx, module, fun);
-    fn_def.push_str(" {");
+    fn_def.push(' ');
     format_function_body_to(&mut fn_def, ctx, old_indent, new_indent, fun);
-    format_to!(fn_def, "{}}}", new_indent);
 
     fn_def
 }
@@ -836,58 +792,80 @@ fn format_function_body_to(
     new_indent: IndentLevel,
     fun: &Function,
 ) {
-    match &fun.body {
+    let block = match &fun.body {
         FunctionBody::Expr(expr) => {
-            fn_def.push('\n');
-            let expr = expr.dedent(old_indent).indent(new_indent + 1);
-            let expr = fix_param_usages(ctx, &fun.params, expr.syntax());
-            format_to!(fn_def, "{}{}", new_indent + 1, expr);
-            fn_def.push('\n');
+            let expr = rewrite_body_segment(ctx, &fun.params, expr.syntax());
+            let expr = ast::Expr::cast(expr).unwrap();
+            let expr = expr.dedent(old_indent).indent(IndentLevel(1));
+            let block = make::block_expr(Vec::new(), Some(expr));
+            block.indent(new_indent)
         }
-        FunctionBody::Span { elements, leading_indent } => {
-            format_to!(fn_def, "{}", leading_indent);
-            let new_indent_str = format!("\n{}", new_indent + 1);
-            for mut element in elements {
-                let new_ws;
-                if let Some(ws) = element.as_token().cloned().and_then(ast::Whitespace::cast) {
-                    let text = ws.syntax().text();
-                    if text.contains('\n') {
-                        let new_text = text.replace(&format!("\n{}", old_indent), &new_indent_str);
-                        new_ws = ast::make::tokens::whitespace(&new_text).into();
-                        element = &new_ws;
+        FunctionBody::Span { parent, text_range } => {
+            let mut elements: Vec<_> = parent
+                .syntax()
+                .children()
+                .filter(|it| text_range.contains_range(it.text_range()))
+                .map(|it| rewrite_body_segment(ctx, &fun.params, &it))
+                .collect();
+
+            let mut tail_expr = match elements.pop() {
+                Some(node) => ast::Expr::cast(node.clone()).or_else(|| {
+                    elements.push(node);
+                    None
+                }),
+                None => None,
+            };
+
+            if tail_expr.is_none() {
+                match fun.vars_defined_in_body_and_outlive.as_slice() {
+                    [] => {}
+                    [var] => {
+                        tail_expr = Some(path_expr_from_local(ctx, *var));
+                    },
+                    vars => {
+                        let exprs = vars.iter()
+                            .map(|var| path_expr_from_local(ctx, *var));
+                        let expr = make::expr_tuple(exprs);
+                        tail_expr = Some(expr);
                     }
                 }
+            }
 
-                match element {
-                    syntax::NodeOrToken::Node(node) => {
-                        format_to!(fn_def, "{}", fix_param_usages(ctx, &fun.params, node));
-                    }
-                    syntax::NodeOrToken::Token(token) => {
-                        format_to!(fn_def, "{}", token);
-                    }
+            let elements = elements.into_iter().filter_map(|node| match ast::Stmt::cast(node) {
+                Some(stmt) => Some(stmt),
+                None => {
+                    stdx::never!("block contains non-statement");
+                    None
                 }
-            }
-            if !fn_def.ends_with('\n') {
-                fn_def.push('\n');
-            }
-        }
-    }
+            });
 
-    match fun.vars_defined_in_body_and_outlive.as_slice() {
-        [] => {}
-        [var] => format_to!(fn_def, "{}{}\n", new_indent + 1, var.name(ctx.db()).unwrap()),
-        [v0, vs @ ..] => {
-            format_to!(fn_def, "{}({}", new_indent + 1, v0.name(ctx.db()).unwrap());
-            for var in vs {
-                format_to!(fn_def, ", {}", var.name(ctx.db()).unwrap());
-            }
-            fn_def.push_str(")\n");
+
+            let block = make::block_expr(elements, tail_expr);
+            block.dedent(old_indent).indent(new_indent)
         }
-    }
+    };
+
+        }
+    
+    format_to!(fn_def, "{}", block);
+}
+
+fn path_expr_from_local(ctx: &AssistContext, var: Local) -> ast::Expr {
+    let name = var.name(ctx.db()).unwrap().to_string();
+    let path = make::path_unqualified(make::path_segment(make::name_ref(&name)));
+    make::expr_path(path)
 }
 
 fn format_type(ty: &hir::Type, ctx: &AssistContext, module: hir::Module) -> String {
     ty.display_source_code(ctx.db(), module.into()).ok().unwrap_or_else(|| "()".to_string())
+}
+
+fn rewrite_body_segment(
+    ctx: &AssistContext,
+    params: &[Param],
+    syntax: &SyntaxNode,
+) -> SyntaxNode {
+    fix_param_usages(ctx, params, syntax)
 }
 
 /// change all usages to account for added `&`/`&mut` for some params
@@ -919,7 +897,7 @@ fn fix_param_usages(ctx: &AssistContext, params: &[Param], syntax: &SyntaxNode) 
                     rewriter.replace_ast(&node.clone().into(), &node.expr().unwrap());
                 }
                 Some(_) | None => {
-                    rewriter.replace_ast(&path, &ast::make::expr_prefix(T![*], path.clone()));
+                    rewriter.replace_ast(&path, &make::expr_prefix(T![*], path.clone()));
                 }
             };
         }
