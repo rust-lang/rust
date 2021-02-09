@@ -206,11 +206,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If we have an origin, store it.
             if let Some(origin) = delegate.current_origin.clone() {
                 let origin = if self.tcx.features().capture_disjoint_fields {
-                    origin
+                    (origin.0, restrict_capture_precision(origin.1))
                 } else {
-                    // FIXME(project-rfc-2229#31): Once the changes to support reborrowing are
-                    //                             made, make sure we are selecting and restricting
-                    //                             the origin correctly.
                     (origin.0, Place { projections: vec![], ..origin.1 })
                 };
 
