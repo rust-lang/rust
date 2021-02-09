@@ -172,7 +172,7 @@ crate fn placeholder_type_error(
     }
 
     let mut err = bad_placeholder_type(tcx, placeholder_types);
-    
+
     // Suggest, but only if it is not a function
     if suggest && !is_fn {
         err.multipart_suggestion(
@@ -202,11 +202,11 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
     visitor.visit_item(item);
 
     placeholder_type_error(
-        tcx, 
-        Some(generics.span), 
-        &generics.params[..], 
-        visitor.0, 
-        suggest, 
+        tcx,
+        Some(generics.span),
+        &generics.params[..],
+        visitor.0,
+        suggest,
         false
     );
 }
