@@ -270,27 +270,28 @@ fn foo() {
 
     #[test]
     fn test_join_lines_diverging_block() {
-        let before = r"
-            fn foo() {
-                loop {
-                    match x {
-                        92 => $0{
-                            continue;
-                        }
-                    }
-                }
+        check_join_lines(
+            r"
+fn foo() {
+    loop {
+        match x {
+            92 => $0{
+                continue;
             }
-        ";
-        let after = r"
-            fn foo() {
-                loop {
-                    match x {
-                        92 => $0continue,
-                    }
-                }
-            }
-        ";
-        check_join_lines(before, after);
+        }
+    }
+}
+        ",
+            r"
+fn foo() {
+    loop {
+        match x {
+            92 => $0continue,
+        }
+    }
+}
+        ",
+        );
     }
 
     #[test]
