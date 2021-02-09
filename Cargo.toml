@@ -9,7 +9,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind", "x86", "x64"] }
+cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind", "x64"] }
 cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", optional = true }
@@ -38,7 +38,6 @@ smallvec = "1.6.1"
 default = ["jit", "inline_asm"]
 jit = ["cranelift-jit", "libloading"]
 inline_asm = []
-oldbe = []
 
 [profile.dev]
 # By compiling dependencies with optimizations, performing tests gets much faster.

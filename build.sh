@@ -5,7 +5,6 @@ set -e
 export CHANNEL="release"
 build_sysroot="clif"
 target_dir='build'
-oldbe=''
 while [[ $# != 0 ]]; do
     case $1 in
         "--debug")
@@ -19,12 +18,9 @@ while [[ $# != 0 ]]; do
             target_dir=$2
             shift
             ;;
-        "--oldbe")
-            oldbe='--features oldbe'
-            ;;
         *)
             echo "Unknown flag '$1'"
-            echo "Usage: ./build.sh [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--oldbe]"
+            echo "Usage: ./build.sh [--debug] [--sysroot none|clif|llvm] [--target-dir DIR]"
             exit 1
             ;;
     esac
@@ -44,9 +40,9 @@ else
    exit 1
 fi
 if [[ "$CHANNEL" == "release" ]]; then
-    cargo build $oldbe --release
+    cargo build --release
 else
-    cargo build $oldbe
+    cargo build
 fi
 
 source scripts/ext_config.sh
