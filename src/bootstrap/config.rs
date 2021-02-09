@@ -80,6 +80,7 @@ pub struct Config {
     pub cmd: Subcommand,
     pub incremental: bool,
     pub dry_run: bool,
+    pub download_rustc: bool,
 
     pub deny_warnings: bool,
     pub backtrace_on_ice: bool,
@@ -503,6 +504,7 @@ struct Rust {
     new_symbol_mangling: Option<bool>,
     profile_generate: Option<String>,
     profile_use: Option<String>,
+    download_rustc: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -885,6 +887,7 @@ impl Config {
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
+            config.download_rustc = rust.download_rustc.unwrap_or(false);
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;

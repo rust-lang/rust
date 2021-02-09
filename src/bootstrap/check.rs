@@ -62,6 +62,7 @@ fn cargo_subcommand(kind: Kind) -> &'static str {
 impl Step for Std {
     type Output = ();
     const DEFAULT: bool = true;
+    const ENABLE_DOWNLOAD_RUSTC: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.all_krates("test")
@@ -155,6 +156,7 @@ impl Step for Rustc {
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
+    const ENABLE_DOWNLOAD_RUSTC: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.all_krates("rustc-main")
@@ -233,6 +235,7 @@ impl Step for CodegenBackend {
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
+    const ENABLE_DOWNLOAD_RUSTC: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.paths(&["compiler/rustc_codegen_cranelift", "rustc_codegen_cranelift"])
@@ -290,6 +293,7 @@ macro_rules! tool_check_step {
             type Output = ();
             const ONLY_HOSTS: bool = true;
             const DEFAULT: bool = true;
+            const ENABLE_DOWNLOAD_RUSTC: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.path($path)

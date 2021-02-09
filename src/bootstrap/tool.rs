@@ -477,6 +477,7 @@ pub struct Rustdoc {
 impl Step for Rustdoc {
     type Output = PathBuf;
     const DEFAULT: bool = true;
+    const ENABLE_DOWNLOAD_RUSTC: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
