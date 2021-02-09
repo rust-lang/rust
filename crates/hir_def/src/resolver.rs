@@ -10,7 +10,6 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     body::scope::{ExprScopes, ScopeId},
-    body::Body,
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr::{ExprId, PatId},
@@ -58,8 +57,6 @@ enum Scope {
     AdtScope(AdtId),
     /// Local bindings
     ExprScope(ExprScope),
-    /// Temporary hack to support local items.
-    LocalItemsScope(Arc<Body>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -169,13 +166,7 @@ impl Resolver {
         for scope in self.scopes.iter().rev() {
             match scope {
                 Scope::ExprScope(_) => continue,
-                Scope::GenericParams { .. }
-                | Scope::ImplDefScope(_)
-                | Scope::LocalItemsScope(_)
-                    if skip_to_mod =>
-                {
-                    continue
-                }
+                Scope::GenericParams { .. } | Scope::ImplDefScope(_) if skip_to_mod => continue,
 
                 Scope::GenericParams { params, def } => {
                     if let Some(local_id) = params.find_type_by_name(first_name) {
@@ -199,41 +190,13 @@ impl Resolver {
                     }
                 }
                 Scope::ModuleScope(m) => {
-                    let (module_def, idx) = m.crate_def_map.resolve_path(
-                        db,
-                        m.module_id,
-                        &path,
-                        BuiltinShadowMode::Other,
-                    );
-                    let res = to_type_ns(module_def)?;
-                    return Some((res, idx));
-                }
-                Scope::LocalItemsScope(body) => {
-                    let def = body.item_scope.get(first_name);
-                    if let Some(res) = to_type_ns(def) {
-                        return Some((res, None));
+                    if let Some(res) = m.resolve_path_in_type_ns(db, path) {
+                        return Some(res);
                     }
                 }
             }
         }
-        return None;
-        fn to_type_ns(per_ns: PerNs) -> Option<TypeNs> {
-            let res = match per_ns.take_types()? {
-                ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
-                ModuleDefId::EnumVariantId(it) => TypeNs::EnumVariantId(it),
-
-                ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
-                ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
-
-                ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
-
-                ModuleDefId::FunctionId(_)
-                | ModuleDefId::ConstId(_)
-                | ModuleDefId::StaticId(_)
-                | ModuleDefId::ModuleId(_) => return None,
-            };
-            Some(res)
-        }
+        None
     }
 
     pub fn resolve_path_in_type_ns_fully(
@@ -280,7 +243,6 @@ impl Resolver {
                 | Scope::ExprScope(_)
                 | Scope::GenericParams { .. }
                 | Scope::ImplDefScope(_)
-                | Scope::LocalItemsScope(_)
                     if skip_to_mod =>
                 {
                     continue
@@ -335,63 +297,14 @@ impl Resolver {
                 }
 
                 Scope::ModuleScope(m) => {
-                    let (module_def, idx) = m.crate_def_map.resolve_path(
-                        db,
-                        m.module_id,
-                        &path,
-                        BuiltinShadowMode::Other,
-                    );
-                    return match idx {
-                        None => {
-                            let value = to_value_ns(module_def)?;
-                            Some(ResolveValueResult::ValueNs(value))
-                        }
-                        Some(idx) => {
-                            let ty = match module_def.take_types()? {
-                                ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
-                                ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
-                                ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
-                                ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
-
-                                ModuleDefId::ModuleId(_)
-                                | ModuleDefId::FunctionId(_)
-                                | ModuleDefId::EnumVariantId(_)
-                                | ModuleDefId::ConstId(_)
-                                | ModuleDefId::StaticId(_) => return None,
-                            };
-                            Some(ResolveValueResult::Partial(ty, idx))
-                        }
-                    };
-                }
-                Scope::LocalItemsScope(body) => {
-                    // we don't bother looking in the builtin scope here because there are no builtin values
-                    let def = to_value_ns(body.item_scope.get(first_name));
-
-                    if let Some(res) = def {
-                        return Some(ResolveValueResult::ValueNs(res));
+                    if let Some(def) = m.resolve_path_in_value_ns(db, path) {
+                        return Some(def);
                     }
                 }
             }
         }
-        return None;
 
-        fn to_value_ns(per_ns: PerNs) -> Option<ValueNs> {
-            let res = match per_ns.take_values()? {
-                ModuleDefId::FunctionId(it) => ValueNs::FunctionId(it),
-                ModuleDefId::AdtId(AdtId::StructId(it)) => ValueNs::StructId(it),
-                ModuleDefId::EnumVariantId(it) => ValueNs::EnumVariantId(it),
-                ModuleDefId::ConstId(it) => ValueNs::ConstId(it),
-                ModuleDefId::StaticId(it) => ValueNs::StaticId(it),
-
-                ModuleDefId::AdtId(AdtId::EnumId(_))
-                | ModuleDefId::AdtId(AdtId::UnionId(_))
-                | ModuleDefId::TraitId(_)
-                | ModuleDefId::TypeAliasId(_)
-                | ModuleDefId::BuiltinType(_)
-                | ModuleDefId::ModuleId(_) => return None,
-            };
-            Some(res)
-        }
+        None
     }
 
     pub fn resolve_path_in_value_ns_fully(
@@ -410,11 +323,6 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &ModPath,
     ) -> Option<MacroDefId> {
-        // Search item scope legacy macro first
-        if let Some(def) = self.resolve_local_macro_def(path) {
-            return Some(def);
-        }
-
         let (item_map, module) = self.module_scope()?;
         item_map.resolve_path(db, module, &path, BuiltinShadowMode::Other).0.take_macros()
     }
@@ -444,16 +352,6 @@ impl Resolver {
             Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 
             _ => None,
-        })
-    }
-
-    fn resolve_local_macro_def(&self, path: &ModPath) -> Option<MacroDefId> {
-        let name = path.as_ident()?;
-        self.scopes.iter().rev().find_map(|scope| {
-            if let Scope::LocalItemsScope(body) = scope {
-                return body.item_scope.get_legacy_macro(name);
-            }
-            None
         })
     }
 
@@ -538,9 +436,6 @@ impl Scope {
                     });
                 }
             }
-            Scope::LocalItemsScope(body) => body.item_scope.entries().for_each(|(name, def)| {
-                f(name.clone(), ScopeDef::PerNs(def));
-            }),
             &Scope::GenericParams { ref params, def: parent } => {
                 for (local_id, param) in params.types.iter() {
                     if let Some(ref name) = param.name {
@@ -584,10 +479,19 @@ pub fn resolver_for_scope(
     scope_id: Option<ScopeId>,
 ) -> Resolver {
     let mut r = owner.resolver(db);
-    r = r.push_local_items_scope(db.body(owner));
     let scopes = db.expr_scopes(owner);
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {
+        if let Some(block) = scopes.block(scope) {
+            if let Some(def_map) = db.block_def_map(block) {
+                let root = def_map.root();
+                r = r.push_module_scope(def_map, root);
+                // FIXME: This adds as many module scopes as there are blocks, but resolving in each
+                // already traverses all parents, so this is O(n²). I think we could only store the
+                // innermost module scope instead?
+            }
+        }
+
         r = r.push_expr_scope(owner, Arc::clone(&scopes), scope);
     }
     r
@@ -612,10 +516,6 @@ impl Resolver {
         self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
     }
 
-    fn push_local_items_scope(self, body: Arc<Body>) -> Resolver {
-        self.push_scope(Scope::LocalItemsScope(body))
-    }
-
     fn push_expr_scope(
         self,
         owner: DefWithBodyId,
@@ -624,6 +524,85 @@ impl Resolver {
     ) -> Resolver {
         self.push_scope(Scope::ExprScope(ExprScope { owner, expr_scopes, scope_id }))
     }
+}
+
+impl ModuleItemMap {
+    fn resolve_path_in_value_ns(
+        &self,
+        db: &dyn DefDatabase,
+        path: &ModPath,
+    ) -> Option<ResolveValueResult> {
+        let (module_def, idx) =
+            self.crate_def_map.resolve_path(db, self.module_id, &path, BuiltinShadowMode::Other);
+        match idx {
+            None => {
+                let value = to_value_ns(module_def)?;
+                Some(ResolveValueResult::ValueNs(value))
+            }
+            Some(idx) => {
+                let ty = match module_def.take_types()? {
+                    ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
+                    ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
+                    ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
+                    ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
+
+                    ModuleDefId::ModuleId(_)
+                    | ModuleDefId::FunctionId(_)
+                    | ModuleDefId::EnumVariantId(_)
+                    | ModuleDefId::ConstId(_)
+                    | ModuleDefId::StaticId(_) => return None,
+                };
+                Some(ResolveValueResult::Partial(ty, idx))
+            }
+        }
+    }
+
+    fn resolve_path_in_type_ns(
+        &self,
+        db: &dyn DefDatabase,
+        path: &ModPath,
+    ) -> Option<(TypeNs, Option<usize>)> {
+        let (module_def, idx) =
+            self.crate_def_map.resolve_path(db, self.module_id, &path, BuiltinShadowMode::Other);
+        let res = to_type_ns(module_def)?;
+        Some((res, idx))
+    }
+}
+
+fn to_value_ns(per_ns: PerNs) -> Option<ValueNs> {
+    let res = match per_ns.take_values()? {
+        ModuleDefId::FunctionId(it) => ValueNs::FunctionId(it),
+        ModuleDefId::AdtId(AdtId::StructId(it)) => ValueNs::StructId(it),
+        ModuleDefId::EnumVariantId(it) => ValueNs::EnumVariantId(it),
+        ModuleDefId::ConstId(it) => ValueNs::ConstId(it),
+        ModuleDefId::StaticId(it) => ValueNs::StaticId(it),
+
+        ModuleDefId::AdtId(AdtId::EnumId(_))
+        | ModuleDefId::AdtId(AdtId::UnionId(_))
+        | ModuleDefId::TraitId(_)
+        | ModuleDefId::TypeAliasId(_)
+        | ModuleDefId::BuiltinType(_)
+        | ModuleDefId::ModuleId(_) => return None,
+    };
+    Some(res)
+}
+
+fn to_type_ns(per_ns: PerNs) -> Option<TypeNs> {
+    let res = match per_ns.take_types()? {
+        ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
+        ModuleDefId::EnumVariantId(it) => TypeNs::EnumVariantId(it),
+
+        ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
+        ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
+
+        ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
+
+        ModuleDefId::FunctionId(_)
+        | ModuleDefId::ConstId(_)
+        | ModuleDefId::StaticId(_)
+        | ModuleDefId::ModuleId(_) => return None,
+    };
+    Some(res)
 }
 
 pub trait HasResolver: Copy {

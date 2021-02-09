@@ -232,3 +232,30 @@ fn f() {
         "#]],
     )
 }
+
+#[test]
+fn super_does_not_resolve_to_block_module() {
+    check_at(
+        r#"
+fn main() {
+    struct Struct {}
+    mod module {
+        use super::Struct;
+
+        $0
+    }
+}
+    "#,
+        expect![[r#"
+        block scope
+        Struct: t
+        module: t
+
+        block scope::module
+        Struct: _
+
+        crate
+        main: v
+    "#]],
+    );
+}

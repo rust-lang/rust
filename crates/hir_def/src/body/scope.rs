@@ -9,7 +9,7 @@ use crate::{
     body::Body,
     db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId, Statement},
-    DefWithBodyId,
+    BlockId, DefWithBodyId,
 };
 
 pub type ScopeId = Idx<ScopeData>;
@@ -39,6 +39,7 @@ impl ScopeEntry {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ScopeData {
     parent: Option<ScopeId>,
+    block: Option<BlockId>,
     entries: Vec<ScopeEntry>,
 }
 
@@ -61,6 +62,11 @@ impl ExprScopes {
         &self.scopes[scope].entries
     }
 
+    /// If `scope` refers to a block expression scope, returns the corresponding `BlockId`.
+    pub fn block(&self, scope: ScopeId) -> Option<BlockId> {
+        self.scopes[scope].block
+    }
+
     pub fn scope_chain(&self, scope: Option<ScopeId>) -> impl Iterator<Item = ScopeId> + '_ {
         std::iter::successors(scope, move |&scope| self.scopes[scope].parent)
     }
@@ -79,11 +85,15 @@ impl ExprScopes {
     }
 
     fn root_scope(&mut self) -> ScopeId {
-        self.scopes.alloc(ScopeData { parent: None, entries: vec![] })
+        self.scopes.alloc(ScopeData { parent: None, block: None, entries: vec![] })
     }
 
     fn new_scope(&mut self, parent: ScopeId) -> ScopeId {
-        self.scopes.alloc(ScopeData { parent: Some(parent), entries: vec![] })
+        self.scopes.alloc(ScopeData { parent: Some(parent), block: None, entries: vec![] })
+    }
+
+    fn new_block_scope(&mut self, parent: ScopeId, block: BlockId) -> ScopeId {
+        self.scopes.alloc(ScopeData { parent: Some(parent), block: Some(block), entries: vec![] })
     }
 
     fn add_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
@@ -136,7 +146,11 @@ fn compute_block_scopes(
 fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope: ScopeId) {
     scopes.set_scope(expr, scope);
     match &body[expr] {
-        Expr::Block { statements, tail, .. } => {
+        Expr::Block { statements, tail, id, .. } => {
+            let scope = scopes.new_block_scope(scope, *id);
+            // Overwrite the old scope for the block expr, so that every block scope can be found
+            // via the block itself (important for blocks that only contain items, no expressions).
+            scopes.set_scope(expr, scope);
             compute_block_scopes(&statements, *tail, body, scopes, scope);
         }
         Expr::For { iterable, pat, body: body_expr, .. } => {

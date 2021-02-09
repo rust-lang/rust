@@ -13,8 +13,6 @@ use crate::{
     ModuleDefId, ModuleId,
 };
 
-// FIXME: handle local items
-
 /// Find a path that can be used to refer to a certain item. This can depend on
 /// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
@@ -107,9 +105,9 @@ fn find_path_inner(
 
     // - if the item is already in scope, return the name under which it is
     let def_map = from.def_map(db);
-    let from_scope: &crate::item_scope::ItemScope = &def_map[from.local_id].scope;
-    let scope_name =
-        if let Some((name, _)) = from_scope.name_of(item) { Some(name.clone()) } else { None };
+    let scope_name = def_map.with_ancestor_maps(db, from.local_id, &mut |def_map, local_id| {
+        def_map[local_id].scope.name_of(item).map(|(name, _)| name.clone())
+    });
     if prefixed.is_none() && scope_name.is_some() {
         return scope_name
             .map(|scope_name| ModPath::from_segments(PathKind::Plain, vec![scope_name]));
@@ -117,7 +115,7 @@ fn find_path_inner(
 
     // - if the item is the crate root, return `crate`
     let root = def_map.module_id(def_map.root());
-    if item == ItemInNs::Types(ModuleDefId::ModuleId(root)) {
+    if item == ItemInNs::Types(ModuleDefId::ModuleId(root)) && def_map.block_id().is_none() {
         return Some(ModPath::from_segments(PathKind::Crate, Vec::new()));
     }
 
@@ -230,7 +228,12 @@ fn find_path_inner(
         }
     }
 
-    if let Some(prefix) = prefixed.map(PrefixKind::prefix) {
+    if let Some(mut prefix) = prefixed.map(PrefixKind::prefix) {
+        if matches!(prefix, PathKind::Crate | PathKind::Super(0)) && def_map.block_id().is_some() {
+            // Inner items cannot be referred to via `crate::` or `self::` paths.
+            prefix = PathKind::Plain;
+        }
+
         best_path.or_else(|| {
             scope_name.map(|scope_name| ModPath::from_segments(prefix, vec![scope_name]))
         })
@@ -358,14 +361,14 @@ mod tests {
     /// module the cursor is in.
     fn check_found_path_(ra_fixture: &str, path: &str, prefix_kind: Option<PrefixKind>) {
         let (db, pos) = TestDB::with_position(ra_fixture);
-        let module = db.module_for_file(pos.file_id);
+        let module = db.module_at_position(pos);
         let parsed_path_file = syntax::SourceFile::parse(&format!("use {};", path));
         let ast_path =
             parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
         let mod_path = ModPath::from_src(ast_path, &Hygiene::new_unhygienic()).unwrap();
 
-        let crate_def_map = module.def_map(&db);
-        let resolved = crate_def_map
+        let def_map = module.def_map(&db);
+        let resolved = def_map
             .resolve_path(
                 &db,
                 module.local_id,
@@ -787,5 +790,83 @@ mod tests {
         "#;
         check_found_path(code, "u8", "u8", "u8", "u8");
         check_found_path(code, "u16", "u16", "u16", "u16");
+    }
+
+    #[test]
+    fn inner_items() {
+        check_found_path(
+            r#"
+            fn main() {
+                struct Inner {}
+                $0
+            }
+        "#,
+            "Inner",
+            "Inner",
+            "Inner",
+            "Inner",
+        );
+    }
+
+    #[test]
+    fn inner_items_from_outer_scope() {
+        check_found_path(
+            r#"
+            fn main() {
+                struct Struct {}
+                {
+                    $0
+                }
+            }
+        "#,
+            "Struct",
+            "Struct",
+            "Struct",
+            "Struct",
+        );
+    }
+
+    #[test]
+    fn inner_items_from_inner_module() {
+        check_found_path(
+            r#"
+            fn main() {
+                mod module {
+                    struct Struct {}
+                }
+                {
+                    $0
+                }
+            }
+        "#,
+            "module::Struct",
+            "module::Struct",
+            "module::Struct",
+            "module::Struct",
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn inner_items_from_parent_module() {
+        // FIXME: ItemTree currently associates all inner items with `main`. Luckily, this sort of
+        // code is very rare, so this isn't terrible.
+        // To fix it, we should probably build dedicated `ItemTree`s for inner items, and not store
+        // them in the file's main ItemTree. This would also allow us to stop parsing function
+        // bodies when we only want to compute the crate's main DefMap.
+        check_found_path(
+            r#"
+            fn main() {
+                struct Struct {}
+                mod module {
+                    $0
+                }
+            }
+        "#,
+            "super::Struct",
+            "super::Struct",
+            "super::Struct",
+            "super::Struct",
+        );
     }
 }
