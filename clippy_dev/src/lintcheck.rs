@@ -192,8 +192,10 @@ fn build_clippy() {
 }
 
 // get a list of CrateSources we want to check from a "lintcheck_crates.toml" file.
-fn read_crates(toml_path: Option<&str>) -> Vec<CrateSource> {
+fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
     let toml_path = PathBuf::from(toml_path.unwrap_or("clippy_dev/lintcheck_crates.toml"));
+    // save it so that we can use the name of the sources.toml as name for the logfile later.
+    let toml_filename = toml_path.file_stem().unwrap().to_str().unwrap().to_string();
     let toml_content: String =
         std::fs::read_to_string(&toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: CrateList =
@@ -237,7 +239,7 @@ fn read_crates(toml_path: Option<&str>) -> Vec<CrateSource> {
             unreachable!("Failed to translate TomlCrate into CrateSource!");
         }
     });
-    crate_sources
+    (toml_filename, crate_sources)
 }
 
 // extract interesting data from a json lint message
@@ -288,7 +290,7 @@ pub fn run(clap_config: &ArgMatches) {
     // download and extract the crates, then run clippy on them and collect clippys warnings
     // flatten into one big list of warnings
 
-    let crates = read_crates(clap_config.value_of("crates-toml"));
+    let (filename, crates) = read_crates(clap_config.value_of("crates-toml"));
 
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
         // if we don't have the specified crate in the .toml, throw an error
@@ -351,5 +353,6 @@ pub fn run(clap_config: &ArgMatches) {
     // save the text into lintcheck-logs/logs.txt
     let mut text = clippy_ver; // clippy version number on top
     text.push_str(&format!("\n{}", all_msgs.join("")));
-    write("lintcheck-logs/logs.txt", text).unwrap();
+    let file = format!("lintcheck-logs/{}_logs.txt", filename);
+    write(file, text).unwrap();
 }
