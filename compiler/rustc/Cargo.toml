@@ -11,18 +11,19 @@ rustc_driver = { path = "../rustc_driver" }
 # crate is intended to be used by codegen backends, which may not be in-tree.
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 
-#[dependencies.jemalloc-sys]
-#version = '0.3.0'
-#optional = true
-#features = ['unprefixed_malloc_on_supported_platforms']
+[dependencies.jemalloc-sys]
+version = '0.3.0'
+optional = true
+features = ['unprefixed_malloc_on_supported_platforms']
 
 [dependencies.libmimalloc-sys]
-version = "0.1.20"
+version = '0.1.20'
 optional = true
 default-features = false
-features = ["extended", "override"]
+features = ['extended', 'override']
 
 [features]
-jemalloc = ['libmimalloc-sys']
+jemalloc = ['jemalloc-sys']
+mimalloc = ['libmimalloc-sys']
 llvm = ['rustc_driver/llvm']
 max_level_info = ['rustc_driver/max_level_info']
