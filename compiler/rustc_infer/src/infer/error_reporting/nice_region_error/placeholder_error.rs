@@ -386,12 +386,38 @@ impl NiceRegionError<'me, 'tcx> {
             let mut note = if same_self_type {
                 let mut self_ty = expected_trait_ref.map(|tr| tr.self_ty());
                 self_ty.highlight.maybe_highlighting_region(vid, actual_has_vid);
-                format!(
-                    "{}`{}` must implement `{}`",
-                    if leading_ellipsis { "..." } else { "" },
-                    self_ty,
-                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
-                )
+
+                if self_ty.value.is_closure()
+                    && self
+                        .tcx()
+                        .fn_trait_kind_from_lang_item(expected_trait_ref.value.def_id)
+                        .is_some()
+                {
+                    let closure_sig = self_ty.map(|closure| {
+                        if let ty::Closure(_, substs) = closure.kind() {
+                            self.tcx().signature_unclosure(
+                                substs.as_closure().sig(),
+                                rustc_hir::Unsafety::Normal,
+                            )
+                        } else {
+                            bug!("type is not longer closure");
+                        }
+                    });
+
+                    format!(
+                        "{}closure with signature `{}` must implement `{}`",
+                        if leading_ellipsis { "..." } else { "" },
+                        closure_sig,
+                        expected_trait_ref.map(|tr| tr.print_only_trait_path()),
+                    )
+                } else {
+                    format!(
+                        "{}`{}` must implement `{}`",
+                        if leading_ellipsis { "..." } else { "" },
+                        self_ty,
+                        expected_trait_ref.map(|tr| tr.print_only_trait_path()),
+                    )
+                }
             } else if passive_voice {
                 format!(
                     "{}`{}` would have to be implemented for the type `{}`",
