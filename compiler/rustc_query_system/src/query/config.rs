@@ -7,7 +7,6 @@ use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use std::borrow::Cow;
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -95,7 +94,7 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
 }
 
 pub trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
-    fn describe(tcx: CTX, key: Self::Key) -> Cow<'static, str>;
+    fn describe(tcx: CTX, key: Self::Key) -> String;
 
     #[inline]
     fn cache_on_disk(_: CTX, _: &Self::Key, _: Option<&Self::Value>) -> bool {

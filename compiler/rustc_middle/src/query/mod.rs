@@ -13,7 +13,6 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_query_system::query::QueryDescription;
 
 use rustc_span::symbol::Symbol;
-use std::borrow::Cow;
 
 fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
     if def_id.is_top_level_module() {
