@@ -2205,6 +2205,7 @@ pub trait Iterator {
     /// // we can still use `iter`, as there are more elements.
     /// assert_eq!(iter.next(), Some(&3));
     /// ```
+    #[doc(alias = "every")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn all<F>(&mut self, f: F) -> bool
