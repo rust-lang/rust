@@ -534,6 +534,54 @@ fn bar(arg: &str, baz: Baz) ${0:-> ()} {
 }
 
 #[test]
+fn doctest_generate_getter() {
+    check_doc_test(
+        "generate_getter",
+        r#####"
+struct Person {
+    nam$0e: String,
+}
+"#####,
+        r#####"
+struct Person {
+    name: String,
+}
+
+impl Person {
+    /// Get a reference to the person's name.
+    fn name(&self) -> &String {
+        &self.name
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_getter_mut() {
+    check_doc_test(
+        "generate_getter_mut",
+        r#####"
+struct Person {
+    nam$0e: String,
+}
+"#####,
+        r#####"
+struct Person {
+    name: String,
+}
+
+impl Person {
+    /// Get a mutable reference to the person's name.
+    fn name_mut(&mut self) -> &mut String {
+        &mut self.name
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_impl() {
     check_doc_test(
         "generate_impl",
@@ -571,7 +619,30 @@ struct Ctx<T: Clone> {
 impl<T: Clone> Ctx<T> {
     fn $0new(data: T) -> Self { Self { data } }
 }
+"#####,
+    )
+}
 
+#[test]
+fn doctest_generate_setter() {
+    check_doc_test(
+        "generate_setter",
+        r#####"
+struct Person {
+    nam$0e: String,
+}
+"#####,
+        r#####"
+struct Person {
+    name: String,
+}
+
+impl Person {
+    /// Set the person's name.
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+}
 "#####,
     )
 }

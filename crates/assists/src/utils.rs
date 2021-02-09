@@ -5,12 +5,13 @@ use std::ops;
 use hir::{Adt, HasSource};
 use ide_db::{helpers::SnippetCap, RootDatabase};
 use itertools::Itertools;
+use stdx::format_to;
 use syntax::{
     ast::edit::AstNodeEdit,
     ast::AttrsOwner,
     ast::NameOwner,
-    ast::{self, edit, make, ArgListOwner},
-    AstNode, Direction,
+    ast::{self, edit, make, ArgListOwner, GenericParamsOwner},
+    AstNode, Direction, SmolStr,
     SyntaxKind::*,
     SyntaxNode, TextSize, T,
 };
@@ -353,4 +354,30 @@ pub(crate) fn find_impl_block(impl_def: ast::Impl, buf: &mut String) -> Option<T
         .text_range()
         .end();
     Some(start)
+}
+
+// Generates the surrounding `impl Type { <code> }` including type and lifetime
+// parameters
+pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
+    let type_params = adt.generic_param_list();
+    let mut buf = String::with_capacity(code.len());
+    buf.push_str("\n\nimpl");
+    if let Some(type_params) = &type_params {
+        format_to!(buf, "{}", type_params.syntax());
+    }
+    buf.push(' ');
+    buf.push_str(adt.name().unwrap().text());
+    if let Some(type_params) = type_params {
+        let lifetime_params = type_params
+            .lifetime_params()
+            .filter_map(|it| it.lifetime())
+            .map(|it| SmolStr::from(it.text()));
+        let type_params =
+            type_params.type_params().filter_map(|it| it.name()).map(|it| SmolStr::from(it.text()));
+        format_to!(buf, "<{}>", lifetime_params.chain(type_params).format(", "))
+    }
+
+    format_to!(buf, " {{\n{}\n}}", code);
+
+    buf
 }
