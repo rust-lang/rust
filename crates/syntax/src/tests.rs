@@ -4,11 +4,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use ast::NameOwner;
 use expect_test::expect_file;
 use rayon::prelude::*;
-use test_utils::project_dir;
+use test_utils::{bench, bench_fixture, project_dir, skip_slow_tests};
 
-use crate::{fuzz, tokenize, SourceFile, SyntaxError, TextRange, TextSize, Token};
+use crate::{ast, fuzz, tokenize, AstNode, SourceFile, SyntaxError, TextRange, TextSize, Token};
 
 #[test]
 fn lexer_tests() {
@@ -39,6 +40,28 @@ fn main() {
     let parse = SourceFile::parse(code);
     // eprintln!("{:#?}", parse.syntax_node());
     assert!(parse.ok().is_ok());
+}
+
+#[test]
+fn benchmark_parser() {
+    if skip_slow_tests() {
+        return;
+    }
+    let data = bench_fixture::glorious_old_parser();
+    let tree = {
+        let _b = bench("parsing");
+        let p = SourceFile::parse(&data);
+        assert!(p.errors.is_empty());
+        assert_eq!(p.tree().syntax.text_range().len(), 352474.into());
+        p.tree()
+    };
+
+    {
+        let _b = bench("tree traversal");
+        let fn_names =
+            tree.syntax().descendants().filter_map(ast::Fn::cast).filter_map(|f| f.name()).count();
+        assert_eq!(fn_names, 268);
+    }
 }
 
 #[test]
@@ -128,7 +151,6 @@ fn reparse_fuzz_tests() {
 }
 
 /// Test that Rust-analyzer can parse and validate the rust-analyzer
-/// FIXME: Use this as a benchmark
 #[test]
 fn self_hosting_parsing() {
     let dir = project_dir().join("crates");
