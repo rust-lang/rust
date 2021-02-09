@@ -66,12 +66,8 @@ pub(crate) fn find_all_refs(
     let mut usages = def.usages(sema).set_scope(search_scope).all();
     if let Some(ctor_filter) = ctor_filter {
         // filter for constructor-literals
-        usages.references.iter_mut().for_each(|(&file_id, it)| {
-            let root = sema.parse(file_id);
-            let root = root.syntax();
-            it.retain(|reference| {
-                reference.as_name_ref(root).map_or(false, |name_ref| ctor_filter(&name_ref))
-            })
+        usages.references.values_mut().for_each(|it| {
+            it.retain(|reference| reference.name.as_name_ref().map_or(false, ctor_filter));
         });
         usages.references.retain(|_, it| !it.is_empty());
     }

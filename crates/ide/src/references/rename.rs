@@ -164,20 +164,18 @@ fn find_definition(
 }
 
 fn source_edit_from_references(
-    sema: &Semantics<RootDatabase>,
+    _sema: &Semantics<RootDatabase>,
     file_id: FileId,
     references: &[FileReference],
     def: Definition,
     new_name: &str,
 ) -> (FileId, TextEdit) {
-    let root = sema.parse(file_id);
     let mut edit = TextEdit::builder();
     for reference in references {
-        let (range, replacement) = match &reference.name_from_syntax(root.syntax()) {
-            Some(NameLike::Name(_)) => (None, format!("{}", new_name)),
-            Some(NameLike::NameRef(name_ref)) => source_edit_from_name_ref(name_ref, new_name, def),
-            Some(NameLike::Lifetime(_)) => (None, format!("{}", new_name)),
-            None => (None, new_name.to_owned()),
+        let (range, replacement) = match &reference.name {
+            NameLike::Name(_) => (None, format!("{}", new_name)),
+            NameLike::NameRef(name_ref) => source_edit_from_name_ref(name_ref, new_name, def),
+            NameLike::Lifetime(_) => (None, format!("{}", new_name)),
         };
         // FIXME: Some(range) will be incorrect when we are inside macros
         edit.replace(range.unwrap_or(reference.range), replacement);

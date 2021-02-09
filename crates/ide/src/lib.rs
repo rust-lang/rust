@@ -94,7 +94,7 @@ pub use ide_db::{
     call_info::CallInfo,
     label::Label,
     line_index::{LineCol, LineIndex},
-    search::{FileReference, ReferenceAccess, SearchScope},
+    search::{ReferenceAccess, SearchScope},
     source_change::{FileSystemEdit, SourceChange},
     symbol_index::Query,
     RootDatabase,

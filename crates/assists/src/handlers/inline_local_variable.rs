@@ -124,11 +124,10 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         move |builder| {
             builder.delete(delete_range);
             for (file_id, references) in usages.references {
-                let root = ctx.sema.parse(file_id);
                 for (&should_wrap, reference) in wrap_in_parens[&file_id].iter().zip(references) {
                     let replacement =
                         if should_wrap { init_in_paren.clone() } else { init_str.clone() };
-                    match &reference.as_name_ref(root.syntax()) {
+                    match reference.name.as_name_ref() {
                         Some(name_ref)
                             if ast::RecordExprField::for_field_name(name_ref).is_some() =>
                         {
