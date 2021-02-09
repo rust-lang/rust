@@ -45,8 +45,7 @@ export async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick,
     if (items.length === 0) {
         // it is the debug case, run always has at least 'cargo check ...'
         // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_runnables
-        vscode.window.showErrorMessage("There's no debug target!")
-            .then(() => { }, console.error);
+        await vscode.window.showErrorMessage("There's no debug target!");
         return;
     }
 
@@ -66,8 +65,8 @@ export async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick,
         disposables.push(
             quickPick.onDidHide(() => close()),
             quickPick.onDidAccept(() => close(quickPick.selectedItems[0])),
-            quickPick.onDidTriggerButton((_button) => {
-                makeDebugConfig(ctx, quickPick.activeItems[0].runnable).catch(console.error);
+            quickPick.onDidTriggerButton(async (_button) => {
+                await makeDebugConfig(ctx, quickPick.activeItems[0].runnable);
                 close();
             }),
             quickPick.onDidChangeActive((active) => {

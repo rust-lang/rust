@@ -76,8 +76,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     // This a horribly, horribly wrong way to deal with this problem.
     ctx = await Ctx.create(config, context, serverPath, workspaceFolder.uri.fsPath);
 
-    setContextValue(RUST_PROJECT_CONTEXT_NAME, true)
-        .then(() => { }, console.error);
+    await setContextValue(RUST_PROJECT_CONTEXT_NAME, true);
 
     // Commands which invokes manually via command palette, shortcut, etc.
 
@@ -143,8 +142,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
 }
 
 export async function deactivate() {
-    setContextValue(RUST_PROJECT_CONTEXT_NAME, undefined)
-        .then(() => { }, console.error);
+    await setContextValue(RUST_PROJECT_CONTEXT_NAME, undefined);
     await ctx?.client.stop();
     ctx = undefined;
 }
@@ -185,11 +183,10 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
 
     const release = await downloadWithRetryDialog(state, async () => {
         return await fetchRelease("nightly", state.githubToken);
-    }).catch((e) => {
+    }).catch(async (e) => {
         log.error(e);
         if (state.releaseId === undefined) { // Show error only for the initial download
-            vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly ${e}`)
-                .then(() => { }, console.error);
+            await vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly ${e}`);
         }
         return undefined;
     });
@@ -301,14 +298,14 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     };
     const platform = platforms[`${process.arch} ${process.platform}`];
     if (platform === undefined) {
-        vscode.window.showErrorMessage(
+        await vscode.window.showErrorMessage(
             "Unfortunately we don't ship binaries for your platform yet. " +
             "You need to manually clone rust-analyzer repository and " +
             "run `cargo xtask install --server` to build the language server from sources. " +
             "If you feel that your platform should be supported, please create an issue " +
             "about that [here](https://github.com/rust-analyzer/rust-analyzer/issues) and we " +
             "will consider it."
-        ).then(() => { }, console.error);
+        );
         return undefined;
     }
     const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
