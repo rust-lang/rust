@@ -63,57 +63,62 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 
 #[cfg(test)]
 mod tests {
+    use ide_db::base_db::FileRange;
     use test_utils::mark;
 
-    use crate::fixture::{self};
+    use crate::fixture;
+
+    fn check(ra_fixture: &str) {
+        let (analysis, position, expected) = fixture::nav_target_annotation(ra_fixture);
+        let mut navs = analysis.parent_module(position).unwrap();
+        assert_eq!(navs.len(), 1);
+        let nav = navs.pop().unwrap();
+        assert_eq!(expected, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() });
+    }
 
     #[test]
     fn test_resolve_parent_module() {
-        let (analysis, pos) = fixture::position(
-            "
-            //- /lib.rs
-            mod foo;
-            //- /foo.rs
-            $0// empty
-            ",
+        check(
+            r#"
+//- /lib.rs
+mod foo;
+  //^^^
+
+//- /foo.rs
+$0// empty
+"#,
         );
-        let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
-        nav.assert_match("foo Module FileId(0) 0..8");
     }
 
     #[test]
     fn test_resolve_parent_module_on_module_decl() {
         mark::check!(test_resolve_parent_module_on_module_decl);
-        let (analysis, pos) = fixture::position(
-            "
-            //- /lib.rs
-            mod foo;
+        check(
+            r#"
+//- /lib.rs
+mod foo;
+  //^^^
+//- /foo.rs
+mod $0bar;
 
-            //- /foo.rs
-            mod $0bar;
-
-            //- /foo/bar.rs
-            // empty
-            ",
+//- /foo/bar.rs
+// empty
+"#,
         );
-        let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
-        nav.assert_match("foo Module FileId(0) 0..8");
     }
 
     #[test]
     fn test_resolve_parent_module_for_inline() {
-        let (analysis, pos) = fixture::position(
-            "
-            //- /lib.rs
-            mod foo {
-                mod bar {
-                    mod baz { $0 }
-                }
-            }
-            ",
+        check(
+            r#"
+//- /lib.rs
+mod foo {
+    mod bar {
+        mod baz { $0 }
+    }     //^^^
+}
+"#,
         );
-        let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
-        nav.assert_match("baz Module FileId(0) 32..44");
     }
 
     #[test]

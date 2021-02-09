@@ -85,12 +85,16 @@ impl NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         if let Some(src) = module.declaration_source(db) {
             let node = src.as_ref().map(|it| it.syntax());
-            let frange = node.original_file_range(db);
+            let full_range = node.original_file_range(db);
+            let focus_range = src
+                .value
+                .name()
+                .map(|name| src.with_value(name.syntax()).original_file_range(db).range);
             let mut res = NavigationTarget::from_syntax(
-                frange.file_id,
+                full_range.file_id,
                 name,
-                None,
-                frange.range,
+                focus_range,
+                full_range.range,
                 SymbolKind::Module,
             );
             res.docs = module.attrs(db).docs();
