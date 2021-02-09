@@ -1,8 +1,6 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
-use std::iter;
-
-use hir::{known, Adt, ModuleDef, ScopeDef, Type};
+use hir::ScopeDef;
 use syntax::AstNode;
 use test_utils::mark;
 
@@ -21,7 +19,9 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     }
 
     if let Some(ty) = &ctx.expected_type {
-        complete_enum_variants(acc, ctx, ty);
+        super::complete_enum_variants(acc, ctx, ty, |acc, ctx, variant, path| {
+            acc.add_qualified_enum_variant(ctx, variant, path)
+        });
     }
 
     if ctx.is_pat_binding_or_const {
@@ -43,44 +43,6 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         }
         acc.add_resolution(ctx, name.to_string(), &res);
     });
-}
-
-fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &Type) {
-    if let Some(Adt::Enum(enum_data)) =
-        iter::successors(Some(ty.clone()), |ty| ty.remove_ref()).last().and_then(|ty| ty.as_adt())
-    {
-        let variants = enum_data.variants(ctx.db);
-
-        let module = if let Some(module) = ctx.scope.module() {
-            // Compute path from the completion site if available.
-            module
-        } else {
-            // Otherwise fall back to the enum's definition site.
-            enum_data.module(ctx.db)
-        };
-
-        if let Some(impl_) = ctx.impl_def.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
-            if impl_.target_ty(ctx.db) == *ty {
-                for &variant in &variants {
-                    let self_path = hir::ModPath::from_segments(
-                        hir::PathKind::Plain,
-                        iter::once(known::SELF_TYPE).chain(iter::once(variant.name(ctx.db))),
-                    );
-                    acc.add_qualified_enum_variant(ctx, variant, self_path.clone());
-                }
-            }
-        }
-
-        for variant in variants {
-            if let Some(path) = module.find_use_path(ctx.db, ModuleDef::from(variant)) {
-                // Variants with trivial paths are already added by the existing completion logic,
-                // so we should avoid adding these twice
-                if path.segments().len() > 1 {
-                    acc.add_qualified_enum_variant(ctx, variant, path);
-                }
-            }
-        }
-    }
 }
 
 #[cfg(test)]
