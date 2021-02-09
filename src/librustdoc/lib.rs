@@ -9,6 +9,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(or_patterns)]
+#![feature(peekable_next_if)]
 #![feature(test)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
@@ -82,8 +83,7 @@ mod doctree;
 mod error;
 mod doctest;
 mod fold;
-mod formats;
-// used by the error-index generator, so it needs to be public
+crate mod formats;
 pub mod html;
 mod json;
 mod markdown;

@@ -42,3 +42,4 @@ struct Bar<T: 'static> {
     x: T,
 }
 ```
+

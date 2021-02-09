@@ -2656,36 +2656,6 @@ impl Default for FnHeader {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct TraitKind(
-    pub IsAuto,
-    pub Unsafe,
-    pub Generics,
-    pub GenericBounds,
-    pub Vec<P<AssocItem>>,
-);
-
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub struct TyAliasKind(pub Defaultness, pub Generics, pub GenericBounds, pub Option<P<Ty>>);
-
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub struct ImplKind {
-    pub unsafety: Unsafe,
-    pub polarity: ImplPolarity,
-    pub defaultness: Defaultness,
-    pub constness: Const,
-    pub generics: Generics,
-
-    /// The trait being implemented, if any.
-    pub of_trait: Option<TraitRef>,
-
-    pub self_ty: P<Ty>,
-    pub items: Vec<P<AssocItem>>,
-}
-
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub struct FnKind(pub Defaultness, pub FnSig, pub Generics, pub Option<P<Block>>);
-
-#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
@@ -2706,7 +2676,7 @@ pub enum ItemKind {
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
-    Fn(Box<FnKind>),
+    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
@@ -2720,7 +2690,7 @@ pub enum ItemKind {
     /// A type alias (`type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.
-    TyAlias(Box<TyAliasKind>),
+    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
@@ -2736,7 +2706,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(Box<TraitKind>),
+    Trait(IsAuto, Unsafe, Generics, GenericBounds, Vec<P<AssocItem>>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2744,7 +2714,19 @@ pub enum ItemKind {
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
-    Impl(Box<ImplKind>),
+    Impl {
+        unsafety: Unsafe,
+        polarity: ImplPolarity,
+        defaultness: Defaultness,
+        constness: Const,
+        generics: Generics,
+
+        /// The trait being implemented, if any.
+        of_trait: Option<TraitRef>,
+
+        self_ty: P<Ty>,
+        items: Vec<P<AssocItem>>,
+    },
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
@@ -2753,9 +2735,6 @@ pub enum ItemKind {
     /// A macro definition.
     MacroDef(MacroDef),
 }
-
-#[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(ItemKind, 112);
 
 impl ItemKind {
     pub fn article(&self) -> &str {
@@ -2791,14 +2770,14 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         match self {
-            Self::Fn(box FnKind(_, _, generics, _))
-            | Self::TyAlias(box TyAliasKind(_, generics, ..))
+            Self::Fn(_, _, generics, _)
+            | Self::TyAlias(_, generics, ..)
             | Self::Enum(_, generics)
             | Self::Struct(_, generics)
             | Self::Union(_, generics)
-            | Self::Trait(box TraitKind(_, _, generics, ..))
+            | Self::Trait(_, _, generics, ..)
             | Self::TraitAlias(generics, _)
-            | Self::Impl(box ImplKind { generics, .. }) => Some(generics),
+            | Self::Impl { generics, .. } => Some(generics),
             _ => None,
         }
     }
@@ -2821,22 +2800,17 @@ pub enum AssocItemKind {
     /// If `def` is parsed, then the constant is provided, and otherwise required.
     Const(Defaultness, P<Ty>, Option<P<Expr>>),
     /// An associated function.
-    Fn(Box<FnKind>),
+    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
     /// An associated type.
-    TyAlias(Box<TyAliasKind>),
+    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
     /// A macro expanding to associated items.
     MacCall(MacCall),
 }
 
-#[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(AssocItemKind, 72);
-
 impl AssocItemKind {
     pub fn defaultness(&self) -> Defaultness {
         match *self {
-            Self::Const(def, ..)
-            | Self::Fn(box FnKind(def, ..))
-            | Self::TyAlias(box TyAliasKind(def, ..)) => def,
+            Self::Const(def, ..) | Self::Fn(def, ..) | Self::TyAlias(def, ..) => def,
             Self::MacCall(..) => Defaultness::Final,
         }
     }
@@ -2846,8 +2820,8 @@ impl From<AssocItemKind> for ItemKind {
     fn from(assoc_item_kind: AssocItemKind) -> ItemKind {
         match assoc_item_kind {
             AssocItemKind::Const(a, b, c) => ItemKind::Const(a, b, c),
-            AssocItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
-            AssocItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
+            AssocItemKind::Fn(a, b, c, d) => ItemKind::Fn(a, b, c, d),
+            AssocItemKind::TyAlias(a, b, c, d) => ItemKind::TyAlias(a, b, c, d),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
         }
     }
@@ -2859,8 +2833,8 @@ impl TryFrom<ItemKind> for AssocItemKind {
     fn try_from(item_kind: ItemKind) -> Result<AssocItemKind, ItemKind> {
         Ok(match item_kind {
             ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
-            ItemKind::Fn(fn_kind) => AssocItemKind::Fn(fn_kind),
-            ItemKind::TyAlias(ty_alias_kind) => AssocItemKind::TyAlias(ty_alias_kind),
+            ItemKind::Fn(a, b, c, d) => AssocItemKind::Fn(a, b, c, d),
+            ItemKind::TyAlias(a, b, c, d) => AssocItemKind::TyAlias(a, b, c, d),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
             _ => return Err(item_kind),
         })
@@ -2872,23 +2846,20 @@ impl TryFrom<ItemKind> for AssocItemKind {
 pub enum ForeignItemKind {
     /// A foreign static item (`static FOO: u8`).
     Static(P<Ty>, Mutability, Option<P<Expr>>),
-    /// An foreign function.
-    Fn(Box<FnKind>),
-    /// An foreign type.
-    TyAlias(Box<TyAliasKind>),
+    /// A foreign function.
+    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
+    /// A foreign type.
+    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
     /// A macro expanding to foreign items.
     MacCall(MacCall),
 }
-
-#[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
 
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
             ForeignItemKind::Static(a, b, c) => ItemKind::Static(a, b, c),
-            ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
-            ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
+            ForeignItemKind::Fn(a, b, c, d) => ItemKind::Fn(a, b, c, d),
+            ForeignItemKind::TyAlias(a, b, c, d) => ItemKind::TyAlias(a, b, c, d),
             ForeignItemKind::MacCall(a) => ItemKind::MacCall(a),
         }
     }
@@ -2900,8 +2871,8 @@ impl TryFrom<ItemKind> for ForeignItemKind {
     fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
         Ok(match item_kind {
             ItemKind::Static(a, b, c) => ForeignItemKind::Static(a, b, c),
-            ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),
-            ItemKind::TyAlias(ty_alias_kind) => ForeignItemKind::TyAlias(ty_alias_kind),
+            ItemKind::Fn(a, b, c, d) => ForeignItemKind::Fn(a, b, c, d),
+            ItemKind::TyAlias(a, b, c, d) => ForeignItemKind::TyAlias(a, b, c, d),
             ItemKind::MacCall(a) => ForeignItemKind::MacCall(a),
             _ => return Err(item_kind),
         })

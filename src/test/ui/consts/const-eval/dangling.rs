@@ -6,10 +6,8 @@ use std::mem;
 const TEST: () = { unsafe { //~ NOTE
     let slice: *const [u8] = mem::transmute((1usize, usize::MAX));
     let _val = &*slice; //~ ERROR: any use of this value will cause an error
-    //~| NOTE: slice is bigger than largest supported object
-    //~| on by default
-    //~| WARN this was previously accepted by the compiler but is being phased out
-    //~| NOTE
+    //~^ NOTE: slice is bigger than largest supported object
+    //~^^ on by default
 } };
 
 fn main() {}

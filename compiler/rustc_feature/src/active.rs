@@ -628,16 +628,6 @@ declare_features! (
 
     /// Allows using `pointer` and `reference` in intra-doc links
     (active, intra_doc_pointers, "1.51.0", Some(80896), None),
-
-    /// Allows `extern "C-cmse-nonsecure-call" fn()`.
-    (active, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391), None),
-
-    /// Lessens the requirements for structs to implement `Unsize`.
-    (active, relaxed_struct_unsize, "1.51.0", Some(1), None),
-
-    /// Allows macro attributes to observe output of `#[derive]`.
-    (active, macro_attributes_in_derive_output, "1.51.0", Some(81119), None),
-
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

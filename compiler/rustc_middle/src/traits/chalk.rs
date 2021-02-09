@@ -72,7 +72,6 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
     type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
     type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
-    type InternedVariances = Vec<chalk_ir::Variance>;
     type InternedConstraints = Vec<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>>;
     type DefId = DefId;
     type InternedAdtId = &'tcx AdtDef;
@@ -87,34 +86,17 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
             write!(fmt, "{:?}", pci.consequence)?;
 
             let conditions = pci.conditions.interned();
-            let constraints = pci.constraints.interned();
 
             let conds = conditions.len();
-            let consts = constraints.len();
-            if conds == 0 && consts == 0 {
+            if conds == 0 {
                 return Ok(());
             }
 
             write!(fmt, " :- ")?;
-
-            if conds != 0 {
-                for cond in &conditions[..conds - 1] {
-                    write!(fmt, "{:?}, ", cond)?;
-                }
-                write!(fmt, "{:?}", conditions[conds - 1])?;
+            for cond in &conditions[..conds - 1] {
+                write!(fmt, "{:?}, ", cond)?;
             }
-
-            if conds != 0 && consts != 0 {
-                write!(fmt, " ; ")?;
-            }
-
-            if consts != 0 {
-                for constraint in &constraints[..consts - 1] {
-                    write!(fmt, "{:?}, ", constraint)?;
-                }
-                write!(fmt, "{:?}", constraints[consts - 1])?;
-            }
-
+            write!(fmt, "{:?}", conditions[conds - 1])?;
             Ok(())
         };
         Some(write())
@@ -368,20 +350,6 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         constraints: &'a Self::InternedConstraints,
     ) -> &'a [chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>] {
         constraints
-    }
-
-    fn intern_variances<E>(
-        &self,
-        data: impl IntoIterator<Item = Result<chalk_ir::Variance, E>>,
-    ) -> Result<Self::InternedVariances, E> {
-        data.into_iter().collect::<Result<Vec<_>, _>>()
-    }
-
-    fn variances_data<'a>(
-        &self,
-        variances: &'a Self::InternedVariances,
-    ) -> &'a [chalk_ir::Variance] {
-        variances
     }
 }
 

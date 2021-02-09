@@ -16,7 +16,8 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::abstract_const::{Node, NodeId};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::{self, Rvalue, StatementKind, TerminatorKind};
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -42,27 +43,18 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                 for pred in param_env.caller_bounds() {
                     match pred.kind().skip_binder() {
                         ty::PredicateKind::ConstEvaluatable(b_def, b_substs) => {
+                            debug!(
+                                "is_const_evaluatable: caller_bound={:?}, {:?}",
+                                b_def, b_substs
+                            );
                             if b_def == def && b_substs == substs {
                                 debug!("is_const_evaluatable: caller_bound ~~> ok");
                                 return Ok(());
-                            }
-
-                            if let Some(b_ct) = AbstractConst::new(tcx, b_def, b_substs)? {
-                                // Try to unify with each subtree in the AbstractConst to allow for
-                                // `N + 1` being const evaluatable even if theres only a `ConstEvaluatable`
-                                // predicate for `(N + 1) * 2`
-                                let result =
-                                    walk_abstract_const(tcx, b_ct, |b_ct| {
-                                        match try_unify(tcx, ct, b_ct) {
-                                            true => ControlFlow::BREAK,
-                                            false => ControlFlow::CONTINUE,
-                                        }
-                                    });
-
-                                if let ControlFlow::Break(()) = result {
-                                    debug!("is_const_evaluatable: abstract_const ~~> ok");
-                                    return Ok(());
-                                }
+                            } else if AbstractConst::new(tcx, b_def, b_substs)?
+                                .map_or(false, |b_ct| try_unify(tcx, ct, b_ct))
+                            {
+                                debug!("is_const_evaluatable: abstract_const ~~> ok");
+                                return Ok(());
                             }
                         }
                         _ => {} // don't care
@@ -86,7 +78,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                     Concrete,
                 }
                 let mut failure_kind = FailureKind::Concrete;
-                walk_abstract_const::<!, _>(tcx, ct, |node| match node.root() {
+                walk_abstract_const::<!, _>(tcx, ct, |node| match node {
                     Node::Leaf(leaf) => {
                         let leaf = leaf.subst(tcx, ct.substs);
                         if leaf.has_infer_types_or_consts() {
@@ -108,24 +100,15 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                     }
                     FailureKind::MentionsParam => {
                         // FIXME(const_evaluatable_checked): Better error message.
-                        let mut err =
-                            infcx.tcx.sess.struct_span_err(span, "unconstrained generic constant");
-                        let const_span = tcx.def_span(def.did);
-                        // FIXME(const_evaluatable_checked): Update this suggestion once
-                        // explicit const evaluatable bounds are implemented.
-                        if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(const_span)
-                        {
-                            err.span_help(
+                        infcx
+                            .tcx
+                            .sess
+                            .struct_span_err(span, "unconstrained generic constant")
+                            .span_help(
                                 tcx.def_span(def.did),
-                                &format!("try adding a `where` bound using this expression: `where [u8; {}]: Sized`", snippet),
-                            );
-                        } else {
-                            err.span_help(
-                                const_span,
                                 "consider adding a `where` bound for this expression",
-                            );
-                        }
-                        err.emit();
+                            )
+                            .emit();
                         return Err(ErrorHandled::Reported(ErrorReported));
                     }
                     FailureKind::Concrete => {
@@ -597,15 +580,15 @@ pub fn walk_abstract_const<'tcx, R, F>(
     mut f: F,
 ) -> ControlFlow<R>
 where
-    F: FnMut(AbstractConst<'tcx>) -> ControlFlow<R>,
+    F: FnMut(Node<'tcx>) -> ControlFlow<R>,
 {
     fn recurse<'tcx, R>(
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
-        f: &mut dyn FnMut(AbstractConst<'tcx>) -> ControlFlow<R>,
+        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<R>,
     ) -> ControlFlow<R> {
-        f(ct)?;
         let root = ct.root();
+        f(root)?;
         match root {
             Node::Leaf(_) => ControlFlow::CONTINUE,
             Node::Binop(_, l, r) => {

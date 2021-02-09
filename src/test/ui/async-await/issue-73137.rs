@@ -4,6 +4,7 @@
 // edition:2018
 
 #![allow(dead_code)]
+#![feature(wake_trait)]
 use std::future::Future;
 use std::task::{Waker, Wake, Context};
 use std::sync::Arc;

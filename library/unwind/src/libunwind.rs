@@ -36,11 +36,8 @@ pub const unwinder_private_data_size: usize = 20;
 #[cfg(all(target_arch = "arm", target_os = "ios"))]
 pub const unwinder_private_data_size: usize = 5;
 
-#[cfg(all(target_arch = "aarch64", target_pointer_width = "64"))]
+#[cfg(target_arch = "aarch64")]
 pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(all(target_arch = "aarch64", target_pointer_width = "32"))]
-pub const unwinder_private_data_size: usize = 5;
 
 #[cfg(target_arch = "mips")]
 pub const unwinder_private_data_size: usize = 2;

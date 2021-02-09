@@ -618,8 +618,12 @@ where
         let arg_scope_s = (arg_scope, source_info);
         // Attribute epilogue to function's closing brace
         let fn_end = span_with_body.shrink_to_hi();
-        let return_block =
-            unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
+        let return_block = unpack!(builder.in_breakable_scope(
+            None,
+            Place::return_place(),
+            Some(call_site_scope),
+            fn_end,
+            |builder| {
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(
                         START_BLOCK,
@@ -629,11 +633,13 @@ where
                         &body.value,
                     )
                 }))
-            }));
+            },
+        ));
         let source_info = builder.source_info(fn_end);
         builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
         let should_abort = should_abort_on_panic(tcx, fn_def_id, abi);
         builder.build_drop_trees(should_abort);
+        builder.unschedule_return_place_drop();
         return_block.unit()
     }));
 
@@ -666,7 +672,9 @@ fn construct_const<'a, 'tcx>(
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(Place::return_place(), block, expr));
+    // We don't provide a scope because we can't unwind in constants, so won't
+    // need to drop the return place.
+    unpack!(block = builder.into_expr(Place::return_place(), None, block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -830,8 +838,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 _ => span_bug!(self.fn_span, "upvars with non-closure env ty {:?}", closure_ty),
             };
             let capture_tys = upvar_substs.upvar_tys();
-            let captures_with_tys =
-                hir_typeck_results.closure_min_captures_flattened(fn_def_id).zip(capture_tys);
+            let captures_with_tys = hir_typeck_results
+                .closure_min_captures_flattened(fn_def_id)
+                .zip(capture_tys);
 
             self.upvar_mutbls = captures_with_tys
                 .enumerate()
@@ -839,7 +848,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let capture = captured_place.info.capture_kind;
                     let var_id = match captured_place.place.base {
                         HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
-                        _ => bug!("Expected an upvar"),
+                        _ => bug!("Expected an upvar")
                     };
 
                     let mutability = captured_place.mutability;
@@ -945,7 +954,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(Place::return_place(), block, body)
+        let call_site =
+            region::Scope { id: ast_body.hir_id.local_id, data: region::ScopeData::CallSite };
+        self.into(Place::return_place(), Some(call_site), block, body)
     }
 
     fn set_correct_source_scope_for_arg(

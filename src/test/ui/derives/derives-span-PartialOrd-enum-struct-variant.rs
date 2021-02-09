@@ -7,6 +7,10 @@ struct Error;
 enum Enum {
    A {
      x: Error //~ ERROR can't compare `Error` with `Error`
+              //~| ERROR can't compare `Error` with `Error`
+              //~| ERROR can't compare `Error` with `Error`
+              //~| ERROR can't compare `Error` with `Error`
+              //~| ERROR can't compare `Error` with `Error`
    }
 }
 

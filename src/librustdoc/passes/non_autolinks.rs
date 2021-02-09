@@ -12,7 +12,7 @@ use rustc_session::lint;
 crate const CHECK_NON_AUTOLINKS: Pass = Pass {
     name: "check-non-autolinks",
     run: check_non_autolinks,
-    description: "detects URLs that could be linkified",
+    description: "detects URLS that could be written using angle brackets",
 };
 
 const URL_REGEX: &str = concat!(

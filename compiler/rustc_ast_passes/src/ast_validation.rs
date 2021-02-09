@@ -920,7 +920,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         match item.kind {
-            ItemKind::Impl(box ImplKind {
+            ItemKind::Impl {
                 unsafety,
                 polarity,
                 defaultness: _,
@@ -929,7 +929,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 of_trait: Some(ref t),
                 ref self_ty,
                 items: _,
-            }) => {
+            } => {
                 self.with_in_trait_impl(true, |this| {
                     this.invalid_visibility(&item.vis, None);
                     if let TyKind::Err = self_ty.kind {
@@ -957,7 +957,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 });
                 return; // Avoid visiting again.
             }
-            ItemKind::Impl(box ImplKind {
+            ItemKind::Impl {
                 unsafety,
                 polarity,
                 defaultness,
@@ -966,7 +966,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 of_trait: None,
                 ref self_ty,
                 items: _,
-            }) => {
+            } => {
                 let error = |annotation_span, annotation| {
                     let mut err = self.err_handler().struct_span_err(
                         self_ty.span,
@@ -998,7 +998,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .emit();
                 }
             }
-            ItemKind::Fn(box FnKind(def, _, _, ref body)) => {
+            ItemKind::Fn(def, _, _, ref body) => {
                 self.check_defaultness(item.span, def);
 
                 if body.is_none() {
@@ -1027,13 +1027,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Trait(box TraitKind(
-                is_auto,
-                _,
-                ref generics,
-                ref bounds,
-                ref trait_items,
-            )) => {
+            ItemKind::Trait(is_auto, _, ref generics, ref bounds, ref trait_items) => {
                 if is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
                     self.deny_generic_params(generics, item.ident.span);
@@ -1081,7 +1075,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 let msg = "free static item without body";
                 self.error_item_without_body(item.span, "static", msg, " = <expr>;");
             }
-            ItemKind::TyAlias(box TyAliasKind(def, _, ref bounds, ref body)) => {
+            ItemKind::TyAlias(def, _, ref bounds, ref body) => {
                 self.check_defaultness(item.span, def);
                 if body.is_none() {
                     let msg = "free type alias without body";
@@ -1097,12 +1091,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match &fi.kind {
-            ForeignItemKind::Fn(box FnKind(def, sig, _, body)) => {
+            ForeignItemKind::Fn(def, sig, _, body) => {
                 self.check_defaultness(fi.span, *def);
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
                 self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
             }
-            ForeignItemKind::TyAlias(box TyAliasKind(def, generics, bounds, body)) => {
+            ForeignItemKind::TyAlias(def, generics, bounds, body) => {
                 self.check_defaultness(fi.span, *def);
                 self.check_foreign_kind_bodyless(fi.ident, "type", body.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
@@ -1342,10 +1336,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 AssocItemKind::Const(_, _, body) => {
                     self.check_impl_item_provided(item.span, body, "constant", " = <expr>;");
                 }
-                AssocItemKind::Fn(box FnKind(_, _, _, body)) => {
+                AssocItemKind::Fn(_, _, _, body) => {
                     self.check_impl_item_provided(item.span, body, "function", " { <body> }");
                 }
-                AssocItemKind::TyAlias(box TyAliasKind(_, _, bounds, body)) => {
+                AssocItemKind::TyAlias(_, _, bounds, body) => {
                     self.check_impl_item_provided(item.span, body, "type", " = <type>;");
                     self.check_type_no_bounds(bounds, "`impl`s");
                 }
@@ -1355,7 +1349,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if ctxt == AssocCtxt::Trait || self.in_trait_impl {
             self.invalid_visibility(&item.vis, None);
-            if let AssocItemKind::Fn(box FnKind(_, sig, _, _)) = &item.kind {
+            if let AssocItemKind::Fn(_, sig, _, _) = &item.kind {
                 self.check_trait_fn_not_const(sig.header.constness);
                 self.check_trait_fn_not_async(item.span, sig.header.asyncness);
             }

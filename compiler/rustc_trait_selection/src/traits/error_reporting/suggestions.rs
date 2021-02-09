@@ -290,9 +290,9 @@ fn suggest_restriction(
             generics
                 .params
                 .iter()
-                .filter(|p| {
-                    !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), .. })
-                })
+                .filter(
+                    |p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), ..}),
+                )
                 .next(),
             super_traits,
         ) {
@@ -1103,7 +1103,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // This is currently not possible to trigger because E0038 takes precedence, but
                 // leave it in for completeness in case anything changes in an earlier stage.
                 err.note(&format!(
-                    "if trait `{}` were object-safe, you could return a trait object",
+                    "if trait `{}` was object safe, you could return a trait object",
                     trait_obj,
                 ));
             }

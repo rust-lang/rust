@@ -14,7 +14,7 @@ mod tokentrees;
 mod unescape_error_reporting;
 mod unicode_chars;
 
-use unescape_error_reporting::{emit_unescape_error, escaped_char};
+use unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
 #[derive(Clone, Debug)]
 pub struct UnmatchedBrace {
@@ -122,9 +122,11 @@ impl<'a> StringReader<'a> {
         m: &str,
         c: char,
     ) -> DiagnosticBuilder<'a> {
-        self.sess
-            .span_diagnostic
-            .struct_span_fatal(self.mk_sp(from_pos, to_pos), &format!("{}: {}", m, escaped_char(c)))
+        let mut m = m.to_string();
+        m.push_str(": ");
+        push_escaped_char(&mut m, c);
+
+        self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), &m[..])
     }
 
     /// Turns simple `rustc_lexer::TokenKind` enum into a rich
@@ -419,7 +421,7 @@ impl<'a> StringReader<'a> {
         let content_start = start + BytePos(prefix_len);
         let content_end = suffix_start - BytePos(postfix_len);
         let id = self.symbol_from_to(content_start, content_end);
-        self.validate_literal_escape(mode, content_start, content_end, prefix_len, postfix_len);
+        self.validate_literal_escape(mode, content_start, content_end);
         (lit_kind, id)
     }
 
@@ -523,29 +525,17 @@ impl<'a> StringReader<'a> {
         .raise();
     }
 
-    fn validate_literal_escape(
-        &self,
-        mode: Mode,
-        content_start: BytePos,
-        content_end: BytePos,
-        prefix_len: u32,
-        postfix_len: u32,
-    ) {
+    fn validate_literal_escape(&self, mode: Mode, content_start: BytePos, content_end: BytePos) {
         let lit_content = self.str_from_to(content_start, content_end);
         unescape::unescape_literal(lit_content, mode, &mut |range, result| {
             // Here we only check for errors. The actual unescaping is done later.
             if let Err(err) = result {
-                let span_with_quotes = self
-                    .mk_sp(content_start - BytePos(prefix_len), content_end + BytePos(postfix_len));
-                let (start, end) = (range.start as u32, range.end as u32);
-                let lo = content_start + BytePos(start);
-                let hi = lo + BytePos(end - start);
-                let span = self.mk_sp(lo, hi);
+                let span_with_quotes =
+                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1));
                 emit_unescape_error(
                     &self.sess.span_diagnostic,
                     lit_content,
                     span_with_quotes,
-                    span,
                     mode,
                     range,
                     err,

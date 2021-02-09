@@ -156,14 +156,6 @@ impl<'a> PostExpansionVisitor<'a> {
                     "efiapi ABI is experimental and subject to change"
                 );
             }
-            "C-cmse-nonsecure-call" => {
-                gate_feature_post!(
-                    &self,
-                    abi_c_cmse_nonsecure_call,
-                    span,
-                    "C-cmse-nonsecure-call ABI is experimental and subject to change"
-                );
-            }
             abi => self
                 .sess
                 .parse_sess
@@ -373,9 +365,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl(box ast::ImplKind {
-                polarity, defaultness, ref of_trait, ..
-            }) => {
+            ast::ItemKind::Impl { polarity, defaultness, ref of_trait, .. } => {
                 if let ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
@@ -391,7 +381,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Trait(box ast::TraitKind(ast::IsAuto::Yes, ..)) => {
+            ast::ItemKind::Trait(ast::IsAuto::Yes, ..) => {
                 gate_feature_post!(
                     &self,
                     auto_traits,
@@ -409,9 +399,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::TyAlias(box ast::TyAliasKind(_, _, _, Some(ref ty))) => {
-                self.check_impl_trait(&ty)
-            }
+            ast::ItemKind::TyAlias(_, _, _, Some(ref ty)) => self.check_impl_trait(&ty),
 
             _ => {}
         }
@@ -567,13 +555,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
         let is_fn = match i.kind {
-            ast::AssocItemKind::Fn(box ast::FnKind(_, ref sig, _, _)) => {
+            ast::AssocItemKind::Fn(_, ref sig, _, _) => {
                 if let (ast::Const::Yes(_), AssocCtxt::Trait) = (sig.header.constness, ctxt) {
                     gate_feature_post!(&self, const_fn, i.span, "const fn is unstable");
                 }
                 true
             }
-            ast::AssocItemKind::TyAlias(box ast::TyAliasKind(_, ref generics, _, ref ty)) => {
+            ast::AssocItemKind::TyAlias(_, ref generics, _, ref ty) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,

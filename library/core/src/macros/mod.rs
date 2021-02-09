@@ -1234,7 +1234,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     #[rustc_diagnostic_item = "assert_macro"]
-    #[allow_internal_unstable(core_panic, edition_panic)]
+    #[allow_internal_unstable(core_panic)]
     macro_rules! assert {
         ($cond:expr $(,)?) => {{ /* compiler built-in */ }};
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
@@ -1322,14 +1322,6 @@ pub(crate) mod builtin {
     macro_rules! trace_macros {
         (true) => {{ /* compiler built-in */ }};
         (false) => {{ /* compiler built-in */ }};
-    }
-
-    /// Attribute macro used to apply derive macros.
-    #[cfg(not(bootstrap))]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_builtin_macro]
-    pub macro derive($item:item) {
-        /* compiler built-in */
     }
 
     /// Attribute macro applied to a function to turn it into a unit test.

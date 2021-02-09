@@ -15,7 +15,7 @@ static INT_PTR_ARITH: () = unsafe {
     let x: usize = std::mem::transmute(&0);
     let _v = x + 0;
     //~^ ERROR could not evaluate static initializer
-    //~| NOTE cannot cast pointer to integer
+    //~| NOTE pointer-to-integer cast
 };
 
 fn main() {}

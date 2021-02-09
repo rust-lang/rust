@@ -20,7 +20,7 @@ use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_hir::TraitCandidate;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -493,8 +493,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         match foreign_item.kind {
-            ForeignItemKind::Fn(box FnKind(_, _, ref generics, _))
-            | ForeignItemKind::TyAlias(box TyAliasKind(_, ref generics, ..)) => {
+            ForeignItemKind::Fn(_, _, ref generics, _)
+            | ForeignItemKind::TyAlias(_, ref generics, ..) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
@@ -938,8 +938,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
         match item.kind {
-            ItemKind::TyAlias(box TyAliasKind(_, ref generics, _, _))
-            | ItemKind::Fn(box FnKind(_, _, ref generics, _)) => {
+            ItemKind::TyAlias(_, ref generics, _, _) | ItemKind::Fn(_, _, ref generics, _) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_item(this, item)
                 });
@@ -951,17 +950,17 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.resolve_adt(item, generics);
             }
 
-            ItemKind::Impl(box ImplKind {
+            ItemKind::Impl {
                 ref generics,
                 ref of_trait,
                 ref self_ty,
                 items: ref impl_items,
                 ..
-            }) => {
+            } => {
                 self.resolve_implementation(generics, of_trait, &self_ty, item.id, impl_items);
             }
 
-            ItemKind::Trait(box TraitKind(.., ref generics, ref bounds, ref trait_items)) => {
+            ItemKind::Trait(.., ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     let local_def_id = this.r.local_def_id(item.id).to_def_id();
@@ -996,10 +995,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             );
                                         }
                                     }
-                                    AssocItemKind::Fn(box FnKind(_, _, generics, _)) => {
+                                    AssocItemKind::Fn(_, _, generics, _) => {
                                         walk_assoc_item(this, generics, item);
                                     }
-                                    AssocItemKind::TyAlias(box TyAliasKind(_, generics, _, _)) => {
+                                    AssocItemKind::TyAlias(_, generics, _, _) => {
                                         walk_assoc_item(this, generics, item);
                                     }
                                     AssocItemKind::MacCall(_) => {
@@ -1307,7 +1306,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 },
                                             );
                                         }
-                                        AssocItemKind::Fn(box FnKind(.., generics, _)) => {
+                                        AssocItemKind::Fn(_, _, generics, _) => {
                                             // We also need a new scope for the impl item type parameters.
                                             this.with_generic_param_rib(
                                                 generics,
@@ -1330,12 +1329,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 },
                                             );
                                         }
-                                        AssocItemKind::TyAlias(box TyAliasKind(
-                                            _,
-                                            generics,
-                                            _,
-                                            _,
-                                        )) => {
+                                        AssocItemKind::TyAlias(_, generics, _, _) => {
                                             // We also need a new scope for the impl item type parameters.
                                             this.with_generic_param_rib(
                                                 generics,
@@ -1927,7 +1921,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.r.trait_map.insert(id, traits);
                 }
 
-                if PrimTy::from_name(path[0].ident.name).is_some() {
+                if self.r.primitive_type_table.primitive_types.contains_key(&path[0].ident.name) {
                     let mut std_path = Vec::with_capacity(1 + path.len());
 
                     std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
@@ -2121,9 +2115,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // The same fallback is used when `a` resolves to nothing.
             PathResult::Module(ModuleOrUniformRoot::Module(_)) | PathResult::Failed { .. }
                 if (ns == TypeNS || path.len() > 1)
-                    && PrimTy::from_name(path[0].ident.name).is_some() =>
+                    && self
+                        .r
+                        .primitive_type_table
+                        .primitive_types
+                        .contains_key(&path[0].ident.name) =>
             {
-                let prim = PrimTy::from_name(path[0].ident.name).unwrap();
+                let prim = self.r.primitive_type_table.primitive_types[&path[0].ident.name];
                 PartialRes::with_unresolved_segments(Res::PrimTy(prim), path.len() - 1)
             }
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => {

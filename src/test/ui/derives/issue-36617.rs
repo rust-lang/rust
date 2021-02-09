@@ -1,3 +1,4 @@
-#![derive(Copy)] //~ ERROR cannot determine resolution for the attribute macro `derive`
+#![derive(Copy)] //~ ERROR `derive` may only be applied to structs, enums and unions
+                 //~| ERROR cannot determine resolution for the derive macro `Copy`
 
 fn main() {}

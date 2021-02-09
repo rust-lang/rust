@@ -4,8 +4,6 @@
 #![feature(bindings_after_at)]
 #![feature(iter_order_by)]
 #![feature(or_patterns)]
-#![feature(box_syntax)]
-#![feature(box_patterns)]
 
 use rustc_ast as ast;
 use rustc_ast::attr::HasAttrs;

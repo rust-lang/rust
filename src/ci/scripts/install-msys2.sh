@@ -24,9 +24,7 @@ if isWindows; then
     # baked in which break LLVM's build system one way or another, so let's use the
     # native version which keeps everything as native as possible.
     python_home="/c/hostedtoolcache/windows/Python/${native_python_version}/x64"
-    if ! [[ -f "${python_home}/python3.exe" ]]; then
-        cp "${python_home}/python.exe" "${python_home}/python3.exe"
-    fi
+    cp "${python_home}/python.exe" "${python_home}/python3.exe"
     ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64"
     ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64\\Scripts"
 fi

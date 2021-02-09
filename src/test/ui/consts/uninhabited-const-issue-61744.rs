@@ -2,7 +2,6 @@
 
 pub const unsafe fn fake_type<T>() -> T {
     hint_unreachable() //~ ERROR any use of this value will cause an error [const_err]
-    //~| WARN this was previously accepted by the compiler but is being phased out
 }
 
 pub const unsafe fn hint_unreachable() -> ! {

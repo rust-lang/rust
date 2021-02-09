@@ -30,7 +30,7 @@ fn test() -> Option<Box<u32>> {
         StorageLive(_3);                 // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
         StorageLive(_4);                 // scope 0 at $DIR/issue-62289.rs:9:15: 9:19
         _4 = Option::<u32>::None;        // scope 0 at $DIR/issue-62289.rs:9:15: 9:19
-        _3 = <Option<u32> as Try>::into_result(move _4) -> [return: bb1, unwind: bb12]; // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
+        _3 = <Option<u32> as Try>::into_result(move _4) -> [return: bb1, unwind: bb10]; // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:15: 9:20
                                          // + literal: Const { ty: fn(std::option::Option<u32>) -> std::result::Result<<std::option::Option<u32> as std::ops::Try>::Ok, <std::option::Option<u32> as std::ops::Try>::Error> {<std::option::Option<u32> as std::ops::Try>::into_result}, val: Value(Scalar(<ZST>)) }
@@ -48,7 +48,11 @@ fn test() -> Option<Box<u32>> {
         (*_2) = _10;                     // scope 4 at $DIR/issue-62289.rs:9:15: 9:20
         StorageDead(_10);                // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
         _1 = move _2;                    // scope 0 at $DIR/issue-62289.rs:9:10: 9:21
-        drop(_2) -> [return: bb7, unwind: bb11]; // scope 0 at $DIR/issue-62289.rs:9:20: 9:21
+        StorageDead(_2);                 // scope 0 at $DIR/issue-62289.rs:9:20: 9:21
+        _0 = Option::<Box<u32>>::Some(move _1); // scope 0 at $DIR/issue-62289.rs:9:5: 9:22
+        StorageDead(_1);                 // scope 0 at $DIR/issue-62289.rs:9:21: 9:22
+        StorageDead(_3);                 // scope 0 at $DIR/issue-62289.rs:10:1: 10:2
+        goto -> bb8;                     // scope 0 at $DIR/issue-62289.rs:10:2: 10:2
     }
 
     bb3: {
@@ -61,7 +65,7 @@ fn test() -> Option<Box<u32>> {
         StorageLive(_8);                 // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
         StorageLive(_9);                 // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
         _9 = _6;                         // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
-        _8 = <NoneError as From<NoneError>>::from(move _9) -> [return: bb5, unwind: bb12]; // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
+        _8 = <NoneError as From<NoneError>>::from(move _9) -> [return: bb5, unwind: bb10]; // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:19: 9:20
                                          // + literal: Const { ty: fn(std::option::NoneError) -> std::option::NoneError {<std::option::NoneError as std::convert::From<std::option::NoneError>>::from}, val: Value(Scalar(<ZST>)) }
@@ -69,7 +73,7 @@ fn test() -> Option<Box<u32>> {
 
     bb5: {
         StorageDead(_9);                 // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
-        _0 = <Option<Box<u32>> as Try>::from_error(move _8) -> [return: bb6, unwind: bb12]; // scope 2 at $DIR/issue-62289.rs:9:15: 9:20
+        _0 = <Option<Box<u32>> as Try>::from_error(move _8) -> [return: bb6, unwind: bb10]; // scope 2 at $DIR/issue-62289.rs:9:15: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:15: 9:20
                                          // + literal: Const { ty: fn(<std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::Error) -> std::option::Option<std::boxed::Box<u32>> {<std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error}, val: Value(Scalar(<ZST>)) }
@@ -78,41 +82,29 @@ fn test() -> Option<Box<u32>> {
     bb6: {
         StorageDead(_8);                 // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
         StorageDead(_6);                 // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
-        drop(_2) -> bb9;                 // scope 0 at $DIR/issue-62289.rs:9:20: 9:21
+        drop(_2) -> [return: bb7, unwind: bb9]; // scope 0 at $DIR/issue-62289.rs:9:20: 9:21
     }
 
     bb7: {
         StorageDead(_2);                 // scope 0 at $DIR/issue-62289.rs:9:20: 9:21
-        _0 = Option::<Box<u32>>::Some(move _1); // scope 0 at $DIR/issue-62289.rs:9:5: 9:22
-        drop(_1) -> bb8;                 // scope 0 at $DIR/issue-62289.rs:9:21: 9:22
+        StorageDead(_1);                 // scope 0 at $DIR/issue-62289.rs:9:21: 9:22
+        StorageDead(_3);                 // scope 0 at $DIR/issue-62289.rs:10:1: 10:2
+        goto -> bb8;                     // scope 0 at $DIR/issue-62289.rs:10:2: 10:2
     }
 
     bb8: {
-        StorageDead(_1);                 // scope 0 at $DIR/issue-62289.rs:9:21: 9:22
-        StorageDead(_3);                 // scope 0 at $DIR/issue-62289.rs:10:1: 10:2
-        goto -> bb10;                    // scope 0 at $DIR/issue-62289.rs:10:2: 10:2
-    }
-
-    bb9: {
-        StorageDead(_2);                 // scope 0 at $DIR/issue-62289.rs:9:20: 9:21
-        StorageDead(_1);                 // scope 0 at $DIR/issue-62289.rs:9:21: 9:22
-        StorageDead(_3);                 // scope 0 at $DIR/issue-62289.rs:10:1: 10:2
-        goto -> bb10;                    // scope 0 at $DIR/issue-62289.rs:10:2: 10:2
-    }
-
-    bb10: {
         return;                          // scope 0 at $DIR/issue-62289.rs:10:2: 10:2
     }
 
+    bb9 (cleanup): {
+        drop(_0) -> bb11;                // scope 0 at $DIR/issue-62289.rs:10:1: 10:2
+    }
+
+    bb10 (cleanup): {
+        drop(_2) -> bb11;                // scope 0 at $DIR/issue-62289.rs:9:20: 9:21
+    }
+
     bb11 (cleanup): {
-        drop(_1) -> bb13;                // scope 0 at $DIR/issue-62289.rs:9:21: 9:22
-    }
-
-    bb12 (cleanup): {
-        drop(_2) -> bb13;                // scope 0 at $DIR/issue-62289.rs:9:20: 9:21
-    }
-
-    bb13 (cleanup): {
         resume;                          // scope 0 at $DIR/issue-62289.rs:8:1: 10:2
     }
 }

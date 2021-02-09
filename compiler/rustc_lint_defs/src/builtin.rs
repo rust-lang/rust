@@ -1,5 +1,4 @@
 // ignore-tidy-filelength
-
 //! Some lints that are built in to the compiler.
 //!
 //! These are the built-in lints that are emitted direct in the main
@@ -9,42 +8,6 @@
 use crate::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
-
-declare_lint! {
-    /// The `forbidden_lint_groups` lint detects violations of
-    /// `forbid` applied to a lint group. Due to a bug in the compiler,
-    /// these used to be overlooked entirely. They now generate a warning.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![forbid(warnings)]
-    /// #![deny(bad_style)]
-    ///
-    /// fn main() {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Recommended fix
-    ///
-    /// If your crate is using `#![forbid(warnings)]`,
-    /// we recommend that you change to `#![deny(warnings)]`.
-    ///
-    /// ### Explanation
-    ///
-    /// Due to a compiler bug, applying `forbid` to lint groups
-    /// previously had no effect. The bug is now fixed but instead of
-    /// enforcing `forbid` we issue this future-compatibility warning
-    /// to avoid breaking existing crates.
-    pub FORBIDDEN_LINT_GROUPS,
-    Warn,
-    "applying forbid to lint-groups",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #81670 <https://github.com/rust-lang/rust/issues/81670>",
-        edition: None,
-    };
-}
 
 declare_lint! {
     /// The `ill_formed_attribute_input` lint detects ill-formed attribute
@@ -292,10 +255,6 @@ declare_lint! {
     pub CONST_ERR,
     Deny,
     "constant evaluation encountered erroneous expression",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #71800 <https://github.com/rust-lang/rust/issues/71800>",
-        edition: None,
-    };
     report_in_external_macro
 }
 
@@ -2921,57 +2880,10 @@ declare_lint! {
     };
 }
 
-declare_lint! {
-    /// The `legacy_derive_helpers` lint detects derive helper attributes
-    /// that are used before they are introduced.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs extern crate)
-    /// #[serde(rename_all = "camelCase")]
-    /// #[derive(Deserialize)]
-    /// struct S { /* fields */ }
-    /// ```
-    ///
-    /// produces:
-    ///
-    /// ```text
-    /// warning: derive helper attribute is used before it is introduced
-    ///   --> $DIR/legacy-derive-helpers.rs:1:3
-    ///    |
-    ///  1 | #[serde(rename_all = "camelCase")]
-    ///    |   ^^^^^
-    /// ...
-    ///  2 | #[derive(Deserialize)]
-    ///    |          ----------- the attribute is introduced here
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// Attributes like this work for historical reasons, but attribute expansion works in
-    /// left-to-right order in general, so, to resolve `#[serde]`, compiler has to try to "look
-    /// into the future" at not yet expanded part of the item , but such attempts are not always
-    /// reliable.
-    ///
-    /// To fix the warning place the helper attribute after its corresponding derive.
-    /// ```rust,ignore (needs extern crate)
-    /// #[derive(Deserialize)]
-    /// #[serde(rename_all = "camelCase")]
-    /// struct S { /* fields */ }
-    /// ```
-    pub LEGACY_DERIVE_HELPERS,
-    Warn,
-    "detects derive helper attributes that are used before they are introduced",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #79202 <https://github.com/rust-lang/rust/issues/79202>",
-    };
-}
-
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
     HardwiredLints => [
-        FORBIDDEN_LINT_GROUPS,
         ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
         ARITHMETIC_OVERFLOW,
         UNCONDITIONAL_PANIC,
@@ -3056,8 +2968,6 @@ declare_lint_pass! {
         UNSUPPORTED_NAKED_FUNCTIONS,
         MISSING_ABI,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
-        DISJOINT_CAPTURE_DROP_REORDER,
-        LEGACY_DERIVE_HELPERS,
     ]
 }
 
@@ -3082,51 +2992,6 @@ declare_lint! {
     pub UNUSED_DOC_COMMENTS,
     Warn,
     "detects doc comments that aren't used by rustdoc"
-}
-
-declare_lint! {
-    /// The `disjoint_capture_drop_reorder` lint detects variables that aren't completely
-    /// captured when the feature `capture_disjoint_fields` is enabled and it affects the Drop
-    /// order of at least one path starting at this variable.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// # #![deny(disjoint_capture_drop_reorder)]
-    /// # #![allow(unused)]
-    /// struct FancyInteger(i32);
-    ///
-    /// impl Drop for FancyInteger {
-    ///     fn drop(&mut self) {
-    ///         println!("Just dropped {}", self.0);
-    ///     }
-    /// }
-    ///
-    /// struct Point { x: FancyInteger, y: FancyInteger }
-    ///
-    /// fn main() {
-    ///   let p = Point { x: FancyInteger(10), y: FancyInteger(20) };
-    ///
-    ///   let c = || {
-    ///      let x = p.x;
-    ///   };
-    ///
-    ///   c();
-    ///
-    ///   // ... More code ...
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// In the above example `p.y` will be dropped at the end of `f` instead of with `c` if
-    /// the feature `capture_disjoint_fields` is enabled.
-    pub DISJOINT_CAPTURE_DROP_REORDER,
-    Allow,
-    "Drop reorder because of `capture_disjoint_fields`"
-
 }
 
 declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);

@@ -27,7 +27,7 @@ if isLinux; then
     pip="pip3"
     pipflags="--user"
 
-    sudo apt-get install -y python3-setuptools python3-wheel
+    sudo apt-get install -y python3-setuptools
     ciCommandAddPath "${HOME}/.local/bin"
 fi
 

@@ -328,18 +328,6 @@ impl UnsafeCode {
 
         cx.struct_span_lint(UNSAFE_CODE, span, decorate);
     }
-
-    fn report_overriden_symbol_name(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
-        self.report_unsafe(cx, span, |lint| {
-            lint.build(msg)
-                .note(
-                    "the linker's behavior with multiple libraries exporting duplicate symbol \
-                    names is undefined and Rust cannot provide guarantees when you manually \
-                    override them",
-                )
-                .emit();
-        })
-    }
 }
 
 impl EarlyLintPass for UnsafeCode {
@@ -369,48 +357,16 @@ impl EarlyLintPass for UnsafeCode {
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         match it.kind {
-            ast::ItemKind::Trait(box ast::TraitKind(_, ast::Unsafe::Yes(_), ..)) => self
-                .report_unsafe(cx, it.span, |lint| {
+            ast::ItemKind::Trait(_, ast::Unsafe::Yes(_), ..) => {
+                self.report_unsafe(cx, it.span, |lint| {
                     lint.build("declaration of an `unsafe` trait").emit()
-                }),
-
-            ast::ItemKind::Impl(box ast::ImplKind { unsafety: ast::Unsafe::Yes(_), .. }) => self
-                .report_unsafe(cx, it.span, |lint| {
-                    lint.build("implementation of an `unsafe` trait").emit()
-                }),
-
-            ast::ItemKind::Fn(..) => {
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_overriden_symbol_name(
-                        cx,
-                        attr.span,
-                        "declaration of a `no_mangle` function",
-                    );
-                }
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                    self.report_overriden_symbol_name(
-                        cx,
-                        attr.span,
-                        "declaration of a function with `export_name`",
-                    );
-                }
+                })
             }
 
-            ast::ItemKind::Static(..) => {
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_overriden_symbol_name(
-                        cx,
-                        attr.span,
-                        "declaration of a `no_mangle` static",
-                    );
-                }
-                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                    self.report_overriden_symbol_name(
-                        cx,
-                        attr.span,
-                        "declaration of a static with `export_name`",
-                    );
-                }
+            ast::ItemKind::Impl { unsafety: ast::Unsafe::Yes(_), .. } => {
+                self.report_unsafe(cx, it.span, |lint| {
+                    lint.build("implementation of an `unsafe` trait").emit()
+                })
             }
 
             _ => {}
@@ -916,7 +872,7 @@ declare_lint_pass!(
 
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        if let ast::AssocItemKind::Fn(box FnKind(_, ref sig, _, _)) = it.kind {
+        if let ast::AssocItemKind::Fn(_, ref sig, _, _) = it.kind {
             for arg in sig.decl.inputs.iter() {
                 if let ast::PatKind::Ident(_, ident, None) = arg.pat.kind {
                     if ident.name == kw::Empty {

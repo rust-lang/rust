@@ -1109,9 +1109,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 if assoc_item.ident == ident {
                     return Some(match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
-                        ast::AssocItemKind::Fn(box ast::FnKind(_, sig, ..))
-                            if sig.decl.has_self() =>
-                        {
+                        ast::AssocItemKind::Fn(_, sig, ..) if sig.decl.has_self() => {
                             AssocSuggestion::MethodWithSelf
                         }
                         ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn,
@@ -1212,8 +1210,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             // Add primitive types to the mix
             if filter_fn(Res::PrimTy(PrimTy::Bool)) {
                 names.extend(
-                    PrimTy::ALL.iter().map(|prim_ty| {
-                        TypoSuggestion::from_res(prim_ty.name(), Res::PrimTy(*prim_ty))
+                    self.r.primitive_type_table.primitive_types.iter().map(|(name, prim_ty)| {
+                        TypoSuggestion::from_res(*name, Res::PrimTy(*prim_ty))
                     }),
                 )
             }
@@ -1661,15 +1659,12 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             match missing {
                 MissingLifetimeSpot::Generics(generics) => {
                     let (span, sugg) = if let Some(param) = generics.params.iter().find(|p| {
-                        !matches!(
-                            p.kind,
-                            hir::GenericParamKind::Type {
-                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                ..
-                            } | hir::GenericParamKind::Lifetime {
-                                kind: hir::LifetimeParamKind::Elided,
-                            }
-                        )
+                        !matches!(p.kind, hir::GenericParamKind::Type {
+                            synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                            ..
+                        } | hir::GenericParamKind::Lifetime {
+                            kind: hir::LifetimeParamKind::Elided,
+                        })
                     }) {
                         (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
                     } else {
@@ -1849,13 +1844,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         msg = "consider introducing a named lifetime parameter".to_string();
                         should_break = true;
                         if let Some(param) = generics.params.iter().find(|p| {
-                            !matches!(
-                                p.kind,
-                                hir::GenericParamKind::Type {
-                                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                    ..
-                                }
-                            )
+                            !matches!(p.kind, hir::GenericParamKind::Type {
+                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                                ..
+                            })
                         }) {
                             (param.span.shrink_to_lo(), "'a, ".to_string())
                         } else {

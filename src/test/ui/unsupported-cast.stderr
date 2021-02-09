@@ -1,0 +1,9 @@
+error[E0606]: casting `f64` as `*const A` is invalid
+  --> $DIR/unsupported-cast.rs:6:20
+   |
+LL |   println!("{:?}", 1.0 as *const A); // Can't cast float to foreign.
+   |                    ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0606`.

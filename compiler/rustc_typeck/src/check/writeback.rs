@@ -650,7 +650,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 }
 
-crate trait Locatable {
+trait Locatable {
     fn to_span(&self, tcx: TyCtxt<'_>) -> Span;
 }
 
@@ -668,7 +668,7 @@ impl Locatable for hir::HirId {
 
 /// The Resolver. This is the type folding engine that detects
 /// unresolved types and so forth.
-crate struct Resolver<'cx, 'tcx> {
+struct Resolver<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     span: &'cx dyn Locatable,
@@ -679,7 +679,7 @@ crate struct Resolver<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
-    crate fn new(
+    fn new(
         fcx: &'cx FnCtxt<'cx, 'tcx>,
         span: &'cx dyn Locatable,
         body: &'tcx hir::Body<'tcx>,

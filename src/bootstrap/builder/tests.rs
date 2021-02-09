@@ -146,7 +146,7 @@ mod defaults {
         // rustdoc tool.
         assert_eq!(
             first(builder.cache.all::<doc::ErrorIndex>()),
-            &[doc::ErrorIndex { target: a },]
+            &[doc::ErrorIndex { compiler: Compiler { host: a, stage: 0 }, target: a },]
         );
         assert_eq!(
             first(builder.cache.all::<tool::ErrorIndex>()),
@@ -556,7 +556,7 @@ mod dist {
         // rustdoc tool.
         assert_eq!(
             first(builder.cache.all::<doc::ErrorIndex>()),
-            &[doc::ErrorIndex { target: a },]
+            &[doc::ErrorIndex { compiler: Compiler { host: a, stage: 1 }, target: a },]
         );
         assert_eq!(
             first(builder.cache.all::<tool::ErrorIndex>()),
@@ -594,7 +594,7 @@ mod dist {
         // rustdoc tool.
         assert_eq!(
             first(builder.cache.all::<doc::ErrorIndex>()),
-            &[doc::ErrorIndex { target: a },]
+            &[doc::ErrorIndex { compiler: Compiler { host: a, stage: 1 }, target: a },]
         );
         assert_eq!(
             first(builder.cache.all::<tool::ErrorIndex>()),

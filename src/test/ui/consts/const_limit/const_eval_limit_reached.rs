@@ -5,7 +5,6 @@ const X: usize = {
     let mut x = 0;
     while x != 1000 {
         //~^ ERROR any use of this value will cause an error
-        //~| WARN this was previously accepted by the compiler but is being phased out
         x += 1;
     }
 

@@ -18,7 +18,6 @@ const fn wat(x: u64) -> &'static u64 {
 }
 const X: u64 = *wat(42);
 //~^ ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
 
 fn main() {
     println!("{}", X);

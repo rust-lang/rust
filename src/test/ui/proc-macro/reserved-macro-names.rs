@@ -17,3 +17,9 @@ pub fn cfg_attr(_: TokenStream, input: TokenStream) -> TokenStream {
     //~^ ERROR name `cfg_attr` is reserved in attribute namespace
     input
 }
+
+#[proc_macro_attribute]
+pub fn derive(_: TokenStream, input: TokenStream) -> TokenStream {
+    //~^ ERROR name `derive` is reserved in attribute namespace
+    input
+}

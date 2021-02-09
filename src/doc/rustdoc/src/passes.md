@@ -32,9 +32,8 @@ Without this pass, these items will remain in the output.
 
 When you write a doc comment like this:
 
-```rust,no_run
+```rust,ignore
 /// This is a documentation comment.
-# fn f() {}
 ```
 
 There's a space between the `///` and that `T`. That spacing isn't intended
@@ -53,10 +52,9 @@ documentation string.
 
 For example:
 
-```rust,no_run
+```rust,ignore
 #[doc = "This is the first line."]
 #[doc = "This is the second line."]
-# fn f() {}
 ```
 
 Gets collapsed into a single doc string of
@@ -70,7 +68,7 @@ This is the second line.
 
 This removes documentation for any non-public items, so for example:
 
-```rust,no_run
+```rust,ignore
 /// These are private docs.
 struct Private;
 

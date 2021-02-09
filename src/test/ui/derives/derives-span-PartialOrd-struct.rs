@@ -6,6 +6,10 @@ struct Error;
 #[derive(PartialOrd,PartialEq)]
 struct Struct {
     x: Error //~ ERROR can't compare `Error` with `Error`
+             //~| ERROR can't compare `Error` with `Error`
+             //~| ERROR can't compare `Error` with `Error`
+             //~| ERROR can't compare `Error` with `Error`
+             //~| ERROR can't compare `Error` with `Error`
 }
 
 fn main() {}

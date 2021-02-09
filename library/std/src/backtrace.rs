@@ -147,14 +147,11 @@ fn _assert_send_sync() {
     _assert::<Backtrace>();
 }
 
-/// A single frame of a backtrace.
-#[unstable(feature = "backtrace_frames", issue = "79676")]
-pub struct BacktraceFrame {
+struct BacktraceFrame {
     frame: RawFrame,
     symbols: Vec<BacktraceSymbol>,
 }
 
-#[derive(Debug)]
 enum RawFrame {
     Actual(backtrace_rs::Frame),
     #[cfg(test)]
@@ -195,14 +192,6 @@ impl fmt::Debug for Backtrace {
             dbg.entries(&frame.symbols);
         }
 
-        dbg.finish()
-    }
-}
-
-impl fmt::Debug for BacktraceFrame {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut dbg = fmt.debug_list();
-        dbg.entries(&self.symbols);
         dbg.finish()
     }
 }
@@ -361,14 +350,6 @@ impl Backtrace {
             Inner::Disabled => BacktraceStatus::Disabled,
             Inner::Captured(_) => BacktraceStatus::Captured,
         }
-    }
-}
-
-impl<'a> Backtrace {
-    /// Returns an iterator over the backtrace frames.
-    #[unstable(feature = "backtrace_frames", issue = "79676")]
-    pub fn frames(&'a self) -> &'a [BacktraceFrame] {
-        if let Inner::Captured(c) = &self.inner { &c.force().frames } else { &[] }
     }
 }
 

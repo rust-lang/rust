@@ -296,12 +296,7 @@ fn run_test(
         }
     });
     if let ErrorOutputType::HumanReadable(kind) = options.error_format {
-        let (short, color_config) = kind.unzip();
-
-        if short {
-            compiler.arg("--error-format").arg("short");
-        }
-
+        let (_, color_config) = kind.unzip();
         match color_config {
             ColorConfig::Never => {
                 compiler.arg("--color").arg("never");

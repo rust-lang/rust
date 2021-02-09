@@ -110,7 +110,7 @@ pub fn span_lint_and_help<'a, T: LintContext>(
 pub fn span_lint_and_note<'a, T: LintContext>(
     cx: &'a T,
     lint: &'static Lint,
-    span: impl Into<MultiSpan>,
+    span: Span,
     msg: &str,
     note_span: Option<Span>,
     note: &str,

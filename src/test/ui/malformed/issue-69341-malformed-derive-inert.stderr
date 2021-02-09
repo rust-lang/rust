@@ -1,8 +1,21 @@
-error: expected non-macro attribute, found attribute macro `derive`
-  --> $DIR/issue-69341-malformed-derive-inert.rs:4:7
+error: traits in `#[derive(...)]` don't accept arguments
+  --> $DIR/issue-69341-malformed-derive-inert.rs:4:19
    |
 LL |     #[derive(parse())]
-   |       ^^^^^^ not a non-macro attribute
+   |                   ^^ help: remove the arguments
 
-error: aborting due to previous error
+error[E0774]: `derive` may only be applied to structs, enums and unions
+  --> $DIR/issue-69341-malformed-derive-inert.rs:7:5
+   |
+LL |     path: (),
+   |     ^^^^^^^^
 
+error: cannot find derive macro `parse` in this scope
+  --> $DIR/issue-69341-malformed-derive-inert.rs:4:14
+   |
+LL |     #[derive(parse())]
+   |              ^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0774`.

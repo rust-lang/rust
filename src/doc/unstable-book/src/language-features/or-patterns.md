@@ -11,7 +11,7 @@ a pattern, for example, `Some(A(0) | B(1 | 2))` becomes a valid pattern.
 
 ## Examples
 
-```rust,no_run
+```rust,ignore
 #![feature(or_patterns)]
 
 pub enum Foo {

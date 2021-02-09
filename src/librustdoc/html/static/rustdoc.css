@@ -798,7 +798,6 @@ body.blur > :not(#help) {
 	float: left;
 	clear: left;
 	display: block;
-	margin-right: 0.5rem;
 }
 #help > div > span {
 	text-align: center;
@@ -1490,14 +1489,6 @@ h4 > .notable-traits {
 		margin-left: 0;
 		background-color: rgba(0,0,0,0);
 		height: 100%;
-	}
-	/*
-	This allows to prevent the version text to overflow the sidebar title on mobile mode when the
-	sidebar is displayed (after clicking on the "hamburger" button).
-	*/
-	.sidebar.mobile > div.version {
-		overflow: hidden;
-		max-height: 33px;
 	}
 	.sidebar {
 		width: calc(100% + 30px);

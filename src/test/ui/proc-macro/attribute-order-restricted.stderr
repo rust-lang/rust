@@ -1,0 +1,8 @@
+error: macro attributes must be placed before `#[derive]`
+  --> $DIR/attribute-order-restricted.rs:11:1
+   |
+LL | #[identity_attr]
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

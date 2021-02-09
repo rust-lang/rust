@@ -3,7 +3,6 @@
 // ignore-cloudabi
 // ignore-emscripten
 // ignore-sgx
-// ignore-musl - returns dummy result for _SC_NGROUPS_MAX
 
 #![feature(rustc_private)]
 #![feature(setgroups)]

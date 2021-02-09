@@ -5,13 +5,12 @@ that examples within your documentation are up to date and working.
 
 The basic idea is this:
 
-```rust,no_run
+```ignore
 /// # Examples
 ///
 /// ```
 /// let x = 5;
 /// ```
-# fn f() {}
 ```
 
 The triple backticks start and end code blocks. If this were in a file named `foo.rs`,
@@ -79,13 +78,12 @@ Sometimes, you need some setup code, or other things that would distract
 from your example, but are important to make the tests work. Consider
 an example block that looks like this:
 
-```rust,no_run
+```ignore
 /// ```
 /// /// Some documentation.
 /// # fn foo() {} // this function will be hidden
 /// println!("Hello, World!");
 /// ```
-# fn f() {}
 ```
 
 It will render like this:
@@ -198,13 +196,12 @@ When writing an example, it is rarely useful to include a complete error
 handling, as it would add significant amounts of boilerplate code. Instead, you
 may want the following:
 
-```rust,no_run
+```ignore
 /// ```
 /// use std::io;
 /// let mut input = String::new();
 /// io::stdin().read_line(&mut input)?;
 /// ```
-# fn f() {}
 ```
 
 The problem is that `?` returns a `Result<T, E>` and test functions don't
@@ -213,7 +210,7 @@ return anything, so this will give a mismatched types error.
 You can get around this limitation by manually adding a `main` that returns
 `Result<T, E>`, because `Result<T, E>` implements the `Termination` trait:
 
-```rust,no_run
+```ignore
 /// A doc test using ?
 ///
 /// ```
@@ -225,13 +222,12 @@ You can get around this limitation by manually adding a `main` that returns
 ///     Ok(())
 /// }
 /// ```
-# fn f() {}
 ```
 
 Together with the `# ` from the section above, you arrive at a solution that
 appears to the reader as the initial idea but works with doc tests:
 
-```rust,no_run
+```ignore
 /// ```
 /// use std::io;
 /// # fn main() -> io::Result<()> {
@@ -240,20 +236,18 @@ appears to the reader as the initial idea but works with doc tests:
 /// # Ok(())
 /// # }
 /// ```
-# fn f() {}
 ```
 
 As of version 1.34.0, one can also omit the `fn main()`, but you will have to
 disambiguate the error type:
 
-```rust,no_run
+```ignore
 /// ```
 /// use std::io;
 /// let mut input = String::new();
 /// io::stdin().read_line(&mut input)?;
 /// # Ok::<(), io::Error>(())
 /// ```
-# fn f() {}
 ```
 
 This is an unfortunate consequence of the `?` operator adding an implicit
@@ -423,7 +417,7 @@ Another possible use of `#[cfg(doctest)]` is to test doctests that are included 
 without including it in your main documentation. For example, you could write this into your
 `lib.rs` to test your README as part of your doctests:
 
-```rust,no_run
+```rust,ignore
 #![feature(external_doc)]
 
 #[doc(include = "../README.md")]

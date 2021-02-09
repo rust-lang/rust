@@ -75,8 +75,3 @@ auto trait Freeze {}
 macro_rules! Copy {
     () => {};
 }
-#[macro_export]
-#[rustc_builtin_macro]
-macro_rules! derive {
-    () => {};
-}

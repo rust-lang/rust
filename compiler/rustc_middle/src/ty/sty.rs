@@ -1132,16 +1132,8 @@ impl<'tcx> ProjectionTy<'tcx> {
     /// For example, if this is a projection of `<T as Iterator>::Item`,
     /// then this function would return a `T: Iterator` trait reference.
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
-        // FIXME: This method probably shouldn't exist at all, since it's not
-        // clear what this method really intends to do. Be careful when
-        // using this method since the resulting TraitRef additionally
-        // contains the substs for the assoc_item, which strictly speaking
-        // is not correct
         let def_id = tcx.associated_item(self.item_def_id).container.id();
-        // Include substitutions for generic arguments of associated types
-        let assoc_item = tcx.associated_item(self.item_def_id);
-        let substs_assoc_item = self.substs.truncate_to(tcx, tcx.generics_of(assoc_item.def_id));
-        ty::TraitRef { def_id, substs: substs_assoc_item }
+        ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, tcx.generics_of(def_id)) }
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
@@ -1879,14 +1871,8 @@ impl<'tcx> TyS<'tcx> {
     pub fn is_scalar(&self) -> bool {
         matches!(
             self.kind(),
-            Bool | Char
-                | Int(_)
-                | Float(_)
-                | Uint(_)
-                | FnDef(..)
-                | FnPtr(_)
-                | RawPtr(_)
-                | Infer(IntVar(_) | FloatVar(_))
+            Bool | Char | Int(_) | Float(_) | Uint(_) | FnDef(..) | FnPtr(_) | RawPtr(_)
+            | Infer(IntVar(_) | FloatVar(_))
         )
     }
 

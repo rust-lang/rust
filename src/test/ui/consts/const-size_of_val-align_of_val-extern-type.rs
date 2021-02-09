@@ -9,8 +9,6 @@ extern "C" {
 }
 
 const _SIZE: usize = unsafe { size_of_val(&4 as *const i32 as *const Opaque) }; //~ ERROR
-//~| WARN this was previously accepted by the compiler but is being phased out
 const _ALIGN: usize = unsafe { min_align_of_val(&4 as *const i32 as *const Opaque) }; //~ ERROR
-//~| WARN this was previously accepted by the compiler but is being phased out
 
 fn main() {}

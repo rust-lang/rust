@@ -7,10 +7,9 @@ The most basic function of `#[doc]` is to handle the actual documentation
 text. That is, `///` is syntax sugar for `#[doc]`. This means that these two
 are the same:
 
-```rust,no_run
+```rust,ignore
 /// This is a doc comment.
 #[doc = " This is a doc comment."]
-# fn f() {}
 ```
 
 (Note the leading space in the attribute version.)
@@ -19,18 +18,16 @@ In most cases, `///` is easier to use than `#[doc]`. One case where the latter i
 when generating documentation in macros; the `collapse-docs` pass will combine multiple
 `#[doc]` attributes into a single doc comment, letting you generate code like this:
 
-```rust,no_run
+```rust,ignore
 #[doc = "This is"]
 #[doc = " a "]
 #[doc = "doc comment"]
-# fn f() {}
 ```
 
 Which can feel more flexible. Note that this would generate this:
 
-```rust,no_run
+```rust,ignore
 #[doc = "This is\n a \ndoc comment"]
-# fn f() {}
 ```
 
 but given that docs are rendered via Markdown, it will remove these newlines.
@@ -48,7 +45,7 @@ These options control how the docs look at a crate level.
 
 This form of the `doc` attribute lets you control the favicon of your docs.
 
-```rust,no_run
+```rust,ignore
 #![doc(html_favicon_url = "https://example.com/favicon.ico")]
 ```
 
@@ -62,7 +59,7 @@ If you don't use this attribute, there will be no favicon.
 This form of the `doc` attribute lets you control the logo in the upper
 left hand side of the docs.
 
-```rust,no_run
+```rust,ignore
 #![doc(html_logo_url = "https://example.com/logo.jpg")]
 ```
 
@@ -76,7 +73,7 @@ If you don't use this attribute, there will be no logo.
 This form of the `doc` attribute lets you control where the "run" buttons
 on your documentation examples make requests to.
 
-```rust,no_run
+```rust,ignore
 #![doc(html_playground_url = "https://playground.example.com/")]
 ```
 
@@ -91,7 +88,7 @@ When a feature is unstable, an issue number for tracking the feature must be
 given. `rustdoc` uses this number, plus the base URL given here, to link to
 the tracking issue.
 
-```rust,no_run
+```rust,ignore
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 ```
 
@@ -106,7 +103,7 @@ available. If that is not available, then it will use the `html_root_url`
 value in the extern crate if it is available. If that is not available, then
 the extern items will not be linked.
 
-```rust,no_run
+```rust,ignore
 #![doc(html_root_url = "https://docs.rs/serde/1.0")]
 ```
 
@@ -115,7 +112,7 @@ the extern items will not be linked.
 By default, `rustdoc` will include the source code of your program, with links
 to it in the docs. But if you include this:
 
-```rust,no_run
+```rust,ignore
 #![doc(html_no_source)]
 ```
 
@@ -126,7 +123,7 @@ it will not.
 By default, `rustdoc` will automatically add a line with `extern crate my_crate;` into each doctest.
 But if you include this:
 
-```rust,no_run
+```rust,ignore
 #![doc(test(no_crate_inject))]
 ```
 
@@ -137,7 +134,7 @@ it will not.
 This form of the `doc` attribute allows you to add arbitrary attributes to all your doctests. For
 example, if you want your doctests to fail if they produce any warnings, you could add this:
 
-```rust,no_run
+```rust,ignore
 #![doc(test(attr(deny(warnings))))]
 ```
 
@@ -151,7 +148,7 @@ they are documented.
 These attributes are used on `use` statements, and control where the documentation shows
 up. For example, consider this Rust code:
 
-```rust,no_run
+```rust,ignore
 pub use bar::Bar;
 
 /// bar docs
@@ -159,7 +156,6 @@ pub mod bar {
     /// the docs for Bar
     pub struct Bar;
 }
-# fn main() {}
 ```
 
 The documentation will generate a "Re-exports" section, and say `pub use bar::Bar;`, where
@@ -167,11 +163,9 @@ The documentation will generate a "Re-exports" section, and say `pub use bar::Ba
 
 If we change the `use` line like this:
 
-```rust,no_run
+```rust,ignore
 #[doc(inline)]
 pub use bar::Bar;
-# pub mod bar { pub struct Bar; }
-# fn main() {}
 ```
 
 Instead, `Bar` will appear in a `Structs` section, just like `Bar` was defined at the
@@ -179,7 +173,7 @@ top level, rather than `pub use`'d.
 
 Let's change our original example, by making `bar` private:
 
-```rust,no_run
+```rust,ignore
 pub use bar::Bar;
 
 /// bar docs
@@ -187,7 +181,6 @@ mod bar {
     /// the docs for Bar
     pub struct Bar;
 }
-# fn main() {}
 ```
 
 Here, because `bar` is not public, `Bar` wouldn't have its own page, so there's nowhere
@@ -195,7 +188,7 @@ to link to. `rustdoc` will inline these definitions, and so we end up in the sam
 as the `#[doc(inline)]` above; `Bar` is in a `Structs` section, as if it were defined at
 the top level. If we add the `no_inline` form of the attribute:
 
-```rust,no_run
+```rust,ignore
 #[doc(no_inline)]
 pub use bar::Bar;
 
@@ -204,7 +197,6 @@ mod bar {
     /// the docs for Bar
     pub struct Bar;
 }
-# fn main() {}
 ```
 
 Now we'll have a `Re-exports` line, and `Bar` will not link to anywhere.

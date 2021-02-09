@@ -18,7 +18,7 @@ Options provided by `#[rustc_layout(...)]` are `debug`, `size`, `align`,
 
 ## Examples
 
-```rust,compile_fail
+```rust,ignore
 #![feature(rustc_attrs)]
 
 #[rustc_layout(abi, size)]

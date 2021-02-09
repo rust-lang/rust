@@ -16,7 +16,7 @@ macro on `Poll`, among other things.
 
 Here's an example implementation of the trait:
 
-```rust,ignore (cannot-reimpl-Try)
+```rust,ignore
 /// A distinct type to represent the `None` value of an `Option`.
 ///
 /// This enables using the `?` operator on `Option`; it's rarely useful alone.

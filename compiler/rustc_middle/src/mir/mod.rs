@@ -962,7 +962,8 @@ impl<'tcx> LocalDecl<'tcx> {
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
-                }) | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
+                })
+                | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
             )))
         )
     }
@@ -979,7 +980,8 @@ impl<'tcx> LocalDecl<'tcx> {
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
-                }) | BindingForm::ImplicitSelf(_),
+                })
+                | BindingForm::ImplicitSelf(_),
             )))
         )
     }

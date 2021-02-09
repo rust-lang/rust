@@ -1190,12 +1190,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     normalized_ty, data.ty
                 );
 
-                let is_normalized_ty_expected = !matches!(
-                    obligation.cause.code,
-                    ObligationCauseCode::ItemObligation(_)
-                        | ObligationCauseCode::BindingObligation(_, _)
-                        | ObligationCauseCode::ObjectCastObligation(_)
-                );
+                let is_normalized_ty_expected = !matches!(obligation.cause.code, ObligationCauseCode::ItemObligation(_)
+                    | ObligationCauseCode::BindingObligation(_, _)
+                    | ObligationCauseCode::ObjectCastObligation(_));
 
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
                     is_normalized_ty_expected,
@@ -1780,7 +1777,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                             multispan.push_span_label(
                                 sp,
                                 format!(
-                                    "...if indirection were used here: `Box<{}>`",
+                                    "...if indirection was used here: `Box<{}>`",
                                     param.name.ident(),
                                 ),
                             );

@@ -3,6 +3,7 @@ use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::thir::*;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
+use std::slice;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds a block of MIR statements to evaluate the THIR `expr`.
@@ -46,6 +47,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if this.hir.needs_drop(lhs.ty) {
                     let rhs = unpack!(block = this.as_local_operand(block, rhs));
                     let lhs = unpack!(block = this.as_place(block, lhs));
+                    this.record_operands_moved(slice::from_ref(&rhs));
                     unpack!(block = this.build_drop_and_replace(block, lhs_span, lhs, rhs));
                 } else {
                     let rhs = unpack!(block = this.as_local_rvalue(block, rhs));

@@ -23,13 +23,10 @@ use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 use rustc_lint_defs::FutureBreakage;
 pub use rustc_lint_defs::{pluralize, Applicability};
-use rustc_serialize::json::Json;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Loc, MultiSpan, Span};
 
 use std::borrow::Cow;
-use std::hash::{Hash, Hasher};
 use std::panic;
 use std::path::Path;
 use std::{error, fmt};
@@ -76,39 +73,6 @@ impl SuggestionStyle {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct ToolMetadata(pub Option<Json>);
-
-impl ToolMetadata {
-    fn new(json: Json) -> Self {
-        ToolMetadata(Some(json))
-    }
-
-    fn is_set(&self) -> bool {
-        self.0.is_some()
-    }
-}
-
-impl Hash for ToolMetadata {
-    fn hash<H: Hasher>(&self, _state: &mut H) {}
-}
-
-// Doesn't really need to round-trip
-impl<D: Decoder> Decodable<D> for ToolMetadata {
-    fn decode(_d: &mut D) -> Result<Self, D::Error> {
-        Ok(ToolMetadata(None))
-    }
-}
-
-impl<S: Encoder> Encodable<S> for ToolMetadata {
-    fn encode(&self, e: &mut S) -> Result<(), S::Error> {
-        match &self.0 {
-            None => e.emit_unit(),
-            Some(json) => json.encode(e),
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub struct CodeSuggestion {
     /// Each substitute can have multiple variants due to multiple
@@ -142,8 +106,6 @@ pub struct CodeSuggestion {
     /// which are useful for users but not useful for
     /// tools like rustfix
     pub applicability: Applicability,
-    /// Tool-specific metadata
-    pub tool_metadata: ToolMetadata,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
@@ -813,6 +775,7 @@ impl HandlerInner {
         }
 
         let already_emitted = |this: &mut Self| {
+            use std::hash::Hash;
             let mut hasher = StableHasher::new();
             diagnostic.hash(&mut hasher);
             let diagnostic_hash = hasher.finish();
@@ -938,7 +901,7 @@ impl HandlerInner {
 
     fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: &str) -> ! {
         self.emit_diag_at_span(Diagnostic::new(Bug, msg), sp);
-        panic::panic_any(ExplicitBug);
+        panic!(ExplicitBug);
     }
 
     fn emit_diag_at_span(&mut self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
@@ -992,7 +955,7 @@ impl HandlerInner {
 
     fn bug(&mut self, msg: &str) -> ! {
         self.emit_diagnostic(&Diagnostic::new(Bug, msg));
-        panic::panic_any(ExplicitBug);
+        panic!(ExplicitBug);
     }
 
     fn delay_as_bug(&mut self, diagnostic: Diagnostic) {

@@ -10,7 +10,6 @@ struct PrintName;
 impl PrintName {
     const VOID: ! = panic!();
     //~^ WARN any use of this value will cause an error
-    //~| WARN this was previously accepted by the compiler but is being phased out
 }
 
 fn main() {

@@ -48,10 +48,7 @@ mod tests;
 
 /// Options for rendering Markdown in the main body of documentation.
 pub(crate) fn opts() -> Options {
-    Options::ENABLE_TABLES
-        | Options::ENABLE_FOOTNOTES
-        | Options::ENABLE_STRIKETHROUGH
-        | Options::ENABLE_TASKLISTS
+    Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES | Options::ENABLE_STRIKETHROUGH
 }
 
 /// A subset of [`opts()`] used for rendering summaries.

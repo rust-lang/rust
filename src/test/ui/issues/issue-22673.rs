@@ -1,6 +1,5 @@
-// check-pass
-
-trait Expr: PartialEq<Self::Item> {
+trait Expr : PartialEq<Self::Item> {
+    //~^ ERROR: cycle detected
     type Item;
 }
 

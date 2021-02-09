@@ -496,9 +496,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.55.0"
+version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3983193cacd81f0f924acb666b7fe5e1a0d81db9f113fa69203eda7ea8ce8b6c"
+checksum = "9f88ce4deae1dace71e49b7611cfae2d5489de3530d6daba5758043c47ac3a10"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -508,9 +508,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-engine"
-version = "0.55.0"
+version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05a171ce5abbf0fbd06f221ab80ab182c7ef78603d23b858bc44e7ce8a86a396"
+checksum = "0e34c9b1b10616782143d7f49490f91ae94afaf2202de3ab0b2835e78b4f0ccc"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -521,20 +521,19 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.55.0"
+version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a522f53af971e7678f472d687e053120157b3ae26e2ebd5ecbc0f5ab124f2cb6"
+checksum = "63362c629c2014ab639b04029070763fb8224df136d1363d30e9ece4c8877da3"
 dependencies = [
- "bitflags",
  "chalk-derive",
  "lazy_static",
 ]
 
 [[package]]
 name = "chalk-solve"
-version = "0.55.0"
+version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdf79fb77a567e456a170f7ec84ea6584163d4ba3f13660cd182013d34ca667c"
+checksum = "cac338a67af52a7f50bb2f8232e730a3518ce432dbe303246acfe525ddd838c7"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -576,7 +575,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.52"
+version = "0.1.51"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy-mini-macro-test",
@@ -597,7 +596,7 @@ version = "0.2.0"
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.52"
+version = "0.1.51"
 dependencies = [
  "cargo_metadata 0.12.0",
  "if_chain",
@@ -726,9 +725,9 @@ dependencies = [
 
 [[package]]
 name = "const_fn"
-version = "0.4.3"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c478836e029dcef17fb47c89023448c64f781a046e0300e257ad8225ae59afab"
+checksum = "ce90df4c658c62f12d78f7508cf92f9173e5184a539c10bfe54a3107b3ffd0f2"
 
 [[package]]
 name = "constant_time_eq"
@@ -1784,9 +1783,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.85"
+version = "0.2.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ccac4b00700875e6a07c6cde370d44d32fa01c5a65cdd2fca6858c479d28bb3"
+checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -3582,7 +3581,6 @@ dependencies = [
  "rustc_errors",
  "rustc_expand",
  "rustc_feature",
- "rustc_lexer",
  "rustc_parse",
  "rustc_parse_format",
  "rustc_session",
@@ -3627,7 +3625,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "cc",
- "itertools 0.9.0",
  "jobserver",
  "libc",
  "memmap",
@@ -3914,7 +3911,6 @@ dependencies = [
  "rustc_index",
  "rustc_middle",
  "rustc_parse_format",
- "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -4317,7 +4313,6 @@ dependencies = [
  "chalk-ir",
  "chalk-solve",
  "rustc_ast",
- "rustc_attr",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_index",

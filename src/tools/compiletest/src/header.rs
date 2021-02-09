@@ -333,8 +333,6 @@ pub struct TestProps {
     pub assembly_output: Option<String>,
     // If true, the test is expected to ICE
     pub should_ice: bool,
-    // If true, the stderr is expected to be different across bit-widths.
-    pub stderr_per_bitwidth: bool,
 }
 
 impl TestProps {
@@ -374,7 +372,6 @@ impl TestProps {
             rustfix_only_machine_applicable: false,
             assembly_output: None,
             should_ice: false,
-            stderr_per_bitwidth: false,
         }
     }
 
@@ -540,10 +537,6 @@ impl TestProps {
 
                 if self.assembly_output.is_none() {
                     self.assembly_output = config.parse_assembly_output(ln);
-                }
-
-                if !self.stderr_per_bitwidth {
-                    self.stderr_per_bitwidth = config.parse_stderr_per_bitwidth(ln);
                 }
             });
         }
@@ -779,10 +772,6 @@ impl Config {
 
     fn parse_ignore_pass(&self, line: &str) -> bool {
         self.parse_name_directive(line, "ignore-pass")
-    }
-
-    fn parse_stderr_per_bitwidth(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "stderr-per-bitwidth")
     }
 
     fn parse_assembly_output(&self, line: &str) -> Option<String> {

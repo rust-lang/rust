@@ -285,9 +285,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_eq_type(&e, ty);
                 ty
             }
-            ExprKind::If(cond, then_expr, opt_else_expr) => {
-                self.check_then_else(cond, then_expr, opt_else_expr, expr.span, expected)
-            }
+            ExprKind::If(ref cond, ref then_expr, ref opt_else_expr) => self.check_then_else(
+                &cond,
+                then_expr,
+                opt_else_expr.as_ref().map(|e| &**e),
+                expr.span,
+                expected,
+            ),
             ExprKind::DropTemps(ref e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(ref args) => self.check_expr_array(args, expected, expr),
             ExprKind::ConstBlock(ref anon_const) => self.to_const(anon_const).ty,
@@ -1456,33 +1460,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     );
                     err.span_label(field.ident.span, "field does not exist");
-                    err.span_suggestion(
+                    err.span_label(
                         ty_span,
-                        &format!(
-                            "`{adt}::{variant}` is a tuple {kind_name}, use the appropriate syntax",
-                            adt = ty,
-                            variant = variant.ident,
-                        ),
                         format!(
-                            "{adt}::{variant}(/* fields */)",
+                            "`{adt}::{variant}` is a tuple {kind_name}, \
+                             use the appropriate syntax: `{adt}::{variant}(/* fields */)`",
                             adt = ty,
                             variant = variant.ident,
+                            kind_name = kind_name
                         ),
-                        Applicability::HasPlaceholders,
                     );
                 }
                 _ => {
                     err.span_label(variant.ident.span, format!("`{adt}` defined here", adt = ty));
                     err.span_label(field.ident.span, "field does not exist");
-                    err.span_suggestion(
+                    err.span_label(
                         ty_span,
-                        &format!(
-                            "`{adt}` is a tuple {kind_name}, use the appropriate syntax",
+                        format!(
+                            "`{adt}` is a tuple {kind_name}, \
+                                 use the appropriate syntax: `{adt}(/* fields */)`",
                             adt = ty,
-                            kind_name = kind_name,
+                            kind_name = kind_name
                         ),
-                        format!("{adt}(/* fields */)", adt = ty),
-                        Applicability::HasPlaceholders,
                     );
                 }
             },
@@ -1975,7 +1974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             field_path.push(candidate_field.ident.normalize_to_macros_2_0());
             let field_ty = candidate_field.ty(self.tcx, subst);
-            if let Some((nested_fields, subst)) = self.get_field_candidates(span, &field_ty) {
+            if let Some((nested_fields, _)) = self.get_field_candidates(span, &field_ty) {
                 for field in nested_fields.iter() {
                     let ident = field.ident.normalize_to_macros_2_0();
                     if ident == target_field {
