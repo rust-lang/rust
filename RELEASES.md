@@ -4,7 +4,7 @@ Version 1.51.0 (2021-03-25)
 Language
 --------
 - [You can now parameterize items such as functions, traits, and `struct`s by constant
-  values in addition to by types.][78135] E.g. You can now write the following. Note:
+  values in addition to by types.][78135] E.g. you can now write the following. Note:
   Only values of primitive integers, `bool`, or `char` types are currently permitted.
   ```rust
   struct GenericArray<T, const LENGTH: usize> {
@@ -28,7 +28,7 @@ Compiler
 
 - [Added the `-Csplit-debuginfo` codegen option.][79570] This option controls whether
   debug information is split across multiple files or packed into a single file.
-- [Added tier 3\*  support for `aarch64_be-unknown-linux-gnu`, `aarch64-unknown-linux-gnu_ilp32`,
+- [Added tier 3\* support for `aarch64_be-unknown-linux-gnu`, `aarch64-unknown-linux-gnu_ilp32`,
   and `aarch64_be-unknown-linux-gnu_ilp32` targets.][81455]
 - [Added tier 3 support for `i386-unknown-linux-gnu` and `i486-unknown-linux-gnu` targets.][80662]
 - [The `target-cpu=native` option will now detect individual features of CPUs.][80749]
@@ -82,7 +82,7 @@ Rustdoc
 
 Various improvements to intra-doc links:
 
-  - [You can link to no path based primitives such as `slice`.][80181]
+  - [You can link to non-path primitives such as `slice`.][80181]
   - [You can link to associated items.][74489]
   - [You can now link to items with generics such as `Vec<T>`.][76934]
 
@@ -96,7 +96,7 @@ Compatibility Notes
 
 - [Bumped the minimum `g++` for `linux-gnu` targets to `g++-8` from `g++-7`.][81521]
 - [WASI platforms no longer use the `wasm-bindgen` ABI.][79998]
-- [rustc no longer promotes division, modulo and indexing operations to `const` that
+- [`rustc` no longer promotes division, modulo and indexing operations to `const` that
   could fail.][80579]
 
 Internal Only
