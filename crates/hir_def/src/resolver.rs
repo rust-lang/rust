@@ -534,7 +534,7 @@ impl ModuleItemMap {
     ) -> Option<ResolveValueResult> {
         let (module_def, idx) =
             self.crate_def_map.resolve_path(db, self.module_id, &path, BuiltinShadowMode::Other);
-        return match idx {
+        match idx {
             None => {
                 let value = to_value_ns(module_def)?;
                 Some(ResolveValueResult::ValueNs(value))
@@ -554,7 +554,7 @@ impl ModuleItemMap {
                 };
                 Some(ResolveValueResult::Partial(ty, idx))
             }
-        };
+        }
     }
 
     fn resolve_path_in_type_ns(
