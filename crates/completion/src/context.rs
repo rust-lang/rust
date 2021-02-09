@@ -276,6 +276,14 @@ impl<'a> CompletionContext<'a> {
             });
     }
 
+    fn fill_impl_def(&mut self) {
+        self.impl_def = self
+            .sema
+            .ancestors_with_macros(self.token.parent())
+            .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+            .find_map(ast::Impl::cast);
+    }
+
     fn fill(
         &mut self,
         original_file: &SyntaxNode,
@@ -345,6 +353,8 @@ impl<'a> CompletionContext<'a> {
                         self.is_irrefutable_pat_binding = true;
                     }
                 }
+
+                self.fill_impl_def();
             }
             if is_node::<ast::Param>(name.syntax()) {
                 self.is_param = true;
@@ -372,11 +382,7 @@ impl<'a> CompletionContext<'a> {
                 self.sema.find_node_at_offset_with_macros(&original_file, offset);
         }
 
-        self.impl_def = self
-            .sema
-            .ancestors_with_macros(self.token.parent())
-            .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-            .find_map(ast::Impl::cast);
+        self.fill_impl_def();
 
         let top_node = name_ref
             .syntax()
