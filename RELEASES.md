@@ -34,6 +34,9 @@ Compiler
 - [The `target-cpu=native` option will now detect individual features of CPUs.][80749]
 - [Rust now uses `inline-asm` for stack probes when used with LLVM 11.0.1+][77885]
 
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
 Libraries
 ---------
 
