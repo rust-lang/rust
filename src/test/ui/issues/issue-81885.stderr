@@ -1,14 +1,14 @@
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/self-infer.rs:4:16
+  --> $DIR/issue-81885.rs:1:22
    |
-LL |     fn f(self: _) {}
-   |                ^ not allowed in type signatures
+LL | const TEST4: fn() -> _ = 42;
+   |                      ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/self-infer.rs:5:17
+  --> $DIR/issue-81885.rs:6:26
    |
-LL |     fn g(self: &_) {}
-   |                 ^ not allowed in type signatures
+LL |     const TEST5: fn() -> _ = 42;
+   |                          ^ not allowed in type signatures
 
 error: aborting due to 2 previous errors
 

@@ -129,33 +129,18 @@ LL | fn foo<X: K<_, _>>(x: X) {}
    |             ^  ^ not allowed in type signatures
    |             |
    |             not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL | fn foo<X: K<T, T>, T>(x: X) {}
-   |             ^  ^ ^^^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/bad-assoc-ty.rs:52:34
    |
 LL | fn bar<F>(_: F) where F: Fn() -> _ {}
    |                                  ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL | fn bar<F, T>(_: F) where F: Fn() -> T {}
-   |         ^^^                         ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/bad-assoc-ty.rs:55:19
    |
 LL | fn baz<F: Fn() -> _>(_: F) {}
    |                   ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL | fn baz<F: Fn() -> T, T>(_: F) {}
-   |                   ^^^^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/bad-assoc-ty.rs:58:33
@@ -217,11 +202,6 @@ error[E0121]: the type placeholder `_` is not allowed within types on item signa
    |
 LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
    |                                      ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL |     fn foo<F, T>(_: F) where F: Fn() -> T {}
-   |             ^^^                         ^
 
 error: aborting due to 28 previous errors
 
