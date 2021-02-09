@@ -370,6 +370,8 @@ impl NiceRegionError<'me, 'tcx> {
             value: trait_ref,
         };
 
+        let same_self_type = actual_trait_ref.self_ty() == expected_trait_ref.self_ty();
+
         let mut expected_trait_ref = highlight_trait_ref(expected_trait_ref);
         expected_trait_ref.highlight.maybe_highlighting_region(sub_placeholder, has_sub);
         expected_trait_ref.highlight.maybe_highlighting_region(sup_placeholder, has_sup);
@@ -385,7 +387,16 @@ impl NiceRegionError<'me, 'tcx> {
                 }
             };
 
-            let mut note = if passive_voice {
+            let mut note = if same_self_type {
+                let mut self_ty = expected_trait_ref.map(|tr| tr.self_ty());
+                self_ty.highlight.maybe_highlighting_region(vid, actual_has_vid);
+                format!(
+                    "{}`{}` must implement `{}`",
+                    if leading_ellipsis { "..." } else { "" },
+                    self_ty,
+                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
+                )
+            } else if passive_voice {
                 format!(
                     "{}`{}` would have to be implemented for the type `{}`",
                     if leading_ellipsis { "..." } else { "" },
@@ -431,7 +442,12 @@ impl NiceRegionError<'me, 'tcx> {
                 None => true,
             };
 
-            let mut note = if passive_voice {
+            let mut note = if same_self_type {
+                format!(
+                    "...but it actually implements `{}`",
+                    actual_trait_ref.map(|tr| tr.print_only_trait_path()),
+                )
+            } else if passive_voice {
                 format!(
                     "...but `{}` is actually implemented for the type `{}`",
                     actual_trait_ref.map(|tr| tr.print_only_trait_path()),
