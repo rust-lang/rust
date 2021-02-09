@@ -323,15 +323,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let expected_inner = match unop {
-            hir::UnOp::UnNot | hir::UnOp::UnNeg => expected,
-            hir::UnOp::UnDeref => NoExpectation,
+            hir::UnOp::Not | hir::UnOp::Neg => expected,
+            hir::UnOp::Deref => NoExpectation,
         };
         let mut oprnd_t = self.check_expr_with_expectation(&oprnd, expected_inner);
 
         if !oprnd_t.references_error() {
             oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
             match unop {
-                hir::UnOp::UnDeref => {
+                hir::UnOp::Deref => {
                     if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
                         oprnd_t = ty;
                     } else {
@@ -353,14 +353,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         oprnd_t = tcx.ty_error();
                     }
                 }
-                hir::UnOp::UnNot => {
+                hir::UnOp::Not => {
                     let result = self.check_user_unop(expr, oprnd_t, unop);
                     // If it's builtin, we can reuse the type, this helps inference.
                     if !(oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool) {
                         oprnd_t = result;
                     }
                 }
-                hir::UnOp::UnNeg => {
+                hir::UnOp::Neg => {
                     let result = self.check_user_unop(expr, oprnd_t, unop);
                     // If it's builtin, we can reuse the type, this helps inference.
                     if !oprnd_t.is_numeric() {

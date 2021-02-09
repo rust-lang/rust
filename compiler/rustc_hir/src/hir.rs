@@ -1112,25 +1112,25 @@ pub type BinOp = Spanned<BinOpKind>;
 #[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum UnOp {
     /// The `*` operator (deferencing).
-    UnDeref,
+    Deref,
     /// The `!` operator (logical negation).
-    UnNot,
+    Not,
     /// The `-` operator (negation).
-    UnNeg,
+    Neg,
 }
 
 impl UnOp {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::UnDeref => "*",
-            Self::UnNot => "!",
-            Self::UnNeg => "-",
+            Self::Deref => "*",
+            Self::Not => "!",
+            Self::Neg => "-",
         }
     }
 
     /// Returns `true` if the unary operator takes its argument by value.
     pub fn is_by_value(self) -> bool {
-        matches!(self, Self::UnNeg | Self::UnNot)
+        matches!(self, Self::Neg | Self::Not)
     }
 }
 
@@ -1477,7 +1477,7 @@ impl Expr<'_> {
             // https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md#type-ascription-and-temporaries
             ExprKind::Type(ref e, _) => e.is_place_expr(allow_projections_from),
 
-            ExprKind::Unary(UnOp::UnDeref, _) => true,
+            ExprKind::Unary(UnOp::Deref, _) => true,
 
             ExprKind::Field(ref base, _) | ExprKind::Index(ref base, _) => {
                 allow_projections_from(base) || base.is_place_expr(allow_projections_from)

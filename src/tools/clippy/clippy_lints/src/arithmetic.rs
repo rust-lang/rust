@@ -91,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for Arithmetic {
                     match op.node {
                         hir::BinOpKind::Div | hir::BinOpKind::Rem => match &r.kind {
                             hir::ExprKind::Lit(_lit) => (),
-                            hir::ExprKind::Unary(hir::UnOp::UnNeg, expr) => {
+                            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
                                 if let hir::ExprKind::Lit(lit) = &expr.kind {
                                     if let rustc_ast::ast::LitKind::Int(1, _) = lit.node {
                                         span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for Arithmetic {
                     self.expr_span = Some(expr.span);
                 }
             },
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, arg) => {
+            hir::ExprKind::Unary(hir::UnOp::Neg, arg) => {
                 let ty = cx.typeck_results().expr_ty(arg);
                 if constant_simple(cx, cx.typeck_results(), expr).is_none() {
                     if ty.is_integral() {

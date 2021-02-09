@@ -316,7 +316,7 @@ crate fn is_literal_expr(cx: &DocContext<'_>, hir_id: hir::HirId) -> bool {
             return true;
         }
 
-        if let hir::ExprKind::Unary(hir::UnOp::UnNeg, expr) = &expr.kind {
+        if let hir::ExprKind::Unary(hir::UnOp::Neg, expr) = &expr.kind {
             if let hir::ExprKind::Lit(_) = &expr.kind {
                 return true;
             }
