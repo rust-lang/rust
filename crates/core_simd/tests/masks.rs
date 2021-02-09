@@ -1,5 +1,5 @@
-use core_simd::{BitMask, Mask8, SimdMask8, SimdI8};
 use core::convert::TryFrom;
+use core_simd::{BitMask, Mask8, SimdI8, SimdMask8};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::*;
@@ -29,6 +29,9 @@ macro_rules! test_mask_api {
     { $name:ident } => {
         #[allow(non_snake_case)]
         mod $name {
+            #[cfg(target_arch = "wasm32")]
+            use wasm_bindgen_test::*;
+
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
             fn set_and_test() {
@@ -61,7 +64,7 @@ macro_rules! test_mask_api {
 }
 
 mod mask_api {
-    test_mask_api!{ Mask8 }
-    test_mask_api!{ SimdMask8 }
-    test_mask_api!{ BitMask }
+    test_mask_api! { Mask8 }
+    test_mask_api! { SimdMask8 }
+    test_mask_api! { BitMask }
 }
