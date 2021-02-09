@@ -207,7 +207,7 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
         &generics.params[..],
         visitor.0,
         suggest,
-        false
+        false,
     );
 }
 

@@ -2327,7 +2327,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 &generics.params[..],
                 visitor.0,
                 true,
-                true
+                true,
             );
         }
 
