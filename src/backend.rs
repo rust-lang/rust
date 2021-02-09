@@ -8,7 +8,7 @@ use rustc_session::Session;
 use cranelift_module::FuncId;
 
 use object::write::*;
-use object::{RelocationEncoding, RelocationKind, SectionKind, SymbolFlags};
+use object::{RelocationEncoding, SectionKind, SymbolFlags};
 
 use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 
@@ -112,49 +112,6 @@ impl WriteDebugInfo for ObjectProduct {
                     encoding: RelocationEncoding::Generic,
                     size: reloc.size * 8,
                     addend: i64::try_from(symbol_offset).unwrap() + reloc.addend,
-                },
-            )
-            .unwrap();
-    }
-}
-
-// FIXME remove once atomic instructions are implemented in Cranelift.
-pub(crate) trait AddConstructor {
-    fn add_constructor(&mut self, func_id: FuncId);
-}
-
-impl AddConstructor for ObjectProduct {
-    fn add_constructor(&mut self, func_id: FuncId) {
-        let symbol = self.function_symbol(func_id);
-        let segment = self
-            .object
-            .segment_name(object::write::StandardSegment::Data);
-        let init_array_section =
-            self.object
-                .add_section(segment.to_vec(), b".init_array".to_vec(), SectionKind::Data);
-        let address_size = self
-            .object
-            .architecture()
-            .address_size()
-            .expect("address_size must be known")
-            .bytes();
-        self.object.append_section_data(
-            init_array_section,
-            &std::iter::repeat(0)
-                .take(address_size.into())
-                .collect::<Vec<u8>>(),
-            8,
-        );
-        self.object
-            .add_relocation(
-                init_array_section,
-                object::write::Relocation {
-                    offset: 0,
-                    size: address_size * 8,
-                    kind: RelocationKind::Absolute,
-                    encoding: RelocationEncoding::Generic,
-                    symbol,
-                    addend: 0,
                 },
             )
             .unwrap();

@@ -12,8 +12,6 @@
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
 
-#[cfg(feature = "jit")]
-extern crate libc;
 extern crate snap;
 #[macro_use]
 extern crate rustc_middle;
@@ -54,7 +52,6 @@ mod abi;
 mod allocator;
 mod analyze;
 mod archive;
-mod atomic_shim;
 mod backend;
 mod base;
 mod cast;
