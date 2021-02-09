@@ -746,7 +746,7 @@ fn f() -> m::E { V$0 }
             r#"
 enum Foo { Bar, Baz, Quux }
 impl Foo {
-    fn foo() { let foo: Foo = Q$0 }
+    fn foo() { match Foo::Bar { Q$0 } }
 }
 "#,
             expect![[r#"

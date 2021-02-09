@@ -31,6 +31,14 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
                 _ => false,
             },
             hir::ScopeDef::MacroDef(_) => true,
+            hir::ScopeDef::ImplSelfType(impl_) => match impl_.target_ty(ctx.db).as_adt() {
+                Some(hir::Adt::Struct(strukt)) => {
+                    acc.add_struct_pat(ctx, strukt, Some(name.clone()));
+                    true
+                }
+                Some(hir::Adt::Enum(_)) => !ctx.is_irrefutable_pat_binding,
+                _ => true,
+            },
             _ => false,
         };
         if add_resolution {
@@ -257,5 +265,25 @@ fn main() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn completes_self_pats() {
+        check_snippet(
+            r#"
+struct Foo(i32);
+impl Foo {
+    fn foo() {
+        match () {
+            $0
+        }
+    }
+}
+    "#,
+            expect![[r#"
+                bn Self Self($1)$0
+                bn Foo  Foo($1)$0
+            "#]],
+        )
     }
 }
