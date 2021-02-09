@@ -22,6 +22,7 @@
     ],
     "include": [
         "src",
-        "tests"
+        "tests",
+        "vscode.proposed.d.ts"
     ]
 }

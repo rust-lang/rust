@@ -77,8 +77,7 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
                         client.handleFailedRequest(
                             lc.HoverRequest.type,
                             token,
-                            error,
-                            null
+                            error
                         );
                         return Promise.resolve(null);
                     }

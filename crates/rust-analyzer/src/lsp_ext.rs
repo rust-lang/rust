@@ -244,16 +244,19 @@ pub struct InlayHintsParams {
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum InlayKind {
-    TypeHint,
-    ParameterHint,
-    ChainingHint,
+    Other,
+    Type,
+    Parameter,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InlayHint {
+    pub text: String,
     pub range: Range,
-    pub kind: InlayKind,
-    pub label: String,
+    pub kind: Option<InlayKind>,
+    pub description: Option<String>,
+    pub whitespace_before: Option<bool>,
+    pub whitespace_after: Option<bool>,
 }
 
 pub enum Ssr {}
