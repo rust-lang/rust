@@ -81,8 +81,8 @@ mod tests {
         check(
             r#"
 //- /lib.rs
-  mod foo;
-//^^^^^^^^
+mod foo;
+  //^^^
 
 //- /foo.rs
 $0// empty
@@ -96,8 +96,8 @@ $0// empty
         check(
             r#"
 //- /lib.rs
-  mod foo;
-//^^^^^^^^
+mod foo;
+  //^^^
 //- /foo.rs
 mod $0bar;
 
@@ -115,7 +115,7 @@ mod $0bar;
 mod foo {
     mod bar {
         mod baz { $0 }
-    } //^^^^^^^^^^^^
+    }     //^^^
 }
 "#,
         );

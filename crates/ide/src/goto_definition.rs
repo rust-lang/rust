@@ -131,7 +131,6 @@ pub(crate) fn reference_definition(
 #[cfg(test)]
 mod tests {
     use ide_db::base_db::FileRange;
-    use syntax::{TextRange, TextSize};
 
     use crate::fixture;
 
