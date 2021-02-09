@@ -190,6 +190,7 @@ impl NiceRegionError<'me, 'tcx> {
     //    = note: Due to a where-clause on the function `all`,
     //    = note: `T` must implement `...` for any two lifetimes `'1` and `'2`.
     //    = note: However, the type `T` only implements `...` for some specific lifetime `'2`.
+    #[instrument(level = "debug", skip(self))]
     fn try_report_placeholders_trait(
         &self,
         vid: Option<ty::Region<'tcx>>,
@@ -200,17 +201,6 @@ impl NiceRegionError<'me, 'tcx> {
         expected_substs: SubstsRef<'tcx>,
         actual_substs: SubstsRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
-        debug!(
-            "try_report_placeholders_trait(\
-             vid={:?}, \
-             sub_placeholder={:?}, \
-             sup_placeholder={:?}, \
-             trait_def_id={:?}, \
-             expected_substs={:?}, \
-             actual_substs={:?})",
-            vid, sub_placeholder, sup_placeholder, trait_def_id, expected_substs, actual_substs
-        );
-
         let span = cause.span(self.tcx());
         let msg = format!(
             "implementation of `{}` is not general enough",
@@ -285,17 +275,13 @@ impl NiceRegionError<'me, 'tcx> {
 
         let any_self_ty_has_vid = actual_self_ty_has_vid || expected_self_ty_has_vid;
 
-        debug!("try_report_placeholders_trait: actual_has_vid={:?}", actual_has_vid);
-        debug!("try_report_placeholders_trait: expected_has_vid={:?}", expected_has_vid);
-        debug!("try_report_placeholders_trait: has_sub={:?}", has_sub);
-        debug!("try_report_placeholders_trait: has_sup={:?}", has_sup);
         debug!(
-            "try_report_placeholders_trait: actual_self_ty_has_vid={:?}",
-            actual_self_ty_has_vid
-        );
-        debug!(
-            "try_report_placeholders_trait: expected_self_ty_has_vid={:?}",
-            expected_self_ty_has_vid
+            ?actual_has_vid,
+            ?expected_has_vid,
+            ?has_sub,
+            ?has_sup,
+            ?actual_self_ty_has_vid,
+            ?expected_self_ty_has_vid,
         );
 
         self.explain_actual_impl_that_was_found(
