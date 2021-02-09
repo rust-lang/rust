@@ -454,7 +454,7 @@ where
 ///
 /// If `iter.next()` panicks, all items already yielded by the iterator are
 /// dropped.
-fn collect_into_array<I, const N: usize>(iter: &mut I) -> Option<[I::Item; N]>
+pub(crate) fn collect_into_array<I, const N: usize>(iter: &mut I) -> Option<[I::Item; N]>
 where
     I: Iterator,
 {

@@ -9,9 +9,8 @@ use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
-use super::super::{
-    Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
-};
+use super::super::{Inspect, Map, MapWhile, MapWindows, Peekable, Rev, Scan, Skip, SkipWhile};
+use super::super::{StepBy, Take, TakeWhile};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 
@@ -1447,6 +1446,90 @@ pub trait Iterator {
         Self::Item: IntoIterator,
     {
         Flatten::new(self)
+    }
+
+    /// Calls the given function `f` for each contiguous window of size `N` over
+    /// `self` and returns an iterator over the outputs of `f`.
+    ///
+    /// In the following example, the closure is called three times with the
+    /// arguments `&['a', 'b']`, `&['b', 'c']` and `&['c', 'd']` respectively.
+    ///
+    /// ```
+    /// #![feature(iter_map_windows)]
+    ///
+    /// let strings = "abcd".chars()
+    ///     .map_windows(|[x, y]| format!("{}+{}", x, y))
+    ///     .collect::<Vec<String>>();
+    ///
+    /// assert_eq!(strings, vec!["a+b", "b+c", "c+d"]);
+    /// ```
+    ///
+    /// Note that the const parameter `N` is usually inferred by the
+    /// destructured argument in the closure.
+    ///
+    /// The returned iterator yields 𝑘 − `N` + 1 items (where 𝑘 is the number of
+    /// items yielded by `self`). If `self` yields fewer than `N` items, the
+    /// iterator returned from this method is empty.
+    ///
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is 0. This check will most probably get changed to a
+    /// compile time error before this method gets stabilized.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// Building the sums of neighboring numbers.
+    ///
+    /// ```
+    /// #![feature(iter_map_windows)]
+    ///
+    /// let mut it = [1, 3, 8, 1].iter().map_windows(|&[a, b]| a + b);
+    /// assert_eq!(it.next(), Some(4));
+    /// assert_eq!(it.next(), Some(11));
+    /// assert_eq!(it.next(), Some(9));
+    /// assert_eq!(it.next(), None);
+    /// ```
+    ///
+    /// Since the elements in the following example implement `Copy`, we can
+    /// just copy the array and get an iterator over the windows.
+    ///
+    /// ```
+    /// #![feature(iter_map_windows)]
+    ///
+    /// let mut it = "ferris".chars().map_windows(|w: &[_; 3]| *w);
+    /// assert_eq!(it.next(), Some(['f', 'e', 'r']));
+    /// assert_eq!(it.next(), Some(['e', 'r', 'r']));
+    /// assert_eq!(it.next(), Some(['r', 'r', 'i']));
+    /// assert_eq!(it.next(), Some(['r', 'i', 's']));
+    /// assert_eq!(it.next(), None);
+    /// ```
+    ///
+    /// You can also use this function to check the sortedness of an iterator.
+    /// For the simple case, rather use [`Iterator::is_sorted`].
+    ///
+    /// ```
+    /// #![feature(iter_map_windows)]
+    ///
+    /// let mut it = [0.5, 1.0, 3.5, 3.0, 8.5, 8.5, f32::NAN].iter()
+    ///     .map_windows(|[a, b]| a <= b);
+    ///
+    /// assert_eq!(it.next(), Some(true));  // 0.5 <= 1.0
+    /// assert_eq!(it.next(), Some(true));  // 1.0 <= 3.5
+    /// assert_eq!(it.next(), Some(false)); // 3.5 <= 3.0
+    /// assert_eq!(it.next(), Some(true));  // 3.0 <= 8.5
+    /// assert_eq!(it.next(), Some(true));  // 8.5 <= 8.5
+    /// assert_eq!(it.next(), Some(false)); // 8.5 <= NAN
+    /// assert_eq!(it.next(), None);
+    /// ```
+    #[unstable(feature = "iter_map_windows", reason = "recently added", issue = "none")]
+    fn map_windows<F, R, const N: usize>(self, f: F) -> MapWindows<Self, F, N>
+    where
+        Self: Sized,
+        F: FnMut(&[Self::Item; N]) -> R,
+    {
+        MapWindows::new(self, f)
     }
 
     /// Creates an iterator which ends after the first [`None`].
