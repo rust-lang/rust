@@ -924,7 +924,7 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
                     let mut ident_bind_name = String::from("_");
                     if !matching_wild {
                         // Looking for unused bindings (i.e.: `_e`)
-                        inner.iter().for_each(|pat| {
+                        for pat in inner.iter() {
                             if let PatKind::Binding(_, id, ident, None) = pat.kind {
                                 if ident.as_str().starts_with('_')
                                     && !LocalUsedVisitor::new(cx, id).check_expr(arm.body)
@@ -933,7 +933,7 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
                                     matching_wild = true;
                                 }
                             }
-                        });
+                        }
                     }
                     if_chain! {
                         if matching_wild;
