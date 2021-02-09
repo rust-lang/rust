@@ -29,6 +29,48 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
         let parent_node = tcx.hir().get(parent_node_id);
 
         match parent_node {
+            Node::Ty(hir_ty @ Ty { kind: TyKind::Path(QPath::TypeRelative(_, segment)), .. }) => {
+                let id = tcx
+                    .hir()
+                    .parent_iter(hir_id)
+                    .filter(|(_, node)| matches!(node, Node::Item(_)))
+                    .map(|(id, _)| id)
+                    .next()
+                    .unwrap();
+
+                let item_did = tcx.hir().local_def_id(id).to_def_id();
+                let item_ctxt = &ItemCtxt::new(tcx, item_did) as &dyn crate::astconv::AstConv<'_>;
+                let ty = item_ctxt.ast_ty_to_ty(hir_ty);
+
+                if let ty::Projection(projection) = ty.kind() {
+                    let generics = tcx.generics_of(projection.item_def_id);
+
+                    let arg_index = segment
+                        .args
+                        .and_then(|args| {
+                            args.args
+                                .iter()
+                                .filter(|arg| arg.is_const())
+                                .position(|arg| arg.id() == hir_id)
+                        })
+                        .unwrap_or_else(|| {
+                            bug!("no arg matching AnonConst in segment");
+                        });
+
+                    return generics
+                        .params
+                        .iter()
+                        .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Const))
+                        .nth(arg_index)
+                        .map(|param| param.def_id);
+                }
+
+                tcx.sess.delay_span_bug(
+                    tcx.def_span(def_id),
+                    "unexpected non-GAT usage of an anon const",
+                );
+                return None;
+            }
             Node::Expr(&Expr {
                 kind:
                     ExprKind::MethodCall(segment, ..) | ExprKind::Path(QPath::TypeRelative(_, segment)),
