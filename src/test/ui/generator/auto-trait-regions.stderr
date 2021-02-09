@@ -1,9 +1,6 @@
 error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:31:5
    |
-LL | auto trait Foo {}
-   | ----------------- trait `Foo` defined here
-...
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^ implementation of `Foo` is not general enough
    |
@@ -13,9 +10,6 @@ LL |     assert_foo(gen);
 error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:31:5
    |
-LL | auto trait Foo {}
-   | ----------------- trait `Foo` defined here
-...
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^ implementation of `Foo` is not general enough
    |
@@ -25,9 +19,6 @@ LL |     assert_foo(gen);
 error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:50:5
    |
-LL | auto trait Foo {}
-   | ----------------- trait `Foo` defined here
-...
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^ implementation of `Foo` is not general enough
    |
@@ -37,9 +28,6 @@ LL |     assert_foo(gen);
 error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:50:5
    |
-LL | auto trait Foo {}
-   | ----------------- trait `Foo` defined here
-...
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^ implementation of `Foo` is not general enough
    |

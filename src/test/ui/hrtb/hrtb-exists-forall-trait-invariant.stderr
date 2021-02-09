@@ -1,9 +1,6 @@
 error: implementation of `Trait` is not general enough
   --> $DIR/hrtb-exists-forall-trait-invariant.rs:28:5
    |
-LL | trait Trait<T> {}
-   | ----------------- trait `Trait` defined here
-...
 LL |     foo::<()>();
    |     ^^^^^^^^^ implementation of `Trait` is not general enough
    |
