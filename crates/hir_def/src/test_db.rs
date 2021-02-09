@@ -5,17 +5,17 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use base_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, Upcast};
+use base_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, FilePosition, Upcast};
 use base_db::{AnchoredPath, SourceDatabase};
-use hir_expand::db::AstDatabase;
 use hir_expand::diagnostics::Diagnostic;
 use hir_expand::diagnostics::DiagnosticSinkBuilder;
+use hir_expand::{db::AstDatabase, InFile};
 use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
-use syntax::{TextRange, TextSize};
+use syntax::{algo, ast, AstNode, TextRange, TextSize};
 use test_utils::extract_annotations;
 
-use crate::{db::DefDatabase, ModuleDefId, ModuleId};
+use crate::{db::DefDatabase, nameres::DefMap, Lookup, ModuleDefId, ModuleId};
 
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,
@@ -82,6 +82,97 @@ impl TestDB {
             }
         }
         panic!("Can't find module for file")
+    }
+
+    pub(crate) fn module_at_position(&self, position: FilePosition) -> ModuleId {
+        let file_module = self.module_for_file(position.file_id);
+        let mut def_map = file_module.def_map(self);
+
+        def_map = match self.block_at_position(&def_map, position) {
+            Some(it) => it,
+            None => return file_module,
+        };
+        loop {
+            let new_map = self.block_at_position(&def_map, position);
+            match new_map {
+                Some(new_block) if !Arc::ptr_eq(&new_block, &def_map) => {
+                    def_map = new_block;
+                }
+                _ => {
+                    // FIXME: handle `mod` inside block expression
+                    return def_map.module_id(def_map.root());
+                }
+            }
+        }
+    }
+
+    fn block_at_position(&self, def_map: &DefMap, position: FilePosition) -> Option<Arc<DefMap>> {
+        // Find the smallest (innermost) function in `def_map` containing the cursor.
+        let mut size = None;
+        let mut fn_def = None;
+        for (_, module) in def_map.modules() {
+            let file_id = module.definition_source(self).file_id;
+            if file_id != position.file_id.into() {
+                continue;
+            }
+            let root = self.parse_or_expand(file_id).unwrap();
+            let ast_map = self.ast_id_map(file_id);
+            let item_tree = self.item_tree(file_id);
+            for decl in module.scope.declarations() {
+                if let ModuleDefId::FunctionId(it) = decl {
+                    let ast =
+                        ast_map.get(item_tree[it.lookup(self).id.value].ast_id).to_node(&root);
+                    let range = ast.syntax().text_range();
+
+                    if !range.contains(position.offset) {
+                        continue;
+                    }
+
+                    let new_size = match size {
+                        None => range.len(),
+                        Some(size) => {
+                            if range.len() < size {
+                                range.len()
+                            } else {
+                                size
+                            }
+                        }
+                    };
+                    if size != Some(new_size) {
+                        size = Some(new_size);
+                        fn_def = Some(it);
+                    }
+                }
+            }
+        }
+
+        // Find the innermost block expression that has a `DefMap`.
+        let def_with_body = fn_def?.into();
+        let (_, source_map) = self.body_with_source_map(def_with_body);
+        let scopes = self.expr_scopes(def_with_body);
+        let root = self.parse(position.file_id);
+
+        let scope_iter = algo::ancestors_at_offset(&root.syntax_node(), position.offset)
+            .filter_map(|node| {
+                let block = ast::BlockExpr::cast(node)?;
+                let expr = ast::Expr::from(block);
+                let expr_id = source_map.node_expr(InFile::new(position.file_id.into(), &expr))?;
+                let scope = scopes.scope_for(expr_id).unwrap();
+                Some(scope)
+            });
+
+        for scope in scope_iter {
+            let containing_blocks =
+                scopes.scope_chain(Some(scope)).filter_map(|scope| scopes.block(scope));
+
+            for block in containing_blocks {
+                if let Some(def_map) = self.block_def_map(block) {
+                    return Some(def_map);
+                }
+            }
+        }
+
+        None
     }
 
     pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event> {
