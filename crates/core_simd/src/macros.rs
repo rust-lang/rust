@@ -148,6 +148,8 @@ macro_rules! impl_vector {
                 Self::splat(value)
             }
         }
+
+        impl_shuffle_2pow_lanes!{ $name }
     }
 }
 

@@ -1,10 +1,19 @@
 #![no_std]
-#![feature(repr_simd, platform_intrinsics, link_llvm_intrinsics, simd_ffi)]
+#![allow(incomplete_features)]
+#![feature(
+    repr_simd,
+    platform_intrinsics,
+    link_llvm_intrinsics,
+    simd_ffi,
+    const_generics
+)]
 #![warn(missing_docs)]
 //! Portable SIMD module.
 
 #[macro_use]
 mod macros;
+#[macro_use]
+mod permute;
 
 mod fmt;
 mod intrinsics;
