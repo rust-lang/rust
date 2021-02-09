@@ -16,7 +16,7 @@ Language
           if LENGTH == 0 {
               None
           } else {
-              Some(&self.inner[LENGTH-1])
+              Some(&self.inner[LENGTH - 1])
           }
       }
   }
