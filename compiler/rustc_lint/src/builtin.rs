@@ -328,6 +328,18 @@ impl UnsafeCode {
 
         cx.struct_span_lint(UNSAFE_CODE, span, decorate);
     }
+
+    fn report_overriden_symbol_name(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
+        self.report_unsafe(cx, span, |lint| {
+            lint.build(msg)
+                .note(
+                    "the linker's behavior with multiple libraries exporting duplicate symbol \
+                    names is undefined and Rust cannot provide guarantees when you manually \
+                    override them",
+                )
+                .emit();
+        })
+    }
 }
 
 impl EarlyLintPass for UnsafeCode {
@@ -366,6 +378,40 @@ impl EarlyLintPass for UnsafeCode {
                 .report_unsafe(cx, it.span, |lint| {
                     lint.build("implementation of an `unsafe` trait").emit()
                 }),
+
+            ast::ItemKind::Fn(..) => {
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
+                    self.report_overriden_symbol_name(
+                        cx,
+                        attr.span,
+                        "declaration of a `no_mangle` function",
+                    );
+                }
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
+                    self.report_overriden_symbol_name(
+                        cx,
+                        attr.span,
+                        "declaration of a function with `export_name`",
+                    );
+                }
+            }
+
+            ast::ItemKind::Static(..) => {
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
+                    self.report_overriden_symbol_name(
+                        cx,
+                        attr.span,
+                        "declaration of a `no_mangle` static",
+                    );
+                }
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
+                    self.report_overriden_symbol_name(
+                        cx,
+                        attr.span,
+                        "declaration of a static with `export_name`",
+                    );
+                }
+            }
 
             _ => {}
         }

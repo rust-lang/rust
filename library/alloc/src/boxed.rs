@@ -390,7 +390,12 @@ impl<T, A: Allocator> Box<T, A> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
-        Box::try_new_uninit_in(alloc).unwrap_or_else(|_| handle_alloc_error(layout))
+        // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
+        // That would make code size bigger.
+        match Box::try_new_uninit_in(alloc) {
+            Ok(m) => m,
+            Err(_) => handle_alloc_error(layout),
+        }
     }
 
     /// Constructs a new box with uninitialized contents in the provided allocator,
@@ -447,7 +452,12 @@ impl<T, A: Allocator> Box<T, A> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
-        Box::try_new_zeroed_in(alloc).unwrap_or_else(|_| handle_alloc_error(layout))
+        // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
+        // That would make code size bigger.
+        match Box::try_new_zeroed_in(alloc) {
+            Ok(m) => m,
+            Err(_) => handle_alloc_error(layout),
+        }
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
