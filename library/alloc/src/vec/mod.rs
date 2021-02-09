@@ -1879,7 +1879,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// assert_eq!(&v, &[1, 1, 2, 4, 8, 12, 16]);
     /// ```
-    #[unstable(feature = "vec_split_at_spare", issue = "none")]
+    #[unstable(feature = "vec_split_at_spare", issue = "81944")]
     #[inline]
     pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
         let ptr = self.as_mut_ptr();
