@@ -120,4 +120,17 @@ mod foo {
 "#,
         );
     }
+
+    #[test]
+    fn test_resolve_crate_root() {
+        let (analysis, file_id) = fixture::file(
+            r#"
+//- /main.rs
+mod foo;
+//- /foo.rs
+$0
+"#,
+        );
+        assert_eq!(analysis.crate_for(file_id).unwrap().len(), 1);
+    }
 }
