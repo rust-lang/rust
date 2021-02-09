@@ -997,7 +997,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub EXCESSIVE_FOR_EACH,
-    style,
+    restriction,
     "using `.iter().for_each(|x| {..})` when using `for` loop would work instead"
 }
 

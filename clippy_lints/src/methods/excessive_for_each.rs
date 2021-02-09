@@ -26,7 +26,6 @@ pub(super) fn lint(cx: &LateContext<'_>, expr: &'tcx Expr<'_>, args: &[&[Expr<'_
 
     if_chain! {
         if match_trait_method(cx, expr, &paths::ITERATOR);
-        if !match_trait_method(cx, for_each_receiver, &paths::ITERATOR);
         if is_target_ty(cx, cx.typeck_results().expr_ty(iter_receiver));
         if let ExprKind::Closure(_, _, body_id, ..) = for_each_arg.kind;
         then {
