@@ -316,7 +316,7 @@ impl DefMap {
     ///
     /// If `f` returns `Some(val)`, iteration is stopped and `Some(val)` is returned. If `f` returns
     /// `None`, iteration continues.
-    fn with_ancestor_maps<T>(
+    pub fn with_ancestor_maps<T>(
         &self,
         db: &dyn DefDatabase,
         local_mod: LocalModuleId,
