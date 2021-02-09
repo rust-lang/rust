@@ -16,8 +16,8 @@ fn range_search<BorrowType: marker::BorrowType, K, V, Q, R>(
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     range: R,
 ) -> (
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+    Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
+    Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
 )
 where
     Q: ?Sized + Ord,
@@ -92,7 +92,7 @@ where
         }
         match (front.force(), back.force()) {
             (Leaf(f), Leaf(b)) => {
-                return (f, b);
+                return (Some(f), Some(b));
             }
             (Internal(min_int), Internal(max_int)) => {
                 min_node = min_int.descend();
@@ -108,8 +108,8 @@ fn full_range<BorrowType: marker::BorrowType, K, V>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
 ) -> (
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+    Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
+    Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
 ) {
     let mut min_node = root1;
     let mut max_node = root2;
@@ -118,7 +118,7 @@ fn full_range<BorrowType: marker::BorrowType, K, V>(
         let back = max_node.last_edge();
         match (front.force(), back.force()) {
             (Leaf(f), Leaf(b)) => {
-                return (f, b);
+                return (Some(f), Some(b));
             }
             (Internal(min_int), Internal(max_int)) => {
                 min_node = min_int.descend();
@@ -138,8 +138,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
         self,
         range: R,
     ) -> (
-        Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
-        Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
+        Option<Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+        Option<Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>>,
     )
     where
         Q: ?Sized + Ord,
@@ -153,8 +153,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     pub fn full_range(
         self,
     ) -> (
-        Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
-        Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
+        Option<Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+        Option<Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>>,
     ) {
         full_range(self, self)
     }
@@ -171,8 +171,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
         self,
         range: R,
     ) -> (
-        Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
-        Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
+        Option<Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+        Option<Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>>,
     )
     where
         Q: ?Sized + Ord,
@@ -191,8 +191,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     pub fn full_range(
         self,
     ) -> (
-        Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
-        Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
+        Option<Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+        Option<Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>>,
     ) {
         // We duplicate the root NodeRef here -- we will never visit the same KV
         // twice, and never end up with overlapping value references.
@@ -208,8 +208,8 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
     pub fn full_range(
         self,
     ) -> (
-        Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>,
-        Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>,
+        Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>>,
+        Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>>,
     ) {
         // We duplicate the root NodeRef here -- we will never access it in a way
         // that overlaps references obtained from the root.

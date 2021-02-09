@@ -1009,13 +1009,12 @@ impl<K, V> BTreeMap<K, V> {
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
     {
-        if let Some(root) = &self.root {
-            let (f, b) = root.reborrow().range_search(range);
-
-            Range { front: Some(f), back: Some(b) }
+        let (front, back) = if let Some(root) = &self.root {
+            root.reborrow().range_search(range)
         } else {
-            Range { front: None, back: None }
-        }
+            (None, None)
+        };
+        Range { front, back }
     }
 
     /// Constructs a mutable double-ended iterator over a sub-range of elements in the map.
@@ -1055,13 +1054,12 @@ impl<K, V> BTreeMap<K, V> {
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
     {
-        if let Some(root) = &mut self.root {
-            let (f, b) = root.borrow_valmut().range_search(range);
-
-            RangeMut { front: Some(f), back: Some(b), _marker: PhantomData }
+        let (front, back) = if let Some(root) = &mut self.root {
+            root.borrow_valmut().range_search(range)
         } else {
-            RangeMut { front: None, back: None, _marker: PhantomData }
-        }
+            (None, None)
+        };
+        RangeMut { front, back, _marker: PhantomData }
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
@@ -1400,13 +1398,12 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
 
     fn into_iter(self) -> IntoIter<K, V> {
         let mut me = ManuallyDrop::new(self);
-        if let Some(root) = me.root.take() {
-            let (f, b) = root.into_dying().full_range();
-
-            IntoIter { front: Some(f), back: Some(b), length: me.length }
+        let (front, back) = if let Some(root) = me.root.take() {
+            root.into_dying().full_range()
         } else {
-            IntoIter { front: None, back: None, length: 0 }
-        }
+            (None, None)
+        };
+        IntoIter { front, back, length: me.length }
     }
 }
 
@@ -2046,13 +2043,9 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, K, V> {
-        if let Some(root) = &self.root {
-            let (f, b) = root.reborrow().full_range();
-
-            Iter { range: Range { front: Some(f), back: Some(b) }, length: self.length }
-        } else {
-            Iter { range: Range { front: None, back: None }, length: 0 }
-        }
+        let (front, back) =
+            if let Some(root) = &self.root { root.reborrow().full_range() } else { (None, None) };
+        Iter { range: Range { front, back }, length: self.length }
     }
 
     /// Gets a mutable iterator over the entries of the map, sorted by key.
@@ -2078,16 +2071,12 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
-        if let Some(root) = &mut self.root {
-            let (f, b) = root.borrow_valmut().full_range();
-
-            IterMut {
-                range: RangeMut { front: Some(f), back: Some(b), _marker: PhantomData },
-                length: self.length,
-            }
+        let (front, back) = if let Some(root) = &mut self.root {
+            root.borrow_valmut().full_range()
         } else {
-            IterMut { range: RangeMut { front: None, back: None, _marker: PhantomData }, length: 0 }
-        }
+            (None, None)
+        };
+        IterMut { range: RangeMut { front, back, _marker: PhantomData }, length: self.length }
     }
 
     /// Gets an iterator over the keys of the map, in sorted order.
