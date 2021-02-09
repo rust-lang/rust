@@ -1,7 +1,5 @@
-use std::fs;
-
 use expect_test::expect;
-use test_utils::project_dir;
+use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use super::{check_infer, check_types};
 
@@ -617,12 +615,11 @@ hello
 }
 
 #[test]
-#[ignore]
-fn include_accidentally_quadratic() {
-    let file = project_dir().join("crates/syntax/test_data/accidentally_quadratic");
-    let big_file = fs::read_to_string(file).unwrap();
-    let big_file = vec![big_file; 10].join("\n");
-
+fn benchmark_include_macro() {
+    if skip_slow_tests() {
+        return;
+    }
+    let data = bench_fixture::big_struct();
     let fixture = r#"
 //- /main.rs
 #[rustc_builtin_macro]
@@ -635,8 +632,12 @@ fn main() {
                   //^ RegisterBlock
 }
     "#;
-    let fixture = format!("{}\n//- /foo.rs\n{}", fixture, big_file);
-    check_types(&fixture);
+    let fixture = format!("{}\n//- /foo.rs\n{}", fixture, data);
+
+    {
+        let _b = bench("include macro");
+        check_types(&fixture);
+    }
 }
 
 #[test]

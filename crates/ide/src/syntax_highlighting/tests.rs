@@ -1,7 +1,5 @@
-use std::fs;
-
 use expect_test::{expect_file, ExpectFile};
-use test_utils::project_dir;
+use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{fixture, FileRange, TextRange};
 
@@ -228,15 +226,19 @@ fn bar() {
 }
 
 #[test]
-fn accidentally_quadratic() {
-    let file = project_dir().join("crates/syntax/test_data/accidentally_quadratic");
-    let src = fs::read_to_string(file).unwrap();
+fn benchmark_syntax_highlighting() {
+    if skip_slow_tests() {
+        return;
+    }
 
-    let (analysis, file_id) = fixture::file(&src);
+    let fixture = bench_fixture::big_struct();
+    let (analysis, file_id) = fixture::file(&fixture);
 
-    // let t = std::time::Instant::now();
-    let _ = analysis.highlight(file_id).unwrap();
-    // eprintln!("elapsed: {:?}", t.elapsed());
+    let hash = {
+        let _pt = bench("syntax highlighting");
+        analysis.highlight(file_id).unwrap().len()
+    };
+    assert_eq!(hash, 32009);
 }
 
 #[test]

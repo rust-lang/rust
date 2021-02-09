@@ -397,6 +397,11 @@ There's no additional checks in CI, formatting and tidy tests are run with `carg
 
 **Architecture Invariant:** tests do not depend on any kind of external resources, they are perfectly reproducible.
 
+
+### Performance Testing
+
+TBA, take a look at the `metrics` xtask and `#[test] fn benchmark_xxx()` functions.
+
 ### Error Handling
 
 **Architecture Invariant:** core parts of rust-analyzer (`ide`/`hir`) don't interact with the outside world and thus can't fail.

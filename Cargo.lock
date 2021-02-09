@@ -1640,6 +1640,7 @@ name = "test_utils"
 version = "0.0.0"
 dependencies = [
  "dissimilar",
+ "profile",
  "rustc-hash",
  "serde_json",
  "stdx",
