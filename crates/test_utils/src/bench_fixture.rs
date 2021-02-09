@@ -1,6 +1,10 @@
 //! Generates large snippets of Rust code for usage in the benchmarks.
 
+use std::fs;
+
 use stdx::format_to;
+
+use crate::project_dir;
 
 pub fn big_struct() -> String {
     let n = 1_000;
@@ -25,4 +29,9 @@ struct S{} {{
     }
 
     buf
+}
+
+pub fn glorious_old_parser() -> String {
+    let path = project_dir().join("bench_data/glorious_old_parser");
+    fs::read_to_string(&path).unwrap()
 }
