@@ -527,7 +527,7 @@ impl Resolver {
 }
 
 impl ModuleItemMap {
-    pub fn resolve_path_in_value_ns(
+    fn resolve_path_in_value_ns(
         &self,
         db: &dyn DefDatabase,
         path: &ModPath,
@@ -557,7 +557,7 @@ impl ModuleItemMap {
         };
     }
 
-    pub fn resolve_path_in_type_ns(
+    fn resolve_path_in_type_ns(
         &self,
         db: &dyn DefDatabase,
         path: &ModPath,
