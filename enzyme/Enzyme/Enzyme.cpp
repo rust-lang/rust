@@ -638,7 +638,7 @@ public:
           CI->addAttribute(AttributeList::FunctionIndex,
                            Attribute::InaccessibleMemOrArgMemOnly);
           // todo more
-          for (size_t i : {0}) {
+          for (size_t i : {0, 1}) {
             if (i < CI->getNumArgOperands() &&
                 CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadOnly);
