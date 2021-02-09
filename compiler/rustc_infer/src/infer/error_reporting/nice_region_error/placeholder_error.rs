@@ -30,155 +30,151 @@ impl NiceRegionError<'me, 'tcx> {
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace {
-                    cause,
-                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
-                }),
+                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sub_placeholder @ ty::RePlaceholder(_),
                 _,
                 sup_placeholder @ ty::RePlaceholder(_),
-            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+            )) => self.try_report_trait_placeholder_mismatch(
                 Some(self.tcx().mk_region(ty::ReVar(*vid))),
                 cause,
                 Some(sub_placeholder),
                 Some(sup_placeholder),
-                expected.def_id,
-                expected.substs,
-                found.substs,
-            )),
+                values,
+            ),
 
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace {
-                    cause,
-                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
-                }),
+                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sub_placeholder @ ty::RePlaceholder(_),
                 _,
                 _,
-            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+            )) => self.try_report_trait_placeholder_mismatch(
                 Some(self.tcx().mk_region(ty::ReVar(*vid))),
                 cause,
                 Some(sub_placeholder),
                 None,
-                expected.def_id,
-                expected.substs,
-                found.substs,
-            )),
+                values,
+            ),
 
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace {
-                    cause,
-                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
-                }),
+                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 _,
                 _,
                 sup_placeholder @ ty::RePlaceholder(_),
-            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+            )) => self.try_report_trait_placeholder_mismatch(
                 Some(self.tcx().mk_region(ty::ReVar(*vid))),
                 cause,
                 None,
                 Some(*sup_placeholder),
-                expected.def_id,
-                expected.substs,
-                found.substs,
-            )),
+                values,
+            ),
 
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
                 _,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace {
-                    cause,
-                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
-                }),
+                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sup_placeholder @ ty::RePlaceholder(_),
-            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+            )) => self.try_report_trait_placeholder_mismatch(
                 Some(self.tcx().mk_region(ty::ReVar(*vid))),
                 cause,
                 None,
                 Some(*sup_placeholder),
-                expected.def_id,
-                expected.substs,
-                found.substs,
-            )),
+                values,
+            ),
 
             Some(RegionResolutionError::UpperBoundUniverseConflict(
                 vid,
                 _,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace {
-                    cause,
-                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
-                }),
+                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sup_placeholder @ ty::RePlaceholder(_),
-            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+            )) => self.try_report_trait_placeholder_mismatch(
                 Some(self.tcx().mk_region(ty::ReVar(*vid))),
                 cause,
                 None,
                 Some(*sup_placeholder),
-                expected.def_id,
-                expected.substs,
-                found.substs,
-            )),
+                values,
+            ),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(box TypeTrace {
-                    cause,
-                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
-                }),
+                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sub_region @ ty::RePlaceholder(_),
                 sup_region @ ty::RePlaceholder(_),
-            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+            )) => self.try_report_trait_placeholder_mismatch(
                 None,
                 cause,
                 Some(*sub_region),
                 Some(*sup_region),
-                expected.def_id,
-                expected.substs,
-                found.substs,
-            )),
+                values,
+            ),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(box TypeTrace {
-                    cause,
-                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
-                }),
+                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sub_region @ ty::RePlaceholder(_),
                 sup_region,
-            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+            )) => self.try_report_trait_placeholder_mismatch(
                 Some(sup_region),
                 cause,
                 Some(*sub_region),
                 None,
-                expected.def_id,
-                expected.substs,
-                found.substs,
-            )),
+                values,
+            ),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(box TypeTrace {
-                    cause,
-                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
-                }),
+                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sub_region,
                 sup_region @ ty::RePlaceholder(_),
-            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+            )) => self.try_report_trait_placeholder_mismatch(
                 Some(sub_region),
                 cause,
                 None,
                 Some(*sup_region),
-                expected.def_id,
-                expected.substs,
-                found.substs,
-            )),
+                values,
+            ),
 
             _ => None,
         }
+    }
+
+    fn try_report_trait_placeholder_mismatch(
+        &self,
+        vid: Option<ty::Region<'tcx>>,
+        cause: &ObligationCause<'tcx>,
+        sub_placeholder: Option<ty::Region<'tcx>>,
+        sup_placeholder: Option<ty::Region<'tcx>>,
+        value_pairs: &ValuePairs<'tcx>,
+    ) -> Option<DiagnosticBuilder<'tcx>> {
+        let (expected_substs, found_substs, trait_def_id) = match value_pairs {
+            ValuePairs::TraitRefs(ExpectedFound { expected, found })
+                if expected.def_id == found.def_id =>
+            {
+                (expected.substs, found.substs, expected.def_id)
+            }
+            ValuePairs::PolyTraitRefs(ExpectedFound { expected, found })
+                if expected.def_id() == found.def_id() =>
+            {
+                // It's possible that the placeholders come from a binder
+                // outside of this value pair. Use `no_bound_vars` as a
+                // simple heuristic for that.
+                (expected.no_bound_vars()?.substs, found.no_bound_vars()?.substs, expected.def_id())
+            }
+            _ => return None,
+        };
+
+        Some(self.report_trait_placeholder_mismatch(
+            vid,
+            cause,
+            sub_placeholder,
+            sup_placeholder,
+            trait_def_id,
+            expected_substs,
+            found_substs,
+        ))
     }
 
     // error[E0308]: implementation of `Foo` does not apply to enough lifetimes
@@ -191,7 +187,7 @@ impl NiceRegionError<'me, 'tcx> {
     //    = note: `T` must implement `...` for any two lifetimes `'1` and `'2`.
     //    = note: However, the type `T` only implements `...` for some specific lifetime `'2`.
     #[instrument(level = "debug", skip(self))]
-    fn try_report_placeholders_trait(
+    fn report_trait_placeholder_mismatch(
         &self,
         vid: Option<ty::Region<'tcx>>,
         cause: &ObligationCause<'tcx>,
