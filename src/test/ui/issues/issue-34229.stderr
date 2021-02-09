@@ -8,46 +8,6 @@ LL | #[derive(PartialEq, PartialOrd)] struct Nope(Comparable);
    = note: required by `std::cmp::PartialOrd::partial_cmp`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: can't compare `Comparable` with `Comparable`
-  --> $DIR/issue-34229.rs:2:46
-   |
-LL | #[derive(PartialEq, PartialOrd)] struct Nope(Comparable);
-   |                                              ^^^^^^^^^^ no implementation for `Comparable < Comparable` and `Comparable > Comparable`
-   |
-   = help: the trait `PartialOrd` is not implemented for `Comparable`
-   = note: required by `std::cmp::PartialOrd::partial_cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0277]: can't compare `Comparable` with `Comparable`
-  --> $DIR/issue-34229.rs:2:46
-   |
-LL | #[derive(PartialEq, PartialOrd)] struct Nope(Comparable);
-   |                                              ^^^^^^^^^^ no implementation for `Comparable < Comparable` and `Comparable > Comparable`
-   |
-   = help: the trait `PartialOrd` is not implemented for `Comparable`
-   = note: required by `std::cmp::PartialOrd::partial_cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0277]: can't compare `Comparable` with `Comparable`
-  --> $DIR/issue-34229.rs:2:46
-   |
-LL | #[derive(PartialEq, PartialOrd)] struct Nope(Comparable);
-   |                                              ^^^^^^^^^^ no implementation for `Comparable < Comparable` and `Comparable > Comparable`
-   |
-   = help: the trait `PartialOrd` is not implemented for `Comparable`
-   = note: required by `std::cmp::PartialOrd::partial_cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0277]: can't compare `Comparable` with `Comparable`
-  --> $DIR/issue-34229.rs:2:46
-   |
-LL | #[derive(PartialEq, PartialOrd)] struct Nope(Comparable);
-   |                                              ^^^^^^^^^^ no implementation for `Comparable < Comparable` and `Comparable > Comparable`
-   |
-   = help: the trait `PartialOrd` is not implemented for `Comparable`
-   = note: required by `std::cmp::PartialOrd::partial_cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 5 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.
