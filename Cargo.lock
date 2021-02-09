@@ -5395,7 +5395,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.11.0",
+ "parking_lot 0.9.0",
  "regex",
  "serde",
  "serde_json",

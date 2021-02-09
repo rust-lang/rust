@@ -243,7 +243,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let regioncx = Rc::new(regioncx);
 
-    let flow_borrows = Borrows::new(tcx, &body, regioncx.clone(), &borrow_set)
+    let flow_borrows = Borrows::new(tcx, &body, &regioncx, &borrow_set)
         .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
@@ -287,7 +287,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 regioncx: regioncx.clone(),
                 used_mut: Default::default(),
                 used_mut_upvars: SmallVec::new(),
-                borrow_set: borrow_set.clone(),
+                borrow_set: Rc::clone(&borrow_set),
                 dominators,
                 upvars: Vec::new(),
                 local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
@@ -317,10 +317,10 @@ fn do_mir_borrowck<'a, 'tcx>(
         move_error_reported: BTreeMap::new(),
         uninitialized_error_reported: Default::default(),
         errors_buffer,
-        regioncx,
+        regioncx: Rc::clone(&regioncx),
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
-        borrow_set,
+        borrow_set: Rc::clone(&borrow_set),
         dominators,
         upvars,
         local_names,
