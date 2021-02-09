@@ -14,9 +14,9 @@ use std::num::NonZeroU32;
 
 #[cfg(parallel_compiler)]
 use {
+    crate::dep_graph::DepKind,
     parking_lot::{Condvar, Mutex},
     rustc_data_structures::fx::FxHashSet,
-    rustc_data_structures::stable_hasher::{HashStable, StableHasher},
     rustc_data_structures::sync::Lock,
     rustc_data_structures::sync::Lrc,
     rustc_data_structures::{jobserver, OnDrop},
@@ -417,30 +417,23 @@ where
 
 // Deterministically pick an query from a list
 #[cfg(parallel_compiler)]
-fn pick_query<'a, CTX, T, F>(
-    query_map: &QueryMap<CTX::DepKind>,
-    tcx: CTX,
-    queries: &'a [T],
-    f: F,
-) -> &'a T
+fn pick_query<'a, D, T, F>(query_map: &QueryMap<D>, queries: &'a [T], f: F) -> &'a T
 where
-    CTX: QueryContext,
-    F: Fn(&T) -> (Span, QueryJobId<CTX::DepKind>),
+    D: Copy + Clone + Eq + Hash,
+    F: Fn(&T) -> (Span, QueryJobId<D>),
 {
     // Deterministically pick an entry point
     // FIXME: Sort this instead
-    let mut hcx = tcx.dep_context().create_stable_hashing_context();
     queries
         .iter()
         .min_by_key(|v| {
             let (span, query) = f(v);
-            let mut stable_hasher = StableHasher::new();
-            query.query(query_map).hash_stable(&mut hcx, &mut stable_hasher);
+            let hash = query.query(query_map).hash;
             // Prefer entry points which have valid spans for nicer error messages
             // We add an integer to the tuple ensuring that entry points
             // with valid spans are picked first
             let span_cmp = if span == DUMMY_SP { 1 } else { 0 };
-            (span_cmp, stable_hasher.finish::<u64>())
+            (span_cmp, hash)
         })
         .unwrap()
 }
@@ -451,11 +444,10 @@ where
 /// If a cycle was not found, the starting query is removed from `jobs` and
 /// the function returns false.
 #[cfg(parallel_compiler)]
-fn remove_cycle<CTX: QueryContext>(
-    query_map: &QueryMap<CTX::DepKind>,
-    jobs: &mut Vec<QueryJobId<CTX::DepKind>>,
-    wakelist: &mut Vec<Lrc<QueryWaiter<CTX::DepKind>>>,
-    tcx: CTX,
+fn remove_cycle<D: DepKind>(
+    query_map: &QueryMap<D>,
+    jobs: &mut Vec<QueryJobId<D>>,
+    wakelist: &mut Vec<Lrc<QueryWaiter<D>>>,
 ) -> bool {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
@@ -505,15 +497,15 @@ fn remove_cycle<CTX: QueryContext>(
                         None
                     } else {
                         // Deterministically pick one of the waiters to show to the user
-                        let waiter = *pick_query(query_map, tcx, &waiters, |s| *s);
+                        let waiter = *pick_query(query_map, &waiters, |s| *s);
                         Some((span, query, Some(waiter)))
                     }
                 }
             })
-            .collect::<Vec<(Span, QueryJobId<CTX::DepKind>, Option<(Span, QueryJobId<CTX::DepKind>)>)>>();
+            .collect::<Vec<(Span, QueryJobId<D>, Option<(Span, QueryJobId<D>)>)>>();
 
         // Deterministically pick an entry point
-        let (_, entry_point, usage) = pick_query(query_map, tcx, &entry_points, |e| (e.0, e.1));
+        let (_, entry_point, usage) = pick_query(query_map, &entry_points, |e| (e.0, e.1));
 
         // Shift the stack so that our entry point is first
         let entry_point_pos = stack.iter().position(|(_, query)| query == entry_point);
@@ -570,7 +562,7 @@ pub fn deadlock<CTX: QueryContext>(tcx: CTX, registry: &rayon_core::Registry) {
     let mut found_cycle = false;
 
     while jobs.len() > 0 {
-        if remove_cycle(&query_map, &mut jobs, &mut wakelist, tcx) {
+        if remove_cycle(&query_map, &mut jobs, &mut wakelist) {
             found_cycle = true;
         }
     }

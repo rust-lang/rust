@@ -339,12 +339,12 @@ macro_rules! define_queries {
                 } else {
                     Some(key.default_span(*tcx))
                 };
-                let hash = {
+                let hash = || {
                     let mut hcx = tcx.create_stable_hashing_context();
                     let mut hasher = StableHasher::new();
                     std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
                     key.hash_stable(&mut hcx, &mut hasher);
-                    hasher.finish()
+                    hasher.finish::<u64>()
                 };
 
                 QueryStackFrame::new(name, description, span, hash)

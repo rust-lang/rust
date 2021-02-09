@@ -16,8 +16,6 @@ pub use self::config::{QueryAccessors, QueryConfig, QueryDescription};
 
 use crate::dep_graph::{DepNode, DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
@@ -34,7 +32,8 @@ pub struct QueryStackFrame {
     span: Option<Span>,
     /// This hash is used to deterministically pick
     /// a query to remove cycles in the parallel compiler.
-    hash: Fingerprint,
+    #[cfg(parallel_compiler)]
+    hash: u64,
 }
 
 impl QueryStackFrame {
@@ -43,9 +42,15 @@ impl QueryStackFrame {
         name: &'static str,
         description: String,
         span: Option<Span>,
-        hash: Fingerprint,
+        _hash: impl FnOnce() -> u64,
     ) -> Self {
-        Self { name, hash, description, span }
+        Self {
+            name,
+            description,
+            span,
+            #[cfg(parallel_compiler)]
+            hash: _hash(),
+        }
     }
 
     // FIXME(eddyb) Get more valid `Span`s on queries.
@@ -55,12 +60,6 @@ impl QueryStackFrame {
             return span;
         }
         self.span.unwrap_or(span)
-    }
-}
-
-impl<CTX> HashStable<CTX> for QueryStackFrame {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.hash.hash_stable(hcx, hasher)
     }
 }
 
