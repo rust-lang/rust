@@ -100,147 +100,137 @@ fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<St
 
 #[cfg(test)]
 mod tests {
-    use test_utils::assert_eq_text;
+    use expect_test::expect;
 
     use crate::fixture;
+
+    fn check(ra_fixture: &str, expect: expect_test::Expect) {
+        let (analysis, file_id) = fixture::file(ra_fixture);
+        let syn = analysis.syntax_tree(file_id, None).unwrap();
+        expect.assert_eq(&syn)
+    }
+    fn check_range(ra_fixture: &str, expect: expect_test::Expect) {
+        let (analysis, frange) = fixture::range(ra_fixture);
+        let syn = analysis.syntax_tree(frange.file_id, Some(frange.range)).unwrap();
+        expect.assert_eq(&syn)
+    }
 
     #[test]
     fn test_syntax_tree_without_range() {
         // Basic syntax
-        let (analysis, file_id) = fixture::file(r#"fn foo() {}"#);
-        let syn = analysis.syntax_tree(file_id, None).unwrap();
-
-        assert_eq_text!(
-            r#"
-SOURCE_FILE@0..11
-  FN@0..11
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..11
-      L_CURLY@9..10 "{"
-      R_CURLY@10..11 "}"
-"#
-            .trim(),
-            syn.trim()
+        check(
+            r#"fn foo() {}"#,
+            expect![[r#"
+                SOURCE_FILE@0..11
+                  FN@0..11
+                    FN_KW@0..2 "fn"
+                    WHITESPACE@2..3 " "
+                    NAME@3..6
+                      IDENT@3..6 "foo"
+                    PARAM_LIST@6..8
+                      L_PAREN@6..7 "("
+                      R_PAREN@7..8 ")"
+                    WHITESPACE@8..9 " "
+                    BLOCK_EXPR@9..11
+                      L_CURLY@9..10 "{"
+                      R_CURLY@10..11 "}"
+            "#]],
         );
 
-        let (analysis, file_id) = fixture::file(
+        check(
             r#"
 fn test() {
     assert!("
     fn foo() {
     }
     ", "");
-}"#
-            .trim(),
-        );
-        let syn = analysis.syntax_tree(file_id, None).unwrap();
-
-        assert_eq_text!(
-            r#"
-SOURCE_FILE@0..60
-  FN@0..60
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..7
-      IDENT@3..7 "test"
-    PARAM_LIST@7..9
-      L_PAREN@7..8 "("
-      R_PAREN@8..9 ")"
-    WHITESPACE@9..10 " "
-    BLOCK_EXPR@10..60
-      L_CURLY@10..11 "{"
-      WHITESPACE@11..16 "\n    "
-      EXPR_STMT@16..58
-        MACRO_CALL@16..57
-          PATH@16..22
-            PATH_SEGMENT@16..22
-              NAME_REF@16..22
-                IDENT@16..22 "assert"
-          BANG@22..23 "!"
-          TOKEN_TREE@23..57
-            L_PAREN@23..24 "("
-            STRING@24..52 "\"\n    fn foo() {\n     ..."
-            COMMA@52..53 ","
-            WHITESPACE@53..54 " "
-            STRING@54..56 "\"\""
-            R_PAREN@56..57 ")"
-        SEMICOLON@57..58 ";"
-      WHITESPACE@58..59 "\n"
-      R_CURLY@59..60 "}"
-"#
-            .trim(),
-            syn.trim()
-        );
+}"#,
+            expect![[r#"
+                SOURCE_FILE@0..60
+                  FN@0..60
+                    FN_KW@0..2 "fn"
+                    WHITESPACE@2..3 " "
+                    NAME@3..7
+                      IDENT@3..7 "test"
+                    PARAM_LIST@7..9
+                      L_PAREN@7..8 "("
+                      R_PAREN@8..9 ")"
+                    WHITESPACE@9..10 " "
+                    BLOCK_EXPR@10..60
+                      L_CURLY@10..11 "{"
+                      WHITESPACE@11..16 "\n    "
+                      EXPR_STMT@16..58
+                        MACRO_CALL@16..57
+                          PATH@16..22
+                            PATH_SEGMENT@16..22
+                              NAME_REF@16..22
+                                IDENT@16..22 "assert"
+                          BANG@22..23 "!"
+                          TOKEN_TREE@23..57
+                            L_PAREN@23..24 "("
+                            STRING@24..52 "\"\n    fn foo() {\n     ..."
+                            COMMA@52..53 ","
+                            WHITESPACE@53..54 " "
+                            STRING@54..56 "\"\""
+                            R_PAREN@56..57 ")"
+                        SEMICOLON@57..58 ";"
+                      WHITESPACE@58..59 "\n"
+                      R_CURLY@59..60 "}"
+            "#]],
+        )
     }
 
     #[test]
     fn test_syntax_tree_with_range() {
-        let (analysis, range) = fixture::range(r#"$0fn foo() {}$0"#.trim());
-        let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
-
-        assert_eq_text!(
-            r#"
-FN@0..11
-  FN_KW@0..2 "fn"
-  WHITESPACE@2..3 " "
-  NAME@3..6
-    IDENT@3..6 "foo"
-  PARAM_LIST@6..8
-    L_PAREN@6..7 "("
-    R_PAREN@7..8 ")"
-  WHITESPACE@8..9 " "
-  BLOCK_EXPR@9..11
-    L_CURLY@9..10 "{"
-    R_CURLY@10..11 "}"
-"#
-            .trim(),
-            syn.trim()
+        check_range(
+            r#"$0fn foo() {}$0"#,
+            expect![[r#"
+                FN@0..11
+                  FN_KW@0..2 "fn"
+                  WHITESPACE@2..3 " "
+                  NAME@3..6
+                    IDENT@3..6 "foo"
+                  PARAM_LIST@6..8
+                    L_PAREN@6..7 "("
+                    R_PAREN@7..8 ")"
+                  WHITESPACE@8..9 " "
+                  BLOCK_EXPR@9..11
+                    L_CURLY@9..10 "{"
+                    R_CURLY@10..11 "}"
+            "#]],
         );
 
-        let (analysis, range) = fixture::range(
-            r#"fn test() {
+        check_range(
+            r#"
+fn test() {
     $0assert!("
     fn foo() {
     }
     ", "");$0
-}"#
-            .trim(),
-        );
-        let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
-
-        assert_eq_text!(
-            r#"
-EXPR_STMT@16..58
-  MACRO_CALL@16..57
-    PATH@16..22
-      PATH_SEGMENT@16..22
-        NAME_REF@16..22
-          IDENT@16..22 "assert"
-    BANG@22..23 "!"
-    TOKEN_TREE@23..57
-      L_PAREN@23..24 "("
-      STRING@24..52 "\"\n    fn foo() {\n     ..."
-      COMMA@52..53 ","
-      WHITESPACE@53..54 " "
-      STRING@54..56 "\"\""
-      R_PAREN@56..57 ")"
-  SEMICOLON@57..58 ";"
-"#
-            .trim(),
-            syn.trim()
+}"#,
+            expect![[r#"
+                EXPR_STMT@16..58
+                  MACRO_CALL@16..57
+                    PATH@16..22
+                      PATH_SEGMENT@16..22
+                        NAME_REF@16..22
+                          IDENT@16..22 "assert"
+                    BANG@22..23 "!"
+                    TOKEN_TREE@23..57
+                      L_PAREN@23..24 "("
+                      STRING@24..52 "\"\n    fn foo() {\n     ..."
+                      COMMA@52..53 ","
+                      WHITESPACE@53..54 " "
+                      STRING@54..56 "\"\""
+                      R_PAREN@56..57 ")"
+                  SEMICOLON@57..58 ";"
+            "#]],
         );
     }
 
     #[test]
     fn test_syntax_tree_inside_string() {
-        let (analysis, range) = fixture::range(
+        check_range(
             r#"fn test() {
     assert!("
 $0fn foo() {
@@ -248,33 +238,27 @@ $0fn foo() {
 fn bar() {
 }
     ", "");
-}"#
-            .trim(),
-        );
-        let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
-        assert_eq_text!(
-            r#"
-SOURCE_FILE@0..12
-  FN@0..12
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..12
-      L_CURLY@9..10 "{"
-      WHITESPACE@10..11 "\n"
-      R_CURLY@11..12 "}"
-"#
-            .trim(),
-            syn.trim()
+}"#,
+            expect![[r#"
+                SOURCE_FILE@0..12
+                  FN@0..12
+                    FN_KW@0..2 "fn"
+                    WHITESPACE@2..3 " "
+                    NAME@3..6
+                      IDENT@3..6 "foo"
+                    PARAM_LIST@6..8
+                      L_PAREN@6..7 "("
+                      R_PAREN@7..8 ")"
+                    WHITESPACE@8..9 " "
+                    BLOCK_EXPR@9..12
+                      L_CURLY@9..10 "{"
+                      WHITESPACE@10..11 "\n"
+                      R_CURLY@11..12 "}"
+            "#]],
         );
 
         // With a raw string
-        let (analysis, range) = fixture::range(
+        check_range(
             r###"fn test() {
     assert!(r#"
 $0fn foo() {
@@ -282,76 +266,64 @@ $0fn foo() {
 fn bar() {
 }
     "#, "");
-}"###
-                .trim(),
-        );
-        let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
-        assert_eq_text!(
-            r#"
-SOURCE_FILE@0..12
-  FN@0..12
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..12
-      L_CURLY@9..10 "{"
-      WHITESPACE@10..11 "\n"
-      R_CURLY@11..12 "}"
-"#
-            .trim(),
-            syn.trim()
+}"###,
+            expect![[r#"
+                SOURCE_FILE@0..12
+                  FN@0..12
+                    FN_KW@0..2 "fn"
+                    WHITESPACE@2..3 " "
+                    NAME@3..6
+                      IDENT@3..6 "foo"
+                    PARAM_LIST@6..8
+                      L_PAREN@6..7 "("
+                      R_PAREN@7..8 ")"
+                    WHITESPACE@8..9 " "
+                    BLOCK_EXPR@9..12
+                      L_CURLY@9..10 "{"
+                      WHITESPACE@10..11 "\n"
+                      R_CURLY@11..12 "}"
+            "#]],
         );
 
         // With a raw string
-        let (analysis, range) = fixture::range(
+        check_range(
             r###"fn test() {
     assert!(r$0#"
 fn foo() {
 }
 fn bar() {
 }"$0#, "");
-}"###
-                .trim(),
-        );
-        let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
-        assert_eq_text!(
-            r#"
-SOURCE_FILE@0..25
-  FN@0..12
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..12
-      L_CURLY@9..10 "{"
-      WHITESPACE@10..11 "\n"
-      R_CURLY@11..12 "}"
-  WHITESPACE@12..13 "\n"
-  FN@13..25
-    FN_KW@13..15 "fn"
-    WHITESPACE@15..16 " "
-    NAME@16..19
-      IDENT@16..19 "bar"
-    PARAM_LIST@19..21
-      L_PAREN@19..20 "("
-      R_PAREN@20..21 ")"
-    WHITESPACE@21..22 " "
-    BLOCK_EXPR@22..25
-      L_CURLY@22..23 "{"
-      WHITESPACE@23..24 "\n"
-      R_CURLY@24..25 "}"
-"#
-            .trim(),
-            syn.trim()
+}"###,
+            expect![[r#"
+                SOURCE_FILE@0..25
+                  FN@0..12
+                    FN_KW@0..2 "fn"
+                    WHITESPACE@2..3 " "
+                    NAME@3..6
+                      IDENT@3..6 "foo"
+                    PARAM_LIST@6..8
+                      L_PAREN@6..7 "("
+                      R_PAREN@7..8 ")"
+                    WHITESPACE@8..9 " "
+                    BLOCK_EXPR@9..12
+                      L_CURLY@9..10 "{"
+                      WHITESPACE@10..11 "\n"
+                      R_CURLY@11..12 "}"
+                  WHITESPACE@12..13 "\n"
+                  FN@13..25
+                    FN_KW@13..15 "fn"
+                    WHITESPACE@15..16 " "
+                    NAME@16..19
+                      IDENT@16..19 "bar"
+                    PARAM_LIST@19..21
+                      L_PAREN@19..20 "("
+                      R_PAREN@20..21 ")"
+                    WHITESPACE@21..22 " "
+                    BLOCK_EXPR@22..25
+                      L_CURLY@22..23 "{"
+                      WHITESPACE@23..24 "\n"
+                      R_CURLY@24..25 "}"
+            "#]],
         );
     }
 }

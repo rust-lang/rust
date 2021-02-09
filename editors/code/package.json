@@ -950,6 +950,50 @@
             {
                 "id": "formatSpecifier",
                 "description": "Style for {} placeholders in format strings"
+            },
+            {
+                "id": "punctuation",
+                "description": "generic punctuation"
+            },
+            {
+                "id": "parenthesis",
+                "description": "( or )",
+                "superType": "punctuation"
+            },
+            {
+                "id": "bracket",
+                "description": "[ or ]",
+                "superType": "punctuation"
+            },
+            {
+                "id": "brace",
+                "description": "{ or }",
+                "superType": "punctuation"
+            },
+            {
+                "id": "angle",
+                "description": "< or >",
+                "superType": "punctuation"
+            },
+            {
+                "id": "comma",
+                "description": ",",
+                "superType": "punctuation"
+            },
+            {
+                "id": "colon",
+                "description": ":",
+                "superType": "punctuation"
+            },
+            {
+                "id": "semicolon",
+                "description": ";",
+                "superType": "punctuation"
+            },
+            {
+                "id": "dot",
+                "description": ".",
+                "superType": "punctuation"
             }
         ],
         "semanticTokenModifiers": [
