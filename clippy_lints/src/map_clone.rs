@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
                         match closure_expr.kind {
-                            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
+                            hir::ExprKind::Unary(hir::UnOp::Deref, ref inner) => {
                                 if ident_eq(name, inner) {
                                     if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
                                         lint(cx, e.span, args[0].span, true);

@@ -1001,7 +1001,7 @@ impl InterningDefinedSymbol {
         // SymbolStr might be de-referenced: `&*symbol.as_str()`
         let call = if_chain! {
             if let ExprKind::AddrOf(_, _, e) = expr.kind;
-            if let ExprKind::Unary(UnOp::UnDeref, e) = e.kind;
+            if let ExprKind::Unary(UnOp::Deref, e) = e.kind;
             then { e } else { expr }
         };
         if_chain! {
