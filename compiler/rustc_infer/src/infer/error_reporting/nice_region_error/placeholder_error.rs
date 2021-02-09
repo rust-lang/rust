@@ -16,7 +16,7 @@ use std::fmt::{self, Write};
 impl NiceRegionError<'me, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
     /// an anonymous region, emit a descriptive diagnostic error.
-    pub(super) fn try_report_placeholder_conflict(&self) -> Option<DiagnosticBuilder<'me>> {
+    pub(super) fn try_report_placeholder_conflict(&self) -> Option<DiagnosticBuilder<'tcx>> {
         match &self.error {
             ///////////////////////////////////////////////////////////////////////////
             // NB. The ordering of cases in this match is very
@@ -199,7 +199,7 @@ impl NiceRegionError<'me, 'tcx> {
         trait_def_id: DefId,
         expected_substs: SubstsRef<'tcx>,
         actual_substs: SubstsRef<'tcx>,
-    ) -> DiagnosticBuilder<'me> {
+    ) -> DiagnosticBuilder<'tcx> {
         debug!(
             "try_report_placeholders_trait(\
              vid={:?}, \
