@@ -102,13 +102,13 @@ impl StaticRWLock {
     ///
     /// The lock is automatically unlocked when the returned guard is dropped.
     #[inline]
-    pub fn read_with_guard(&'static self) -> RWLockGuard {
+    pub fn read_with_guard(&'static self) -> RWLockReadGuard {
         // Safety: All methods require static references, therefore self
         // cannot be moved between invocations.
         unsafe {
             self.0.read();
         }
-        RWLockGuard(&self.0, GuardType::Read)
+        RWLockReadGuard(&self.0)
     }
 
     /// Acquires write access to the underlying lock, blocking the current thread
@@ -116,33 +116,32 @@ impl StaticRWLock {
     ///
     /// The lock is automatically unlocked when the returned guard is dropped.
     #[inline]
-    pub fn write_with_guard(&'static self) -> RWLockGuard {
+    pub fn write_with_guard(&'static self) -> RWLockWriteGuard {
         // Safety: All methods require static references, therefore self
         // cannot be moved between invocations.
         unsafe {
             self.0.write();
         }
-        RWLockGuard(&self.0, GuardType::Write)
+        RWLockWriteGuard(&self.0)
     }
 }
 
 #[cfg(unix)]
-enum GuardType {
-    Read,
-    Write,
+pub struct RWLockReadGuard(&'static RWLock);
+
+#[cfg(unix)]
+impl Drop for RWLockReadGuard {
+    fn drop(&mut self) {
+        unsafe { self.0.read_unlock() }
+    }
 }
 
 #[cfg(unix)]
-pub struct RWLockGuard(&'static RWLock, GuardType);
+pub struct RWLockWriteGuard(&'static RWLock);
 
 #[cfg(unix)]
-impl Drop for RWLockGuard {
+impl Drop for RWLockWriteGuard {
     fn drop(&mut self) {
-        unsafe {
-            match &self.1 {
-                GuardType::Read => self.0.read_unlock(),
-                GuardType::Write => self.0.write_unlock(),
-            }
-        }
+        unsafe { self.0.write_unlock() }
     }
 }

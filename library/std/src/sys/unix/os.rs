@@ -22,7 +22,7 @@ use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
 use crate::sys_common::mutex::{StaticMutex, StaticMutexGuard};
-use crate::sys_common::rwlock::{RWLockGuard, StaticRWLock};
+use crate::sys_common::rwlock::{RWLockReadGuard, StaticRWLock};
 use crate::vec;
 
 use libc::{c_char, c_int, c_void};
@@ -496,7 +496,7 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 
 static ENV_LOCK: StaticRWLock = StaticRWLock::new();
 
-pub fn env_read_lock() -> RWLockGuard {
+pub fn env_read_lock() -> RWLockReadGuard {
     ENV_LOCK.read_with_guard()
 }
 
