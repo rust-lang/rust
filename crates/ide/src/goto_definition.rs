@@ -136,17 +136,7 @@ mod tests {
     use crate::fixture;
 
     fn check(ra_fixture: &str) {
-        let (analysis, position, mut annotations) = fixture::annotations(ra_fixture);
-        let (mut expected, data) = annotations.pop().unwrap();
-        match data.as_str() {
-            "" => (),
-            "file" => {
-                expected.range =
-                    TextRange::up_to(TextSize::of(&*analysis.file_text(expected.file_id).unwrap()))
-            }
-            data => panic!("bad data: {}", data),
-        }
-
+        let (analysis, position, expected) = fixture::nav_target_annotation(ra_fixture);
         let mut navs =
             analysis.goto_definition(position).unwrap().expect("no definition found").info;
         if navs.len() == 0 {
