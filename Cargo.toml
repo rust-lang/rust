@@ -104,6 +104,7 @@ rustfmt-nightly = { path = "src/tools/rustfmt" }
 # See comments in `src/tools/rustc-workspace-hack/README.md` for what's going on
 # here
 rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
+fs_extra = { git = "https://github.com/webdesus/fs_extra" }
 
 # See comments in `library/rustc-std-workspace-core/README.md` for what's going on
 # here
