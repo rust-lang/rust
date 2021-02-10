@@ -55,7 +55,7 @@ declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::If(ref check, ref then_block, ref else_block) = expr.kind {
-            if let ExprKind::Unary(UnOp::UnNot, ref check) = check.kind {
+            if let ExprKind::Unary(UnOp::Not, ref check) = check.kind {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
                     // in case of `if !m.contains_key(&k) { m.insert(k, v); }`
                     // we can give a better error message

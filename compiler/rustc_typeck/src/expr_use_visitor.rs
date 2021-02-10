@@ -184,7 +184,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             hir::ExprKind::Type(ref subexpr, _) => self.walk_expr(subexpr),
 
-            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref base) => {
+            hir::ExprKind::Unary(hir::UnOp::Deref, ref base) => {
                 // *base
                 self.select_from_expr(base);
             }

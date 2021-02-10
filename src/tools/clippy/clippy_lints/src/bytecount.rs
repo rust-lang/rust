@@ -101,7 +101,7 @@ fn check_arg(name: Symbol, arg: Symbol, needle: &Expr<'_>) -> bool {
 
 fn get_path_name(expr: &Expr<'_>) -> Option<Symbol> {
     match expr.kind {
-        ExprKind::Box(ref e) | ExprKind::AddrOf(BorrowKind::Ref, _, ref e) | ExprKind::Unary(UnOp::UnDeref, ref e) => {
+        ExprKind::Box(ref e) | ExprKind::AddrOf(BorrowKind::Ref, _, ref e) | ExprKind::Unary(UnOp::Deref, ref e) => {
             get_path_name(e)
         },
         ExprKind::Block(ref b, _) => {

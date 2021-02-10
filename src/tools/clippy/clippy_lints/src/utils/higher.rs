@@ -243,7 +243,7 @@ pub fn extract_assert_macro_args<'tcx>(e: &'tcx Expr<'tcx>) -> Option<Vec<&'tcx 
                 // macros with unique arg: `{debug_}assert!` (e.g., `debug_assert!(some_condition)`)
                 if_chain! {
                     if let ExprKind::If(ref clause, _, _)  = matchexpr.kind;
-                    if let ExprKind::Unary(UnOp::UnNot, condition) = clause.kind;
+                    if let ExprKind::Unary(UnOp::Not, condition) = clause.kind;
                     then {
                         return Some(vec![condition]);
                     }

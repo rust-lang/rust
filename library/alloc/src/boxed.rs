@@ -509,6 +509,23 @@ impl<T, A: Allocator> Box<T, A> {
         let (raw, alloc) = Box::into_raw_with_allocator(boxed);
         unsafe { Box::from_raw_in(raw as *mut [T; 1], alloc) }
     }
+
+    /// Consumes the `Box`, returning the wrapped value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(box_into_inner)]
+    ///
+    /// let c = Box::new(5);
+    ///
+    /// assert_eq!(Box::into_inner(c), 5);
+    /// ```
+    #[unstable(feature = "box_into_inner", issue = "80437")]
+    #[inline]
+    pub fn into_inner(boxed: Self) -> T {
+        *boxed
+    }
 }
 
 impl<T> Box<[T]> {

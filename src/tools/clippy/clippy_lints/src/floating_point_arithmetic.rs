@@ -129,7 +129,7 @@ fn get_specialized_log_method(cx: &LateContext<'_>, base: &Expr<'_>) -> Option<&
 fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Sugg<'a> {
     let mut suggestion = Sugg::hir(cx, expr, "..");
 
-    if let ExprKind::Unary(UnOp::UnNeg, inner_expr) = &expr.kind {
+    if let ExprKind::Unary(UnOp::Neg, inner_expr) = &expr.kind {
         expr = &inner_expr;
     }
 
@@ -541,12 +541,12 @@ fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// If the two expressions are not negations of each other, then it
 /// returns None.
 fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
-    if let ExprKind::Unary(UnOp::UnNeg, expr1_negated) = &expr1.kind {
+    if let ExprKind::Unary(UnOp::Neg, expr1_negated) = &expr1.kind {
         if eq_expr_value(cx, expr1_negated, expr2) {
             return Some((false, expr2));
         }
     }
-    if let ExprKind::Unary(UnOp::UnNeg, expr2_negated) = &expr2.kind {
+    if let ExprKind::Unary(UnOp::Neg, expr2_negated) = &expr2.kind {
         if eq_expr_value(cx, expr1, expr2_negated) {
             return Some((true, expr1));
         }

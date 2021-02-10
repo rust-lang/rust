@@ -186,7 +186,7 @@ fn addr_adjusted_binding(mut expr: &Expr<'_>, cx: &LateContext<'_>) -> Option<Hi
                 Res::Local(binding_id) => break Some(binding_id),
                 _ => break None,
             },
-            ExprKind::Unary(UnOp::UnDeref, e) if cx.typeck_results().expr_ty(e).is_ref() => expr = e,
+            ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results().expr_ty(e).is_ref() => expr = e,
             _ => break None,
         }
     }

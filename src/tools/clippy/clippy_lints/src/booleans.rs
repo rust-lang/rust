@@ -110,7 +110,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         // prevent folding of `cfg!` macros and the like
         if !e.span.from_expansion() {
             match &e.kind {
-                ExprKind::Unary(UnOp::UnNot, inner) => return Ok(Bool::Not(box self.run(inner)?)),
+                ExprKind::Unary(UnOp::Not, inner) => return Ok(Bool::Not(box self.run(inner)?)),
                 ExprKind::Binary(binop, lhs, rhs) => match &binop.node {
                     BinOpKind::Or => {
                         return Ok(Bool::Or(self.extract(BinOpKind::Or, &[lhs, rhs], Vec::new())?));
@@ -454,7 +454,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
             ExprKind::Binary(binop, _, _) if binop.node == BinOpKind::Or || binop.node == BinOpKind::And => {
                 self.bool_expr(e)
             },
-            ExprKind::Unary(UnOp::UnNot, inner) => {
+            ExprKind::Unary(UnOp::Not, inner) => {
                 if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
                     self.bool_expr(e);
                 } else {
@@ -482,7 +482,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Unary(UnOp::UnNot, inner) = &expr.kind {
+        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind {
             if let Some(suggestion) = simplify_not(self.cx, inner) {
                 span_lint_and_sugg(
                     self.cx,

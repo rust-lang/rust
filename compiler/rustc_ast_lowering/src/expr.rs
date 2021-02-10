@@ -260,9 +260,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
         match u {
-            UnOp::Deref => hir::UnOp::UnDeref,
-            UnOp::Not => hir::UnOp::UnNot,
-            UnOp::Neg => hir::UnOp::UnNeg,
+            UnOp::Deref => hir::UnOp::Deref,
+            UnOp::Not => hir::UnOp::Not,
+            UnOp::Neg => hir::UnOp::Neg,
         }
     }
 

@@ -472,7 +472,7 @@ fn lint_literal<'tcx>(
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
+            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != Some(e.hir_id) {
                     self.negated_expr_id = Some(expr.hir_id);

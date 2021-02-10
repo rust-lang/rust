@@ -773,7 +773,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let hir::ExprKind::Lit(lit) = &expr.kind { lit.node.is_suffixed() } else { false }
         };
         let is_negative_int =
-            |expr: &hir::Expr<'_>| matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::UnNeg, ..));
+            |expr: &hir::Expr<'_>| matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Neg, ..));
         let is_uint = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(..));
 
         let in_const_context = self.tcx.hir().is_inside_const_context(expr.hir_id);

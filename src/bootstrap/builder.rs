@@ -1512,7 +1512,7 @@ impl<'a> Builder<'a> {
                 for el in stack.iter().rev() {
                     out += &format!("\t{:?}\n", el);
                 }
-                panic!(out);
+                panic!("{}", out);
             }
             if let Some(out) = self.cache.get(&step) {
                 self.verbose(&format!("{}c {:?}", "  ".repeat(stack.len()), step));
