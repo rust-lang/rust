@@ -29,19 +29,32 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
         let parent_node = tcx.hir().get(parent_node_id);
 
         match parent_node {
+            // This matches on types who's paths couldn't be resolved without typeck'ing e.g.
+            //
+            // trait Foo {
+            //   type Assoc<const N1: usize>;;
+            //   fn foo() -> Self::Assoc<3>;
+            //   // note: if the def_id argument is the 3 then in this example
+            //   // parent_node would be the node for Self::Assoc<_>
+            // }
+            // We didnt write <Self as Foo>::Assoc so the Self::Assoc<_> is lowered to QPath::TypeRelative.
+            // I believe this match arm is only needed for GAT but I am not 100% sure - BoxyUwU
             Node::Ty(hir_ty @ Ty { kind: TyKind::Path(QPath::TypeRelative(_, segment)), .. }) => {
-                let id = tcx
+                // Walk up from the parent_node to find an item so that
+                // we can resolve the relative path to an actual associated type
+                let item_hir_id = tcx
                     .hir()
                     .parent_iter(hir_id)
                     .filter(|(_, node)| matches!(node, Node::Item(_)))
                     .map(|(id, _)| id)
                     .next()
                     .unwrap();
-
-                let item_did = tcx.hir().local_def_id(id).to_def_id();
+                let item_did = tcx.hir().local_def_id(item_hir_id).to_def_id();
                 let item_ctxt = &ItemCtxt::new(tcx, item_did) as &dyn crate::astconv::AstConv<'_>;
-                let ty = item_ctxt.ast_ty_to_ty(hir_ty);
 
+                // This ty will be the actual associated type so that we can
+                // go through its generics to find which param our def_id corresponds to
+                let ty = item_ctxt.ast_ty_to_ty(hir_ty);
                 if let ty::Projection(projection) = ty.kind() {
                     let generics = tcx.generics_of(projection.item_def_id);
 
@@ -65,6 +78,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         .map(|param| param.def_id);
                 }
 
+                // I dont think it's possible to reach this but I'm not 100% sure - BoxyUwU
                 tcx.sess.delay_span_bug(
                     tcx.def_span(def_id),
                     "unexpected non-GAT usage of an anon const",
