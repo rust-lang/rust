@@ -376,15 +376,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     opt_assignment_rhs_span.and_then(|span| span.desugaring_kind());
                                 match opt_desugaring_kind {
                                     // on for loops, RHS points to the iterator part
-                                    Some(DesugaringKind::ForLoop(_)) => Some((
-                                        false,
-                                        opt_assignment_rhs_span.unwrap(),
-                                        format!(
-                                            "this iterator yields `{SIGIL}` {DESC}s",
-                                            SIGIL = pointer_sigil,
-                                            DESC = pointer_desc
-                                        ),
-                                    )),
+                                    Some(DesugaringKind::ForLoop(_)) => {
+                                        self.suggest_similar_mut_method_for_for_loop(&mut err);
+                                        Some((
+                                            false,
+                                            opt_assignment_rhs_span.unwrap(),
+                                            format!(
+                                                "this iterator yields `{SIGIL}` {DESC}s",
+                                                SIGIL = pointer_sigil,
+                                                DESC = pointer_desc
+                                            ),
+                                        ))
+                                    }
                                     // don't create labels for compiler-generated spans
                                     Some(_) => None,
                                     None => {
@@ -535,6 +538,79 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 reason
             ),
         );
+    }
+
+    // Attempt to search similar mutable assosiated items for suggestion.
+    // In the future, attempt in all path but initially for RHS of for_loop
+    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut DiagnosticBuilder<'_>) {
+        let hir = self.infcx.tcx.hir();
+        let node = hir.item(self.mir_hir_id());
+        use hir::{
+            Expr,
+            ExprKind::{Block, Call, DropTemps, Match, MethodCall},
+        };
+        if let hir::ItemKind::Fn(_, _, body_id) = node.kind {
+            if let Block(
+                hir::Block {
+                    expr:
+                        Some(Expr {
+                            kind:
+                                DropTemps(Expr {
+                                    kind:
+                                        Match(
+                                            Expr {
+                                                kind:
+                                                    Call(
+                                                        _,
+                                                        [Expr {
+                                                            kind: MethodCall(path_segment, ..),
+                                                            hir_id,
+                                                            ..
+                                                        }, ..],
+                                                    ),
+                                                ..
+                                            },
+                                            ..,
+                                        ),
+                                    ..
+                                }),
+                            ..
+                        }),
+                    ..
+                },
+                _,
+            ) = hir.body(body_id).value.kind
+            {
+                let opt_suggestions = path_segment
+                    .hir_id
+                    .map(|path_hir_id| self.infcx.tcx.typeck(path_hir_id.owner))
+                    .and_then(|typeck| typeck.type_dependent_def_id(*hir_id))
+                    .and_then(|def_id| self.infcx.tcx.impl_of_method(def_id))
+                    .map(|def_id| self.infcx.tcx.associated_items(def_id))
+                    .map(|assoc_items| {
+                        assoc_items
+                            .in_definition_order()
+                            .map(|assoc_item_def| assoc_item_def.ident)
+                            .filter(|&ident| {
+                                let original_method_ident = path_segment.ident;
+                                original_method_ident != ident
+                                    && ident
+                                        .as_str()
+                                        .starts_with(&original_method_ident.name.to_string())
+                            })
+                            .map(|ident| format!("{}()", ident))
+                    });
+
+                if let Some(suggestions) = opt_suggestions {
+                    err.span_suggestions(
+                        path_segment.ident.span,
+                        &format!("use mutable method"),
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        };
     }
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
