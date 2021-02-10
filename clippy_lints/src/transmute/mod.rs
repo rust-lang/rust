@@ -1,4 +1,5 @@
 mod crosspointer_transmute;
+mod transmute_float_to_int;
 mod transmute_int_to_bool;
 mod transmute_int_to_char;
 mod transmute_int_to_float;
@@ -390,52 +391,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 if triggered {
                     return;
                 }
+                let triggered = transmute_float_to_int::check(cx, e, from_ty, to_ty, args, const_context);
+                if triggered {
+                    return;
+                }
 
                 match (&from_ty.kind(), &to_ty.kind()) {
-                    (ty::Float(float_ty), ty::Int(_) | ty::Uint(_)) if !const_context => span_lint_and_then(
-                        cx,
-                        TRANSMUTE_FLOAT_TO_INT,
-                        e.span,
-                        &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
-                        |diag| {
-                            let mut expr = &args[0];
-                            let mut arg = sugg::Sugg::hir(cx, expr, "..");
-
-                            if let ExprKind::Unary(UnOp::Neg, inner_expr) = &expr.kind {
-                                expr = &inner_expr;
-                            }
-
-                            if_chain! {
-                                // if the expression is a float literal and it is unsuffixed then
-                                // add a suffix so the suggestion is valid and unambiguous
-                                let op = format!("{}{}", arg, float_ty.name_str()).into();
-                                if let ExprKind::Lit(lit) = &expr.kind;
-                                if let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node;
-                                then {
-                                    match arg {
-                                        sugg::Sugg::MaybeParen(_) => arg = sugg::Sugg::MaybeParen(op),
-                                        _ => arg = sugg::Sugg::NonParen(op)
-                                    }
-                                }
-                            }
-
-                            arg = sugg::Sugg::NonParen(format!("{}.to_bits()", arg.maybe_par()).into());
-
-                            // cast the result of `to_bits` if `to_ty` is signed
-                            arg = if let ty::Int(int_ty) = to_ty.kind() {
-                                arg.as_ty(int_ty.name_str().to_string())
-                            } else {
-                                arg
-                            };
-
-                            diag.span_suggestion(
-                                e.span,
-                                "consider using",
-                                arg.to_string(),
-                                Applicability::Unspecified,
-                            );
-                        },
-                    ),
                     (ty::Adt(from_adt, from_substs), ty::Adt(to_adt, to_substs)) => {
                         if from_adt.did != to_adt.did ||
                                 !COLLECTIONS.iter().any(|path| match_def_path(cx, to_adt.did, path)) {
