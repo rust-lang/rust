@@ -134,6 +134,11 @@
                 "category": "Rust Analyzer"
             },
             {
+                "command": "rust-analyzer.copyRunCommandLine",
+                "title": "Copy Run Command Line",
+                "category": "Rust Analyzer"
+            },
+            {
                 "command": "rust-analyzer.debug",
                 "title": "Debug",
                 "category": "Rust Analyzer"

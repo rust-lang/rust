@@ -5,7 +5,7 @@ import * as ra from './lsp_ext';
 import { Ctx, Cmd } from './ctx';
 import { applySnippetWorkspaceEdit, applySnippetTextEdits } from './snippets';
 import { spawnSync } from 'child_process';
-import { RunnableQuickPick, selectRunnable, createTask } from './run';
+import { RunnableQuickPick, selectRunnable, createTask, createArgs } from './run';
 import { AstInspector } from './ast_inspector';
 import { isRustDocument, sleep, isRustEditor } from './util';
 import { startDebugSession, makeDebugConfig } from './debug';
@@ -569,6 +569,18 @@ export function runSingle(ctx: Ctx): Cmd {
         };
 
         return vscode.tasks.executeTask(task);
+    };
+}
+
+export function copyRunCommandLine(ctx: Ctx) {
+    let prevRunnable: RunnableQuickPick | undefined;
+    return async () => {
+        const item = await selectRunnable(ctx, prevRunnable);
+        if (!item) return;
+        const args = createArgs(item.runnable);
+        const commandLine = ["cargo", ...args].join(" ");
+        await vscode.env.clipboard.writeText(commandLine);
+        await vscode.window.showInformationMessage("Cargo invocation copied to the clipboard.");
     };
 }
 

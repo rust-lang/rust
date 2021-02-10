@@ -108,6 +108,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     ctx.registerCommand('viewHir', commands.viewHir);
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
+    ctx.registerCommand('copyRunCommandLine', commands.copyRunCommandLine);
     ctx.registerCommand('debug', commands.debug);
     ctx.registerCommand('newDebugConfig', commands.newDebugConfig);
     ctx.registerCommand('openDocs', commands.openDocs);
