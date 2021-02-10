@@ -2462,3 +2462,32 @@ fn infer_nested_inner_type() {
         "#]],
     );
 }
+
+#[test]
+fn inner_use_enum_rename() {
+    check_infer(
+        r#"
+        enum Request {
+            Info
+        }
+
+        fn f() {
+            use Request as R;
+
+            let r = R::Info;
+            match r {
+                R::Info => {}
+            }
+        }
+    "#,
+        expect![[r#"
+            34..123 '{     ...   } }': ()
+            67..68 'r': Request
+            71..78 'R::Info': Request
+            84..121 'match ...     }': ()
+            90..91 'r': Request
+            102..109 'R::Info': Request
+            113..115 '{}': ()
+        "#]],
+    )
+}
