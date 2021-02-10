@@ -215,8 +215,11 @@ fn fn_args(
         });
     }
     deduplicate_arg_names(&mut arg_names);
-    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| make::param(name, ty));
-    Some((None, make::param_list(params)))
+    let params = arg_names
+        .into_iter()
+        .zip(arg_types)
+        .map(|(name, ty)| make::param(make::ident_pat(make::name(&name)).into(), make::ty(&ty)));
+    Some((None, make::param_list(None, params)))
 }
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
