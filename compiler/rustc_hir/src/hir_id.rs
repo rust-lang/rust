@@ -49,12 +49,12 @@ pub const CRATE_HIR_ID: HirId = HirId {
 
 #[derive(Clone, Default, Debug, Encodable, Decodable)]
 pub struct HirIdVec<T> {
-    map: IndexVec<LocalDefId, IndexVec<ItemLocalId, T>>,
+    map: IndexVec<LocalDefId, Option<Box<IndexVec<ItemLocalId, T>>>>,
 }
 
 impl<T> HirIdVec<T> {
     pub fn push_owner(&mut self, id: LocalDefId) {
-        self.map.ensure_contains_elem(id, IndexVec::new);
+        self.map.ensure_contains_elem(id, || None);
     }
 
     pub fn push(&mut self, id: HirId, value: T) {
@@ -62,6 +62,7 @@ impl<T> HirIdVec<T> {
             self.push_owner(id.owner);
         }
         let submap = &mut self.map[id.owner];
+        let submap = submap.get_or_insert_with(|| Box::new(IndexVec::new()));
         let _ret_id = submap.push(value);
         debug_assert_eq!(_ret_id, id.local_id);
     }
@@ -70,8 +71,9 @@ impl<T> HirIdVec<T> {
     where
         T: Default,
     {
-        self.map.ensure_contains_elem(id.owner, IndexVec::new);
+        self.map.ensure_contains_elem(id.owner, || None);
         let submap = &mut self.map[id.owner];
+        let submap = submap.get_or_insert_with(|| Box::new(IndexVec::new()));
         let i = id.local_id.index();
         let len = submap.len();
         if i >= len {
@@ -81,21 +83,23 @@ impl<T> HirIdVec<T> {
     }
 
     pub fn get(&self, id: HirId) -> Option<&T> {
-        self.map.get(id.owner)?.get(id.local_id)
+        self.map.get(id.owner)?.as_ref()?.get(id.local_id)
     }
 
-    pub fn get_owner(&self, id: LocalDefId) -> &IndexVec<ItemLocalId, T> {
-        &self.map[id]
+    pub fn get_owner(&self, id: LocalDefId) -> Option<&IndexVec<ItemLocalId, T>> {
+        Some(self.map[id].as_ref()?)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &T> {
-        self.map.iter().flat_map(|la| la.iter())
+        self.map.iter().filter_map(Option::as_ref).flat_map(|la| la.iter())
     }
 
     pub fn iter_enumerated(&self) -> impl Iterator<Item = (HirId, &T)> {
-        self.map.iter_enumerated().flat_map(|(owner, la)| {
-            la.iter_enumerated().map(move |(local_id, attr)| (HirId { owner, local_id }, attr))
-        })
+        self.map.iter_enumerated().filter_map(|(k, v)| Some((k, v.as_ref()?))).flat_map(
+            |(owner, la)| {
+                la.iter_enumerated().map(move |(local_id, attr)| (HirId { owner, local_id }, attr))
+            },
+        )
     }
 }
 
@@ -103,12 +107,12 @@ impl<T> std::ops::Index<HirId> for HirIdVec<T> {
     type Output = T;
 
     fn index(&self, id: HirId) -> &T {
-        &self.map[id.owner][id.local_id]
+        &self.map[id.owner].as_ref().unwrap()[id.local_id]
     }
 }
 
 impl<T> std::ops::IndexMut<HirId> for HirIdVec<T> {
     fn index_mut(&mut self, id: HirId) -> &mut T {
-        &mut self.map[id.owner][id.local_id]
+        &mut self.map[id.owner].as_mut().unwrap()[id.local_id]
     }
 }

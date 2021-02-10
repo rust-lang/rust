@@ -89,7 +89,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_attrs(key: LocalDefId) -> &'tcx IndexVec<ItemLocalId, &'tcx [ast::Attribute]> {
+    query hir_attrs(key: LocalDefId) -> Option<&'tcx IndexVec<ItemLocalId, &'tcx [ast::Attribute]>> {
         eval_always
         desc { |tcx| "HIR owner attributes in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
