@@ -42,7 +42,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             Node::Ty(hir_ty @ Ty { kind: TyKind::Path(QPath::TypeRelative(_, segment)), .. }) => {
                 // Walk up from the parent_node to find an item so that
                 // we can resolve the relative path to an actual associated type.
-                // For the code example above this item would be the Foo trait.
+                // For the code example above, this item would be the Foo trait.
                 let item_hir_id = tcx
                     .hir()
                     .parent_iter(hir_id)
