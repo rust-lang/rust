@@ -67,7 +67,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "arrayvec",
     "atty",
     "autocfg",
-    "backtrace",
     "bitflags",
     "block-buffer",
     "block-padding",

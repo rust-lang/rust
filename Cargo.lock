@@ -5581,7 +5581,3 @@ checksum = "39f0c922f1a334134dc2f7a8b67dc5d25f0735263feec974345ff706bcf20b0d"
 dependencies = [
  "linked-hash-map",
 ]
-
-[[patch.unused]]
-name = "backtrace"
-version = "0.3.55"
