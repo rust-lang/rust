@@ -1,4 +1,4 @@
-use crate::utils::{in_macro, meets_msrv, qpath_res, snippet_opt, span_lint_and_sugg};
+use crate::utils::{in_macro, meets_msrv, snippet_opt, span_lint_and_sugg};
 use if_chain::if_chain;
 
 use rustc_errors::Applicability;
@@ -300,7 +300,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     } = fun
                     {
                         if expr_ty_matches(cx, expr, self_ty) {
-                            let res = qpath_res(cx, qpath, fun.hir_id);
+                            let res = cx.qpath_res(qpath, fun.hir_id);
 
                             if let def::Res::Def(DefKind::Ctor(ctor_of, _), ..) = res {
                                 match ctor_of {
