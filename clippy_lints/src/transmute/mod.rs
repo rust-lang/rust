@@ -6,6 +6,7 @@ mod transmute_int_to_float;
 mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
+mod unsound_collection_transmute;
 mod useless_transmute;
 mod utils;
 mod wrong_transmute;
@@ -327,17 +328,6 @@ declare_lint_pass!(Transmute => [
     TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
 ]);
 
-// used to check for UNSOUND_COLLECTION_TRANSMUTE
-static COLLECTIONS: &[&[&str]] = &[
-    &paths::VEC,
-    &paths::VEC_DEQUE,
-    &paths::BINARY_HEAP,
-    &paths::BTREESET,
-    &paths::BTREEMAP,
-    &paths::HASHSET,
-    &paths::HASHMAP,
-];
-
 impl<'tcx> LateLintPass<'tcx> for Transmute {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
@@ -395,27 +385,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 if triggered {
                     return;
                 }
+                let triggered = unsound_collection_transmute::check(cx, e, from_ty, to_ty);
+                if triggered {
+                    return;
+                }
 
                 match (&from_ty.kind(), &to_ty.kind()) {
-                    (ty::Adt(from_adt, from_substs), ty::Adt(to_adt, to_substs)) => {
-                        if from_adt.did != to_adt.did ||
-                                !COLLECTIONS.iter().any(|path| match_def_path(cx, to_adt.did, path)) {
-                            return;
-                        }
-                        if from_substs.types().zip(to_substs.types())
-                                              .any(|(from_ty, to_ty)| is_layout_incompatible(cx, from_ty, to_ty)) {
-                            span_lint(
-                                cx,
-                                UNSOUND_COLLECTION_TRANSMUTE,
-                                e.span,
-                                &format!(
-                                    "transmute from `{}` to `{}` with mismatched layout is unsound",
-                                    from_ty,
-                                    to_ty
-                                )
-                            );
-                        }
-                    },
                     (_, _) if can_be_expressed_as_pointer_cast(cx, e, from_ty, to_ty) => span_lint_and_then(
                         cx,
                         TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
