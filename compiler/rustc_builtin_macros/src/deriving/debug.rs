@@ -77,7 +77,8 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
             // tuple struct/"normal" variant
             let fn_path_debug_tuple = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_tuple]);
             let expr = cx.expr_call_global(span, fn_path_debug_tuple, vec![fmt, name]);
-            stmts.push(cx.stmt_let(span, true, builder, expr));
+            let expr = make_mut_borrow(cx, span, expr);
+            stmts.push(cx.stmt_let(span, false, builder, expr));
 
             for field in fields {
                 // Use double indirection to make sure this works for unsized types
@@ -85,8 +86,8 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 let field = cx.expr_addr_of(field.span, field);
 
                 let fn_path_field = cx.std_path(&[sym::fmt, sym::DebugTuple, sym::field]);
-                let builder_recv = make_mut_borrow(cx, span, builder_expr.clone());
-                let expr = cx.expr_call_global(span, fn_path_field, vec![builder_recv, field]);
+                let expr =
+                    cx.expr_call_global(span, fn_path_field, vec![builder_expr.clone(), field]);
 
                 // Use `let _ = expr;` to avoid triggering the
                 // unused_results lint.
@@ -99,7 +100,8 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
             // normal struct/struct variant
             let fn_path_debug_struct = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_struct]);
             let expr = cx.expr_call_global(span, fn_path_debug_struct, vec![fmt, name]);
-            stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
+            let expr = make_mut_borrow(cx, span, expr);
+            stmts.push(cx.stmt_let(DUMMY_SP, false, builder, expr));
 
             for field in fields {
                 let name = cx.expr_lit(
@@ -111,17 +113,18 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 let fn_path_field = cx.std_path(&[sym::fmt, sym::DebugStruct, sym::field]);
                 let field = cx.expr_addr_of(field.span, field.self_.clone());
                 let field = cx.expr_addr_of(field.span, field);
-                let builder_recv = make_mut_borrow(cx, span, builder_expr.clone());
-                let expr =
-                    cx.expr_call_global(span, fn_path_field, vec![builder_recv, name, field]);
+                let expr = cx.expr_call_global(
+                    span,
+                    fn_path_field,
+                    vec![builder_expr.clone(), name, field],
+                );
                 stmts.push(stmt_let_underscore(cx, span, expr));
             }
             fn_path_finish = cx.std_path(&[sym::fmt, sym::DebugStruct, sym::finish]);
         }
     }
 
-    let builder_recv = make_mut_borrow(cx, span, builder_expr);
-    let expr = cx.expr_call_global(span, fn_path_finish, vec![builder_recv]);
+    let expr = cx.expr_call_global(span, fn_path_finish, vec![builder_expr]);
 
     stmts.push(cx.stmt_expr(expr));
     let block = cx.block(span, stmts);
