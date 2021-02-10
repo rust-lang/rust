@@ -1,5 +1,6 @@
 mod useless_transmute;
 mod utils;
+mod wrong_transmute;
 
 use utils::*;
 
@@ -350,14 +351,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 if triggered {
                     return;
                 }
+                let triggered = wrong_transmute::check(cx, e, from_ty, to_ty);
+                if triggered {
+                    return;
+                }
 
                 match (&from_ty.kind(), &to_ty.kind()) {
-                    (ty::Float(_) | ty::Char, ty::Ref(..) | ty::RawPtr(_)) => span_lint(
-                        cx,
-                        WRONG_TRANSMUTE,
-                        e.span,
-                        &format!("transmute from a `{}` to a pointer", from_ty),
-                    ),
                     (ty::RawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
                         cx,
                         CROSSPOINTER_TRANSMUTE,
