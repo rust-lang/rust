@@ -29,20 +29,28 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
         let parent_node = tcx.hir().get(parent_node_id);
 
         match parent_node {
-            // This matches on types who's paths couldn't be resolved without typeck'ing e.g.
+            // This match arm is for when the def_id appears in a GAT whose
+            // path can't be resolved without typechecking e.g.
             //
             // trait Foo {
-            //   type Assoc<const N1: usize>;
+            //   type Assoc<const N: usize>;
             //   fn foo() -> Self::Assoc<3>;
-            //   // note: if the def_id argument is the 3 then in this example
-            //   // parent_node would be the node for Self::Assoc<_>
             // }
-            // We didnt write <Self as Foo>::Assoc so the Self::Assoc<_> is lowered to QPath::TypeRelative.
+            //
+            // In the above code we would call this query with the def_id of 3 and
+            // the parent_node we match on would be the hir node for Self::Assoc<3>
+            //
+            // `Self::Assoc<3>` cant be resolved without typchecking here as we
+            // didnt write <Self as Foo>::Assoc<3>. If we did then another match
+            // arm would handle this.
+            //
             // I believe this match arm is only needed for GAT but I am not 100% sure - BoxyUwU
             Node::Ty(hir_ty @ Ty { kind: TyKind::Path(QPath::TypeRelative(_, segment)), .. }) => {
-                // Walk up from the parent_node to find an item so that
-                // we can resolve the relative path to an actual associated type.
-                // For the code example above, this item would be the Foo trait.
+                // Find the Item containing the associated type so we can create an ItemCtxt.
+                // Using the ItemCtxt convert the HIR for the unresolved assoc type into a
+                // ty which is a fully resolved projection.
+                // For the code example above, this would mean converting Self::Assoc<3>
+                // into a ty::Projection(<Self as Foo>::Assoc<3>)
                 let item_hir_id = tcx
                     .hir()
                     .parent_iter(hir_id)
@@ -52,11 +60,12 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     .unwrap();
                 let item_did = tcx.hir().local_def_id(item_hir_id).to_def_id();
                 let item_ctxt = &ItemCtxt::new(tcx, item_did) as &dyn crate::astconv::AstConv<'_>;
-
-                // This ty will be the actual associated type so that we can
-                // go through its generics to find which param our def_id corresponds to.
-                // For the code example above, this ty would be the Assoc<const N1: usize>.
                 let ty = item_ctxt.ast_ty_to_ty(hir_ty);
+
+                // Iterate through the generics of the projection to find the one that corresponds to
+                // the def_id that this query was called with. We filter to only const args here as a
+                // precaution for if it's ever allowed to elide lifetimes in GAT's. It currently isn't
+                // but it can't hurt to be safe ^^
                 if let ty::Projection(projection) = ty.kind() {
                     let generics = tcx.generics_of(projection.item_def_id);
 
