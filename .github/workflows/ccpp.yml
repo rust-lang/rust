@@ -3,10 +3,10 @@ name: C/C++ CI
 on: 
   push:
     branches:
-    - master
+    - main
   pull_request:
     branches:
-    - master
+    - main
 
 jobs:
   build:
@@ -29,7 +29,7 @@ jobs:
           sudo apt-get install -y autoconf cmake gcc g++ libtool gfortran llvm-${{ matrix.llvm }}-dev libomp-${{ matrix.llvm }}-dev clang-${{ matrix.llvm }} libeigen3-dev libboost-dev
           sudo pip install lit
           sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v1
       with:
           fetch-depth: 1
     - name: mkdir
