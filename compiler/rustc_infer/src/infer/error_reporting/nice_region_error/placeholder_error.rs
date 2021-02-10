@@ -118,9 +118,9 @@ impl NiceRegionError<'me, 'tcx> {
                 sub_region @ ty::RePlaceholder(_),
                 sup_region,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(sup_region),
+                (!sup_region.has_name()).then_some(sup_region),
                 cause,
-                Some(*sub_region),
+                Some(sub_region),
                 None,
                 values,
             ),
@@ -130,10 +130,10 @@ impl NiceRegionError<'me, 'tcx> {
                 sub_region,
                 sup_region @ ty::RePlaceholder(_),
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(sub_region),
+                (!sub_region.has_name()).then_some(sub_region),
                 cause,
                 None,
-                Some(*sup_region),
+                Some(sup_region),
                 values,
             ),
 

@@ -30,8 +30,8 @@ error: implementation of `FnOnce` is not general enough
 LL |     type Bar = impl Baz<Self, Self>;
    |                ^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: closure with signature `fn(&'2 X) -> &'2 X` must implement `FnOnce<(&'1 X,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 X,)>`, for some specific lifetime `'2`
+   = note: closure with signature `fn(&'static X) -> &'static X` must implement `FnOnce<(&'0 X,)>`, for any lifetime `'0`...
+   = note: ...but it actually implements `FnOnce<(&'static X,)>`
 
 error: aborting due to 4 previous errors
 
