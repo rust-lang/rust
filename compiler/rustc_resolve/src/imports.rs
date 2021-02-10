@@ -18,11 +18,10 @@ use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir::def::{self, PartialRes};
 use rustc_hir::def_id::DefId;
 use rustc_middle::hir::exports::Export;
+use rustc_middle::span_bug;
 use rustc_middle::ty;
-use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_session::DiagnosticMessageId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -456,13 +455,13 @@ impl<'a> Resolver<'a> {
         binding: &'a NameBinding<'a>,
         import: &'a Import<'a>,
     ) -> &'a NameBinding<'a> {
-        let vis = if binding.pseudo_vis().is_at_least(import.vis.get(), self) ||
+        let vis = if binding.vis.is_at_least(import.vis.get(), self) ||
                      // cf. `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
                      !import.is_glob() && binding.is_extern_crate()
         {
             import.vis.get()
         } else {
-            binding.pseudo_vis()
+            binding.vis
         };
 
         if let ImportKind::Glob { ref max_vis, .. } = import.kind {
@@ -1178,7 +1177,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         self.r.per_ns(|this, ns| {
             if let Ok(binding) = source_bindings[ns].get() {
                 let vis = import.vis.get();
-                if !binding.pseudo_vis().is_at_least(vis, &*this) {
+                if !binding.vis.is_at_least(vis, &*this) {
                     reexport_error = Some((ns, binding));
                 } else {
                     any_successful_reexport = true;
@@ -1362,7 +1361,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 Some(None) => import.parent_scope.module,
                 None => continue,
             };
-            if self.r.is_accessible_from(binding.pseudo_vis(), scope) {
+            if self.r.is_accessible_from(binding.vis, scope) {
                 let imported_binding = self.r.import(binding, import);
                 let _ = self.r.try_define(import.parent_scope.module, key, imported_binding);
             }
@@ -1380,9 +1379,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         let mut reexports = Vec::new();
 
-        module.for_each_child(self.r, |this, ident, ns, binding| {
-            // Filter away ambiguous imports and anything that has def-site
-            // hygiene.
+        module.for_each_child(self.r, |this, ident, _, binding| {
+            // Filter away ambiguous imports and anything that has def-site hygiene.
             // FIXME: Implement actual cross-crate hygiene.
             let is_good_import =
                 binding.is_import() && !binding.is_ambiguity() && !ident.span.from_expansion();
@@ -1390,71 +1388,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let res = binding.res().map_id(|id| this.local_def_id(id));
                 if res != def::Res::Err {
                     reexports.push(Export { ident, res, span: binding.span, vis: binding.vis });
-                }
-            }
-
-            if let NameBindingKind::Import { binding: orig_binding, import, .. } = binding.kind {
-                if ns == TypeNS
-                    && orig_binding.is_variant()
-                    && !orig_binding.vis.is_at_least(binding.vis, &*this)
-                {
-                    let msg = match import.kind {
-                        ImportKind::Single { .. } => {
-                            format!("variant `{}` is private and cannot be re-exported", ident)
-                        }
-                        ImportKind::Glob { .. } => {
-                            let msg = "enum is private and its variants \
-                                           cannot be re-exported"
-                                .to_owned();
-                            let error_id = (
-                                DiagnosticMessageId::ErrorId(0), // no code?!
-                                Some(binding.span),
-                                msg.clone(),
-                            );
-                            let fresh =
-                                this.session.one_time_diagnostics.borrow_mut().insert(error_id);
-                            if !fresh {
-                                return;
-                            }
-                            msg
-                        }
-                        ref s => bug!("unexpected import kind {:?}", s),
-                    };
-                    let mut err = this.session.struct_span_err(binding.span, &msg);
-
-                    let imported_module = match import.imported_module.get() {
-                        Some(ModuleOrUniformRoot::Module(module)) => module,
-                        _ => bug!("module should exist"),
-                    };
-                    let parent_module = imported_module.parent.expect("parent should exist");
-                    let resolutions = this.resolutions(parent_module).borrow();
-                    let enum_path_segment_index = import.module_path.len() - 1;
-                    let enum_ident = import.module_path[enum_path_segment_index].ident;
-
-                    let key = this.new_key(enum_ident, TypeNS);
-                    let enum_resolution = resolutions.get(&key).expect("resolution should exist");
-                    let enum_span =
-                        enum_resolution.borrow().binding.expect("binding should exist").span;
-                    let enum_def_span = this.session.source_map().guess_head_span(enum_span);
-                    let enum_def_snippet = this
-                        .session
-                        .source_map()
-                        .span_to_snippet(enum_def_span)
-                        .expect("snippet should exist");
-                    // potentially need to strip extant `crate`/`pub(path)` for suggestion
-                    let after_vis_index = enum_def_snippet
-                        .find("enum")
-                        .expect("`enum` keyword should exist in snippet");
-                    let suggestion = format!("pub {}", &enum_def_snippet[after_vis_index..]);
-
-                    this.session.diag_span_suggestion_once(
-                        &mut err,
-                        DiagnosticMessageId::ErrorId(0),
-                        enum_def_span,
-                        "consider making the enum public",
-                        suggestion,
-                    );
-                    err.emit();
                 }
             }
         });
