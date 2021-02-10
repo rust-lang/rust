@@ -26,7 +26,7 @@ pub(super) fn lints<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'
                 BYTES_NTH,
                 expr.span,
                 &format!("called `.byte().nth()` on a `{}`", caller_type),
-                "try calling `.as_bytes().get()`",
+                "try",
                 format!(
                     "{}.as_bytes().get({})",
                     snippet_with_applicability(cx, iter_args[0].span, "..", &mut applicability),
