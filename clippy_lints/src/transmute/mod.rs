@@ -1,4 +1,5 @@
 mod crosspointer_transmute;
+mod transmute_ptr_to_ref;
 mod useless_transmute;
 mod utils;
 mod wrong_transmute;
@@ -360,39 +361,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 if triggered {
                     return;
                 }
+                let triggered = transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, args, qpath);
+                if triggered {
+                    return;
+                }
 
                 match (&from_ty.kind(), &to_ty.kind()) {
-                    (ty::RawPtr(from_pty), ty::Ref(_, to_ref_ty, mutbl)) => span_lint_and_then(
-                        cx,
-                        TRANSMUTE_PTR_TO_REF,
-                        e.span,
-                        &format!(
-                            "transmute from a pointer type (`{}`) to a reference type \
-                             (`{}`)",
-                            from_ty, to_ty
-                        ),
-                        |diag| {
-                            let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                            let (deref, cast) = if *mutbl == Mutability::Mut {
-                                ("&mut *", "*mut")
-                            } else {
-                                ("&*", "*const")
-                            };
-
-                            let arg = if from_pty.ty == *to_ref_ty {
-                                arg
-                            } else {
-                                arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty)))
-                            };
-
-                            diag.span_suggestion(
-                                e.span,
-                                "try",
-                                sugg::make_unop(deref, arg).to_string(),
-                                Applicability::Unspecified,
-                            );
-                        },
-                    ),
                     (ty::Int(ty::IntTy::I32) | ty::Uint(ty::UintTy::U32), &ty::Char) => {
                         span_lint_and_then(
                             cx,
