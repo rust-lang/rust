@@ -128,13 +128,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         throw `Unexpected runnable kind: ${runnable.kind}`;
     }
 
-    const args = [...runnable.args.cargoArgs]; // should be a copy!
-    if (runnable.args.cargoExtraArgs) {
-        args.push(...runnable.args.cargoExtraArgs); // Append user-specified cargo options.
-    }
-    if (runnable.args.executableArgs.length > 0) {
-        args.push('--', ...runnable.args.executableArgs);
-    }
+    const args = createArgs(runnable);
 
     const definition: tasks.CargoTaskDefinition = {
         type: tasks.TASK_TYPE,
@@ -151,4 +145,15 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
     cargoTask.presentationOptions.clear = true;
 
     return cargoTask;
+}
+
+export function createArgs(runnable: ra.Runnable): string[] {
+    const args = [...runnable.args.cargoArgs]; // should be a copy!
+    if (runnable.args.cargoExtraArgs) {
+        args.push(...runnable.args.cargoExtraArgs); // Append user-specified cargo options.
+    }
+    if (runnable.args.executableArgs.length > 0) {
+        args.push('--', ...runnable.args.executableArgs);
+    }
+    return args;
 }
