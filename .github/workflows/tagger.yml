@@ -1,6 +1,9 @@
 name: Tag CI
 
-on: [release]
+on:
+  release:
+    types:
+      - created
 
 jobs:
   build:
@@ -44,6 +47,7 @@ jobs:
         token: ${{ steps.generate_token.outputs.token }}
         reviewers: vchuravy
         branch: enzyme/${{ github.ref }}
+        body: "Automatic PR generated for https://github.com/wsmoses/Enzyme "
     - name: Check outputs
       run: |
         echo "Pull Request Number - ${{ steps.cpr.outputs.pull-request-number }}"
