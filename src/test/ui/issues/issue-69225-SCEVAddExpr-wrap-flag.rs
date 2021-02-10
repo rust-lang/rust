@@ -1,5 +1,5 @@
 // run-fail
-// compile-flags: -C opt-level=3
+// compile-flags: -C opt-level=3 -Ccodegen-units=1
 // error-pattern: index out of bounds: the len is 0 but the index is 16777216
 // ignore-wasm no panic or subprocess support
 // ignore-emscripten no panic or subprocess support
