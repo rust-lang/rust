@@ -1828,8 +1828,60 @@ impl<T, A: Allocator> Vec<T, A> {
         self.split_at_spare_mut().1
     }
 
+    /// Returns vector content as a slice of `T`, along with the remaining spare
+    /// capacity of the vector as a slice of `MaybeUninit<T>`.
+    ///
+    /// The returned spare capacity slice can be used to fill the vector with data
+    /// (e.g. by reading from a file) before marking the data as initialized using
+    /// the [`set_len`] method.
+    ///
+    /// [`set_len`]: Vec::set_len
+    ///
+    /// Note that this is a low-level API, which should be used with care for
+    /// optimization purposes. If you need to append data to a `Vec`
+    /// you can use [`push`], [`extend`], [`extend_from_slice`],
+    /// [`extend_from_within`], [`insert`], [`append`], [`resize`] or
+    /// [`resize_with`], depending on your exact needs.
+    ///
+    /// [`push`]: Vec::push
+    /// [`extend`]: Vec::extend
+    /// [`extend_from_slice`]: Vec::extend_from_slice
+    /// [`extend_from_within`]: Vec::extend_from_within
+    /// [`insert`]: Vec::insert
+    /// [`append`]: Vec::append
+    /// [`resize`]: Vec::resize
+    /// [`resize_with`]: Vec::resize_with
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_split_at_spare, maybe_uninit_extra)]
+    ///
+    /// let mut v = vec![1, 1, 2];
+    ///
+    /// // Reserve additional space big enough for 10 elements.
+    /// v.reserve(10);
+    ///
+    /// let (init, uninit) = v.split_at_spare_mut();
+    /// let sum = init.iter().copied().sum::<u32>();
+    ///
+    /// // Fill in the next 4 elements.
+    /// uninit[0].write(sum);
+    /// uninit[1].write(sum * 2);
+    /// uninit[2].write(sum * 3);
+    /// uninit[3].write(sum * 4);
+    ///
+    /// // Mark the 4 elements of the vector as being initialized.
+    /// unsafe {
+    ///     let len = v.len();
+    ///     v.set_len(len + 4);
+    /// }
+    ///
+    /// assert_eq!(&v, &[1, 1, 2, 4, 8, 12, 16]);
+    /// ```
+    #[unstable(feature = "vec_split_at_spare", issue = "81944")]
     #[inline]
-    fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
+    pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
         let ptr = self.as_mut_ptr();
 
         // Safety:
