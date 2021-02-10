@@ -62,6 +62,7 @@ struct ClippyWarning {
     column: String,
     linttype: String,
     message: String,
+    ice: bool,
 }
 
 impl std::fmt::Display for ClippyWarning {
@@ -209,8 +210,8 @@ impl Crate {
         let output_lines = stdout.lines();
         let warnings: Vec<ClippyWarning> = output_lines
             .into_iter()
-            // get all clippy warnings
-            .filter(|line| line.contains("clippy::"))
+            // get all clippy warnings and ICEs
+            .filter(|line| line.contains("clippy::") || line.contains("internal compiler error: "))
             .map(|json_msg| parse_json_message(json_msg, &self))
             .collect();
         warnings
@@ -306,6 +307,7 @@ fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
             .into(),
         linttype: jmsg["message"]["code"]["code"].to_string().trim_matches('"').into(),
         message: jmsg["message"]["message"].to_string().trim_matches('"').into(),
+        ice: json_message.contains("internal compiler error: "),
     }
 }
 
@@ -372,6 +374,13 @@ pub fn run(clap_config: &ArgMatches) {
 
     // generate some stats:
 
+    // grab crashes/ICEs, save the crate name and the ice message
+    let ices: Vec<(&String, &String)> = clippy_warnings
+        .iter()
+        .filter(|warning| warning.ice)
+        .map(|w| (&w.crate_name, &w.message))
+        .collect();
+
     // count lint type occurrences
     let mut counter: HashMap<&String, usize> = HashMap::new();
     clippy_warnings
@@ -397,6 +406,10 @@ pub fn run(clap_config: &ArgMatches) {
     // save the text into lintcheck-logs/logs.txt
     let mut text = clippy_ver; // clippy version number on top
     text.push_str(&format!("\n{}", all_msgs.join("")));
+    text.push_str("ICEs:\n");
+    ices.iter()
+        .for_each(|(cratename, msg)| text.push_str(&format!("{}: '{}'", cratename, msg)));
+
     let file = format!("lintcheck-logs/{}_logs.txt", filename);
     write(file, text).unwrap();
 }
