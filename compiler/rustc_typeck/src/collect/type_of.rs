@@ -32,7 +32,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // This matches on types who's paths couldn't be resolved without typeck'ing e.g.
             //
             // trait Foo {
-            //   type Assoc<const N1: usize>;;
+            //   type Assoc<const N1: usize>;
             //   fn foo() -> Self::Assoc<3>;
             //   // note: if the def_id argument is the 3 then in this example
             //   // parent_node would be the node for Self::Assoc<_>
@@ -41,7 +41,8 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // I believe this match arm is only needed for GAT but I am not 100% sure - BoxyUwU
             Node::Ty(hir_ty @ Ty { kind: TyKind::Path(QPath::TypeRelative(_, segment)), .. }) => {
                 // Walk up from the parent_node to find an item so that
-                // we can resolve the relative path to an actual associated type
+                // we can resolve the relative path to an actual associated type.
+                // For the code example above this item would be the Foo trait.
                 let item_hir_id = tcx
                     .hir()
                     .parent_iter(hir_id)
@@ -53,7 +54,8 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 let item_ctxt = &ItemCtxt::new(tcx, item_did) as &dyn crate::astconv::AstConv<'_>;
 
                 // This ty will be the actual associated type so that we can
-                // go through its generics to find which param our def_id corresponds to
+                // go through its generics to find which param our def_id corresponds to.
+                // For the code example above, this ty would be the Assoc<const N1: usize>.
                 let ty = item_ctxt.ast_ty_to_ty(hir_ty);
                 if let ty::Projection(projection) = ty.kind() {
                     let generics = tcx.generics_of(projection.item_def_id);
