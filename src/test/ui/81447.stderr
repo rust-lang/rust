@@ -1,0 +1,15 @@
+error[E0423]: cannot initialize a tuple struct which contains private fields
+  --> $DIR/81447.rs:13:9
+   |
+LL |         Test(self)
+   |         ^^^^
+   |
+note: constructor is not visible here due to private fields
+  --> $DIR/81447.rs:2:32
+   |
+LL |     pub struct Test<T: ?Sized>(T);
+   |                                ^ private field
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0423`.

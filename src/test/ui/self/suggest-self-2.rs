@@ -18,7 +18,7 @@ impl Foo {
         //~^ ERROR cannot find function `bar` in this scope
 
         self.bar();
-        //~^ ERROR no method named `bar` found for reference
+        //~^ ERROR no method named `bar` found for reference `&Foo` in the current scope
     }
 }
 
