@@ -1503,7 +1503,7 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// // Bad
-    /// let _ = "Hello".bytes().nth(3);;
+    /// let _ = "Hello".bytes().nth(3);
     ///
     /// // Good
     /// let _ = "Hello".as_bytes().get(3);
