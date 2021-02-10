@@ -1043,6 +1043,10 @@ impl<'a> ExtCtxt<'a> {
             .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()
     }
+    pub fn def_site_path(&self, components: &[Symbol]) -> Vec<Ident> {
+        let def_site = self.with_def_site_ctxt(DUMMY_SP);
+        components.iter().map(|&s| Ident::new(s, def_site)).collect()
+    }
 
     pub fn check_unused_macros(&mut self) {
         self.resolver.check_unused_macros();

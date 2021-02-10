@@ -107,9 +107,11 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
             } else {
-                let lft = cx.expr_ident(span, tag_tuple[0]);
+                let lft = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[0]));
                 let rgt = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[1]));
-                cx.expr_method_call(span, lft, Ident::new(sym::partial_cmp, span), vec![rgt])
+                let fn_partial_cmp_path =
+                    cx.std_path(&[sym::cmp, sym::PartialOrd, sym::partial_cmp]);
+                cx.expr_call_global(span, fn_partial_cmp_path, vec![lft, rgt])
             }
         }),
         cx,
