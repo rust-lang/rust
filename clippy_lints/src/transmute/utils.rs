@@ -68,12 +68,7 @@ pub(super) fn can_be_expressed_as_pointer_cast<'tcx>(
 /// the cast. In certain cases, including some invalid casts from array references
 /// to pointers, this may cause additional errors to be emitted and/or ICE error
 /// messages. This function will panic if that occurs.
-pub(super) fn check_cast<'tcx>(
-    cx: &LateContext<'tcx>,
-    e: &'tcx Expr<'_>,
-    from_ty: Ty<'tcx>,
-    to_ty: Ty<'tcx>,
-) -> Option<CastKind> {
+fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> Option<CastKind> {
     let hir_id = e.hir_id;
     let local_def_id = hir_id.owner;
 
