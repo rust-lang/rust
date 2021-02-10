@@ -299,7 +299,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             }
         }
 
-        hir::ExprKind::Unary(hir::UnOp::UnDeref, ref arg) => {
+        hir::ExprKind::Unary(hir::UnOp::Deref, ref arg) => {
             if cx.typeck_results().is_method_call(expr) {
                 overloaded_place(cx, expr, expr_ty, None, vec![arg.to_ref()], expr.span)
             } else {
@@ -307,7 +307,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             }
         }
 
-        hir::ExprKind::Unary(hir::UnOp::UnNot, ref arg) => {
+        hir::ExprKind::Unary(hir::UnOp::Not, ref arg) => {
             if cx.typeck_results().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![arg.to_ref()])
             } else {
@@ -315,7 +315,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             }
         }
 
-        hir::ExprKind::Unary(hir::UnOp::UnNeg, ref arg) => {
+        hir::ExprKind::Unary(hir::UnOp::Neg, ref arg) => {
             if cx.typeck_results().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![arg.to_ref()])
             } else if let hir::ExprKind::Lit(ref lit) = arg.kind {

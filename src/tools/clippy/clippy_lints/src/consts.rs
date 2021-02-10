@@ -242,9 +242,9 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
             },
             ExprKind::Unary(op, ref operand) => self.expr(operand).and_then(|o| match op {
-                UnOp::UnNot => self.constant_not(&o, self.typeck_results.expr_ty(e)),
-                UnOp::UnNeg => self.constant_negate(&o, self.typeck_results.expr_ty(e)),
-                UnOp::UnDeref => Some(if let Constant::Ref(r) = o { *r } else { o }),
+                UnOp::Not => self.constant_not(&o, self.typeck_results.expr_ty(e)),
+                UnOp::Neg => self.constant_negate(&o, self.typeck_results.expr_ty(e)),
+                UnOp::Deref => Some(if let Constant::Ref(r) = o { *r } else { o }),
             }),
             ExprKind::If(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, *otherwise),
             ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),

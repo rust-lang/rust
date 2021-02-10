@@ -55,7 +55,7 @@ impl<'tcx> Const<'tcx> {
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => match expr.kind {
+            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
                 hir::ExprKind::Lit(ref lit) => {
                     Some(LitToConstInput { lit: &lit.node, ty, neg: true })
                 }

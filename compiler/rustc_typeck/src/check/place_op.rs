@@ -203,7 +203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         while let hir::ExprKind::Field(ref expr, _)
         | hir::ExprKind::Index(ref expr, _)
-        | hir::ExprKind::Unary(hir::UnOp::UnDeref, ref expr) = exprs.last().unwrap().kind
+        | hir::ExprKind::Unary(hir::UnOp::Deref, ref expr) = exprs.last().unwrap().kind
         {
             exprs.push(&expr);
         }
@@ -216,7 +216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("convert_place_derefs_to_mutable: i={} expr={:?}", i, expr);
 
             let mut source = self.node_ty(expr.hir_id);
-            if matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::UnDeref, _)) {
+            if matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Deref, _)) {
                 // Clear previous flag; after a pointer indirection it does not apply any more.
                 inside_union = false;
             }
@@ -270,7 +270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::ExprKind::Index(ref base_expr, ..) => {
                     self.convert_place_op_to_mutable(PlaceOp::Index, expr, base_expr);
                 }
-                hir::ExprKind::Unary(hir::UnOp::UnDeref, ref base_expr) => {
+                hir::ExprKind::Unary(hir::UnOp::Deref, ref base_expr) => {
                     self.convert_place_op_to_mutable(PlaceOp::Deref, expr, base_expr);
                 }
                 _ => {}
