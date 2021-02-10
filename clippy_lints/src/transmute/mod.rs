@@ -1,3 +1,4 @@
+mod crosspointer_transmute;
 mod useless_transmute;
 mod utils;
 mod wrong_transmute;
@@ -355,26 +356,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 if triggered {
                     return;
                 }
+                let triggered = crosspointer_transmute::check(cx, e, from_ty, to_ty);
+                if triggered {
+                    return;
+                }
 
                 match (&from_ty.kind(), &to_ty.kind()) {
-                    (ty::RawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
-                        cx,
-                        CROSSPOINTER_TRANSMUTE,
-                        e.span,
-                        &format!(
-                            "transmute from a type (`{}`) to the type that it points to (`{}`)",
-                            from_ty, to_ty
-                        ),
-                    ),
-                    (_, ty::RawPtr(to_ptr)) if to_ptr.ty == from_ty => span_lint(
-                        cx,
-                        CROSSPOINTER_TRANSMUTE,
-                        e.span,
-                        &format!(
-                            "transmute from a type (`{}`) to a pointer to that type (`{}`)",
-                            from_ty, to_ty
-                        ),
-                    ),
                     (ty::RawPtr(from_pty), ty::Ref(_, to_ref_ty, mutbl)) => span_lint_and_then(
                         cx,
                         TRANSMUTE_PTR_TO_REF,
