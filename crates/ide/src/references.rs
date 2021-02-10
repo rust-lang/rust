@@ -1114,4 +1114,27 @@ trait Foo {
             "#]],
         );
     }
+
+    #[test]
+    fn test_self_variant_with_payload() {
+        check(
+            r#"
+enum Foo { Bar() }
+
+impl Foo {
+    fn foo(self) {
+        match self {
+            Self::Bar$0() => (),
+        }
+    }
+}
+
+"#,
+            expect![[r#"
+                Bar Variant FileId(0) 11..16 11..14 Other
+
+                FileId(0) 89..92 Other
+            "#]],
+        );
+    }
 }
