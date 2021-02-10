@@ -62,7 +62,9 @@ function parseSnippet(snip: string): [string, [number, number]] | undefined {
     const m = snip.match(/\$(0|\{0:([^}]*)\})/);
     if (!m) return undefined;
     const placeholder = m[2] ?? "";
-    const range: [number, number] = [m.index!!, placeholder.length];
+    if (m.index == null)
+        return undefined;
+    const range: [number, number] = [m.index, placeholder.length];
     const insert = snip.replace(m[0], placeholder);
     return [insert, range];
 }

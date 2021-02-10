@@ -76,7 +76,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     // This a horribly, horribly wrong way to deal with this problem.
     ctx = await Ctx.create(config, context, serverPath, workspaceFolder.uri.fsPath);
 
-    setContextValue(RUST_PROJECT_CONTEXT_NAME, true);
+    await setContextValue(RUST_PROJECT_CONTEXT_NAME, true);
 
     // Commands which invokes manually via command palette, shortcut, etc.
 
@@ -142,7 +142,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
 }
 
 export async function deactivate() {
-    setContextValue(RUST_PROJECT_CONTEXT_NAME, undefined);
+    await setContextValue(RUST_PROJECT_CONTEXT_NAME, undefined);
     await ctx?.client.stop();
     ctx = undefined;
 }
@@ -183,10 +183,10 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
 
     const release = await downloadWithRetryDialog(state, async () => {
         return await fetchRelease("nightly", state.githubToken);
-    }).catch((e) => {
+    }).catch(async (e) => {
         log.error(e);
         if (state.releaseId === undefined) { // Show error only for the initial download
-            vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly ${e}`);
+            await vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly ${e}`);
         }
         return undefined;
     });
@@ -298,7 +298,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     };
     const platform = platforms[`${process.arch} ${process.platform}`];
     if (platform === undefined) {
-        vscode.window.showErrorMessage(
+        await vscode.window.showErrorMessage(
             "Unfortunately we don't ship binaries for your platform yet. " +
             "You need to manually clone rust-analyzer repository and " +
             "run `cargo xtask install --server` to build the language server from sources. " +
@@ -433,6 +433,7 @@ function warnAboutExtensionConflicts() {
         vscode.window.showWarningMessage(
             `You have both the ${fst[0]} (${fst[1]}) and ${sec[0]} (${sec[1]}) ` +
             "plugins enabled. These are known to conflict and cause various functions of " +
-            "both plugins to not work correctly. You should disable one of them.", "Got it");
+            "both plugins to not work correctly. You should disable one of them.", "Got it")
+            .then(() => { }, console.error);
     };
 }

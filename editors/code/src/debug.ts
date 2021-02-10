@@ -77,7 +77,7 @@ async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<v
     }
 
     if (!debugEngine) {
-        vscode.window.showErrorMessage(`Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)`
+        await vscode.window.showErrorMessage(`Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)`
             + ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) extension for debugging.`);
         return;
     }
@@ -86,12 +86,14 @@ async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<v
     if (ctx.config.debug.openDebugPane) {
         debugOutput.show(true);
     }
-
-    const isMultiFolderWorkspace = vscode.workspace.workspaceFolders!.length > 1;
-    const firstWorkspace = vscode.workspace.workspaceFolders![0]; // folder exists or RA is not active.
+    // folder exists or RA is not active.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const workspaceFolders = vscode.workspace.workspaceFolders!;
+    const isMultiFolderWorkspace = workspaceFolders.length > 1;
+    const firstWorkspace = workspaceFolders[0];
     const workspace = !isMultiFolderWorkspace || !runnable.args.workspaceRoot ?
         firstWorkspace :
-        vscode.workspace.workspaceFolders!.find(w => runnable.args.workspaceRoot?.includes(w.uri.fsPath)) || firstWorkspace;
+        workspaceFolders.find(w => runnable.args.workspaceRoot?.includes(w.uri.fsPath)) || firstWorkspace;
 
     const wsFolder = path.normalize(workspace.uri.fsPath);
     const workspaceQualifier = isMultiFolderWorkspace ? `:${workspace.name}` : '';

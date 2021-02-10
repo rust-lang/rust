@@ -222,8 +222,9 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         path: &ast::Path,
     ) -> Option<PathResolution> {
+        let parent = || path.syntax().parent();
         let mut prefer_value_ns = false;
-        if let Some(path_expr) = path.syntax().parent().and_then(ast::PathExpr::cast) {
+        if let Some(path_expr) = parent().and_then(ast::PathExpr::cast) {
             let expr_id = self.expr_id(db, &path_expr.into())?;
             let infer = self.infer.as_ref()?;
             if let Some(assoc) = infer.assoc_resolutions_for_expr(expr_id) {
@@ -237,7 +238,7 @@ impl SourceAnalyzer {
             prefer_value_ns = true;
         }
 
-        if let Some(path_pat) = path.syntax().parent().and_then(ast::PathPat::cast) {
+        if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
             let pat_id = self.pat_id(&path_pat.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
                 return Some(PathResolution::AssocItem(assoc.into()));
@@ -249,7 +250,7 @@ impl SourceAnalyzer {
             }
         }
 
-        if let Some(rec_lit) = path.syntax().parent().and_then(ast::RecordExpr::cast) {
+        if let Some(rec_lit) = parent().and_then(ast::RecordExpr::cast) {
             let expr_id = self.expr_id(db, &rec_lit.into())?;
             if let Some(VariantId::EnumVariantId(variant)) =
                 self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
@@ -258,8 +259,12 @@ impl SourceAnalyzer {
             }
         }
 
-        if let Some(rec_pat) = path.syntax().parent().and_then(ast::RecordPat::cast) {
-            let pat_id = self.pat_id(&rec_pat.into())?;
+        if let Some(pat) = parent()
+            .and_then(ast::RecordPat::cast)
+            .map(ast::Pat::from)
+            .or_else(|| parent().and_then(ast::TupleStructPat::cast).map(ast::Pat::from))
+        {
+            let pat_id = self.pat_id(&pat)?;
             if let Some(VariantId::EnumVariantId(variant)) =
                 self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
             {
@@ -272,7 +277,7 @@ impl SourceAnalyzer {
 
         // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we
         // trying to resolve foo::bar.
-        if let Some(outer_path) = path.syntax().parent().and_then(ast::Path::cast) {
+        if let Some(outer_path) = parent().and_then(ast::Path::cast) {
             if let Some(qualifier) = outer_path.qualifier() {
                 if path == &qualifier {
                     return resolve_hir_path_qualifier(db, &self.resolver, &hir_path);

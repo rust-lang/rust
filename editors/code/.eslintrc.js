@@ -14,7 +14,7 @@ module.exports = {
     "rules": {
         "camelcase": ["error"],
         "eqeqeq": ["error", "always", { "null": "ignore" }],
-        "no-console": ["error"],
+        "no-console": ["error", { allow: ["warn", "error"] }],
         "prefer-const": "error",
         "@typescript-eslint/member-delimiter-style": [
             "error",
@@ -33,6 +33,7 @@ module.exports = {
             "error",
             "always"
         ],
-        "@typescript-eslint/no-unnecessary-type-assertion": "error"
+        "@typescript-eslint/no-unnecessary-type-assertion": "error",
+        "@typescript-eslint/no-floating-promises": "error"
     }
 };

@@ -125,7 +125,7 @@ export function joinLines(ctx: Ctx): Cmd {
             ranges: editor.selections.map((it) => client.code2ProtocolConverter.asRange(it)),
             textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
         });
-        editor.edit((builder) => {
+        await editor.edit((builder) => {
             client.protocol2CodeConverter.asTextEdits(items).forEach((edit: any) => {
                 builder.replace(edit.range, edit.newText);
             });
@@ -236,7 +236,7 @@ export function ssr(ctx: Ctx): Cmd {
         const request = await vscode.window.showInputBox(options);
         if (!request) return;
 
-        vscode.window.withProgress({
+        await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: "Structured search replace in progress...",
             cancellable: false,
@@ -457,10 +457,10 @@ export function reloadWorkspace(ctx: Ctx): Cmd {
 }
 
 export function showReferences(ctx: Ctx): Cmd {
-    return (uri: string, position: lc.Position, locations: lc.Location[]) => {
+    return async (uri: string, position: lc.Position, locations: lc.Location[]) => {
         const client = ctx.client;
         if (client) {
-            vscode.commands.executeCommand(
+            await vscode.commands.executeCommand(
                 'editor.action.showReferences',
                 vscode.Uri.parse(uri),
                 client.protocol2CodeConverter.asPosition(position),
@@ -474,7 +474,7 @@ export function applyActionGroup(_ctx: Ctx): Cmd {
     return async (actions: { label: string; arguments: lc.CodeAction }[]) => {
         const selectedAction = await vscode.window.showQuickPick(actions);
         if (!selectedAction) return;
-        vscode.commands.executeCommand(
+        await vscode.commands.executeCommand(
             'rust-analyzer.resolveCodeAction',
             selectedAction.arguments,
         );
@@ -510,7 +510,7 @@ export function openDocs(ctx: Ctx): Cmd {
         const doclink = await client.sendRequest(ra.openDocs, { position, textDocument });
 
         if (doclink != null) {
-            vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(doclink));
+            await vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(doclink));
         }
     };
 
