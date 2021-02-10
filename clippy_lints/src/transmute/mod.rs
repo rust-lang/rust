@@ -1,6 +1,7 @@
 mod crosspointer_transmute;
 mod transmute_int_to_bool;
 mod transmute_int_to_char;
+mod transmute_int_to_float;
 mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
@@ -385,31 +386,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 if triggered {
                     return;
                 }
+                let triggered = transmute_int_to_float::check(cx, e, from_ty, to_ty, args, const_context);
+                if triggered {
+                    return;
+                }
 
                 match (&from_ty.kind(), &to_ty.kind()) {
-                    (ty::Int(_) | ty::Uint(_), ty::Float(_)) if !const_context => span_lint_and_then(
-                        cx,
-                        TRANSMUTE_INT_TO_FLOAT,
-                        e.span,
-                        &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
-                        |diag| {
-                            let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                            let arg = if let ty::Int(int_ty) = from_ty.kind() {
-                                arg.as_ty(format!(
-                                    "u{}",
-                                    int_ty.bit_width().map_or_else(|| "size".to_string(), |v| v.to_string())
-                                ))
-                            } else {
-                                arg
-                            };
-                            diag.span_suggestion(
-                                e.span,
-                                "consider using",
-                                format!("{}::from_bits({})", to_ty, arg.to_string()),
-                                Applicability::Unspecified,
-                            );
-                        },
-                    ),
                     (ty::Float(float_ty), ty::Int(_) | ty::Uint(_)) if !const_context => span_lint_and_then(
                         cx,
                         TRANSMUTE_FLOAT_TO_INT,
