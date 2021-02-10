@@ -1505,6 +1505,9 @@ fn async_opaque_type_cycle_error(tcx: TyCtxt<'tcx>, span: Span) {
     struct_span_err!(tcx.sess, span, E0733, "recursion in an `async fn` requires boxing")
         .span_label(span, "recursive `async fn`")
         .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
+        .note(
+            "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
+        )
         .emit();
 }
 
