@@ -1,4 +1,4 @@
-use crate::utils::{match_qpath, match_trait_method, paths, span_lint_and_sugg};
+use crate::utils::{match_qpath, match_trait_method, path_to_local_id, paths, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -32,12 +32,8 @@ pub(super) fn check(
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = arg_node;
             let body = cx.tcx.hir().body(*body_id);
 
-            if let hir::PatKind::Binding(_, _, binding_ident, _) = body.params[0].pat.kind;
-            if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.kind;
-
-            if path.segments.len() == 1;
-            if path.segments[0].ident.name == binding_ident.name;
-
+            if let hir::PatKind::Binding(_, binding_id, ..) = body.params[0].pat.kind;
+            if path_to_local_id(&body.value, binding_id);
             then {
                 apply_lint("called `filter_map(|x| x)` on an `Iterator`");
             }

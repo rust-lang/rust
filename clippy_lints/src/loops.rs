@@ -1893,8 +1893,8 @@ fn check_for_loop_over_map_kv<'tcx>(
             let arg_span = arg.span;
             let (new_pat_span, kind, ty, mutbl) = match *cx.typeck_results().expr_ty(arg).kind() {
                 ty::Ref(_, ty, mutbl) => match (&pat[0].kind, &pat[1].kind) {
-                    (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", ty, mutbl),
-                    (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", ty, Mutability::Not),
+                    (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value", ty, mutbl),
+                    (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key", ty, Mutability::Not),
                     _ => return,
                 },
                 _ => return,
@@ -2145,11 +2145,11 @@ fn check_for_mutation<'tcx>(
 }
 
 /// Returns `true` if the pattern is a `PatWild` or an ident prefixed with `_`.
-fn pat_is_wild<'tcx>(pat: &'tcx PatKind<'_>, body: &'tcx Expr<'_>) -> bool {
+fn pat_is_wild<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx PatKind<'_>, body: &'tcx Expr<'_>) -> bool {
     match *pat {
         PatKind::Wild => true,
         PatKind::Binding(_, id, ident, None) if ident.as_str().starts_with('_') => {
-            !LocalUsedVisitor::new(id).check_expr(body)
+            !LocalUsedVisitor::new(cx, id).check_expr(body)
         },
         _ => false,
     }
@@ -2188,7 +2188,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
             then {
                 let index_used_directly = path_to_local_id(idx, self.var);
                 let indexed_indirectly = {
-                    let mut used_visitor = LocalUsedVisitor::new(self.var);
+                    let mut used_visitor = LocalUsedVisitor::new(self.cx, self.var);
                     walk_expr(&mut used_visitor, idx);
                     used_visitor.used
                 };

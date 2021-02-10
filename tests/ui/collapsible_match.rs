@@ -224,6 +224,14 @@ fn negative_cases(res_opt: Result<Option<u32>, String>, res_res: Result<Result<u
         },
         _ => return,
     }
+    if let Ok(val) = res_opt {
+        if let Some(n) = val {
+            let _ = || {
+                // usage in closure
+                println!("{:?}", val);
+            };
+        }
+    }
 }
 
 fn make<T>() -> T {

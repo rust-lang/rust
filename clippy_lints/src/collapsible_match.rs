@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleMatch {
     }
 }
 
-fn check_arm(arm: &Arm<'_>, wild_outer_arm: &Arm<'_>, cx: &LateContext<'_>) {
+fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext<'tcx>) {
     if_chain! {
         let expr = strip_singleton_blocks(arm.body);
         if let ExprKind::Match(expr_in, arms_inner, _) = expr.kind;
@@ -84,14 +84,13 @@ fn check_arm(arm: &Arm<'_>, wild_outer_arm: &Arm<'_>, cx: &LateContext<'_>) {
         // the "wild-like" branches must be equal
         if SpanlessEq::new(cx).eq_expr(wild_inner_arm.body, wild_outer_arm.body);
         // the binding must not be used in the if guard
+        let mut used_visitor = LocalUsedVisitor::new(cx, binding_id);
         if match arm.guard {
             None => true,
-            Some(Guard::If(expr) | Guard::IfLet(_, expr)) => {
-                !LocalUsedVisitor::new(binding_id).check_expr(expr)
-            }
+            Some(Guard::If(expr) | Guard::IfLet(_, expr)) => !used_visitor.check_expr(expr),
         };
         // ...or anywhere in the inner match
-        if !arms_inner.iter().any(|arm| LocalUsedVisitor::new(binding_id).check_arm(arm));
+        if !arms_inner.iter().any(|arm| used_visitor.check_arm(arm));
         then {
             span_lint_and_then(
                 cx,
