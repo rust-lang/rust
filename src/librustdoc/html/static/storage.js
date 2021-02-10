@@ -99,7 +99,7 @@ function updateLocalStorage(name, value) {
 
 function getCurrentValue(name) {
     try {
-        window.localStorage.getItem(name);
+        return window.localStorage.getItem(name);
     } catch(e) {
         return null;
     }
