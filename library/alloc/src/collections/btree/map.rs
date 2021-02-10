@@ -1271,7 +1271,7 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            unsafe { Some(self.range.next_unchecked()) }
+            Some(unsafe { self.range.next_unchecked() })
         }
     }
 
@@ -1302,7 +1302,7 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            unsafe { Some(self.range.next_back_unchecked()) }
+            Some(unsafe { self.range.next_back_unchecked() })
         }
     }
 }
@@ -1340,8 +1340,7 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            let (k, v) = unsafe { self.range.next_unchecked() };
-            Some((k, v)) // coerce k from `&mut K` to `&K`
+            Some(unsafe { self.range.next_unchecked() })
         }
     }
 
@@ -1369,8 +1368,7 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for IterMut<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            let (k, v) = unsafe { self.range.next_back_unchecked() };
-            Some((k, v)) // coerce k from `&mut K` to `&K`
+            Some(unsafe { self.range.next_back_unchecked() })
         }
     }
 }
@@ -1692,7 +1690,7 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        if self.is_empty() { None } else { unsafe { Some(self.next_unchecked()) } }
+        if self.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
     }
 
     fn last(mut self) -> Option<(&'a K, &'a V)> {
@@ -1856,12 +1854,7 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.is_empty() {
-            None
-        } else {
-            let (k, v) = unsafe { self.next_unchecked() };
-            Some((k, v)) // coerce k from `&mut K` to `&K`
-        }
+        if self.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
     }
 
     fn last(mut self) -> Option<(&'a K, &'a mut V)> {
@@ -1899,12 +1892,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.is_empty() {
-            None
-        } else {
-            let (k, v) = unsafe { self.next_back_unchecked() };
-            Some((k, v)) // coerce k from `&mut K` to `&K`
-        }
+        if self.is_empty() { None } else { Some(unsafe { self.next_back_unchecked() }) }
     }
 }
 
