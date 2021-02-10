@@ -4,8 +4,7 @@ use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use std::borrow::Cow;
 
 /// Checks for `transmute_int_to_bool` lint.

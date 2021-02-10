@@ -3,8 +3,7 @@ use super::UNSOUND_COLLECTION_TRANSMUTE;
 use crate::utils::{match_def_path, paths, span_lint};
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 
 // used to check for UNSOUND_COLLECTION_TRANSMUTE
 static COLLECTIONS: &[&[&str]] = &[

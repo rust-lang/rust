@@ -3,8 +3,7 @@ use crate::utils::{span_lint, span_lint_and_then, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 
 /// Checks for `useless_transmute` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.

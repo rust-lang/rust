@@ -12,19 +12,11 @@ mod useless_transmute;
 mod utils;
 mod wrong_transmute;
 
-use utils::*;
-
-use crate::utils::{
-    in_constant, match_def_path, paths, snippet, span_lint, span_lint_and_sugg, span_lint_and_then, sugg,
-};
+use crate::utils::{in_constant, match_def_path, paths};
 use if_chain::if_chain;
-use rustc_ast as ast;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Mutability, UnOp};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for transmutes that can't ever be correct on any

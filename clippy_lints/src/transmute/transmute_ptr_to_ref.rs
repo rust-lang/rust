@@ -4,8 +4,7 @@ use crate::utils::{span_lint_and_then, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 
 /// Checks for `transmute_ptr_to_ref` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.
