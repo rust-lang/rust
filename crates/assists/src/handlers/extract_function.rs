@@ -229,12 +229,12 @@ fn external_control_flow(ctx: &AssistContext, body: &FunctionBody) -> Option<Con
 
 /// Checks is expr is `Err(_)` or `None`
 fn expr_err_kind(expr: &ast::Expr, ctx: &AssistContext) -> Option<TryKind> {
-    let call_expr = match expr {
-        ast::Expr::CallExpr(call_expr) => call_expr,
+    let func_name = match expr {
+        ast::Expr::CallExpr(call_expr) => call_expr.expr()?,
+        ast::Expr::PathExpr(_) => expr.clone(),
         _ => return None,
     };
-    let func = call_expr.expr()?;
-    let text = func.syntax().text();
+    let text = func_name.syntax().text();
 
     if text == "Err" {
         Some(TryKind::Result { ty: ctx.sema.type_of_expr(expr)? })
@@ -3272,6 +3272,44 @@ fn $0fun_name() -> Result<i32, i64> {
     let k = foo()?;
     let m = k + 1;
     Ok(m)
+}"##,
+        );
+    }
+
+    #[test]
+    fn try_option_with_return() {
+        check_assist(
+            extract_function,
+            r##"
+enum Option<T> { None, Some(T) }
+use Option::*;
+fn foo() -> Option<()> {
+    let n = 1;
+    $0let k = foo()?;
+    if k == 42 {
+        return None;
+    }
+    let m = k + 1;$0
+    let h = 1 + m;
+    Some(())
+}"##,
+            r##"
+enum Option<T> { None, Some(T) }
+use Option::*;
+fn foo() -> Option<()> {
+    let n = 1;
+    let m = fun_name()?;
+    let h = 1 + m;
+    Some(())
+}
+
+fn $0fun_name() -> Option<i32> {
+    let k = foo()?;
+    if k == 42 {
+        return None;
+    }
+    let m = k + 1;
+    Some(m)
 }"##,
         );
     }
