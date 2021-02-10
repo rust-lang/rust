@@ -654,6 +654,7 @@ fn main() {
     let test = "test";
       //^^^^ &str
     let test = InnerStruct {};
+      //^^^^ InnerStruct
 
     let test = unresolved();
 
