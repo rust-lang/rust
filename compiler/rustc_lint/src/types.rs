@@ -672,7 +672,7 @@ pub fn transparent_newtype_field<'a, 'tcx>(
 }
 
 /// Is type known to be non-null?
-crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
+fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
     let tcx = cx.tcx;
     match ty.kind() {
         ty::FnPtr(_) => true,
@@ -683,6 +683,12 @@ crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: C
 
             if marked_non_null {
                 return true;
+            }
+
+            // Types with a `#[repr(no_niche)]` attribute have their niche hidden.
+            // The attribute is used by the UnsafeCell for example (the only use so far).
+            if def.repr.hide_niche() {
+                return false;
             }
 
             for variant in &def.variants {
