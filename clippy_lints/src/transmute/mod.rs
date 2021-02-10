@@ -1,4 +1,6 @@
+mod useless_transmute;
 mod utils;
+
 use utils::*;
 
 use crate::utils::{
@@ -344,51 +346,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 let from_ty = cx.typeck_results().expr_ty(&args[0]);
                 let to_ty = cx.typeck_results().expr_ty(e);
 
+                let triggered = useless_transmute::check(cx, e, from_ty, to_ty, args);
+                if triggered {
+                    return;
+                }
+
                 match (&from_ty.kind(), &to_ty.kind()) {
-                    _ if from_ty == to_ty => span_lint(
-                        cx,
-                        USELESS_TRANSMUTE,
-                        e.span,
-                        &format!("transmute from a type (`{}`) to itself", from_ty),
-                    ),
-                    (ty::Ref(_, rty, rty_mutbl), ty::RawPtr(ptr_ty)) => span_lint_and_then(
-                        cx,
-                        USELESS_TRANSMUTE,
-                        e.span,
-                        "transmute from a reference to a pointer",
-                        |diag| {
-                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                let rty_and_mut = ty::TypeAndMut {
-                                    ty: rty,
-                                    mutbl: *rty_mutbl,
-                                };
-
-                                let sugg = if *ptr_ty == rty_and_mut {
-                                    arg.as_ty(to_ty)
-                                } else {
-                                    arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
-                                };
-
-                                diag.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
-                            }
-                        },
-                    ),
-                    (ty::Int(_) | ty::Uint(_), ty::RawPtr(_)) => span_lint_and_then(
-                        cx,
-                        USELESS_TRANSMUTE,
-                        e.span,
-                        "transmute from an integer to a pointer",
-                        |diag| {
-                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                diag.span_suggestion(
-                                    e.span,
-                                    "try",
-                                    arg.as_ty(&to_ty.to_string()).to_string(),
-                                    Applicability::Unspecified,
-                                );
-                            }
-                        },
-                    ),
                     (ty::Float(_) | ty::Char, ty::Ref(..) | ty::RawPtr(_)) => span_lint(
                         cx,
                         WRONG_TRANSMUTE,
