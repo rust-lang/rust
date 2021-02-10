@@ -372,10 +372,10 @@ Tests which directly call various API functions are a liability, because they ma
 So most of the tests look like this:
 
 ```rust
+#[track_caller]
 fn check(input: &str, expect: expect_test::Expect) {
     // The single place that actually exercises a particular API
 }
-
 
 #[test]
 fn foo() {
