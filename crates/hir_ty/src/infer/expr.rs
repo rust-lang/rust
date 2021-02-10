@@ -138,8 +138,11 @@ impl<'a> InferenceContext<'a> {
                 self.coerce_merge_branch(&then_ty, &else_ty)
             }
             Expr::Block { statements, tail, label, id: _ } => {
-                self.resolver = resolver_for_expr(self.db.upcast(), self.owner, tgt_expr);
-                match label {
+                let old_resolver = mem::replace(
+                    &mut self.resolver,
+                    resolver_for_expr(self.db.upcast(), self.owner, tgt_expr),
+                );
+                let ty = match label {
                     Some(_) => {
                         let break_ty = self.table.new_type_var();
                         self.breakables.push(BreakableContext {
@@ -157,7 +160,9 @@ impl<'a> InferenceContext<'a> {
                         }
                     }
                     None => self.infer_block(statements, *tail, expected),
-                }
+                };
+                self.resolver = old_resolver;
+                ty
             }
             Expr::Unsafe { body } | Expr::Const { body } => self.infer_expr(*body, expected),
             Expr::TryBlock { body } => {
