@@ -1,6 +1,7 @@
 mod crosspointer_transmute;
 mod transmute_int_to_char;
 mod transmute_ptr_to_ref;
+mod transmute_ref_to_ref;
 mod useless_transmute;
 mod utils;
 mod wrong_transmute;
@@ -370,67 +371,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 if triggered {
                     return;
                 }
+                let triggered = transmute_ref_to_ref::check(cx, e, from_ty, to_ty, args, const_context);
+                if triggered {
+                    return;
+                }
 
                 match (&from_ty.kind(), &to_ty.kind()) {
-                    (ty::Ref(_, ty_from, from_mutbl), ty::Ref(_, ty_to, to_mutbl)) => {
-                        if_chain! {
-                            if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.kind(), &ty_to.kind());
-                            if let ty::Uint(ty::UintTy::U8) = slice_ty.kind();
-                            if from_mutbl == to_mutbl;
-                            then {
-                                let postfix = if *from_mutbl == Mutability::Mut {
-                                    "_mut"
-                                } else {
-                                    ""
-                                };
-
-                                span_lint_and_sugg(
-                                    cx,
-                                    TRANSMUTE_BYTES_TO_STR,
-                                    e.span,
-                                    &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
-                                    "consider using",
-                                    format!(
-                                        "std::str::from_utf8{}({}).unwrap()",
-                                        postfix,
-                                        snippet(cx, args[0].span, ".."),
-                                    ),
-                                    Applicability::Unspecified,
-                                );
-                            } else {
-                                if (cx.tcx.erase_regions(from_ty) != cx.tcx.erase_regions(to_ty))
-                                    && !const_context {
-                                    span_lint_and_then(
-                                        cx,
-                                        TRANSMUTE_PTR_TO_PTR,
-                                        e.span,
-                                        "transmute from a reference to a reference",
-                                        |diag| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                            let ty_from_and_mut = ty::TypeAndMut {
-                                                ty: ty_from,
-                                                mutbl: *from_mutbl
-                                            };
-                                            let ty_to_and_mut = ty::TypeAndMut { ty: ty_to, mutbl: *to_mutbl };
-                                            let sugg_paren = arg
-                                                .as_ty(cx.tcx.mk_ptr(ty_from_and_mut))
-                                                .as_ty(cx.tcx.mk_ptr(ty_to_and_mut));
-                                            let sugg = if *to_mutbl == Mutability::Mut {
-                                                sugg_paren.mut_addr_deref()
-                                            } else {
-                                                sugg_paren.addr_deref()
-                                            };
-                                            diag.span_suggestion(
-                                                e.span,
-                                                "try",
-                                                sugg.to_string(),
-                                                Applicability::Unspecified,
-                                            );
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    },
                     (ty::RawPtr(_), ty::RawPtr(to_ty)) => span_lint_and_then(
                         cx,
                         TRANSMUTE_PTR_TO_PTR,
