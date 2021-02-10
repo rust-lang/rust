@@ -2415,3 +2415,22 @@ fn infer_const_params() {
         "#]],
     );
 }
+
+#[test]
+fn infer_inner_type() {
+    check_infer(r#"
+        fn foo() {
+            struct S { field: u32 }
+            let s = S { field: 0 };
+            let f = s.field;
+        }
+    "#, expect![[r#"
+        9..89 '{     ...eld; }': ()
+        47..48 's': S
+        51..65 'S { field: 0 }': S
+        62..63 '0': u32
+        75..76 'f': u32
+        79..80 's': S
+        79..86 's.field': u32
+    "#]]);
+}

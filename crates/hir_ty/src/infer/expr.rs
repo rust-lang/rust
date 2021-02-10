@@ -137,24 +137,28 @@ impl<'a> InferenceContext<'a> {
 
                 self.coerce_merge_branch(&then_ty, &else_ty)
             }
-            Expr::Block { statements, tail, label, id: _ } => match label {
-                Some(_) => {
-                    let break_ty = self.table.new_type_var();
-                    self.breakables.push(BreakableContext {
-                        may_break: false,
-                        break_ty: break_ty.clone(),
-                        label: label.map(|label| self.body[label].name.clone()),
-                    });
-                    let ty = self.infer_block(statements, *tail, &Expectation::has_type(break_ty));
-                    let ctxt = self.breakables.pop().expect("breakable stack broken");
-                    if ctxt.may_break {
-                        ctxt.break_ty
-                    } else {
-                        ty
+            Expr::Block { statements, tail, label, id: _ } => {
+                self.resolver = resolver_for_expr(self.db.upcast(), self.owner, tgt_expr);
+                match label {
+                    Some(_) => {
+                        let break_ty = self.table.new_type_var();
+                        self.breakables.push(BreakableContext {
+                            may_break: false,
+                            break_ty: break_ty.clone(),
+                            label: label.map(|label| self.body[label].name.clone()),
+                        });
+                        let ty =
+                            self.infer_block(statements, *tail, &Expectation::has_type(break_ty));
+                        let ctxt = self.breakables.pop().expect("breakable stack broken");
+                        if ctxt.may_break {
+                            ctxt.break_ty
+                        } else {
+                            ty
+                        }
                     }
+                    None => self.infer_block(statements, *tail, expected),
                 }
-                None => self.infer_block(statements, *tail, expected),
-            },
+            }
             Expr::Unsafe { body } | Expr::Const { body } => self.infer_expr(*body, expected),
             Expr::TryBlock { body } => {
                 let _inner = self.infer_expr(*body, expected);
