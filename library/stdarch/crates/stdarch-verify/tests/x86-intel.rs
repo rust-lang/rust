@@ -45,12 +45,15 @@ static ORDERING: Type = Type::Ordering;
 
 static M64: Type = Type::M64;
 static M128: Type = Type::M128;
+static M128BH: Type = Type::M128BH;
 static M128I: Type = Type::M128I;
 static M128D: Type = Type::M128D;
 static M256: Type = Type::M256;
+static M256BH: Type = Type::M256BH;
 static M256I: Type = Type::M256I;
 static M256D: Type = Type::M256D;
 static M512: Type = Type::M512;
+static M512BH: Type = Type::M512BH;
 static M512I: Type = Type::M512I;
 static M512D: Type = Type::M512D;
 static MMASK8: Type = Type::MMASK8;
@@ -75,12 +78,15 @@ enum Type {
     ConstPtr(&'static Type),
     M64,
     M128,
+    M128BH,
     M128D,
     M128I,
     M256,
+    M256BH,
     M256D,
     M256I,
     M512,
+    M512BH,
     M512D,
     M512I,
     MMASK8,
@@ -493,6 +499,9 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             // The intrinsics guide calls `f16c` `fp16c` in disagreement with
             // Intel's architecture manuals.
             "fp16c" => String::from("f16c"),
+            "avx512_bf16" => String::from("avx512bf16"),
+            // The XML file names VNNI as "avx512_bf16", while Rust calls
+            // it "avx512bf16".
             _ => cpuid,
         };
         let fixed_cpuid = fixup_cpuid(cpuid);
@@ -693,12 +702,15 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::PrimUnsigned(8), "unsigned char") => {}
         (&Type::M64, "__m64") => {}
         (&Type::M128, "__m128") => {}
+        (&Type::M128BH, "__m128bh") => {}
         (&Type::M128I, "__m128i") => {}
         (&Type::M128D, "__m128d") => {}
         (&Type::M256, "__m256") => {}
+        (&Type::M256BH, "__m256bh") => {}
         (&Type::M256I, "__m256i") => {}
         (&Type::M256D, "__m256d") => {}
         (&Type::M512, "__m512") => {}
+        (&Type::M512BH, "__m512bh") => {}
         (&Type::M512I, "__m512i") => {}
         (&Type::M512D, "__m512d") => {}
         (&Type::MMASK64, "__mmask64") => {}
@@ -726,12 +738,15 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::MutPtr(&Type::PrimUnsigned(64)), "__mmask64*") => {}
         (&Type::MutPtr(&Type::M64), "__m64*") => {}
         (&Type::MutPtr(&Type::M128), "__m128*") => {}
+        (&Type::MutPtr(&Type::M128BH), "__m128bh*") => {}
         (&Type::MutPtr(&Type::M128I), "__m128i*") => {}
         (&Type::MutPtr(&Type::M128D), "__m128d*") => {}
         (&Type::MutPtr(&Type::M256), "__m256*") => {}
+        (&Type::MutPtr(&Type::M256BH), "__m256bh*") => {}
         (&Type::MutPtr(&Type::M256I), "__m256i*") => {}
         (&Type::MutPtr(&Type::M256D), "__m256d*") => {}
         (&Type::MutPtr(&Type::M512), "__m512*") => {}
+        (&Type::MutPtr(&Type::M512BH), "__m512bh*") => {}
         (&Type::MutPtr(&Type::M512I), "__m512i*") => {}
         (&Type::MutPtr(&Type::M512D), "__m512d*") => {}
 
@@ -754,12 +769,15 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::ConstPtr(&Type::PrimUnsigned(32)), "void const*") => {}
         (&Type::ConstPtr(&Type::M64), "__m64 const*") => {}
         (&Type::ConstPtr(&Type::M128), "__m128 const*") => {}
+        (&Type::ConstPtr(&Type::M128BH), "__m128bh const*") => {}
         (&Type::ConstPtr(&Type::M128I), "__m128i const*") => {}
         (&Type::ConstPtr(&Type::M128D), "__m128d const*") => {}
         (&Type::ConstPtr(&Type::M256), "__m256 const*") => {}
+        (&Type::ConstPtr(&Type::M256BH), "__m256bh const*") => {}
         (&Type::ConstPtr(&Type::M256I), "__m256i const*") => {}
         (&Type::ConstPtr(&Type::M256D), "__m256d const*") => {}
         (&Type::ConstPtr(&Type::M512), "__m512 const*") => {}
+        (&Type::ConstPtr(&Type::M512BH), "__m512bh const*") => {}
         (&Type::ConstPtr(&Type::M512I), "__m512i const*") => {}
         (&Type::ConstPtr(&Type::M512D), "__m512d const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(32)), "__mmask32*") => {}

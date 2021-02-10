@@ -137,12 +137,15 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
         syn::Type::Path(ref p) => match extract_path_ident(&p.path).to_string().as_ref() {
             // x86 ...
             "__m128" => quote! { &M128 },
+            "__m128bh" => quote! { &M128BH },
             "__m128d" => quote! { &M128D },
             "__m128i" => quote! { &M128I },
             "__m256" => quote! { &M256 },
+            "__m256bh" => quote! { &M256BH },
             "__m256d" => quote! { &M256D },
             "__m256i" => quote! { &M256I },
             "__m512" => quote! { &M512 },
+            "__m512bh" => quote! { &M512BH },
             "__m512d" => quote! { &M512D },
             "__m512i" => quote! { &M512I },
             "__mmask8" => quote! { &MMASK8 },

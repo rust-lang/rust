@@ -296,6 +296,37 @@ types! {
     /// suffixed with "pd" (or otherwise contain "pd"). Not to be confused with
     /// "ps" which is used for `__m512`.
     pub struct __m512d(f64, f64, f64, f64, f64, f64, f64, f64);
+
+    /// 128-bit wide set of eight 'u16' types, x86-specific
+    ///
+    /// This type is representing a 128-bit SIMD register which internally is consisted of
+    /// eight packed `u16` instances. It's purpose is for bf16 related intrinsic
+    /// implementations.
+    pub struct __m128bh(u16, u16, u16, u16, u16, u16, u16, u16);
+
+    /// 256-bit wide set of 16 'u16' types, x86-specific
+    ///
+    /// This type is the same as the `__m128bh` type defined by Intel,
+    /// representing a 256-bit SIMD register which internally is consisted of
+    /// 16 packed `u16` instances. It's purpose is for bf16 related intrinsic
+    /// implementations.
+    pub struct __m256bh(
+        u16, u16, u16, u16, u16, u16, u16, u16,
+        u16, u16, u16, u16, u16, u16, u16, u16
+    );
+
+    /// 512-bit wide set of 32 'u16' types, x86-specific
+    ///
+    /// This type is the same as the `__m128bh` type defined by Intel,
+    /// representing a 512-bit SIMD register which internally is consisted of
+    /// 32 packed `u16` instances. It's purpose is for bf16 related intrinsic
+    /// implementations.
+    pub struct __m512bh(
+        u16, u16, u16, u16, u16, u16, u16, u16,
+        u16, u16, u16, u16, u16, u16, u16, u16,
+        u16, u16, u16, u16, u16, u16, u16, u16,
+        u16, u16, u16, u16, u16, u16, u16, u16
+    );
 }
 
 /// The `__mmask64` type used in AVX-512 intrinsics, a 64-bit integer
@@ -602,6 +633,105 @@ impl m512dExt for __m512d {
     }
 }
 
+#[allow(non_camel_case_types)]
+#[unstable(feature = "stdsimd_internal", issue = "none")]
+pub(crate) trait m128bhExt: Sized {
+    fn as_m128bh(self) -> __m128bh;
+
+    #[inline]
+    fn as_u16x8(self) -> crate::core_arch::simd::u16x8 {
+        unsafe { transmute(self.as_m128bh()) }
+    }
+
+    #[inline]
+    fn as_i16x8(self) -> crate::core_arch::simd::i16x8 {
+        unsafe { transmute(self.as_m128bh()) }
+    }
+
+    #[inline]
+    fn as_u32x4(self) -> crate::core_arch::simd::u32x4 {
+        unsafe { transmute(self.as_m128bh()) }
+    }
+
+    #[inline]
+    fn as_i32x4(self) -> crate::core_arch::simd::i32x4 {
+        unsafe { transmute(self.as_m128bh()) }
+    }
+}
+
+impl m128bhExt for __m128bh {
+    #[inline]
+    fn as_m128bh(self) -> Self {
+        self
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[unstable(feature = "stdsimd_internal", issue = "none")]
+pub(crate) trait m256bhExt: Sized {
+    fn as_m256bh(self) -> __m256bh;
+
+    #[inline]
+    fn as_u16x16(self) -> crate::core_arch::simd::u16x16 {
+        unsafe { transmute(self.as_m256bh()) }
+    }
+
+    #[inline]
+    fn as_i16x16(self) -> crate::core_arch::simd::i16x16 {
+        unsafe { transmute(self.as_m256bh()) }
+    }
+
+    #[inline]
+    fn as_u32x8(self) -> crate::core_arch::simd::u32x8 {
+        unsafe { transmute(self.as_m256bh()) }
+    }
+
+    #[inline]
+    fn as_i32x8(self) -> crate::core_arch::simd::i32x8 {
+        unsafe { transmute(self.as_m256bh()) }
+    }
+}
+
+impl m256bhExt for __m256bh {
+    #[inline]
+    fn as_m256bh(self) -> Self {
+        self
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[unstable(feature = "stdsimd_internal", issue = "none")]
+pub(crate) trait m512bhExt: Sized {
+    fn as_m512bh(self) -> __m512bh;
+
+    #[inline]
+    fn as_u16x32(self) -> crate::core_arch::simd::u16x32 {
+        unsafe { transmute(self.as_m512bh()) }
+    }
+
+    #[inline]
+    fn as_i16x32(self) -> crate::core_arch::simd::i16x32 {
+        unsafe { transmute(self.as_m512bh()) }
+    }
+
+    #[inline]
+    fn as_u32x16(self) -> crate::core_arch::simd::u32x16 {
+        unsafe { transmute(self.as_m512bh()) }
+    }
+
+    #[inline]
+    fn as_i32x16(self) -> crate::core_arch::simd::i32x16 {
+        unsafe { transmute(self.as_m512bh()) }
+    }
+}
+
+impl m512bhExt for __m512bh {
+    #[inline]
+    fn as_m512bh(self) -> Self {
+        self
+    }
+}
+
 mod eflags;
 pub use self::eflags::*;
 
@@ -725,3 +855,6 @@ pub use self::rtm::*;
 
 mod f16c;
 pub use self::f16c::*;
+
+mod avx512bf16;
+pub use self::avx512bf16::*;

@@ -56,6 +56,9 @@ cargo_test() {
             ;;
     esac
 
+    if [ "$SKIP_TESTS" != "" ]; then
+        cmd="$cmd --skip "$SKIP_TESTS
+    fi
     $cmd
 }
 
