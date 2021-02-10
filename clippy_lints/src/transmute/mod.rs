@@ -1,4 +1,5 @@
 mod crosspointer_transmute;
+mod transmute_int_to_bool;
 mod transmute_int_to_char;
 mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
@@ -380,26 +381,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 if triggered {
                     return;
                 }
+                let triggered = transmute_int_to_bool::check(cx, e, from_ty, to_ty, args);
+                if triggered {
+                    return;
+                }
 
                 match (&from_ty.kind(), &to_ty.kind()) {
-                    (ty::Int(ty::IntTy::I8) | ty::Uint(ty::UintTy::U8), ty::Bool) => {
-                        span_lint_and_then(
-                            cx,
-                            TRANSMUTE_INT_TO_BOOL,
-                            e.span,
-                            &format!("transmute from a `{}` to a `bool`", from_ty),
-                            |diag| {
-                                let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                let zero = sugg::Sugg::NonParen(Cow::from("0"));
-                                diag.span_suggestion(
-                                    e.span,
-                                    "consider using",
-                                    sugg::make_binop(ast::BinOpKind::Ne, &arg, &zero).to_string(),
-                                    Applicability::Unspecified,
-                                );
-                            },
-                        )
-                    },
                     (ty::Int(_) | ty::Uint(_), ty::Float(_)) if !const_context => span_lint_and_then(
                         cx,
                         TRANSMUTE_INT_TO_FLOAT,
