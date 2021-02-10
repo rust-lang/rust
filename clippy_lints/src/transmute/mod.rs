@@ -1,5 +1,6 @@
 mod crosspointer_transmute;
 mod transmute_int_to_char;
+mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
 mod useless_transmute;
@@ -375,20 +376,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 if triggered {
                     return;
                 }
+                let triggered = transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, args);
+                if triggered {
+                    return;
+                }
 
                 match (&from_ty.kind(), &to_ty.kind()) {
-                    (ty::RawPtr(_), ty::RawPtr(to_ty)) => span_lint_and_then(
-                        cx,
-                        TRANSMUTE_PTR_TO_PTR,
-                        e.span,
-                        "transmute from a pointer to a pointer",
-                        |diag| {
-                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                let sugg = arg.as_ty(cx.tcx.mk_ptr(*to_ty));
-                                diag.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
-                            }
-                        },
-                    ),
                     (ty::Int(ty::IntTy::I8) | ty::Uint(ty::UintTy::U8), ty::Bool) => {
                         span_lint_and_then(
                             cx,
