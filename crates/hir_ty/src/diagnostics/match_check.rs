@@ -1495,6 +1495,20 @@ fn main(f: Foo) {
         );
     }
 
+    #[test]
+    fn internal_or() {
+        check_diagnostics(
+            r#"
+fn main() {
+    enum Either { A(bool), B }
+    match Either::B {
+        //^^^^^^^^^ Missing match arm
+        Either::A(true | false) => (),
+    }
+}
+"#,
+        );
+    }
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This
@@ -1516,21 +1530,6 @@ fn main() {
     match 5 {
         10 => (),
         11..20 => (),
-    }
-}
-"#,
-            );
-        }
-
-        #[test]
-        fn internal_or() {
-            // We do not currently handle patterns with internal `or`s.
-            check_diagnostics(
-                r#"
-fn main() {
-    enum Either { A(bool), B }
-    match Either::B {
-        Either::A(true | false) => (),
     }
 }
 "#,

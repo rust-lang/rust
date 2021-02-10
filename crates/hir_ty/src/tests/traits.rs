@@ -3151,3 +3151,54 @@ fn test() {
     "#,
     );
 }
+
+#[test]
+fn inner_use() {
+    check_types(
+        r#"
+mod m {
+    pub trait Tr {
+        fn method(&self) -> u8 { 0 }
+    }
+
+    impl Tr for () {}
+}
+
+fn f() {
+    use m::Tr;
+
+    ().method();
+  //^^^^^^^^^^^ u8
+}
+        "#,
+    );
+}
+
+#[test]
+fn inner_use_in_block() {
+    check_types(
+        r#"
+mod m {
+    pub trait Tr {
+        fn method(&self) -> u8 { 0 }
+    }
+
+    impl Tr for () {}
+}
+
+fn f() {
+    {
+        use m::Tr;
+
+        ().method();
+      //^^^^^^^^^^^ u8
+    }
+
+    {
+        ().method();
+      //^^^^^^^^^^^ {unknown}
+    }
+}
+        "#,
+    );
+}

@@ -2415,3 +2415,50 @@ fn infer_const_params() {
         "#]],
     );
 }
+
+#[test]
+fn infer_inner_type() {
+    check_infer(
+        r#"
+        fn foo() {
+            struct S { field: u32 }
+            let s = S { field: 0 };
+            let f = s.field;
+        }
+    "#,
+        expect![[r#"
+            9..89 '{     ...eld; }': ()
+            47..48 's': S
+            51..65 'S { field: 0 }': S
+            62..63 '0': u32
+            75..76 'f': u32
+            79..80 's': S
+            79..86 's.field': u32
+        "#]],
+    );
+}
+
+#[test]
+fn infer_nested_inner_type() {
+    check_infer(
+        r#"
+        fn foo() {
+            {
+                let s = S { field: 0 };
+                let f = s.field;
+            }
+            struct S { field: u32 }
+        }
+    "#,
+        expect![[r#"
+            9..109 '{     ...32 } }': ()
+            15..79 '{     ...     }': ()
+            29..30 's': S
+            33..47 'S { field: 0 }': S
+            44..45 '0': u32
+            61..62 'f': u32
+            65..66 's': S
+            65..72 's.field': u32
+        "#]],
+    );
+}
