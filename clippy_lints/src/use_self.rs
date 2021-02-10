@@ -13,7 +13,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{AssocKind, Ty};
+use rustc_middle::ty::{AssocKind, Ty, TyS};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{BytePos, Span};
@@ -452,7 +452,7 @@ fn in_impl(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'_>) -> bool {
 
 fn should_lint_ty(hir_ty: &hir::Ty<'_>, ty: Ty<'_>, self_ty: Ty<'_>) -> bool {
     if_chain! {
-        if ty == self_ty;
+        if TyS::same_type(ty, self_ty);
         if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
         then {
             !matches!(path.res, def::Res::SelfTy(..))
