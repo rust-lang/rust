@@ -1,12 +1,10 @@
+use ast::Adt;
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::{
-    ast::{self, AstNode, GenericParamsOwner, NameOwner, StructKind, VisibilityOwner},
-    SmolStr,
-};
+use syntax::ast::{self, AstNode, NameOwner, StructKind, VisibilityOwner};
 
 use crate::{
-    utils::{find_impl_block, find_struct_impl},
+    utils::{find_impl_block, find_struct_impl, generate_impl_text},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -28,7 +26,6 @@ use crate::{
 // impl<T: Clone> Ctx<T> {
 //     fn $0new(data: T) -> Self { Self { data } }
 // }
-//
 // ```
 pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
@@ -40,7 +37,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     };
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(&ctx, &ast::Adt::Struct(strukt.clone()), "new")?;
+    let impl_def = find_struct_impl(&ctx, &Adt::Struct(strukt.clone()), "new")?;
 
     let target = strukt.syntax().text_range();
     acc.add(AssistId("generate_new", AssistKind::Generate), "Generate `new`", target, |builder| {
@@ -63,7 +60,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         let start_offset = impl_def
             .and_then(|impl_def| find_impl_block(impl_def, &mut buf))
             .unwrap_or_else(|| {
-                buf = generate_impl_text(&strukt, &buf);
+                buf = generate_impl_text(&Adt::Struct(strukt.clone()), &buf);
                 strukt.syntax().text_range().end()
             });
 
@@ -75,32 +72,6 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
             }
         }
     })
-}
-
-// Generates the surrounding `impl Type { <code> }` including type and lifetime
-// parameters
-fn generate_impl_text(strukt: &ast::Struct, code: &str) -> String {
-    let type_params = strukt.generic_param_list();
-    let mut buf = String::with_capacity(code.len());
-    buf.push_str("\n\nimpl");
-    if let Some(type_params) = &type_params {
-        format_to!(buf, "{}", type_params.syntax());
-    }
-    buf.push(' ');
-    buf.push_str(strukt.name().unwrap().text());
-    if let Some(type_params) = type_params {
-        let lifetime_params = type_params
-            .lifetime_params()
-            .filter_map(|it| it.lifetime())
-            .map(|it| SmolStr::from(it.text()));
-        let type_params =
-            type_params.type_params().filter_map(|it| it.name()).map(|it| SmolStr::from(it.text()));
-        format_to!(buf, "<{}>", lifetime_params.chain(type_params).format(", "))
-    }
-
-    format_to!(buf, " {{\n{}\n}}\n", code);
-
-    buf
 }
 
 #[cfg(test)]
@@ -120,8 +91,7 @@ mod tests {
 
 impl Foo {
     fn $0new() -> Self { Self {  } }
-}
-",
+}",
         );
         check_assist(
             generate_new,
@@ -130,8 +100,7 @@ impl Foo {
 
 impl<T: Clone> Foo<T> {
     fn $0new() -> Self { Self {  } }
-}
-",
+}",
         );
         check_assist(
             generate_new,
@@ -140,8 +109,7 @@ impl<T: Clone> Foo<T> {
 
 impl<'a, T: Foo<'a>> Foo<'a, T> {
     fn $0new() -> Self { Self {  } }
-}
-",
+}",
         );
         check_assist(
             generate_new,
@@ -150,8 +118,7 @@ impl<'a, T: Foo<'a>> Foo<'a, T> {
 
 impl Foo {
     fn $0new(baz: String) -> Self { Self { baz } }
-}
-",
+}",
         );
         check_assist(
             generate_new,
@@ -160,8 +127,7 @@ impl Foo {
 
 impl Foo {
     fn $0new(baz: String, qux: Vec<i32>) -> Self { Self { baz, qux } }
-}
-",
+}",
         );
 
         // Check that visibility modifiers don't get brought in for fields
@@ -172,8 +138,7 @@ impl Foo {
 
 impl Foo {
     fn $0new(baz: String, qux: Vec<i32>) -> Self { Self { baz, qux } }
-}
-",
+}",
         );
 
         // Check that it reuses existing impls
@@ -240,8 +205,7 @@ impl Foo {
 
 impl Foo {
     pub fn $0new() -> Self { Self {  } }
-}
-",
+}",
         );
         check_assist(
             generate_new,
@@ -250,8 +214,7 @@ impl Foo {
 
 impl Foo {
     pub(crate) fn $0new() -> Self { Self {  } }
-}
-",
+}",
         );
     }
 
@@ -322,8 +285,7 @@ impl<T> Source<T> {
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
         Source { file_id: self.file_id, ast: f(self.ast) }
     }
-}
-"##,
+}"##,
             r##"
 pub struct AstId<N: AstNode> {
     file_id: HirFileId,
@@ -347,8 +309,7 @@ impl<T> Source<T> {
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
         Source { file_id: self.file_id, ast: f(self.ast) }
     }
-}
-"##,
+}"##,
         );
     }
 }

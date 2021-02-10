@@ -130,8 +130,11 @@ mod handlers {
     mod generate_enum_match_method;
     mod generate_from_impl_for_enum;
     mod generate_function;
+    mod generate_getter;
+    mod generate_getter_mut;
     mod generate_impl;
     mod generate_new;
+    mod generate_setter;
     mod infer_function_return_type;
     mod inline_function;
     mod inline_local_variable;
@@ -189,8 +192,11 @@ mod handlers {
             generate_enum_match_method::generate_enum_match_method,
             generate_from_impl_for_enum::generate_from_impl_for_enum,
             generate_function::generate_function,
+            generate_getter::generate_getter,
+            generate_getter_mut::generate_getter_mut,
             generate_impl::generate_impl,
             generate_new::generate_new,
+            generate_setter::generate_setter,
             infer_function_return_type::infer_function_return_type,
             inline_function::inline_function,
             inline_local_variable::inline_local_variable,

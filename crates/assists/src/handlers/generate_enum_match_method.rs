@@ -4,7 +4,7 @@ use syntax::ast::{self, AstNode, NameOwner};
 use test_utils::mark;
 
 use crate::{
-    utils::{find_impl_block, find_struct_impl},
+    utils::{find_impl_block, find_struct_impl, generate_impl_text},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -82,23 +82,13 @@ pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext)
             let start_offset = impl_def
                 .and_then(|impl_def| find_impl_block(impl_def, &mut buf))
                 .unwrap_or_else(|| {
-                    buf = generate_impl_text(&parent_enum, &buf);
+                    buf = generate_impl_text(&ast::Adt::Enum(parent_enum.clone()), &buf);
                     parent_enum.syntax().text_range().end()
                 });
 
             builder.insert(start_offset, buf);
         },
     )
-}
-
-// Generates the surrounding `impl Type { <code> }` including type and lifetime
-// parameters
-fn generate_impl_text(strukt: &ast::Enum, code: &str) -> String {
-    let mut buf = String::with_capacity(code.len());
-    buf.push_str("\n\nimpl ");
-    buf.push_str(strukt.name().unwrap().text());
-    format_to!(buf, " {{\n{}\n}}", code);
-    buf
 }
 
 #[cfg(test)]
