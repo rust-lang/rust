@@ -775,6 +775,15 @@ pub fn sleep_ms(ms: u32) {
 /// Platforms which do not support nanosecond precision for sleeping will
 /// have `dur` rounded up to the nearest granularity of time they can sleep for.
 ///
+/// Currently, specifying a zero duration on Unix platforms returns immediately
+/// without invoking the underlying [`nanosleep`] syscall, whereas on Windows
+/// platforms the underlying [`Sleep`] syscall is always invoked.
+/// If the intention is to yield the current time-slice you may want to use
+/// [`yield_now`] instead.
+///
+/// [`nanosleep`]: https://linux.die.net/man/2/nanosleep
+/// [`Sleep`]: https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleep
+///
 /// # Examples
 ///
 /// ```no_run
