@@ -2092,6 +2092,7 @@ Released 2018-09-13
 [`forget_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#forget_ref
 [`from_iter_instead_of_collect`]: https://rust-lang.github.io/rust-clippy/master/index.html#from_iter_instead_of_collect
 [`from_over_into`]: https://rust-lang.github.io/rust-clippy/master/index.html#from_over_into
+[`from_str_radix_10`]: https://rust-lang.github.io/rust-clippy/master/index.html#from_str_radix_10
 [`future_not_send`]: https://rust-lang.github.io/rust-clippy/master/index.html#future_not_send
 [`get_last_with_len`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_last_with_len
 [`get_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_unwrap
