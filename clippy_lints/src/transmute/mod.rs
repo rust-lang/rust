@@ -6,6 +6,7 @@ mod transmute_int_to_float;
 mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
+mod transmutes_expressible_as_ptr_casts;
 mod unsound_collection_transmute;
 mod useless_transmute;
 mod utils;
@@ -389,27 +390,9 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 if triggered {
                     return;
                 }
-
-                match (&from_ty.kind(), &to_ty.kind()) {
-                    (_, _) if can_be_expressed_as_pointer_cast(cx, e, from_ty, to_ty) => span_lint_and_then(
-                        cx,
-                        TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
-                        e.span,
-                        &format!(
-                            "transmute from `{}` to `{}` which could be expressed as a pointer cast instead",
-                            from_ty,
-                            to_ty
-                        ),
-                        |diag| {
-                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                let sugg = arg.as_ty(&to_ty.to_string()).to_string();
-                                diag.span_suggestion(e.span, "try", sugg, Applicability::MachineApplicable);
-                            }
-                        }
-                    ),
-                    _ => {
-                        return;
-                    },
+                let triggered = transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, args);
+                if triggered {
+                    return;
                 }
             }
         }
