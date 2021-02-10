@@ -338,53 +338,24 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 let from_ty = cx.typeck_results().expr_ty(&args[0]);
                 let to_ty = cx.typeck_results().expr_ty(e);
 
-                let triggered = useless_transmute::check(cx, e, from_ty, to_ty, args);
-                if triggered {
+                // If useless_transmute is triggered, the other lints can be skipped.
+                if useless_transmute::check(cx, e, from_ty, to_ty, args) {
                     return;
                 }
-                let triggered = wrong_transmute::check(cx, e, from_ty, to_ty);
-                if triggered {
-                    return;
-                }
-                let triggered = crosspointer_transmute::check(cx, e, from_ty, to_ty);
-                if triggered {
-                    return;
-                }
-                let triggered = transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, args, qpath);
-                if triggered {
-                    return;
-                }
-                let triggered = transmute_int_to_char::check(cx, e, from_ty, to_ty, args);
-                if triggered {
-                    return;
-                }
-                let triggered = transmute_ref_to_ref::check(cx, e, from_ty, to_ty, args, const_context);
-                if triggered {
-                    return;
-                }
-                let triggered = transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, args);
-                if triggered {
-                    return;
-                }
-                let triggered = transmute_int_to_bool::check(cx, e, from_ty, to_ty, args);
-                if triggered {
-                    return;
-                }
-                let triggered = transmute_int_to_float::check(cx, e, from_ty, to_ty, args, const_context);
-                if triggered {
-                    return;
-                }
-                let triggered = transmute_float_to_int::check(cx, e, from_ty, to_ty, args, const_context);
-                if triggered {
-                    return;
-                }
-                let triggered = unsound_collection_transmute::check(cx, e, from_ty, to_ty);
-                if triggered {
-                    return;
-                }
-                let triggered = transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, args);
-                if triggered {
-                    return;
+
+                let mut linted = wrong_transmute::check(cx, e, from_ty, to_ty);
+                linted |= crosspointer_transmute::check(cx, e, from_ty, to_ty);
+                linted |= transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, args, qpath);
+                linted |= transmute_int_to_char::check(cx, e, from_ty, to_ty, args);
+                linted |= transmute_ref_to_ref::check(cx, e, from_ty, to_ty, args, const_context);
+                linted |= transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, args);
+                linted |= transmute_int_to_bool::check(cx, e, from_ty, to_ty, args);
+                linted |= transmute_int_to_float::check(cx, e, from_ty, to_ty, args, const_context);
+                linted |= transmute_float_to_int::check(cx, e, from_ty, to_ty, args, const_context);
+                linted |= unsound_collection_transmute::check(cx, e, from_ty, to_ty);
+
+                if !linted {
+                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, args);
                 }
             }
         }
