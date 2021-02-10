@@ -59,8 +59,6 @@ declare_clippy_lint! {
 pub struct UseSelf {
     msrv: Option<RustcVersion>,
     stack: Vec<StackItem>,
-    types_to_skip: Vec<HirId>,
-    types_to_lint: Vec<HirId>,
 }
 
 const USE_SELF_MSRV: RustcVersion = RustcVersion::new(1, 37, 0);
@@ -75,11 +73,13 @@ impl UseSelf {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug)]
 enum StackItem {
     Check {
         hir_id: HirId,
         impl_trait_ref_def_id: Option<LocalDefId>,
+        types_to_skip: Vec<HirId>,
+        types_to_lint: Vec<HirId>,
     },
     NoCheck,
 }
@@ -116,6 +116,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     self.stack.push(StackItem::Check {
                         hir_id: hir_self_ty.hir_id,
                         impl_trait_ref_def_id,
+                        types_to_lint: Vec::new(),
+                        types_to_skip: Vec::new(),
                     });
                 } else {
                     self.stack.push(StackItem::NoCheck);
@@ -149,7 +151,11 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         // declaration. The collection of those types is all this method implementation does.
         if_chain! {
             if let ImplItemKind::Fn(FnSig { decl, .. }, ..) = impl_item.kind;
-            if let Some(StackItem::Check { impl_trait_ref_def_id: Some(def_id), .. }) = self.stack.last().copied();
+            if let Some(&mut StackItem::Check {
+                impl_trait_ref_def_id: Some(def_id),
+                ref mut types_to_skip,
+                ..
+            }) = self.stack.last_mut();
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(def_id);
             then {
                 // `self_ty` is the semantic self type of `impl <trait> for <type>`. This cannot be
@@ -191,15 +197,11 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     if trait_sem_ty.walk().any(|inner| inner == self_ty.into()) {
                         let mut visitor = SkipTyCollector::default();
                         visitor.visit_ty(&impl_hir_ty);
-                        self.types_to_skip.extend(visitor.types_to_skip);
+                        types_to_skip.extend(visitor.types_to_skip);
                     }
                 }
             }
         }
-    }
-
-    fn check_impl_item_post(&mut self, _: &LateContext<'_>, _: &hir::ImplItem<'_>) {
-        self.types_to_skip.clear();
     }
 
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) {
@@ -211,7 +213,13 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         // which shouldn't, with a visitor. We could directly lint in the visitor, but then we
         // could only allow this lint on item scope. And we would have to check if those types are
         // already dealt with in `check_ty` anyway.
-        if let Some(StackItem::Check { hir_id, .. }) = self.stack.last() {
+        if let Some(StackItem::Check {
+            hir_id,
+            types_to_lint,
+            types_to_skip,
+            ..
+        }) = self.stack.last_mut()
+        {
             let self_ty = ty_from_hir_id(cx, *hir_id);
 
             let mut visitor = LintTyCollector {
@@ -221,25 +229,36 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 types_to_skip: vec![],
             };
             visitor.visit_expr(&body.value);
-            self.types_to_lint.extend(visitor.types_to_lint);
-            self.types_to_skip.extend(visitor.types_to_skip);
+            types_to_lint.extend(visitor.types_to_lint);
+            types_to_skip.extend(visitor.types_to_skip);
         }
-    }
-
-    fn check_body_post(&mut self, _: &LateContext<'_>, _: &hir::Body<'_>) {
-        self.types_to_lint.clear();
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
-        if in_macro(hir_ty.span)
-            | in_impl(cx, hir_ty)
-            | self.types_to_skip.contains(&hir_ty.hir_id)
-            | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV)
-        {
+        if in_macro(hir_ty.span) | in_impl(cx, hir_ty) | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
             return;
         }
 
-        let lint_dependend_on_expr_kind = || {
+        let lint_dependend_on_expr_kind = if let Some(StackItem::Check {
+            hir_id,
+            types_to_lint,
+            types_to_skip,
+            ..
+        }) = self.stack.last()
+        {
+            if types_to_skip.contains(&hir_ty.hir_id) {
+                false
+            } else if types_to_lint.contains(&hir_ty.hir_id) {
+                true
+            } else {
+                let self_ty = ty_from_hir_id(cx, *hir_id);
+                should_lint_ty(hir_ty, hir_ty_to_ty(cx.tcx, hir_ty), self_ty)
+            }
+        } else {
+            false
+        };
+
+        if lint_dependend_on_expr_kind {
             // FIXME: this span manipulation should not be necessary
             // @flip1995 found an ast lowering issue in
             // https://github.com/rust-lang/rust/blob/master/src/librustc_ast_lowering/path.rs#l142-l162
@@ -249,16 +268,6 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     ..
                 })) => span_lint_until_last_segment(cx, hir_ty.span, segment),
                 _ => span_lint(cx, hir_ty.span),
-            }
-        };
-
-        if self.types_to_lint.contains(&hir_ty.hir_id) {
-            lint_dependend_on_expr_kind();
-        } else if let Some(StackItem::Check { hir_id, .. }) = self.stack.last() {
-            let self_ty = ty_from_hir_id(cx, *hir_id);
-
-            if should_lint_ty(hir_ty, hir_ty_to_ty(cx.tcx, hir_ty), self_ty) {
-                lint_dependend_on_expr_kind();
             }
         }
     }
