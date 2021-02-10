@@ -29,7 +29,7 @@ macro_rules! from_transmute_x86 {
 /// Implements common traits on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! impl_vector {
     { $name:ident, $type:ty } => {
-        impl<const LANES: usize> $name<LANES> {
+        impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost64 {
             /// Construct a SIMD vector by setting all lanes to the given value.
             pub const fn splat(value: $type) -> Self {
                 Self([value; LANES])
@@ -72,23 +72,23 @@ macro_rules! impl_vector {
             }
         }
 
-        impl<const LANES: usize> Copy for $name<LANES> {}
+        impl<const LANES: usize> Copy for $name<LANES> where Self: crate::LanesAtMost64 {}
 
-        impl<const LANES: usize> Clone for $name<LANES> {
+        impl<const LANES: usize> Clone for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<const LANES: usize> Default for $name<LANES> {
+        impl<const LANES: usize> Default for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn default() -> Self {
                 Self::splat(<$type>::default())
             }
         }
 
-        impl<const LANES: usize> PartialEq for $name<LANES> {
+        impl<const LANES: usize> PartialEq for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn eq(&self, other: &Self) -> bool {
                 // TODO use SIMD equality
@@ -96,7 +96,7 @@ macro_rules! impl_vector {
             }
         }
 
-        impl<const LANES: usize> PartialOrd for $name<LANES> {
+        impl<const LANES: usize> PartialOrd for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
                 // TODO use SIMD equalitya
@@ -105,14 +105,14 @@ macro_rules! impl_vector {
         }
 
         // array references
-        impl<const LANES: usize> AsRef<[$type; LANES]> for $name<LANES> {
+        impl<const LANES: usize> AsRef<[$type; LANES]> for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn as_ref(&self) -> &[$type; LANES] {
                 &self.0
             }
         }
 
-        impl<const LANES: usize> AsMut<[$type; LANES]> for $name<LANES> {
+        impl<const LANES: usize> AsMut<[$type; LANES]> for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn as_mut(&mut self) -> &mut [$type; LANES] {
                 &mut self.0
@@ -120,14 +120,14 @@ macro_rules! impl_vector {
         }
 
         // slice references
-        impl<const LANES: usize> AsRef<[$type]> for $name<LANES> {
+        impl<const LANES: usize> AsRef<[$type]> for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn as_ref(&self) -> &[$type] {
                 &self.0
             }
         }
 
-        impl<const LANES: usize> AsMut<[$type]> for $name<LANES> {
+        impl<const LANES: usize> AsMut<[$type]> for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn as_mut(&mut self) -> &mut [$type] {
                 &mut self.0
@@ -135,14 +135,14 @@ macro_rules! impl_vector {
         }
 
         // vector/array conversion
-        impl<const LANES: usize> From<[$type; LANES]> for $name<LANES> {
+        impl<const LANES: usize> From<[$type; LANES]> for $name<LANES> where Self: crate::LanesAtMost64 {
             fn from(array: [$type; LANES]) -> Self {
                 Self(array)
             }
         }
 
         // splat
-        impl<const LANES: usize> From<$type> for $name<LANES> {
+        impl<const LANES: usize> From<$type> for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn from(value: $type) -> Self {
                 Self::splat(value)
@@ -158,9 +158,9 @@ macro_rules! impl_integer_vector {
     { $name:ident, $type:ty } => {
         impl_vector! { $name, $type }
 
-        impl<const LANES: usize> Eq for $name<LANES> {}
+        impl<const LANES: usize> Eq for $name<LANES> where Self: crate::LanesAtMost64 {}
 
-        impl<const LANES: usize> Ord for $name<LANES> {
+        impl<const LANES: usize> Ord for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn cmp(&self, other: &Self) -> core::cmp::Ordering {
                 // TODO use SIMD cmp
@@ -168,7 +168,7 @@ macro_rules! impl_integer_vector {
             }
         }
 
-        impl<const LANES: usize> core::hash::Hash for $name<LANES> {
+        impl<const LANES: usize> core::hash::Hash for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
             fn hash<H>(&self, state: &mut H)
             where
@@ -187,7 +187,11 @@ macro_rules! impl_float_vector {
     { $name:ident, $type:ty, $bits_ty:ident } => {
         impl_vector! { $name, $type }
 
-        impl<const LANES: usize> $name<LANES> {
+        impl<const LANES: usize> $name<LANES>
+        where
+            Self: crate::LanesAtMost64,
+            crate::$bits_ty<LANES>: crate::LanesAtMost64,
+        {
             /// Raw transmutation to an unsigned integer vector type with the
             /// same size and number of lanes.
             #[inline]

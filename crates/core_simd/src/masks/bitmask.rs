@@ -1,12 +1,4 @@
-/// Implemented for bitmask sizes that are supported by the implementation.
-pub trait LanesAtMost64 {}
-impl LanesAtMost64 for BitMask<1> {}
-impl LanesAtMost64 for BitMask<2> {}
-impl LanesAtMost64 for BitMask<4> {}
-impl LanesAtMost64 for BitMask<8> {}
-impl LanesAtMost64 for BitMask<16> {}
-impl LanesAtMost64 for BitMask<32> {}
-impl LanesAtMost64 for BitMask<64> {}
+use crate::LanesAtMost64;
 
 /// A mask where each lane is represented by a single bit.
 #[derive(Copy, Clone, Debug)]

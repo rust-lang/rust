@@ -1,3 +1,5 @@
+use crate::LanesAtMost64;
+
 /// Checks if the right-hand side argument of a left- or right-shift would cause overflow.
 fn invalid_shift_rhs<T>(rhs: T) -> bool
 where
@@ -12,21 +14,30 @@ where
 macro_rules! impl_ref_ops {
     // binary op
     {
-        impl<const $lanes:ident: usize> core::ops::$trait:ident<$rhs:ty> for $type:ty {
+        impl<const $lanes:ident: usize> core::ops::$trait:ident<$rhs:ty> for $type:ty
+        where
+            $($bound:path: LanesAtMost64,)*
+        {
             type Output = $output:ty;
 
             $(#[$attrs:meta])*
             fn $fn:ident($self_tok:ident, $rhs_arg:ident: $rhs_arg_ty:ty) -> Self::Output $body:tt
         }
     } => {
-        impl<const $lanes: usize> core::ops::$trait<$rhs> for $type {
+        impl<const $lanes: usize> core::ops::$trait<$rhs> for $type
+        where
+            $($bound: LanesAtMost64,)*
+        {
             type Output = $output;
 
             $(#[$attrs])*
             fn $fn($self_tok, $rhs_arg: $rhs_arg_ty) -> Self::Output $body
         }
 
-        impl<const $lanes: usize> core::ops::$trait<&'_ $rhs> for $type {
+        impl<const $lanes: usize> core::ops::$trait<&'_ $rhs> for $type
+        where
+            $($bound: LanesAtMost64,)*
+        {
             type Output = <$type as core::ops::$trait<$rhs>>::Output;
 
             $(#[$attrs])*
@@ -35,7 +46,10 @@ macro_rules! impl_ref_ops {
             }
         }
 
-        impl<const $lanes: usize> core::ops::$trait<$rhs> for &'_ $type {
+        impl<const $lanes: usize> core::ops::$trait<$rhs> for &'_ $type
+        where
+            $($bound: LanesAtMost64,)*
+        {
             type Output = <$type as core::ops::$trait<$rhs>>::Output;
 
             $(#[$attrs])*
@@ -44,7 +58,10 @@ macro_rules! impl_ref_ops {
             }
         }
 
-        impl<const $lanes: usize> core::ops::$trait<&'_ $rhs> for &'_ $type {
+        impl<const $lanes: usize> core::ops::$trait<&'_ $rhs> for &'_ $type
+        where
+            $($bound: LanesAtMost64,)*
+        {
             type Output = <$type as core::ops::$trait<$rhs>>::Output;
 
             $(#[$attrs])*
@@ -56,17 +73,26 @@ macro_rules! impl_ref_ops {
 
     // binary assignment op
     {
-        impl<const $lanes:ident: usize> core::ops::$trait:ident<$rhs:ty> for $type:ty {
+        impl<const $lanes:ident: usize> core::ops::$trait:ident<$rhs:ty> for $type:ty
+        where
+            $($bound:path: LanesAtMost64,)*
+        {
             $(#[$attrs:meta])*
             fn $fn:ident(&mut $self_tok:ident, $rhs_arg:ident: $rhs_arg_ty:ty) $body:tt
         }
     } => {
-        impl<const $lanes: usize> core::ops::$trait<$rhs> for $type {
+        impl<const $lanes: usize> core::ops::$trait<$rhs> for $type
+        where
+            $($bound: LanesAtMost64,)*
+        {
             $(#[$attrs])*
             fn $fn(&mut $self_tok, $rhs_arg: $rhs_arg_ty) $body
         }
 
-        impl<const $lanes: usize> core::ops::$trait<&'_ $rhs> for $type {
+        impl<const $lanes: usize> core::ops::$trait<&'_ $rhs> for $type
+        where
+            $($bound: LanesAtMost64,)*
+        {
             $(#[$attrs])*
             fn $fn(&mut $self_tok, $rhs_arg: &$rhs_arg_ty) {
                 core::ops::$trait::$fn($self_tok, *$rhs_arg)
@@ -76,17 +102,26 @@ macro_rules! impl_ref_ops {
 
     // unary op
     {
-        impl<const $lanes:ident: usize> core::ops::$trait:ident for $type:ty {
+        impl<const $lanes:ident: usize> core::ops::$trait:ident for $type:ty
+        where
+            $($bound:path: LanesAtMost64,)*
+        {
             type Output = $output:ty;
             fn $fn:ident($self_tok:ident) -> Self::Output $body:tt
         }
     } => {
-        impl<const $lanes: usize> core::ops::$trait for $type {
+        impl<const $lanes: usize> core::ops::$trait for $type
+        where
+            $($bound: LanesAtMost64,)*
+        {
             type Output = $output;
             fn $fn($self_tok) -> Self::Output $body
         }
 
-        impl<const $lanes: usize> core::ops::$trait for &'_ $type {
+        impl<const $lanes: usize> core::ops::$trait for &'_ $type
+        where
+            $($bound: LanesAtMost64,)*
+        {
             type Output = <$type as core::ops::$trait>::Output;
             fn $fn($self_tok) -> Self::Output {
                 core::ops::$trait::$fn(*$self_tok)
@@ -130,7 +165,10 @@ macro_rules! impl_op {
 
     { impl Not for $type:ident, $scalar:ty } => {
         impl_ref_ops! {
-            impl<const LANES: usize> core::ops::Not for crate::$type<LANES> {
+            impl<const LANES: usize> core::ops::Not for crate::$type<LANES>
+            where
+                crate::$type<LANES>: LanesAtMost64,
+            {
                 type Output = Self;
                 fn not(self) -> Self::Output {
                     self ^ Self::splat(!<$scalar>::default())
@@ -141,7 +179,10 @@ macro_rules! impl_op {
 
     { impl Neg for $type:ident, $scalar:ty } => {
         impl_ref_ops! {
-            impl<const LANES: usize> core::ops::Neg for crate::$type<LANES> {
+            impl<const LANES: usize> core::ops::Neg for crate::$type<LANES>
+            where
+                crate::$type<LANES>: LanesAtMost64,
+            {
                 type Output = Self;
                 fn neg(self) -> Self::Output {
                     Self::splat(0) - self
@@ -152,7 +193,12 @@ macro_rules! impl_op {
 
     { impl Neg for $type:ident, $scalar:ty, @float } => {
         impl_ref_ops! {
-            impl<const LANES: usize> core::ops::Neg for crate::$type<LANES> {
+            impl<const LANES: usize> core::ops::Neg for crate::$type<LANES>
+            where
+                crate::$type<LANES>: LanesAtMost64,
+                crate::SimdU32<LANES>: LanesAtMost64,
+                crate::SimdU64<LANES>: LanesAtMost64,
+            {
                 type Output = Self;
                 fn neg(self) -> Self::Output {
                     // FIXME: Replace this with fneg intrinsic once available.
@@ -166,6 +212,7 @@ macro_rules! impl_op {
     { impl Index for $type:ident, $scalar:ty } => {
         impl<I, const LANES: usize> core::ops::Index<I> for crate::$type<LANES>
         where
+            Self: LanesAtMost64,
             I: core::slice::SliceIndex<[$scalar]>,
         {
             type Output = I::Output;
@@ -177,6 +224,7 @@ macro_rules! impl_op {
 
         impl<I, const LANES: usize> core::ops::IndexMut<I> for crate::$type<LANES>
         where
+            Self: LanesAtMost64,
             I: core::slice::SliceIndex<[$scalar]>,
         {
             fn index_mut(&mut self, index: I) -> &mut Self::Output {
@@ -189,7 +237,10 @@ macro_rules! impl_op {
     // generic binary op with assignment when output is `Self`
     { @binary $type:ident, $scalar:ty, $trait:ident :: $trait_fn:ident, $assign_trait:ident :: $assign_trait_fn:ident, $intrinsic:ident } => {
         impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$trait<Self> for crate::$type<LANES> {
+            impl<const LANES: usize> core::ops::$trait<Self> for crate::$type<LANES>
+            where
+                crate::$type<LANES>: LanesAtMost64,
+            {
                 type Output = Self;
 
                 #[inline]
@@ -202,7 +253,10 @@ macro_rules! impl_op {
         }
 
         impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$trait<$scalar> for crate::$type<LANES> {
+            impl<const LANES: usize> core::ops::$trait<$scalar> for crate::$type<LANES>
+            where
+                crate::$type<LANES>: LanesAtMost64,
+            {
                 type Output = Self;
 
                 #[inline]
@@ -213,7 +267,10 @@ macro_rules! impl_op {
         }
 
         impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$trait<crate::$type<LANES>> for $scalar {
+            impl<const LANES: usize> core::ops::$trait<crate::$type<LANES>> for $scalar
+            where
+                crate::$type<LANES>: LanesAtMost64,
+            {
                 type Output = crate::$type<LANES>;
 
                 #[inline]
@@ -224,7 +281,10 @@ macro_rules! impl_op {
         }
 
         impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$assign_trait<Self> for crate::$type<LANES> {
+            impl<const LANES: usize> core::ops::$assign_trait<Self> for crate::$type<LANES>
+            where
+                crate::$type<LANES>: LanesAtMost64,
+            {
                 #[inline]
                 fn $assign_trait_fn(&mut self, rhs: Self) {
                     unsafe {
@@ -235,7 +295,10 @@ macro_rules! impl_op {
         }
 
         impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$assign_trait<$scalar> for crate::$type<LANES> {
+            impl<const LANES: usize> core::ops::$assign_trait<$scalar> for crate::$type<LANES>
+            where
+                crate::$type<LANES>: LanesAtMost64,
+            {
                 #[inline]
                 fn $assign_trait_fn(&mut self, rhs: $scalar) {
                     core::ops::$assign_trait::$assign_trait_fn(self, Self::splat(rhs));
@@ -278,7 +341,10 @@ macro_rules! impl_unsigned_int_ops {
 
                 // Integers panic on divide by 0
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::Div<Self> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::Div<Self> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         type Output = Self;
 
                         #[inline]
@@ -303,7 +369,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::Div<$scalar> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::Div<$scalar> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         type Output = Self;
 
                         #[inline]
@@ -323,7 +392,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::Div<crate::$vector<LANES>> for $scalar {
+                    impl<const LANES: usize> core::ops::Div<crate::$vector<LANES>> for $scalar
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         type Output = crate::$vector<LANES>;
 
                         #[inline]
@@ -334,7 +406,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::DivAssign<Self> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::DivAssign<Self> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         #[inline]
                         fn div_assign(&mut self, rhs: Self) {
                             *self = *self / rhs;
@@ -343,7 +418,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::DivAssign<$scalar> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::DivAssign<$scalar> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         #[inline]
                         fn div_assign(&mut self, rhs: $scalar) {
                             *self = *self / rhs;
@@ -353,7 +431,10 @@ macro_rules! impl_unsigned_int_ops {
 
                 // remainder panics on zero divisor
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::Rem<Self> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::Rem<Self> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         type Output = Self;
 
                         #[inline]
@@ -378,7 +459,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::Rem<$scalar> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::Rem<$scalar> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         type Output = Self;
 
                         #[inline]
@@ -398,7 +482,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::Rem<crate::$vector<LANES>> for $scalar {
+                    impl<const LANES: usize> core::ops::Rem<crate::$vector<LANES>> for $scalar
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         type Output = crate::$vector<LANES>;
 
                         #[inline]
@@ -409,7 +496,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::RemAssign<Self> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::RemAssign<Self> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         #[inline]
                         fn rem_assign(&mut self, rhs: Self) {
                             *self = *self % rhs;
@@ -418,7 +508,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::RemAssign<$scalar> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::RemAssign<$scalar> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         #[inline]
                         fn rem_assign(&mut self, rhs: $scalar) {
                             *self = *self % rhs;
@@ -428,7 +521,10 @@ macro_rules! impl_unsigned_int_ops {
 
                 // shifts panic on overflow
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::Shl<Self> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::Shl<Self> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         type Output = Self;
 
                         #[inline]
@@ -447,7 +543,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::Shl<$scalar> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::Shl<$scalar> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         type Output = Self;
 
                         #[inline]
@@ -463,7 +562,10 @@ macro_rules! impl_unsigned_int_ops {
 
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::ShlAssign<Self> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::ShlAssign<Self> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         #[inline]
                         fn shl_assign(&mut self, rhs: Self) {
                             *self = *self << rhs;
@@ -472,7 +574,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::ShlAssign<$scalar> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::ShlAssign<$scalar> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         #[inline]
                         fn shl_assign(&mut self, rhs: $scalar) {
                             *self = *self << rhs;
@@ -481,7 +586,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::Shr<Self> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::Shr<Self> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         type Output = Self;
 
                         #[inline]
@@ -500,7 +608,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::Shr<$scalar> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::Shr<$scalar> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         type Output = Self;
 
                         #[inline]
@@ -516,7 +627,10 @@ macro_rules! impl_unsigned_int_ops {
 
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::ShrAssign<Self> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::ShrAssign<Self> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         #[inline]
                         fn shr_assign(&mut self, rhs: Self) {
                             *self = *self >> rhs;
@@ -525,7 +639,10 @@ macro_rules! impl_unsigned_int_ops {
                 }
 
                 impl_ref_ops! {
-                    impl<const LANES: usize> core::ops::ShrAssign<$scalar> for crate::$vector<LANES> {
+                    impl<const LANES: usize> core::ops::ShrAssign<$scalar> for crate::$vector<LANES>
+                    where
+                        crate::$vector<LANES>: LanesAtMost64,
+                    {
                         #[inline]
                         fn shr_assign(&mut self, rhs: $scalar) {
                             *self = *self >> rhs;

@@ -33,7 +33,10 @@ macro_rules! impl_fmt_trait {
     { $($type:ident => $(($trait:ident, $format:ident)),*;)* } => {
         $( // repeat type
             $( // repeat trait
-                impl<const LANES: usize> core::fmt::$trait for crate::$type<LANES> {
+                impl<const LANES: usize> core::fmt::$trait for crate::$type<LANES>
+                where
+                    Self: crate::LanesAtMost64,
+                {
                     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                         $format(self.as_ref(), f)
                     }
