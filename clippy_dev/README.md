@@ -1,8 +1,10 @@
-## Clippy-dev is a tool to ease clippys development, similar to `rustc`s `x.py`.
+# Clippy Dev Tool 
+
+The Clippy Dev Tool is a tool to ease Clippy development, similar to `rustc`s `x.py`.
 
 Functionalities (incomplete):
 
-# lintcheck
+## `lintcheck`
 Runs clippy on a fixed set of crates read from `clippy_dev/lintcheck_crates.toml`
 and saves logs of the lint warnings into the repo.
 We can then check the diff and spot new or disappearing warnings.

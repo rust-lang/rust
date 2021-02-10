@@ -10,6 +10,7 @@ rayon = {name = "rayon", versions = ['1.5.0']}
 serde = {name = "serde", versions = ['1.0.118']}
 # top 10 crates.io dls
 bitflags = {name = "bitflags", versions = ['1.2.1']}
+# crash = {name = "clippy_crash", path = "/tmp/clippy_crash"}
 libc = {name = "libc", versions = ['0.2.81']}
 log = {name = "log", versions = ['0.4.11']}
 proc-macro2 = {name = "proc-macro2", versions = ['1.0.24']}

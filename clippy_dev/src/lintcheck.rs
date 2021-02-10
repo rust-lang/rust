@@ -31,13 +31,15 @@ struct TomlCrate {
     versions: Option<Vec<String>>,
     git_url: Option<String>,
     git_hash: Option<String>,
+    path: Option<String>,
 }
 
-// represents an archive we download from crates.io
+// represents an archive we download from crates.io, or a git repo, or a local repo
 #[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 enum CrateSource {
     CratesIo { name: String, version: String },
     Git { name: String, url: String, commit: String },
+    Path { name: String, path: PathBuf },
 }
 
 // represents the extracted sourcecode of a crate
@@ -111,7 +113,7 @@ impl CrateSource {
             },
             CrateSource::Git { name, url, commit } => {
                 let repo_path = {
-                    let mut repo_path = PathBuf::from("target/lintcheck/downloads");
+                    let mut repo_path = PathBuf::from("target/lintcheck/crates");
                     // add a -git suffix in case we have the same crate from crates.io and a git repo
                     repo_path.push(format!("{}-git", name));
                     repo_path
@@ -137,6 +139,37 @@ impl CrateSource {
                     version: commit.clone(),
                     name: name.clone(),
                     path: repo_path,
+                }
+            },
+            CrateSource::Path { name, path } => {
+                use fs_extra::dir;
+
+                // simply copy the entire directory into our target dir
+                let copy_dest = PathBuf::from("target/lintcheck/crates/");
+
+                // the source path of the crate we copied,  ${copy_dest}/crate_name
+                let crate_root = copy_dest.join(name); // .../crates/local_crate
+
+                if !crate_root.exists() {
+                    println!("Copying {} to {}", path.display(), copy_dest.display());
+
+                    dir::copy(path, &copy_dest, &dir::CopyOptions::new()).expect(&format!(
+                        "Failed to copy from {}, to  {}",
+                        path.display(),
+                        crate_root.display()
+                    ));
+                } else {
+                    println!(
+                        "Not copying {} to {}, destination already exists",
+                        path.display(),
+                        crate_root.display()
+                    );
+                }
+
+                Crate {
+                    version: String::from("local"),
+                    name: name.clone(),
+                    path: crate_root,
                 }
             },
         }
@@ -211,6 +244,13 @@ fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
     // multiple Cratesources)
     let mut crate_sources = Vec::new();
     tomlcrates.into_iter().for_each(|tk| {
+        if let Some(ref path) = tk.path {
+            crate_sources.push(CrateSource::Path {
+                name: tk.name.clone(),
+                path: PathBuf::from(path),
+            });
+        }
+
         // if we have multiple versions, save each one
         if let Some(ref versions) = tk.versions {
             versions.iter().for_each(|ver| {
@@ -234,7 +274,10 @@ fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
         {
             eprintln!("tomlkrate: {:?}", tk);
             if tk.git_hash.is_some() != tk.git_url.is_some() {
-                panic!("Encountered TomlCrate with only one of git_hash and git_url!")
+                panic!("Error: Encountered TomlCrate with only one of git_hash and git_url!");
+            }
+            if tk.path.is_some() && (tk.git_hash.is_some() || tk.versions.is_some()) {
+                panic!("Error: TomlCrate can only have one of 'git_.*', 'version' or 'path' fields");
             }
             unreachable!("Failed to translate TomlCrate into CrateSource!");
         }
@@ -298,6 +341,7 @@ pub fn run(clap_config: &ArgMatches) {
             let name = match krate {
                 CrateSource::CratesIo { name, .. } => name,
                 CrateSource::Git { name, .. } => name,
+                CrateSource::Path { name, .. } => name,
             };
             name == only_one_crate
         }) {
