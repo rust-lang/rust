@@ -3,6 +3,7 @@ use crate::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_hir::hir_id::HirId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId};
 use rustc_middle::ty;
@@ -151,11 +152,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 struct TypeAscriptionFinder<'tcx> {
     found: Option<&'tcx hir::Expr<'tcx>>,
+    found_ids: Vec<HirId>,
 }
 
 impl<'tcx> TypeAscriptionFinder<'tcx> {
     fn new() -> TypeAscriptionFinder<'tcx> {
-        TypeAscriptionFinder { found: None }
+        TypeAscriptionFinder { found: None, found_ids: vec![] }
     }
 
     fn found_type_ascr(&self) -> Option<&'tcx hir::Expr<'tcx>> {
@@ -177,8 +179,11 @@ impl Visitor<'tcx> for TypeAscriptionFinder<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             hir::ExprKind::Type(..) => {
-                self.found = Some(expr);
-                return;
+                if !self.found_ids.contains(&expr.hir_id) {
+                    self.found = Some(expr);
+                    self.found_ids.push(expr.hir_id);
+                    return;
+                }
             }
             _ => intravisit::walk_expr(self, expr),
         }
