@@ -1,6 +1,8 @@
 #![allow(rustc::default_hash_types)]
 
 mod box_vec;
+mod redundant_allocation;
+mod utils;
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -13,8 +15,8 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericBounds, GenericParamKind, HirId,
-    ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Lit, Local, MatchSource, MutTy, Mutability, Node,
-    QPath, Stmt, StmtKind, SyntheticTyParamKind, TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
+    ImplItem, ImplItemKind, Item, ItemKind, Lifetime, Lit, Local, MatchSource, MutTy, Mutability, Node, QPath, Stmt,
+    StmtKind, SyntheticTyParamKind, TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -35,10 +37,10 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, get_qpath_generic_tys, higher, in_constant, indent_of, int_bits,
-    is_hir_ty_cfg_dependant, is_ty_param_diagnostic_item, is_ty_param_lang_item, is_type_diagnostic_item,
-    last_path_segment, match_def_path, match_path, meets_msrv, method_chain_args, multispan_sugg,
-    numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
+    is_hir_ty_cfg_dependant, is_ty_param_diagnostic_item, is_type_diagnostic_item, last_path_segment, match_def_path,
+    match_path, meets_msrv, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral, reindent_multiline,
+    sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help,
+    span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -301,23 +303,6 @@ fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static
     }
 }
 
-fn match_borrows_parameter(_cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<Span> {
-    let last = last_path_segment(qpath);
-    if_chain! {
-        if let Some(ref params) = last.args;
-        if !params.parenthesized;
-        if let Some(ty) = params.args.iter().find_map(|arg| match arg {
-            GenericArg::Type(ty) => Some(ty),
-            _ => None,
-        });
-        if let TyKind::Rptr(..) = ty.kind;
-        then {
-            return Some(ty.span);
-        }
-    }
-    None
-}
-
 impl Types {
     pub fn new(vec_box_size_threshold: u64) -> Self {
         Self { vec_box_size_threshold }
@@ -349,58 +334,8 @@ impl Types {
                 let res = cx.qpath_res(qpath, hir_id);
                 if let Some(def_id) = res.opt_def_id() {
                     box_vec::check(cx, hir_ty, qpath, def_id);
-                    if Some(def_id) == cx.tcx.lang_items().owned_box() {
-                        if let Some(span) = match_borrows_parameter(cx, qpath) {
-                            let mut applicability = Applicability::MachineApplicable;
-                            span_lint_and_sugg(
-                                cx,
-                                REDUNDANT_ALLOCATION,
-                                hir_ty.span,
-                                "usage of `Box<&T>`",
-                                "try",
-                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
-                                applicability,
-                            );
-                            return; // don't recurse into the type
-                        }
-                    } else if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
-                        if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::Rc) {
-                            let mut applicability = Applicability::MachineApplicable;
-                            span_lint_and_sugg(
-                                cx,
-                                REDUNDANT_ALLOCATION,
-                                hir_ty.span,
-                                "usage of `Rc<Rc<T>>`",
-                                "try",
-                                snippet_with_applicability(cx, ty.span, "..", &mut applicability).to_string(),
-                                applicability,
-                            );
-                            return; // don't recurse into the type
-                        }
-                        if let Some(ty) = is_ty_param_lang_item(cx, qpath, LangItem::OwnedBox) {
-                            let qpath = match &ty.kind {
-                                TyKind::Path(qpath) => qpath,
-                                _ => return,
-                            };
-                            let inner_span = match get_qpath_generic_tys(qpath).next() {
-                                Some(ty) => ty.span,
-                                None => return,
-                            };
-                            let mut applicability = Applicability::MachineApplicable;
-                            span_lint_and_sugg(
-                                cx,
-                                REDUNDANT_ALLOCATION,
-                                hir_ty.span,
-                                "usage of `Rc<Box<T>>`",
-                                "try",
-                                format!(
-                                    "Rc<{}>",
-                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
-                                ),
-                                applicability,
-                            );
-                            return; // don't recurse into the type
-                        }
+                    redundant_allocation::check(cx, hir_ty, qpath, def_id);
+                    if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
                         if let Some(alternate) = match_buffer_type(cx, qpath) {
                             span_lint_and_sugg(
                                 cx,
@@ -434,19 +369,6 @@ impl Types {
                                     snippet_with_applicability(cx, inner_span, "..", &mut applicability)
                                 ),
                                 Applicability::MachineApplicable,
-                            );
-                            return; // don't recurse into the type
-                        }
-                        if let Some(span) = match_borrows_parameter(cx, qpath) {
-                            let mut applicability = Applicability::MachineApplicable;
-                            span_lint_and_sugg(
-                                cx,
-                                REDUNDANT_ALLOCATION,
-                                hir_ty.span,
-                                "usage of `Rc<&T>`",
-                                "try",
-                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
-                                applicability,
                             );
                             return; // don't recurse into the type
                         }
