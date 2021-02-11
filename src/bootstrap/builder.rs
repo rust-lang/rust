@@ -1444,7 +1444,10 @@ impl<'a> Builder<'a> {
         }
 
         match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {
-            (Mode::Std, Some(n), _) | (_, _, Some(n)) => {
+            (Mode::Rustc, _, Some(n)) => {
+                cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
+            }
+            (Mode::Std, Some(n), _) => {
                 cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
             }
             _ => {
