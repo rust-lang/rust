@@ -187,7 +187,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 let place_with_id = return_if_err!(self.mc.cat_expr(expr));
 
                 self.delegate_consume(&place_with_id, place_with_id.hir_id);
-                self.walk_expr(subexpr);
+                self.consume_expr(subexpr);
             }
 
             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref base) => {
