@@ -1112,22 +1112,6 @@ pub struct ProjectionTy<'tcx> {
 }
 
 impl<'tcx> ProjectionTy<'tcx> {
-    /// Construct a `ProjectionTy` by searching the trait from `trait_ref` for the
-    /// associated item named `item_name`.
-    pub fn from_ref_and_name(
-        tcx: TyCtxt<'_>,
-        trait_ref: ty::TraitRef<'tcx>,
-        item_name: Ident,
-    ) -> ProjectionTy<'tcx> {
-        let item_def_id = tcx
-            .associated_items(trait_ref.def_id)
-            .find_by_name_and_kind(tcx, item_name, ty::AssocKind::Type, trait_ref.def_id)
-            .unwrap()
-            .def_id;
-
-        ProjectionTy { substs: trait_ref.substs, item_def_id }
-    }
-
     /// Extracts the underlying trait reference from this projection.
     /// For example, if this is a projection of `<T as Iterator>::Item`,
     /// then this function would return a `T: Iterator` trait reference.
