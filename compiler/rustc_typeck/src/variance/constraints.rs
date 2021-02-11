@@ -207,7 +207,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, current))]
+    #[instrument(level = "debug", skip(self, current))]
     fn add_constraints_from_invariant_substs(
         &mut self,
         current: &CurrentItem,
