@@ -31,26 +31,20 @@ pub(super) fn lint(cx: &LateContext<'_>, expr: &'tcx Expr<'_>, args: &[&[Expr<'_
         let body = cx.tcx.hir().body(body_id);
         if let ExprKind::Block(..) = body.value.kind;
         then {
-            let mut ret_span_collector = RetSpanCollector::new();
-            ret_span_collector.visit_expr(&body.value);
+            let mut ret_collector = RetCollector::new();
+            ret_collector.visit_expr(&body.value);
 
-            let label = "'outer";
-            let loop_label = if ret_span_collector.need_label {
-                format!("{}: ", label)
-            } else {
-                "".to_string()
-            };
+            // Skip the lint if `return` is used in `Loop` to avoid a suggest using `'label`.
+            if ret_collector.ret_in_loop {
+                return;
+            }
+
             let sugg =
-                format!("{}for {} in {} {{ .. }}", loop_label, snippet(cx, body.params[0].pat.span, ""), snippet(cx, for_each_receiver.span, ""));
+                format!("for {} in {} {{ .. }}", snippet(cx, body.params[0].pat.span, ""), snippet(cx, for_each_receiver.span, ""));
 
             let mut notes = vec![];
-            for (span, need_label) in ret_span_collector.spans {
-                let cont_label = if need_label {
-                    format!(" {}", label)
-                } else {
-                    "".to_string()
-                };
-                let note = format!("change `return` to `continue{}` in the loop body", cont_label);
+            for span in ret_collector.spans {
+                let note = format!("change `return` to `continue` in the loop body");
                 notes.push((span, note));
             }
 
@@ -100,34 +94,37 @@ fn is_target_ty(cx: &LateContext<'_>, expr_ty: Ty<'_>) -> bool {
     false
 }
 
-/// Collect spans of `return` in the closure body.
-struct RetSpanCollector {
-    spans: Vec<(Span, bool)>,
+/// This type plays two roles.
+/// 1. Collect spans of `return` in the closure body.
+/// 2. Detect use of `return` in `Loop` in the closure body.
+struct RetCollector {
+    spans: Vec<Span>,
+    ret_in_loop: bool,
+
     loop_depth: u16,
-    need_label: bool,
 }
 
-impl RetSpanCollector {
+impl RetCollector {
     fn new() -> Self {
         Self {
             spans: Vec::new(),
+            ret_in_loop: false,
             loop_depth: 0,
-            need_label: false,
         }
     }
 }
 
-impl<'tcx> Visitor<'tcx> for RetSpanCollector {
+impl<'tcx> Visitor<'tcx> for RetCollector {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &Expr<'_>) {
         match expr.kind {
             ExprKind::Ret(..) => {
-                if self.loop_depth > 0 && !self.need_label {
-                    self.need_label = true
+                if self.loop_depth > 0 && !self.ret_in_loop {
+                    self.ret_in_loop = true
                 }
 
-                self.spans.push((expr.span, self.loop_depth > 0))
+                self.spans.push(expr.span)
             },
 
             ExprKind::Loop(..) => {

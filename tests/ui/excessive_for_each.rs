@@ -82,7 +82,7 @@ fn main() {
         }
     });
 
-    // Should trigger this lint with notes that say "change `return` to `continue 'outer`".
+    // Should NOT trigger this lint in case `return` is used in `Loop` of the closure.
     vec.iter().for_each(|v| {
         for i in 0..*v {
             if i == 10 {

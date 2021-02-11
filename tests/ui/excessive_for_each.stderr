@@ -122,28 +122,5 @@ note: change `return` to `continue` in the loop body
 LL |             return;
    |             ^^^^^^
 
-error: excessive use of `for_each`
-  --> $DIR/excessive_for_each.rs:86:5
-   |
-LL | /     vec.iter().for_each(|v| {
-LL | |         for i in 0..*v {
-LL | |             if i == 10 {
-LL | |                 return;
-...  |
-LL | |         }
-LL | |     });
-   | |______^ help: try: `'outer: for v in vec.iter() { .. }`
-   |
-note: change `return` to `continue 'outer` in the loop body
-  --> $DIR/excessive_for_each.rs:89:17
-   |
-LL |                 return;
-   |                 ^^^^^^
-note: change `return` to `continue` in the loop body
-  --> $DIR/excessive_for_each.rs:95:13
-   |
-LL |             return;
-   |             ^^^^^^
-
-error: aborting due to 15 previous errors
+error: aborting due to 14 previous errors
 
