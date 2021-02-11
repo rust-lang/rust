@@ -216,13 +216,13 @@ macro_rules! test_lanes {
         $crate::test_lanes_impl! {
             fn $test<const $lanes: usize>() $body
 
+            lanes_1 => 1,
             lanes_2 => 2,
-            lanes_3 => 3,
             lanes_4 => 4,
-            lanes_7 => 7,
             lanes_8 => 8,
             lanes_16 => 16,
             lanes_32 => 32,
+            lanes_64 => 64,
         }
         )*
     }
