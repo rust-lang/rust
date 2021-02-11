@@ -1,15 +1,5 @@
 #![deny(rustdoc::non_autolinks)]
 
-/// [http://aa.com](http://aa.com)
-//~^ ERROR unneeded long form for URL
-/// [http://bb.com]
-//~^ ERROR unneeded long form for URL
-///
-/// [http://bb.com]: http://bb.com
-///
-/// [http://c.com][http://c.com]
-pub fn a() {}
-
 /// https://somewhere.com
 //~^ ERROR this URL is not a hyperlink
 /// https://somewhere.com/a
@@ -54,6 +44,8 @@ pub fn c() {}
 ///
 /// ```
 /// This link should not be linted: http://example.com
+///
+/// Nor this one: <http://example.com> or this one: [x](http://example.com)
 /// ```
 ///
 /// [should_not.lint](should_not.lint)

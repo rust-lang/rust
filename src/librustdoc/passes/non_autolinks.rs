@@ -4,9 +4,11 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::opts;
 use core::ops::Range;
-use pulldown_cmark::{Event, LinkType, Parser, Tag};
+use pulldown_cmark::{Event, Parser, Tag};
 use regex::Regex;
 use rustc_errors::Applicability;
+use std::lazy::SyncLazy;
+use std::mem;
 
 crate const CHECK_NON_AUTOLINKS: Pass = Pass {
     name: "check-non-autolinks",
@@ -14,16 +16,18 @@ crate const CHECK_NON_AUTOLINKS: Pass = Pass {
     description: "detects URLs that could be linkified",
 };
 
-const URL_REGEX: &str = concat!(
-    r"https?://",                          // url scheme
-    r"([-a-zA-Z0-9@:%._\+~#=]{2,256}\.)+", // one or more subdomains
-    r"[a-zA-Z]{2,63}",                     // root domain
-    r"\b([-a-zA-Z0-9@:%_\+.~#?&/=]*)"      // optional query or url fragments
-);
+const URL_REGEX: SyncLazy<Regex> = SyncLazy::new(|| {
+    Regex::new(concat!(
+        r"https?://",                          // url scheme
+        r"([-a-zA-Z0-9@:%._\+~#=]{2,256}\.)+", // one or more subdomains
+        r"[a-zA-Z]{2,63}",                     // root domain
+        r"\b([-a-zA-Z0-9@:%_\+.~#?&/=]*)"      // optional query or url fragments
+    ))
+    .expect("failed to build regex")
+});
 
 struct NonAutolinksLinter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
-    regex: Regex,
 }
 
 impl<'a, 'tcx> NonAutolinksLinter<'a, 'tcx> {
@@ -33,8 +37,9 @@ impl<'a, 'tcx> NonAutolinksLinter<'a, 'tcx> {
         range: Range<usize>,
         f: &impl Fn(&DocContext<'_>, &str, &str, Range<usize>),
     ) {
+        trace!("looking for raw urls in {}", text);
         // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").
-        for match_ in self.regex.find_iter(&text) {
+        for match_ in URL_REGEX.find_iter(&text) {
             let url = match_.as_str();
             let url_range = match_.range();
             f(
@@ -48,7 +53,7 @@ impl<'a, 'tcx> NonAutolinksLinter<'a, 'tcx> {
 }
 
 crate fn check_non_autolinks(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    NonAutolinksLinter::new(cx).fold_crate(krate)
+    NonAutolinksLinter { cx }.fold_crate(krate)
 }
 
 impl<'a, 'tcx> DocFolder for NonAutolinksLinter<'a, 'tcx> {
@@ -82,37 +87,16 @@ impl<'a, 'tcx> DocFolder for NonAutolinksLinter<'a, 'tcx> {
 
             while let Some((event, range)) = p.next() {
                 match event {
-                    Event::Start(Tag::Link(kind, _, _)) => {
-                        let ignore = matches!(kind, LinkType::Autolink | LinkType::Email);
-                        let mut title = String::new();
-
-                        while let Some((event, range)) = p.next() {
-                            match event {
-                                Event::End(Tag::Link(_, url, _)) => {
-                                    // NOTE: links cannot be nested, so we don't need to
-                                    // check `kind`
-                                    if url.as_ref() == title && !ignore && self.regex.is_match(&url)
-                                    {
-                                        report_diag(
-                                            self.cx,
-                                            "unneeded long form for URL",
-                                            &url,
-                                            range,
-                                        );
-                                    }
-                                    break;
-                                }
-                                Event::Text(s) if !ignore => title.push_str(&s),
-                                _ => {}
-                            }
-                        }
-                    }
                     Event::Text(s) => self.find_raw_urls(&s, range, &report_diag),
-                    Event::Start(Tag::CodeBlock(_)) => {
-                        // We don't want to check the text inside the code blocks.
+                    // We don't want to check the text inside code blocks or links.
+                    Event::Start(tag @ (Tag::CodeBlock(_) | Tag::Link(..))) => {
                         while let Some((event, _)) = p.next() {
                             match event {
-                                Event::End(Tag::CodeBlock(_)) => break,
+                                Event::End(end)
+                                    if mem::discriminant(&end) == mem::discriminant(&tag) =>
+                                {
+                                    break;
+                                }
                                 _ => {}
                             }
                         }
