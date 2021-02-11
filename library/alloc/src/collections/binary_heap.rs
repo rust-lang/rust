@@ -143,6 +143,8 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::borrow::Borrow;
+use core::cmp::Ordering;
 use core::fmt;
 use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
@@ -707,6 +709,93 @@ impl<T: Ord> BinaryHeap<T> {
     {
         self.data.retain(f);
         self.rebuild();
+    }
+
+    /// Returns `true` if the `BinaryHeap` contains the specified item.
+    ///
+    /// The item may be any borrowed form of the heap's item type, but
+    /// `PartialEq` on the borrowed form *must* match that for the item type.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_contains_remove)]
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let heap = BinaryHeap::from(vec![1, 3, 5, 7, 9]);
+    ///
+    /// assert!(heap.contains(&5));
+    /// assert!(!heap.contains(&2));
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// The worst case time complexity is *O*(*n*).
+    #[unstable(feature = "binary_heap_contains_remove", issue = "82001")]
+    pub fn contains<Q: ?Sized>(&self, item: &Q) -> bool
+    where
+        T: Borrow<Q>,
+        Q: PartialEq,
+    {
+        self.data.iter().any(|x| x.borrow() == item)
+    }
+
+    /// Removes an item from the `BinaryHeap` and returns it, if it exists.
+    ///
+    /// The item may be any borrowed form of the heap's item type, but
+    /// `PartialEq` on the borrowed form *must* match that for the item type. If
+    /// there are multiple matching elements, an arbitrary and unspecified one is
+    /// removed.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_contains_remove)]
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let mut heap = BinaryHeap::from(vec![1, 3, 5, 7, 9]);
+    ///
+    /// assert_eq!(heap.remove(&7), Some(7));
+    /// assert_eq!(heap.remove(&7), None);
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// The worst case time complexity is *O*(*n*).
+    #[unstable(feature = "binary_heap_contains_remove", issue = "82001")]
+    pub fn remove<Q: ?Sized>(&mut self, item: &Q) -> Option<T>
+    where
+        T: Borrow<Q>,
+        Q: PartialEq,
+    {
+        self.data.iter().position(|x| x.borrow() == item).map(|pos| {
+            let last = self.data.len() - 1;
+            let comparison = self.data[last].cmp(&self.data[pos]);
+            let removed_item = self.data.swap_remove(pos);
+            match comparison {
+                Ordering::Less => {
+                    // If the swapped item is less than the removed item, sift
+                    // it down the heap to its correct position.
+                    debug_assert!(pos < last);
+                    self.sift_down(pos);
+                }
+                Ordering::Greater => {
+                    // If the swapped item is greater than the removed item,
+                    // sift it up the heap to its correct position.
+                    debug_assert!(pos < last);
+                    self.sift_up(0, pos);
+                }
+                Ordering::Equal => {
+                    // If the swapped item is equal to the removed item, it's
+                    // already in the correct position.
+                }
+            }
+            removed_item
+        })
     }
 }
 
