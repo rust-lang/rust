@@ -21,6 +21,7 @@
 #![feature(vecdeque_binary_search)]
 #![feature(slice_group_by)]
 #![feature(vec_extend_from_within)]
+#![feature(binary_heap_contains_remove)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

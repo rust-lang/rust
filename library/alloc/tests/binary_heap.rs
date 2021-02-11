@@ -392,6 +392,42 @@ fn test_retain() {
     assert_eq!(a.into_sorted_vec(), [-10, 2, 4])
 }
 
+#[test]
+fn test_contains_remove() {
+    let mut a = BinaryHeap::from(vec![5, 7, 13, -2, -2, 8, -9]);
+
+    assert!(a.contains(&7));
+    assert_eq!(a.remove(&7), Some(7));
+    assert_eq!(a.remove(&7), None);
+    assert!(!a.contains(&7));
+
+    assert!(a.contains(&-2));
+    assert_eq!(a.remove(&-2), Some(-2));
+    assert_eq!(a.remove(&-2), Some(-2));
+    assert_eq!(a.remove(&-2), None);
+    assert!(!a.contains(&-2));
+
+    assert!(a.contains(&13));
+    assert_eq!(a.remove(&13), Some(13));
+    assert_eq!(a.remove(&13), None);
+    assert!(!a.contains(&13));
+
+    assert_eq!(a.into_sorted_vec(), [-9, 5, 8]);
+}
+
+#[test]
+fn test_empty_remove() {
+    let mut a = BinaryHeap::<i32>::new();
+    assert_eq!(a.remove(&5), None);
+}
+
+#[test]
+fn test_singleton_remove() {
+    let mut a = BinaryHeap::from(vec![5]);
+    assert_eq!(a.remove(&5), Some(5));
+    assert!(a.is_empty());
+}
+
 // old binaryheap failed this test
 //
 // Integrity means that all elements are present after a comparison panics,
