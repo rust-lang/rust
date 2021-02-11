@@ -1430,10 +1430,8 @@ impl Expr<'_> {
                 matches!(path.res, Res::Local(..) | Res::Def(DefKind::Static, _) | Res::Err)
             }
 
-            // Type ascription inherits its place expression kind from its
-            // operand. See:
-            // https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md#type-ascription-and-temporaries
-            ExprKind::Type(ref e, _) => e.is_place_expr(allow_projections_from),
+            // We always treat type ascriptions as rvalues
+            ExprKind::Type(_, _) => false,
 
             ExprKind::Unary(UnOp::UnDeref, _) => true,
 

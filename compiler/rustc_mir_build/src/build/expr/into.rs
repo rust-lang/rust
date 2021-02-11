@@ -40,7 +40,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
 
-        let expr_is_block_or_scope = matches!(expr.kind, ExprKind::Block { .. } | ExprKind::Scope { .. });
+        let expr_is_block_or_scope =
+            matches!(expr.kind, ExprKind::Block { .. } | ExprKind::Scope { .. });
 
         let schedule_drop = move |this: &mut Self| {
             if let Some(drop_scope) = scope {
@@ -71,11 +72,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::NeverToAny { source } => {
                 let source = this.hir.mirror(source);
-                let is_call = matches!(source.kind, ExprKind::Call { .. } | ExprKind::InlineAsm { .. });
+                let is_call =
+                    matches!(source.kind, ExprKind::Call { .. } | ExprKind::InlineAsm { .. });
 
                 // (#66975) Source could be a const of type `!`, so has to
                 // exist in the generated MIR.
-                unpack!(block = this.as_temp(block, Some(this.local_scope()), source, Mutability::Mut,));
+                unpack!(
+                    block = this.as_temp(block, Some(this.local_scope()), source, Mutability::Mut,)
+                );
 
                 // This is an optimization. If the expression was a call then we already have an
                 // unreachable block. Don't bother to terminate it and create a new one.
@@ -433,8 +437,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Avoid creating a temporary
             ExprKind::VarRef { .. }
             | ExprKind::UpvarRef { .. }
-            | ExprKind::PlaceTypeAscription { .. }
-            | ExprKind::ValueTypeAscription { .. } => {
+            | ExprKind::TypeAscription { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr));

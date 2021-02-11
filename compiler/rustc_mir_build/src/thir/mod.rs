@@ -263,12 +263,7 @@ crate enum ExprKind<'tcx> {
         fields: Vec<FieldExprRef<'tcx>>,
         base: Option<FruInfo<'tcx>>,
     },
-    PlaceTypeAscription {
-        source: ExprRef<'tcx>,
-        /// Type that the user gave to this expression
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
-    },
-    ValueTypeAscription {
+    TypeAscription {
         source: ExprRef<'tcx>,
         /// Type that the user gave to this expression
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,

@@ -40,8 +40,7 @@ impl Category {
             | ExprKind::Index { .. }
             | ExprKind::UpvarRef { .. }
             | ExprKind::VarRef { .. }
-            | ExprKind::PlaceTypeAscription { .. }
-            | ExprKind::ValueTypeAscription { .. } => Some(Category::Place),
+            | ExprKind::TypeAscription { .. } => Some(Category::Place),
 
             ExprKind::LogicalOp { .. }
             | ExprKind::Match { .. }

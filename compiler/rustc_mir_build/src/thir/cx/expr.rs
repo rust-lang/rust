@@ -648,10 +648,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 let cast_expr = Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind: cast };
                 debug!("make_mirror_unadjusted: (cast) user_ty={:?}", user_ty);
 
-                ExprKind::ValueTypeAscription {
-                    source: cast_expr.to_ref(),
-                    user_ty: Some(*user_ty),
-                }
+                ExprKind::TypeAscription { source: cast_expr.to_ref(), user_ty: Some(*user_ty) }
             } else {
                 cast
             }
@@ -660,11 +657,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             let user_provided_types = cx.typeck_results.user_provided_types();
             let user_ty = user_provided_types.get(ty.hir_id).copied();
             debug!("make_mirror_unadjusted: (type) user_ty={:?}", user_ty);
-            if source.is_syntactic_place_expr() {
-                ExprKind::PlaceTypeAscription { source: source.to_ref(), user_ty }
-            } else {
-                ExprKind::ValueTypeAscription { source: source.to_ref(), user_ty }
-            }
+            ExprKind::TypeAscription { source: source.to_ref(), user_ty }
         }
         hir::ExprKind::DropTemps(ref source) => ExprKind::Use { source: source.to_ref() },
         hir::ExprKind::Box(ref value) => ExprKind::Box { value: value.to_ref() },
