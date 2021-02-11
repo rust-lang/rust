@@ -4,7 +4,7 @@ Version 1.51.0 (2021-03-25)
 Language
 --------
 - [You can now parameterize items such as functions, traits, and `struct`s by constant
-  values in addition to by types.][78135] E.g. you can now write the following. Note:
+  values in addition to by types.][79135] E.g. you can now write the following. Note:
   Only values of primitive integers, `bool`, or `char` types are currently permitted.
   ```rust
   struct GenericArray<T, const LENGTH: usize> {
@@ -104,7 +104,7 @@ Internal Only
 
 - [Consistently avoid constructing optimized MIR when not doing codegen][80718]
 
-[78135]: https://github.com/rust-lang/rust/pull/78135
+[79135]: https://github.com/rust-lang/rust/pull/79135
 [74489]: https://github.com/rust-lang/rust/pull/74489
 [76934]: https://github.com/rust-lang/rust/pull/76934
 [79570]: https://github.com/rust-lang/rust/pull/79570
