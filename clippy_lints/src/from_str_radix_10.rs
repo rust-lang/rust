@@ -1,8 +1,8 @@
-use rustc_lint::{LateLintPass, LateContext};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_hir::*;
-use rustc_errors::Applicability;
 use if_chain::if_chain;
+use rustc_errors::Applicability;
+use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::span_lint_and_sugg;
 
@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// and complexity.
     ///
     /// **Known problems:** None.
-    /// 
+    ///
     /// **Example:**
     ///
     /// ```rust
@@ -77,6 +77,6 @@ fn is_primitive_integer_ty(ty: PrimTy) -> bool {
     match ty {
         PrimTy::Int(_) => true,
         PrimTy::Uint(_) => true,
-        _ => false
+        _ => false,
     }
 }

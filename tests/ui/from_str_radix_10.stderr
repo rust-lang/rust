@@ -1,0 +1,34 @@
+error: This call to `from_str_radix` can be shortened to a call to str::parse
+  --> $DIR/from_str_radix_10.rs:17:5
+   |
+LL |     u32::from_str_radix("30", 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `("30").parse()`
+   |
+   = note: `-D clippy::from-str-radix-10` implied by `-D warnings`
+
+error: This call to `from_str_radix` can be shortened to a call to str::parse
+  --> $DIR/from_str_radix_10.rs:18:5
+   |
+LL |     i64::from_str_radix("24", 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `("24").parse()`
+
+error: This call to `from_str_radix` can be shortened to a call to str::parse
+  --> $DIR/from_str_radix_10.rs:19:5
+   |
+LL |     isize::from_str_radix("100", 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `("100").parse()`
+
+error: This call to `from_str_radix` can be shortened to a call to str::parse
+  --> $DIR/from_str_radix_10.rs:20:5
+   |
+LL |     u8::from_str_radix("7", 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `("7").parse()`
+
+error: This call to `from_str_radix` can be shortened to a call to str::parse
+  --> $DIR/from_str_radix_10.rs:23:5
+   |
+LL |     i32::from_str_radix(string, 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(string).parse()`
+
+error: aborting due to 5 previous errors
+
