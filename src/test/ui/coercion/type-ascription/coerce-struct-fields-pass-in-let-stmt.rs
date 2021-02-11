@@ -1,8 +1,6 @@
 // Here we test for coercions in struct fields of nested type ascriptions
 // inside a tuple using an unsized coercion and a coercion from &mut -> &
 
-// run-pass
-
 #![feature(type_ascription)]
 
 use std::any::type_name;
@@ -26,4 +24,5 @@ fn main() {
   let tup = (9, (3, &arr : &[u32]), &mut bar);
   assert_eq!(type_of(tup), "(i32, (i32, &[u32]), &mut coerce_struct_fields_pass_in_let_stmt::Bar)");
   let _ = Foo { _a : (9, (3, &arr : &[u32]), &mut bar) };
+  //~^ ERROR type ascriptions are not
 }

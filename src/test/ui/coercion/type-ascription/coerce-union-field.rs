@@ -1,5 +1,3 @@
-// build-pass
-
 #![feature(type_ascription)]
 
 union Foo<'a> {
@@ -11,4 +9,6 @@ fn main() {
   let arr = [4,5,6];
   let x = &mut 26;
   let _ = Foo { f1: (x : &u32, (5, &arr : &[u32])) };
+  //~^ ERROR type ascriptions
+  //~^^ ERROR type ascriptions
 }

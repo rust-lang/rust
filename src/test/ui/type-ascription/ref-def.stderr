@@ -32,17 +32,6 @@ LL | let arr_ref: &[u32] = &arr;
    | ^^^^^^^^^^^^^^^^^^^
 
 error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/ref-def.rs:19:19
-   |
-LL |   let ref again = (arr_ref : &[u32])[1];
-   |                   ^^^^^^^^^^^^^^^^^^
-   |
-help: try to use the type ascription when creating the local variable
-   |
-LL | let arr_ref: &[u32] = &arr;
-   | ^^^^^^^^^^^^^^^^^^^
-
-error: type ascriptions are not allowed in lvalue contexts
   --> $DIR/ref-def.rs:22:24
    |
 LL |   let ref last_one = &*(arr_ref : &[u32]);
@@ -53,16 +42,5 @@ help: try to use the type ascription when creating the local variable
 LL | let arr_ref: &[u32] = &arr;
    | ^^^^^^^^^^^^^^^^^^^
 
-error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/ref-def.rs:22:24
-   |
-LL |   let ref last_one = &*(arr_ref : &[u32]);
-   |                        ^^^^^^^^^^^^^^^^^^
-   |
-help: try to use the type ascription when creating the local variable
-   |
-LL | let arr_ref: &[u32] = &arr;
-   | ^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 

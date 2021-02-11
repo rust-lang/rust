@@ -8,11 +8,20 @@ LL |         temp: i32 = fun(5i32);
    |         help: maybe you meant to write an assignment here: `let temp`
 
 error[E0425]: cannot find value `temp` in this scope
-  --> $DIR/type-ascription-instead-of-let.rs:7:9
+  --> $DIR/type-ascription-instead-of-let.rs:8:9
    |
 LL |         temp + value + 1
    |         ^^^^ not found in this scope
 
-error: aborting due to 2 previous errors
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/type-ascription-instead-of-let.rs:5:19
+   |
+LL |         temp: i32 = fun(5i32);
+   |         --------- ^
+   |         |
+   |         cannot assign to this expression
 
-For more information about this error, try `rustc --explain E0425`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0070, E0425.
+For more information about an error, try `rustc --explain E0070`.

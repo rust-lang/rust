@@ -1,0 +1,8 @@
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/coerce-to-unsized-in-return-expr.rs:4:3
+   |
+LL |   arg : &[u32]
+   |   ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

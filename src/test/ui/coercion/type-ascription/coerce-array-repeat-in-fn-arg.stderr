@@ -1,0 +1,8 @@
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/coerce-array-repeat-in-fn-arg.rs:7:8
+   |
+LL |   foo([&arr : &[u32]; 3]);
+   |        ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

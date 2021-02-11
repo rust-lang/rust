@@ -1,5 +1,3 @@
-// build-pass
-
 #![feature(type_ascription)]
 
 enum Foo<'a> {
@@ -10,4 +8,5 @@ enum Foo<'a> {
 fn main() {
   let arr = [4,5,6];
   let temp = Foo::A((10, &arr : &[u32]));
+  //~^ ERROR type ascriptions are not
 }

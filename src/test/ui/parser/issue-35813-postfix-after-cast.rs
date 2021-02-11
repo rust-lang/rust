@@ -11,6 +11,7 @@ pub fn index_after_as_cast() {
     //~^ ERROR: casts cannot be followed by indexing
     vec![1, 2, 3]: Vec<i32>[0];
     //~^ ERROR: casts cannot be followed by indexing
+    //~| ERROR type ascriptions are not
 }
 
 pub fn index_after_cast_to_index() {
@@ -18,6 +19,7 @@ pub fn index_after_cast_to_index() {
     //~^ ERROR: casts cannot be followed by indexing
     (&[0i32]): &[i32; 1][0];
     //~^ ERROR: casts cannot be followed by indexing
+    //~| ERROR type ascriptions are not
 }
 
 pub fn cast_after_cast() {
@@ -25,9 +27,11 @@ pub fn cast_after_cast() {
 
     }
     if 5u64: u64: u64 == 0u64 {
+    //~^ ERROR type ascriptions are not
 
     }
     let _ = 5u64: u64: u64 as u8 as i8 == 9i8;
+    //~^ ERROR type ascriptions are not
     let _ = 0i32: i32: i32;
     let _ = 0 as i32: i32;
     let _ = 0i32: i32 as i32;
@@ -84,7 +88,8 @@ pub fn complex() {
         if true { 33 } else { 44 } as i32.max(0),
         //~^ ERROR: casts cannot be followed by a method call
         if true { 33 } else { 44 }: i32.max(0)
-        //~^ ERROR: casts cannot be followed by a method call
+        //~^ ERROR type ascriptions are not
+        //~| ERROR: casts cannot be followed by a method call
     );
 }
 
@@ -94,6 +99,7 @@ pub fn in_condition() {
     }
     if 5u64: u64.max(0) == 0 {
         //~^ ERROR: casts cannot be followed by a method call
+        //~| ERROR type ascriptions are not
     }
 }
 
@@ -105,6 +111,7 @@ pub fn inside_block() {
     let _ = if true {
         5u64: u64.max(0) == 0
         //~^ ERROR: casts cannot be followed by a method call
+        //~| ERROR type ascriptions are not
     } else { false };
 }
 
@@ -113,6 +120,7 @@ static bar: &[i32] = &(&[1,2,3] as &[i32][0..1]);
 
 static bar2: &[i32] = &(&[1i32,2,3]: &[i32; 3][0..1]);
 //~^ ERROR: casts cannot be followed by indexing
+//~| ERROR type ascriptions are not
 
 
 pub fn cast_then_try() -> Result<u64,u64> {
@@ -120,6 +128,7 @@ pub fn cast_then_try() -> Result<u64,u64> {
     //~^ ERROR: casts cannot be followed by ?
     Err(0u64): Result<u64,u64>?;
     //~^ ERROR: casts cannot be followed by ?
+    //~| ERROR type ascriptions are not
     Ok(1)
 }
 

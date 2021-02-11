@@ -1,5 +1,3 @@
-// run-pass
-
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Type ascription doesn't lead to unsoundness
@@ -17,6 +15,7 @@ struct S {
 
 fn main() {
     assert_eq!(C1.into(): i32, 10);
+      //~^ ERROR type ascriptions are not
     assert_eq!(C2[0], 1);
 
     let s = S { a: 10: u8 };
@@ -29,11 +28,15 @@ fn main() {
     let a = 1: u8;
     let b = a.into(): u16;
     assert_eq!(v[a.into(): usize], 2);
+      //~^ ERROR type ascriptions are not
     assert_eq!(mem::size_of_val(&a), 1);
     assert_eq!(mem::size_of_val(&b), 2);
     assert_eq!(b, 1: u16);
+      //~^ ERROR type ascriptions are not
 
     let mut v = Vec::new();
     v: Vec<u8> = vec![1, 2, 3]; // Place expression type ascription
+      //~^ ERROR invalid left-hand side of assignment
+      //~| ERROR type ascriptions are not
     assert_eq!(v, [1u8, 2, 3]);
 }

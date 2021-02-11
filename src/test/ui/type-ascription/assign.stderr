@@ -1,8 +1,17 @@
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/assign.rs:7:14
+   |
+LL |   x : &[u32] = &arr2;
+   |   ---------- ^
+   |   |
+   |   cannot assign to this expression
+
 error: type ascriptions are not allowed in lvalue contexts
   --> $DIR/assign.rs:7:3
    |
 LL |   x : &[u32] = &arr2;
    |   ^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0070`.

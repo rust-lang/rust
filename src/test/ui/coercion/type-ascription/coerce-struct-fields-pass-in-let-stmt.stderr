@@ -1,0 +1,8 @@
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/coerce-struct-fields-pass-in-let-stmt.rs:26:30
+   |
+LL |   let _ = Foo { _a : (9, (3, &arr : &[u32]), &mut bar) };
+   |                              ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

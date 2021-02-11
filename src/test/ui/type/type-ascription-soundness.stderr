@@ -10,7 +10,7 @@ LL | let arr: &[u8] = &[1u8, 2, 3];
    | ^^^^^^^^^^^^^^
 
 error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/type-ascription-soundness.rs:8:21
+  --> $DIR/type-ascription-soundness.rs:9:21
    |
 LL |     let ref mut x = arr: &[u8];
    |                     ^^^^^^^^^^
@@ -21,7 +21,7 @@ LL | let arr: &[u8] = &[1u8, 2, 3];
    | ^^^^^^^^^^^^^^
 
 error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/type-ascription-soundness.rs:9:11
+  --> $DIR/type-ascription-soundness.rs:11:11
    |
 LL |     match arr: &[u8] {
    |           ^^^^^^^^^^
@@ -32,18 +32,7 @@ LL | let arr: &[u8] = &[1u8, 2, 3];
    | ^^^^^^^^^^^^^^
 
 error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/type-ascription-soundness.rs:9:11
-   |
-LL |     match arr: &[u8] {
-   |           ^^^^^^^^^^
-   |
-help: try to use the type ascription when creating the local variable
-   |
-LL | let arr: &[u8] = &[1u8, 2, 3];
-   | ^^^^^^^^^^^^^^
-
-error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/type-ascription-soundness.rs:12:16
+  --> $DIR/type-ascription-soundness.rs:15:16
    |
 LL |     let _len = (arr: &[u8]).len();
    |                ^^^^^^^^^^^^
@@ -53,5 +42,5 @@ help: try to use the type ascription when creating the local variable
 LL | let arr: &[u8] = &[1u8, 2, 3];
    | ^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

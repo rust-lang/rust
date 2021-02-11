@@ -6,4 +6,5 @@ fn main() {
   let mut x = &arr1;
   x : &[u32] = &arr2;
     //~^ ERROR type ascriptions are not allowed
+    //~| ERROR invalid left-hand side of assignment
 }

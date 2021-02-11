@@ -1,4 +1,3 @@
-// check-pass
 // Check that taking the address of a place that contains a dereference is
 // allowed.
 #![feature(raw_ref_op, type_ascription)]
@@ -19,6 +18,12 @@ fn main() {
 
     let x = 0;
     let ascribe_ref = &raw const (x: i32);
+      //~^ ERROR type ascriptions are not
+      //~| ERROR cannot take address of a temporary
     let ascribe_deref = &raw const (*ARRAY_REF: [i32; 2]);
+      //~^ ERROR type ascriptions are not
+      //~| ERROR cannot take address of a temporary
     let ascribe_index_deref = &raw const (ARRAY_REF[0]: i32);
+      //~^ ERROR type ascriptions are not
+      //~| ERROR cannot take address of a temporary
 }

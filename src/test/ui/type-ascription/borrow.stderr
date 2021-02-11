@@ -31,27 +31,5 @@ help: try to use the type ascription when creating the local variable
 LL | let arr_ref: &[u32] = &arr;
    | ^^^^^^^^^^^^^^^^^^^
 
-error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/borrow.rs:19:23
-   |
-LL |   let ref last_one = &(arr_ref : &[u32])[1];
-   |                       ^^^^^^^^^^^^^^^^^^
-   |
-help: try to use the type ascription when creating the local variable
-   |
-LL | let arr_ref: &[u32] = &arr;
-   | ^^^^^^^^^^^^^^^^^^^
-
-error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/borrow.rs:19:23
-   |
-LL |   let ref last_one = &(arr_ref : &[u32])[1];
-   |                       ^^^^^^^^^^^^^^^^^^
-   |
-help: try to use the type ascription when creating the local variable
-   |
-LL | let arr_ref: &[u32] = &arr;
-   | ^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 

@@ -23,9 +23,19 @@ fn main() {
     let index_ref = &raw const ARRAY[0];                //~ ERROR cannot take address
     let mut_index_ref = &raw mut ARRAY[1];              //~ ERROR cannot take address
 
-    let ref_ascribe = &raw const (2: i32);              //~ ERROR cannot take address
-    let mut_ref_ascribe = &raw mut (3: i32);            //~ ERROR cannot take address
+    let ref_ascribe = &raw const (2: i32);
+      //~^ ERROR cannot take address
+      //~| ERROR type ascriptions are not
+      
+    let mut_ref_ascribe = &raw mut (3: i32);
+      //~^ ERROR cannot take address
+      //~| ERROR type ascriptions are not
 
-    let ascribe_field_ref = &raw const (PAIR.0: i32);   //~ ERROR cannot take address
-    let ascribe_index_ref = &raw mut (ARRAY[0]: i32);   //~ ERROR cannot take address
+    let ascribe_field_ref = &raw const (PAIR.0: i32);
+      //~^ ERROR cannot take address
+      //~| ERROR type ascriptions are not
+
+    let ascribe_index_ref = &raw mut (ARRAY[0]: i32);
+      //~^ ERROR cannot take address
+      //~| ERROR type ascriptions are not
 }

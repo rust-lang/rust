@@ -77,19 +77,19 @@ LL |     let ref_ascribe = &raw const (2: i32);
    |                                  ^^^^^^^^ temporary value
 
 error[E0745]: cannot take address of a temporary
-  --> $DIR/raw-ref-temp.rs:27:36
+  --> $DIR/raw-ref-temp.rs:30:36
    |
 LL |     let mut_ref_ascribe = &raw mut (3: i32);
    |                                    ^^^^^^^^ temporary value
 
 error[E0745]: cannot take address of a temporary
-  --> $DIR/raw-ref-temp.rs:29:40
+  --> $DIR/raw-ref-temp.rs:34:40
    |
 LL |     let ascribe_field_ref = &raw const (PAIR.0: i32);
    |                                        ^^^^^^^^^^^^^ temporary value
 
 error[E0745]: cannot take address of a temporary
-  --> $DIR/raw-ref-temp.rs:30:38
+  --> $DIR/raw-ref-temp.rs:38:38
    |
 LL |     let ascribe_index_ref = &raw mut (ARRAY[0]: i32);
    |                                      ^^^^^^^^^^^^^^^ temporary value
@@ -101,19 +101,19 @@ LL |     let ref_ascribe = &raw const (2: i32);
    |                                  ^^^^^^^^
 
 error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/raw-ref-temp.rs:27:36
+  --> $DIR/raw-ref-temp.rs:30:36
    |
 LL |     let mut_ref_ascribe = &raw mut (3: i32);
    |                                    ^^^^^^^^
 
 error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/raw-ref-temp.rs:29:40
+  --> $DIR/raw-ref-temp.rs:34:40
    |
 LL |     let ascribe_field_ref = &raw const (PAIR.0: i32);
    |                                        ^^^^^^^^^^^^^
 
 error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/raw-ref-temp.rs:30:38
+  --> $DIR/raw-ref-temp.rs:38:38
    |
 LL |     let ascribe_index_ref = &raw mut (ARRAY[0]: i32);
    |                                      ^^^^^^^^^^^^^^^

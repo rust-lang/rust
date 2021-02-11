@@ -1,0 +1,44 @@
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp-deref.rs:20:34
+   |
+LL |     let ascribe_ref = &raw const (x: i32);
+   |                                  ^^^^^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp-deref.rs:23:36
+   |
+LL |     let ascribe_deref = &raw const (*ARRAY_REF: [i32; 2]);
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp-deref.rs:26:42
+   |
+LL |     let ascribe_index_deref = &raw const (ARRAY_REF[0]: i32);
+   |                                          ^^^^^^^^^^^^^^^^^^^ temporary value
+
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/raw-ref-temp-deref.rs:20:34
+   |
+LL |     let ascribe_ref = &raw const (x: i32);
+   |                                  ^^^^^^^^
+   |
+help: try to use the type ascription when creating the local variable
+   |
+LL | let x: i32 = 0;
+   | ^^^^^^^^^^
+
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/raw-ref-temp-deref.rs:23:36
+   |
+LL |     let ascribe_deref = &raw const (*ARRAY_REF: [i32; 2]);
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^
+
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/raw-ref-temp-deref.rs:26:42
+   |
+LL |     let ascribe_index_deref = &raw const (ARRAY_REF[0]: i32);
+   |                                          ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0745`.

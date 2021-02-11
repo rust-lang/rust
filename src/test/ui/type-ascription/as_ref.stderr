@@ -31,16 +31,5 @@ help: try to use the type ascription when creating the local variable
 LL | let r: &Foo = &mut foo;
    | ^^^^^^^^^^^
 
-error: type ascriptions are not allowed in lvalue contexts
-  --> $DIR/as_ref.rs:25:21
-   |
-LL |   let last_one = &*((r : &Foo).as_ref());
-   |                     ^^^^^^^^^^
-   |
-help: try to use the type ascription when creating the local variable
-   |
-LL | let r: &Foo = &mut foo;
-   | ^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

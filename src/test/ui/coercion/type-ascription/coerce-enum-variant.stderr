@@ -1,0 +1,8 @@
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/coerce-enum-variant.rs:10:26
+   |
+LL |   let temp = Foo::A((10, &arr : &[u32]));
+   |                          ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

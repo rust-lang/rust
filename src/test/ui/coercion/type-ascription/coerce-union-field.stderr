@@ -1,0 +1,19 @@
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/coerce-union-field.rs:11:22
+   |
+LL |   let _ = Foo { f1: (x : &u32, (5, &arr : &[u32])) };
+   |                      ^^^^^^^^
+   |
+help: try to use the type ascription when creating the local variable
+   |
+LL | let x: &u32 = &mut 26;
+   | ^^^^^^^^^^^
+
+error: type ascriptions are not allowed in lvalue contexts
+  --> $DIR/coerce-union-field.rs:11:36
+   |
+LL |   let _ = Foo { f1: (x : &u32, (5, &arr : &[u32])) };
+   |                                    ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
