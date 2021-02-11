@@ -19,6 +19,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     isize::from_str_radix("100", 10)?;
     u8::from_str_radix("7", 10)?;
 
+    let string = "300";
+    i32::from_str_radix(string, 10)?;
+
     // none of these should trigger the lint
     u16::from_str_radix("20", 3)?;
     i32::from_str_radix("45", 12)?;

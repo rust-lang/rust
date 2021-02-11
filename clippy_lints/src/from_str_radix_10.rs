@@ -66,7 +66,7 @@ impl LateLintPass<'tcx> for FromStrRadix10 {
                     "This call to `from_str_radix` can be shortened to a call to str::parse",
                     "try",
                     format!("({}).parse()", orig_string),
-                    Applicability::MachineApplicable
+                    Applicability::MaybeIncorrect
                 );
             }
         }
