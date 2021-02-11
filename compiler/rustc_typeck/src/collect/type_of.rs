@@ -29,6 +29,73 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
         let parent_node = tcx.hir().get(parent_node_id);
 
         match parent_node {
+            // This match arm is for when the def_id appears in a GAT whose
+            // path can't be resolved without typechecking e.g.
+            //
+            // trait Foo {
+            //   type Assoc<const N: usize>;
+            //   fn foo() -> Self::Assoc<3>;
+            // }
+            //
+            // In the above code we would call this query with the def_id of 3 and
+            // the parent_node we match on would be the hir node for Self::Assoc<3>
+            //
+            // `Self::Assoc<3>` cant be resolved without typchecking here as we
+            // didnt write <Self as Foo>::Assoc<3>. If we did then another match
+            // arm would handle this.
+            //
+            // I believe this match arm is only needed for GAT but I am not 100% sure - BoxyUwU
+            Node::Ty(hir_ty @ Ty { kind: TyKind::Path(QPath::TypeRelative(_, segment)), .. }) => {
+                // Find the Item containing the associated type so we can create an ItemCtxt.
+                // Using the ItemCtxt convert the HIR for the unresolved assoc type into a
+                // ty which is a fully resolved projection.
+                // For the code example above, this would mean converting Self::Assoc<3>
+                // into a ty::Projection(<Self as Foo>::Assoc<3>)
+                let item_hir_id = tcx
+                    .hir()
+                    .parent_iter(hir_id)
+                    .filter(|(_, node)| matches!(node, Node::Item(_)))
+                    .map(|(id, _)| id)
+                    .next()
+                    .unwrap();
+                let item_did = tcx.hir().local_def_id(item_hir_id).to_def_id();
+                let item_ctxt = &ItemCtxt::new(tcx, item_did) as &dyn crate::astconv::AstConv<'_>;
+                let ty = item_ctxt.ast_ty_to_ty(hir_ty);
+
+                // Iterate through the generics of the projection to find the one that corresponds to
+                // the def_id that this query was called with. We filter to only const args here as a
+                // precaution for if it's ever allowed to elide lifetimes in GAT's. It currently isn't
+                // but it can't hurt to be safe ^^
+                if let ty::Projection(projection) = ty.kind() {
+                    let generics = tcx.generics_of(projection.item_def_id);
+
+                    let arg_index = segment
+                        .args
+                        .and_then(|args| {
+                            args.args
+                                .iter()
+                                .filter(|arg| arg.is_const())
+                                .position(|arg| arg.id() == hir_id)
+                        })
+                        .unwrap_or_else(|| {
+                            bug!("no arg matching AnonConst in segment");
+                        });
+
+                    return generics
+                        .params
+                        .iter()
+                        .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Const))
+                        .nth(arg_index)
+                        .map(|param| param.def_id);
+                }
+
+                // I dont think it's possible to reach this but I'm not 100% sure - BoxyUwU
+                tcx.sess.delay_span_bug(
+                    tcx.def_span(def_id),
+                    "unexpected non-GAT usage of an anon const",
+                );
+                return None;
+            }
             Node::Expr(&Expr {
                 kind:
                     ExprKind::MethodCall(segment, ..) | ExprKind::Path(QPath::TypeRelative(_, segment)),
