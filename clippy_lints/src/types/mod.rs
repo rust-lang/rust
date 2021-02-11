@@ -1,5 +1,7 @@
 #![allow(rustc::default_hash_types)]
 
+mod box_vec;
+
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -346,6 +348,7 @@ impl Types {
                 let hir_id = hir_ty.hir_id;
                 let res = cx.qpath_res(qpath, hir_id);
                 if let Some(def_id) = res.opt_def_id() {
+                    box_vec::check(cx, hir_ty, qpath, def_id);
                     if Some(def_id) == cx.tcx.lang_items().owned_box() {
                         if let Some(span) = match_borrows_parameter(cx, qpath) {
                             let mut applicability = Applicability::MachineApplicable;
@@ -357,17 +360,6 @@ impl Types {
                                 "try",
                                 snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
                                 applicability,
-                            );
-                            return; // don't recurse into the type
-                        }
-                        if is_ty_param_diagnostic_item(cx, qpath, sym::vec_type).is_some() {
-                            span_lint_and_help(
-                                cx,
-                                BOX_VEC,
-                                hir_ty.span,
-                                "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
-                                None,
-                                "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation",
                             );
                             return; // don't recurse into the type
                         }
