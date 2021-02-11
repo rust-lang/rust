@@ -243,8 +243,10 @@ pub fn struct_lint_level<'s, 'd>(
         let lint_id = LintId::of(lint);
         let future_incompatible = lint.future_incompatible;
 
-        let has_future_breakage =
-            future_incompatible.map_or(false, |incompat| incompat.future_breakage.is_some());
+        let has_future_breakage = future_incompatible.map_or(false, |incompat| {
+            incompat.future_breakage.is_some()
+                && incompat.edition.map(|e| e > sess.edition()).unwrap_or(true)
+        });
 
         let mut err = match (level, span) {
             (Level::Allow, span) => {
@@ -347,6 +349,10 @@ pub fn struct_lint_level<'s, 'd>(
         }
 
         err.code(DiagnosticId::Lint { name, has_future_breakage });
+
+        // Make sure the future incompatible is still relevant given the current edition.
+        let future_incompatible =
+            future_incompatible.filter(|e| e.edition.map(|e| e > sess.edition()).unwrap_or(true));
 
         if let Some(future_incompatible) = future_incompatible {
             const STANDARD_MESSAGE: &str = "this was previously accepted by the compiler but is being phased out; \

@@ -408,13 +408,14 @@ macro_rules! declare_lint {
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
      $(@feature_gate = $gate:expr;)?
      $(@future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
+     $(@lint_edition = ($lint_edition: expr, $edition_level: ident);)?
      $($v:ident),*) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
             name: stringify!($NAME),
             default_level: $crate::$Level,
             desc: $desc,
-            edition_lint_opts: None,
+            $(edition_lint_opts: Some(($lint_edition, $crate::Level::$edition_level)),)*
             is_plugin: false,
             $($v: true,)*
             $(feature_gate: Some($gate),)*

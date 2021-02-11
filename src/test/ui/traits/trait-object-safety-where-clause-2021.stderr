@@ -1,0 +1,18 @@
+error: the trait `X` cannot be made into an object
+  --> $DIR/trait-object-safety-where-clause-2021.rs:6:8
+   |
+LL |     fn foo(&self)
+   |        ^^^
+   |
+   = note: `#[deny(where_clauses_object_safety)]` on by default
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/trait-object-safety-where-clause-2021.rs:6:8
+   |
+LL | trait X {
+   |       - this trait cannot be made into an object...
+LL |     fn foo(&self)
+   |        ^^^ ...because method `foo` references the `Self` type in its `where` clause
+   = help: consider moving `foo` to another trait
+
+error: aborting due to previous error
+

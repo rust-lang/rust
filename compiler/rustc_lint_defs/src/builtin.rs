@@ -2000,8 +2000,9 @@ declare_lint! {
     "checks the object safety of where clauses",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
-        edition: None,
+        edition: Some(Edition::Edition2021),
     };
+    @lint_edition = (Edition::Edition2021, Deny);
 }
 
 declare_lint! {
