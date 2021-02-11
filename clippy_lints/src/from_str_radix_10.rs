@@ -52,18 +52,20 @@ impl LateLintPass<'tcx> for FromStrRadix10 {
             // function `from_str_radix`
             if pathseg.ident.name.as_str() == "from_str_radix";
 
-            // check if the second argument resolves to a constant `10`
+            // check if the second argument is a primitive `10`
             if arguments.len() == 2;
-            if is_constant_10(&arguments[1]);
+            if let ExprKind::Lit(lit) = &arguments[1].kind;
+            if let rustc_ast::ast::LitKind::Int(10, _) = lit.node;
 
             then {
+                let orig_string = crate::utils::snippet(cx, arguments[0].span, "string");
                 span_lint_and_sugg(
                     cx,
                     FROM_STR_RADIX_10,
                     exp.span,
                     "This call to `from_str_radix` can be shortened to a call to str::parse",
                     "try",
-                    format!("TODO"),
+                    format!("({}).parse()", orig_string),
                     Applicability::MachineApplicable
                 );
             }
@@ -77,9 +79,4 @@ fn is_primitive_integer_ty(ty: PrimTy) -> bool {
         PrimTy::Uint(_) => true,
         _ => false
     }
-}
-
-fn is_constant_10<'tcx>(expr: &Expr<'tcx>) -> bool {
-    // TODO
-    true
 }
