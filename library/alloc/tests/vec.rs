@@ -288,6 +288,67 @@ fn test_retain() {
 }
 
 #[test]
+fn test_retain_pred_panic_with_hole() {
+    let v = (0..5).map(Rc::new).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.clone();
+        v.retain(|r| match **r {
+            0 => true,
+            1 => false,
+            2 => true,
+            _ => panic!(),
+        });
+    }))
+    .unwrap_err();
+    // Everything is dropped when predicate panicked.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+fn test_retain_pred_panic_no_hole() {
+    let v = (0..5).map(Rc::new).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.clone();
+        v.retain(|r| match **r {
+            0 | 1 | 2 => true,
+            _ => panic!(),
+        });
+    }))
+    .unwrap_err();
+    // Everything is dropped when predicate panicked.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+fn test_retain_drop_panic() {
+    struct Wrap(Rc<i32>);
+
+    impl Drop for Wrap {
+        fn drop(&mut self) {
+            if *self.0 == 3 {
+                panic!();
+            }
+        }
+    }
+
+    let v = (0..5).map(|x| Rc::new(x)).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.iter().map(|r| Wrap(r.clone())).collect::<Vec<_>>();
+        v.retain(|w| match *w.0 {
+            0 => true,
+            1 => false,
+            2 => true,
+            3 => false, // Drop panic.
+            _ => true,
+        });
+    }))
+    .unwrap_err();
+    // Other elements are dropped when `drop` of one element panicked.
+    // The panicked wrapper also has its Rc dropped.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
 fn test_dedup() {
     fn case(a: Vec<i32>, b: Vec<i32>) {
         let mut v = a;
