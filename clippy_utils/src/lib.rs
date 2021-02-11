@@ -11,22 +11,18 @@
 #![feature(stmt_expr_attributes)]
 #![feature(control_flow_enum)]
 
+// FIXME: switch to something more ergonomic here, once available.
+// (Currently there is no way to opt into sysroot crates without `extern crate`.)
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_attr;
 extern crate rustc_data_structures;
-extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_hir_pretty;
-extern crate rustc_index;
 extern crate rustc_infer;
-extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_middle;
 extern crate rustc_mir;
-extern crate rustc_parse;
-extern crate rustc_parse_format;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
