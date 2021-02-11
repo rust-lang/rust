@@ -253,7 +253,7 @@ macro_rules! options {
         pub const parse_passes: &str = "a space-separated list of passes, or `all`";
         pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
         pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-        pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `leak`, `memory` or `thread`";
+        pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `hwaddress`, `leak`, `memory` or `thread`";
         pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
         pub const parse_cfguard: &str =
             "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -476,6 +476,7 @@ macro_rules! options {
                         "leak" => SanitizerSet::LEAK,
                         "memory" => SanitizerSet::MEMORY,
                         "thread" => SanitizerSet::THREAD,
+                        "hwaddress" => SanitizerSet::HWADDRESS,
                         _ => return false,
                     }
                 }
