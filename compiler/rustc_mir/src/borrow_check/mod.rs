@@ -266,7 +266,6 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     for (idx, move_data_results) in promoted_errors {
         let promoted_body = &promoted[idx];
-        let dominators = promoted_body.dominators();
 
         if let Err((move_data, move_errors)) = move_data_results {
             let mut promoted_mbcx = MirBorrowckCtxt {
@@ -274,7 +273,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 param_env,
                 body: promoted_body,
                 move_data: &move_data,
-                location_table: &LocationTable::new(promoted_body),
+                location_table, // no need to create a real one for the promoted, it is not used
                 movable_generator,
                 fn_self_span_reported: Default::default(),
                 locals_are_invalidated_at_exit,
@@ -288,7 +287,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 used_mut: Default::default(),
                 used_mut_upvars: SmallVec::new(),
                 borrow_set: Rc::clone(&borrow_set),
-                dominators,
+                dominators: Dominators::dummy(), // not used
                 upvars: Vec::new(),
                 local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
                 region_names: RefCell::default(),
