@@ -1078,8 +1078,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "both opaque, likely future {:?} {:?} {:?} {:?}",
                     last_def_id, last_bounds, exp_def_id, exp_bounds
                 );
-                let last_hir_id = self.tcx.hir().local_def_id_to_hir_id(last_def_id.expect_local());
-                let exp_hir_id = self.tcx.hir().local_def_id_to_hir_id(exp_def_id.expect_local());
+
+                let (last_local_id, exp_local_id) =
+                    match (last_def_id.as_local(), exp_def_id.as_local()) {
+                        (Some(last_hir_id), Some(exp_hir_id)) => (last_hir_id, exp_hir_id),
+                        (_, _) => return None,
+                    };
+
+                let last_hir_id = self.tcx.hir().local_def_id_to_hir_id(last_local_id);
+                let exp_hir_id = self.tcx.hir().local_def_id_to_hir_id(exp_local_id);
+
                 match (
                     &self.tcx.hir().expect_item(last_hir_id).kind,
                     &self.tcx.hir().expect_item(exp_hir_id).kind,
