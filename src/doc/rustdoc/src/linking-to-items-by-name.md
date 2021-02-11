@@ -25,7 +25,7 @@ pub struct Bar;
 ```
 
 Unlike normal Markdown, `[bar][Bar]` syntax is also supported without needing a
-`[Bar]: ...` reference link, and links are case-sensitive.
+`[Bar]: ...` reference link.
 
 Backticks around the link will be stripped, so ``[`Option`]`` will correctly
 link to `Option`.
@@ -34,17 +34,8 @@ link to `Option`.
 
 You can refer to anything in scope, and use paths, including `Self`, `self`, `super`, and
 `crate`. Associated items (functions, types, and constants) are supported, but [not for blanket
-trait implementations][#79682]. Rustdoc also supports linking to the following primitives, which
-have no path and cannot be imported:
-
-- [`slice`](../std/primitive.slice.html)
-- [`array`](../std/primitive.array.html)
-- [`tuple`](../std/primitive.tuple.html)
-- [`unit`](../std/primitive.unit.html)
-- [`fn`](../std/primitive.fn.html)
-- [`pointer`](../std/primitive.pointer.html), `*`, `*const`, or `*mut`
-- [`reference`](../std/primitive.reference.html), `&`, or `&mut`
-- [`never`](../std/primitive.never.html) or `!`
+trait implementations][#79682]. Rustdoc also supports linking to all primitives listed in
+[the standard library documentation](../std/index.html#primitives).
 
 [#79682]: https://github.com/rust-lang/rust/pull/79682
 
@@ -84,7 +75,7 @@ struct MySpecialFormatter;
 
 Paths in Rust have three namespaces: type, value, and macro. Item names must be unique within
 their namespace, but can overlap with items in other namespaces. In case of ambiguity,
-rustdoc will warn about the ambiguity and ask you to disambiguate.
+rustdoc will warn about the ambiguity and suggest a disambiguator.
 
 ```rust
 /// See also: [`Foo`](struct@Foo)
@@ -96,24 +87,8 @@ struct Foo {}
 fn Foo() {}
 ```
 
-The following prefixes can be used:
-
-- `struct@`
-- `enum@`
-- `type@`
-- `trait@`
-- `union@`
-- `const@`
-- `static@`
-- `value@`
-- `fn@` / `function@` / `method@`
-- `mod@` / `module@`
-- `prim@` / `primitive@`
-- `macro@`
-- `derive@`
-
-These prefixes will be stripped when displayed in the documentation, so `[struct@Foo]`
-will be rendered as `Foo`.
+These prefixes will be stripped when displayed in the documentation, so `[struct@Foo]` will be
+rendered as `Foo`.
 
 You can also disambiguate for functions by adding `()` after the function name,
 or for macros by adding `!` after the macro name:
@@ -133,6 +108,15 @@ macro_rules! foo {
 Links are resolved in the scope of the module where the item is defined, even
 when the item is re-exported. If a link from another crate fails to resolve, no
 warning is given.
+
+```rust
+mod inner {
+    /// Link to [f()]
+    pub struct S;
+    pub fn f() {}
+}
+pub use inner::S; // the link to `f` will still resolve correctly
+```
 
 When re-exporting an item, rustdoc allows adding additional documentation to it.
 That additional documentation will be resolved in the scope of the re-export, not
@@ -154,8 +138,6 @@ module it is defined in.
 
 If links do not look 'sufficiently like' an intra-doc link, they will be ignored and no warning
 will be given, even if the link fails to resolve. For example, any link containing `/` or `[]`
-characters will be ignored. You can see the full criteria for 'sufficiently like' in [the source
-code].
+characters will be ignored.
 
 [#72243]: https://github.com/rust-lang/rust/issues/72243
-[the source code]: https://github.com/rust-lang/rust/blob/34628e5b533d35840b61c5db0665cf7633ed3c5a/src/librustdoc/passes/collect_intra_doc_links.rs#L982
