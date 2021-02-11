@@ -279,12 +279,12 @@ public:
     //! pass
     if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() &&
         TR.query(&LI).Inner0().isPossiblePointer()) {
-      PHINode *placeholder = cast<PHINode>(gutils->invertedPointers[&LI]);
+      Instruction *placeholder = cast<Instruction>(gutils->invertedPointers[&LI]);
       assert(placeholder->getType() == type);
       gutils->invertedPointers.erase(&LI);
 
       if (!constantval) {
-        IRBuilder<> BuilderZ(placeholder);
+        IRBuilder<> BuilderZ(newi);
         Value *newip = nullptr;
 
         bool needShadow = is_value_needed_in_reverse<Shadow>(

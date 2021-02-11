@@ -315,7 +315,7 @@ entry:
 }
 
 ; Function Attrs: inlinehint nounwind uwtable
-define linkonce_odr dso_local void @_ZNK5Eigen10MatrixBaseINS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEE12cwiseProductINS2_IS5_Lin1ELi1ELb1EEEEEKNS_13CwiseBinaryOpINS_8internal17scalar_product_opIdNSD_6traitsIT_E6ScalarEEEKS8_KSG_EERKNS0_ISG_EE(%"class.Eigen::CwiseBinaryOp.30"* noalias sret %agg.result, %"class.Eigen::MatrixBase.36"* %this) #6 {
+define linkonce_odr dso_local void @_ZNK5Eigen10MatrixBaseINS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEE12cwiseProductINS2_IS5_Lin1ELi1ELb1EEEEEKNS_13CwiseBinaryOpINS_8internal17scalar_product_opIdNSD_6traitsIT_E6ScalarEEEKS8_KSG_EERKNS0_ISG_EE(%"class.Eigen::CwiseBinaryOp.30"* noalias %agg.result, %"class.Eigen::MatrixBase.36"* %this) #6 {
 entry:
   %0 = bitcast %"class.Eigen::MatrixBase.36"* %this to %"class.Eigen::Transpose"*
   %m_lhs.i = getelementptr inbounds %"class.Eigen::CwiseBinaryOp.30", %"class.Eigen::CwiseBinaryOp.30"* %agg.result, i64 0, i32 0

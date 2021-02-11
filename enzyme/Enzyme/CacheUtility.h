@@ -79,9 +79,6 @@ static inline bool operator==(const LoopContext &lhs, const LoopContext &rhs) {
 /// Pack 8 bools together in a single byte
 extern llvm::cl::opt<bool> EfficientBoolCache;
 
-/// Print additional debug info relevant to performance
-extern llvm::cl::opt<bool> EnzymePrintPerf;
-
 /// Modes of potential unwraps
 enum class UnwrapMode {
   // It is already known that it is legal to fully unwrap

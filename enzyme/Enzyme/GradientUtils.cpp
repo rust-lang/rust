@@ -334,12 +334,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       legalMove = legalRecompute(load, available, &BuilderM);
     }
     if (!legalMove) {
-      if (EnzymePrintPerf) {
-        EmitWarning("UncacheableUnwrap", load->getDebugLoc(),
-                    load->getParent()->getParent(), load->getParent(),
-                    "Load cannot be unwrapped ", *load, " in ",
-                    BuilderM.GetInsertBlock()->getName());
-      }
+      EmitWarning("UncacheableUnwrap", load->getDebugLoc(),
+                  load->getParent()->getParent(), load->getParent(),
+                  "Load cannot be unwrapped ", *load, " in ",
+                  BuilderM.GetInsertBlock()->getName());
       return nullptr;
     }
 
@@ -409,6 +407,21 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     toreturn->setDebugLoc(getNewFromOriginal(op->getDebugLoc()));
     return toreturn;
   } else if (auto phi = dyn_cast<PHINode>(val)) {
+    if (phi->getNumIncomingValues() == 0) {
+      if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(phi))) {
+        invertedPointers.erase(dli);
+        IRBuilder <>B(getNewFromOriginal(dli)->getParent());
+        invertPointerM(dli, B);
+        assert(invertedPointers[dli]);
+        phi->replaceAllUsesWith(invertedPointers[dli]);
+        phi->eraseFromParent();
+        assert(!isa<PHINode>(invertedPointers[dli]) ||
+               cast<PHINode>(invertedPointers[dli])->getNumIncomingValues() != 0);
+        return unwrapM(invertedPointers[dli], BuilderM, available, mode);
+      }
+      goto endCheck;
+    }
+    assert(phi->getNumIncomingValues() != 0);
     if (phi->getNumIncomingValues() == 1) {
       assert(phi->getIncomingValue(0) != phi);
       auto toreturn = getOp(phi->getIncomingValue(0));
@@ -416,6 +429,42 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         goto endCheck;
       assert(val->getType() == toreturn->getType());
       return toreturn;
+    }
+
+    auto parent = phi->getParent();
+    // Don't attempt to unroll a loop induction variable
+    if (parent->getParent() == newFunc) {
+      if (LI.isLoopHeader(parent)) goto endCheck;
+    } else if (parent->getParent() == oldFunc) {
+      if (OrigLI.isLoopHeader(parent)) goto endCheck;
+    }
+
+    SmallVector<BasicBlock*, 2> preds(phi->block_begin(), phi->block_end());
+    SmallVector<BasicBlock*, 2> above;
+    for (auto Pred : preds) {
+      above.push_back(Pred->getSinglePredecessor());
+    }
+    BasicBlock* BB = above[0];
+    for (auto Above : above) {
+      if (Above != BB) {
+        BB = nullptr;
+        break;
+      }
+    }
+    if (BB) {
+      if (auto BI = dyn_cast<BranchInst>(BB->getTerminator())) {
+        auto cond = getOp(BI->getCondition());
+        if (cond == nullptr)
+          goto endCheck;
+        SmallVector<Value*, 2> vals = {
+          getOp(phi->getIncomingValueForBlock(BI->getSuccessor(0))),
+          getOp(phi->getIncomingValueForBlock(BI->getSuccessor(1))),
+        };
+        if (!vals[0] || !vals[1])
+          goto endCheck;
+        
+        return BuilderM.CreateSelect(cond, vals[0], vals[1]);
+      }
     }
   }
 
@@ -444,9 +493,8 @@ endCheck:
         }
       }
     }
-    if (EnzymePrintPerf)
-      EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
-                  "Cannot unwrap ", *val);
+    EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
+                "Cannot unwrap ", *val);
   }
   return nullptr;
 }
@@ -922,13 +970,27 @@ bool GradientUtils::legalRecompute(const Value *val,
     return true;
   }
 
-  if (isa<PHINode>(val)) {
-    if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(val))) {
-      return legalRecompute(
-          dli, available, BuilderM,
-          reverse); // TODO ADD && !TR.intType(getOriginal(dli),
-                    // /*mustfind*/false).isPossibleFloat();
+  if (auto phi = dyn_cast<PHINode>(val)) {
+    if (auto uiv = hasUninverted(val)) {
+      if (auto dli = dyn_cast_or_null<LoadInst>(uiv)) {
+        return legalRecompute(
+            dli, available, BuilderM,
+            reverse); // TODO ADD && !TR.intType(getOriginal(dli),
+                      // /*mustfind*/false).isPossibleFloat();
+      }
+      if (phi->getNumIncomingValues() == 0) return false;
     }
+
+    assert(phi->getNumIncomingValues() != 0);
+    auto parent = phi->getParent();
+    if (parent->getParent() == newFunc) {
+      return !LI.isLoopHeader(parent);
+    } else if (parent->getParent() == oldFunc) {
+      return !OrigLI.isLoopHeader(parent);
+    } else {
+      return false;
+    }
+
     // if (SE.isSCEVable(phi->getType())) {
     // auto scev =
     // const_cast<GradientUtils*>(this)->SE.getSCEV(const_cast<Value*>(val));
@@ -1007,13 +1069,11 @@ bool GradientUtils::legalRecompute(const Value *val,
                         OrigAA, /*maybeReader*/ const_cast<Instruction *>(orig),
                         /*maybeWriter*/ I)) {
                   failed = true;
-                  if (EnzymePrintPerf) {
-                    EmitWarning("UncacheableLoad", orig->getDebugLoc(), oldFunc,
-                                orig->getParent(), "Load must be recomputed ",
-                                *orig, " in reverse_",
-                                BuilderM->GetInsertBlock()->getName(),
-                                " due to ", *I);
-                  }
+                  EmitWarning("UncacheableLoad", orig->getDebugLoc(), oldFunc,
+                              orig->getParent(), "Load must be recomputed ",
+                              *orig, " in reverse_",
+                              BuilderM->GetInsertBlock()->getName(),
+                              " due to ", *I);
                   return /*earlyBreak*/ true;
                 }
                 return /*earlyBreak*/ false;
@@ -1041,13 +1101,11 @@ bool GradientUtils::legalRecompute(const Value *val,
                           /*maybeReader*/ const_cast<Instruction *>(orig),
                           /*maybeWriter*/ I)) {
                     failed = true;
-                    if (EnzymePrintPerf) {
-                      EmitWarning("UncacheableLoad", orig->getDebugLoc(),
-                                  oldFunc, orig->getParent(),
-                                  "Load must be recomputed ", *orig, " in ",
-                                  BuilderM->GetInsertBlock()->getName(),
-                                  " due to ", *I);
-                    }
+                    EmitWarning("UncacheableLoad", orig->getDebugLoc(),
+                                oldFunc, orig->getParent(),
+                                "Load must be recomputed ", *orig, " in ",
+                                BuilderM->GetInsertBlock()->getName(),
+                                " due to ", *I);
                     return /*earlyBreak*/ true;
                   }
                   return /*earlyBreak*/ false;
@@ -1184,11 +1242,9 @@ bool GradientUtils::shouldRecompute(const Value *val,
           }
         }
       forceCache:;
-        if (EnzymePrintPerf) {
-          EmitWarning("ChosenCache", inst->getDebugLoc(), oldFunc,
-                      inst->getParent(), "Choosing to cache use ", *inst,
-                      " due to ", *op);
-        }
+        EmitWarning("ChosenCache", inst->getDebugLoc(), oldFunc,
+                    inst->getParent(), "Choosing to cache use ", *inst,
+                    " due to ", *op);
         return false;
       }
     }
@@ -2086,7 +2142,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     }
   }
 
-  if (scopeMap.find(inst) == scopeMap.end() && EnzymePrintPerf)
+  if (scopeMap.find(inst) == scopeMap.end())
     EmitWarning("Uncacheable", inst->getDebugLoc(), newFunc, inst->getParent(),
                 "Caching instruction ", *inst, " legalRecompute: ", lrc,
                 " shouldRecompute: ", src);

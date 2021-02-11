@@ -41,6 +41,8 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "llvm/Support/CommandLine.h"
+
 #if LLVM_VERSION_MAJOR >= 10
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #endif
@@ -50,6 +52,9 @@
 #include "llvm/IR/DiagnosticInfo.h"
 
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
+
+/// Print additional debug info relevant to performance
+extern llvm::cl::opt<bool> EnzymePrintPerf;
 
 template <typename... Args>
 void EmitFailure(llvm::StringRef RemarkName,
@@ -75,7 +80,8 @@ void EmitWarning(llvm::StringRef RemarkName,
   llvm::raw_string_ostream ss(str);
   (ss << ... << args);
   ORE.emit(llvm::OptimizationRemark("enzyme", RemarkName, Loc, BB) << ss.str());
-  llvm::errs() << ss.str() << "\n";
+  if (EnzymePrintPerf)
+    llvm::errs() << ss.str() << "\n";
 }
 
 class EnzymeFailure : public llvm::DiagnosticInfoIROptimization {

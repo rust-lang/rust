@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
+ ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
 
 source_filename = "/mnt/Data/git/Enzyme/enzyme/test/Integration/eigentensor.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -1190,14 +1190,13 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36) #7
 ; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36) #7
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 dereferenceable(36) dereferenceable_or_null(36) %"call'mi", i8 0, i64 36, i1 false)
+; CHECK-NEXT:   %a0 = bitcast i8* %call to float*
 ; CHECK-NEXT:   %0 = bitcast float** %"m_data.i.i'" to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %0, align 8
 ; CHECK-NEXT:   %1 = bitcast float** %m_data.i.i to i8**
 ; CHECK-NEXT:   store i8* %call, i8** %1, align 8, !tbaa !13
-; CHECK-NEXT:   %2 = bitcast float* %K to i32*
-; CHECK-NEXT:   %a41 = load i32, i32* %2, align 4, !tbaa !
-; CHECK-NEXT:   %3 = bitcast i8* %call to i32*
-; CHECK-NEXT:   store i32 %a41, i32* %3, align 4, !tbaa !
+; CHECK-NEXT:   %a4 = load float, float* %K, align 4, !tbaa !
+; CHECK-NEXT:   store float %a4, float* %a0, align 4, !tbaa !
 ; CHECK-NEXT:   ret i8* %"call'mi"
 ; CHECK-NEXT: }
 

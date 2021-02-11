@@ -111,25 +111,25 @@ attributes #2 = { nounwind }
 ; CHECK: define internal void @diffesubfn(i64* %lhs, i64* %"lhs'", double* %argres, double* %"argres'", i1 %cmp.i.i.i)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %a0 = ptrtoint double* %argres to i64
-; CHECK-NEXT:   %0 = bitcast i64* %"lhs'" to double**
-; CHECK-NEXT:   %[[a2p:.+]] = load double*, double** %0, align 8
+; CHECK-NEXT:   %[[a2p:.+]] = load i64, i64* %"lhs'", align 8
 ; CHECK-NEXT:   %a2 = load i64, i64* %lhs, align 8
+; CHECK-NEXT:   %[[a3p:.+]] = inttoptr i64 %[[a2p]] to double*
 ; CHECK-NEXT:   %a3 = inttoptr i64 %a2 to double*
 ; CHECK-NEXT:   %cond.i.i.i = select i1 %cmp.i.i.i, i64 %a2, i64 0
 ; CHECK-NEXT:   %cmp17 = icmp eq i64 %cond.i.i.i, %a0
 ; CHECK-NEXT:   %idx = zext i1 %cmp17 to i64
-; CHECK-NEXT:   %[[arrayidxi814ipge:.+]] = getelementptr inbounds double, double* %[[a2p]], i64 %idx
+; CHECK-NEXT:   %[[arrayidxi814ipge:.+]] = getelementptr inbounds double, double* %[[a3p]], i64 %idx
 ; CHECK-NEXT:   %arrayidx.i.i814 = getelementptr inbounds double, double* %a3, i64 %idx
 ; CHECK-NEXT:   %a4 = bitcast double* %arrayidx.i.i814 to i64*
 ; CHECK-NEXT:   %a51 = load i64, i64* %a4, align 8
 ; CHECK-NEXT:   %[[a5ipc:.+]] = bitcast double* %"argres'" to i64*
 ; CHECK-NEXT:   %a5 = bitcast double* %argres to i64*
 ; CHECK-NEXT:   store i64 %a51, i64* %a5, align 8
-; CHECK-NEXT:   %1 = load double, double* %"argres'", align 8
+; CHECK-NEXT:   %[[largres:.+]] = load double, double* %"argres'", align 8
 ; CHECK-NEXT:   store i64 0, i64* %[[a5ipc]], align 8
-; CHECK-NEXT:   %2 = load double, double* %[[arrayidxi814ipge]], align 8
-; CHECK-NEXT:   %3 = fadd fast double %2, %1
-; CHECK-NEXT:   store double %3, double* %[[arrayidxi814ipge]], align 8
+; CHECK-NEXT:   %[[lded:.+]] = load double, double* %[[arrayidxi814ipge]], align 8
+; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[lded]], %[[largres]]
+; CHECK-NEXT:   store double %[[fadd]], double* %[[arrayidxi814ipge]], align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

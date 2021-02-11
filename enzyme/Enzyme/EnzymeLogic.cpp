@@ -206,11 +206,9 @@ bool is_load_uncacheable(
 
       if (llvm::isModSet(AA.getModRefInfo(inst2, MemoryLocation::get(&li)))) {
         can_modref = true;
-        if (EnzymePrintPerf) {
-          EmitWarning("Uncacheable", li.getDebugLoc(), gutils->oldFunc,
-                      li.getParent(), "Load may need caching ", li, " due to ",
-                      *inst2);
-        }
+        EmitWarning("Uncacheable", li.getDebugLoc(), gutils->oldFunc,
+                    li.getParent(), "Load may need caching ", li, " due to ",
+                    *inst2);
         // Early exit
         return true;
       }
