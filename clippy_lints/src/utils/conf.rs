@@ -173,6 +173,8 @@ define_Conf! {
     (disallowed_methods, "disallowed_methods": Vec<String>, Vec::<String>::new()),
     /// Lint: UNREADABLE_LITERAL. Should the fraction of a decimal be linted to include separators.
     (unreadable_literal_lint_fractions, "unreadable_literal_lint_fractions": bool, true),
+    /// Lint: _CARGO_COMMON_METADATA. For internal testing only, ignores the current `publish` settings in the Cargo manifest.
+    (cargo_ignore_publish, "cargo_ignore_publish": bool, false),
 }
 
 impl Default for Conf {
