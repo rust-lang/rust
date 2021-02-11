@@ -63,7 +63,6 @@ Stabilized APIs
 - [`panic::panic_any`]
 - [`ptr::addr_of!`]
 - [`ptr::addr_of_mut!`]
-- [`slice::SlicePattern`]
 - [`slice::fill_with`]
 - [`slice::split_inclusive_mut`]
 - [`slice::split_inclusive`]
@@ -134,7 +133,6 @@ Internal Only
 [`panic::panic_any`]: https://doc.rust-lang.org/stable/std/panic/fn.panic_any.html
 [`slice::strip_prefix`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.strip_prefix
 [`slice::strip_suffix`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.strip_prefix
-[`slice::SlicePattern`]: https://doc.rust-lang.org/nightly/core/slice/trait.SlicePattern.html
 [`Arc::increment_strong_count`]: https://doc.rust-lang.org/nightly/std/sync/struct.Arc.html#method.increment_strong_count
 [`Arc::decrement_strong_count`]: https://doc.rust-lang.org/nightly/std/sync/struct.Arc.html#method.decrement_strong_count
 [`slice::fill_with`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.fill_with
