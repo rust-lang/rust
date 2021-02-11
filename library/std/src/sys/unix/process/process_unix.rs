@@ -47,7 +47,7 @@ impl Command {
         // a lock any more because the parent won't do anything and the child is
         // in its own process.
         let result = unsafe {
-            let _env_lock = sys::os::env_lock();
+            let _env_lock = sys::os::env_read_lock();
             cvt(libc::fork())?
         };
 
@@ -124,7 +124,7 @@ impl Command {
                     // Similar to when forking, we want to ensure that access to
                     // the environment is synchronized, so make sure to grab the
                     // environment lock before we try to exec.
-                    let _lock = sys::os::env_lock();
+                    let _lock = sys::os::env_read_lock();
 
                     let Err(e) = self.do_exec(theirs, envp.as_ref());
                     e
@@ -404,7 +404,7 @@ impl Command {
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
-            let _env_lock = sys::os::env_lock();
+            let _env_lock = sys::os::env_read_lock();
             let envp = envp.map(|c| c.as_ptr()).unwrap_or_else(|| *sys::os::environ() as *const _);
             cvt_nz(libc::posix_spawnp(
                 &mut p.pid,
