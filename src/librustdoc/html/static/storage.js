@@ -89,35 +89,20 @@ function hasOwnProperty(obj, property) {
     return Object.prototype.hasOwnProperty.call(obj, property);
 }
 
-function usableLocalStorage() {
-    // Check if the browser supports localStorage at all:
-    if (typeof Storage === "undefined") {
-        return false;
-    }
-    // Check if we can access it; this access will fail if the browser
-    // preferences deny access to localStorage, e.g., to prevent storage of
-    // "cookies" (or cookie-likes, as is the case here).
-    try {
-        return window.localStorage !== null && window.localStorage !== undefined;
-    } catch(err) {
-        // Storage is supported, but browser preferences deny access to it.
-        return false;
-    }
-}
-
 function updateLocalStorage(name, value) {
-    if (usableLocalStorage()) {
-        localStorage[name] = value;
-    } else {
-        // No Web Storage support so we do nothing
+    try {
+        window.localStorage.setItem(name, value);
+    } catch(e) {
+        // localStorage is not accessible, do nothing
     }
 }
 
 function getCurrentValue(name) {
-    if (usableLocalStorage() && localStorage[name] !== undefined) {
-        return localStorage[name];
+    try {
+        return window.localStorage.getItem(name);
+    } catch(e) {
+        return null;
     }
-    return null;
 }
 
 function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
