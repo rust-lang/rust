@@ -958,8 +958,6 @@ public:
       }
 
       if (!isChildLoop) {
-        // llvm::errs() << "manually performing lcssa for instruction" << *inst
-        // << " in block " << BuilderM.GetInsertBlock()->getName() << "\n";
         /*
         if (!DT.dominates(inst, forwardBlock)) {
           llvm::errs() << *this->newFunc->getParent() << "\n";
@@ -973,7 +971,7 @@ public:
 
         for (auto pair : lcssaFixes[inst]) {
           if (pair.first == forwardBlock ||
-              DT.dominates(pair.first, forwardBlock)) {
+              (DT.dominates(pair.first, forwardBlock) && !isa<UndefValue>(pair.second))) {
             return pair.second;
           }
         }

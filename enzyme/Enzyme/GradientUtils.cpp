@@ -117,8 +117,9 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
   }
 
 // llvm::errs() << "uwval: " << *val << "\n";
-#define getOp(v)                                                               \
+#define getOp(vtmp)                                                               \
   ({                                                                           \
+    Value *v = vtmp;                                                           \
     Value *___res;                                                             \
     if (mode == UnwrapMode::LegalFullUnwrap ||                                 \
         mode == UnwrapMode::AttemptFullUnwrap ||                               \
@@ -439,33 +440,214 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       if (OrigLI.isLoopHeader(parent)) goto endCheck;
     }
 
-    SmallVector<BasicBlock*, 2> preds(phi->block_begin(), phi->block_end());
-    SmallVector<BasicBlock*, 2> above;
-    for (auto Pred : preds) {
-      above.push_back(Pred->getSinglePredecessor());
-    }
-    BasicBlock* BB = above[0];
-    for (auto Above : above) {
-      if (Above != BB) {
-        BB = nullptr;
-        break;
+    std::set<Value *> targetToPreds;
+    // Map of function edges to list of values possible
+    std::map<std::pair</*pred*/ BasicBlock *, /*successor*/ BasicBlock *>,
+            std::set<Value *>>
+        done;
+    {
+      std::deque<
+          std::tuple<std::pair</*pred*/ BasicBlock *, /*successor*/ BasicBlock *>,
+                    Value *>>
+          Q; // newblock, target
+
+      for (unsigned i=0; i<phi->getNumIncomingValues(); ++i) {
+        Q.push_back(std::make_pair(std::make_pair(phi->getIncomingBlock(i), parent), phi->getIncomingValue(i)));
+        targetToPreds.insert(phi->getIncomingValue(i));
+      }
+
+      for (std::tuple<
+              std::pair</*pred*/ BasicBlock *, /*successor*/ BasicBlock *>,
+              Value *>
+              trace;
+          Q.size() > 0;) {
+        trace = Q.front();
+        Q.pop_front();
+        auto edge = std::get<0>(trace);
+        auto block = edge.first;
+        auto target = std::get<1>(trace);
+
+        if (done[edge].count(target))
+          continue;
+        done[edge].insert(target);
+
+        Loop *blockLoop = LI.getLoopFor(block);
+
+        for (BasicBlock *Pred : predecessors(block)) {
+          // Don't go up the backedge as we can use the last value if desired via
+          // lcssa
+          if (blockLoop && blockLoop->getHeader() == block &&
+              blockLoop == LI.getLoopFor(Pred))
+            continue;
+
+          Q.push_back(
+              std::tuple<std::pair<BasicBlock *, BasicBlock *>, Value *>(
+                  std::make_pair(Pred, block), target));
+        }
       }
     }
-    if (BB) {
-      if (auto BI = dyn_cast<BranchInst>(BB->getTerminator())) {
-        auto cond = getOp(BI->getCondition());
-        if (cond == nullptr)
-          goto endCheck;
-        SmallVector<Value*, 2> vals = {
-          getOp(phi->getIncomingValueForBlock(BI->getSuccessor(0))),
-          getOp(phi->getIncomingValueForBlock(BI->getSuccessor(1))),
-        };
-        if (!vals[0] || !vals[1])
-          goto endCheck;
-        
-        return BuilderM.CreateSelect(cond, vals[0], vals[1]);
+
+    std::set<BasicBlock *> blocks;
+    for (auto pair : done) {
+      const auto &edge = pair.first;
+      blocks.insert(edge.first);
+    }
+
+    if (targetToPreds.size() == 3) {
+      for (auto block : blocks) {
+        std::set<Value *> foundtargets;
+        std::set<Value *> uniqueTargets;
+        for (BasicBlock *succ : successors(block)) {
+          auto edge = std::make_pair(block, succ);
+          for (Value *target : done[edge]) {
+            if (foundtargets.find(target) != foundtargets.end()) {
+              goto rnextpair;
+            }
+            foundtargets.insert(target);
+            if (done[edge].size() == 1)
+              uniqueTargets.insert(target);
+          }
+        }
+        if (foundtargets.size() != 3)
+          goto rnextpair;
+        if (uniqueTargets.size() != 1)
+          goto rnextpair;
+
+        {
+          BasicBlock *subblock = nullptr;
+          for (auto block2 : blocks) {
+            std::set<Value *> seen2;
+            for (BasicBlock *succ : successors(block2)) {
+              auto edge = std::make_pair(block2, succ);
+              if (done[edge].size() != 1) {
+                // llvm::errs() << " -- failed from noonesize\n";
+                goto nextblock;
+              }
+              for (Value *target : done[edge]) {
+                if (seen2.find(target) != seen2.end()) {
+                  // llvm::errs() << " -- failed from not uniqueTargets\n";
+                  goto nextblock;
+                }
+                seen2.insert(target);
+                if (foundtargets.find(target) == foundtargets.end()) {
+                  // llvm::errs() << " -- failed from not unknown target\n";
+                  goto nextblock;
+                }
+                if (uniqueTargets.find(target) != uniqueTargets.end()) {
+                  // llvm::errs() << " -- failed from not same target\n";
+                  goto nextblock;
+                }
+              }
+            }
+            if (seen2.size() != 2) {
+              // llvm::errs() << " -- failed from not 2 seen\n";
+              goto nextblock;
+            }
+            subblock = block2;
+            break;
+          nextblock:;
+          }
+
+          if (subblock == nullptr)
+            goto rnextpair;
+
+          {
+            auto bi1 = cast<BranchInst>(block->getTerminator());
+
+            auto cond1 = getOp(bi1->getCondition());
+            if (cond1 == nullptr)
+              goto endCheck;
+            auto bi2 = cast<BranchInst>(subblock->getTerminator());
+            auto cond2 = getOp(bi2->getCondition());
+            if (cond2 == nullptr)
+              goto endCheck;
+
+            assert(done.find(std::make_pair(subblock, bi2->getSuccessor(0))) != done.end());
+            assert(done.find(std::make_pair(subblock, bi2->getSuccessor(1))) != done.end());
+            assert(done[std::make_pair(subblock, bi2->getSuccessor(0))].size() == 1);
+            assert(done[std::make_pair(subblock, bi2->getSuccessor(1))].size() == 1);
+
+            SmallVector<Value*, 2> vals = {
+              getOp(*done[std::make_pair(subblock, bi2->getSuccessor(0))].begin()),
+              getOp(*done[std::make_pair(subblock, bi2->getSuccessor(1))].begin()),
+            };
+            if (!vals[0] || !vals[1])
+              goto endCheck;
+            
+            Value* subsel = BuilderM.CreateSelect(cond2, vals[0], vals[1]);
+
+            auto stagingIfNeeded = [&](BasicBlock *B) {
+              auto edge = std::make_pair(block, B);
+              assert(done.find(edge) != done.end());
+              if (done[edge].size() == 1) {
+                return getOp(*done[edge].begin());
+              } else {
+                return subsel;
+              }
+            };
+
+            vals[0] = stagingIfNeeded(bi1->getSuccessor(0));
+            vals[1] = stagingIfNeeded(bi1->getSuccessor(1));
+
+            if (!vals[0] || !vals[1])
+              goto endCheck;
+
+            return BuilderM.CreateSelect(cond1, vals[0], vals[1]);
+          }
+        }
+      rnextpair:;
       }
     }
+
+    Instruction* equivalentTerminator = nullptr;
+    for (auto block : blocks) {
+      std::set<Value *> foundtargets;
+      for (BasicBlock *succ : successors(block)) {
+        auto edge = std::make_pair(block, succ);
+        if (done[edge].size() != 1) {
+          goto nextpair;
+        }
+        Value *target = *done[edge].begin();
+        if (foundtargets.find(target) != foundtargets.end()) {
+          goto nextpair;
+        }
+        foundtargets.insert(target);
+      }
+      if (foundtargets.size() != targetToPreds.size()) {
+        goto nextpair;
+      }
+
+      if (block == parent || DT.dominates(block, parent)) {
+        equivalentTerminator = block->getTerminator();
+        goto fast;
+      }
+
+    nextpair:;
+    }
+    goto endCheck;
+
+    fast:;
+    assert(equivalentTerminator);
+
+    if (auto branch = dyn_cast<BranchInst>(equivalentTerminator)) {
+      auto cond = getOp(branch->getCondition());
+      if (cond == nullptr)
+        goto endCheck;
+
+      assert(done.find(std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(0))) != done.end());
+      assert(done.find(std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(1))) != done.end());
+      assert(done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(0))].size() == 1);
+      assert(done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(1))].size() == 1);
+      SmallVector<Value*, 2> vals = {
+        getOp(*done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(0))].begin()),
+        getOp(*done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(1))].begin()),
+      };
+      if (!vals[0] || !vals[1])
+        goto endCheck;
+      
+      return BuilderM.CreateSelect(cond, vals[0], vals[1]);
+    }
+    goto endCheck;
   }
 
 endCheck:
@@ -1983,6 +2165,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   if (inversionAllocs && inst->getParent() == inversionAllocs) {
     return val;
   }
+  assert(inst->getParent()->getParent() == newFunc);
+  assert(BuilderM.GetInsertBlock()->getParent() == newFunc);
 
   if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
     if (BuilderM.GetInsertBlock()->size() &&
