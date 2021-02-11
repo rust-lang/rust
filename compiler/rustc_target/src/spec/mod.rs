@@ -589,7 +589,7 @@ impl StackProbeType {
                 Ok(StackProbeType::InlineOrCall { min_llvm_version_for_inline })
             }
             _ => Err(String::from(
-                "`kind` expected to be one of `inline-or-none`, `call` or `inline-or-call`",
+                "`kind` expected to be one of `none`, `inline`, `call` or `inline-or-call`",
             )),
         }
     }
