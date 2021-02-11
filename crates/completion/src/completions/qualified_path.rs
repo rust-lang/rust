@@ -50,7 +50,8 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             }
         }
         PathResolution::Def(def @ hir::ModuleDef::Adt(_))
-        | PathResolution::Def(def @ hir::ModuleDef::TypeAlias(_)) => {
+        | PathResolution::Def(def @ hir::ModuleDef::TypeAlias(_))
+        | PathResolution::Def(def @ hir::ModuleDef::BuiltinType(_)) => {
             if let hir::ModuleDef::Adt(Adt::Enum(e)) = def {
                 for variant in e.variants(ctx.db) {
                     acc.add_enum_variant(ctx, variant, None);
@@ -59,6 +60,13 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             let ty = match def {
                 hir::ModuleDef::Adt(adt) => adt.ty(ctx.db),
                 hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
+                hir::ModuleDef::BuiltinType(builtin) => {
+                    let module = match ctx.scope.module() {
+                        Some(it) => it,
+                        None => return,
+                    };
+                    builtin.ty(ctx.db, module)
+                }
                 _ => unreachable!(),
             };
 
@@ -777,6 +785,30 @@ impl Foo {
                 ev Bar    ()
                 ev Baz    ()
                 me foo(…) -> ()
+            "#]],
+        );
+    }
+
+    #[test]
+    fn completes_primitive_assoc_const() {
+        check(
+            r#"
+//- /lib.rs crate:lib deps:core
+fn f() {
+    u8::$0
+}
+
+//- /core.rs crate:core
+#[lang = "u8"]
+impl u8 {
+    pub const MAX: Self = 255;
+
+    pub fn func(self) {}
+}
+"#,
+            expect![[r#"
+                ct MAX     pub const MAX: Self = 255;
+                me func(…) -> ()
             "#]],
         );
     }
