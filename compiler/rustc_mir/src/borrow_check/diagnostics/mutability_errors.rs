@@ -540,7 +540,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         );
     }
 
-    // Attempt to search similar mutable assosiated items for suggestion.
+    // Attempt to search similar mutable associated items for suggestion.
     // In the future, attempt in all path but initially for RHS of for_loop
     fn suggest_similar_mut_method_for_for_loop(&self, err: &mut DiagnosticBuilder<'_>) {
         let hir = self.infcx.tcx.hir();
