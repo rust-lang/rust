@@ -1622,7 +1622,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// `UnsafeCell<T>` is a type that wraps some `T` and indicates unsafe interior operations on the
 /// wrapped type. Types with an `UnsafeCell<T>` field are considered to have an 'unsafe interior'.
 /// The `UnsafeCell<T>` type is the only legal way to obtain aliasable data that is considered
-/// mutable. In general, transmuting an `&T` type into an `&mut T` is considered undefined behavior.
+/// mutable. In general, transmuting a `&T` type into a `&mut T` is considered undefined behavior.
 ///
 /// If you have a reference `&SomeStruct`, then normally in Rust all fields of `SomeStruct` are
 /// immutable. The compiler makes optimizations based on the knowledge that `&T` is not mutably
