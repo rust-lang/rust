@@ -31,13 +31,15 @@ struct TomlCrate {
     versions: Option<Vec<String>>,
     git_url: Option<String>,
     git_hash: Option<String>,
+    path: Option<String>,
 }
 
-// represents an archive we download from crates.io
+// represents an archive we download from crates.io, or a git repo, or a local repo
 #[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 enum CrateSource {
     CratesIo { name: String, version: String },
     Git { name: String, url: String, commit: String },
+    Path { name: String, path: PathBuf },
 }
 
 // represents the extracted sourcecode of a crate
@@ -60,6 +62,7 @@ struct ClippyWarning {
     column: String,
     linttype: String,
     message: String,
+    ice: bool,
 }
 
 impl std::fmt::Display for ClippyWarning {
@@ -111,7 +114,7 @@ impl CrateSource {
             },
             CrateSource::Git { name, url, commit } => {
                 let repo_path = {
-                    let mut repo_path = PathBuf::from("target/lintcheck/downloads");
+                    let mut repo_path = PathBuf::from("target/lintcheck/crates");
                     // add a -git suffix in case we have the same crate from crates.io and a git repo
                     repo_path.push(format!("{}-git", name));
                     repo_path
@@ -137,6 +140,37 @@ impl CrateSource {
                     version: commit.clone(),
                     name: name.clone(),
                     path: repo_path,
+                }
+            },
+            CrateSource::Path { name, path } => {
+                use fs_extra::dir;
+
+                // simply copy the entire directory into our target dir
+                let copy_dest = PathBuf::from("target/lintcheck/crates/");
+
+                // the source path of the crate we copied,  ${copy_dest}/crate_name
+                let crate_root = copy_dest.join(name); // .../crates/local_crate
+
+                if !crate_root.exists() {
+                    println!("Copying {} to {}", path.display(), copy_dest.display());
+
+                    dir::copy(path, &copy_dest, &dir::CopyOptions::new()).expect(&format!(
+                        "Failed to copy from {}, to  {}",
+                        path.display(),
+                        crate_root.display()
+                    ));
+                } else {
+                    println!(
+                        "Not copying {} to {}, destination already exists",
+                        path.display(),
+                        crate_root.display()
+                    );
+                }
+
+                Crate {
+                    version: String::from("local"),
+                    name: name.clone(),
+                    path: crate_root,
                 }
             },
         }
@@ -176,8 +210,8 @@ impl Crate {
         let output_lines = stdout.lines();
         let warnings: Vec<ClippyWarning> = output_lines
             .into_iter()
-            // get all clippy warnings
-            .filter(|line| line.contains("clippy::"))
+            // get all clippy warnings and ICEs
+            .filter(|line| line.contains("clippy::") || line.contains("internal compiler error: "))
             .map(|json_msg| parse_json_message(json_msg, &self))
             .collect();
         warnings
@@ -192,8 +226,10 @@ fn build_clippy() {
 }
 
 // get a list of CrateSources we want to check from a "lintcheck_crates.toml" file.
-fn read_crates(toml_path: Option<&str>) -> Vec<CrateSource> {
+fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
     let toml_path = PathBuf::from(toml_path.unwrap_or("clippy_dev/lintcheck_crates.toml"));
+    // save it so that we can use the name of the sources.toml as name for the logfile later.
+    let toml_filename = toml_path.file_stem().unwrap().to_str().unwrap().to_string();
     let toml_content: String =
         std::fs::read_to_string(&toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: CrateList =
@@ -209,6 +245,13 @@ fn read_crates(toml_path: Option<&str>) -> Vec<CrateSource> {
     // multiple Cratesources)
     let mut crate_sources = Vec::new();
     tomlcrates.into_iter().for_each(|tk| {
+        if let Some(ref path) = tk.path {
+            crate_sources.push(CrateSource::Path {
+                name: tk.name.clone(),
+                path: PathBuf::from(path),
+            });
+        }
+
         // if we have multiple versions, save each one
         if let Some(ref versions) = tk.versions {
             versions.iter().for_each(|ver| {
@@ -232,12 +275,15 @@ fn read_crates(toml_path: Option<&str>) -> Vec<CrateSource> {
         {
             eprintln!("tomlkrate: {:?}", tk);
             if tk.git_hash.is_some() != tk.git_url.is_some() {
-                panic!("Encountered TomlCrate with only one of git_hash and git_url!")
+                panic!("Error: Encountered TomlCrate with only one of git_hash and git_url!");
+            }
+            if tk.path.is_some() && (tk.git_hash.is_some() || tk.versions.is_some()) {
+                panic!("Error: TomlCrate can only have one of 'git_.*', 'version' or 'path' fields");
             }
             unreachable!("Failed to translate TomlCrate into CrateSource!");
         }
     });
-    crate_sources
+    (toml_filename, crate_sources)
 }
 
 // extract interesting data from a json lint message
@@ -261,6 +307,7 @@ fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
             .into(),
         linttype: jmsg["message"]["code"]["code"].to_string().trim_matches('"').into(),
         message: jmsg["message"]["message"].to_string().trim_matches('"').into(),
+        ice: json_message.contains("internal compiler error: "),
     }
 }
 
@@ -288,7 +335,7 @@ pub fn run(clap_config: &ArgMatches) {
     // download and extract the crates, then run clippy on them and collect clippys warnings
     // flatten into one big list of warnings
 
-    let crates = read_crates(clap_config.value_of("crates-toml"));
+    let (filename, crates) = read_crates(clap_config.value_of("crates-toml"));
 
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
         // if we don't have the specified crate in the .toml, throw an error
@@ -296,6 +343,7 @@ pub fn run(clap_config: &ArgMatches) {
             let name = match krate {
                 CrateSource::CratesIo { name, .. } => name,
                 CrateSource::Git { name, .. } => name,
+                CrateSource::Path { name, .. } => name,
             };
             name == only_one_crate
         }) {
@@ -326,6 +374,13 @@ pub fn run(clap_config: &ArgMatches) {
 
     // generate some stats:
 
+    // grab crashes/ICEs, save the crate name and the ice message
+    let ices: Vec<(&String, &String)> = clippy_warnings
+        .iter()
+        .filter(|warning| warning.ice)
+        .map(|w| (&w.crate_name, &w.message))
+        .collect();
+
     // count lint type occurrences
     let mut counter: HashMap<&String, usize> = HashMap::new();
     clippy_warnings
@@ -351,5 +406,10 @@ pub fn run(clap_config: &ArgMatches) {
     // save the text into lintcheck-logs/logs.txt
     let mut text = clippy_ver; // clippy version number on top
     text.push_str(&format!("\n{}", all_msgs.join("")));
-    write("lintcheck-logs/logs.txt", text).unwrap();
+    text.push_str("ICEs:\n");
+    ices.iter()
+        .for_each(|(cratename, msg)| text.push_str(&format!("{}: '{}'", cratename, msg)));
+
+    let file = format!("lintcheck-logs/{}_logs.txt", filename);
+    write(file, text).unwrap();
 }
