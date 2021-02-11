@@ -2191,19 +2191,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     CastKind::Pointer(PointerCast::ArrayToPointer) => {
                         let ty_from = op.ty(body, tcx);
 
-                        let opt_ty_elem = match ty_from.kind() {
-                            ty::RawPtr(ty::TypeAndMut {
-                                mutbl: hir::Mutability::Not,
-                                ty: array_ty,
-                            }) => match array_ty.kind() {
-                                ty::Array(ty_elem, _) => Some(ty_elem),
-                                _ => None,
-                            },
+                        let opt_ty_elem_mut = match ty_from.kind() {
+                            ty::RawPtr(ty::TypeAndMut { mutbl: array_mut, ty: array_ty }) => {
+                                match array_ty.kind() {
+                                    ty::Array(ty_elem, _) => Some((ty_elem, *array_mut)),
+                                    _ => None,
+                                }
+                            }
                             _ => None,
                         };
 
-                        let ty_elem = match opt_ty_elem {
-                            Some(ty_elem) => ty_elem,
+                        let (ty_elem, ty_mut) = match opt_ty_elem_mut {
+                            Some(ty_elem_mut) => ty_elem_mut,
                             None => {
                                 span_mirbug!(
                                     self,
@@ -2215,11 +2214,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             }
                         };
 
-                        let ty_to = match ty.kind() {
-                            ty::RawPtr(ty::TypeAndMut {
-                                mutbl: hir::Mutability::Not,
-                                ty: ty_to,
-                            }) => ty_to,
+                        let (ty_to, ty_to_mut) = match ty.kind() {
+                            ty::RawPtr(ty::TypeAndMut { mutbl: ty_to_mut, ty: ty_to }) => {
+                                (ty_to, *ty_to_mut)
+                            }
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -2230,6 +2228,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 return;
                             }
                         };
+
+                        if ty_to_mut == Mutability::Mut && ty_mut == Mutability::Not {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "ArrayToPointer cast from const {:?} to mut {:?}",
+                                ty,
+                                ty_to
+                            );
+                            return;
+                        }
 
                         if let Err(terr) = self.sub_types(
                             ty_elem,
