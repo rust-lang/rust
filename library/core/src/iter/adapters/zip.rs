@@ -198,12 +198,13 @@ where
                 Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
             }
         } else if A::may_have_side_effect() && self.index < self.a.size() {
-            // match the base implementation's potential side effects
-            // SAFETY: we just checked that `self.index` < `self.a.len()`
-            unsafe {
-                self.a.__iterator_get_unchecked(self.index);
-            }
+            let i = self.index;
             self.index += 1;
+            // match the base implementation's potential side effects
+            // SAFETY: we just checked that `i` < `self.a.len()`
+            unsafe {
+                self.a.__iterator_get_unchecked(i);
+            }
             None
         } else {
             None
