@@ -163,7 +163,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
         let (stab, const_stab) = attr::find_stability(&self.tcx.sess, attrs, item_sp);
 
-        let const_stab = const_stab.map(|const_stab| {
+        let const_stab = const_stab.map(|(const_stab, _)| {
             let const_stab = self.tcx.intern_const_stability(const_stab);
             self.index.const_stab_map.insert(hir_id, const_stab);
             const_stab
@@ -193,12 +193,15 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
-        let stab = stab.map(|stab| {
+        let stab = stab.map(|(stab, span)| {
             // Error if prohibited, or can't inherit anything from a container.
             if kind == AnnotationKind::Prohibited
                 || (kind == AnnotationKind::Container && stab.level.is_stable() && is_deprecated)
             {
-                self.tcx.sess.span_err(item_sp, "this stability annotation is useless");
+                self.tcx.sess.struct_span_err(span,"this stability annotation is useless")
+                    .span_label(span, "useless stability annotation")
+                    .span_label(item_sp, "the stability attribute annotates this item")
+                    .emit();
             }
 
             debug!("annotate: found {:?}", stab);
@@ -215,16 +218,19 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 {
                     match stab_v.parse::<u64>() {
                         Err(_) => {
-                            self.tcx.sess.span_err(item_sp, "invalid stability version found");
+                            self.tcx.sess.struct_span_err(span, "invalid stability version found")
+                                .span_label(span, "invalid stability version")
+                                .span_label(item_sp, "the stability attribute annotates this item")
+                                .emit();
                             break;
                         }
                         Ok(stab_vp) => match dep_v.parse::<u64>() {
                             Ok(dep_vp) => match dep_vp.cmp(&stab_vp) {
                                 Ordering::Less => {
-                                    self.tcx.sess.span_err(
-                                        item_sp,
-                                        "an API can't be stabilized after it is deprecated",
-                                    );
+                                    self.tcx.sess.struct_span_err(span, "an API can't be stabilized after it is deprecated")
+                                        .span_label(span, "invalid version")
+                                        .span_label(item_sp, "the stability attribute annotates this item")
+                                        .emit();
                                     break;
                                 }
                                 Ordering::Equal => continue,
@@ -232,9 +238,10 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                             },
                             Err(_) => {
                                 if dep_v != "TBD" {
-                                    self.tcx
-                                        .sess
-                                        .span_err(item_sp, "invalid deprecation version found");
+                                    self.tcx.sess.struct_span_err(span, "invalid deprecation version found")
+                                        .span_label(span, "invalid deprecation version")
+                                        .span_label(item_sp, "the stability attribute annotates this item")
+                                        .emit();
                                 }
                                 break;
                             }
@@ -756,18 +763,13 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     // error if all involved types and traits are stable, because
                     // it will have no effect.
                     // See: https://github.com/rust-lang/rust/issues/55436
-                    if let (Some(Stability { level: attr::Unstable { .. }, .. }), _) =
+                    if let (Some((Stability { level: attr::Unstable { .. }, .. }, span)), _) =
                         attr::find_stability(&self.tcx.sess, &item.attrs, item.span)
                     {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty(self_ty);
                         c.visit_trait_ref(t);
                         if c.fully_stable {
-                            let span = item
-                                .attrs
-                                .iter()
-                                .find(|a| a.has_name(sym::unstable))
-                                .map_or(item.span, |a| a.span);
                             self.tcx.struct_span_lint_hir(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id,
