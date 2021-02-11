@@ -180,7 +180,7 @@ fn strip_ref_operators<'hir>(mut expr: &'hir Expr<'hir>, typeck_results: &Typeck
     loop {
         match expr.kind {
             ExprKind::AddrOf(_, _, e) => expr = e,
-            ExprKind::Unary(UnOp::UnDeref, e) if typeck_results.expr_ty(e).is_ref() => expr = e,
+            ExprKind::Unary(UnOp::Deref, e) if typeck_results.expr_ty(e).is_ref() => expr = e,
             _ => break,
         }
     }

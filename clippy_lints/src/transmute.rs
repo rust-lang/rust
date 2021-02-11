@@ -586,7 +586,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             let mut expr = &args[0];
                             let mut arg = sugg::Sugg::hir(cx, expr, "..");
 
-                            if let ExprKind::Unary(UnOp::UnNeg, inner_expr) = &expr.kind {
+                            if let ExprKind::Unary(UnOp::Neg, inner_expr) = &expr.kind {
                                 expr = &inner_expr;
                             }
 

@@ -2235,7 +2235,10 @@ fn lint_expect_fun_call(
         span_replace_word,
         &format!("use of `{}` followed by a function call", name),
         "try this",
-        format!("unwrap_or_else({} {{ panic!({}) }})", closure_args, arg_root_snippet),
+        format!(
+            "unwrap_or_else({} {{ panic!(\"{{}}\", {}) }})",
+            closure_args, arg_root_snippet
+        ),
         applicability,
     );
 }
@@ -2672,7 +2675,7 @@ fn lint_get_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args:
     if_chain! {
         if needs_ref;
         if let Some(parent) = get_parent_expr(cx, expr);
-        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, _) = parent.kind;
+        if let hir::ExprKind::Unary(hir::UnOp::Deref, _) = parent.kind;
         then {
             needs_ref = false;
             span = parent.span;
@@ -3116,7 +3119,7 @@ fn lint_filter_map<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, is_f
             // in `filter(|x| ..)`, replace `*x` with `x`
             let a_path = if_chain! {
                 if !is_filter_param_ref;
-                if let ExprKind::Unary(UnOp::UnDeref, expr_path) = a.kind;
+                if let ExprKind::Unary(UnOp::Deref, expr_path) = a.kind;
                 then { expr_path } else { a }
             };
             // let the filter closure arg and the map closure arg be equal
@@ -3758,8 +3761,8 @@ fn lint_option_as_ref_deref<'tcx>(
                 },
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, ref inner) if same_mutability(m) => {
                     if_chain! {
-                        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner1) = inner.kind;
-                        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner2) = inner1.kind;
+                        if let hir::ExprKind::Unary(hir::UnOp::Deref, ref inner1) = inner.kind;
+                        if let hir::ExprKind::Unary(hir::UnOp::Deref, ref inner2) = inner1.kind;
                         then {
                             path_to_local_id(inner2, closure_body.params[0].pat.hir_id)
                         } else {
@@ -4113,7 +4116,7 @@ fn lint_filetype_is_file(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
         if let hir::ExprKind::Unary(op, _) = parent.kind;
-        if op == hir::UnOp::UnNot;
+        if op == hir::UnOp::Not;
         then {
             lint_unary = "!";
             verb = "denies";

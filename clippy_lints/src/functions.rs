@@ -644,7 +644,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref ptr) => self.check_arg(ptr),
+            hir::ExprKind::Unary(hir::UnOp::Deref, ref ptr) => self.check_arg(ptr),
             _ => (),
         }
 

@@ -181,7 +181,7 @@ fn detect_option_if_let_else<'tcx>(
             };
             let cond_expr = match &cond_expr.kind {
                 // Pointer dereferencing happens automatically, so we can omit it in the suggestion
-                ExprKind::Unary(UnOp::UnDeref, expr) | ExprKind::AddrOf(_, _, expr) => expr,
+                ExprKind::Unary(UnOp::Deref, expr) | ExprKind::AddrOf(_, _, expr) => expr,
                 _ => cond_expr,
             };
             Some(OptionIfLetElseOccurence {

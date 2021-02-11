@@ -383,7 +383,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                             needs_check_adjustment = false;
                             break;
                         },
-                        ExprKind::Unary(UnOp::UnDeref, _) => {
+                        ExprKind::Unary(UnOp::Deref, _) => {
                             // `*e` => desugared to `*Deref::deref(&e)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.
