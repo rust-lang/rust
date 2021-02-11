@@ -782,6 +782,10 @@ macro_rules! from_str_radix_int_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStr for $t {
             type Err = ParseIntError;
+            #[doc(alias = "atoi")]
+            #[doc(alias = "atol")]
+            #[doc(alias = "strtod")]
+            #[doc(alias = "strtol")]
             fn from_str(src: &str) -> Result<Self, ParseIntError> {
                 from_str_radix(src, 10)
             }

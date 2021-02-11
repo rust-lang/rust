@@ -91,6 +91,7 @@ macro_rules! print {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(print_internals, format_args_nl)]
+#[doc(alias = "printf")]
 macro_rules! println {
     () => ($crate::print!("\n"));
     ($($arg:tt)*) => ({

@@ -162,6 +162,8 @@ pub enum Option<T> {
     /// No value
     #[lang = "None"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "null")]
+    #[doc(alias = "nil")]
     None,
     /// Some value `T`
     #[lang = "Some"]

@@ -1034,6 +1034,8 @@ impl str {
     /// assert_eq!(s.find(x), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "strstr")]
+    #[doc(alias = "strchr")]
     #[inline]
     pub fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
         pat.into_searcher(self).next_match().map(|(i, _)| i)
@@ -1080,6 +1082,7 @@ impl str {
     /// assert_eq!(s.rfind(x), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "strrchr")]
     #[inline]
     pub fn rfind<'a, P>(&'a self, pat: P) -> Option<usize>
     where
@@ -1202,6 +1205,7 @@ impl str {
     ///
     /// [`split_whitespace`]: str::split_whitespace
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "strtok")]
     #[inline]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
         Split(SplitInternal {

@@ -201,6 +201,7 @@ impl fmt::Debug for VarsOs {
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
+#[doc(alias = "getenv")]
 pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError> {
     _var(key.as_ref())
 }

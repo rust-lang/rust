@@ -447,6 +447,7 @@ impl SystemTime {
     /// let sys_time = SystemTime::now();
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
+    #[doc(alias = "time")]
     pub fn now() -> SystemTime {
         SystemTime(time::SystemTime::now())
     }

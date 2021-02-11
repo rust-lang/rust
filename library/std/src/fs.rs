@@ -304,6 +304,8 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// }
 /// ```
 #[stable(feature = "fs_read_write_bytes", since = "1.26.0")]
+#[doc(alias = "fputs")]
+#[doc(alias = "fprintf")]
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
     fn inner(path: &Path, contents: &[u8]) -> io::Result<()> {
         File::create(path)?.write_all(contents)

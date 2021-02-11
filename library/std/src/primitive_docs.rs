@@ -342,6 +342,7 @@ mod prim_never {}
 /// assert_eq!(32, std::mem::size_of_val(&v[..]));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(alias = "char32_t")]
 mod prim_char {}
 
 #[doc(primitive = "unit")]
@@ -789,6 +790,7 @@ mod prim_str {}
 mod prim_tuple {}
 
 #[doc(primitive = "f32")]
+#[doc(alias = "float")]
 /// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
 ///
 /// This type can represent a wide range of decimal numbers, like `3.5`, `27`,
@@ -830,6 +832,7 @@ mod prim_tuple {}
 mod prim_f32 {}
 
 #[doc(primitive = "f64")]
+#[doc(alias = "double")]
 /// A 64-bit floating point type (specifically, the "binary64" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`f32`], but has increased
@@ -845,25 +848,25 @@ mod prim_f32 {}
 mod prim_f64 {}
 
 #[doc(primitive = "i8")]
-//
+#[doc(alias = "int8_t")]
 /// The 8-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i8 {}
 
 #[doc(primitive = "i16")]
-//
+#[doc(alias = "int16_t")]
 /// The 16-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i16 {}
 
 #[doc(primitive = "i32")]
-//
+#[doc(alias = "int32_t")]
 /// The 32-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i32 {}
 
 #[doc(primitive = "i64")]
-//
+#[doc(alias = "int64_t")]
 /// The 64-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i64 {}
@@ -875,25 +878,25 @@ mod prim_i64 {}
 mod prim_i128 {}
 
 #[doc(primitive = "u8")]
-//
+#[doc(alias = "uint8_t")]
 /// The 8-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u8 {}
 
 #[doc(primitive = "u16")]
-//
+#[doc(alias = "uint16_t")]
 /// The 16-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u16 {}
 
 #[doc(primitive = "u32")]
-//
+#[doc(alias = "uint32_t")]
 /// The 32-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u32 {}
 
 #[doc(primitive = "u64")]
-//
+#[doc(alias = "uint64_t")]
 /// The 64-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u64 {}
@@ -905,17 +908,19 @@ mod prim_u64 {}
 mod prim_u128 {}
 
 #[doc(primitive = "isize")]
-//
 /// The pointer-sized signed integer type.
 ///
 /// The size of this primitive is how many bytes it takes to reference any
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
 /// and on a 64 bit target, this is 8 bytes.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(alias = "ssize_t")]
+#[doc(alias = "intptr_t")] // FIXME(#65473): maybe these should be different
 mod prim_isize {}
 
 #[doc(primitive = "usize")]
-//
+#[doc(alias = "size_t")]
+#[doc(alias = "uintptr_t")] // FIXME(#65473): maybe these should be different
 /// The pointer-sized unsigned integer type.
 ///
 /// The size of this primitive is how many bytes it takes to reference any

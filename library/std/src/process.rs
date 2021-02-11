@@ -881,6 +881,7 @@ impl Command {
     /// assert!(output.status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
+    #[doc(alias = "system")]
     pub fn output(&mut self) -> io::Result<Output> {
         self.inner
             .spawn(imp::Stdio::MakePipe, false)

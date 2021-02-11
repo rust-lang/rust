@@ -820,6 +820,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "strcat")]
     pub fn push_str(&mut self, string: &str) {
         self.vec.extend_from_slice(string.as_bytes())
     }
@@ -1750,6 +1751,7 @@ impl fmt::Display for FromUtf16Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for String {
+    #[doc(alias = "strdup")]
     fn clone(&self) -> Self {
         String { vec: self.vec.clone() }
     }

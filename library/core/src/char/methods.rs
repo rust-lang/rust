@@ -280,6 +280,7 @@ impl char {
     /// '1'.is_digit(37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "isxdigit")]
     #[inline]
     pub fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
@@ -844,6 +845,7 @@ impl char {
     /// assert!(!'q'.is_control());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "iscntrl")]
     #[inline]
     pub fn is_control(self) -> bool {
         unicode::Cc(self)
@@ -1093,6 +1095,7 @@ impl char {
     /// [`to_uppercase()`]: #method.to_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
+    #[doc(alias = "toupper")]
     #[inline]
     pub const fn to_ascii_uppercase(&self) -> char {
         if self.is_ascii_lowercase() {
@@ -1126,6 +1129,7 @@ impl char {
     /// [`to_lowercase()`]: #method.to_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
+    #[doc(alias = "tolower")]
     #[inline]
     pub const fn to_ascii_lowercase(&self) -> char {
         if self.is_ascii_uppercase() {
@@ -1237,6 +1241,7 @@ impl char {
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[doc(alias = "isalpha")]
     #[inline]
     pub const fn is_ascii_alphabetic(&self) -> bool {
         matches!(*self, 'A'..='Z' | 'a'..='z')
@@ -1270,6 +1275,7 @@ impl char {
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[doc(alias = "isupper")]
     #[inline]
     pub const fn is_ascii_uppercase(&self) -> bool {
         matches!(*self, 'A'..='Z')
@@ -1303,6 +1309,7 @@ impl char {
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[doc(alias = "islower")]
     #[inline]
     pub const fn is_ascii_lowercase(&self) -> bool {
         matches!(*self, 'a'..='z')
@@ -1339,6 +1346,7 @@ impl char {
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[doc(alias = "isalnum")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
         matches!(*self, '0'..='9' | 'A'..='Z' | 'a'..='z')
@@ -1372,6 +1380,7 @@ impl char {
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[doc(alias = "isdigit")]
     #[inline]
     pub const fn is_ascii_digit(&self) -> bool {
         matches!(*self, '0'..='9')
@@ -1445,6 +1454,7 @@ impl char {
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[doc(alias = "ispunct")]
     #[inline]
     pub const fn is_ascii_punctuation(&self) -> bool {
         matches!(*self, '!'..='/' | ':'..='@' | '['..='`' | '{'..='~')
@@ -1528,6 +1538,7 @@ impl char {
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
+    #[doc(alias = "isspace")]
     #[inline]
     pub const fn is_ascii_whitespace(&self) -> bool {
         matches!(*self, '\t' | '\n' | '\x0C' | '\r' | ' ')
