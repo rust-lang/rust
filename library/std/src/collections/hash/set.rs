@@ -110,6 +110,7 @@ use super::map::{map_try_reserve_error, RandomState};
 /// [`Cell`]: crate::cell::Cell
 #[cfg_attr(not(test), rustc_diagnostic_item = "hashset_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(alias = "set")]
 pub struct HashSet<T, S = RandomState> {
     base: base::HashSet<T, S>,
 }
