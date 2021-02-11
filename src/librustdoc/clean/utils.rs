@@ -237,7 +237,7 @@ crate fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
         ty::ConstKind::Unevaluated(def, _, promoted) => {
             let mut s = if let Some(def) = def.as_local() {
                 let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def.did);
-                print_const_expr(cx, cx.tcx.hir().body_owned_by(hir_id))
+                print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
                 inline::print_inlined_const(cx, def.did)
             };
@@ -326,16 +326,17 @@ crate fn is_literal_expr(cx: &DocContext<'_>, hir_id: hir::HirId) -> bool {
     false
 }
 
-crate fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
-    let value = &cx.tcx.hir().body(body).value;
+crate fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
+    let hir = tcx.hir();
+    let value = &hir.body(body).value;
 
     let snippet = if !value.span.from_expansion() {
-        cx.sess().source_map().span_to_snippet(value.span).ok()
+        tcx.sess.source_map().span_to_snippet(value.span).ok()
     } else {
         None
     };
 
-    snippet.unwrap_or_else(|| rustc_hir_pretty::id_to_string(&cx.tcx.hir(), body.hir_id))
+    snippet.unwrap_or_else(|| rustc_hir_pretty::id_to_string(&hir, body.hir_id))
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
