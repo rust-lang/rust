@@ -645,6 +645,14 @@ impl Step for RustcDev {
             &[],
             &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
         );
+        // This particular crate is used as a build dependency of the above.
+        copy_src_dirs(
+            builder,
+            &builder.src,
+            &["src/build_helper"],
+            &[],
+            &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
+        );
         for file in src_files {
             tarball.add_file(builder.src.join(file), "lib/rustlib/rustc-src/rust", 0o644);
         }
