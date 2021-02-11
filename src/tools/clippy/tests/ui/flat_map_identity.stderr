@@ -1,5 +1,5 @@
 error: called `flat_map(|x| x)` on an `Iterator`
-  --> $DIR/unnecessary_flat_map.rs:10:22
+  --> $DIR/flat_map_identity.rs:10:22
    |
 LL |     let _ = iterator.flat_map(|x| x);
    |                      ^^^^^^^^^^^^^^^ help: try: `flatten()`
@@ -7,7 +7,7 @@ LL |     let _ = iterator.flat_map(|x| x);
    = note: `-D clippy::flat-map-identity` implied by `-D warnings`
 
 error: called `flat_map(std::convert::identity)` on an `Iterator`
-  --> $DIR/unnecessary_flat_map.rs:13:22
+  --> $DIR/flat_map_identity.rs:13:22
    |
 LL |     let _ = iterator.flat_map(convert::identity);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`

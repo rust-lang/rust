@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
 
         // search for `for _ in vec![…]`
         if_chain! {
-            if let Some((_, arg, _)) = higher::for_loop(expr);
+            if let Some((_, arg, _, _)) = higher::for_loop(expr);
             if let Some(vec_args) = higher::vec_macro(cx, arg);
             if is_copy(cx, vec_type(cx.typeck_results().expr_ty_adjusted(arg)));
             then {
