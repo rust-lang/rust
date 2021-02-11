@@ -6,7 +6,7 @@ use anyhow::{bail, format_err, Context, Result};
 use xshell::{cmd, pushd};
 
 // Latest stable, feel free to send a PR if this lags behind.
-const REQUIRED_RUST_VERSION: u32 = 47;
+const REQUIRED_RUST_VERSION: u32 = 50;
 
 pub struct InstallCmd {
     pub client: Option<ClientOpt>,
