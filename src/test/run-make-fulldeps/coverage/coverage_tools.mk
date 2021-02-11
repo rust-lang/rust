@@ -12,5 +12,3 @@
 # Enabling `-C link-dead-code` is not necessary when compiling with `-Z instrument-coverage`,
 # due to improvements in the coverage map generation, to add unreachable functions known to Rust.
 # Therefore, `-C link-dead-code` is no longer automatically enabled.
-
-UNAME = $(shell uname)
