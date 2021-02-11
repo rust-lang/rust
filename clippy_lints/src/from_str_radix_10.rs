@@ -19,12 +19,12 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust
+    /// ```ignore
     /// let input: &str = get_input();
     /// let num = u16::from_str_radix(input, 10)?;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```ignore
     /// let input: &str = get_input();
     /// let num: u16 = input.parse()?;
     /// ```
