@@ -6,7 +6,6 @@ use base_db::{CrateDisplayName, CrateId, Edition, FileId};
 use either::Either;
 use hir_def::{
     adt::{ReprKind, StructKind, VariantData},
-    builtin_type::BuiltinType,
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     import_map,
     item_tree::ItemTreeNode,
@@ -245,7 +244,7 @@ impl ModuleDef {
             ModuleDef::Const(it) => it.name(db),
             ModuleDef::Static(it) => it.name(db),
 
-            ModuleDef::BuiltinType(it) => Some(it.as_name()),
+            ModuleDef::BuiltinType(it) => Some(it.name()),
         }
     }
 
@@ -991,6 +990,23 @@ impl HasVisibility for TypeAlias {
         let function_data = db.type_alias_data(self.id);
         let visibility = &function_data.visibility;
         visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BuiltinType {
+    pub(crate) inner: hir_def::builtin_type::BuiltinType,
+}
+
+impl BuiltinType {
+    pub fn ty(self, db: &dyn HirDatabase, module: Module) -> Type {
+        let resolver = module.id.resolver(db.upcast());
+        Type::new_with_resolver(db, &resolver, Ty::builtin(self.inner))
+            .expect("crate not present in resolver")
+    }
+
+    pub fn name(self) -> Name {
+        self.inner.as_name()
     }
 }
 

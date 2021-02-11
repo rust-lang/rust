@@ -27,7 +27,6 @@ use test_utils::mark;
 
 use crate::{
     db::HirDatabase,
-    primitive::{FloatTy, IntTy},
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
         make_mut_slice, variant_data,
@@ -1051,17 +1050,6 @@ fn type_for_static(db: &dyn HirDatabase, def: StaticId) -> Binders<Ty> {
     Binders::new(0, Ty::from_hir(&ctx, &data.type_ref))
 }
 
-/// Build the declared type of a static.
-fn type_for_builtin(def: BuiltinType) -> Ty {
-    Ty::simple(match def {
-        BuiltinType::Char => TypeCtor::Char,
-        BuiltinType::Bool => TypeCtor::Bool,
-        BuiltinType::Str => TypeCtor::Str,
-        BuiltinType::Int(t) => TypeCtor::Int(IntTy::from(t).into()),
-        BuiltinType::Float(t) => TypeCtor::Float(FloatTy::from(t).into()),
-    })
-}
-
 fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnSig {
     let struct_data = db.struct_data(def);
     let fields = struct_data.variant_data.fields();
@@ -1186,7 +1174,7 @@ impl_from!(FunctionId, StructId, UnionId, EnumVariantId, ConstId, StaticId for V
 /// namespace.
 pub(crate) fn ty_query(db: &dyn HirDatabase, def: TyDefId) -> Binders<Ty> {
     match def {
-        TyDefId::BuiltinType(it) => Binders::new(0, type_for_builtin(it)),
+        TyDefId::BuiltinType(it) => Binders::new(0, Ty::builtin(it)),
         TyDefId::AdtId(it) => type_for_adt(db, it),
         TyDefId::TypeAliasId(it) => type_for_type_alias(db, it),
     }

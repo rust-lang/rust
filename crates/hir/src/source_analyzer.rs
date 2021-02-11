@@ -28,8 +28,9 @@ use syntax::{
 };
 
 use crate::{
-    db::HirDatabase, semantics::PathResolution, Adt, Const, Field, Function, Local, MacroDef,
-    ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Variant,
+    code_model::BuiltinType, db::HirDatabase, semantics::PathResolution, Adt, Const, Field,
+    Function, Local, MacroDef, ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam,
+    Variant,
 };
 use base_db::CrateId;
 
@@ -479,7 +480,7 @@ fn resolve_hir_path_(
             }
             TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
-            TypeNs::BuiltinType(it) => PathResolution::Def(it.into()),
+            TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
         })
     };
@@ -555,7 +556,7 @@ fn resolve_hir_path_qualifier(
         TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => PathResolution::Def(Adt::from(it).into()),
         TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
         TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
-        TypeNs::BuiltinType(it) => PathResolution::Def(it.into()),
+        TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
         TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
     })
 }

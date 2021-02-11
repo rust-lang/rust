@@ -27,6 +27,7 @@ use std::{iter, mem, ops::Deref, sync::Arc};
 
 use base_db::{salsa, CrateId};
 use hir_def::{
+    builtin_type::BuiltinType,
     expr::ExprId,
     type_ref::{Mutability, Rawness},
     AdtId, AssocContainerId, DefWithBodyId, FunctionId, GenericDefId, HasModule, LifetimeParamId,
@@ -737,6 +738,15 @@ impl Ty {
             TypeCtor::FnPtr { num_args: sig.params().len() as u16, is_varargs: sig.is_varargs },
             Substs(sig.params_and_return),
         )
+    }
+    pub fn builtin(builtin: BuiltinType) -> Self {
+        Ty::simple(match builtin {
+            BuiltinType::Char => TypeCtor::Char,
+            BuiltinType::Bool => TypeCtor::Bool,
+            BuiltinType::Str => TypeCtor::Str,
+            BuiltinType::Int(t) => TypeCtor::Int(IntTy::from(t).into()),
+            BuiltinType::Float(t) => TypeCtor::Float(FloatTy::from(t).into()),
+        })
     }
 
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
