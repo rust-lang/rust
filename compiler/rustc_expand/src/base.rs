@@ -774,8 +774,11 @@ impl SyntaxExtension {
             sess.parse_sess
                 .span_diagnostic
                 .struct_span_err(sp, "macros cannot have const stability attributes")
-                .span_label(sp, "invalid stability attribute")
-                .span_label(span, "in this macro")
+                .span_label(sp, "invalid const stability attribute")
+                .span_label(
+                    sess.source_map().guess_head_span(span),
+                    "const stability attribute affects this macro",
+                )
                 .emit();
         }
 
