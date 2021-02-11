@@ -57,12 +57,12 @@ macro_rules! declare_clippy_lint {
 
 #[macro_export]
 macro_rules! sym {
-    ( $($x:tt)* ) => { clippy_utils::sym!($($x)*); }
+    ( $($x:tt)* ) => { clippy_utils::sym!($($x)*) }
 }
 
 #[macro_export]
 macro_rules! unwrap_cargo_metadata {
-    ( $($x:tt)* ) => { clippy_utils::unwrap_cargo_metadata!($($x)*); }
+    ( $($x:tt)* ) => { clippy_utils::unwrap_cargo_metadata!($($x)*) }
 }
 
 macro_rules! extract_msrv_attr {
