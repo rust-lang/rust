@@ -1073,6 +1073,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
         let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
+            (ty::Opaque(last_def_id, _), ty::Opaque(exp_def_id, _))
+                if last_def_id == exp_def_id =>
+            {
+                StatementAsExpression::CorrectType
+            }
             (ty::Opaque(last_def_id, last_bounds), ty::Opaque(exp_def_id, exp_bounds)) => {
                 debug!(
                     "both opaque, likely future {:?} {:?} {:?} {:?}",
