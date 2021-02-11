@@ -114,6 +114,7 @@ impl ProjectWorkspace {
                             cargo_version
                         )
                     })?;
+
                 let sysroot = if config.no_sysroot {
                     Sysroot::default()
                 } else {
@@ -125,7 +126,17 @@ impl ProjectWorkspace {
                     })?
                 };
 
-                let rustc = if let Some(rustc_dir) = &config.rustc_source {
+                let rustc_dir = if let Some(rustc_source) = &config.rustc_source {
+                    use cargo_workspace::RustcSource;
+                    match rustc_source {
+                        RustcSource::Path(path) => Some(path.clone()),
+                        RustcSource::Discover => Sysroot::discover_rustc(&cargo_toml),
+                    }
+                } else {
+                    None
+                };
+
+                let rustc = if let Some(rustc_dir) = rustc_dir {
                     Some(
                         CargoWorkspace::from_cargo_metadata(&rustc_dir, config, progress)
                             .with_context(|| {

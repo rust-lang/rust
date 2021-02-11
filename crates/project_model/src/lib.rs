@@ -21,8 +21,8 @@ use rustc_hash::FxHashSet;
 pub use crate::{
     build_data::{BuildDataCollector, BuildDataResult},
     cargo_workspace::{
-        CargoConfig, CargoWorkspace, Package, PackageData, PackageDependency, Target, TargetData,
-        TargetKind,
+        CargoConfig, CargoWorkspace, Package, PackageData, PackageDependency, RustcSource, Target,
+        TargetData, TargetKind,
     },
     project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,

@@ -18,7 +18,7 @@ use ide_db::helpers::{
 };
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
-use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
+use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource};
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Deserialize};
 use vfs::AbsPathBuf;
@@ -177,8 +177,9 @@ config_data! {
         /// tests or binaries.\nFor example, it may be `--release`.
         runnables_cargoExtraArgs: Vec<String>   = "[]",
 
-        /// Path to the rust compiler sources, for usage in rustc_private projects.
-        rustcSource : Option<PathBuf> = "null",
+        /// Path to the rust compiler sources, for usage in rustc_private projects, or "discover"
+        /// to try to automatically find it.
+        rustcSource : Option<String> = "null",
 
         /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = "[]",
@@ -473,7 +474,13 @@ impl Config {
         self.data.cargo_loadOutDirsFromCheck
     }
     pub fn cargo(&self) -> CargoConfig {
-        let rustc_source = self.data.rustcSource.as_ref().map(|it| self.root_path.join(&it));
+        let rustc_source = self.data.rustcSource.as_ref().map(|rustc_src| {
+            if rustc_src == "discover" {
+                RustcSource::Discover
+            } else {
+                RustcSource::Path(self.root_path.join(rustc_src))
+            }
+        });
 
         CargoConfig {
             no_default_features: self.data.cargo_noDefaultFeatures,
