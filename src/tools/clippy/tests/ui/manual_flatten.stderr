@@ -1,0 +1,108 @@
+error: unnecessary `if let` since only the `Some` variant of the iterator element is used
+  --> $DIR/manual_flatten.rs:6:5
+   |
+LL |       for n in x {
+   |       ^        - help: try: `x.into_iter().flatten()`
+   |  _____|
+   | |
+LL | |         if let Some(y) = n {
+LL | |             println!("{}", y);
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::manual-flatten` implied by `-D warnings`
+help: ...and remove the `if let` statement in the for loop
+  --> $DIR/manual_flatten.rs:7:9
+   |
+LL | /         if let Some(y) = n {
+LL | |             println!("{}", y);
+LL | |         }
+   | |_________^
+
+error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
+  --> $DIR/manual_flatten.rs:14:5
+   |
+LL |       for n in y.clone() {
+   |       ^        --------- help: try: `y.clone().into_iter().flatten()`
+   |  _____|
+   | |
+LL | |         if let Ok(n) = n {
+LL | |             println!("{}", n);
+LL | |         };
+LL | |     }
+   | |_____^
+   |
+help: ...and remove the `if let` statement in the for loop
+  --> $DIR/manual_flatten.rs:15:9
+   |
+LL | /         if let Ok(n) = n {
+LL | |             println!("{}", n);
+LL | |         };
+   | |_________^
+
+error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
+  --> $DIR/manual_flatten.rs:21:5
+   |
+LL |       for n in &y {
+   |       ^        -- help: try: `y.iter().flatten()`
+   |  _____|
+   | |
+LL | |         if let Ok(n) = n {
+LL | |             println!("{}", n);
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: ...and remove the `if let` statement in the for loop
+  --> $DIR/manual_flatten.rs:22:9
+   |
+LL | /         if let Ok(n) = n {
+LL | |             println!("{}", n);
+LL | |         }
+   | |_________^
+
+error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
+  --> $DIR/manual_flatten.rs:31:5
+   |
+LL |       for n in z {
+   |       ^        - help: try: `z.into_iter().flatten()`
+   |  _____|
+   | |
+LL | |         if let Ok(n) = n {
+LL | |             println!("{}", n);
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: ...and remove the `if let` statement in the for loop
+  --> $DIR/manual_flatten.rs:32:9
+   |
+LL | /         if let Ok(n) = n {
+LL | |             println!("{}", n);
+LL | |         }
+   | |_________^
+
+error: unnecessary `if let` since only the `Some` variant of the iterator element is used
+  --> $DIR/manual_flatten.rs:40:5
+   |
+LL |       for n in z {
+   |       ^        - help: try: `z.flatten()`
+   |  _____|
+   | |
+LL | |         if let Some(m) = n {
+LL | |             println!("{}", m);
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: ...and remove the `if let` statement in the for loop
+  --> $DIR/manual_flatten.rs:41:9
+   |
+LL | /         if let Some(m) = n {
+LL | |             println!("{}", m);
+LL | |         }
+   | |_________^
+
+error: aborting due to 5 previous errors
+

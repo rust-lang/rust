@@ -23,6 +23,12 @@ fn check_that_clippy_lints_has_the_same_version_as_clippy() {
 
 #[test]
 fn check_that_clippy_has_the_same_major_version_as_rustc() {
+    // do not run this test inside the upstream rustc repo:
+    // https://github.com/rust-lang/rust-clippy/issues/6683
+    if option_env!("RUSTC_TEST_SUITE").is_some() {
+        return;
+    }
+
     let clippy_version = rustc_tools_util::get_version_info!();
     let clippy_major = clippy_version.major;
     let clippy_minor = clippy_version.minor;

@@ -169,10 +169,12 @@ define_Conf! {
     (max_fn_params_bools, "max_fn_params_bools": u64, 3),
     /// Lint: WILDCARD_IMPORTS. Whether to allow certain wildcard imports (prelude, super in tests).
     (warn_on_all_wildcard_imports, "warn_on_all_wildcard_imports": bool, false),
-    /// Lint: DISALLOWED_METHOD. The list of blacklisted methods to lint about. NB: `bar` is not here since it has legitimate uses
+    /// Lint: DISALLOWED_METHOD. The list of disallowed methods, written as fully qualified paths.
     (disallowed_methods, "disallowed_methods": Vec<String>, Vec::<String>::new()),
     /// Lint: UNREADABLE_LITERAL. Should the fraction of a decimal be linted to include separators.
     (unreadable_literal_lint_fractions, "unreadable_literal_lint_fractions": bool, true),
+    /// Lint: _CARGO_COMMON_METADATA. For internal testing only, ignores the current `publish` settings in the Cargo manifest.
+    (cargo_ignore_publish, "cargo_ignore_publish": bool, false),
 }
 
 impl Default for Conf {
