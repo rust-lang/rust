@@ -59,7 +59,11 @@ pub fn load_cargo(root: &Path, config: &LoadCargoConfig) -> Result<(AnalysisHost
     );
 
     let project_folders = ProjectFolders::new(&[ws], &[], build_data.as_ref());
-    loader.set_config(vfs::loader::Config { load: project_folders.load, watch: vec![] });
+    loader.set_config(vfs::loader::Config {
+        load: project_folders.load,
+        watch: vec![],
+        version: 0,
+    });
 
     log::debug!("crate graph: {:?}", crate_graph);
     let host = load(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
@@ -79,7 +83,7 @@ fn load(
     // wait until Vfs has loaded all roots
     for task in receiver {
         match task {
-            vfs::loader::Message::Progress { n_done, n_total } => {
+            vfs::loader::Message::Progress { n_done, n_total, config_version: _ } => {
                 if n_done == n_total {
                     break;
                 }
