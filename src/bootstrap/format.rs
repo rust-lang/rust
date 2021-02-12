@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::mpsc::SyncSender;
 
-fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> Box<impl FnMut()> {
+fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl FnMut() {
     let mut cmd = Command::new(&rustfmt);
     // avoid the submodule config paths from coming into play,
     // we only allow a single global config for the workspace for now
@@ -22,8 +22,8 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> Box<im
     cmd.args(paths);
     let cmd_debug = format!("{:?}", cmd);
     let mut cmd = cmd.spawn().expect("running rustfmt");
-    // poor man's async: return a box that'll wait for rustfmt's completion
-    Box::new(move || {
+    // poor man's async: return a closure that'll wait for rustfmt's completion
+    move || {
         let status = cmd.wait().unwrap();
         if !status.success() {
             eprintln!(
@@ -34,7 +34,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> Box<im
             );
             std::process::exit(1);
         }
-    })
+    }
 }
 
 #[derive(serde::Deserialize)]
