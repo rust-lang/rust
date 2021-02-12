@@ -46,7 +46,7 @@ impl LateLintPass<'tcx> for FromStrRadix10 {
             if let TyKind::Path(ty_qpath) = &ty.kind;
             let ty_res = cx.qpath_res(ty_qpath, ty.hir_id);
             if let def::Res::PrimTy(prim_ty) = ty_res;
-            if is_primitive_integer_ty(prim_ty);
+            if matches!(prim_ty, PrimTy::Int(_) | PrimTy::Uint(_));
 
             // check if the second part of the path indeed calls the associated
             // function `from_str_radix`
@@ -63,20 +63,12 @@ impl LateLintPass<'tcx> for FromStrRadix10 {
                     cx,
                     FROM_STR_RADIX_10,
                     exp.span,
-                    "This call to `from_str_radix` can be shortened to a call to str::parse",
+                    "this call to `from_str_radix` can be replaced with a call to `str::parse`",
                     "try",
                     format!("({}).parse()", orig_string),
                     Applicability::MaybeIncorrect
                 );
             }
         }
-    }
-}
-
-fn is_primitive_integer_ty(ty: PrimTy) -> bool {
-    match ty {
-        PrimTy::Int(_) => true,
-        PrimTy::Uint(_) => true,
-        _ => false,
     }
 }
