@@ -1845,6 +1845,15 @@ impl<'tcx> TyS<'tcx> {
         )
     }
 
+    /// Get the mutability of the reference or `None` when not a reference
+    #[inline]
+    pub fn ref_mutability(&self) -> Option<hir::Mutability> {
+        match self.kind() {
+            Ref(_, _, mutability) => Some(*mutability),
+            _ => None,
+        }
+    }
+
     #[inline]
     pub fn is_unsafe_ptr(&self) -> bool {
         matches!(self.kind(), RawPtr(_))
