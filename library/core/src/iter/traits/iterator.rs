@@ -3430,4 +3430,77 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
     }
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        SpecSizedIterator::try_fold(self, init, f)
+    }
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        SpecSizedIterator::fold(self, init, f)
+    }
+}
+
+trait SpecSizedIterator: Iterator {
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>;
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B;
+}
+
+impl<I: Iterator + ?Sized> SpecSizedIterator for &mut I {
+    #[inline]
+    default fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x)?;
+        }
+        try { accum }
+    }
+    #[inline]
+    default fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        while let Some(x) = (&mut self).next() {
+            accum = f(accum, x);
+        }
+        accum
+    }
+}
+
+impl<I: Iterator + Sized> SpecSizedIterator for &mut I {
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        (**self).try_fold(init, f)
+    }
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        #[inline]
+        fn ok<T, U>(mut f: impl FnMut(T, U) -> T) -> impl FnMut(T, U) -> Result<T, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+        self.try_fold(init, ok(f)).unwrap()
+    }
 }
