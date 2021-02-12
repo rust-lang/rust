@@ -6,7 +6,7 @@ use crate::utils::{is_ty_param_diagnostic_item, span_lint_and_help};
 
 use super::BOX_VEC;
 
-pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) {
+pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
     if Some(def_id) == cx.tcx.lang_items().owned_box() {
         if is_ty_param_diagnostic_item(cx, qpath, sym::vec_type).is_some() {
             span_lint_and_help(
@@ -17,6 +17,8 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 None,
                 "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation",
             );
+            return true;
         }
     }
+    false
 }

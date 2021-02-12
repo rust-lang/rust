@@ -322,10 +322,11 @@ impl Types {
                 let hir_id = hir_ty.hir_id;
                 let res = cx.qpath_res(qpath, hir_id);
                 if let Some(def_id) = res.opt_def_id() {
-                    box_vec::check(cx, hir_ty, qpath, def_id);
-                    redundant_allocation::check(cx, hir_ty, qpath, def_id);
-                    rc_buffer::check(cx, hir_ty, qpath, def_id);
-                    vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
+                    let mut triggered = false;
+                    triggered |= box_vec::check(cx, hir_ty, qpath, def_id);
+                    triggered |= redundant_allocation::check(cx, hir_ty, qpath, def_id);
+                    triggered |= rc_buffer::check(cx, hir_ty, qpath, def_id);
+                    triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
 
                     if cx.tcx.is_diagnostic_item(sym::option_type, def_id) {
                         if is_ty_param_diagnostic_item(cx, qpath, sym::option_type).is_some() {
@@ -348,6 +349,10 @@ impl Types {
                             "a `VecDeque` might work",
                         );
                         return; // don't recurse into the type
+                    }
+
+                    if triggered {
+                        return;
                     }
                 }
                 match *qpath {

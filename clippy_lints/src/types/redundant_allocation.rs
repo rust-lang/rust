@@ -10,7 +10,7 @@ use crate::utils::{
 
 use super::{utils, REDUNDANT_ALLOCATION};
 
-pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) {
+pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
     if Some(def_id) == cx.tcx.lang_items().owned_box() {
         if let Some(span) = utils::match_borrows_parameter(cx, qpath) {
             let mut applicability = Applicability::MachineApplicable;
@@ -23,7 +23,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
                 applicability,
             );
-            return;
+            return true;
         }
     }
 
@@ -39,14 +39,15 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 snippet_with_applicability(cx, ty.span, "..", &mut applicability).to_string(),
                 applicability,
             );
+            true
         } else if let Some(ty) = is_ty_param_lang_item(cx, qpath, LangItem::OwnedBox) {
             let qpath = match &ty.kind {
                 TyKind::Path(qpath) => qpath,
-                _ => return,
+                _ => return false,
             };
             let inner_span = match get_qpath_generic_tys(qpath).next() {
                 Some(ty) => ty.span,
-                None => return,
+                None => return false,
             };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
@@ -61,6 +62,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 ),
                 applicability,
             );
+            true
         } else if let Some(span) = utils::match_borrows_parameter(cx, qpath) {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
@@ -72,7 +74,11 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
                 applicability,
             );
-            return; // don't recurse into the type
+            true
+        } else {
+            false
         }
+    } else {
+        false
     }
 }

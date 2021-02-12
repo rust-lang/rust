@@ -9,7 +9,7 @@ use crate::utils::{
 
 use super::RC_BUFFER;
 
-pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) {
+pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
     if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
         if let Some(alternate) = match_buffer_type(cx, qpath) {
             span_lint_and_sugg(
@@ -24,11 +24,11 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         } else if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::vec_type) {
             let qpath = match &ty.kind {
                 TyKind::Path(qpath) => qpath,
-                _ => return,
+                _ => return false,
             };
             let inner_span = match get_qpath_generic_tys(qpath).next() {
                 Some(ty) => ty.span,
-                None => return,
+                None => return false,
             };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
@@ -43,6 +43,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 ),
                 Applicability::MachineApplicable,
             );
+            return true;
         }
     } else if cx.tcx.is_diagnostic_item(sym::Arc, def_id) {
         if let Some(alternate) = match_buffer_type(cx, qpath) {
@@ -58,11 +59,11 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         } else if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::vec_type) {
             let qpath = match &ty.kind {
                 TyKind::Path(qpath) => qpath,
-                _ => return,
+                _ => return false,
             };
             let inner_span = match get_qpath_generic_tys(qpath).next() {
                 Some(ty) => ty.span,
-                None => return,
+                None => return false,
             };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
@@ -77,8 +78,11 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 ),
                 Applicability::MachineApplicable,
             );
+            return true;
         }
     }
+
+    false
 }
 
 fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {

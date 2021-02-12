@@ -18,7 +18,7 @@ pub(super) fn check(
     qpath: &QPath<'_>,
     def_id: DefId,
     box_size_threshold: u64,
-) {
+) -> bool {
     if cx.tcx.is_diagnostic_item(sym::vec_type, def_id) {
         if_chain! {
             // Get the _ part of Vec<_>
@@ -53,7 +53,12 @@ pub(super) fn check(
                     format!("Vec<{}>", snippet(cx, boxed_ty.span, "..")),
                     Applicability::MachineApplicable,
                 );
+                true
+            } else {
+                false
             }
         }
+    } else {
+        false
     }
 }
