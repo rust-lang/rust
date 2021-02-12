@@ -1382,14 +1382,8 @@ fn determine_place_ancestry_relation(
     // Assume of length of projections_b = m
     let projections_b = &place_b.projections;
 
-    let mut same_initial_projections = true;
-
-    for (proj_a, proj_b) in projections_a.iter().zip(projections_b.iter()) {
-        if proj_a != proj_b {
-            same_initial_projections = false;
-            break;
-        }
-    }
+    let same_initial_projections =
+        projections_a.iter().zip(projections_b.iter()).all(|(proj_a, proj_b)| proj_a == proj_b);
 
     if same_initial_projections {
         // First min(n, m) projections are the same
