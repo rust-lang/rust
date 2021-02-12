@@ -2285,6 +2285,16 @@ impl<T> From<T> for Arc<T> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: Clone> From<&[T]> for Arc<[T]> {
+    /// Allocate a reference-counted slice and fill it by cloning `v`'s items.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let original: &[i32] = &[1, 2, 3];
+    /// let shared: Arc<[i32]> = Arc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
     #[inline]
     fn from(v: &[T]) -> Arc<[T]> {
         <Self as ArcFromSlice<T>>::from_slice(v)
@@ -2293,6 +2303,15 @@ impl<T: Clone> From<&[T]> for Arc<[T]> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Arc<str> {
+    /// Allocate a reference-counted `str` and copy `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let shared: Arc<str> = Arc::from("eggplant");
+    /// assert_eq!("eggplant", &shared[..]);
+    /// ```
     #[inline]
     fn from(v: &str) -> Arc<str> {
         let arc = Arc::<[u8]>::from(v.as_bytes());
@@ -2302,6 +2321,16 @@ impl From<&str> for Arc<str> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<String> for Arc<str> {
+    /// Allocate a reference-counted `str` and copy `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let unique: String = "eggplant".to_owned();
+    /// let shared: Arc<str> = Arc::from(unique);
+    /// assert_eq!("eggplant", &shared[..]);
+    /// ```
     #[inline]
     fn from(v: String) -> Arc<str> {
         Arc::from(&v[..])
@@ -2310,6 +2339,16 @@ impl From<String> for Arc<str> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: ?Sized> From<Box<T>> for Arc<T> {
+    /// Move a boxed object to a new, reference-counted allocation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let unique: Box<str> = Box::from("eggplant");
+    /// let shared: Arc<str> = Arc::from(unique);
+    /// assert_eq!("eggplant", &shared[..]);
+    /// ```
     #[inline]
     fn from(v: Box<T>) -> Arc<T> {
         Arc::from_box(v)
@@ -2318,6 +2357,16 @@ impl<T: ?Sized> From<Box<T>> for Arc<T> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T> From<Vec<T>> for Arc<[T]> {
+    /// Allocate a reference-counted slice and move `v`'s items into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let unique: Vec<i32> = vec![1, 2, 3];
+    /// let shared: Arc<[i32]> = Arc::from(unique);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
     #[inline]
     fn from(mut v: Vec<T>) -> Arc<[T]> {
         unsafe {
