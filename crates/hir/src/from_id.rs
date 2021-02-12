@@ -11,8 +11,9 @@ use hir_def::{
 };
 
 use crate::{
-    code_model::GenericParam, Adt, AssocItem, DefWithBody, Field, GenericDef, Label, Local,
-    MacroDef, ModuleDef, Variant, VariantDef,
+    code_model::{BuiltinType, GenericParam},
+    Adt, AssocItem, DefWithBody, Field, GenericDef, Label, Local, MacroDef, ModuleDef, Variant,
+    VariantDef,
 };
 
 macro_rules! from_id {
@@ -111,7 +112,7 @@ impl From<ModuleDefId> for ModuleDef {
             ModuleDefId::StaticId(it) => ModuleDef::Static(it.into()),
             ModuleDefId::TraitId(it) => ModuleDef::Trait(it.into()),
             ModuleDefId::TypeAliasId(it) => ModuleDef::TypeAlias(it.into()),
-            ModuleDefId::BuiltinType(it) => ModuleDef::BuiltinType(it),
+            ModuleDefId::BuiltinType(it) => ModuleDef::BuiltinType(it.into()),
         }
     }
 }
@@ -127,7 +128,7 @@ impl From<ModuleDef> for ModuleDefId {
             ModuleDef::Static(it) => ModuleDefId::StaticId(it.into()),
             ModuleDef::Trait(it) => ModuleDefId::TraitId(it.into()),
             ModuleDef::TypeAlias(it) => ModuleDefId::TypeAliasId(it.into()),
-            ModuleDef::BuiltinType(it) => ModuleDefId::BuiltinType(it),
+            ModuleDef::BuiltinType(it) => ModuleDefId::BuiltinType(it.into()),
         }
     }
 }
@@ -272,5 +273,17 @@ impl From<ModuleDef> for ItemInNs {
             }
             _ => ItemInNs::Types(module_def.into()),
         }
+    }
+}
+
+impl From<hir_def::builtin_type::BuiltinType> for BuiltinType {
+    fn from(inner: hir_def::builtin_type::BuiltinType) -> Self {
+        Self { inner }
+    }
+}
+
+impl From<BuiltinType> for hir_def::builtin_type::BuiltinType {
+    fn from(it: BuiltinType) -> Self {
+        it.inner
     }
 }

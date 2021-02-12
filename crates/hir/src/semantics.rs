@@ -49,7 +49,7 @@ impl PathResolution {
         match self {
             PathResolution::Def(ModuleDef::Adt(adt)) => Some(TypeNs::AdtId((*adt).into())),
             PathResolution::Def(ModuleDef::BuiltinType(builtin)) => {
-                Some(TypeNs::BuiltinType(*builtin))
+                Some(TypeNs::BuiltinType((*builtin).into()))
             }
             PathResolution::Def(ModuleDef::Const(_))
             | PathResolution::Def(ModuleDef::Variant(_))

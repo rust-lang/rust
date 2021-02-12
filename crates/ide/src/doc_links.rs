@@ -9,8 +9,7 @@ use url::Url;
 
 use hir::{
     db::{DefDatabase, HirDatabase},
-    Adt, AsAssocItem, AsName, AssocItem, AssocItemContainer, Crate, Field, HasAttrs, ItemInNs,
-    ModuleDef,
+    Adt, AsAssocItem, AssocItem, AssocItemContainer, Crate, Field, HasAttrs, ItemInNs, ModuleDef,
 };
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
@@ -429,7 +428,7 @@ fn get_symbol_filename(db: &dyn HirDatabase, definition: &ModuleDef) -> Option<S
         ModuleDef::Module(_) => "index.html".to_string(),
         ModuleDef::Trait(t) => format!("trait.{}.html", t.name(db)),
         ModuleDef::TypeAlias(t) => format!("type.{}.html", t.name(db)),
-        ModuleDef::BuiltinType(t) => format!("primitive.{}.html", t.as_name()),
+        ModuleDef::BuiltinType(t) => format!("primitive.{}.html", t.name()),
         ModuleDef::Function(f) => format!("fn.{}.html", f.name(db)),
         ModuleDef::Variant(ev) => {
             format!("enum.{}.html#variant.{}", ev.parent_enum(db).name(db), ev.name(db))

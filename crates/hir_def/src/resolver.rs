@@ -361,6 +361,7 @@ impl Resolver {
     }
 
     pub fn krate(&self) -> Option<CrateId> {
+        // FIXME: can this ever be `None`?
         self.module_scope().map(|t| t.0.krate())
     }
 

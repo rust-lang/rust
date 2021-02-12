@@ -334,7 +334,7 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
             ModuleDef::Static(it) => from_def_source(db, it, mod_path),
             ModuleDef::Trait(it) => from_def_source(db, it, mod_path),
             ModuleDef::TypeAlias(it) => from_def_source(db, it, mod_path),
-            ModuleDef::BuiltinType(it) => Some(Markup::fenced_block(&it)),
+            ModuleDef::BuiltinType(it) => Some(Markup::fenced_block(&it.name())),
         },
         Definition::Local(it) => Some(Markup::fenced_block(&it.ty(db).display(db))),
         Definition::SelfType(impl_def) => {
