@@ -1211,7 +1211,7 @@ fn construct_place_string(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
             ProjectionKind::Subslice => String::from("Subslice"),
         };
         if i != 0 {
-            projections_str.push_str(",");
+            projections_str.push(',');
         }
         projections_str.push_str(proj.as_str());
     }
