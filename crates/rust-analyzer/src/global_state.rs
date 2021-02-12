@@ -22,7 +22,7 @@ use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
     document::DocumentData,
     from_proto,
-    line_endings::{LineEndings, LineIndex},
+    line_endings::{LineEndings, LineIndex, OffsetEncoding},
     main_loop::Task,
     op_queue::OpQueue,
     reload::SourceRootConfig,
@@ -274,7 +274,7 @@ impl GlobalStateSnapshot {
     pub(crate) fn file_line_index(&self, file_id: FileId) -> Cancelable<LineIndex> {
         let endings = self.vfs.read().1[&file_id];
         let index = self.analysis.file_line_index(file_id)?;
-        let res = LineIndex { index, endings };
+        let res = LineIndex { index, endings, encoding: OffsetEncoding::Utf16 };
         Ok(res)
     }
 

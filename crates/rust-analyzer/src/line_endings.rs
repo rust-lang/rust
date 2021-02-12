@@ -4,9 +4,16 @@
 
 use std::sync::Arc;
 
+pub(crate) enum OffsetEncoding {
+    #[allow(unused)]
+    Utf8,
+    Utf16,
+}
+
 pub(crate) struct LineIndex {
     pub(crate) index: Arc<ide::LineIndex>,
     pub(crate) endings: LineEndings,
+    pub(crate) encoding: OffsetEncoding,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

@@ -7,7 +7,7 @@ use lsp_server::Notification;
 use crate::{
     from_proto,
     global_state::GlobalState,
-    line_endings::{LineEndings, LineIndex},
+    line_endings::{LineEndings, LineIndex, OffsetEncoding},
 };
 
 pub(crate) fn is_canceled(e: &(dyn Error + 'static)) -> bool {
@@ -95,8 +95,9 @@ pub(crate) fn apply_document_changes(
 ) {
     let mut line_index = LineIndex {
         index: Arc::new(ide::LineIndex::new(old_text)),
-        // We don't care about line endings here.
+        // We don't care about line endings or offset encoding here.
         endings: LineEndings::Unix,
+        encoding: OffsetEncoding::Utf16,
     };
 
     // The changes we got must be applied sequentially, but can cross lines so we

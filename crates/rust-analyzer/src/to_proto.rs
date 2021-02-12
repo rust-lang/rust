@@ -17,14 +17,19 @@ use serde_json::to_value;
 use crate::{
     cargo_target_spec::CargoTargetSpec,
     global_state::GlobalStateSnapshot,
-    line_endings::{LineEndings, LineIndex},
+    line_endings::{LineEndings, LineIndex, OffsetEncoding},
     lsp_ext, semantic_tokens, Result,
 };
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
     let line_col = line_index.index.line_col(offset);
-    let line_col = line_index.index.to_utf16(line_col);
-    lsp_types::Position::new(line_col.line, line_col.col)
+    match line_index.encoding {
+        OffsetEncoding::Utf8 => lsp_types::Position::new(line_col.line, line_col.col),
+        OffsetEncoding::Utf16 => {
+            let line_col = line_index.index.to_utf16(line_col);
+            lsp_types::Position::new(line_col.line, line_col.col)
+        }
+    }
 }
 
 pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Range {
@@ -1068,8 +1073,11 @@ mod tests {
         }"#;
 
         let (offset, text) = test_utils::extract_offset(fixture);
-        let line_index =
-            LineIndex { index: Arc::new(ide::LineIndex::new(&text)), endings: LineEndings::Unix };
+        let line_index = LineIndex {
+            index: Arc::new(ide::LineIndex::new(&text)),
+            endings: LineEndings::Unix,
+            encoding: OffsetEncoding::Utf16,
+        };
         let (analysis, file_id) = Analysis::from_single_file(text);
         let completions: Vec<(String, Option<String>)> = analysis
             .completions(
@@ -1125,8 +1133,11 @@ fn main() {
         let folds = analysis.folding_ranges(file_id).unwrap();
         assert_eq!(folds.len(), 4);
 
-        let line_index =
-            LineIndex { index: Arc::new(ide::LineIndex::new(&text)), endings: LineEndings::Unix };
+        let line_index = LineIndex {
+            index: Arc::new(ide::LineIndex::new(&text)),
+            endings: LineEndings::Unix,
+            encoding: OffsetEncoding::Utf16,
+        };
         let converted: Vec<lsp_types::FoldingRange> =
             folds.into_iter().map(|it| folding_range(&text, &line_index, true, it)).collect();
 
