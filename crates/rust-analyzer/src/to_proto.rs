@@ -17,7 +17,7 @@ use serde_json::to_value;
 use crate::{
     cargo_target_spec::CargoTargetSpec,
     global_state::GlobalStateSnapshot,
-    line_endings::{LineEndings, LineIndex, OffsetEncoding},
+    line_index::{LineEndings, LineIndex, OffsetEncoding},
     lsp_ext, semantic_tokens, Result,
 };
 

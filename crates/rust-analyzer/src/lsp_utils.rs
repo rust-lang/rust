@@ -7,7 +7,7 @@ use lsp_server::Notification;
 use crate::{
     from_proto,
     global_state::GlobalState,
-    line_endings::{LineEndings, LineIndex, OffsetEncoding},
+    line_index::{LineEndings, LineIndex, OffsetEncoding},
 };
 
 pub(crate) fn is_canceled(e: &(dyn Error + 'static)) -> bool {

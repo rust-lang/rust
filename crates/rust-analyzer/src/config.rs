@@ -25,7 +25,7 @@ use vfs::AbsPathBuf;
 
 use crate::{
     caps::completion_item_edit_resolve, diagnostics::DiagnosticsMapConfig,
-    line_endings::OffsetEncoding, lsp_ext::supports_utf8,
+    line_index::OffsetEncoding, lsp_ext::supports_utf8,
 };
 
 config_data! {

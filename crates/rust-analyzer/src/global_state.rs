@@ -22,7 +22,7 @@ use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
     document::DocumentData,
     from_proto,
-    line_endings::{LineEndings, LineIndex},
+    line_index::{LineEndings, LineIndex},
     main_loop::Task,
     op_queue::OpQueue,
     reload::SourceRootConfig,

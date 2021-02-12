@@ -9,7 +9,7 @@ use vfs::AbsPathBuf;
 use crate::{
     from_json,
     global_state::GlobalStateSnapshot,
-    line_endings::{LineIndex, OffsetEncoding},
+    line_index::{LineIndex, OffsetEncoding},
     lsp_ext, Result,
 };
 
