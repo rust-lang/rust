@@ -1,6 +1,7 @@
 #![allow(rustc::default_hash_types)]
 
 mod box_vec;
+mod option_option;
 mod rc_buffer;
 mod redundant_allocation;
 mod utils;
@@ -327,19 +328,9 @@ impl Types {
                     triggered |= redundant_allocation::check(cx, hir_ty, qpath, def_id);
                     triggered |= rc_buffer::check(cx, hir_ty, qpath, def_id);
                     triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
+                    triggered |= option_option::check(cx, hir_ty, qpath, def_id);
 
-                    if cx.tcx.is_diagnostic_item(sym::option_type, def_id) {
-                        if is_ty_param_diagnostic_item(cx, qpath, sym::option_type).is_some() {
-                            span_lint(
-                                cx,
-                                OPTION_OPTION,
-                                hir_ty.span,
-                                "consider using `Option<T>` instead of `Option<Option<T>>` or a custom \
-                                 enum if you need to distinguish all 3 cases",
-                            );
-                            return; // don't recurse into the type
-                        }
-                    } else if match_def_path(cx, def_id, &paths::LINKED_LIST) {
+                    if match_def_path(cx, def_id, &paths::LINKED_LIST) {
                         span_lint_and_help(
                             cx,
                             LINKEDLIST,
