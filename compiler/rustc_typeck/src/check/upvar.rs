@@ -260,8 +260,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // local crate or were inlined into it along with some function.
         // This may change if abstract return types of some sort are
         // implemented.
-        let tcx = self.tcx;
-
         self.typeck_results
             .borrow()
             .closure_min_captures_flattened(closure_id)
@@ -276,7 +274,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 match capture {
                     ty::UpvarCapture::ByValue(_) => upvar_ty,
-                    ty::UpvarCapture::ByRef(borrow) => tcx.mk_ref(
+                    ty::UpvarCapture::ByRef(borrow) => self.tcx.mk_ref(
                         borrow.region,
                         ty::TypeAndMut { ty: upvar_ty, mutbl: borrow.kind.to_mutbl_lossy() },
                     ),
