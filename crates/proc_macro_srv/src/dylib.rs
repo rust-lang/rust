@@ -60,7 +60,7 @@ fn find_registrar_symbol(file: &Path) -> io::Result<Option<String>> {
 /// It seems that on Windows that behaviour is default, so we do nothing in that case.
 #[cfg(windows)]
 fn load_library(file: &Path) -> Result<Library, libloading::Error> {
-    Library::new(file)
+    unsafe { Library::new(file) }
 }
 
 #[cfg(unix)]
@@ -71,7 +71,7 @@ fn load_library(file: &Path) -> Result<Library, libloading::Error> {
     const RTLD_NOW: c_int = 0x00002;
     const RTLD_DEEPBIND: c_int = 0x00008;
 
-    UnixLibrary::open(Some(file), RTLD_NOW | RTLD_DEEPBIND).map(|lib| lib.into())
+    unsafe { UnixLibrary::open(Some(file), RTLD_NOW | RTLD_DEEPBIND).map(|lib| lib.into()) }
 }
 
 struct ProcMacroLibraryLibloading {
