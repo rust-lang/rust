@@ -571,6 +571,8 @@ impl<T: Ord> BinaryHeap<T> {
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child == 2 * hole.pos() + 1 != hole.pos() and
             //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
+            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
+            //  if T is a ZST
             child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
 
             // if we are already in order, stop.
@@ -627,6 +629,8 @@ impl<T: Ord> BinaryHeap<T> {
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child == 2 * hole.pos() + 1 != hole.pos() and
             //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
+            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
+            //  if T is a ZST
             child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
 
             // SAFETY: Same as above
