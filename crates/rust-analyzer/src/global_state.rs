@@ -67,6 +67,7 @@ pub(crate) struct GlobalState {
     req_queue: ReqQueue,
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
+    pub(crate) vfs_config_version: u32,
     pub(crate) flycheck: Vec<FlycheckHandle>,
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
@@ -120,6 +121,7 @@ impl GlobalState {
         GlobalState {
             sender,
             req_queue: ReqQueue::default(),
+            vfs_config_version: 0,
             task_pool,
             loader,
             flycheck: Vec::new(),

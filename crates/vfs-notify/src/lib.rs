@@ -86,8 +86,10 @@ impl NotifyActor {
                             self.watcher = watcher.map(|it| (it, watcher_receiver));
                         }
 
+                        let config_version = config.version;
+
                         let n_total = config.load.len();
-                        self.send(loader::Message::Progress { n_total, n_done: 0 });
+                        self.send(loader::Message::Progress { n_total, n_done: 0, config_version });
 
                         self.watched_entries.clear();
 
@@ -98,7 +100,11 @@ impl NotifyActor {
                             }
                             let files = self.load_entry(entry, watch);
                             self.send(loader::Message::Loaded { files });
-                            self.send(loader::Message::Progress { n_total, n_done: i + 1 });
+                            self.send(loader::Message::Progress {
+                                n_total,
+                                n_done: i + 1,
+                                config_version,
+                            });
                         }
                     }
                     Message::Invalidate(path) => {

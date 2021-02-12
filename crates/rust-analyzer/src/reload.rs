@@ -50,6 +50,16 @@ impl GlobalState {
             Status::Loading | Status::NeedsReload => return,
             Status::Ready { .. } | Status::Invalid => (),
         }
+        log::info!(
+            "Reloading workspace because of the following changes: {}",
+            itertools::join(
+                changes
+                    .iter()
+                    .filter(|(path, kind)| is_interesting(path, *kind))
+                    .map(|(path, kind)| format!("{}/{:?}", path.display(), kind)),
+                ", "
+            )
+        );
         if self.config.cargo_autoreload() {
             self.fetch_workspaces_request();
         } else {
@@ -290,7 +300,12 @@ impl GlobalState {
             FilesWatcher::Client => vec![],
             FilesWatcher::Notify => project_folders.watch,
         };
-        self.loader.handle.set_config(vfs::loader::Config { load: project_folders.load, watch });
+        self.vfs_config_version += 1;
+        self.loader.handle.set_config(vfs::loader::Config {
+            load: project_folders.load,
+            watch,
+            version: self.vfs_config_version,
+        });
 
         // Create crate graph from all the workspaces
         let crate_graph = {

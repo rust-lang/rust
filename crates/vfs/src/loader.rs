@@ -32,6 +32,9 @@ pub struct Directories {
 /// [`Handle`]'s configuration.
 #[derive(Debug)]
 pub struct Config {
+    /// Version number to associate progress updates to the right config
+    /// version.
+    pub version: u32,
     /// Set of initially loaded files.
     pub load: Vec<Entry>,
     /// Index of watched entries in `load`.
@@ -45,7 +48,7 @@ pub enum Message {
     /// Indicate a gradual progress.
     ///
     /// This is supposed to be the number of loaded files.
-    Progress { n_total: usize, n_done: usize },
+    Progress { n_total: usize, n_done: usize, config_version: u32 },
     /// The handle loaded the following files' content.
     Loaded { files: Vec<(AbsPathBuf, Option<Vec<u8>>)> },
 }
@@ -196,10 +199,11 @@ impl fmt::Debug for Message {
             Message::Loaded { files } => {
                 f.debug_struct("Loaded").field("n_files", &files.len()).finish()
             }
-            Message::Progress { n_total, n_done } => f
+            Message::Progress { n_total, n_done, config_version } => f
                 .debug_struct("Progress")
                 .field("n_total", n_total)
                 .field("n_done", n_done)
+                .field("config_version", config_version)
                 .finish(),
         }
     }
