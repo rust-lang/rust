@@ -1,6 +1,7 @@
 #![allow(rustc::default_hash_types)]
 
 mod box_vec;
+mod rc_buffer;
 mod redundant_allocation;
 mod utils;
 
@@ -36,11 +37,11 @@ use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, get_qpath_generic_tys, higher, in_constant, indent_of, int_bits,
-    is_hir_ty_cfg_dependant, is_ty_param_diagnostic_item, is_type_diagnostic_item, last_path_segment, match_def_path,
-    match_path, meets_msrv, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral, reindent_multiline,
-    sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help,
-    span_lint_and_sugg, span_lint_and_then, unsext,
+    clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_hir_ty_cfg_dependant,
+    is_ty_param_diagnostic_item, is_type_diagnostic_item, last_path_segment, match_def_path, match_path, meets_msrv,
+    method_chain_args, multispan_sugg, numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt,
+    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
+    span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -291,18 +292,6 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 }
 
-fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
-    if is_ty_param_diagnostic_item(cx, qpath, sym::string_type).is_some() {
-        Some("str")
-    } else if is_ty_param_diagnostic_item(cx, qpath, sym::OsString).is_some() {
-        Some("std::ffi::OsStr")
-    } else if is_ty_param_diagnostic_item(cx, qpath, sym::PathBuf).is_some() {
-        Some("std::path::Path")
-    } else {
-        None
-    }
-}
-
 impl Types {
     pub fn new(vec_box_size_threshold: u64) -> Self {
         Self { vec_box_size_threshold }
@@ -335,81 +324,8 @@ impl Types {
                 if let Some(def_id) = res.opt_def_id() {
                     box_vec::check(cx, hir_ty, qpath, def_id);
                     redundant_allocation::check(cx, hir_ty, qpath, def_id);
-                    if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
-                        if let Some(alternate) = match_buffer_type(cx, qpath) {
-                            span_lint_and_sugg(
-                                cx,
-                                RC_BUFFER,
-                                hir_ty.span,
-                                "usage of `Rc<T>` when T is a buffer type",
-                                "try",
-                                format!("Rc<{}>", alternate),
-                                Applicability::MachineApplicable,
-                            );
-                            return; // don't recurse into the type
-                        }
-                        if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::vec_type) {
-                            let qpath = match &ty.kind {
-                                TyKind::Path(qpath) => qpath,
-                                _ => return,
-                            };
-                            let inner_span = match get_qpath_generic_tys(qpath).next() {
-                                Some(ty) => ty.span,
-                                None => return,
-                            };
-                            let mut applicability = Applicability::MachineApplicable;
-                            span_lint_and_sugg(
-                                cx,
-                                RC_BUFFER,
-                                hir_ty.span,
-                                "usage of `Rc<T>` when T is a buffer type",
-                                "try",
-                                format!(
-                                    "Rc<[{}]>",
-                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
-                                ),
-                                Applicability::MachineApplicable,
-                            );
-                            return; // don't recurse into the type
-                        }
-                    } else if cx.tcx.is_diagnostic_item(sym::Arc, def_id) {
-                        if let Some(alternate) = match_buffer_type(cx, qpath) {
-                            span_lint_and_sugg(
-                                cx,
-                                RC_BUFFER,
-                                hir_ty.span,
-                                "usage of `Arc<T>` when T is a buffer type",
-                                "try",
-                                format!("Arc<{}>", alternate),
-                                Applicability::MachineApplicable,
-                            );
-                            return; // don't recurse into the type
-                        }
-                        if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::vec_type) {
-                            let qpath = match &ty.kind {
-                                TyKind::Path(qpath) => qpath,
-                                _ => return,
-                            };
-                            let inner_span = match get_qpath_generic_tys(qpath).next() {
-                                Some(ty) => ty.span,
-                                None => return,
-                            };
-                            let mut applicability = Applicability::MachineApplicable;
-                            span_lint_and_sugg(
-                                cx,
-                                RC_BUFFER,
-                                hir_ty.span,
-                                "usage of `Arc<T>` when T is a buffer type",
-                                "try",
-                                format!(
-                                    "Arc<[{}]>",
-                                    snippet_with_applicability(cx, inner_span, "..", &mut applicability)
-                                ),
-                                Applicability::MachineApplicable,
-                            );
-                            return; // don't recurse into the type
-                        }
-                    } else if cx.tcx.is_diagnostic_item(sym::vec_type, def_id) {
+                    rc_buffer::check(cx, hir_ty, qpath, def_id);
+                    if cx.tcx.is_diagnostic_item(sym::vec_type, def_id) {
                         if_chain! {
                             // Get the _ part of Vec<_>
                             if let Some(ref last) = last_path_segment(qpath).args;
