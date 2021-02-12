@@ -468,22 +468,21 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 trait_ref,
                                 obligation.cause.body_id,
                             );
-                        } else {
-                            if !have_alt_message {
-                                // Can't show anything else useful, try to find similar impls.
-                                let impl_candidates = self.find_similar_impl_candidates(trait_ref);
-                                self.report_similar_impl_candidates(impl_candidates, &mut err);
-                            }
-                            // Changing mutability doesn't make a difference to whether we have
-                            // an `Unsize` impl (Fixes ICE in #71036)
-                            if !is_unsize {
-                                self.suggest_change_mut(
-                                    &obligation,
-                                    &mut err,
-                                    trait_ref,
-                                    points_at_arg,
-                                );
-                            }
+                        } else if !have_alt_message {
+                            // Can't show anything else useful, try to find similar impls.
+                            let impl_candidates = self.find_similar_impl_candidates(trait_ref);
+                            self.report_similar_impl_candidates(impl_candidates, &mut err);
+                        }
+
+                        // Changing mutability doesn't make a difference to whether we have
+                        // an `Unsize` impl (Fixes ICE in #71036)
+                        if !is_unsize {
+                            self.suggest_change_mut(
+                                &obligation,
+                                &mut err,
+                                trait_ref,
+                                points_at_arg,
+                            );
                         }
 
                         // If this error is due to `!: Trait` not implemented but `(): Trait` is
