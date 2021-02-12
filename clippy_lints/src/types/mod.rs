@@ -312,8 +312,7 @@ impl Types {
     /// Recursively check for `TypePass` lints in the given type. Stop at the first
     /// lint found.
     ///
-    /// The parameter `is_local` distinguishes the context of the type; types from
-    /// local bindings should only be checked for the `BORROWED_BOX` lint.
+    /// The parameter `is_local` distinguishes the context of the type.
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
         if hir_ty.span.from_expansion() {
             return;
@@ -378,7 +377,7 @@ impl Types {
                 }
             },
             TyKind::Rptr(ref lt, ref mut_ty) => {
-                if !borrowed_box::check(cx, hir_ty, is_local, lt, mut_ty) {
+                if !borrowed_box::check(cx, hir_ty, lt, mut_ty) {
                     self.check_ty(cx, &mut_ty.ty, is_local);
                 }
             },

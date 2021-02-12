@@ -9,13 +9,7 @@ use if_chain::if_chain;
 
 use crate::utils::{match_path, paths, snippet, span_lint_and_sugg};
 
-pub(super) fn check(
-    cx: &LateContext<'_>,
-    hir_ty: &hir::Ty<'_>,
-    is_local: bool,
-    lt: &Lifetime,
-    mut_ty: &MutTy<'_>,
-) -> bool {
+pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, mut_ty: &MutTy<'_>) -> bool {
     match mut_ty.ty.kind {
         TyKind::Path(ref qpath) => {
             let hir_id = mut_ty.ty.hir_id;
