@@ -724,10 +724,13 @@ impl<T: Ord> BinaryHeap<T> {
     /// #![feature(binary_heap_contains_remove)]
     /// use std::collections::BinaryHeap;
     ///
-    /// let heap = BinaryHeap::from(vec![1, 3, 5, 7, 9]);
+    /// let mut heap = BinaryHeap::new();
+    /// heap.push("dog".to_string());
+    /// heap.push("cat".to_string());
+    /// heap.push("fish".to_string());
     ///
-    /// assert!(heap.contains(&5));
-    /// assert!(!heap.contains(&2));
+    /// assert!(heap.contains("cat"));
+    /// assert!(!heap.contains("horse"));
     /// ```
     ///
     /// # Time complexity
@@ -746,8 +749,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The item may be any borrowed form of the heap's item type, but
     /// `PartialEq` on the borrowed form *must* match that for the item type. If
-    /// there are multiple matching elements, an arbitrary and unspecified one is
-    /// removed.
+    /// there are multiple matching elements, there are no guarantees which of
+    /// the matching elements is removed on each call to `remove()`.
     ///
     /// # Examples
     ///
