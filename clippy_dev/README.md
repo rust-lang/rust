@@ -21,7 +21,7 @@ cargo dev-lintcheck
 
 By default the logs will be saved into `lintcheck-logs/lintcheck_crates_logs.txt`.
 
-You can set a custom sources.toml by adding `--crates-toml custom.toml`
+You can set a custom sources.toml by adding `--crates-toml custom.toml` or using `LINTCHECK_TOML="custom.toml"`
 where `custom.toml` must be a relative path from the repo root.
 
 The results will then be saved to `lintcheck-logs/custom_logs.toml`.

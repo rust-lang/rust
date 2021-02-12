@@ -11,7 +11,7 @@ use crate::clippy_project_root;
 
 use std::collections::HashMap;
 use std::process::Command;
-use std::{fmt, fs::write, path::PathBuf};
+use std::{env, fmt, fs::write, path::PathBuf};
 
 use clap::ArgMatches;
 use serde::{Deserialize, Serialize};
@@ -227,7 +227,9 @@ fn build_clippy() {
 
 // get a list of CrateSources we want to check from a "lintcheck_crates.toml" file.
 fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
-    let toml_path = PathBuf::from(toml_path.unwrap_or("clippy_dev/lintcheck_crates.toml"));
+    let toml_path = PathBuf::from(
+        env::var("LINTCHECK_TOML").unwrap_or(toml_path.unwrap_or("clippy_dev/lintcheck_crates.toml").to_string()),
+    );
     // save it so that we can use the name of the sources.toml as name for the logfile later.
     let toml_filename = toml_path.file_stem().unwrap().to_str().unwrap().to_string();
     let toml_content: String =
