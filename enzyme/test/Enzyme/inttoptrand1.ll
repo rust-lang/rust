@@ -22,21 +22,21 @@ entry:
 
 ; CHECK: define internal void @diffematvec(i64* %lhs, i64* %"lhs'", double* %res, double* %"res'", double %differeturn) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"loaded'ipl" = load i64, i64* %"lhs'", align 4
+; CHECK-NEXT:   %0 = bitcast i64* %"lhs'" to double**
+; CHECK-NEXT:   %"loaded'ipl1" = load double*, double** %0, align 4
 ; CHECK-NEXT:   %loaded = load i64, i64* %lhs, align 4
-; CHECK-NEXT:   %"a2'ipc" = inttoptr i64 %"loaded'ipl" to double*
 ; CHECK-NEXT:   %a2 = inttoptr i64 %loaded to double*
 ; CHECK-NEXT:   %div = lshr i64 %loaded, 3
 ; CHECK-NEXT:   %and = and i64 %div, 1
-; CHECK-NEXT:   %[[gepipge:.+]] = getelementptr inbounds double, double* %"a2'ipc", i64 %and
+; CHECK-NEXT:   %[[gepipge:.+]] = getelementptr inbounds double, double* %"loaded'ipl1", i64 %and
 ; CHECK-NEXT:   %gep = getelementptr inbounds double, double* %a2, i64 %and
 ; CHECK-NEXT:   %a4 = load double, double* %gep, align 8
 ; CHECK-NEXT:   store double %a4, double* %res, align 8
-; CHECK-NEXT:   %[[lres:.+]] = load double, double* %"res'", align 8
+; CHECK-NEXT:   %1 = load double, double* %"res'", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"res'", align 8
-; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[lres]], %differeturn
-; CHECK-NEXT:   %[[ild:.+]] = load double, double* %[[gepipge]], align 8
-; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[ild]], %[[fadd:.+]]
-; CHECK-NEXT:   store double %[[tostore]], double* %[[gepipge]], align 8
+; CHECK-NEXT:   %2 = fadd fast double %1, %differeturn
+; CHECK-NEXT:   %3 = load double, double* %[[gepipge]], align 8
+; CHECK-NEXT:   %4 = fadd fast double %3, %2
+; CHECK-NEXT:   store double %4, double* %[[gepipge]], align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

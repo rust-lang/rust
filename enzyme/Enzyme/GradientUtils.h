@@ -936,7 +936,7 @@ public:
     storeInstructionInCache(inst->getParent(), inst, cache);
   }
 
-  std::map<Instruction *, std::map<BasicBlock *, Value *>> lcssaFixes;
+  std::map<Instruction *, ValueMap<BasicBlock *, WeakTrackingVH>> lcssaFixes;
   Value *fixLCSSA(Instruction *inst, BasicBlock *forwardBlock) {
     assert(inst->getName() != "<badref>");
     LoopContext lc;
@@ -958,52 +958,58 @@ public:
       }
 
       if (!isChildLoop) {
-        /*
-        if (!DT.dominates(inst, forwardBlock)) {
-          llvm::errs() << *this->newFunc->getParent() << "\n";
-          llvm::errs() << *this->newFunc << "\n";
-          llvm::errs() << *forwardBlock << "\n";
-          llvm::errs() << *BuilderM.GetInsertBlock() << "\n";
-          llvm::errs() << *inst << "\n";
-        }
-        assert(DT.dominates(inst, forwardBlock));
-        */
-
-        for (auto pair : lcssaFixes[inst]) {
-          if (pair.first == forwardBlock ||
-              (DT.dominates(pair.first, forwardBlock) && !isa<UndefValue>(pair.second))) {
-            return pair.second;
+        if (lcssaFixes.find(inst) == lcssaFixes.end()) {
+          lcssaFixes[inst][inst->getParent()] = inst;
+          SmallPtrSet<BasicBlock *, 4> seen;
+          std::deque<BasicBlock *> todo = { inst->getParent() };
+          while (todo.size()) {
+            BasicBlock *cur = todo.front();
+            todo.pop_front();
+            if (seen.count(cur)) continue;
+            seen.insert(cur);
+            for(auto Succ : successors(cur)) {
+              todo.push_back(Succ);
+            }
+          }
+          for (auto &BB : *inst->getParent()->getParent()) {
+            if (!seen.count(&BB)) {
+              lcssaFixes[inst][&BB] = UndefValue::get(inst->getType());
+            }
           }
         }
 
-        // TODO replace toplace with the first block dominated by inst, that
-        // dominates (or is) forwardBlock
-        //  for ensuring maximum reuse
-        BasicBlock *toplace = forwardBlock;
+        if (lcssaFixes[inst].find(forwardBlock) != lcssaFixes[inst].end()) {
+          return lcssaFixes[inst][forwardBlock];
+        }
 
-        IRBuilder<> lcssa(&toplace->front());
+        // TODO replace forwardBlock with the first block dominated by inst, that
+        // dominates (or is) forwardBlock to ensuring maximum reuse
+        IRBuilder<> lcssa(&forwardBlock->front());
         auto lcssaPHI = lcssa.CreatePHI(inst->getType(), 1,
                                         inst->getName() + "!manual_lcssa");
-        bool allUndef = true;
-        lcssaFixes[inst][toplace] = UndefValue::get(inst->getType());
-        for (auto pred : predecessors(toplace)) {
-          Value *val;
+        lcssaFixes[inst][forwardBlock] = lcssaPHI;
+        for (auto pred : predecessors(forwardBlock)) {
+          Value *val = nullptr;
           if (inst->getParent() == pred || DT.dominates(inst, pred)) {
             val = inst;
-          } else {
-            val = fixLCSSA(inst, pred);
+          } 
+          if (val == nullptr) {
+            for (const auto &pair : lcssaFixes[inst]) {
+              if (!isa<UndefValue>(pair.second) && (pred == pair.first || DT.dominates(pair.first, pred))) {
+                val = pair.second;
+                assert(pair.second->getType() == inst->getType());
+                break;
+              }
+            }
           }
-          if (!isa<UndefValue>(val))
-            allUndef = false;
+          if (val == nullptr) {
+            val = fixLCSSA(inst, pred);
+            assert(val->getType() == inst->getType());
+          }
+          assert(val->getType() == inst->getType());
           lcssaPHI->addIncoming(val, pred);
         }
 
-        if (allUndef) {
-          lcssaPHI->eraseFromParent();
-          return lcssaFixes[inst][toplace] = UndefValue::get(inst->getType());
-        }
-
-        lcssaFixes[inst][toplace] = lcssaPHI;
         return lcssaPHI;
       }
     }

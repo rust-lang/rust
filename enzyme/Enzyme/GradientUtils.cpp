@@ -56,7 +56,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
   assert(val->getName() != "<badref>");
   assert(val->getType());
 
-  // llvm::errs() << " attempting unwrap of: " << *val << "\n";
+  //llvm::errs() << " attempting unwrap of: " << val << "\n";
+  //llvm::errs() << " + " << *val << "\n";
 
   for (auto pair : available) {
     assert(pair.first);
@@ -410,15 +411,69 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
   } else if (auto phi = dyn_cast<PHINode>(val)) {
     if (phi->getNumIncomingValues() == 0) {
       if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(phi))) {
+        /*
         invertedPointers.erase(dli);
         IRBuilder <>B(getNewFromOriginal(dli)->getParent());
         invertPointerM(dli, B);
         assert(invertedPointers[dli]);
-        phi->replaceAllUsesWith(invertedPointers[dli]);
-        phi->eraseFromParent();
+        assert(invertedPointers[dli]->getType() == val->getType());
+        replaceAWithB(phi, invertedPointers[dli]);
+        //erase(phi);
         assert(!isa<PHINode>(invertedPointers[dli]) ||
                cast<PHINode>(invertedPointers[dli])->getNumIncomingValues() != 0);
-        return unwrapM(invertedPointers[dli], BuilderM, available, mode);
+        auto uw = unwrapM(invertedPointers[dli], BuilderM, available, mode);
+        assert(uw->getType() == invertedPointers[dli]->getType());
+        */
+        if (dli->getMetadata("enzyme_noneedunwrap"))
+          return dli;
+
+        bool legalMove = mode == UnwrapMode::LegalFullUnwrap;
+        if (mode != UnwrapMode::LegalFullUnwrap) {
+          // TODO actually consider whether this is legal to move to the new
+          // location, rather than recomputable anywhere
+          legalMove = legalRecompute(dli, available, &BuilderM);
+        }
+        if (!legalMove) {
+          EmitWarning("UncacheableUnwrap", dli->getDebugLoc(),
+                      dli->getParent()->getParent(), dli->getParent(),
+                      "Differential Load cannot be unwrapped ", *dli, " in ",
+                      BuilderM.GetInsertBlock()->getName());
+          return nullptr;
+        }
+
+        Value *idx = getOp(invertPointerM(dli->getOperand(0), BuilderM));
+        if (idx == nullptr)
+          goto endCheck;
+
+        if (idx->getType() != dli->getOperand(0)->getType()) {
+          llvm::errs() << "dli: " << *dli << "\n";
+          llvm::errs() << "dli->getOperand(0): " << *dli->getOperand(0) << "\n";
+          llvm::errs() << "idx: " << *idx << "\n";
+        }
+        assert(idx->getType() == dli->getOperand(0)->getType());
+        auto toreturn = BuilderM.CreateLoad(idx, phi->getName() + "_unwrap");
+        if (auto newi = dyn_cast<Instruction>(toreturn))
+          newi->copyIRFlags(dli);
+    #if LLVM_VERSION_MAJOR >= 10
+        toreturn->setAlignment(dli->getAlign());
+    #else
+        toreturn->setAlignment(dli->getAlignment());
+    #endif
+        toreturn->setVolatile(dli->isVolatile());
+        toreturn->setOrdering(dli->getOrdering());
+        toreturn->setSyncScopeID(dli->getSyncScopeID());
+        toreturn->setDebugLoc(getNewFromOriginal(dli->getDebugLoc()));
+        toreturn->setMetadata(LLVMContext::MD_tbaa,
+                              dli->getMetadata(LLVMContext::MD_tbaa));
+        unwrappedLoads[toreturn] = dli;
+        // toreturn->setMetadata(LLVMContext::MD_invariant,
+        // load->getMetadata(LLVMContext::MD_invariant));
+        toreturn->setMetadata(LLVMContext::MD_invariant_group,
+                              dli->getMetadata(LLVMContext::MD_invariant_group));
+        // TODO adding to cache only legal if no alias of any future writes
+        unwrap_cache[cidx] = toreturn;
+        assert(val->getType() == toreturn->getType());
+        return toreturn;
       }
       goto endCheck;
     }
@@ -574,7 +629,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             if (!vals[0] || !vals[1])
               goto endCheck;
             
+            assert(val->getType() == vals[0]->getType());
+            assert(val->getType() == vals[1]->getType());
             Value* subsel = BuilderM.CreateSelect(cond2, vals[0], vals[1]);
+            assert(val->getType() == subsel->getType());
 
             auto stagingIfNeeded = [&](BasicBlock *B) {
               auto edge = std::make_pair(block, B);
@@ -592,7 +650,12 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             if (!vals[0] || !vals[1])
               goto endCheck;
 
-            return BuilderM.CreateSelect(cond1, vals[0], vals[1]);
+            assert(val->getType() == vals[0]->getType());
+            assert(val->getType() == vals[1]->getType());
+
+            auto toret = BuilderM.CreateSelect(cond1, vals[0], vals[1]);
+            assert(val->getType() == toret->getType());
+            return toret;
           }
         }
       rnextpair:;
@@ -645,7 +708,11 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       if (!vals[0] || !vals[1])
         goto endCheck;
       
-      return BuilderM.CreateSelect(cond, vals[0], vals[1]);
+      assert(val->getType() == vals[0]->getType());
+      assert(val->getType() == vals[1]->getType());
+      auto toret = BuilderM.CreateSelect(cond, vals[0], vals[1]);
+      assert(val->getType() == toret->getType());
+      return toret;
     }
     goto endCheck;
   }
@@ -675,6 +742,8 @@ endCheck:
         }
       }
     }
+    assert(val->getName() != "<badref>");
+    //llvm::errs() << *val << "\n";
     EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
                 "Cannot unwrap ", *val);
   }
@@ -2248,6 +2317,12 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
   assert(inst->getName() != "<badref>");
   val = fixLCSSA(inst, BuilderM.GetInsertBlock());
+  if (isa<UndefValue>(val)) {
+    llvm::errs() << *oldFunc << "\n";
+    llvm::errs() << *newFunc << "\n";
+    llvm::errs() << *BuilderM.GetInsertBlock() << "\n";
+    llvm::errs() << *val << " inst " << *inst << "\n";
+  }
   inst = cast<Instruction>(val);
   assert(prelcssaInst->getType() == inst->getType());
 
