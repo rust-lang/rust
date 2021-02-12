@@ -4,6 +4,7 @@ mod box_vec;
 mod rc_buffer;
 mod redundant_allocation;
 mod utils;
+mod vec_box;
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -22,7 +23,6 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, FloatTy, InferTy, IntTy, Ty, TyCtxt, TyS, TypeAndMut, TypeckResults, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
@@ -38,8 +38,8 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_hir_ty_cfg_dependant,
-    is_ty_param_diagnostic_item, is_type_diagnostic_item, last_path_segment, match_def_path, match_path, meets_msrv,
-    method_chain_args, multispan_sugg, numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt,
+    is_ty_param_diagnostic_item, is_type_diagnostic_item, match_def_path, match_path, meets_msrv, method_chain_args,
+    multispan_sugg, numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt,
     snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
     span_lint_and_then, unsext,
 };
@@ -325,44 +325,9 @@ impl Types {
                     box_vec::check(cx, hir_ty, qpath, def_id);
                     redundant_allocation::check(cx, hir_ty, qpath, def_id);
                     rc_buffer::check(cx, hir_ty, qpath, def_id);
-                    if cx.tcx.is_diagnostic_item(sym::vec_type, def_id) {
-                        if_chain! {
-                            // Get the _ part of Vec<_>
-                            if let Some(ref last) = last_path_segment(qpath).args;
-                            if let Some(ty) = last.args.iter().find_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty),
-                                _ => None,
-                            });
-                            // ty is now _ at this point
-                            if let TyKind::Path(ref ty_qpath) = ty.kind;
-                            let res = cx.qpath_res(ty_qpath, ty.hir_id);
-                            if let Some(def_id) = res.opt_def_id();
-                            if Some(def_id) == cx.tcx.lang_items().owned_box();
-                            // At this point, we know ty is Box<T>, now get T
-                            if let Some(ref last) = last_path_segment(ty_qpath).args;
-                            if let Some(boxed_ty) = last.args.iter().find_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty),
-                                _ => None,
-                            });
-                            let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty);
-                            if !ty_ty.has_escaping_bound_vars();
-                            if ty_ty.is_sized(cx.tcx.at(ty.span), cx.param_env);
-                            if let Ok(ty_ty_size) = cx.layout_of(ty_ty).map(|l| l.size.bytes());
-                            if ty_ty_size <= self.vec_box_size_threshold;
-                            then {
-                                span_lint_and_sugg(
-                                    cx,
-                                    VEC_BOX,
-                                    hir_ty.span,
-                                    "`Vec<T>` is already on the heap, the boxing is unnecessary",
-                                    "try",
-                                    format!("Vec<{}>", snippet(cx, boxed_ty.span, "..")),
-                                    Applicability::MachineApplicable,
-                                );
-                                return; // don't recurse into the type
-                            }
-                        }
-                    } else if cx.tcx.is_diagnostic_item(sym::option_type, def_id) {
+                    vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
+
+                    if cx.tcx.is_diagnostic_item(sym::option_type, def_id) {
                         if is_ty_param_diagnostic_item(cx, qpath, sym::option_type).is_some() {
                             span_lint(
                                 cx,
