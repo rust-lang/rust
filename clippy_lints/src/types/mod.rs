@@ -1,6 +1,7 @@
 #![allow(rustc::default_hash_types)]
 
 mod box_vec;
+mod linked_list;
 mod option_option;
 mod rc_buffer;
 mod redundant_allocation;
@@ -39,10 +40,9 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_hir_ty_cfg_dependant,
-    is_ty_param_diagnostic_item, is_type_diagnostic_item, match_def_path, match_path, meets_msrv, method_chain_args,
-    multispan_sugg, numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt,
-    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
-    span_lint_and_then, unsext,
+    is_type_diagnostic_item, match_path, meets_msrv, method_chain_args, multispan_sugg,
+    numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt, snippet_with_applicability,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -313,7 +313,6 @@ impl Types {
     ///
     /// The parameter `is_local` distinguishes the context of the type; types from
     /// local bindings should only be checked for the `BORROWED_BOX` lint.
-    #[allow(clippy::too_many_lines)]
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
         if hir_ty.span.from_expansion() {
             return;
@@ -329,18 +328,7 @@ impl Types {
                     triggered |= rc_buffer::check(cx, hir_ty, qpath, def_id);
                     triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
                     triggered |= option_option::check(cx, hir_ty, qpath, def_id);
-
-                    if match_def_path(cx, def_id, &paths::LINKED_LIST) {
-                        span_lint_and_help(
-                            cx,
-                            LINKEDLIST,
-                            hir_ty.span,
-                            "you seem to be using a `LinkedList`! Perhaps you meant some other data structure?",
-                            None,
-                            "a `VecDeque` might work",
-                        );
-                        return; // don't recurse into the type
-                    }
+                    triggered |= linked_list::check(cx, hir_ty, def_id);
 
                     if triggered {
                         return;
@@ -389,7 +377,6 @@ impl Types {
                 }
             },
             TyKind::Rptr(ref lt, ref mut_ty) => self.check_ty_rptr(cx, hir_ty, is_local, lt, mut_ty),
-            // recurse
             TyKind::Slice(ref ty) | TyKind::Array(ref ty, _) | TyKind::Ptr(MutTy { ref ty, .. }) => {
                 self.check_ty(cx, ty, is_local)
             },
