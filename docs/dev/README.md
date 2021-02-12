@@ -218,8 +218,7 @@ Release steps:
      * makes a GitHub release
      * pushes VS Code extension to the marketplace
    * create new changelog in `rust-analyzer.github.io`
-   * create `rust-analyzer.github.io/git.log` file with the log of merge commits since last release
-2. While the release is in progress, fill-in the changelog using `git.log`
+2. While the release is in progress, fill in the changelog
 3. Commit & push the changelog
 4. Tweet
 5. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's submodule.
