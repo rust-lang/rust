@@ -285,7 +285,7 @@ impl<'hir> Map<'hir> {
             let owner = self.tcx.hir_owner_nodes(id.owner);
             owner.and_then(|owner| {
                 let node = owner.nodes[id.local_id].as_ref();
-                // FIXME(eddyb) use a single generic type insted of having both
+                // FIXME(eddyb) use a single generic type instead of having both
                 // `Entry` and `ParentedNode`, which are effectively the same.
                 // Alternatively, rewrite code using `Entry` to use `ParentedNode`.
                 node.map(|node| Entry {
