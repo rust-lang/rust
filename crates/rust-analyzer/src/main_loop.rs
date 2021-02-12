@@ -398,7 +398,7 @@ impl GlobalState {
         }
 
         let state_changed = self.process_changes();
-        let is_ready = matches!(self.status, Status::Ready { .. } );
+        let is_ready = matches!(self.status, Status::Ready { .. });
         if prev_status == Status::Loading && is_ready {
             for flycheck in &self.flycheck {
                 flycheck.update();
