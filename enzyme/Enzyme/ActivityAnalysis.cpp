@@ -65,6 +65,10 @@ cl::opt<bool> emptyfnconst("enzyme-emptyfn-inactive", cl::init(false),
                            cl::Hidden,
                            cl::desc("Empty functions are considered inactive"));
 
+cl::opt<bool>
+    EnzymeGlobalActivity("enzyme-global-activity", cl::init(false), cl::Hidden,
+                         cl::desc("Enable correct global activity analysis"));
+
 #include "llvm/IR/InstIterator.h"
 #include <map>
 #include <set>
@@ -555,9 +559,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
     // If this is a global local to this translation unit with inactive
     // initializer and no active uses, it is definitionally inactive
-    bool usedJustInThisModule = GI->hasInternalLinkage() ||
-                                GI->hasPrivateLinkage() ||
-                                GI->hasPrivateLinkage();
+    bool usedJustInThisModule =
+        GI->hasInternalLinkage() || GI->hasPrivateLinkage();
 
     if (printconst)
       llvm::errs() << "pre attempting just used in module for: " << *GI
@@ -1360,12 +1363,31 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
       }
       return false;
     });
+    if (EnzymeGlobalActivity) {
+      if (!ci->onlyAccessesArgMemory() && !ci->doesNotAccessMemory()) {
 
-    // TODO consider calling interprocedural here
-    // TODO: Really need an attribute that determines whether a function
-    // can access a global (not even necessarily read)
-    // if (ci->hasFnAttr(Attribute::ReadNone) ||
-    // ci->hasFnAttr(Attribute::ArgMemOnly))
+        Function *called = ci->getCalledFunction();
+#if LLVM_VERSION_MAJOR >= 11
+        if (auto castinst = dyn_cast<ConstantExpr>(ci->getCalledOperand()))
+#else
+        if (auto castinst = dyn_cast<ConstantExpr>(ci->getCalledValue()))
+#endif
+        {
+          if (castinst->isCast())
+            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+              called = fn;
+            }
+        }
+        if (!called || (!isCertainPrintMallocOrFree(called) &&
+                        !isMemFreeLibMFunction(called->getName()))) {
+          if (printconst)
+            llvm::errs() << "nonconstant(" << (int)directions << ")  up-global "
+                         << *inst << "\n";
+          seenuse = true;
+        }
+      }
+    }
+
     if (!seenuse) {
       if (printconst)
         llvm::errs() << "constant(" << (int)directions << ")  up-call:" << *inst

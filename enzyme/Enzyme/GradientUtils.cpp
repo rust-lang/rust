@@ -1416,8 +1416,8 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
             }
             if (llvm::isModOrRefSet(OrigAA.getModRefInfo(CI, Loc))) {
               seen = true;
-              llvm::errs() << " cannot handle global " << *oval << " due to "
-                           << *CI << "\n";
+              llvm::errs() << " cannot shadow-inline global " << *oval
+                           << " due to " << *CI << "\n";
               goto endCheck;
             }
           }
@@ -1498,6 +1498,20 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
                             MDTuple::get(shadow->getContext(), {}));
         return invertedPointers[oval] = shadow;
         //#endif
+      }
+
+      // Create global variable locally if not externally visible
+      if (arg->hasInternalLinkage() || arg->hasPrivateLinkage()) {
+        Type *type = cast<PointerType>(arg->getType())->getElementType();
+        auto shadow = new GlobalVariable(
+            *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
+            ConstantAggregateZero::get(type), arg->getName() + "_shadow", arg,
+            arg->getThreadLocalMode(), arg->getType()->getAddressSpace(),
+            arg->isExternallyInitialized());
+        arg->setMetadata("enzyme_shadow",
+                         MDTuple::get(shadow->getContext(),
+                                      {ConstantAsMetadata::get(shadow)}));
+        return invertedPointers[oval] = shadow;
       }
 
       llvm::errs() << *oldFunc->getParent() << "\n";
