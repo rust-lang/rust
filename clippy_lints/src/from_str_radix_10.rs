@@ -5,6 +5,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::span_lint_and_sugg;
+use crate::utils::sugg::Sugg;
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -58,14 +59,20 @@ impl LateLintPass<'tcx> for FromStrRadix10 {
             if let rustc_ast::ast::LitKind::Int(10, _) = lit.node;
 
             then {
-                let orig_string = crate::utils::snippet(cx, arguments[0].span, "string");
+                let sugg = Sugg::hir_with_applicability(
+                    cx,
+                    &arguments[0],
+                    "<string>",
+                    &mut Applicability::MachineApplicable
+                ).maybe_par();
+
                 span_lint_and_sugg(
                     cx,
                     FROM_STR_RADIX_10,
                     exp.span,
                     "this call to `from_str_radix` can be replaced with a call to `str::parse`",
                     "try",
-                    format!("({}).parse()", orig_string),
+                    format!("{}.parse::<{}>()", sugg, prim_ty.name_str()),
                     Applicability::MaybeIncorrect
                 );
             }
