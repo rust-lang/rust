@@ -408,7 +408,7 @@ impl Clean<Constant> for hir::ConstArg {
                 .tcx
                 .type_of(cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id())
                 .clean(cx),
-            expr: print_const_expr(cx, self.value.body),
+            expr: print_const_expr(cx.tcx, self.value.body),
             value: None,
             is_literal: is_literal_expr(cx, self.value.body.hir_id),
         }
@@ -961,7 +961,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
                 .iter()
                 .enumerate()
                 .map(|(i, ty)| Argument {
-                    name: Symbol::intern(&rustc_hir_pretty::param_to_string(&body.params[i])),
+                    name: name_from_pat(&body.params[i].pat),
                     type_: ty.clean(cx),
                 })
                 .collect(),
@@ -1052,7 +1052,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
         cx.with_param_env(local_did, || {
             let inner = match self.kind {
                 hir::TraitItemKind::Const(ref ty, default) => {
-                    AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx, e)))
+                    AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx.tcx, e)))
                 }
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                     let mut m = (sig, &self.generics, body).clean(cx);
@@ -1093,7 +1093,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
         cx.with_param_env(local_did, || {
             let inner = match self.kind {
                 hir::ImplItemKind::Const(ref ty, expr) => {
-                    AssocConstItem(ty.clean(cx), Some(print_const_expr(cx, expr)))
+                    AssocConstItem(ty.clean(cx), Some(print_const_expr(cx.tcx, expr)))
                 }
                 hir::ImplItemKind::Fn(ref sig, body) => {
                     let mut m = (sig, &self.generics, body).clean(cx);
@@ -1954,14 +1954,12 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
         let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id));
         cx.with_param_env(def_id, || {
             let kind = match item.kind {
-                ItemKind::Static(ty, mutability, body_id) => StaticItem(Static {
-                    type_: ty.clean(cx),
-                    mutability,
-                    expr: print_const_expr(cx, body_id),
-                }),
+                ItemKind::Static(ty, mutability, body_id) => {
+                    StaticItem(Static { type_: ty.clean(cx), mutability, expr: Some(body_id) })
+                }
                 ItemKind::Const(ty, body_id) => ConstantItem(Constant {
                     type_: ty.clean(cx),
-                    expr: print_const_expr(cx, body_id),
+                    expr: print_const_expr(cx.tcx, body_id),
                     value: print_evaluated_const(cx, def_id),
                     is_literal: is_literal_expr(cx, body_id.hir_id),
                 }),
@@ -2263,11 +2261,9 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                         },
                     })
                 }
-                hir::ForeignItemKind::Static(ref ty, mutability) => ForeignStaticItem(Static {
-                    type_: ty.clean(cx),
-                    mutability,
-                    expr: String::new(),
-                }),
+                hir::ForeignItemKind::Static(ref ty, mutability) => {
+                    ForeignStaticItem(Static { type_: ty.clean(cx), mutability, expr: None })
+                }
                 hir::ForeignItemKind::Type => ForeignTypeItem,
             };
 
