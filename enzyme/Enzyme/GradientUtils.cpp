@@ -488,11 +488,28 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     }
 
     auto parent = phi->getParent();
+
     // Don't attempt to unroll a loop induction variable
     if (parent->getParent() == newFunc) {
       if (LI.isLoopHeader(parent)) goto endCheck;
+      for (auto &val : phi->incoming_values()) {
+        if (auto inst = dyn_cast<Instruction>(val)) {
+          if (LI.getLoopFor(parent) != LI.getLoopFor(inst->getParent())) {
+            goto endCheck;
+          }
+        }
+      }
     } else if (parent->getParent() == oldFunc) {
       if (OrigLI.isLoopHeader(parent)) goto endCheck;
+      for (auto &val : phi->incoming_values()) {
+        if (auto inst = dyn_cast<Instruction>(val)) {
+          if (OrigLI.getLoopFor(parent) != OrigLI.getLoopFor(inst->getParent())) {
+            goto endCheck;
+          }
+        }
+      }
+    } else {
+      goto endCheck;
     }
 
     std::set<Value *> targetToPreds;
@@ -1235,9 +1252,25 @@ bool GradientUtils::legalRecompute(const Value *val,
     assert(phi->getNumIncomingValues() != 0);
     auto parent = phi->getParent();
     if (parent->getParent() == newFunc) {
-      return !LI.isLoopHeader(parent);
+      if (LI.isLoopHeader(parent)) return false;
+      for (auto &val : phi->incoming_values()) {
+        if (auto inst = dyn_cast<Instruction>(val)) {
+          if (LI.getLoopFor(parent) != LI.getLoopFor(inst->getParent())) {
+            return false;
+          }
+        }
+      }
+      return true;
     } else if (parent->getParent() == oldFunc) {
-      return !OrigLI.isLoopHeader(parent);
+      if (OrigLI.isLoopHeader(parent)) return false;
+      for (auto &val : phi->incoming_values()) {
+        if (auto inst = dyn_cast<Instruction>(val)) {
+          if (OrigLI.getLoopFor(parent) != OrigLI.getLoopFor(inst->getParent())) {
+            return false;
+          }
+        }
+      }
+      return true;
     } else {
       return false;
     }
