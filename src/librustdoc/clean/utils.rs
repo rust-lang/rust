@@ -7,7 +7,6 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 
-use rustc_attr::list_contains_name;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -533,6 +532,6 @@ crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<De
 crate fn has_doc_flag(attrs: Attributes<'_>, flag: Symbol) -> bool {
     attrs.iter().any(|attr| {
         attr.has_name(sym::doc)
-            && attr.meta_item_list().map_or(false, |l| list_contains_name(&l, flag))
+            && attr.meta_item_list().map_or(false, |l| rustc_attr::list_contains_name(&l, flag))
     })
 }
