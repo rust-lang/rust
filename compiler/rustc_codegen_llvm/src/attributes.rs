@@ -53,6 +53,9 @@ pub fn sanitize(cx: &CodegenCx<'ll, '_>, no_sanitize: SanitizerSet, llfn: &'ll V
     if enabled.contains(SanitizerSet::THREAD) {
         llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
     }
+    if enabled.contains(SanitizerSet::HWADDRESS) {
+        llvm::Attribute::SanitizeHWAddress.apply_llfn(Function, llfn);
+    }
 }
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.

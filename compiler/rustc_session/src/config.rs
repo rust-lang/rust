@@ -43,6 +43,7 @@ bitflags! {
         const LEAK    = 1 << 1;
         const MEMORY  = 1 << 2;
         const THREAD  = 1 << 3;
+        const HWADDRESS  = 1 << 4;
     }
 }
 
@@ -56,6 +57,7 @@ impl fmt::Display for SanitizerSet {
                 SanitizerSet::LEAK => "leak",
                 SanitizerSet::MEMORY => "memory",
                 SanitizerSet::THREAD => "thread",
+                SanitizerSet::HWADDRESS => "hwaddress",
                 _ => panic!("unrecognized sanitizer {:?}", s),
             };
             if !first {
@@ -73,12 +75,18 @@ impl IntoIterator for SanitizerSet {
     type IntoIter = std::vec::IntoIter<SanitizerSet>;
 
     fn into_iter(self) -> Self::IntoIter {
-        [SanitizerSet::ADDRESS, SanitizerSet::LEAK, SanitizerSet::MEMORY, SanitizerSet::THREAD]
-            .iter()
-            .copied()
-            .filter(|&s| self.contains(s))
-            .collect::<Vec<_>>()
-            .into_iter()
+        [
+            SanitizerSet::ADDRESS,
+            SanitizerSet::LEAK,
+            SanitizerSet::MEMORY,
+            SanitizerSet::THREAD,
+            SanitizerSet::HWADDRESS,
+        ]
+        .iter()
+        .copied()
+        .filter(|&s| self.contains(s))
+        .collect::<Vec<_>>()
+        .into_iter()
     }
 }
 

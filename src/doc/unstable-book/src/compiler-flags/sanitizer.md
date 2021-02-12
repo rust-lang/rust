@@ -7,12 +7,15 @@ The tracking issue for this feature is: [#39699](https://github.com/rust-lang/ru
 This feature allows for use of one of following sanitizers:
 
 * [AddressSanitizer][clang-asan] a fast memory error detector.
+* [HWAddressSanitizer][clang-hwasan] a memory error detector similar to
+  AddressSanitizer, but based on partial hardware assistance.
 * [LeakSanitizer][clang-lsan] a run-time memory leak detector.
 * [MemorySanitizer][clang-msan] a detector of uninitialized reads.
 * [ThreadSanitizer][clang-tsan] a fast data race detector.
 
-To enable a sanitizer compile with `-Zsanitizer=address`, `-Zsanitizer=leak`,
-`-Zsanitizer=memory` or `-Zsanitizer=thread`.
+To enable a sanitizer compile with `-Zsanitizer=address`,
+`-Zsanitizer=hwaddress`, `-Zsanitizer=leak`, `-Zsanitizer=memory` or
+`-Zsanitizer=thread`.
 
 # AddressSanitizer
 
@@ -174,6 +177,86 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
 ==39249==ABORTING
 ```
 
+# HWAddressSanitizer
+
+HWAddressSanitizer is a newer variant of AddressSanitizer that consumes much
+less memory.
+
+HWAddressSanitizer is supported on the following targets:
+
+* `aarch64-linux-android`
+* `aarch64-unknown-linux-gnu`
+
+HWAddressSanitizer requires `tagged-globals` target feature to instrument
+globals. To enable this target feature compile with `-C
+target-feature=+tagged-globals`
+
+## Example
+
+Heap buffer overflow:
+
+```rust
+fn main() {
+    let xs = vec![0, 1, 2, 3];
+    let _y = unsafe { *xs.as_ptr().offset(4) };
+}
+```
+
+```shell
+$ rustc main.rs -Zsanitizer=hwaddress -C target-feature=+tagged-globals -C
+linker=aarch64-linux-gnu-gcc -C link-arg=-fuse-ld=lld --target
+aarch64-unknown-linux-gnu
+```
+
+```shell
+$ ./main
+==241==ERROR: HWAddressSanitizer: tag-mismatch on address 0xefdeffff0050 at pc 0xaaaae0ae4a98
+READ of size 4 at 0xefdeffff0050 tags: 2c/00 (ptr/mem) in thread T0
+    #0 0xaaaae0ae4a94  (/.../main+0x54a94)
+    ...
+
+[0xefdeffff0040,0xefdeffff0060) is a small allocated heap chunk; size: 32 offset: 16
+0xefdeffff0050 is located 0 bytes to the right of 16-byte region [0xefdeffff0040,0xefdeffff0050)
+allocated here:
+    #0 0xaaaae0acb80c  (/.../main+0x3b80c)
+    ...
+
+Thread: T0 0xeffe00002000 stack: [0xffffc28ad000,0xffffc30ad000) sz: 8388608 tls: [0xffffaa10a020,0xffffaa10a7d0)
+Memory tags around the buggy address (one tag corresponds to 16 bytes):
+  0xfefcefffef80: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefcefffef90: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefcefffefa0: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefcefffefb0: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefcefffefc0: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefcefffefd0: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefcefffefe0: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefcefffeff0: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+=>0xfefceffff000: d7  d7  05  00  2c [00] 00  00  00  00  00  00  00  00  00  00
+  0xfefceffff010: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefceffff020: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefceffff030: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefceffff040: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefceffff050: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefceffff060: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefceffff070: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+  0xfefceffff080: 00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00
+Tags for short granules around the buggy address (one tag corresponds to 16 bytes):
+  0xfefcefffeff0: ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..
+=>0xfefceffff000: ..  ..  8c  ..  .. [..] ..  ..  ..  ..  ..  ..  ..  ..  ..  ..
+  0xfefceffff010: ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..  ..
+See https://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html#short-granules for a description of short granule tags
+Registers where the failure occurred (pc 0xaaaae0ae4a98):
+    x0  2c00efdeffff0050  x1  0000000000000004  x2  0000000000000004  x3  0000000000000000
+    x4  0000fffefc30ac37  x5  000000000000005d  x6  00000ffffc30ac37  x7  0000efff00000000
+    x8  2c00efdeffff0050  x9  0200efff00000000  x10 0000000000000000  x11 0200efff00000000
+    x12 0200effe00000310  x13 0200effe00000310  x14 0000000000000008  x15 5d00ffffc30ac360
+    x16 0000aaaae0ad062c  x17 0000000000000003  x18 0000000000000001  x19 0000ffffc30ac658
+    x20 4e00ffffc30ac6e0  x21 0000aaaae0ac5e10  x22 0000000000000000  x23 0000000000000000
+    x24 0000000000000000  x25 0000000000000000  x26 0000000000000000  x27 0000000000000000
+    x28 0000000000000000  x29 0000ffffc30ac5a0  x30 0000aaaae0ae4a98
+SUMMARY: HWAddressSanitizer: tag-mismatch (/.../main+0x54a94)
+```
+
 # LeakSanitizer
 
 LeakSanitizer is run-time memory leak detector.
@@ -321,11 +404,13 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 
 * [Sanitizers project page](https://github.com/google/sanitizers/wiki/)
 * [AddressSanitizer in Clang][clang-asan]
+* [HWAddressSanitizer in Clang][clang-hwasan]
 * [LeakSanitizer in Clang][clang-lsan]
 * [MemorySanitizer in Clang][clang-msan]
 * [ThreadSanitizer in Clang][clang-tsan]
 
 [clang-asan]: https://clang.llvm.org/docs/AddressSanitizer.html
+[clang-hwasan]: https://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html
 [clang-lsan]: https://clang.llvm.org/docs/LeakSanitizer.html
 [clang-msan]: https://clang.llvm.org/docs/MemorySanitizer.html
 [clang-tsan]: https://clang.llvm.org/docs/ThreadSanitizer.html

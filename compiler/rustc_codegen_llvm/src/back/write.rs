@@ -440,6 +440,8 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
             sanitize_memory_recover: config.sanitizer_recover.contains(SanitizerSet::MEMORY),
             sanitize_memory_track_origins: config.sanitizer_memory_track_origins as c_int,
             sanitize_thread: config.sanitizer.contains(SanitizerSet::THREAD),
+            sanitize_hwaddress: config.sanitizer.contains(SanitizerSet::HWADDRESS),
+            sanitize_hwaddress_recover: config.sanitizer_recover.contains(SanitizerSet::HWADDRESS),
         })
     } else {
         None
@@ -651,6 +653,10 @@ unsafe fn add_sanitizer_passes(config: &ModuleConfig, passes: &mut Vec<&'static 
     }
     if config.sanitizer.contains(SanitizerSet::THREAD) {
         passes.push(llvm::LLVMRustCreateThreadSanitizerPass());
+    }
+    if config.sanitizer.contains(SanitizerSet::HWADDRESS) {
+        let recover = config.sanitizer_recover.contains(SanitizerSet::HWADDRESS);
+        passes.push(llvm::LLVMRustCreateHWAddressSanitizerPass(recover));
     }
 }
 
