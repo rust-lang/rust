@@ -2163,7 +2163,8 @@ fn clean_use_statement(
         return Vec::new();
     }
 
-    let (doc_meta_item, please_inline) = import.attrs.lists(sym::doc).get_word_attr(sym::inline);
+    let doc_meta_item = import.attrs.lists(sym::doc).get_word_attr(sym::inline);
+    let please_inline = doc_meta_item.is_some();
     let pub_underscore = import.vis.node.is_pub() && name == kw::Underscore;
 
     if pub_underscore && please_inline {
