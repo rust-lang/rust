@@ -7,6 +7,7 @@ use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemKind, Node};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -557,6 +558,8 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         );
 
         if let Some(ty) = prohibit_opaque.break_value() {
+            let mut visitor = SelfTySpanVisitor { tcx, selfty_spans: vec![] };
+            visitor.visit_item(&item);
             let is_async = match item.kind {
                 ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
                     matches!(origin, hir::OpaqueTyOrigin::AsyncFn)
@@ -573,15 +576,13 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
                 if is_async { "async fn" } else { "impl Trait" },
             );
 
-            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
-                if snippet == "Self" {
-                    err.span_suggestion(
-                        span,
-                        "consider spelling out the type instead",
-                        format!("{:?}", ty),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+            for span in visitor.selfty_spans {
+                err.span_suggestion(
+                    span,
+                    "consider spelling out the type instead",
+                    format!("{:?}", ty),
+                    Applicability::MaybeIncorrect,
+                );
             }
             err.emit();
         }
@@ -1589,4 +1590,32 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
         err.span_label(span, "cannot resolve opaque type");
     }
     err.emit();
+}
+
+struct SelfTySpanVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    selfty_spans: Vec<Span>,
+}
+
+impl Visitor<'tcx> for SelfTySpanVisitor<'tcx> {
+    type Map = rustc_middle::hir::map::Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
+        hir::intravisit::NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    }
+
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
+        match arg.kind {
+            hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
+                [segment]
+                    if segment.res.map(|res| matches!(res, Res::SelfTy(_, _))).unwrap_or(false) =>
+                {
+                    self.selfty_spans.push(path.span);
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+        hir::intravisit::walk_ty(self, arg);
+    }
 }
