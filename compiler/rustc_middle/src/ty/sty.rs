@@ -1477,12 +1477,11 @@ impl<'tcx> ExistentialProjection<'tcx> {
     /// For example, if this is a projection of `exists T. <T as Iterator>::Item == X`,
     /// then this function would return a `exists T. T: Iterator` existential trait
     /// reference.
-    pub fn trait_ref(&self, tcx: TyCtxt<'_>) -> ty::ExistentialTraitRef<'tcx> {
-        // FIXME(generic_associated_types): substs is the substs of the
-        // associated type, which should be truncated to get the correct substs
-        // for the trait.
+    pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::ExistentialTraitRef<'tcx> {
         let def_id = tcx.associated_item(self.item_def_id).container.id();
-        ty::ExistentialTraitRef { def_id, substs: self.substs }
+        let subst_count = tcx.generics_of(def_id).count() - 1;
+        let substs = tcx.intern_substs(&self.substs[..subst_count]);
+        ty::ExistentialTraitRef { def_id, substs }
     }
 
     pub fn with_self_ty(
@@ -1499,6 +1498,20 @@ impl<'tcx> ExistentialProjection<'tcx> {
                 substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
             ty: self.ty,
+        }
+    }
+
+    pub fn erase_self_ty(
+        tcx: TyCtxt<'tcx>,
+        projection_predicate: ty::ProjectionPredicate<'tcx>,
+    ) -> Self {
+        // Assert there is a Self.
+        projection_predicate.projection_ty.substs.type_at(0);
+
+        Self {
+            item_def_id: projection_predicate.projection_ty.item_def_id,
+            substs: tcx.intern_substs(&projection_predicate.projection_ty.substs[1..]),
+            ty: projection_predicate.ty,
         }
     }
 }
