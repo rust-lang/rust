@@ -3,7 +3,7 @@
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
-use crate::unicode::{self, conversions, ASCII_CASE_MASK};
+use crate::unicode::{self, conversions};
 
 use super::*;
 
@@ -1090,7 +1090,11 @@ impl char {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> char {
-        if self.is_ascii_lowercase() { ((*self as u8) & !ASCII_CASE_MASK) as char } else { *self }
+        if self.is_ascii_lowercase() {
+            (*self as u8).ascii_change_case_unchecked() as char
+        } else {
+            *self
+        }
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -1118,7 +1122,11 @@ impl char {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> char {
-        if self.is_ascii_uppercase() { ((*self as u8) | ASCII_CASE_MASK) as char } else { *self }
+        if self.is_ascii_uppercase() {
+            (*self as u8).ascii_change_case_unchecked() as char
+        } else {
+            *self
+        }
     }
 
     /// Checks that two values are an ASCII case-insensitive match.

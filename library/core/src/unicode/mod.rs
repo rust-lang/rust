@@ -17,9 +17,6 @@ mod unicode_data;
 #[stable(feature = "unicode_version", since = "1.45.0")]
 pub const UNICODE_VERSION: (u8, u8, u8) = unicode_data::UNICODE_VERSION;
 
-/// If 6th bit set ascii is upper case.
-pub(crate) const ASCII_CASE_MASK: u8 = 0b0010_0000;
-
 // For use in liballoc, not re-exported in libstd.
 pub use unicode_data::{
     case_ignorable::lookup as Case_Ignorable, cased::lookup as Cased, conversions,

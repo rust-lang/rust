@@ -5,7 +5,9 @@
 use crate::intrinsics;
 use crate::mem;
 use crate::str::FromStr;
-use crate::unicode::ASCII_CASE_MASK;
+
+/// If 6th bit set ascii is upper case.
+const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 // Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
@@ -220,6 +222,12 @@ impl u8 {
     pub fn to_ascii_lowercase(&self) -> u8 {
         // Set the fifth bit if this is an uppercase letter
         *self | (self.is_ascii_uppercase() as u8 * ASCII_CASE_MASK)
+    }
+
+    /// Assumes self is ascii
+    #[inline]
+    pub(crate) fn ascii_change_case_unchecked(&self) -> u8 {
+        *self ^ ASCII_CASE_MASK
     }
 
     /// Checks that two values are an ASCII case-insensitive match.
