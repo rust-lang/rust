@@ -921,8 +921,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
                 && infcx.probe(|_| {
                     selcx.match_projection_projections(
                         obligation,
-                        obligation_trait_ref,
-                        &data,
+                        data,
                         potentially_unnormalized_candidates,
                     )
                 });
@@ -1344,25 +1343,25 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
         poly_cache_entry,
     );
 
-    let cache_trait_ref = cache_entry.projection_ty.trait_ref(infcx.tcx);
-    let obligation_trait_ref = obligation.predicate.trait_ref(infcx.tcx);
+    let cache_projection = cache_entry.projection_ty;
+    let obligation_projection = obligation.predicate;
     let mut nested_obligations = Vec::new();
-    let cache_trait_ref = if potentially_unnormalized_candidate {
+    let cache_projection = if potentially_unnormalized_candidate {
         ensure_sufficient_stack(|| {
             normalize_with_depth_to(
                 selcx,
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
-                cache_trait_ref,
+                cache_projection,
                 &mut nested_obligations,
             )
         })
     } else {
-        cache_trait_ref
+        cache_projection
     };
 
-    match infcx.at(cause, param_env).eq(cache_trait_ref, obligation_trait_ref) {
+    match infcx.at(cause, param_env).eq(cache_projection, obligation_projection) {
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
             assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
