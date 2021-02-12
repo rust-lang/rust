@@ -140,10 +140,7 @@ unsafe impl<I> TrustedRandomAccess for Copied<I>
 where
     I: TrustedRandomAccess,
 {
-    #[inline]
-    fn may_have_side_effect() -> bool {
-        I::may_have_side_effect()
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
 }
 
 #[stable(feature = "iter_copied", since = "1.36.0")]
