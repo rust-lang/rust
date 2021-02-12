@@ -279,7 +279,7 @@ pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {
 //
 // FIXME: change the new fn checking to a more semantic approach when that's more
 // viable (e.g. we process proc macros, etc)
-// FIXME: this partially overlaps with `find_impl_block`
+// FIXME: this partially overlaps with `find_impl_block_*`
 pub(crate) fn find_struct_impl(
     ctx: &AssistContext,
     strukt: &ast::Adt,
@@ -343,17 +343,25 @@ fn has_fn(imp: &ast::Impl, rhs_name: &str) -> bool {
 
 /// Find the start of the `impl` block for the given `ast::Impl`.
 //
-// FIXME: add a way to find the end of the `impl` block.
 // FIXME: this partially overlaps with `find_struct_impl`
-pub(crate) fn find_impl_block(impl_def: ast::Impl, buf: &mut String) -> Option<TextSize> {
+pub(crate) fn find_impl_block_start(impl_def: ast::Impl, buf: &mut String) -> Option<TextSize> {
     buf.push('\n');
-    let start = impl_def
-        .syntax()
-        .descendants_with_tokens()
-        .find(|t| t.kind() == T!['{'])?
+    let start = impl_def.assoc_item_list().and_then(|it| it.l_curly_token())?.text_range().end();
+    Some(start)
+}
+
+/// Find the end of the `impl` block for the given `ast::Impl`.
+//
+// FIXME: this partially overlaps with `find_struct_impl`
+pub(crate) fn find_impl_block_end(impl_def: ast::Impl, buf: &mut String) -> Option<TextSize> {
+    buf.push('\n');
+    let end = impl_def
+        .assoc_item_list()
+        .and_then(|it| it.r_curly_token())?
+        .prev_sibling_or_token()?
         .text_range()
         .end();
-    Some(start)
+    Some(end)
 }
 
 // Generates the surrounding `impl Type { <code> }` including type and lifetime

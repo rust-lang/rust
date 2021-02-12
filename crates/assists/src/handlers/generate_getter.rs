@@ -3,7 +3,7 @@ use syntax::ast::VisibilityOwner;
 use syntax::ast::{self, AstNode, NameOwner};
 
 use crate::{
-    utils::{find_impl_block, find_struct_impl, generate_impl_text},
+    utils::{find_impl_block_end, find_struct_impl, generate_impl_text},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -73,7 +73,7 @@ pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext) -> Option<
             );
 
             let start_offset = impl_def
-                .and_then(|impl_def| find_impl_block(impl_def, &mut buf))
+                .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
                 .unwrap_or_else(|| {
                     buf = generate_impl_text(&ast::Adt::Struct(strukt.clone()), &buf);
                     strukt.syntax().text_range().end()
@@ -149,6 +149,42 @@ impl<T: Clone> Context<T> {
     /// Get a reference to the context's data.
     pub(crate) fn data(&self) -> &T {
         &self.data
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_multiple_generate_getter() {
+        check_assist(
+            generate_getter,
+            r#"
+struct Context<T: Clone> {
+    data: T,
+    cou$0nt: usize,
+}
+
+impl<T: Clone> Context<T> {
+    /// Get a reference to the context's data.
+    fn data(&self) -> &T {
+        &self.data
+    }
+}"#,
+            r#"
+struct Context<T: Clone> {
+    data: T,
+    count: usize,
+}
+
+impl<T: Clone> Context<T> {
+    /// Get a reference to the context's data.
+    fn data(&self) -> &T {
+        &self.data
+    }
+
+    /// Get a reference to the context's count.
+    fn count(&self) -> &usize {
+        &self.count
     }
 }"#,
         );

@@ -3,7 +3,7 @@ use syntax::ast::VisibilityOwner;
 use syntax::ast::{self, AstNode, NameOwner};
 
 use crate::{
-    utils::{find_impl_block, find_struct_impl, generate_impl_text},
+    utils::{find_impl_block_end, find_struct_impl, generate_impl_text},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -79,7 +79,7 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext) -> Option<
             );
 
             let start_offset = impl_def
-                .and_then(|impl_def| find_impl_block(impl_def, &mut buf))
+                .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
                 .unwrap_or_else(|| {
                     buf = generate_impl_text(&ast::Adt::Struct(strukt.clone()), &buf);
                     strukt.syntax().text_range().end()
@@ -155,6 +155,42 @@ impl<T: Clone> Person<T> {
     /// Set the person's data.
     pub(crate) fn set_data(&mut self, data: T) {
         self.data = data;
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_multiple_generate_setter() {
+        check_assist(
+            generate_setter,
+            r#"
+struct Context<T: Clone> {
+    data: T,
+    cou$0nt: usize,
+}
+
+impl<T: Clone> Context<T> {
+    /// Set the context's data.
+    fn set_data(&mut self, data: T) {
+        self.data = data;
+    }
+}"#,
+            r#"
+struct Context<T: Clone> {
+    data: T,
+    count: usize,
+}
+
+impl<T: Clone> Context<T> {
+    /// Set the context's data.
+    fn set_data(&mut self, data: T) {
+        self.data = data;
+    }
+
+    /// Set the context's count.
+    fn set_count(&mut self, count: usize) {
+        self.count = count;
     }
 }"#,
         );

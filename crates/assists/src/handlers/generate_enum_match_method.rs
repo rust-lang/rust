@@ -4,7 +4,7 @@ use syntax::ast::{self, AstNode, NameOwner};
 use test_utils::mark;
 
 use crate::{
-    utils::{find_impl_block, find_struct_impl, generate_impl_text},
+    utils::{find_impl_block_end, find_struct_impl, generate_impl_text},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -80,7 +80,7 @@ pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext)
             );
 
             let start_offset = impl_def
-                .and_then(|impl_def| find_impl_block(impl_def, &mut buf))
+                .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
                 .unwrap_or_else(|| {
                     buf = generate_impl_text(&ast::Adt::Enum(parent_enum.clone()), &buf);
                     parent_enum.syntax().text_range().end()
@@ -196,6 +196,43 @@ impl Variant {
     /// Returns `true` if the variant is [`Minor`].
     pub(crate) fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_multiple_generate_enum_match_from_variant() {
+        check_assist(
+            generate_enum_match_method,
+            r#"
+enum Variant {
+    Undefined,
+    Minor,
+    Major$0,
+}
+
+impl Variant {
+    /// Returns `true` if the variant is [`Minor`].
+    fn is_minor(&self) -> bool {
+        matches!(self, Self::Minor)
+    }
+}"#,
+            r#"enum Variant {
+    Undefined,
+    Minor,
+    Major,
+}
+
+impl Variant {
+    /// Returns `true` if the variant is [`Minor`].
+    fn is_minor(&self) -> bool {
+        matches!(self, Self::Minor)
+    }
+
+    /// Returns `true` if the variant is [`Major`].
+    fn is_major(&self) -> bool {
+        matches!(self, Self::Major)
     }
 }"#,
         );
