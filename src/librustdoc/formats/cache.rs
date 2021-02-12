@@ -11,7 +11,6 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
 use crate::clean::{self, GetDefId};
-use crate::config::RenderInfo;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
@@ -131,32 +130,8 @@ struct CacheBuilder<'a, 'tcx> {
 }
 
 impl Cache {
-    crate fn new(render_info: RenderInfo, document_private: bool) -> Self {
-        // Crawl the crate to build various caches used for the output
-        let RenderInfo {
-            inlined: _,
-            external_paths,
-            exact_paths,
-            access_levels,
-            deref_trait_did,
-            deref_mut_trait_did,
-            owned_box_did,
-            ..
-        } = render_info;
-
-        let external_paths =
-            external_paths.into_iter().map(|(k, (v, t))| (k, (v, ItemType::from(t)))).collect();
-
-        Cache {
-            external_paths,
-            exact_paths,
-            access_levels,
-            document_private,
-            deref_trait_did,
-            deref_mut_trait_did,
-            owned_box_did,
-            ..Cache::default()
-        }
+    crate fn new(access_levels: AccessLevels<DefId>, document_private: bool) -> Self {
+        Cache { access_levels, document_private, ..Cache::default() }
     }
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
@@ -168,6 +143,7 @@ impl Cache {
         extern_html_root_urls: &BTreeMap<String, String>,
         dst: &Path,
     ) -> clean::Crate {
+        // Crawl the crate to build various caches used for the output
         self.crate_version = krate.version.take();
         debug!(?self.crate_version);
         self.traits = krate.external_traits.take();
