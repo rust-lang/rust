@@ -87,7 +87,7 @@ where
             if let (Some(t1), Some(t2)) = (t1, t2) {
                 // Simplified successfully
                 // Types cannot unify if they differ in their reference mutability or simplify to different types
-                ty1.ref_mutability() != ty2.ref_mutability() || t1 != t2
+                t1 != t2 || ty1.ref_mutability() != ty2.ref_mutability() 
             } else {
                 // Types might unify
                 false
