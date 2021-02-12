@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use xshell::{cmd, cp, pushd, read_dir, write_file};
 
 use crate::{codegen, date_iso, is_release_tag, project_root, Mode, Result};
@@ -24,34 +26,6 @@ impl ReleaseCmd {
         let commit = cmd!("git rev-parse HEAD").read()?;
         let changelog_n = read_dir(changelog_dir.as_path())?.len();
 
-        let contents = format!(
-            "\
-= Changelog #{}
-:sectanchors:
-:page-layout: post
-
-Commit: commit:{}[] +
-Release: release:{}[]
-
-== Sponsors
-
-**Become a sponsor:** On https://opencollective.com/rust-analyzer/[OpenCollective] or
-https://github.com/sponsors/rust-analyzer[GitHub Sponsors].
-
-== New Features
-
-* pr:[] .
-
-== Fixes
-
-== Internal Improvements
-",
-            changelog_n, commit, today
-        );
-
-        let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
-        write_file(&path, &contents)?;
-
         for &adoc in [
             "manual.adoc",
             "generated_assists.adoc",
@@ -70,8 +44,43 @@ https://github.com/sponsors/rust-analyzer[GitHub Sponsors].
         let prev_tag = tags.lines().filter(|line| is_release_tag(line)).last().unwrap();
 
         let git_log = cmd!("git log {prev_tag}..HEAD --merges --reverse").read()?;
-        let git_log_dst = website_root.join("git.log");
-        write_file(git_log_dst, &git_log)?;
+        let mut git_log_summary = String::new();
+        for line in git_log.lines() {
+            let line = line.trim_start();
+            if let Some(p) = line.find(':') {
+                if let Ok(pr) = line[..p].parse::<u32>() {
+                    writeln!(git_log_summary, "* pr:{}[]{}", pr, &line[p + 1..]).unwrap();
+                }
+            }
+        }
+
+        let contents = format!(
+            "\
+= Changelog #{}
+:sectanchors:
+:page-layout: post
+
+Commit: commit:{}[] +
+Release: release:{}[]
+
+== Sponsors
+
+**Become a sponsor:** On https://opencollective.com/rust-analyzer/[OpenCollective] or
+https://github.com/sponsors/rust-analyzer[GitHub Sponsors].
+
+== New Features
+
+{}
+
+== Fixes
+
+== Internal Improvements
+",
+            changelog_n, commit, today, git_log_summary
+        );
+
+        let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
+        write_file(&path, &contents)?;
 
         Ok(())
     }
