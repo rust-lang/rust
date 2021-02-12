@@ -1,12 +1,14 @@
 //! Conversion lsp_types types to rust-analyzer specific ones.
 use std::convert::TryFrom;
 
-use ide::{Annotation, AnnotationKind, AssistKind, LineColUtf16, LineIndex};
+use ide::{Annotation, AnnotationKind, AssistKind, LineColUtf16};
 use ide_db::base_db::{FileId, FilePosition, FileRange};
 use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;
 
-use crate::{from_json, global_state::GlobalStateSnapshot, lsp_ext, Result};
+use crate::{
+    from_json, global_state::GlobalStateSnapshot, line_endings::LineIndex, lsp_ext, Result,
+};
 
 pub(crate) fn abs_path(url: &lsp_types::Url) -> Result<AbsPathBuf> {
     let path = url.to_file_path().map_err(|()| "url is not a file")?;
@@ -19,8 +21,8 @@ pub(crate) fn vfs_path(url: &lsp_types::Url) -> Result<vfs::VfsPath> {
 
 pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> TextSize {
     let line_col = LineColUtf16 { line: position.line as u32, col: position.character as u32 };
-    let line_col = line_index.to_utf8(line_col);
-    line_index.offset(line_col)
+    let line_col = line_index.index.to_utf8(line_col);
+    line_index.index.offset(line_col)
 }
 
 pub(crate) fn text_range(line_index: &LineIndex, range: lsp_types::Range) -> TextRange {
@@ -38,8 +40,8 @@ pub(crate) fn file_position(
     tdpp: lsp_types::TextDocumentPositionParams,
 ) -> Result<FilePosition> {
     let file_id = file_id(world, &tdpp.text_document.uri)?;
-    let line_index = world.analysis.file_line_index(file_id)?;
-    let offset = offset(&*line_index, tdpp.position);
+    let line_index = world.file_line_index(file_id)?;
+    let offset = offset(&line_index, tdpp.position);
     Ok(FilePosition { file_id, offset })
 }
 
@@ -49,7 +51,7 @@ pub(crate) fn file_range(
     range: lsp_types::Range,
 ) -> Result<FileRange> {
     let file_id = file_id(world, &text_document_identifier.uri)?;
-    let line_index = world.analysis.file_line_index(file_id)?;
+    let line_index = world.file_line_index(file_id)?;
     let range = text_range(&line_index, range);
     Ok(FileRange { file_id, range })
 }
@@ -79,7 +81,7 @@ pub(crate) fn annotation(
         lsp_ext::CodeLensResolveData::Impls(params) => {
             let file_id =
                 world.url_to_file_id(&params.text_document_position_params.text_document.uri)?;
-            let line_index = world.analysis.file_line_index(file_id)?;
+            let line_index = world.file_line_index(file_id)?;
 
             Ok(Annotation {
                 range: text_range(&line_index, code_lens.range),
@@ -91,7 +93,7 @@ pub(crate) fn annotation(
         }
         lsp_ext::CodeLensResolveData::References(params) => {
             let file_id = world.url_to_file_id(&params.text_document.uri)?;
-            let line_index = world.analysis.file_line_index(file_id)?;
+            let line_index = world.file_line_index(file_id)?;
 
             Ok(Annotation {
                 range: text_range(&line_index, code_lens.range),

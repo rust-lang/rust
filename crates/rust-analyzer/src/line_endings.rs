@@ -2,6 +2,13 @@
 //! This module does line ending conversion and detection (so that we can
 //! convert back to `\r\n` on the way out).
 
+use std::sync::Arc;
+
+pub(crate) struct LineIndex {
+    pub(crate) index: Arc<ide::LineIndex>,
+    pub(crate) endings: LineEndings,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum LineEndings {
     Unix,
