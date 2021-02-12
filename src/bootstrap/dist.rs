@@ -1227,7 +1227,7 @@ impl Step for CodegenBackend {
         if backend == "cranelift" {
             tarball.set_overlay(OverlayKind::RustcCodegenCranelift);
         } else {
-            panic!("Unknown overlay kind for rustc_codegen_{}", backend);
+            panic!("Unknown backend rustc_codegen_{}", backend);
         }
         tarball.is_preview(true);
         tarball.add_legal_and_readme_to(format!("share/doc/rustc_codegen_{}", backend));
