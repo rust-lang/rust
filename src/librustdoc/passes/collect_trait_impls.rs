@@ -15,8 +15,10 @@ crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
 };
 
 crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    let mut synth = SyntheticImplCollector { cx, impls: Vec::new() };
-    let mut krate = cx.sess().time("collect_synthetic_impls", || synth.fold_crate(krate));
+    let (mut krate, synth_impls) = cx.sess().time("collect_synthetic_impls", || {
+        let mut synth = SyntheticImplCollector { cx, impls: Vec::new() };
+        (synth.fold_crate(krate), synth.impls)
+    });
 
     let prims: FxHashSet<PrimitiveType> = krate.primitives.iter().map(|p| p.1).collect();
 
@@ -142,7 +144,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
         panic!("collect-trait-impls can't run");
     };
 
-    items.extend(synth.impls);
+    items.extend(synth_impls);
     for it in new_items.drain(..) {
         if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
             if !(cleaner.keep_impl(for_)
@@ -160,7 +162,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 }
 
 struct SyntheticImplCollector<'a, 'tcx> {
-    cx: &'a DocContext<'tcx>,
+    cx: &'a mut DocContext<'tcx>,
     impls: Vec<Item>,
 }
 

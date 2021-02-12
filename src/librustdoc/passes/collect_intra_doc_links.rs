@@ -53,7 +53,8 @@ crate fn collect_intra_doc_links(krate: Crate, cx: &mut DocContext<'_>) -> Crate
         mod_ids: Vec::new(),
         kind_side_channel: Cell::new(None),
         visited_links: FxHashMap::default(),
-    }.fold_crate(krate)
+    }
+    .fold_crate(krate)
 }
 
 /// Top-level errors emitted by this pass.
@@ -313,7 +314,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             // If there's no third component, we saw `[a::b]` before and it failed to resolve.
             // So there's no partial res.
             .ok_or_else(no_res)?;
-        let ty_res = self.cx
+        let ty_res = self
+            .cx
             .enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path, TypeNS, module_id)
             })
@@ -381,14 +383,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .impls(tcx)
             .into_iter()
             .find_map(|&impl_| {
-                tcx
-                    .associated_items(impl_)
-                    .find_by_name_and_namespace(
-                        tcx,
-                        Ident::with_dummy_span(item_name),
-                        ns,
-                        impl_,
-                    )
+                tcx.associated_items(impl_)
+                    .find_by_name_and_namespace(tcx, Ident::with_dummy_span(item_name), ns, impl_)
                     .map(|item| {
                         let kind = item.kind;
                         self.kind_side_channel.set(Some((kind.as_def_kind(), item.def_id)));
@@ -946,7 +942,14 @@ impl LinkCollector<'_, '_> {
         let parts = link.split('#').collect::<Vec<_>>();
         let (link, extra_fragment) = if parts.len() > 2 {
             // A valid link can't have multiple #'s
-            anchor_failure(self.cx, &item, &link, dox, ori_link.range, AnchorFailure::MultipleAnchors);
+            anchor_failure(
+                self.cx,
+                &item,
+                &link,
+                dox,
+                ori_link.range,
+                AnchorFailure::MultipleAnchors,
+            );
             return None;
         } else if parts.len() == 2 {
             if parts[0].trim().is_empty() {

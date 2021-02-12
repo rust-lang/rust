@@ -70,8 +70,8 @@ impl DocFolder for SourceCollector<'_, '_> {
     }
 }
 
-impl SourceCollector<'_, '_> {
-    fn sess(&self) -> &Session {
+impl SourceCollector<'_, 'tcx> {
+    fn sess(&self) -> &'tcx Session {
         &self.scx.tcx.sess
     }
 
