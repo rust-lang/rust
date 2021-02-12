@@ -53,22 +53,34 @@ impl IntoIterator for UsageSearchResult {
 }
 
 #[derive(Debug, Clone)]
-pub struct FileReference {
-    pub range: TextRange,
-    pub kind: ReferenceKind,
-    pub access: Option<ReferenceAccess>,
+pub enum NameLike {
+    NameRef(ast::NameRef),
+    Name(ast::Name),
+    Lifetime(ast::Lifetime),
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ReferenceKind {
-    FieldShorthandForField,
-    FieldShorthandForLocal,
-    StructLiteral,
-    RecordFieldExprOrPat,
-    SelfParam,
-    EnumLiteral,
-    Lifetime,
-    Other,
+impl NameLike {
+    pub fn as_name_ref(&self) -> Option<&ast::NameRef> {
+        match self {
+            NameLike::NameRef(name_ref) => Some(name_ref),
+            _ => None,
+        }
+    }
+}
+
+mod __ {
+    use super::{
+        ast::{Lifetime, Name, NameRef},
+        NameLike,
+    };
+    stdx::impl_from!(NameRef, Name, Lifetime for NameLike);
+}
+
+#[derive(Debug, Clone)]
+pub struct FileReference {
+    pub range: TextRange,
+    pub name: NameLike,
+    pub access: Option<ReferenceAccess>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -369,8 +381,11 @@ impl<'a> FindUsages<'a> {
         match NameRefClass::classify_lifetime(self.sema, lifetime) {
             Some(NameRefClass::Definition(def)) if &def == self.def => {
                 let FileRange { file_id, range } = self.sema.original_range(lifetime.syntax());
-                let reference =
-                    FileReference { range, kind: ReferenceKind::Lifetime, access: None };
+                let reference = FileReference {
+                    range,
+                    name: NameLike::Lifetime(lifetime.clone()),
+                    access: None,
+                };
                 sink(file_id, reference)
             }
             _ => false, // not a usage
@@ -384,19 +399,12 @@ impl<'a> FindUsages<'a> {
     ) -> bool {
         match NameRefClass::classify(self.sema, &name_ref) {
             Some(NameRefClass::Definition(def)) if &def == self.def => {
-                let kind = if is_record_field_expr_or_pat(&name_ref) {
-                    ReferenceKind::RecordFieldExprOrPat
-                } else if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref) {
-                    ReferenceKind::StructLiteral
-                } else if is_enum_lit_name_ref(&name_ref) {
-                    ReferenceKind::EnumLiteral
-                } else {
-                    ReferenceKind::Other
-                };
-
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
-                let reference =
-                    FileReference { range, kind, access: reference_access(&def, &name_ref) };
+                let reference = FileReference {
+                    range,
+                    name: NameLike::NameRef(name_ref.clone()),
+                    access: reference_access(&def, &name_ref),
+                };
                 sink(file_id, reference)
             }
             Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
@@ -404,12 +412,12 @@ impl<'a> FindUsages<'a> {
                 let reference = match self.def {
                     Definition::Field(_) if &field == self.def => FileReference {
                         range,
-                        kind: ReferenceKind::FieldShorthandForField,
+                        name: NameLike::NameRef(name_ref.clone()),
                         access: reference_access(&field, &name_ref),
                     },
                     Definition::Local(l) if &local == l => FileReference {
                         range,
-                        kind: ReferenceKind::FieldShorthandForLocal,
+                        name: NameLike::NameRef(name_ref.clone()),
                         access: reference_access(&Definition::Local(local), &name_ref),
                     },
                     _ => return false, // not a usage
@@ -433,7 +441,7 @@ impl<'a> FindUsages<'a> {
                 let FileRange { file_id, range } = self.sema.original_range(name.syntax());
                 let reference = FileReference {
                     range,
-                    kind: ReferenceKind::FieldShorthandForField,
+                    name: NameLike::Name(name.clone()),
                     // FIXME: mutable patterns should have `Write` access
                     access: Some(ReferenceAccess::Read),
                 };
@@ -472,55 +480,4 @@ fn reference_access(def: &Definition, name_ref: &ast::NameRef) -> Option<Referen
 
     // Default Locals and Fields to read
     mode.or(Some(ReferenceAccess::Read))
-}
-
-fn is_call_expr_name_ref(name_ref: &ast::NameRef) -> bool {
-    name_ref
-        .syntax()
-        .ancestors()
-        .find_map(ast::CallExpr::cast)
-        .and_then(|c| match c.expr()? {
-            ast::Expr::PathExpr(p) => {
-                Some(p.path()?.segment()?.name_ref().as_ref() == Some(name_ref))
-            }
-            _ => None,
-        })
-        .unwrap_or(false)
-}
-
-fn is_record_lit_name_ref(name_ref: &ast::NameRef) -> bool {
-    name_ref
-        .syntax()
-        .ancestors()
-        .find_map(ast::RecordExpr::cast)
-        .and_then(|l| l.path())
-        .and_then(|p| p.segment())
-        .map(|p| p.name_ref().as_ref() == Some(name_ref))
-        .unwrap_or(false)
-}
-
-fn is_record_field_expr_or_pat(name_ref: &ast::NameRef) -> bool {
-    if let Some(parent) = name_ref.syntax().parent() {
-        match_ast! {
-            match parent {
-                ast::RecordExprField(it) => true,
-                ast::RecordPatField(_it) => true,
-                _ => false,
-            }
-        }
-    } else {
-        false
-    }
-}
-
-fn is_enum_lit_name_ref(name_ref: &ast::NameRef) -> bool {
-    name_ref
-        .syntax()
-        .ancestors()
-        .find_map(ast::PathExpr::cast)
-        .and_then(|p| p.path())
-        .and_then(|p| p.qualifier())
-        .and_then(|p| p.segment())
-        .map(|p| p.name_ref().as_ref() == Some(name_ref))
-        .unwrap_or(false)
 }

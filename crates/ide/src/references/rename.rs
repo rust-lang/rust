@@ -4,9 +4,9 @@ use std::fmt::{self, Display};
 use either::Either;
 use hir::{HasSource, InFile, Module, ModuleDef, ModuleSource, Semantics};
 use ide_db::{
-    base_db::{AnchoredPathBuf, FileId, FileRange},
+    base_db::{AnchoredPathBuf, FileId},
     defs::{Definition, NameClass, NameRefClass},
-    search::FileReference,
+    search::{FileReference, NameLike},
     RootDatabase,
 };
 use stdx::never;
@@ -17,10 +17,7 @@ use syntax::{
 use test_utils::mark;
 use text_edit::TextEdit;
 
-use crate::{
-    display::TryToNav, FilePosition, FileSystemEdit, RangeInfo, ReferenceKind, SourceChange,
-    TextRange,
-};
+use crate::{display::TryToNav, FilePosition, FileSystemEdit, RangeInfo, SourceChange, TextRange};
 
 type RenameResult<T> = Result<T, RenameError>;
 #[derive(Debug)]
@@ -41,6 +38,8 @@ macro_rules! bail {
     ($($tokens:tt)*) => {return Err(format_err!($($tokens)*))}
 }
 
+/// Prepares a rename. The sole job of this function is to return the TextRange of the thing that is
+/// being targeted for a rename.
 pub(crate) fn prepare_rename(
     db: &RootDatabase,
     position: FilePosition,
@@ -123,12 +122,6 @@ fn check_identifier(new_name: &str) -> RenameResult<IdentifierKind> {
     }
 }
 
-enum NameLike {
-    Name(ast::Name),
-    NameRef(ast::NameRef),
-    Lifetime(ast::Lifetime),
-}
-
 fn find_name_like(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
@@ -171,72 +164,97 @@ fn find_definition(
 }
 
 fn source_edit_from_references(
-    sema: &Semantics<RootDatabase>,
+    _sema: &Semantics<RootDatabase>,
     file_id: FileId,
     references: &[FileReference],
+    def: Definition,
     new_name: &str,
 ) -> (FileId, TextEdit) {
     let mut edit = TextEdit::builder();
     for reference in references {
-        let mut replacement_text = String::new();
-        let range = match reference.kind {
-            ReferenceKind::FieldShorthandForField => {
-                mark::hit!(test_rename_struct_field_for_shorthand);
-                replacement_text.push_str(new_name);
-                replacement_text.push_str(": ");
-                TextRange::new(reference.range.start(), reference.range.start())
-            }
-            ReferenceKind::FieldShorthandForLocal => {
-                mark::hit!(test_rename_local_for_field_shorthand);
-                replacement_text.push_str(": ");
-                replacement_text.push_str(new_name);
-                TextRange::new(reference.range.end(), reference.range.end())
-            }
-            ReferenceKind::RecordFieldExprOrPat => {
-                mark::hit!(test_rename_field_expr_pat);
-                replacement_text.push_str(new_name);
-                edit_text_range_for_record_field_expr_or_pat(
-                    sema,
-                    FileRange { file_id, range: reference.range },
-                    new_name,
-                )
-            }
-            _ => {
-                replacement_text.push_str(new_name);
-                reference.range
-            }
+        let (range, replacement) = match &reference.name {
+            NameLike::Name(_) => (None, format!("{}", new_name)),
+            NameLike::NameRef(name_ref) => source_edit_from_name_ref(name_ref, new_name, def),
+            NameLike::Lifetime(_) => (None, format!("{}", new_name)),
         };
-        edit.replace(range, replacement_text);
+        // FIXME: Some(range) will be incorrect when we are inside macros
+        edit.replace(range.unwrap_or(reference.range), replacement);
     }
     (file_id, edit.finish())
 }
 
-fn edit_text_range_for_record_field_expr_or_pat(
-    sema: &Semantics<RootDatabase>,
-    file_range: FileRange,
+fn source_edit_from_name_ref(
+    name_ref: &ast::NameRef,
     new_name: &str,
-) -> TextRange {
-    let source_file = sema.parse(file_range.file_id);
-    let file_syntax = source_file.syntax();
-    let original_range = file_range.range;
-
-    syntax::algo::find_node_at_range::<ast::RecordExprField>(file_syntax, original_range)
-        .and_then(|field_expr| match field_expr.expr().and_then(|e| e.name_ref()) {
-            Some(name) if &name.to_string() == new_name => Some(field_expr.syntax().text_range()),
-            _ => None,
-        })
-        .or_else(|| {
-            syntax::algo::find_node_at_range::<ast::RecordPatField>(file_syntax, original_range)
-                .and_then(|field_pat| match field_pat.pat() {
-                    Some(ast::Pat::IdentPat(pat))
-                        if pat.name().map(|n| n.to_string()).as_deref() == Some(new_name) =>
-                    {
-                        Some(field_pat.syntax().text_range())
+    def: Definition,
+) -> (Option<TextRange>, String) {
+    if let Some(record_field) = ast::RecordExprField::for_name_ref(name_ref) {
+        let rcf_name_ref = record_field.name_ref();
+        let rcf_expr = record_field.expr();
+        match (rcf_name_ref, rcf_expr.and_then(|it| it.name_ref())) {
+            // field: init-expr, check if we can use a field init shorthand
+            (Some(field_name), Some(init)) => {
+                if field_name == *name_ref {
+                    if init.text() == new_name {
+                        mark::hit!(test_rename_field_put_init_shorthand);
+                        // same names, we can use a shorthand here instead
+                        // we do not want to erase attributes hence this range start
+                        let s = field_name.syntax().text_range().start();
+                        let e = record_field.syntax().text_range().end();
+                        return (Some(TextRange::new(s, e)), format!("{}", new_name));
                     }
-                    _ => None,
-                })
-        })
-        .unwrap_or(original_range)
+                } else if init == *name_ref {
+                    if field_name.text() == new_name {
+                        mark::hit!(test_rename_local_put_init_shorthand);
+                        // same names, we can use a shorthand here instead
+                        // we do not want to erase attributes hence this range start
+                        let s = field_name.syntax().text_range().start();
+                        let e = record_field.syntax().text_range().end();
+                        return (Some(TextRange::new(s, e)), format!("{}", new_name));
+                    }
+                }
+            }
+            // init shorthand
+            (None, Some(_)) => {
+                // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
+                // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
+                match def {
+                    Definition::Field(_) => {
+                        mark::hit!(test_rename_field_in_field_shorthand);
+                        let s = name_ref.syntax().text_range().start();
+                        return (Some(TextRange::empty(s)), format!("{}: ", new_name));
+                    }
+                    Definition::Local(_) => {
+                        mark::hit!(test_rename_local_in_field_shorthand);
+                        let s = name_ref.syntax().text_range().end();
+                        return (Some(TextRange::empty(s)), format!(": {}", new_name));
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+    if let Some(record_field) = ast::RecordPatField::for_field_name_ref(name_ref) {
+        let rcf_name_ref = record_field.name_ref();
+        let rcf_pat = record_field.pat();
+        match (rcf_name_ref, rcf_pat) {
+            // field: rename
+            (Some(field_name), Some(ast::Pat::IdentPat(pat))) if field_name == *name_ref => {
+                // field name is being renamed
+                if pat.name().map_or(false, |it| it.text() == new_name) {
+                    mark::hit!(test_rename_field_put_init_shorthand_pat);
+                    // same names, we can use a shorthand here instead
+                    // we do not want to erase attributes hence this range start
+                    let s = field_name.syntax().text_range().start();
+                    let e = record_field.syntax().text_range().end();
+                    return (Some(TextRange::new(s, e)), format!("{}", new_name));
+                }
+            }
+            _ => {}
+        }
+    }
+    (None, format!("{}", new_name))
 }
 
 fn rename_mod(
@@ -277,7 +295,7 @@ fn rename_mod(
     let def = Definition::ModuleDef(ModuleDef::Module(module));
     let usages = def.usages(sema).all();
     let ref_edits = usages.iter().map(|(&file_id, references)| {
-        source_edit_from_references(sema, file_id, references, new_name)
+        source_edit_from_references(sema, file_id, references, def, new_name)
     });
     source_change.extend(ref_edits);
 
@@ -346,7 +364,7 @@ fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameRe
     let usages = def.usages(sema).all();
     let mut source_change = SourceChange::default();
     source_change.extend(usages.iter().map(|(&file_id, references)| {
-        source_edit_from_references(sema, file_id, references, "self")
+        source_edit_from_references(sema, file_id, references, def, "self")
     }));
     source_change.insert_source_edit(
         file_id.original_file(sema.db),
@@ -403,7 +421,7 @@ fn rename_self_to_param(
     let mut source_change = SourceChange::default();
     source_change.insert_source_edit(file_id.original_file(sema.db), edit);
     source_change.extend(usages.iter().map(|(&file_id, references)| {
-        source_edit_from_references(sema, file_id, &references, new_name)
+        source_edit_from_references(sema, file_id, &references, def, new_name)
     }));
     Ok(source_change)
 }
@@ -457,7 +475,7 @@ fn rename_reference(
     }
     let mut source_change = SourceChange::default();
     source_change.extend(usages.iter().map(|(&file_id, references)| {
-        source_edit_from_references(sema, file_id, &references, new_name)
+        source_edit_from_references(sema, file_id, &references, def, new_name)
     }));
 
     let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
@@ -545,10 +563,8 @@ mod tests {
 
     fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let source_change = analysis
-            .rename(position, new_name)
-            .unwrap()
-            .expect("Expect returned RangeInfo to be Some, but was None");
+        let source_change =
+            analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
         expect.assert_debug_eq(&source_change)
     }
 
@@ -792,8 +808,8 @@ impl Foo {
     }
 
     #[test]
-    fn test_rename_struct_field_for_shorthand() {
-        mark::check!(test_rename_struct_field_for_shorthand);
+    fn test_rename_field_in_field_shorthand() {
+        mark::check!(test_rename_field_in_field_shorthand);
         check(
             "j",
             r#"
@@ -818,8 +834,8 @@ impl Foo {
     }
 
     #[test]
-    fn test_rename_local_for_field_shorthand() {
-        mark::check!(test_rename_local_for_field_shorthand);
+    fn test_rename_local_in_field_shorthand() {
+        mark::check!(test_rename_local_in_field_shorthand);
         check(
             "j",
             r#"
@@ -1417,8 +1433,8 @@ impl Foo {
     }
 
     #[test]
-    fn test_initializer_use_field_init_shorthand() {
-        mark::check!(test_rename_field_expr_pat);
+    fn test_rename_field_put_init_shorthand() {
+        mark::check!(test_rename_field_put_init_shorthand);
         check(
             "bar",
             r#"
@@ -1439,7 +1455,30 @@ fn foo(bar: i32) -> Foo {
     }
 
     #[test]
+    fn test_rename_local_put_init_shorthand() {
+        mark::check!(test_rename_local_put_init_shorthand);
+        check(
+            "i",
+            r#"
+struct Foo { i: i32 }
+
+fn foo(bar$0: i32) -> Foo {
+    Foo { i: bar }
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+fn foo(i: i32) -> Foo {
+    Foo { i }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_struct_field_destructure_into_shorthand() {
+        mark::check!(test_rename_field_put_init_shorthand_pat);
         check(
             "baz",
             r#"

@@ -274,15 +274,19 @@ impl ast::Struct {
 
 impl ast::RecordExprField {
     pub fn for_field_name(field_name: &ast::NameRef) -> Option<ast::RecordExprField> {
-        let candidate =
-            field_name.syntax().parent().and_then(ast::RecordExprField::cast).or_else(|| {
-                field_name.syntax().ancestors().nth(4).and_then(ast::RecordExprField::cast)
-            })?;
+        let candidate = Self::for_name_ref(field_name)?;
         if candidate.field_name().as_ref() == Some(field_name) {
             Some(candidate)
         } else {
             None
         }
+    }
+
+    pub fn for_name_ref(name_ref: &ast::NameRef) -> Option<ast::RecordExprField> {
+        let syn = name_ref.syntax();
+        syn.parent()
+            .and_then(ast::RecordExprField::cast)
+            .or_else(|| syn.ancestors().nth(4).and_then(ast::RecordExprField::cast))
     }
 
     /// Deals with field init shorthand
@@ -294,6 +298,7 @@ impl ast::RecordExprField {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum NameOrNameRef {
     Name(ast::Name),
     NameRef(ast::NameRef),
@@ -309,6 +314,23 @@ impl fmt::Display for NameOrNameRef {
 }
 
 impl ast::RecordPatField {
+    pub fn for_field_name_ref(field_name: &ast::NameRef) -> Option<ast::RecordPatField> {
+        let candidate = field_name.syntax().parent().and_then(ast::RecordPatField::cast)?;
+        match candidate.field_name()? {
+            NameOrNameRef::NameRef(name_ref) if name_ref == *field_name => Some(candidate),
+            _ => None,
+        }
+    }
+
+    pub fn for_field_name(field_name: &ast::Name) -> Option<ast::RecordPatField> {
+        let candidate =
+            field_name.syntax().ancestors().nth(3).and_then(ast::RecordPatField::cast)?;
+        match candidate.field_name()? {
+            NameOrNameRef::Name(name) if name == *field_name => Some(candidate),
+            _ => None,
+        }
+    }
+
     /// Deals with field init shorthand
     pub fn field_name(&self) -> Option<NameOrNameRef> {
         if let Some(name_ref) = self.name_ref() {
