@@ -961,7 +961,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
                 .iter()
                 .enumerate()
                 .map(|(i, ty)| Argument {
-                    name: Symbol::intern(&rustc_hir_pretty::param_to_string(&body.params[i])),
+                    name: name_from_pat(&body.params[i].pat),
                     type_: ty.clean(cx),
                 })
                 .collect(),
