@@ -368,6 +368,66 @@ impl ThingDoer {
 
 **Rationale:** not bothering the caller with irrelevant details, not mixing user API with implementor API.
 
+## Functions with many parameters
+
+Avoid creating functions with many optional or boolean parameters.
+Introduce a `Config` struct instead.
+
+```rust
+// GOOD
+pub struct AnnotationConfig {
+    pub binary_target: bool,
+    pub annotate_runnables: bool,
+    pub annotate_impls: bool,
+}
+
+pub fn annotations(
+    db: &RootDatabase,
+    file_id: FileId,
+    config: AnnotationConfig
+) -> Vec<Annotation> {
+    ...
+}
+
+// BAD
+pub fn annotations(
+    db: &RootDatabase,
+    file_id: FileId,
+    binary_target: bool,
+    annotate_runnables: bool,
+    annotate_impls: bool,
+) -> Vec<Annotation> {
+    ...
+}
+```
+
+**Rationale:** reducing churn.
+If the function has many parameters, they most likely change frequently.
+By packing them into a struct we protect all intermediary functions from changes.
+
+Do not implement `Default` for the `Config` struct, the caller has more context to determine better defaults.
+Do not store `Config` as a part of the `state`, pass it explicitly.
+This gives more flexibility for the caller.
+
+If there is variation not only in the input parameters, but in the return type as well, consider introducing a `Command` type.
+
+```rust
+// MAYBE GOOD
+pub struct Query {
+    pub name: String,
+    pub case_sensitive: bool,
+}
+
+impl Query {
+    pub fn all(self) -> Vec<Item> { ... }
+    pub fn first(self) -> Option<Item> { ... }
+}
+
+// MAYBE BAD
+fn query_all(name: String, case_sensitive: bool) -> Vec<Item> { ... }
+fn query_first(name: String, case_sensitive: bool) -> Option<Item> { ... }
+```
+
 ## Avoid Monomorphization
 
 Avoid making a lot of code type parametric, *especially* on the boundaries between crates.
