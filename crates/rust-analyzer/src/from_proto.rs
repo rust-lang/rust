@@ -1,7 +1,7 @@
 //! Conversion lsp_types types to rust-analyzer specific ones.
 use std::convert::TryFrom;
 
-use ide::{Annotation, AnnotationKind, AssistKind, LineCol, LineIndex};
+use ide::{Annotation, AnnotationKind, AssistKind, LineColUtf16, LineIndex};
 use ide_db::base_db::{FileId, FilePosition, FileRange};
 use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;
@@ -18,7 +18,7 @@ pub(crate) fn vfs_path(url: &lsp_types::Url) -> Result<vfs::VfsPath> {
 }
 
 pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> TextSize {
-    let line_col = LineCol { line: position.line as u32, col_utf16: position.character as u32 };
+    let line_col = LineColUtf16 { line: position.line as u32, col: position.character as u32 };
     line_index.offset(line_col)
 }
 

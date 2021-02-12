@@ -5,7 +5,7 @@ use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 use anyhow::{bail, format_err, Result};
 use hir::PrefixKind;
 use ide::{
-    Analysis, AnalysisHost, Change, CompletionConfig, DiagnosticsConfig, FilePosition, LineCol,
+    Analysis, AnalysisHost, Change, CompletionConfig, DiagnosticsConfig, FilePosition, LineColUtf16,
 };
 use ide_db::{
     base_db::{
@@ -97,7 +97,7 @@ impl BenchCmd {
                 let offset = host
                     .analysis()
                     .file_line_index(file_id)?
-                    .offset(LineCol { line: pos.line - 1, col_utf16: pos.column });
+                    .offset(LineColUtf16 { line: pos.line - 1, col: pos.column });
                 let file_position = FilePosition { file_id, offset };
 
                 if is_completion {

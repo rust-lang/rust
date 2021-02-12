@@ -15,11 +15,11 @@ pub struct LineIndex {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct LineCol {
+pub struct LineColUtf16 {
     /// Zero-based
     pub line: u32,
     /// Zero-based
-    pub col_utf16: u32,
+    pub col: u32,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -88,17 +88,17 @@ impl LineIndex {
         LineIndex { newlines, utf16_lines }
     }
 
-    pub fn line_col(&self, offset: TextSize) -> LineCol {
+    pub fn line_col(&self, offset: TextSize) -> LineColUtf16 {
         let line = partition_point(&self.newlines, |&it| it <= offset) - 1;
         let line_start_offset = self.newlines[line];
         let col = offset - line_start_offset;
 
-        LineCol { line: line as u32, col_utf16: self.utf8_to_utf16_col(line as u32, col) as u32 }
+        LineColUtf16 { line: line as u32, col: self.utf8_to_utf16_col(line as u32, col) as u32 }
     }
 
-    pub fn offset(&self, line_col: LineCol) -> TextSize {
+    pub fn offset(&self, line_col: LineColUtf16) -> TextSize {
         //FIXME: return Result
-        let col = self.utf16_to_utf8_col(line_col.line, line_col.col_utf16);
+        let col = self.utf16_to_utf8_col(line_col.line, line_col.col);
         self.newlines[line_col.line as usize] + col
     }
 

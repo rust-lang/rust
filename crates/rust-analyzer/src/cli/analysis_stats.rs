@@ -218,9 +218,9 @@ impl AnalysisStatsCmd {
                         bar.println(format!(
                             "{}:{}-{}:{}: {}",
                             start.line + 1,
-                            start.col_utf16,
+                            start.col,
                             end.line + 1,
-                            end.col_utf16,
+                            end.col,
                             ty.display(db)
                         ));
                     } else {
@@ -250,9 +250,9 @@ impl AnalysisStatsCmd {
                                 "{} {}:{}-{}:{}: Expected {}, got {}",
                                 path,
                                 start.line + 1,
-                                start.col_utf16,
+                                start.col,
                                 end.line + 1,
-                                end.col_utf16,
+                                end.col,
                                 mismatch.expected.display(db),
                                 mismatch.actual.display(db)
                             ));
