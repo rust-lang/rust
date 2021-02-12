@@ -1121,9 +1121,9 @@ impl Foo {
 
 "#,
             expect![[r#"
-                Bar Variant FileId(0) 11..16 11..14 Other
+                Bar Variant FileId(0) 11..16 11..14
 
-                FileId(0) 89..92 Other
+                FileId(0) 89..92
             "#]],
         );
     }
