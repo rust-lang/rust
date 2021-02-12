@@ -94,26 +94,30 @@ crate const PASSES: &[Pass] = &[
 ];
 
 /// The list of passes run by default.
-crate const DEFAULT_PASSES: &[ConditionalPass] = &[
-    ConditionalPass::always(COLLECT_TRAIT_IMPLS),
-    ConditionalPass::always(UNINDENT_COMMENTS),
-    ConditionalPass::always(CHECK_DOC_TEST_VISIBILITY),
-    ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
-    ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
-    ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
-    ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
-    ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
-    ConditionalPass::always(CHECK_INVALID_HTML_TAGS),
-    ConditionalPass::always(PROPAGATE_DOC_CFG),
-    ConditionalPass::always(CHECK_BARE_URLS),
-];
+crate const DEFAULT_PASSES: (&[ConditionalPass], &[ConditionalPass]) = (
+    &[
+        ConditionalPass::always(COLLECT_TRAIT_IMPLS),
+        ConditionalPass::always(UNINDENT_COMMENTS),
+        ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
+        ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
+        ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
+    ],
+    // populate cache
+    &[
+        ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
+        ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
+        ConditionalPass::always(CHECK_INVALID_HTML_TAGS),
+        ConditionalPass::always(PROPAGATE_DOC_CFG),
+        ConditionalPass::always(CHECK_BARE_URLS),
+    ]
+);
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
-crate const COVERAGE_PASSES: &[ConditionalPass] = &[
+crate const COVERAGE_PASSES: (&[ConditionalPass], &[ConditionalPass]) = (&[
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
     ConditionalPass::always(CALCULATE_DOC_COVERAGE),
-];
+], &[]);
 
 impl ConditionalPass {
     crate const fn always(pass: Pass) -> Self {
@@ -126,7 +130,7 @@ impl ConditionalPass {
 }
 
 /// Returns the given default set of passes.
-crate fn defaults(show_coverage: bool) -> &'static [ConditionalPass] {
+crate fn defaults(show_coverage: bool) -> (&'static [ConditionalPass], &'static [ConditionalPass]) {
     if show_coverage { COVERAGE_PASSES } else { DEFAULT_PASSES }
 }
 

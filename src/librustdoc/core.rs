@@ -25,10 +25,10 @@ use std::mem;
 use std::rc::Rc;
 
 use crate::clean::inline::build_external_trait;
-use crate::clean::{self, ItemId, TraitWithExtraInfo};
+use crate::clean::{self, ItemId, TraitWithExtraInfo, Crate};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
-use crate::passes::{self, Condition::*};
+use crate::passes::{self, Condition::*, ConditionalPass};
 
 crate use rustc_session::config::{DebuggingOptions, Input, Options};
 
@@ -438,8 +438,7 @@ crate fn run_global_ctxt(
     }
 
     info!("Executing passes");
-
-    for p in passes::defaults(show_coverage) {
+    let run_pass = |p: ConditionalPass, krate: Crate, ctxt: &mut DocContext<'_>| {
         let run = match p.condition {
             Always => true,
             WhenDocumentPrivate => ctxt.render_options.document_private,
@@ -448,15 +447,23 @@ crate fn run_global_ctxt(
         };
         if run {
             debug!("running pass {}", p.pass.name);
-            krate = tcx.sess.time(p.pass.name, || (p.pass.run)(krate, &mut ctxt));
+            tcx.sess.time(p.pass.name, || (p.pass.run)(krate, ctxt))
+        } else {
+            krate
         }
-    }
+    };
 
-    if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
-        rustc_errors::FatalError.raise();
+    let (passes_before_cache, passes_after_cache) = passes::defaults(show_coverage);
+    for &p in passes_before_cache {
+        krate = run_pass(p, krate, &mut ctxt);
     }
+    ctxt.sess().abort_if_errors();
 
     krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
+    for &p in passes_after_cache {
+        krate = run_pass(p, krate, &mut ctxt);
+    }
+    ctxt.sess().abort_if_errors();
 
     (krate, ctxt.render_options, ctxt.cache)
 }

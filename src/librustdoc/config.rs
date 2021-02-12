@@ -339,14 +339,14 @@ impl Options {
                 println!("{:>20} - {}", pass.name, pass.description);
             }
             println!("\nDefault passes for rustdoc:");
-            for p in passes::DEFAULT_PASSES {
+            for &p in passes::DEFAULT_PASSES.0.iter().chain(passes::DEFAULT_PASSES.1) {
                 print!("{:>20}", p.pass.name);
                 println_condition(p.condition);
             }
 
             if nightly_options::match_is_nightly_build(matches) {
                 println!("\nPasses run with `--show-coverage`:");
-                for p in passes::COVERAGE_PASSES {
+                for &p in passes::COVERAGE_PASSES.0.iter().chain(passes::COVERAGE_PASSES.1) {
                     print!("{:>20}", p.pass.name);
                     println_condition(p.condition);
                 }

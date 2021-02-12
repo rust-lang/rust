@@ -1,3 +1,12 @@
+warning: documentation for `feature_gate_intra_doc_pointers` links to item `pointer::add` which will not have documentation generated
+  --> $DIR/feature-gate-intra-doc-pointers.rs:1:6
+   |
+LL | //! [pointer::add]
+   |      ^^^^^^^^^^^^ this item is will not be documented
+   |
+   = note: `#[warn(rustdoc::private_intra_doc_links)]` on by default
+   = note: `pointer::add` may be in a private module with all re-exports marked as `#[doc(no_inline)]`
+
 error[E0658]: linking to associated items of raw pointers is experimental
   --> $DIR/feature-gate-intra-doc-pointers.rs:1:6
    |
@@ -7,6 +16,14 @@ LL | //! [pointer::add]
    = note: see issue #80896 <https://github.com/rust-lang/rust/issues/80896> for more information
    = help: add `#![feature(intra_doc_pointers)]` to the crate attributes to enable
    = note: rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does
+
+warning: documentation for `feature_gate_intra_doc_pointers` links to item `pointer::wrapping_add` which will not have documentation generated
+  --> $DIR/feature-gate-intra-doc-pointers.rs:3:6
+   |
+LL | //! [pointer::wrapping_add]
+   |      ^^^^^^^^^^^^^^^^^^^^^ this item is will not be documented
+   |
+   = note: `pointer::wrapping_add` may be in a private module with all re-exports marked as `#[doc(no_inline)]`
 
 error[E0658]: linking to associated items of raw pointers is experimental
   --> $DIR/feature-gate-intra-doc-pointers.rs:3:6
@@ -18,6 +35,6 @@ LL | //! [pointer::wrapping_add]
    = help: add `#![feature(intra_doc_pointers)]` to the crate attributes to enable
    = note: rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.

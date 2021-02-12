@@ -26,6 +26,7 @@ use crate::clean::{
     self, types::ExternalLocation, utils::find_nearest_parent_module, ExternalCrate, ItemId,
     PrimitiveType,
 };
+use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::render::Context;
@@ -523,6 +524,7 @@ impl clean::GenericArgs {
 }
 
 // Possible errors when computing href link source for a `DefId`
+#[derive(Debug, PartialEq, Eq)]
 crate enum HrefError {
     /// This item is known to rustdoc, but from a crate that does not have documentation generated.
     ///
@@ -551,6 +553,18 @@ crate fn href_with_root_path(
     root_path: Option<&str>,
 ) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     let tcx = cx.tcx();
+    let cache = cx.cache();
+    let relative_to = &cx.current;
+    href_inner(did, tcx, cache, root_path, relative_to)
+}
+
+crate fn href_inner(
+    did: DefId,
+    tcx: TyCtxt<'_>,
+    cache: &Cache,
+    root_path: Option<&str>,
+    relative_to: &[Symbol],
+) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     let def_kind = tcx.def_kind(did);
     let did = match def_kind {
         DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
@@ -559,12 +573,11 @@ crate fn href_with_root_path(
         }
         _ => did,
     };
-    let cache = cx.cache();
-    let relative_to = &cx.current;
     fn to_module_fqp(shortty: ItemType, fqp: &[Symbol]) -> &[Symbol] {
         if shortty == ItemType::Module { fqp } else { &fqp[..fqp.len() - 1] }
     }
 
+    trace!("calculating href for {:?}", did);
     if !did.is_local()
         && !cache.access_levels.is_public(did)
         && !cache.document_private
