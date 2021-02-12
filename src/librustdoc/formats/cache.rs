@@ -65,9 +65,7 @@ crate struct Cache {
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods
     /// should show up in documentation about trait implementations.
-    ///
-    /// The `bool` parameter is about if the trait is `spotlight`.
-    crate traits: FxHashMap<DefId, (clean::Trait, bool)>,
+    crate traits: FxHashMap<DefId, clean::TraitWithExtraInfo>,
 
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
@@ -251,8 +249,12 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Propagate a trait method's documentation to all implementors of the
         // trait.
         if let clean::TraitItem(ref t) = *item.kind {
-            self.cache.traits.entry(item.def_id).or_insert_with(|| {
-                (t.clone(), clean::utils::has_doc_flag(tcx.get_attrs(item.def_id), sym::spotlight))
+            self.cache.traits.entry(item.def_id).or_insert_with(|| clean::TraitWithExtraInfo {
+                trait_: t.clone(),
+                is_spotlight: clean::utils::has_doc_flag(
+                    tcx.get_attrs(item.def_id),
+                    sym::spotlight,
+                ),
             });
         }
 

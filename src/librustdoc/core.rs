@@ -55,7 +55,7 @@ crate struct DocContext<'tcx> {
     /// Later on moved into `cache`
     crate renderinfo: RenderInfo,
     /// Later on moved through `clean::Crate` into `cache`
-    crate external_traits: Rc<RefCell<FxHashMap<DefId, (clean::Trait, bool)>>>,
+    crate external_traits: Rc<RefCell<FxHashMap<DefId, clean::TraitWithExtraInfo>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     crate active_extern_traits: FxHashSet<DefId>,

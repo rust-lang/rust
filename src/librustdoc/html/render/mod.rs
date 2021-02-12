@@ -3688,7 +3688,7 @@ fn spotlight_decl(decl: &clean::FnDecl, cache: &Cache) -> String {
             for i in impls {
                 let impl_ = i.inner_impl();
                 if impl_.trait_.def_id().map_or(false, |d| {
-                    cache.traits.get(&d).map(|(_, is_spotlight)| *is_spotlight).unwrap_or(false)
+                    cache.traits.get(&d).map(|t| t.is_spotlight).unwrap_or(false)
                 }) {
                     if out.is_empty() {
                         write!(
@@ -3980,7 +3980,7 @@ fn render_impl(
             false,
             outer_version,
             outer_const_version,
-            trait_.map(|(t, _)| t),
+            trait_.map(|t| &t.trait_),
             show_def_docs,
         );
     }
@@ -4025,11 +4025,11 @@ fn render_impl(
     // We don't emit documentation for default items if they appear in the
     // Implementations on Foreign Types or Implementors sections.
     if show_default_items {
-        if let Some((t, _)) = trait_ {
+        if let Some(t) = trait_ {
             render_default_items(
                 w,
                 cx,
-                t,
+                &t.trait_,
                 &i.inner_impl(),
                 &i.impl_item,
                 render_mode,
