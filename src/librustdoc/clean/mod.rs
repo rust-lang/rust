@@ -1304,7 +1304,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 // Substitute private type aliases
                 if let Some(def_id) = def_id.as_local() {
                     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
-                    if !cx.renderinfo.access_levels.is_exported(def_id.to_def_id()) {
+                    if !cx.cache.access_levels.is_exported(def_id.to_def_id()) {
                         alias = Some(&cx.tcx.hir().expect_item(hir_id).kind);
                     }
                 }

@@ -66,7 +66,7 @@ use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
 use crate::clean::{self, AttributesExt, GetDefId, RenderedLink, SelfTy, TypeKind};
-use crate::config::{RenderInfo, RenderOptions};
+use crate::config::RenderOptions;
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -385,7 +385,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn init(
         mut krate: clean::Crate,
         options: RenderOptions,
-        _render_info: RenderInfo,
         edition: Edition,
         mut cache: Cache,
         tcx: TyCtxt<'tcx>,

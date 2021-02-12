@@ -47,7 +47,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
                 // FIXME(eddyb) is this `doc(hidden)` check needed?
                 if !cx.tcx.get_attrs(def_id).lists(sym::doc).has_word(sym::hidden) {
                     let impls = get_auto_trait_and_blanket_impls(cx, def_id);
-                    new_items.extend(impls.filter(|i| cx.renderinfo.inlined.insert(i.def_id)));
+                    new_items.extend(impls.filter(|i| cx.inlined.insert(i.def_id)));
                 }
             });
         }

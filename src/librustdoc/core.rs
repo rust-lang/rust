@@ -52,8 +52,6 @@ crate struct DocContext<'tcx> {
     ///
     /// Most of this logic is copied from rustc_lint::late.
     crate param_env: ParamEnv<'tcx>,
-    /// Later on moved into `cache`
-    crate renderinfo: RenderInfo,
     /// Later on moved through `clean::Crate` into `cache`
     crate external_traits: Rc<RefCell<FxHashMap<DefId, clean::TraitWithExtraInfo>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
@@ -81,8 +79,12 @@ crate struct DocContext<'tcx> {
     /// See `collect_intra_doc_links::traits_implemented_by` for more details.
     /// `map<module, set<trait>>`
     crate module_trait_cache: RefCell<FxHashMap<DefId, FxHashSet<DefId>>>,
-    /// Fake empty cache used when cache is required as parameter.
+    /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     crate cache: Cache,
+    /// Used by [`clean::inline`] to tell if an item has already been inlined.
+    crate inlined: FxHashSet<DefId>,
+    /// Used by `calculate_doc_coverage`.
+    crate output_format: OutputFormat,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -465,7 +467,7 @@ crate fn run_global_ctxt(
     mut manual_passes: Vec<String>,
     render_options: RenderOptions,
     output_format: OutputFormat,
-) -> (clean::Crate, RenderInfo, RenderOptions) {
+) -> (clean::Crate, RenderOptions, Cache) {
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
     // so type-check everything other than function bodies in this crate before running lints.
@@ -514,7 +516,6 @@ crate fn run_global_ctxt(
         param_env: ParamEnv::empty(),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
-        renderinfo,
         ty_substs: Default::default(),
         lt_substs: Default::default(),
         ct_substs: Default::default(),
@@ -527,9 +528,11 @@ crate fn run_global_ctxt(
             .cloned()
             .filter(|trait_def_id| tcx.trait_is_auto(*trait_def_id))
             .collect(),
-        render_options,
         module_trait_cache: RefCell::new(FxHashMap::default()),
-        cache: Cache::default(),
+        cache: Cache::new(renderinfo, render_options.document_private),
+        inlined: FxHashSet::default(),
+        output_format,
+        render_options,
     };
 
     // Small hack to force the Sized trait to be present.
@@ -647,10 +650,16 @@ crate fn run_global_ctxt(
 
     ctxt.sess().abort_if_errors();
 
+    let render_options = ctxt.render_options;
+    let mut cache = ctxt.cache;
+    krate = tcx.sess.time("create_format_cache", || {
+        cache.populate(krate, tcx, &render_options.extern_html_root_urls, &render_options.output)
+    });
+
     // The main crate doc comments are always collapsed.
     krate.collapsed = true;
 
-    (krate, ctxt.renderinfo, ctxt.render_options)
+    (krate, render_options, cache)
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,

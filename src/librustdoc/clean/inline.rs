@@ -17,6 +17,7 @@ use rustc_span::Span;
 
 use crate::clean::{self, Attributes, GetDefId, ToSource, TypeKind};
 use crate::core::DocContext;
+use crate::formats::item_type::ItemType;
 
 use super::Clean;
 
@@ -122,7 +123,7 @@ crate fn try_inline(
     let target_attrs = load_attrs(cx, did);
     let attrs = box merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
 
-    cx.renderinfo.inlined.insert(did);
+    cx.inlined.insert(did);
     let what_rustc_thinks = clean::Item::from_def_id_and_parts(did, Some(name), kind, cx);
     ret.push(clean::Item { attrs, ..what_rustc_thinks });
     Some(ret)
@@ -181,9 +182,9 @@ crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: clean::Typ
     };
 
     if did.is_local() {
-        cx.renderinfo.exact_paths.insert(did, fqn);
+        cx.cache.exact_paths.insert(did, fqn);
     } else {
-        cx.renderinfo.external_paths.insert(did, (fqn, kind));
+        cx.cache.external_paths.insert(did, (fqn, ItemType::from(kind)));
     }
 }
 
@@ -315,7 +316,7 @@ crate fn build_impl(
     attrs: Option<Attrs<'_>>,
     ret: &mut Vec<clean::Item>,
 ) {
-    if !cx.renderinfo.inlined.insert(did) {
+    if !cx.inlined.insert(did) {
         return;
     }
 
@@ -327,7 +328,7 @@ crate fn build_impl(
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
             let did = traitref.def_id;
-            if !cx.renderinfo.access_levels.is_public(did) {
+            if !cx.cache.access_levels.is_public(did) {
                 return;
             }
 
@@ -359,7 +360,7 @@ crate fn build_impl(
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(did) = for_.def_id() {
-            if !cx.renderinfo.access_levels.is_public(did) {
+            if !cx.cache.access_levels.is_public(did) {
                 return;
             }
 
