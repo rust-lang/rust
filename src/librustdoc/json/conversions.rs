@@ -6,12 +6,14 @@ use std::convert::From;
 
 use rustc_ast::ast;
 use rustc_hir::def::CtorKind;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_span::Pos;
 
 use rustdoc_json_types::*;
 
 use crate::clean;
+use crate::clean::utils::print_const_expr;
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
 
@@ -43,7 +45,7 @@ impl JsonRenderer<'_> {
                     .collect(),
                 deprecation: deprecation.map(from_deprecation),
                 kind: item_type.into(),
-                inner: kind.into(),
+                inner: from_clean_item_kind(kind, self.tcx),
             }),
         }
     }
@@ -144,44 +146,42 @@ crate fn from_def_id(did: DefId) -> Id {
     Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index)))
 }
 
-impl From<clean::ItemKind> for ItemEnum {
-    fn from(item: clean::ItemKind) -> Self {
-        use clean::ItemKind::*;
-        match item {
-            ModuleItem(m) => ItemEnum::ModuleItem(m.into()),
-            ExternCrateItem(c, a) => {
-                ItemEnum::ExternCrateItem { name: c.to_string(), rename: a.map(|x| x.to_string()) }
-            }
-            ImportItem(i) => ItemEnum::ImportItem(i.into()),
-            StructItem(s) => ItemEnum::StructItem(s.into()),
-            UnionItem(u) => ItemEnum::UnionItem(u.into()),
-            StructFieldItem(f) => ItemEnum::StructFieldItem(f.into()),
-            EnumItem(e) => ItemEnum::EnumItem(e.into()),
-            VariantItem(v) => ItemEnum::VariantItem(v.into()),
-            FunctionItem(f) => ItemEnum::FunctionItem(f.into()),
-            ForeignFunctionItem(f) => ItemEnum::FunctionItem(f.into()),
-            TraitItem(t) => ItemEnum::TraitItem(t.into()),
-            TraitAliasItem(t) => ItemEnum::TraitAliasItem(t.into()),
-            MethodItem(m, _) => ItemEnum::MethodItem(from_function_method(m, true)),
-            TyMethodItem(m) => ItemEnum::MethodItem(from_function_method(m, false)),
-            ImplItem(i) => ItemEnum::ImplItem(i.into()),
-            StaticItem(s) => ItemEnum::StaticItem(s.into()),
-            ForeignStaticItem(s) => ItemEnum::StaticItem(s.into()),
-            ForeignTypeItem => ItemEnum::ForeignTypeItem,
-            TypedefItem(t, _) => ItemEnum::TypedefItem(t.into()),
-            OpaqueTyItem(t) => ItemEnum::OpaqueTyItem(t.into()),
-            ConstantItem(c) => ItemEnum::ConstantItem(c.into()),
-            MacroItem(m) => ItemEnum::MacroItem(m.source),
-            ProcMacroItem(m) => ItemEnum::ProcMacroItem(m.into()),
-            AssocConstItem(t, s) => ItemEnum::AssocConstItem { type_: t.into(), default: s },
-            AssocTypeItem(g, t) => ItemEnum::AssocTypeItem {
-                bounds: g.into_iter().map(Into::into).collect(),
-                default: t.map(Into::into),
-            },
-            StrippedItem(inner) => (*inner).into(),
-            PrimitiveItem(_) | KeywordItem(_) => {
-                panic!("{:?} is not supported for JSON output", item)
-            }
+fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>) -> ItemEnum {
+    use clean::ItemKind::*;
+    match item {
+        ModuleItem(m) => ItemEnum::ModuleItem(m.into()),
+        ExternCrateItem(c, a) => {
+            ItemEnum::ExternCrateItem { name: c.to_string(), rename: a.map(|x| x.to_string()) }
+        }
+        ImportItem(i) => ItemEnum::ImportItem(i.into()),
+        StructItem(s) => ItemEnum::StructItem(s.into()),
+        UnionItem(u) => ItemEnum::UnionItem(u.into()),
+        StructFieldItem(f) => ItemEnum::StructFieldItem(f.into()),
+        EnumItem(e) => ItemEnum::EnumItem(e.into()),
+        VariantItem(v) => ItemEnum::VariantItem(v.into()),
+        FunctionItem(f) => ItemEnum::FunctionItem(f.into()),
+        ForeignFunctionItem(f) => ItemEnum::FunctionItem(f.into()),
+        TraitItem(t) => ItemEnum::TraitItem(t.into()),
+        TraitAliasItem(t) => ItemEnum::TraitAliasItem(t.into()),
+        MethodItem(m, _) => ItemEnum::MethodItem(from_function_method(m, true)),
+        TyMethodItem(m) => ItemEnum::MethodItem(from_function_method(m, false)),
+        ImplItem(i) => ItemEnum::ImplItem(i.into()),
+        StaticItem(s) => ItemEnum::StaticItem(from_clean_static(s, tcx)),
+        ForeignStaticItem(s) => ItemEnum::StaticItem(from_clean_static(s, tcx)),
+        ForeignTypeItem => ItemEnum::ForeignTypeItem,
+        TypedefItem(t, _) => ItemEnum::TypedefItem(t.into()),
+        OpaqueTyItem(t) => ItemEnum::OpaqueTyItem(t.into()),
+        ConstantItem(c) => ItemEnum::ConstantItem(c.into()),
+        MacroItem(m) => ItemEnum::MacroItem(m.source),
+        ProcMacroItem(m) => ItemEnum::ProcMacroItem(m.into()),
+        AssocConstItem(t, s) => ItemEnum::AssocConstItem { type_: t.into(), default: s },
+        AssocTypeItem(g, t) => ItemEnum::AssocTypeItem {
+            bounds: g.into_iter().map(Into::into).collect(),
+            default: t.map(Into::into),
+        },
+        StrippedItem(inner) => from_clean_item_kind(*inner, tcx).into(),
+        PrimitiveItem(_) | KeywordItem(_) => {
+            panic!("{:?} is not supported for JSON output", item)
         }
     }
 }
@@ -535,13 +535,11 @@ impl From<clean::OpaqueTy> for OpaqueTy {
     }
 }
 
-impl From<clean::Static> for Static {
-    fn from(stat: clean::Static) -> Self {
-        Static {
-            type_: stat.type_.into(),
-            mutable: stat.mutability == ast::Mutability::Mut,
-            expr: stat.expr,
-        }
+fn from_clean_static(stat: clean::Static, tcx: TyCtxt<'_>) -> Static {
+    Static {
+        type_: stat.type_.into(),
+        mutable: stat.mutability == ast::Mutability::Mut,
+        expr: stat.expr.map(|e| print_const_expr(tcx, e)).unwrap_or_default(),
     }
 }
 
