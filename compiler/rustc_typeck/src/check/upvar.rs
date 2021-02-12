@@ -1116,14 +1116,21 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             place_with_id, diag_expr_id, mode
         );
 
-        let place = truncate_capture_for_move(place_with_id.place.clone());
         match (self.capture_clause, mode) {
             // In non-move closures, we only care about moves
             (hir::CaptureBy::Ref, euv::Copy) => return,
 
+            // We want to capture Copy types that read through a ref via a reborrow
+            (hir::CaptureBy::Value, euv::Copy)
+                if place_with_id.place.deref_tys().any(ty::TyS::is_ref) =>
+            {
+                return;
+            }
+
             (hir::CaptureBy::Ref, euv::Move) | (hir::CaptureBy::Value, euv::Move | euv::Copy) => {}
         };
 
+        let place = truncate_capture_for_move(place_with_id.place.clone());
         let place_with_id = PlaceWithHirId { place: place.clone(), hir_id: place_with_id.hir_id };
 
         if !self.capture_information.contains_key(&place) {
