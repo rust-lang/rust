@@ -75,18 +75,19 @@ where
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
 
-    // Check if any of the input types definitely mismatch.
+    // Check if any of the input types definitely do not unify.
     if impl1_ref
         .iter()
         .flat_map(|tref| tref.substs.types())
         .zip(impl2_ref.iter().flat_map(|tref| tref.substs.types()))
         .chain(iter::once((impl1_self, impl2_self)))
         .any(|(ty1, ty2)| {
-            let ty1 = fast_reject::simplify_type(tcx, ty1, false);
-            let ty2 = fast_reject::simplify_type(tcx, ty2, false);
-            if let (Some(ty1), Some(ty2)) = (ty1, ty2) {
+            let t1 = fast_reject::simplify_type(tcx, ty1, false);
+            let t2 = fast_reject::simplify_type(tcx, ty2, false);
+            if let (Some(t1), Some(t2)) = (t1, t2) {
                 // Simplified successfully
-                ty1 != ty2
+                // Types cannot unify if they differ in their reference mutability or simplify to different types
+                ty1.ref_mutability() != ty2.ref_mutability() || t1 != t2
             } else {
                 // Types might unify
                 false
