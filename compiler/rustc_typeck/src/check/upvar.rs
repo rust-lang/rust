@@ -540,19 +540,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         body: &'tcx hir::Body<'tcx>,
     ) {
-        let need_migrations_first_pass = self.compute_2229_migrations_first_pass(
+        let need_migrations = self.compute_2229_migrations(
             closure_def_id,
             span,
             capture_clause,
             body,
             self.typeck_results.borrow().closure_min_captures.get(&closure_def_id),
-        );
-
-        let need_migrations = self.compute_2229_migrations_precise_pass(
-            closure_def_id,
-            span,
-            self.typeck_results.borrow().closure_min_captures.get(&closure_def_id),
-            &need_migrations_first_pass,
         );
 
         if !need_migrations.is_empty() {
@@ -583,15 +576,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - It would have been moved into the closure when `capture_disjoint_fields` wasn't
     ///   enabled, **and**
     /// - It wasn't completely captured by the closure, **and**
-    /// - The type of the root variable needs Drop.
-    fn compute_2229_migrations_first_pass(
+    /// - One of the paths starting at this root variable, that is not captured needs Drop.
+    fn compute_2229_migrations(
         &self,
         closure_def_id: DefId,
         closure_span: Span,
         closure_clause: hir::CaptureBy,
         body: &'tcx hir::Body<'tcx>,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
-    ) -> Vec<(hir::HirId, Ty<'tcx>)> {
+    ) -> Vec<hir::HirId> {
         fn resolve_ty<T: TypeFoldable<'tcx>>(
             fcx: &FnCtxt<'_, 'tcx>,
             span: Span,
@@ -627,7 +620,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 match closure_clause {
                     // Only migrate if closure is a move closure
-                    hir::CaptureBy::Value => need_migrations.push((var_hir_id, ty)),
+                    hir::CaptureBy::Value => need_migrations.push(var_hir_id),
 
                     hir::CaptureBy::Ref => {}
                 }
@@ -635,36 +628,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 continue;
             };
 
-            let is_moved = root_var_min_capture_list
+            let projections_list = root_var_min_capture_list
                 .iter()
-                .any(|capture| matches!(capture.info.capture_kind, ty::UpvarCapture::ByValue(_)));
-
-            let is_not_completely_captured =
-                root_var_min_capture_list.iter().any(|capture| capture.place.projections.len() > 0);
-
-            if is_moved && is_not_completely_captured {
-                need_migrations.push((var_hir_id, ty));
-            }
-        }
-
-        need_migrations
-    }
-
-    fn compute_2229_migrations_precise_pass(
-        &self,
-        closure_def_id: DefId,
-        closure_span: Span,
-        min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
-        need_migrations: &[(hir::HirId, Ty<'tcx>)],
-    ) -> Vec<hir::HirId> {
-        // Need migrations -- second pass
-        let mut need_migrations_2 = Vec::new();
-
-        for (hir_id, ty) in need_migrations {
-            let projections_list = min_captures
-                .and_then(|m| m.get(hir_id))
-                .into_iter()
-                .flatten()
                 .filter_map(|captured_place| match captured_place.info.capture_kind {
                     // Only care about captures that are moved into the closure
                     ty::UpvarCapture::ByValue(..) => {
@@ -672,19 +637,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     ty::UpvarCapture::ByRef(..) => None,
                 })
-                .collect();
+                .collect::<Vec<_>>();
 
-            if self.has_significant_drop_outside_of_captures(
-                closure_def_id,
-                closure_span,
-                ty,
-                projections_list,
-            ) {
-                need_migrations_2.push(*hir_id);
+            let is_moved = !projections_list.is_empty();
+
+            let is_not_completely_captured =
+                root_var_min_capture_list.iter().any(|capture| capture.place.projections.len() > 0);
+
+            if is_moved
+                && is_not_completely_captured
+                && self.has_significant_drop_outside_of_captures(
+                    closure_def_id,
+                    closure_span,
+                    ty,
+                    projections_list,
+                )
+            {
+                need_migrations.push(var_hir_id);
             }
         }
 
-        need_migrations_2
+        need_migrations
     }
 
     /// This is a helper function to `compute_2229_migrations_precise_pass`. Provided the type
@@ -822,21 +795,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         assert!(!is_completely_captured || (captured_projs.len() == 1));
 
-        if is_drop_defined_for_ty {
-            // If drop is implemented for this type then we need it to be fully captured, or
-            // it will require migration.
-            return !is_completely_captured;
-        }
-
         if is_completely_captured {
             // The place is captured entirely, so doesn't matter if needs dtor, it will be drop
             // when the closure is dropped.
             return false;
         }
 
-        match base_path_ty.kind() {
-            _ if captured_projs.is_empty() => needs_drop(base_path_ty),
+        if is_drop_defined_for_ty {
+            // If drop is implemented for this type then we need it to be fully captured,
+            // which we know it is not because of the previous check. Therefore we need to
+            // do migrate.
+            return true;
+        }
 
+        if captured_projs.is_empty() {
+            return needs_drop(base_path_ty);
+        }
+
+        match base_path_ty.kind() {
             // Observations:
             // - `captured_projs` is not empty. Therefore we can call
             //   `captured_projs.first().unwrap()` safely.
