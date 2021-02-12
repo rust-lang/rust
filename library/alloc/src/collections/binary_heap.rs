@@ -783,13 +783,13 @@ impl<T: Ord> BinaryHeap<T> {
                 Ordering::Less => {
                     // If the swapped item is less than the removed item, sift
                     // it down the heap to its correct position.
-                    debug_assert!(pos < last);
+                    assert!(pos < last);
                     self.sift_down(pos);
                 }
                 Ordering::Greater => {
                     // If the swapped item is greater than the removed item,
                     // sift it up the heap to its correct position.
-                    debug_assert!(pos < last);
+                    assert!(pos < last);
                     self.sift_up(0, pos);
                 }
                 Ordering::Equal => {
