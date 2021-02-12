@@ -17,12 +17,12 @@ pub(crate) fn codegen_crate(
     tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
-    config: crate::BackendConfig,
+    backend_config: crate::BackendConfig,
 ) -> Box<dyn Any> {
     tcx.sess.abort_if_errors();
 
-    match config.codegen_mode {
-        CodegenMode::Aot => aot::run_aot(tcx, metadata, need_metadata_module),
+    match backend_config.codegen_mode {
+        CodegenMode::Aot => aot::run_aot(tcx, backend_config, metadata, need_metadata_module),
         CodegenMode::Jit | CodegenMode::JitLazy => {
             let is_executable = tcx
                 .sess
@@ -33,7 +33,7 @@ pub(crate) fn codegen_crate(
             }
 
             #[cfg(feature = "jit")]
-            let _: ! = jit::run_jit(tcx, config.codegen_mode);
+            let _: ! = jit::run_jit(tcx, backend_config);
 
             #[cfg(not(feature = "jit"))]
             tcx.sess

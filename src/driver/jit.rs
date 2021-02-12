@@ -10,14 +10,15 @@ use rustc_middle::mir::mono::MonoItem;
 
 use cranelift_jit::{JITBuilder, JITModule};
 
-use crate::prelude::*;
+use crate::{prelude::*, BackendConfig};
 use crate::{CodegenCx, CodegenMode};
 
 thread_local! {
+    pub static BACKEND_CONFIG: RefCell<Option<BackendConfig>> = RefCell::new(None);
     pub static CURRENT_MODULE: RefCell<Option<JITModule>> = RefCell::new(None);
 }
 
-pub(super) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode) -> ! {
+pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     if !tcx.sess.opts.output_types.should_codegen() {
         tcx.sess.fatal("JIT mode doesn't work with `cargo check`.");
     }
@@ -46,7 +47,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode) -> ! {
         crate::build_isa(tcx.sess),
         cranelift_module::default_libcall_names(),
     );
-    jit_builder.hotswap(matches!(codegen_mode, CodegenMode::JitLazy));
+    jit_builder.hotswap(matches!(backend_config.codegen_mode, CodegenMode::JitLazy));
     jit_builder.symbols(imported_symbols);
     let mut jit_module = JITModule::new(jit_builder);
     assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
@@ -74,14 +75,14 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode) -> ! {
         .into_iter()
         .collect::<Vec<(_, (_, _))>>();
 
-    let mut cx = crate::CodegenCx::new(tcx, jit_module, false, false);
+    let mut cx = crate::CodegenCx::new(tcx, backend_config, jit_module, false);
 
     super::time(tcx, "codegen mono items", || {
         super::predefine_mono_items(&mut cx, &mono_items);
         for (mono_item, (linkage, visibility)) in mono_items {
             let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
             match mono_item {
-                MonoItem::Fn(inst) => match codegen_mode {
+                MonoItem::Fn(inst) => match backend_config.codegen_mode {
                     CodegenMode::Aot => unreachable!(),
                     CodegenMode::Jit => {
                         cx.tcx.sess.time("codegen fn", || {
@@ -137,6 +138,12 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode) -> ! {
     // useful as some dynamic linkers use it as a marker to jump over.
     argv.push(std::ptr::null());
 
+    BACKEND_CONFIG.with(|tls_backend_config| {
+        assert!(tls_backend_config
+            .borrow_mut()
+            .replace(backend_config)
+            .is_none())
+    });
     CURRENT_MODULE
         .with(|current_module| assert!(current_module.borrow_mut().replace(jit_module).is_none()));
 
@@ -154,7 +161,9 @@ extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>) -> *const u8
         CURRENT_MODULE.with(|jit_module| {
             let mut jit_module = jit_module.borrow_mut();
             let jit_module = jit_module.as_mut().unwrap();
-            let mut cx = crate::CodegenCx::new(tcx, jit_module, false, false);
+            let backend_config =
+                BACKEND_CONFIG.with(|backend_config| backend_config.borrow().clone().unwrap());
+            let mut cx = crate::CodegenCx::new(tcx, backend_config, jit_module, false);
 
             let name = tcx.symbol_name(instance).name.to_string();
             let sig = crate::abi::get_function_sig(tcx, cx.module.isa().triple(), instance);

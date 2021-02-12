@@ -142,8 +142,12 @@ struct CodegenCx<'tcx, M: Module> {
 }
 
 impl<'tcx, M: Module> CodegenCx<'tcx, M> {
-    fn new(tcx: TyCtxt<'tcx>, module: M, debug_info: bool, pic_eh_frame: bool) -> Self {
-        let unwind_context = UnwindContext::new(tcx, module.isa(), pic_eh_frame);
+    fn new(tcx: TyCtxt<'tcx>, backend_config: BackendConfig, module: M, debug_info: bool) -> Self {
+        let unwind_context = UnwindContext::new(
+            tcx,
+            module.isa(),
+            matches!(backend_config.codegen_mode, CodegenMode::Aot),
+        );
         let debug_context = if debug_info {
             Some(DebugContext::new(tcx, module.isa()))
         } else {

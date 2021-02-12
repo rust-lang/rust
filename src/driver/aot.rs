@@ -14,7 +14,7 @@ use rustc_session::config::{DebugInfo, OutputType};
 
 use cranelift_object::{ObjectModule, ObjectProduct};
 
-use crate::prelude::*;
+use crate::{prelude::*, BackendConfig};
 
 use crate::backend::AddConstructor;
 
@@ -117,7 +117,10 @@ fn reuse_workproduct_for_cgu(
     }
 }
 
-fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodegenResult {
+fn module_codegen(
+    tcx: TyCtxt<'_>,
+    (backend_config, cgu_name): (BackendConfig, rustc_span::Symbol),
+) -> ModuleCodegenResult {
     let cgu = tcx.codegen_unit(cgu_name);
     let mono_items = cgu.items_in_deterministic_order(tcx);
 
@@ -148,9 +151,9 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
 
     let mut cx = crate::CodegenCx::new(
         tcx,
+        backend_config,
         module,
         tcx.sess.opts.debuginfo != DebugInfo::None,
-        true,
     );
     super::predefine_mono_items(&mut cx, &mono_items);
     for (mono_item, (linkage, visibility)) in mono_items {
@@ -202,6 +205,7 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
 
 pub(super) fn run_aot(
     tcx: TyCtxt<'_>,
+    backend_config: BackendConfig,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)> {
@@ -242,7 +246,7 @@ pub(super) fn run_aot(
                 let (ModuleCodegenResult(module, work_product), _) = tcx.dep_graph.with_task(
                     dep_node,
                     tcx,
-                    cgu.name(),
+                    (backend_config, cgu.name()),
                     module_codegen,
                     rustc_middle::dep_graph::hash_result,
                 );
