@@ -53,10 +53,18 @@ jobs:
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable
+        toolchain: 1.49.0   # FIXME: CI is failing on 1.50
         profile: minimal
         override: true
         components: rustfmt, rust-src
+
+    - name: Install rustfmt
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: false
+        components: rustfmt
 
     - name: Cache cargo directories
       uses: actions/cache@v2

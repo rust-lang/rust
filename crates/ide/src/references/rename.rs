@@ -415,9 +415,9 @@ fn rename_reference(
 ) -> RenameResult<SourceChange> {
     let ident_kind = check_identifier(new_name)?;
 
-    let def_is_lbl_or_lt = matches!(def,
-        Definition::GenericParam(hir::GenericParam::LifetimeParam(_))
-        | Definition::Label(_)
+    let def_is_lbl_or_lt = matches!(
+        def,
+        Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
     );
     match (ident_kind, def) {
         (IdentifierKind::ToSelf, _)
