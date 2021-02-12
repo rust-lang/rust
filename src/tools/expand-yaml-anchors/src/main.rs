@@ -76,7 +76,11 @@ impl App {
                         self.path(&path),
                         self.path(&dest_path)
                     ),
-                    Mode::Check => format!("{} is not up to date", self.path(&dest_path)),
+                    Mode::Check => format!(
+                        "{} is not up to date; please run \
+                        `x.py run src/tools/expand-yaml-anchors`.",
+                        self.path(&dest_path)
+                    ),
                 })?;
             }
         }
