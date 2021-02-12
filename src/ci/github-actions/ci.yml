@@ -531,6 +531,7 @@ jobs:
             env:
               SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json
+              DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
             <<: *job-windows-xl
 
           # 32/64-bit MinGW builds.
