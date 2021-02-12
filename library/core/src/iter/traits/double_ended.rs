@@ -360,4 +360,77 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     fn nth_back(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth_back(n)
     }
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        SpecSizedDoubleEndedIterator::try_rfold(self, init, f)
+    }
+    #[inline]
+    fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        SpecSizedDoubleEndedIterator::rfold(self, init, f)
+    }
+}
+
+trait SpecSizedDoubleEndedIterator: DoubleEndedIterator {
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>;
+    fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B;
+}
+
+impl<I: DoubleEndedIterator + ?Sized> SpecSizedDoubleEndedIterator for &mut I {
+    #[inline]
+    default fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next_back() {
+            accum = f(accum, x)?;
+        }
+        try { accum }
+    }
+    #[inline]
+    default fn rfold<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        while let Some(x) = (&mut self).next_back() {
+            accum = f(accum, x);
+        }
+        accum
+    }
+}
+
+impl<I: DoubleEndedIterator + Sized> SpecSizedDoubleEndedIterator for &mut I {
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        (**self).try_rfold(init, f)
+    }
+    #[inline]
+    fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        #[inline]
+        fn ok<T, U>(mut f: impl FnMut(T, U) -> T) -> impl FnMut(T, U) -> Result<T, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+        self.try_rfold(init, ok(f)).unwrap()
+    }
 }
