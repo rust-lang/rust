@@ -230,8 +230,8 @@ pub struct SsrParams {
 
 pub enum StatusNotification {}
 
-#[serde(rename_all = "camelCase")]
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Status {
     Loading,
     ReadyPartial,
