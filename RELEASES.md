@@ -12,6 +12,7 @@ Compiler
 - [Added tier 3\* support for the `armv5te-unknown-linux-uclibceabi` target.][78142]
 - [Added tier 3 support for the `aarch64-apple-ios-macabi` target.][77484]
 - [The `x86_64-unknown-freebsd` is now built with the full toolset.][79484]
+- [Dropped support for all cloudabi targets.][78439]
 
 \* Refer to Rust's [platform support page][forge-platform-support] for more
 information on Rust's tiered platform support.
@@ -77,7 +78,6 @@ Compatibility Notes
 - [`#![test]` as an inner attribute is now considered unstable like other inner macro
   attributes, and reports an error by default through the `soft_unstable` lint.][79003]
 - [Overriding a `forbid` lint at the same level that it was set is now a hard error.][78864]
-- [Dropped support for all cloudabi targets.][78439]
 - [You can no longer intercept `panic!` calls by supplying your own macro.][78343] It's
   recommended to use the `#[panic_handler]` attribute to provide your own implementation.
 - [Semi-colons after item statements (e.g. `struct Foo {};`) now produce a warning.][78296]
