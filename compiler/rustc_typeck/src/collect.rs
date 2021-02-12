@@ -280,7 +280,7 @@ impl ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id }
     }
 
-    pub fn to_ty(&self, ast_ty: &'tcx hir::Ty<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
         AstConv::ast_ty_to_ty(self, ast_ty)
     }
 
