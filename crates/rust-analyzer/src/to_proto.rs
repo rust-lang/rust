@@ -22,6 +22,7 @@ use crate::{
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
     let line_col = line_index.line_col(offset);
+    let line_col = line_index.to_utf16(line_col);
     lsp_types::Position::new(line_col.line, line_col.col)
 }
 

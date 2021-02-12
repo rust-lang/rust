@@ -17,14 +17,14 @@ fn test_line_index() {
 
     let index = LineIndex::new(text);
     for &(offset, line, col) in &table {
-        assert_eq!(index.line_col(offset.into()), LineColUtf16 { line, col });
+        assert_eq!(index.line_col(offset.into()), LineCol { line, col });
     }
 
     let text = "\nhello\nworld";
     let table = [(0, 0, 0), (1, 1, 0), (2, 1, 1), (6, 1, 5), (7, 2, 0)];
     let index = LineIndex::new(text);
     for &(offset, line, col) in &table {
-        assert_eq!(index.line_col(offset.into()), LineColUtf16 { line, col });
+        assert_eq!(index.line_col(offset.into()), LineCol { line, col });
     }
 }
 

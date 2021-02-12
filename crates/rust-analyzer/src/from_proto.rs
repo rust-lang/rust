@@ -19,6 +19,7 @@ pub(crate) fn vfs_path(url: &lsp_types::Url) -> Result<vfs::VfsPath> {
 
 pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> TextSize {
     let line_col = LineColUtf16 { line: position.line as u32, col: position.character as u32 };
+    let line_col = line_index.to_utf8(line_col);
     line_index.offset(line_col)
 }
 
