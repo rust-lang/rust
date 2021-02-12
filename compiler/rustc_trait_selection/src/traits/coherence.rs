@@ -70,8 +70,6 @@ where
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
-    let impl1_self = tcx.type_of(impl1_def_id);
-    let impl2_self = tcx.type_of(impl2_def_id);
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
 
@@ -80,14 +78,13 @@ where
         .iter()
         .flat_map(|tref| tref.substs.types())
         .zip(impl2_ref.iter().flat_map(|tref| tref.substs.types()))
-        .chain(iter::once((impl1_self, impl2_self)))
         .any(|(ty1, ty2)| {
             let t1 = fast_reject::simplify_type(tcx, ty1, false);
             let t2 = fast_reject::simplify_type(tcx, ty2, false);
             if let (Some(t1), Some(t2)) = (t1, t2) {
                 // Simplified successfully
                 // Types cannot unify if they differ in their reference mutability or simplify to different types
-                t1 != t2 || ty1.ref_mutability() != ty2.ref_mutability() 
+                t1 != t2 || ty1.ref_mutability() != ty2.ref_mutability()
             } else {
                 // Types might unify
                 false
