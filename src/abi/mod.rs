@@ -38,9 +38,7 @@ fn clif_sig_from_fn_abi<'tcx>(
         | Conv::X86VectorCall
         | Conv::AmdGpuKernel
         | Conv::AvrInterrupt
-        | Conv::AvrNonBlockingInterrupt => {
-            todo!("{:?}", fn_abi.conv)
-        }
+        | Conv::AvrNonBlockingInterrupt => todo!("{:?}", fn_abi.conv),
     };
     let inputs = fn_abi
         .args

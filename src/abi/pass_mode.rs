@@ -98,12 +98,10 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         match self.mode {
             PassMode::Ignore => smallvec![],
             PassMode::Direct(attrs) => match &self.layout.abi {
-                Abi::Scalar(scalar) => {
-                    smallvec![apply_arg_attrs_to_abi_param(
-                        AbiParam::new(scalar_to_clif_type(tcx, scalar.clone())),
-                        attrs
-                    )]
-                }
+                Abi::Scalar(scalar) => smallvec![apply_arg_attrs_to_abi_param(
+                    AbiParam::new(scalar_to_clif_type(tcx, scalar.clone())),
+                    attrs
+                )],
                 Abi::Vector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout).unwrap();
                     smallvec![AbiParam::new(vector_ty)]
