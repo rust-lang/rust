@@ -53,7 +53,7 @@ crate use self::html_tags::CHECK_INVALID_HTML_TAGS;
 #[derive(Copy, Clone)]
 crate struct Pass {
     crate name: &'static str,
-    crate run: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
+    crate run: fn(clean::Crate, &mut DocContext<'_>) -> clean::Crate,
     crate description: &'static str,
 }
 

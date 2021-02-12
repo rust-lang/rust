@@ -16,20 +16,14 @@ crate const CHECK_INVALID_HTML_TAGS: Pass = Pass {
 };
 
 struct InvalidHtmlTagsLinter<'a, 'tcx> {
-    cx: &'a DocContext<'tcx>,
+    cx: &'a mut DocContext<'tcx>,
 }
 
-impl<'a, 'tcx> InvalidHtmlTagsLinter<'a, 'tcx> {
-    fn new(cx: &'a DocContext<'tcx>) -> Self {
-        InvalidHtmlTagsLinter { cx }
-    }
-}
-
-crate fn check_invalid_html_tags(krate: Crate, cx: &DocContext<'_>) -> Crate {
+crate fn check_invalid_html_tags(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     if !cx.tcx.sess.is_nightly_build() {
         krate
     } else {
-        let mut coll = InvalidHtmlTagsLinter::new(cx);
+        let mut coll = InvalidHtmlTagsLinter { cx };
 
         coll.fold_crate(krate)
     }

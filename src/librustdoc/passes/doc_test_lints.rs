@@ -19,27 +19,20 @@ crate const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass {
 };
 
 struct PrivateItemDocTestLinter<'a, 'tcx> {
-    cx: &'a DocContext<'tcx>,
+    cx: &'a mut DocContext<'tcx>,
 }
 
-impl<'a, 'tcx> PrivateItemDocTestLinter<'a, 'tcx> {
-    fn new(cx: &'a DocContext<'tcx>) -> Self {
-        PrivateItemDocTestLinter { cx }
-    }
-}
-
-crate fn check_private_items_doc_tests(krate: Crate, cx: &DocContext<'_>) -> Crate {
-    let mut coll = PrivateItemDocTestLinter::new(cx);
+crate fn check_private_items_doc_tests(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+    let mut coll = PrivateItemDocTestLinter { cx };
 
     coll.fold_crate(krate)
 }
 
 impl<'a, 'tcx> DocFolder for PrivateItemDocTestLinter<'a, 'tcx> {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
-        let cx = self.cx;
         let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
 
-        look_for_tests(&cx, &dox, &item);
+        look_for_tests(self.cx, &dox, &item);
 
         Some(self.fold_item_recur(item))
     }

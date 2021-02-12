@@ -627,7 +627,7 @@ crate fn run_global_ctxt(
         };
         if run {
             debug!("running pass {}", p.pass.name);
-            krate = ctxt.tcx.sess.time(p.pass.name, || (p.pass.run)(krate, &ctxt));
+            krate = ctxt.tcx.sess.time(p.pass.name, || (p.pass.run)(krate, &mut ctxt));
         }
     }
 
