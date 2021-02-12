@@ -17,7 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::symbol::{kw, Symbol};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
@@ -1112,20 +1112,35 @@ pub struct ProjectionTy<'tcx> {
 }
 
 impl<'tcx> ProjectionTy<'tcx> {
+    pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
+        tcx.associated_item(self.item_def_id).container.id()
+    }
+
+    /// Extracts the underlying trait reference and own substs from this projection.
+    /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
+    /// then this function would return a `T: Iterator` trait reference and `['a]` as the own substs
+    pub fn trait_ref_and_own_substs(
+        &self,
+        tcx: TyCtxt<'tcx>,
+    ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
+        let def_id = tcx.associated_item(self.item_def_id).container.id();
+        let trait_generics = tcx.generics_of(def_id);
+        (
+            ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, trait_generics) },
+            &self.substs[trait_generics.count()..],
+        )
+    }
+
     /// Extracts the underlying trait reference from this projection.
     /// For example, if this is a projection of `<T as Iterator>::Item`,
     /// then this function would return a `T: Iterator` trait reference.
+    ///
+    /// WARNING: This will drop the substs for generic associated types
+    /// consider calling [Self::trait_ref_and_own_substs] to get those
+    /// as well.
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
-        // FIXME: This method probably shouldn't exist at all, since it's not
-        // clear what this method really intends to do. Be careful when
-        // using this method since the resulting TraitRef additionally
-        // contains the substs for the assoc_item, which strictly speaking
-        // is not correct
-        let def_id = tcx.associated_item(self.item_def_id).container.id();
-        // Include substitutions for generic arguments of associated types
-        let assoc_item = tcx.associated_item(self.item_def_id);
-        let substs_assoc_item = self.substs.truncate_to(tcx, tcx.generics_of(assoc_item.def_id));
-        ty::TraitRef { def_id, substs: substs_assoc_item }
+        let def_id = self.trait_def_id(tcx);
+        ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, tcx.generics_of(def_id)) }
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
