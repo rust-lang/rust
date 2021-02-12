@@ -835,7 +835,13 @@ impl Visitor<'tcx> for Checker<'tcx> {
                 let ty = self.tcx.type_of(item.def_id);
                 let (adt_def, substs) = match ty.kind() {
                     ty::Adt(adt_def, substs) => (adt_def, substs),
-                    _ => bug!(),
+                    _ => {
+                        self.tcx.sess.delay_span_bug(
+                            item.span,
+                            &format!("unexpected type kind {:?} (`{:?}`)", ty, ty.kind()),
+                        );
+                        return;
+                    }
                 };
 
                 // Non-`Copy` fields are unstable, except for `ManuallyDrop`.

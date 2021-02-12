@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: Pointee` is not satisfied
+  --> $DIR/normalization-failure-issue-81199-min.rs:4:17
+   |
+LL |     components: <T as Pointee>::Metadata
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Pointee` is not implemented for `T`
+   |
+help: consider further restricting this bound
+   |
+LL | union PtrRepr<T: ?Sized + Pointee> {
+   |                         +++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
