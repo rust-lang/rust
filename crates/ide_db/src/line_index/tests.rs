@@ -3,24 +3,29 @@ use super::*;
 #[test]
 fn test_line_index() {
     let text = "hello\nworld";
+    let table = [
+        (00, 0, 0),
+        (01, 0, 1),
+        (05, 0, 5),
+        (06, 1, 0),
+        (07, 1, 1),
+        (08, 1, 2),
+        (10, 1, 4),
+        (11, 1, 5),
+        (12, 1, 6),
+    ];
+
     let index = LineIndex::new(text);
-    assert_eq!(index.line_col(0.into()), LineColUtf16 { line: 0, col: 0 });
-    assert_eq!(index.line_col(1.into()), LineColUtf16 { line: 0, col: 1 });
-    assert_eq!(index.line_col(5.into()), LineColUtf16 { line: 0, col: 5 });
-    assert_eq!(index.line_col(6.into()), LineColUtf16 { line: 1, col: 0 });
-    assert_eq!(index.line_col(7.into()), LineColUtf16 { line: 1, col: 1 });
-    assert_eq!(index.line_col(8.into()), LineColUtf16 { line: 1, col: 2 });
-    assert_eq!(index.line_col(10.into()), LineColUtf16 { line: 1, col: 4 });
-    assert_eq!(index.line_col(11.into()), LineColUtf16 { line: 1, col: 5 });
-    assert_eq!(index.line_col(12.into()), LineColUtf16 { line: 1, col: 6 });
+    for &(offset, line, col) in &table {
+        assert_eq!(index.line_col(offset.into()), LineColUtf16 { line, col });
+    }
 
     let text = "\nhello\nworld";
+    let table = [(0, 0, 0), (1, 1, 0), (2, 1, 1), (6, 1, 5), (7, 2, 0)];
     let index = LineIndex::new(text);
-    assert_eq!(index.line_col(0.into()), LineColUtf16 { line: 0, col: 0 });
-    assert_eq!(index.line_col(1.into()), LineColUtf16 { line: 1, col: 0 });
-    assert_eq!(index.line_col(2.into()), LineColUtf16 { line: 1, col: 1 });
-    assert_eq!(index.line_col(6.into()), LineColUtf16 { line: 1, col: 5 });
-    assert_eq!(index.line_col(7.into()), LineColUtf16 { line: 2, col: 0 });
+    for &(offset, line, col) in &table {
+        assert_eq!(index.line_col(offset.into()), LineColUtf16 { line, col });
+    }
 }
 
 #[test]
