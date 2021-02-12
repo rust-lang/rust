@@ -4,8 +4,7 @@
 
 use std::sync::Arc;
 
-pub(crate) enum OffsetEncoding {
-    #[allow(unused)]
+pub enum OffsetEncoding {
     Utf8,
     Utf16,
 }

@@ -23,7 +23,10 @@ use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Deserialize};
 use vfs::AbsPathBuf;
 
-use crate::{caps::completion_item_edit_resolve, diagnostics::DiagnosticsMapConfig};
+use crate::{
+    caps::completion_item_edit_resolve, diagnostics::DiagnosticsMapConfig,
+    line_endings::OffsetEncoding, lsp_ext::supports_utf8,
+};
 
 config_data! {
     struct ConfigData {
@@ -414,6 +417,13 @@ impl Config {
                 .label_offset_support?,
             false
         )
+    }
+    pub fn offset_encoding(&self) -> OffsetEncoding {
+        if supports_utf8(&self.caps) {
+            OffsetEncoding::Utf8
+        } else {
+            OffsetEncoding::Utf16
+        }
     }
 
     fn experimental(&self, index: &'static str) -> bool {

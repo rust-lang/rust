@@ -385,3 +385,7 @@ pub(crate) enum CodeLensResolveData {
     Impls(lsp_types::request::GotoImplementationParams),
     References(lsp_types::TextDocumentPositionParams),
 }
+
+pub fn supports_utf8(caps: &lsp_types::ClientCapabilities) -> bool {
+    caps.offset_encoding.as_deref().unwrap_or_default().iter().any(|it| it == "utf-8")
+}

@@ -8,7 +8,7 @@ use std::{convert::TryFrom, env, fs, path::PathBuf, process};
 
 use lsp_server::Connection;
 use project_model::ProjectManifest;
-use rust_analyzer::{cli, config::Config, from_json, Result};
+use rust_analyzer::{cli, config::Config, from_json, lsp_ext::supports_utf8, Result};
 use vfs::AbsPathBuf;
 
 #[cfg(all(feature = "mimalloc"))]
@@ -127,7 +127,11 @@ fn run_server() -> Result<()> {
             name: String::from("rust-analyzer"),
             version: Some(String::from(env!("REV"))),
         }),
-        offset_encoding: None,
+        offset_encoding: if supports_utf8(&initialize_params.capabilities) {
+            Some("utf-8".to_string())
+        } else {
+            None
+        },
     };
 
     let initialize_result = serde_json::to_value(initialize_result).unwrap();
