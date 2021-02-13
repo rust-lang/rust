@@ -573,14 +573,3 @@ This request is sent from client to server to open the current project's Cargo.t
 ```
 
 `experimental/openCargoToml` returns a single `Link` to the start of the `[package]` keyword.
-
-## CodeLens resolve request
-
-This request is sent from client to server to resolve previously provided CodeLens.
-
-As an alternative to `any` type in `data` field of `CodeLens`, you may use `CodeLensResolveData`:
-```typescript
-interface CodeLensResolveData {
-    data: (DefinitionParams | TextDocumentPositionParams),
-}
-```
