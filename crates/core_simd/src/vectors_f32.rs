@@ -2,7 +2,9 @@
 
 /// A SIMD vector of containing `LANES` `f32` values.
 #[repr(simd)]
-pub struct SimdF32<const LANES: usize>([f32; LANES]);
+pub struct SimdF32<const LANES: usize>([f32; LANES])
+where
+    Self: crate::LanesAtMost64;
 
 impl_float_vector! { SimdF32, f32, SimdU32 }
 
