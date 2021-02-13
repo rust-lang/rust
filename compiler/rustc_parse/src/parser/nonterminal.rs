@@ -108,7 +108,7 @@ impl<'a> Parser<'a> {
                 }
             },
             NonterminalKind::Block => {
-                // While an block *expression* may have attributes (e.g. `#[my_attr] { ... }`),
+                // While a block *expression* may have attributes (e.g. `#[my_attr] { ... }`),
                 // the ':block' matcher does not support them
                 token::NtBlock(self.collect_tokens_no_attrs(|this| this.parse_block())?)
             }

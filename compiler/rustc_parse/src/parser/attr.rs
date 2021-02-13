@@ -74,7 +74,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        Ok(AttrWrapper { attrs })
+        Ok(AttrWrapper::new(attrs))
     }
 
     /// Matches `attribute = # ! [ meta_item ]`.

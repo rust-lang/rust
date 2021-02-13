@@ -3,9 +3,8 @@ use super::diagnostics::{AttemptLocalParseRecovery, Error};
 use super::expr::LhsExpr;
 use super::pat::{GateOr, RecoverComma};
 use super::path::PathStyle;
-use super::{
-    AttrWrapper, BlockMode, ForceCollect, Parser, Restrictions, SemiColonMode, TrailingToken,
-};
+use super::TrailingToken;
+use super::{AttrWrapper, BlockMode, ForceCollect, Parser, Restrictions, SemiColonMode};
 use crate::maybe_whole;
 
 use rustc_ast as ast;

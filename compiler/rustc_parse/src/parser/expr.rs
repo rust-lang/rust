@@ -1,9 +1,7 @@
 use super::pat::{GateOr, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{
-    AttrWrapper, BlockMode, ForceCollect, Parser, PathStyle, Restrictions, TokenType, TrailingToken,
-};
-use super::{SemiColonMode, SeqSep, TokenExpectType};
+use super::{AttrWrapper, BlockMode, ForceCollect, Parser, PathStyle, Restrictions, TokenType};
+use super::{SemiColonMode, SeqSep, TokenExpectType, TrailingToken};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
 use rustc_ast::ptr::P;
@@ -461,16 +459,11 @@ impl<'a> Parser<'a> {
             _ => RangeLimits::Closed,
         };
         let op = AssocOp::from_token(&self.token);
+        // FIXME: `parse_prefix_range_expr` is called when the current
+        // token is `DotDot`, `DotDotDot`, or `DotDotEq`. If we haven't already
+        // parsed attributes, then trying to parse them here will always fail.
+        // We should figure out how we want attributes on range expressions to work.
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
-        // RESOLVED: It looks like we only haev non-empty attributes here when
-        // this is used as a statement:
-        // `#[my_attr] 25..;`
-        // We should still investigate `parse_or_use_outer_attributes`, since we haven't
-        // yet eaten the '..'
-        //
-        // FIXME - does this code ever haev attributes? `let a = #[attr] ..` doesn't even parse
-        // // We try to aprse attributes *before* bumping the token, so this can only
-        // ever succeeed if the `attrs` parameter is `Some`
         self.collect_tokens_for_expr(attrs, |this, attrs| {
             let lo = this.token.span;
             this.bump();
@@ -518,8 +511,6 @@ impl<'a> Parser<'a> {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
             }
             token::Ident(..) if this.is_mistaken_not_ident_negation() => {
-                // FIXME - what is our polciy for handling tokens during recovery?
-                // Should we ever invoke a proc-macro with these tokens?
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
             _ => return this.parse_dot_or_call_expr(Some(attrs.into())),
