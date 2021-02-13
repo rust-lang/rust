@@ -1,15 +1,9 @@
-use ast::GenericParamsOwner;
 use ide_db::helpers::FamousDefs;
 use ide_db::RootDatabase;
-use itertools::Itertools;
-use stdx::format_to;
-use syntax::{
-    ast::{self, AstNode, NameOwner},
-    SmolStr,
-};
+use syntax::ast::{self, AstNode, NameOwner};
 use test_utils::mark;
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists, utils::generate_trait_impl_text};
 
 // Assist: generate_from_impl_for_enum
 //
@@ -31,8 +25,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let variant_name = variant.name()?;
-    let enum_name = variant.parent_enum().name()?;
-    let enum_type_params = variant.parent_enum().generic_param_list();
+    let enum_ = ast::Adt::Enum(variant.parent_enum());
     let (field_name, field_type) = match variant.kind() {
         ast::StructKind::Tuple(field_list) => {
             if field_list.fields().count() != 1 {
@@ -62,49 +55,27 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
         target,
         |edit| {
             let start_offset = variant.parent_enum().syntax().text_range().end();
-            let mut buf = String::from("\n\nimpl");
-            if let Some(type_params) = &enum_type_params {
-                format_to!(buf, "{}", type_params.syntax());
-            }
-            format_to!(buf, " From<{}> for {}", field_type.syntax(), enum_name);
-            if let Some(type_params) = enum_type_params {
-                let lifetime_params = type_params
-                    .lifetime_params()
-                    .filter_map(|it| it.lifetime())
-                    .map(|it| SmolStr::from(it.text()));
-                let type_params = type_params
-                    .type_params()
-                    .filter_map(|it| it.name())
-                    .map(|it| SmolStr::from(it.text()));
-
-                let generic_params = lifetime_params.chain(type_params).format(", ");
-                format_to!(buf, "<{}>", generic_params)
-            }
-            if let Some(name) = field_name {
-                format_to!(
-                    buf,
-                    r#" {{
-    fn from({0}: {1}) -> Self {{
+            let from_trait = format!("From<{}>", field_type.syntax());
+            let impl_code = if let Some(name) = field_name {
+                format!(
+                    r#"    fn from({0}: {1}) -> Self {{
         Self::{2} {{ {0} }}
-    }}
-}}"#,
+    }}"#,
                     name.text(),
                     field_type.syntax(),
                     variant_name,
-                );
+                )
             } else {
-                format_to!(
-                    buf,
-                    r#" {{
-    fn from(v: {}) -> Self {{
+                format!(
+                    r#"    fn from(v: {}) -> Self {{
         Self::{}(v)
-    }}
-}}"#,
+    }}"#,
                     field_type.syntax(),
                     variant_name,
-                );
-            }
-            edit.insert(start_offset, buf);
+                )
+            };
+            let from_impl = generate_trait_impl_text(&enum_, &from_trait, &impl_code);
+            edit.insert(start_offset, from_impl);
         },
     )
 }

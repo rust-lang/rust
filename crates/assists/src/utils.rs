@@ -367,6 +367,16 @@ pub(crate) fn find_impl_block_end(impl_def: ast::Impl, buf: &mut String) -> Opti
 // Generates the surrounding `impl Type { <code> }` including type and lifetime
 // parameters
 pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
+    generate_impl_text_inner(adt, None, code)
+}
+
+// Generates the surrounding `impl <trait> for Type { <code> }` including type
+// and lifetime parameters
+pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &str) -> String {
+    generate_impl_text_inner(adt, Some(trait_text), code)
+}
+
+fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str) -> String {
     let type_params = adt.generic_param_list();
     let mut buf = String::with_capacity(code.len());
     buf.push_str("\n\nimpl");
@@ -374,6 +384,10 @@ pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
         format_to!(buf, "{}", type_params.syntax());
     }
     buf.push(' ');
+    if let Some(trait_text) = trait_text {
+        buf.push_str(trait_text);
+        buf.push_str(" for ");
+    }
     buf.push_str(adt.name().unwrap().text());
     if let Some(type_params) = type_params {
         let lifetime_params = type_params
