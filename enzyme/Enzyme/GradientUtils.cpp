@@ -49,15 +49,26 @@ llvm::cl::opt<bool>
     EnzymeNewCache("enzyme-new-cache", cl::init(true), cl::Hidden,
                    cl::desc("Use new cache decision algorithm"));
 
+bool isPotentialLastLoopValue(Value *val, const BasicBlock *loc, const LoopInfo &LI) {
+  if (Instruction* inst = dyn_cast<Instruction>(val)) {
+    const Loop *InstLoop = LI.getLoopFor(inst->getParent());
+    if (InstLoop == nullptr) {
+      return false;
+    }
+    for (const Loop* L = LI.getLoopFor(loc); L; L = LI.getLoopFor(L->getHeader())) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
 Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                               const ValueToValueMapTy &available,
                               UnwrapMode mode) {
   assert(val);
   assert(val->getName() != "<badref>");
   assert(val->getType());
-
-  //llvm::errs() << " attempting unwrap of: " << val << "\n";
-  //llvm::errs() << " + " << *val << "\n";
 
   for (auto pair : available) {
     assert(pair.first);
@@ -117,20 +128,29 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     }
   }
 
-// llvm::errs() << "uwval: " << *val << "\n";
-#define getOp(vtmp)                                                               \
+#define getOpFullest(vtmp,frominst, check)                                                            \
   ({                                                                           \
     Value *v = vtmp;                                                           \
+    if (auto originst = dyn_cast<Instruction>(frominst))                            \
+      if (auto opinst = dyn_cast<Instruction>(v)) {                             \
+        v = fixLCSSA(opinst, originst->getParent());                           \
+        if (check) assert(v != val); \
+      }\
     Value *___res;                                                             \
     if (mode == UnwrapMode::LegalFullUnwrap ||                                 \
         mode == UnwrapMode::AttemptFullUnwrap ||                               \
         mode == UnwrapMode::AttemptFullUnwrapWithLookup) {                     \
-      ___res = unwrapM(v, BuilderM, available, mode);                          \
+      if (v == val)\
+        ___res = nullptr;\
+      else                                                                    \
+        ___res = unwrapM(v, BuilderM, available, mode);                          \
+      if (!___res && mode == UnwrapMode::AttemptFullUnwrapWithLookup)\
+        ___res = lookupM(v, BuilderM, available, v != val);                    \
       if (___res)                                                              \
         assert(___res->getType() == v->getType() && "uw");                     \
     } else {                                                                   \
       assert(mode == UnwrapMode::AttemptSingleUnwrap);                         \
-      ___res = lookupM(v, BuilderM, available);                                \
+      ___res = lookupM(v, BuilderM, available, v != val);                      \
       if (___res && ___res->getType() != v->getType()) {                       \
         llvm::errs() << *newFunc << "\n";                                      \
         llvm::errs() << " v = " << *v << " res = " << *___res << "\n";         \
@@ -140,6 +160,9 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     }                                                                          \
     ___res;                                                                    \
   })
+  #define getOpFull(vtmp, frominst) getOpFullest(vtmp, frominst, true)
+  #define getOpUnchecked(vtmp) getOpFullest(vtmp, val, false)
+  #define getOp(vtmp) getOpFullest(vtmp, val, true)
 
   if (isa<Argument>(val) || isa<Constant>(val)) {
     unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
@@ -383,13 +406,13 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       legalMove = legalRecompute(op, available, &BuilderM);
     }
     if (!legalMove)
-      return nullptr;
+      goto endCheck;
 
     std::vector<Value *> args;
     for (unsigned i = 0; i < op->getNumArgOperands(); ++i) {
       args.emplace_back(getOp(op->getArgOperand(i)));
       if (args[i] == nullptr)
-        return nullptr;
+        goto endCheck;
     }
 
 #if LLVM_VERSION_MAJOR >= 11
@@ -398,7 +421,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     Value *fn = getOp(op->getCalledValue());
 #endif
     if (fn == nullptr)
-      return nullptr;
+      goto endCheck;
 
     auto toreturn =
         cast<CallInst>(BuilderM.CreateCall(op->getFunctionType(), fn, args));
@@ -478,59 +501,51 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       goto endCheck;
     }
     assert(phi->getNumIncomingValues() != 0);
-    if (phi->getNumIncomingValues() == 1) {
-      assert(phi->getIncomingValue(0) != phi);
-      auto toreturn = getOp(phi->getIncomingValue(0));
-      if (toreturn == nullptr)
-        goto endCheck;
-      assert(val->getType() == toreturn->getType());
-      return toreturn;
-    }
 
     auto parent = phi->getParent();
 
     // Don't attempt to unroll a loop induction variable
+    assert(parent->getParent() == newFunc);
     if (parent->getParent() == newFunc) {
-      if (LI.isLoopHeader(parent)) goto endCheck;
-      for (auto &val : phi->incoming_values()) {
-        if (auto inst = dyn_cast<Instruction>(val)) {
-          if (LI.getLoopFor(parent) != LI.getLoopFor(inst->getParent())) {
-            goto endCheck;
-          }
-        }
+      if (LI.isLoopHeader(parent)) {
+        goto endCheck;
       }
-    } else if (parent->getParent() == oldFunc) {
-      if (OrigLI.isLoopHeader(parent)) goto endCheck;
       for (auto &val : phi->incoming_values()) {
-        if (auto inst = dyn_cast<Instruction>(val)) {
-          if (OrigLI.getLoopFor(parent) != OrigLI.getLoopFor(inst->getParent())) {
-            goto endCheck;
-          }
-        }
+        if (isPotentialLastLoopValue(val, parent, LI))
+          goto endCheck;
       }
     } else {
       goto endCheck;
     }
 
-    std::set<Value *> targetToPreds;
+    if (phi->getNumIncomingValues() == 1) {
+      assert(phi->getIncomingValue(0) != phi);
+      auto toreturn = getOpUnchecked(phi->getIncomingValue(0));
+      if (toreturn == nullptr || toreturn == phi)
+        goto endCheck;
+      assert(val->getType() == toreturn->getType());
+      return toreturn;
+    }
+    
+    std::set<BasicBlock *> targetToPreds;
     // Map of function edges to list of values possible
     std::map<std::pair</*pred*/ BasicBlock *, /*successor*/ BasicBlock *>,
-            std::set<Value *>>
+            std::set<BasicBlock *>>
         done;
     {
       std::deque<
           std::tuple<std::pair</*pred*/ BasicBlock *, /*successor*/ BasicBlock *>,
-                    Value *>>
+                    BasicBlock *>>
           Q; // newblock, target
 
       for (unsigned i=0; i<phi->getNumIncomingValues(); ++i) {
-        Q.push_back(std::make_pair(std::make_pair(phi->getIncomingBlock(i), parent), phi->getIncomingValue(i)));
-        targetToPreds.insert(phi->getIncomingValue(i));
+        Q.push_back(std::make_pair(std::make_pair(phi->getIncomingBlock(i), parent), phi->getIncomingBlock(i)));
+        targetToPreds.insert(phi->getIncomingBlock(i));
       }
 
       for (std::tuple<
               std::pair</*pred*/ BasicBlock *, /*successor*/ BasicBlock *>,
-              Value *>
+              BasicBlock *>
               trace;
           Q.size() > 0;) {
         trace = Q.front();
@@ -553,7 +568,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             continue;
 
           Q.push_back(
-              std::tuple<std::pair<BasicBlock *, BasicBlock *>, Value *>(
+              std::tuple<std::pair<BasicBlock *, BasicBlock *>, BasicBlock *>(
                   std::make_pair(Pred, block), target));
         }
       }
@@ -567,11 +582,11 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
     if (targetToPreds.size() == 3) {
       for (auto block : blocks) {
-        std::set<Value *> foundtargets;
-        std::set<Value *> uniqueTargets;
+        std::set<BasicBlock *> foundtargets;
+        std::set<BasicBlock *> uniqueTargets;
         for (BasicBlock *succ : successors(block)) {
           auto edge = std::make_pair(block, succ);
-          for (Value *target : done[edge]) {
+          for (BasicBlock *target : done[edge]) {
             if (foundtargets.find(target) != foundtargets.end()) {
               goto rnextpair;
             }
@@ -588,14 +603,14 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         {
           BasicBlock *subblock = nullptr;
           for (auto block2 : blocks) {
-            std::set<Value *> seen2;
+            std::set<BasicBlock *> seen2;
             for (BasicBlock *succ : successors(block2)) {
               auto edge = std::make_pair(block2, succ);
               if (done[edge].size() != 1) {
                 // llvm::errs() << " -- failed from noonesize\n";
                 goto nextblock;
               }
-              for (Value *target : done[edge]) {
+              for (BasicBlock *target : done[edge]) {
                 if (seen2.find(target) != seen2.end()) {
                   // llvm::errs() << " -- failed from not uniqueTargets\n";
                   goto nextblock;
@@ -640,8 +655,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             assert(done[std::make_pair(subblock, bi2->getSuccessor(1))].size() == 1);
 
             SmallVector<Value*, 2> vals = {
-              getOp(*done[std::make_pair(subblock, bi2->getSuccessor(0))].begin()),
-              getOp(*done[std::make_pair(subblock, bi2->getSuccessor(1))].begin()),
+              getOpFull(phi->getIncomingValueForBlock(*done[std::make_pair(subblock, bi2->getSuccessor(0))].begin()), *done[std::make_pair(subblock, bi2->getSuccessor(0))].begin()),
+              getOpFull(phi->getIncomingValueForBlock(*done[std::make_pair(subblock, bi2->getSuccessor(1))].begin()), *done[std::make_pair(subblock, bi2->getSuccessor(1))].begin()),
             };
             if (!vals[0] || !vals[1])
               goto endCheck;
@@ -655,7 +670,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
               auto edge = std::make_pair(block, B);
               assert(done.find(edge) != done.end());
               if (done[edge].size() == 1) {
-                return getOp(*done[edge].begin());
+                return getOpFull(phi->getIncomingValueForBlock(*done[edge].begin()), *done[edge].begin());
               } else {
                 return subsel;
               }
@@ -681,13 +696,13 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
     Instruction* equivalentTerminator = nullptr;
     for (auto block : blocks) {
-      std::set<Value *> foundtargets;
+      std::set<BasicBlock *> foundtargets;
       for (BasicBlock *succ : successors(block)) {
         auto edge = std::make_pair(block, succ);
         if (done[edge].size() != 1) {
           goto nextpair;
         }
-        Value *target = *done[edge].begin();
+        BasicBlock *target = *done[edge].begin();
         if (foundtargets.find(target) != foundtargets.end()) {
           goto nextpair;
         }
@@ -718,13 +733,12 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       assert(done.find(std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(1))) != done.end());
       assert(done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(0))].size() == 1);
       assert(done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(1))].size() == 1);
-      SmallVector<Value*, 2> vals = {
-        getOp(*done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(0))].begin()),
-        getOp(*done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(1))].begin()),
-      };
-      if (!vals[0] || !vals[1])
-        goto endCheck;
-      
+      SmallVector<Value*, 2> vals;
+      vals.push_back(getOpFull(phi->getIncomingValueForBlock(*done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(0))].begin()), *done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(0))].begin()));
+      if (!vals[0]) goto endCheck;
+      vals.push_back(getOpFull(phi->getIncomingValueForBlock(*done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(1))].begin()), *done[std::make_pair(equivalentTerminator->getParent(), branch->getSuccessor(1))].begin()));
+      if (!vals[1]) goto endCheck;
+
       assert(val->getType() == vals[0]->getType());
       assert(val->getType() == vals[1]->getType());
       auto toret = BuilderM.CreateSelect(cond, vals[0], vals[1]);
@@ -739,7 +753,7 @@ endCheck:
   if (mode == UnwrapMode::LegalFullUnwrap ||
       mode == UnwrapMode::AttemptFullUnwrapWithLookup) {
     assert(val->getName() != "<badref>");
-    auto toreturn = lookupM(val, BuilderM);
+    auto toreturn = lookupM(val, BuilderM, available, /*tryLegalRecomputeCheck*/false);
     assert(val->getType() == toreturn->getType());
     return toreturn;
   }
@@ -760,7 +774,6 @@ endCheck:
       }
     }
     assert(val->getName() != "<badref>");
-    //llvm::errs() << *val << "\n";
     EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
                 "Cannot unwrap ", *val);
   }
@@ -840,7 +853,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                             tape, {(unsigned)idx}));
 
       Type *innerType = ret->getType();
-      for (size_t i = 0, limit = getSubLimits(BuilderQ.GetInsertBlock()).size();
+      for (size_t i = 0, limit = getSubLimits(/*inForwardPass*/true, nullptr, BuilderQ.GetInsertBlock()).size();
            i < limit; ++i) {
         if (!isa<PointerType>(innerType)) {
           llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent()
@@ -1119,7 +1132,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
     for (size_t
              i = 0,
              limit =
-                 getSubLimits(LimitContext(BuilderQ.GetInsertBlock())).size();
+                 getSubLimits(/*inForwardPass*/true, nullptr, LimitContext(BuilderQ.GetInsertBlock())).size();
          i < limit; ++i) {
       innerType = cast<PointerType>(innerType)->getElementType();
     }
@@ -1254,21 +1267,15 @@ bool GradientUtils::legalRecompute(const Value *val,
     if (parent->getParent() == newFunc) {
       if (LI.isLoopHeader(parent)) return false;
       for (auto &val : phi->incoming_values()) {
-        if (auto inst = dyn_cast<Instruction>(val)) {
-          if (LI.getLoopFor(parent) != LI.getLoopFor(inst->getParent())) {
-            return false;
-          }
-        }
+        if (isPotentialLastLoopValue(val, parent, LI))
+          return false;
       }
       return true;
     } else if (parent->getParent() == oldFunc) {
       if (OrigLI.isLoopHeader(parent)) return false;
       for (auto &val : phi->incoming_values()) {
-        if (auto inst = dyn_cast<Instruction>(val)) {
-          if (OrigLI.getLoopFor(parent) != OrigLI.getLoopFor(inst->getParent())) {
-            return false;
-          }
-        }
+        if (isPotentialLastLoopValue(val, parent, OrigLI))
+          return false;
       }
       return true;
     } else {
@@ -2346,21 +2353,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     }
   }
 
-  Instruction *prelcssaInst = inst;
-
-  assert(inst->getName() != "<badref>");
-  val = fixLCSSA(inst, BuilderM.GetInsertBlock());
-  if (isa<UndefValue>(val)) {
-    llvm::errs() << *oldFunc << "\n";
-    llvm::errs() << *newFunc << "\n";
-    llvm::errs() << *BuilderM.GetInsertBlock() << "\n";
-    llvm::errs() << *val << " inst " << *inst << "\n";
-  }
-  inst = cast<Instruction>(val);
-  assert(prelcssaInst->getType() == inst->getType());
-
-  assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()));
-
   auto idx = std::make_pair(val, BuilderM.GetInsertBlock());
   if (lookup_cache.find(idx) != lookup_cache.end()) {
     auto result = lookup_cache[idx];
@@ -2377,30 +2369,81 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     available[pair.first] = pair.second;
   }
 
-  LoopContext lc;
-  bool inLoop = getContext(inst->getParent(), lc);
+  {
+    BasicBlock *forwardPass = BuilderM.GetInsertBlock();
+    if (forwardPass != inversionAllocs && !isOriginalBlock(*forwardPass)) {
+      forwardPass = originalForReverseBlock(*forwardPass);
+    }
+    LoopContext lc;
+    bool inLoop = getContext(forwardPass, lc);
 
-  if (inLoop) {
-    bool first = true;
-    for (LoopContext idx = lc;; getContext(idx.parent->getHeader(), idx)) {
-      if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
-        available[idx.var] = BuilderM.CreateLoad(idx.antivaralloc);
-      } else {
-        available[idx.var] = idx.var;
+    if (inLoop) {
+      bool first = true;
+      for (LoopContext idx = lc;; getContext(idx.parent->getHeader(), idx)) {
+        if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
+          available[idx.var] = BuilderM.CreateLoad(idx.antivaralloc);
+        } else {
+          available[idx.var] = idx.var;
+        }
+        if (!first && idx.var == inst)
+          return available[idx.var];
+        if (first) {
+          first = false;
+        }
+        if (idx.parent == nullptr)
+          break;
       }
-      if (!first && idx.var == inst)
-        return available[idx.var];
-      if (first) {
-        first = false;
-      }
-      if (idx.parent == nullptr)
-        break;
     }
   }
 
   if (available.count(inst)) {
     assert(available[inst]->getType() == inst->getType());
     return available[inst];
+  }
+
+  // If requesting loop bound and not available from index per above
+  // we must be requesting the total size. Rather than generating
+  // a new lcssa variable, use the existing loop exact bound var
+  {
+    LoopContext lc;
+    if (getContext(inst->getParent(), lc) && lc.var == inst) {
+      Value *lim = nullptr;
+      if (lc.dynamic) {
+        lim = lookupValueFromCache(/*forwardPass*/ false, BuilderM, lc.preheader,
+                                    cast<AllocaInst>(lc.trueLimit),
+                                    /*isi1*/ false);
+      } else {
+        lim = lookupM(lc.trueLimit, BuilderM);
+      }
+      lookup_cache[idx] = lim;
+      return lim;
+    }
+  }
+
+  Instruction *prelcssaInst = inst;
+
+  assert(inst->getName() != "<badref>");
+  val = fixLCSSA(inst, BuilderM.GetInsertBlock());
+  if (isa<UndefValue>(val)) {
+    llvm::errs() << *oldFunc << "\n";
+    llvm::errs() << *newFunc << "\n";
+    llvm::errs() << *BuilderM.GetInsertBlock() << "\n";
+    llvm::errs() << *val << " inst " << *inst << "\n";
+  }
+  inst = cast<Instruction>(val);
+  assert(prelcssaInst->getType() == inst->getType());
+
+  assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()));
+
+  // Update index and caching per lcssa
+  idx = std::make_pair(val, BuilderM.GetInsertBlock());
+  if (lookup_cache.find(idx) != lookup_cache.end()) {
+    auto result = lookup_cache[idx];
+    assert(result);
+    assert(result->getType());
+    result = BuilderM.CreateBitCast(result, val->getType());
+    assert(result->getType() == inst->getType());
+    return result;
   }
 
   // TODO consider call as part of

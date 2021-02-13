@@ -191,8 +191,8 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %_unwrap3 = zext i32 %b to i64
 ; CHECK-NEXT:   %_unwrap4.lhs.trunc = trunc i64 %_unwrap2 to i32
 ; CHECK-NEXT:   %_unwrap4.rhs.trunc = trunc i64 %_unwrap3 to i32
-; CHECK-NEXT:   %_unwrap412 = udiv i32 %_unwrap4.lhs.trunc, %_unwrap4.rhs.trunc
-; CHECK-NEXT:   %_unwrap4.zext = zext i32 %_unwrap412 to i64
+; CHECK-NEXT:   %[[unwrap412:.+]] = udiv i32 %_unwrap4.lhs.trunc, %_unwrap4.rhs.trunc
+; CHECK-NEXT:   %_unwrap4.zext = zext i32 %[[unwrap412]] to i64
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertfor.cond.cleanup:                           ; preds = %entry, %for.body

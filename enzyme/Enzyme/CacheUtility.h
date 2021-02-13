@@ -94,6 +94,24 @@ enum class UnwrapMode {
   AttemptSingleUnwrap,
 };
 
+static llvm::raw_ostream& operator<<(llvm::raw_ostream& os, UnwrapMode mode) {
+  switch(mode) {
+    case UnwrapMode::LegalFullUnwrap:
+      os << "LegalFullUnwrap";
+      break;
+    case UnwrapMode::AttemptFullUnwrapWithLookup:
+      os << "AttemptFullUnwrapWithLookup";
+      break;
+    case UnwrapMode::AttemptFullUnwrap:
+      os << "AttemptFullUnwrap";
+      break;
+    case UnwrapMode::AttemptSingleUnwrap:
+      os << "AttemptSingleUnwrap";
+      break;
+  }
+  return os;
+}
+
 class CacheUtility {
 public:
   /// The function whose instructions we are caching
@@ -192,7 +210,7 @@ public:
       /*sublimit*/ llvm::Value *,
       /*loop limits*/ std::vector<std::pair<LoopContext, llvm::Value *>>>>
       SubLimitType;
-  SubLimitType getSubLimits(LimitContext ctx);
+  SubLimitType getSubLimits(bool inForwardPass, llvm::IRBuilder<>* RB, LimitContext ctx);
 
 private:
   /// Internal data structure used by getSubLimit to avoid computing the same
