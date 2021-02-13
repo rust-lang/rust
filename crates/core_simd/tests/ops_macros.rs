@@ -1,3 +1,6 @@
+/// Implements a test on a unary operation using proptest.
+///
+/// Compares the vector operation to the equivalent scalar operation.
 #[macro_export]
 macro_rules! impl_unary_op_test {
     { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $scalar_fn:expr } => {
@@ -16,6 +19,9 @@ macro_rules! impl_unary_op_test {
     };
 }
 
+/// Implements a test on a binary operation using proptest.
+///
+/// Compares the vector operation to the equivalent scalar operation.
 #[macro_export]
 macro_rules! impl_binary_op_test {
     { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $scalar_fn:expr } => {
@@ -70,6 +76,12 @@ macro_rules! impl_binary_op_test {
     };
 }
 
+/// Implements a test on a binary operation using proptest.
+///
+/// Like `impl_binary_op_test`, but allows providing a function for rejecting particular inputs
+/// (like the `proptest_assume` macro).
+///
+/// Compares the vector operation to the equivalent scalar operation.
 #[macro_export]
 macro_rules! impl_binary_checked_op_test {
     { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $scalar_fn:expr, $check_fn:expr } => {
@@ -124,6 +136,7 @@ macro_rules! impl_binary_checked_op_test {
     };
 }
 
+/// Implement tests for signed integers.
 #[macro_export]
 macro_rules! impl_signed_tests {
     { $vector:ident, $scalar:tt } => {
@@ -191,6 +204,8 @@ macro_rules! impl_signed_tests {
             impl_binary_op_test!(Vector<LANES>, Scalar, Add::add, AddAssign::add_assign, Scalar::wrapping_add);
             impl_binary_op_test!(Vector<LANES>, Scalar, Sub::sub, SubAssign::sub_assign, Scalar::wrapping_sub);
             impl_binary_op_test!(Vector<LANES>, Scalar, Mul::mul, MulAssign::mul_assign, Scalar::wrapping_mul);
+
+            // Exclude Div and Rem panicking cases
             impl_binary_checked_op_test!(Vector<LANES>, Scalar, Div::div, DivAssign::div_assign, Scalar::wrapping_div, |x, y| y != 0 && !(x == Scalar::MIN && y == -1));
             impl_binary_checked_op_test!(Vector<LANES>, Scalar, Rem::rem, RemAssign::rem_assign, Scalar::wrapping_rem, |x, y| y != 0 && !(x == Scalar::MIN && y == -1));
 
@@ -202,6 +217,7 @@ macro_rules! impl_signed_tests {
     }
 }
 
+/// Implement tests for unsigned integers.
 #[macro_export]
 macro_rules! impl_unsigned_tests {
     { $vector:ident, $scalar:tt } => {
@@ -220,6 +236,8 @@ macro_rules! impl_unsigned_tests {
             impl_binary_op_test!(Vector<LANES>, Scalar, Add::add, AddAssign::add_assign, Scalar::wrapping_add);
             impl_binary_op_test!(Vector<LANES>, Scalar, Sub::sub, SubAssign::sub_assign, Scalar::wrapping_sub);
             impl_binary_op_test!(Vector<LANES>, Scalar, Mul::mul, MulAssign::mul_assign, Scalar::wrapping_mul);
+
+            // Exclude Div and Rem panicking cases
             impl_binary_checked_op_test!(Vector<LANES>, Scalar, Div::div, DivAssign::div_assign, Scalar::wrapping_div, |_, y| y != 0);
             impl_binary_checked_op_test!(Vector<LANES>, Scalar, Rem::rem, RemAssign::rem_assign, Scalar::wrapping_rem, |_, y| y != 0);
 
@@ -231,6 +249,7 @@ macro_rules! impl_unsigned_tests {
     }
 }
 
+/// Implement tests for floating point numbers.
 #[macro_export]
 macro_rules! impl_float_tests {
     { $vector:ident, $scalar:tt, $int_scalar:tt } => {

@@ -1,8 +1,4 @@
 #[macro_use]
-#[path = "../helpers/mod.rs"]
-mod helpers;
-
-#[macro_use]
 mod mask_macros;
 
 mod mask8;

@@ -1,3 +1,5 @@
+//! Strategies for `u128` and `i128`, since proptest doesn't provide them for the wasm target.
+
 macro_rules! impl_num {
     { $name:ident } => {
         pub(crate) mod $name {

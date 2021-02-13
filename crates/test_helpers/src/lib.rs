@@ -6,6 +6,9 @@ pub mod wasm;
 #[macro_use]
 pub mod biteq;
 
+/// Specifies the default strategy for testing a type.
+///
+/// This strategy should be what "makes sense" to test.
 pub trait DefaultStrategy {
     type Strategy: proptest::strategy::Strategy<Value = Self>;
     fn default_strategy() -> Self::Strategy;
@@ -74,6 +77,7 @@ impl<T: core::fmt::Debug + DefaultStrategy, const LANES: usize> DefaultStrategy 
     }
 }
 
+/// Test a function that takes a single value.
 pub fn test_1<A: core::fmt::Debug + DefaultStrategy>(
     f: &dyn Fn(A) -> proptest::test_runner::TestCaseResult,
 ) {
@@ -81,6 +85,7 @@ pub fn test_1<A: core::fmt::Debug + DefaultStrategy>(
     runner.run(&A::default_strategy(), f).unwrap();
 }
 
+/// Test a function that takes two values.
 pub fn test_2<A: core::fmt::Debug + DefaultStrategy, B: core::fmt::Debug + DefaultStrategy>(
     f: &dyn Fn(A, B) -> proptest::test_runner::TestCaseResult,
 ) {
@@ -92,6 +97,7 @@ pub fn test_2<A: core::fmt::Debug + DefaultStrategy, B: core::fmt::Debug + Defau
         .unwrap();
 }
 
+/// Test a unary vector function against a unary scalar function, applied elementwise.
 #[inline(never)]
 pub fn test_unary_elementwise<Scalar, ScalarResult, Vector, VectorResult, const LANES: usize>(
     fv: &dyn Fn(Vector) -> VectorResult,
@@ -118,6 +124,7 @@ pub fn test_unary_elementwise<Scalar, ScalarResult, Vector, VectorResult, const 
     });
 }
 
+/// Test a binary vector function against a binary scalar function, applied elementwise.
 #[inline(never)]
 pub fn test_binary_elementwise<
     Scalar1,
@@ -154,6 +161,7 @@ pub fn test_binary_elementwise<
     });
 }
 
+/// Test a binary vector-scalar function against a binary scalar function, applied elementwise.
 #[inline(never)]
 pub fn test_binary_scalar_rhs_elementwise<
     Scalar1,
@@ -188,6 +196,7 @@ pub fn test_binary_scalar_rhs_elementwise<
     });
 }
 
+/// Test a binary vector-scalar function against a binary scalar function, applied elementwise.
 #[inline(never)]
 pub fn test_binary_scalar_lhs_elementwise<
     Scalar1,
@@ -222,6 +231,7 @@ pub fn test_binary_scalar_lhs_elementwise<
     });
 }
 
+/// Expand a const-generic test into separate tests for each possible lane count.
 #[macro_export]
 macro_rules! test_lanes {
     {
@@ -282,6 +292,7 @@ macro_rules! test_lanes {
     }
 }  
 
+/// Expand a const-generic `#[should_panic]` test into separate tests for each possible lane count.
 #[macro_export]
 macro_rules! test_lanes_panic {
     {
