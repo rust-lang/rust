@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `u32: Trait` is not satisfied
+  --> $DIR/on-structs-and-enums-in-fns.rs:13:15
+   |
+LL | struct Foo<T:Trait> {
+   |              ----- required by this bound in `Foo`
+...
+LL | fn explode(x: Foo<u32>) {}
+   |               ^^^^^^^^ the trait `Trait` is not implemented for `u32`
+
+error[E0277]: the trait bound `f32: Trait` is not satisfied
+  --> $DIR/on-structs-and-enums-in-fns.rs:16:14
+   |
+LL | enum Bar<T:Trait> {
+   |            ----- required by this bound in `Bar`
+...
+LL | fn kaboom(y: Bar<f32>) {}
+   |              ^^^^^^^^ the trait `Trait` is not implemented for `f32`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -2248,13 +2248,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "...",
                 );
                 if let Some(infer::RelateParamBound(_, t)) = origin {
+                    let return_impl_trait = self
+                        .in_progress_typeck_results
+                        .map(|typeck_results| typeck_results.borrow().hir_owner)
+                        .and_then(|owner| self.tcx.return_type_impl_trait(owner))
+                        .is_some();
                     let t = self.resolve_vars_if_possible(t);
                     match t.kind() {
                         // We've got:
                         // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
                         // suggest:
                         // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-                        ty::Closure(_, _substs) | ty::Opaque(_, _substs) => {
+                        ty::Closure(_, _substs) | ty::Opaque(_, _substs) if return_impl_trait => {
                             new_binding_suggestion(&mut err, type_param_span, bound_kind);
                         }
                         _ => {
