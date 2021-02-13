@@ -634,7 +634,6 @@ dependencies = [
  "cfg",
  "completion",
  "either",
- "env_logger",
  "expect-test",
  "hir",
  "ide_db",

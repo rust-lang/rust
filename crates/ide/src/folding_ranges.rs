@@ -447,9 +447,6 @@ fn foo<fold arglist>(
 
     #[test]
     fn fold_region() {
-        log_init_for_test_debug();
-        // only error level log is printed on the terminal
-        log::error!("test fold_region");
         check(
             r#"
 // 1. some normal comment
@@ -459,9 +456,5 @@ calling_function(x,y);
 // endregion: test</fold>
 "#,
         )
-    }
-
-    fn log_init_for_test_debug() {
-        let _ = env_logger::builder().is_test(true).try_init();
     }
 }
