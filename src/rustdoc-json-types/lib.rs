@@ -284,7 +284,7 @@ pub enum StructType {
 #[non_exhaustive]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
-pub enum Modifiers {
+pub enum Qualifiers {
     Const,
     Unsafe,
     Async,
@@ -294,7 +294,7 @@ pub enum Modifiers {
 pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
-    pub header: HashSet<Modifiers>,
+    pub header: HashSet<Qualifiers>,
     pub abi: String,
 }
 
@@ -302,7 +302,7 @@ pub struct Function {
 pub struct Method {
     pub decl: FnDecl,
     pub generics: Generics,
-    pub header: HashSet<Modifiers>,
+    pub header: HashSet<Qualifiers>,
     pub abi: String,
     pub has_body: bool,
 }
@@ -415,7 +415,7 @@ pub enum Type {
 pub struct FunctionPointer {
     pub decl: FnDecl,
     pub generic_params: Vec<GenericParamDef>,
-    pub header: HashSet<Modifiers>,
+    pub header: HashSet<Qualifiers>,
     pub abi: String,
 }
 

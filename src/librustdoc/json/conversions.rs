@@ -228,19 +228,19 @@ crate fn from_ctor_kind(struct_type: CtorKind) -> StructType {
     }
 }
 
-crate fn from_fn_header(header: &rustc_hir::FnHeader) -> HashSet<Modifiers> {
+crate fn from_fn_header(header: &rustc_hir::FnHeader) -> HashSet<Qualifiers> {
     let mut v = HashSet::new();
 
     if let rustc_hir::Unsafety::Unsafe = header.unsafety {
-        v.insert(Modifiers::Unsafe);
+        v.insert(Qualifiers::Unsafe);
     }
 
     if let rustc_hir::IsAsync::Async = header.asyncness {
-        v.insert(Modifiers::Async);
+        v.insert(Qualifiers::Async);
     }
 
     if let rustc_hir::Constness::Const = header.constness {
-        v.insert(Modifiers::Const);
+        v.insert(Qualifiers::Const);
     }
 
     v
@@ -376,7 +376,7 @@ impl From<clean::BareFunctionDecl> for FunctionPointer {
         FunctionPointer {
             header: if let rustc_hir::Unsafety::Unsafe = unsafety {
                 let mut hs = HashSet::new();
-                hs.insert(Modifiers::Unsafe);
+                hs.insert(Qualifiers::Unsafe);
                 hs
             } else {
                 HashSet::new()
