@@ -70,14 +70,11 @@ pub(crate) fn find_all_refs(
                 });
                 usages.references.retain(|_, it| !it.is_empty());
             }
-            Definition::ModuleDef(def @ hir::ModuleDef::Adt(_))
-            | Definition::ModuleDef(def @ hir::ModuleDef::Variant(_)) => {
+            Definition::ModuleDef(hir::ModuleDef::Adt(_))
+            | Definition::ModuleDef(hir::ModuleDef::Variant(_)) => {
                 refs.for_each(|it| {
                     it.retain(|reference| {
-                        reference
-                            .name
-                            .as_name_ref()
-                            .map_or(false, |name_ref| is_lit_name_ref(sema, def, name_ref))
+                        reference.name.as_name_ref().map_or(false, is_lit_name_ref)
                     })
                 });
                 usages.references.retain(|_, it| !it.is_empty());
@@ -189,55 +186,44 @@ fn is_enum_lit_name_ref(
     enum_: hir::Enum,
     name_ref: &ast::NameRef,
 ) -> bool {
-    for ancestor in name_ref.syntax().ancestors() {
-        match_ast! {
-            match ancestor {
-                ast::PathExpr(path_expr) => {
-                    return matches!(
-                        path_expr.path().and_then(|p| sema.resolve_path(&p)),
-                        Some(PathResolution::Def(hir::ModuleDef::Variant(variant)))
-                            if variant.parent_enum(sema.db) == enum_
-                    )
-                },
-                ast::RecordExpr(record_expr) => {
-                    return matches!(
-                        record_expr.path().and_then(|p| sema.resolve_path(&p)),
-                        Some(PathResolution::Def(hir::ModuleDef::Variant(variant)))
-                            if variant.parent_enum(sema.db) == enum_
-                    )
-                },
-                _ => (),
+    let path_is_variant_of_enum = |path: ast::Path| {
+        matches!(
+            sema.resolve_path(&path),
+            Some(PathResolution::Def(hir::ModuleDef::Variant(variant)))
+                if variant.parent_enum(sema.db) == enum_
+        )
+    };
+    name_ref
+        .syntax()
+        .ancestors()
+        .find_map(|ancestor| {
+            match_ast! {
+                match ancestor {
+                    ast::PathExpr(path_expr) => path_expr.path().map(path_is_variant_of_enum),
+                    ast::RecordExpr(record_expr) => record_expr.path().map(path_is_variant_of_enum),
+                    _ => None,
+                }
             }
-        }
-    }
-    false
+        })
+        .unwrap_or(false)
 }
 
-fn is_lit_name_ref(
-    sema: &Semantics<RootDatabase>,
-    def: hir::ModuleDef,
-    name_ref: &ast::NameRef,
-) -> bool {
-    for ancestor in name_ref.syntax().ancestors() {
+fn path_ends_with(path: Option<ast::Path>, name_ref: &ast::NameRef) -> bool {
+    path.and_then(|path| path.segment())
+        .and_then(|segment| segment.name_ref())
+        .map_or(false, |segment| segment == *name_ref)
+}
+
+fn is_lit_name_ref(name_ref: &ast::NameRef) -> bool {
+    name_ref.syntax().ancestors().find_map(|ancestor| {
         match_ast! {
             match ancestor {
-                ast::PathExpr(path_expr) => {
-                    return matches!(
-                        path_expr.path().and_then(|p| sema.resolve_path(&p)),
-                        Some(PathResolution::Def(def2)) if def == def2
-                    )
-                },
-                ast::RecordExpr(record_expr) => {
-                    return matches!(
-                        record_expr.path().and_then(|p| sema.resolve_path(&p)),
-                        Some(PathResolution::Def(def2)) if def == def2
-                    )
-                },
-                _ => (),
+                ast::PathExpr(path_expr) => Some(path_ends_with(path_expr.path(), name_ref)),
+                ast::RecordExpr(record_expr) => Some(path_ends_with(record_expr.path(), name_ref)),
+                _ => None,
             }
         }
-    }
-    false
+    }).unwrap_or(false)
 }
 
 #[cfg(test)]
