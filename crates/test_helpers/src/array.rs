@@ -18,7 +18,7 @@ pub struct UniformArrayStrategy<S, T> {
 }
 
 impl<S, T> UniformArrayStrategy<S, T> {
-    pub fn new(strategy: S) -> Self {
+    pub const fn new(strategy: S) -> Self {
         Self {
             strategy,
             _marker: PhantomData,

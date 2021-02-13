@@ -1,6 +1,3 @@
-#[cfg(target_arch = "wasm32")]
-wasm_bindgen_test_configure!(run_in_browser);
-
 macro_rules! impl_unary_op_test {
     { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $scalar_fn:expr } => {
         test_helpers::test_lanes! {

@@ -5,5 +5,7 @@ authors = ["Caleb Zulawski <caleb.zulawski@gmail.com>"]
 edition = "2018"
 publish = false
 
-[dependencies]
-proptest = "0.10"
+[dependencies.proptest]
+version = "0.10"
+default-features = false
+features = ["alloc"]

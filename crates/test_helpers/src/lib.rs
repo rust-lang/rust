@@ -1,5 +1,8 @@
 pub mod array;
 
+#[cfg(target_arch = "wasm32")]
+pub mod wasm;
+
 #[macro_use]
 pub mod biteq;
 
@@ -23,16 +26,46 @@ impl_num! { i8 }
 impl_num! { i16 }
 impl_num! { i32 }
 impl_num! { i64 }
-impl_num! { i128 }
 impl_num! { isize }
 impl_num! { u8 }
 impl_num! { u16 }
 impl_num! { u32 }
 impl_num! { u64 }
-impl_num! { u128 }
 impl_num! { usize }
 impl_num! { f32 }
 impl_num! { f64 }
+
+#[cfg(not(target_arch = "wasm32"))]
+impl DefaultStrategy for u128 {
+    type Strategy = proptest::num::u128::Any;
+    fn default_strategy() -> Self::Strategy {
+        proptest::num::u128::ANY
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl DefaultStrategy for i128 {
+    type Strategy = proptest::num::i128::Any;
+    fn default_strategy() -> Self::Strategy {
+        proptest::num::i128::ANY
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl DefaultStrategy for u128 {
+    type Strategy = crate::wasm::u128::Any;
+    fn default_strategy() -> Self::Strategy {
+        crate::wasm::u128::ANY
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl DefaultStrategy for i128 {
+    type Strategy = crate::wasm::i128::Any;
+    fn default_strategy() -> Self::Strategy {
+        crate::wasm::i128::ANY
+    }
+}
 
 impl<T: core::fmt::Debug + DefaultStrategy, const LANES: usize> DefaultStrategy for [T; LANES] {
     type Strategy = crate::array::UniformArrayStrategy<T::Strategy, Self>;
@@ -200,44 +233,47 @@ macro_rules! test_lanes {
 
                 fn implementation<const $lanes: usize>() $body
 
+                #[cfg(target_arch = "wasm32")]
+                wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+
                 #[test]
-                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
                 fn lanes_1() {
                     implementation::<1>();
                 }
 
                 #[test]
-                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
                 fn lanes_2() {
                     implementation::<2>();
                 }
 
                 #[test]
-                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
                 fn lanes_4() {
                     implementation::<4>();
                 }
 
                 #[test]
-                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
                 fn lanes_8() {
                     implementation::<8>();
                 }
 
                 #[test]
-                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
                 fn lanes_16() {
                     implementation::<16>();
                 }
 
                 #[test]
-                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
                 fn lanes_32() {
                     implementation::<32>();
                 }
 
                 #[test]
-                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
                 fn lanes_64() {
                     implementation::<64>();
                 }
