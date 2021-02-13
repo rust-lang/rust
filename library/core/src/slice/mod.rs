@@ -2944,15 +2944,7 @@ impl<T> [T] {
     where
         T: Clone,
     {
-        assert!(self.len() == src.len(), "destination and source slices have different lengths");
-        // NOTE: We need to explicitly slice them to the same length
-        // for bounds checking to be elided, and the optimizer will
-        // generate memcpy for simple cases (for example T = u8).
-        let len = self.len();
-        let src = &src[..len];
-        for i in 0..len {
-            self[i].clone_from(&src[i]);
-        }
+        self.spec_clone_from(src);
     }
 
     /// Copies all elements from `src` into `self`, using a memcpy.
@@ -3458,6 +3450,36 @@ impl<T> [T] {
         }
 
         left
+    }
+}
+
+trait CloneFromSpec<T> {
+    fn spec_clone_from(&mut self, src: &[T]);
+}
+
+impl<T> CloneFromSpec<T> for [T]
+where
+    T: Clone,
+{
+    default fn spec_clone_from(&mut self, src: &[T]) {
+        assert!(self.len() == src.len(), "destination and source slices have different lengths");
+        // NOTE: We need to explicitly slice them to the same length
+        // to make it easier for the optimizer to elide bounds checking.
+        // But since it can't be relied on we also have an explicit specialization for T: Copy.
+        let len = self.len();
+        let src = &src[..len];
+        for i in 0..len {
+            self[i].clone_from(&src[i]);
+        }
+    }
+}
+
+impl<T> CloneFromSpec<T> for [T]
+where
+    T: Copy,
+{
+    fn spec_clone_from(&mut self, src: &[T]) {
+        self.copy_from_slice(src);
     }
 }
 
