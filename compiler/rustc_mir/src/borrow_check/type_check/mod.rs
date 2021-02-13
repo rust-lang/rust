@@ -1098,6 +1098,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) -> Fallible<()> {
         relate_tys::relate_types(
             self.infcx,
+            self.param_env,
             a,
             v,
             b,
