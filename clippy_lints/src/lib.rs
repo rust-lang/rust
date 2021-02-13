@@ -1,13 +1,9 @@
 // error-pattern:cargo-clippy
 
-#![feature(bindings_after_at)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(concat_idents)]
-#![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
-#![feature(once_cell)]
 #![feature(or_patterns)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
