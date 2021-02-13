@@ -1,12 +1,12 @@
 //! Conversion lsp_types types to rust-analyzer specific ones.
 use std::convert::TryFrom;
 
-use ide::{AssistKind, LineCol, LineIndex};
+use ide::{Annotation, AnnotationKind, AssistKind, LineCol, LineIndex};
 use ide_db::base_db::{FileId, FilePosition, FileRange};
 use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;
 
-use crate::{global_state::GlobalStateSnapshot, Result};
+use crate::{from_json, global_state::GlobalStateSnapshot, lsp_ext, Result};
 
 pub(crate) fn abs_path(url: &lsp_types::Url) -> Result<AbsPathBuf> {
     let path = url.to_file_path().map_err(|()| "url is not a file")?;
@@ -65,4 +65,40 @@ pub(crate) fn assist_kind(kind: lsp_types::CodeActionKind) -> Option<AssistKind>
     };
 
     Some(assist_kind)
+}
+
+pub(crate) fn annotation(
+    world: &GlobalStateSnapshot,
+    code_lens: lsp_types::CodeLens,
+) -> Result<Annotation> {
+    let data = code_lens.data.unwrap();
+    let resolve = from_json::<lsp_ext::CodeLensResolveData>("CodeLensResolveData", data)?;
+
+    match resolve {
+        lsp_ext::CodeLensResolveData::Impls(params) => {
+            let file_id =
+                world.url_to_file_id(&params.text_document_position_params.text_document.uri)?;
+            let line_index = world.analysis.file_line_index(file_id)?;
+
+            Ok(Annotation {
+                range: text_range(&line_index, code_lens.range),
+                kind: AnnotationKind::HasImpls {
+                    position: file_position(world, params.text_document_position_params)?,
+                    data: None,
+                },
+            })
+        }
+        lsp_ext::CodeLensResolveData::References(params) => {
+            let file_id = world.url_to_file_id(&params.text_document.uri)?;
+            let line_index = world.analysis.file_line_index(file_id)?;
+
+            Ok(Annotation {
+                range: text_range(&line_index, code_lens.range),
+                kind: AnnotationKind::HasReferences {
+                    position: file_position(world, params)?,
+                    data: None,
+                },
+            })
+        }
+    }
 }
