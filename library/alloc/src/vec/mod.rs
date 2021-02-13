@@ -2036,11 +2036,11 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     where
         R: RangeBounds<usize>,
     {
-        let range = src.assert_len(self.len());
+        let range = slice::range(src, ..self.len());
         self.reserve(range.len());
 
         // SAFETY:
-        // - `assert_len` guarantees  that the given range is valid for indexing self
+        // - `slice::range` guarantees  that the given range is valid for indexing self
         unsafe {
             self.spec_extend_from_within(range);
         }
