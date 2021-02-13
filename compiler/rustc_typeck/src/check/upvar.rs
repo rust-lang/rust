@@ -1461,16 +1461,10 @@ fn restrict_capture_precision<'tcx>(mut place: Place<'tcx>) -> Place<'tcx> {
 
 /// Truncates a place so that the resultant capture doesn't move data out of a reference
 fn truncate_capture_for_move(mut place: Place<'tcx>) -> Place<'tcx> {
-    for (i, proj) in place.projections.iter().enumerate() {
-        match proj.kind {
-            ProjectionKind::Deref => {
-                // We only drop Derefs in case of move closures
-                // There might be an index projection or raw ptr ahead, so we don't stop here.
-                place.projections.truncate(i);
-                return place;
-            }
-            _ => {}
-        }
+    if let Some(i) = place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref) {
+        // We only drop Derefs in case of move closures
+        // There might be an index projection or raw ptr ahead, so we don't stop here.
+        place.projections.truncate(i);
     }
 
     place
