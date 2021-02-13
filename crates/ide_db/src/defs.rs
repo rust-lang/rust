@@ -6,8 +6,8 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    db::HirDatabase, Crate, Field, GenericParam, HasVisibility, Impl, Label, Local, MacroDef,
-    Module, ModuleDef, Name, PathResolution, Semantics, Visibility,
+    db::HirDatabase, Crate, Field, GenericParam, HasAttrs, HasVisibility, Impl, Label, Local,
+    MacroDef, Module, ModuleDef, Name, PathResolution, Semantics, Visibility,
 };
 use syntax::{
     ast::{self, AstNode, PathSegmentKind},
@@ -366,7 +366,15 @@ impl NameRefClass {
 
         if let Some(path) = name_ref.syntax().ancestors().find_map(ast::Path::cast) {
             if let Some(resolved) = sema.resolve_path(&path) {
-                return Some(NameRefClass::Definition(resolved.into()));
+                if path.syntax().parent().and_then(ast::Attr::cast).is_some() {
+                    if let PathResolution::Def(ModuleDef::Function(func)) = resolved {
+                        if func.attrs(sema.db).by_key("proc_macro_attribute").exists() {
+                            return Some(NameRefClass::Definition(resolved.into()));
+                        }
+                    }
+                } else {
+                    return Some(NameRefClass::Definition(resolved.into()));
+                }
             }
         }
 
