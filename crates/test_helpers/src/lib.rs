@@ -280,4 +280,61 @@ macro_rules! test_lanes {
             }
         )*
     }
-}
+}  
+
+#[macro_export]
+macro_rules! test_lanes_panic {
+    {
+        $(fn $test:ident<const $lanes:ident: usize>() $body:tt)*
+    } => {
+        $(
+            mod $test {
+                use super::*;
+
+                fn implementation<const $lanes: usize>() $body
+
+                #[test]
+                #[should_panic]
+                fn lanes_1() {
+                    implementation::<1>();
+                }
+
+                #[test]
+                #[should_panic]
+                fn lanes_2() {
+                    implementation::<2>();
+                }
+
+                #[test]
+                #[should_panic]
+                fn lanes_4() {
+                    implementation::<4>();
+                }
+
+                #[test]
+                #[should_panic]
+                fn lanes_8() {
+                    implementation::<8>();
+                }
+
+                #[test]
+                #[should_panic]
+                fn lanes_16() {
+                    implementation::<16>();
+                }
+
+                #[test]
+                #[should_panic]
+                fn lanes_32() {
+                    implementation::<32>();
+                }
+
+                #[test]
+                #[should_panic]
+                fn lanes_64() {
+                    implementation::<64>();
+                }
+            }
+        )*
+    }
+}  

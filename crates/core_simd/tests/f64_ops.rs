@@ -1,4 +1,3 @@
 #[macro_use]
-#[path = "ops_macros.rs"]
-mod macros;
+mod ops_macros;
 impl_float_tests! { SimdF64, f64, i64 }

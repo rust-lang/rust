@@ -1,4 +1,3 @@
 #[macro_use]
-#[path = "ops_macros.rs"]
-mod macros;
+mod ops_macros;
 impl_signed_tests! { SimdI8, i8 }

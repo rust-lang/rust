@@ -141,6 +141,53 @@ macro_rules! impl_signed_tests {
                 }
             }
 
+            test_helpers::test_lanes_panic! {
+                fn div_min_overflow_panics<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(Scalar::MIN);
+                    let b = Vector::<LANES>::splat(-1);
+                    let _ = a / b;
+                }
+
+                fn div_by_all_zeros_panics<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(42);
+                    let b = Vector::<LANES>::splat(0);
+                    let _ = a / b;
+                }
+
+                fn div_by_one_zero_panics<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(42);
+                    let mut b = Vector::<LANES>::splat(21);
+                    b[0] = 0 as _;
+                    let _ = a / b;
+                }
+
+                fn rem_min_overflow_panic<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(Scalar::MIN);
+                    let b = Vector::<LANES>::splat(-1);
+                    let _ = a % b;
+                }
+
+                fn rem_zero_panic<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(42);
+                    let b = Vector::<LANES>::splat(0);
+                    let _ = a % b;
+                }
+            }
+
+            test_helpers::test_lanes! {
+                fn div_neg_one_no_panic<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(42);
+                    let b = Vector::<LANES>::splat(-1);
+                    let _ = a / b;
+                }
+
+                fn rem_neg_one_no_panic<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(42);
+                    let b = Vector::<LANES>::splat(-1);
+                    let _ = a % b;
+                }
+            }
+
             impl_binary_op_test!(Vector<LANES>, Scalar, Add::add, AddAssign::add_assign, Scalar::wrapping_add);
             impl_binary_op_test!(Vector<LANES>, Scalar, Sub::sub, SubAssign::sub_assign, Scalar::wrapping_sub);
             impl_binary_op_test!(Vector<LANES>, Scalar, Mul::mul, MulAssign::mul_assign, Scalar::wrapping_mul);
@@ -161,6 +208,14 @@ macro_rules! impl_unsigned_tests {
         mod $scalar {
             type Vector<const LANES: usize> = core_simd::$vector<LANES>;
             type Scalar = $scalar;
+
+            test_helpers::test_lanes_panic! {
+                fn rem_zero_panic<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(42);
+                    let b = Vector::<LANES>::splat(0);
+                    let _ = a % b;
+                }
+            }
 
             impl_binary_op_test!(Vector<LANES>, Scalar, Add::add, AddAssign::add_assign, Scalar::wrapping_add);
             impl_binary_op_test!(Vector<LANES>, Scalar, Sub::sub, SubAssign::sub_assign, Scalar::wrapping_sub);
@@ -187,7 +242,7 @@ macro_rules! impl_float_tests {
             impl_unary_op_test!(Vector<LANES>, Scalar, Neg::neg);
             impl_binary_op_test!(Vector<LANES>, Scalar, Add::add, AddAssign::add_assign);
             impl_binary_op_test!(Vector<LANES>, Scalar, Sub::sub, SubAssign::sub_assign);
-            impl_binary_op_test!(Vector<LANES>, Scalar, Mul::mul, SubAssign::sub_assign);
+            impl_binary_op_test!(Vector<LANES>, Scalar, Mul::mul, MulAssign::mul_assign);
             impl_binary_op_test!(Vector<LANES>, Scalar, Div::div, DivAssign::div_assign);
             impl_binary_op_test!(Vector<LANES>, Scalar, Rem::rem, RemAssign::rem_assign);
 
