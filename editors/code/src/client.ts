@@ -79,7 +79,7 @@ export function createClient(serverPath: string, cwd: string, extraEnv: Env): lc
                         return hover;
                     },
                     (error) => {
-                        client.handleFailedRequest(lc.HoverRequest.type, error, null);
+                        client.handleFailedRequest(lc.HoverRequest.type, token, error, null);
                         return Promise.resolve(null);
                     });
             },
