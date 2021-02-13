@@ -159,7 +159,7 @@ impl Inliner<'tcx> {
         }
     }
 
-    #[instrument(skip(self, caller_body))]
+    #[instrument(level = "debug", skip(self, caller_body))]
     fn is_mir_available(&self, callee: Instance<'tcx>, caller_body: &Body<'tcx>) -> bool {
         match callee.def {
             InstanceDef::Item(_) => {
@@ -258,7 +258,7 @@ impl Inliner<'tcx> {
         None
     }
 
-    #[instrument(skip(self, callee_body))]
+    #[instrument(level = "debug", skip(self, callee_body))]
     fn should_inline(&self, callsite: CallSite<'tcx>, callee_body: &Body<'tcx>) -> bool {
         let tcx = self.tcx;
 
