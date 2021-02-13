@@ -15,7 +15,7 @@ mod ops;
 mod round;
 
 mod lanes_at_most_64;
-pub use lanes_at_most_64::*;
+pub use lanes_at_most_64::LanesAtMost64;
 
 mod masks;
 pub use masks::*;
