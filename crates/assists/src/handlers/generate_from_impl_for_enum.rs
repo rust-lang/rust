@@ -3,7 +3,10 @@ use ide_db::helpers::FamousDefs;
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::{SmolStr, ast::{self, AstNode, NameOwner}};
+use syntax::{
+    ast::{self, AstNode, NameOwner},
+    SmolStr,
+};
 use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
