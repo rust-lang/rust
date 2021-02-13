@@ -121,6 +121,34 @@ jobs:
         name: dist-x86_64-unknown-linux-gnu
         path: ./dist
 
+  dist-x86_64-unknown-linux-musl:
+    name: dist (x86_64-unknown-linux-musl)
+    runs-on: ubuntu-20.04
+    env:
+      RA_TARGET: x86_64-unknown-linux-musl
+      # For some reason `-crt-static` is not working for clang without lld
+      RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C target-feature=-crt-static"
+    container:
+      image: rust:alpine
+      volumes:
+      - /usr/local/cargo/registry
+
+    steps:
+    - name: Install dependencies
+      run: apk add --no-cache git clang lld musl-dev
+
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Dist
+      run: cargo xtask dist
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: dist-x86_64-unknown-linux-musl
+        path: ./dist
+
   dist-aarch64-unknown-linux-gnu:
     name: dist (aarch64-unknown-linux-gnu)
     runs-on: ubuntu-16.04
@@ -216,7 +244,7 @@ jobs:
   publish:
     name: publish
     runs-on: ubuntu-16.04
-    needs: ['dist-x86_64-pc-windows-msvc', 'dist-aarch64-pc-windows-msvc', 'dist-x86_64-unknown-linux-gnu', 'dist-aarch64-unknown-linux-gnu', 'dist-x86_64-apple-darwin', 'dist-aarch64-apple-darwin']
+    needs: ['dist-x86_64-pc-windows-msvc', 'dist-aarch64-pc-windows-msvc', 'dist-x86_64-unknown-linux-gnu', 'dist-x86_64-unknown-linux-musl', 'dist-aarch64-unknown-linux-gnu', 'dist-x86_64-apple-darwin', 'dist-aarch64-apple-darwin']
     steps:
     - name: Install Nodejs
       uses: actions/setup-node@v1
@@ -246,6 +274,10 @@ jobs:
     - uses: actions/download-artifact@v1
       with:
         name: dist-x86_64-unknown-linux-gnu
+        path: dist
+    - uses: actions/download-artifact@v1
+      with:
+        name: dist-x86_64-unknown-linux-musl
         path: dist
     - uses: actions/download-artifact@v1
       with:
