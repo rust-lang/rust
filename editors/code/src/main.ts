@@ -246,10 +246,10 @@ async function patchelf(dest: PathLike): Promise<void> {
         },
         async (progress, _) => {
             const expression = `
-            {src, pkgs ? import <nixpkgs> {}}:
+            {srcStr, pkgs ? import <nixpkgs> {}}:
                 pkgs.stdenv.mkDerivation {
                     name = "rust-analyzer";
-                    inherit src;
+                    src = /. + srcStr;
                     phases = [ "installPhase" "fixupPhase" ];
                     installPhase = "cp $src $out";
                     fixupPhase = ''
@@ -262,7 +262,7 @@ async function patchelf(dest: PathLike): Promise<void> {
             await fs.rename(dest, origFile);
             progress.report({ message: "Patching executable", increment: 20 });
             await new Promise((resolve, reject) => {
-                const handle = exec(`nix-build -E - --arg src '${origFile}' -o ${dest}`,
+                const handle = exec(`nix-build -E - --argstr srcStr '${origFile}' -o '${dest}'`,
                     (err, stdout, stderr) => {
                         if (err != null) {
                             reject(Error(stderr));
