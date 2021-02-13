@@ -1,6 +1,12 @@
+use ast::GenericParamsOwner;
 use ide_db::helpers::FamousDefs;
 use ide_db::RootDatabase;
-use syntax::ast::{self, AstNode, NameOwner};
+use itertools::Itertools;
+use stdx::format_to;
+use syntax::{
+    ast::{self, AstNode, NameOwner},
+    SmolStr,
+};
 use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -18,7 +24,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // impl From<u32> for A {
 //     fn from(v: u32) -> Self {
-//         A::One(v)
+//         Self::One(v)
 //     }
 // }
 // ```
@@ -26,17 +32,22 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let variant_name = variant.name()?;
     let enum_name = variant.parent_enum().name()?;
-    let field_list = match variant.kind() {
-        ast::StructKind::Tuple(field_list) => field_list,
-        _ => return None,
-    };
-    if field_list.fields().count() != 1 {
-        return None;
-    }
-    let field_type = field_list.fields().next()?.ty()?;
-    let path = match field_type {
-        ast::Type::PathType(it) => it,
-        _ => return None,
+    let enum_type_params = variant.parent_enum().generic_param_list();
+    let (field_name, field_type) = match variant.kind() {
+        ast::StructKind::Tuple(field_list) => {
+            if field_list.fields().count() != 1 {
+                return None;
+            }
+            (None, field_list.fields().next()?.ty()?)
+        }
+        ast::StructKind::Record(field_list) => {
+            if field_list.fields().count() != 1 {
+                return None;
+            }
+            let field = field_list.fields().next()?;
+            (Some(field.name()?), field.ty()?)
+        }
+        ast::StructKind::Unit => return None,
     };
 
     if existing_from_impl(&ctx.sema, &variant).is_some() {
@@ -51,18 +62,48 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
         target,
         |edit| {
             let start_offset = variant.parent_enum().syntax().text_range().end();
-            let buf = format!(
-                r#"
+            let mut buf = String::from("\n\nimpl");
+            if let Some(type_params) = &enum_type_params {
+                format_to!(buf, "{}", type_params.syntax());
+            }
+            format_to!(buf, " From<{}> for {}", field_type.syntax(), enum_name);
+            if let Some(type_params) = enum_type_params {
+                let lifetime_params = type_params
+                    .lifetime_params()
+                    .filter_map(|it| it.lifetime())
+                    .map(|it| SmolStr::from(it.text()));
+                let type_params = type_params
+                    .type_params()
+                    .filter_map(|it| it.name())
+                    .map(|it| SmolStr::from(it.text()));
 
-impl From<{0}> for {1} {{
-    fn from(v: {0}) -> Self {{
-        {1}::{2}(v)
+                let generic_params = lifetime_params.chain(type_params).format(", ");
+                format_to!(buf, "<{}>", generic_params)
+            }
+            if let Some(name) = field_name {
+                format_to!(
+                    buf,
+                    r#" {{
+    fn from({0}: {1}) -> Self {{
+        Self::{2} {{ {0} }}
     }}
 }}"#,
-                path.syntax(),
-                enum_name,
-                variant_name
-            );
+                    name.text(),
+                    field_type.syntax(),
+                    variant_name,
+                );
+            } else {
+                format_to!(
+                    buf,
+                    r#" {{
+    fn from(v: {}) -> Self {{
+        Self::{}(v)
+    }}
+}}"#,
+                    field_type.syntax(),
+                    variant_name,
+                );
+            }
             edit.insert(start_offset, buf);
         },
     )
@@ -106,7 +147,7 @@ mod tests {
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
-        A::One(v)
+        Self::One(v)
     }
 }"#,
         );
@@ -121,7 +162,7 @@ impl From<u32> for A {
 
 impl From<foo::bar::baz::Boo> for A {
     fn from(v: foo::bar::baz::Boo) -> Self {
-        A::One(v)
+        Self::One(v)
     }
 }"#,
         );
@@ -145,7 +186,17 @@ impl From<foo::bar::baz::Boo> for A {
 
     #[test]
     fn test_add_from_impl_struct_variant() {
-        check_not_applicable("enum A { $0One { x: u32 } }");
+        check_assist(
+            generate_from_impl_for_enum,
+            "enum A { $0One { x: u32 } }",
+            r#"enum A { One { x: u32 } }
+
+impl From<u32> for A {
+    fn from(x: u32) -> Self {
+        Self::One { x }
+    }
+}"#,
+        );
     }
 
     #[test]
@@ -157,7 +208,7 @@ enum A { $0One(u32), }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
-        A::One(v)
+        Self::One(v)
     }
 }
 "#,
@@ -183,7 +234,7 @@ pub trait From<T> {
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
-        A::One(v)
+        Self::One(v)
     }
 }
 
@@ -195,6 +246,51 @@ impl From<String> for A {
 
 pub trait From<T> {
     fn from(T) -> Self;
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_add_from_impl_static_str() {
+        check_assist(
+            generate_from_impl_for_enum,
+            "enum A { $0One(&'static str) }",
+            r#"enum A { One(&'static str) }
+
+impl From<&'static str> for A {
+    fn from(v: &'static str) -> Self {
+        Self::One(v)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_add_from_impl_generic_enum() {
+        check_assist(
+            generate_from_impl_for_enum,
+            "enum Generic<T, U: Clone> { $0One(T), Two(U) }",
+            r#"enum Generic<T, U: Clone> { One(T), Two(U) }
+
+impl<T, U: Clone> From<T> for Generic<T, U> {
+    fn from(v: T) -> Self {
+        Self::One(v)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_add_from_impl_with_lifetime() {
+        check_assist(
+            generate_from_impl_for_enum,
+            "enum Generic<'a> { $0One(&'a i32) }",
+            r#"enum Generic<'a> { One(&'a i32) }
+
+impl<'a> From<&'a i32> for Generic<'a> {
+    fn from(v: &'a i32) -> Self {
+        Self::One(v)
+    }
 }"#,
         );
     }

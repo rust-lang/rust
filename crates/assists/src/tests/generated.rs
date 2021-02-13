@@ -499,7 +499,7 @@ enum A { One(u32) }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
-        A::One(v)
+        Self::One(v)
     }
 }
 "#####,
