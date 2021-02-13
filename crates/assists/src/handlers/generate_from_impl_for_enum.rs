@@ -30,14 +30,22 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
     let variant_name = variant.name()?;
     let enum_name = variant.parent_enum().name()?;
     let enum_type_params = variant.parent_enum().generic_param_list();
-    let field_list = match variant.kind() {
-        ast::StructKind::Tuple(field_list) => field_list,
-        _ => return None,
+    let (field_name, field_type) = match variant.kind() {
+        ast::StructKind::Tuple(field_list) => {
+            if field_list.fields().count() != 1 {
+                return None;
+            }
+            (None, field_list.fields().next()?.ty()?)
+        }
+        ast::StructKind::Record(field_list) => {
+            if field_list.fields().count() != 1 {
+                return None;
+            }
+            let field = field_list.fields().next()?;
+            (Some(field.name()?), field.ty()?)
+        }
+        ast::StructKind::Unit => return None,
     };
-    if field_list.fields().count() != 1 {
-        return None;
-    }
-    let field_type = field_list.fields().next()?.ty()?;
 
     if existing_from_impl(&ctx.sema, &variant).is_some() {
         mark::hit!(test_add_from_impl_already_exists);
@@ -69,16 +77,30 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
                 let generic_params = lifetime_params.chain(type_params).format(", ");
                 format_to!(buf, "<{}>", generic_params)
             }
-            format_to!(
-                buf,
-                r#" {{
+            if let Some(name) = field_name {
+                format_to!(
+                    buf,
+                    r#" {{
+    fn from({0}: {1}) -> Self {{
+        Self::{2} {{ {0} }}
+    }}
+}}"#,
+                    name.text(),
+                    field_type.syntax(),
+                    variant_name,
+                );
+            } else {
+                format_to!(
+                    buf,
+                    r#" {{
     fn from(v: {}) -> Self {{
         Self::{}(v)
     }}
 }}"#,
-                field_type.syntax(),
-                variant_name,
-            );
+                    field_type.syntax(),
+                    variant_name,
+                );
+            }
             edit.insert(start_offset, buf);
         },
     )
@@ -161,7 +183,17 @@ impl From<foo::bar::baz::Boo> for A {
 
     #[test]
     fn test_add_from_impl_struct_variant() {
-        check_not_applicable("enum A { $0One { x: u32 } }");
+        check_assist(
+            generate_from_impl_for_enum,
+            "enum A { $0One { x: u32 } }",
+            r#"enum A { One { x: u32 } }
+
+impl From<u32> for A {
+    fn from(x: u32) -> Self {
+        Self::One { x }
+    }
+}"#,
+        );
     }
 
     #[test]
