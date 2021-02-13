@@ -384,9 +384,8 @@ impl char {
     /// assert_eq!('❤'.escape_unicode().to_string(), "\\u{2764}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_char_escape_unicode", since = "1.50.0")]
     #[inline]
-    pub const fn escape_unicode(self) -> EscapeUnicode {
+    pub fn escape_unicode(self) -> EscapeUnicode {
         let c = self as u32;
 
         // or-ing 1 ensures that for c==0 the code computes that one
@@ -511,9 +510,8 @@ impl char {
     /// assert_eq!('"'.escape_default().to_string(), "\\\"");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_char_escape_default", since = "1.50.0")]
     #[inline]
-    pub const fn escape_default(self) -> EscapeDefault {
+    pub fn escape_default(self) -> EscapeDefault {
         let init_state = match self {
             '\t' => EscapeDefaultState::Backslash('t'),
             '\r' => EscapeDefaultState::Backslash('r'),
