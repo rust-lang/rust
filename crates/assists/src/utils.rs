@@ -379,7 +379,14 @@ pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &
 fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str) -> String {
     let type_params = adt.generic_param_list();
     let mut buf = String::with_capacity(code.len());
-    buf.push_str("\n\nimpl");
+    buf.push_str("\n\n");
+    adt
+        .attrs()
+        .filter(|attr| {
+            attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false)
+        })
+        .for_each(|attr| buf.push_str(format!("{}\n", attr.to_string()).as_str()));
+    buf.push_str("impl");
     if let Some(type_params) = &type_params {
         format_to!(buf, "{}", type_params.syntax());
     }
