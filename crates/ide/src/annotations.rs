@@ -154,103 +154,143 @@ fn should_skip_runnable(kind: &RunnableKind, binary_target: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::{FileId, FileRange};
-    use syntax::{TextRange, TextSize};
+    use expect_test::{expect, Expect};
 
-    use crate::{fixture, Annotation, AnnotationConfig, AnnotationKind, RunnableKind};
+    use crate::{fixture, Annotation, AnnotationConfig};
 
-    fn get_annotations(
-        ra_fixture: &str,
-        annotation_config: AnnotationConfig,
-    ) -> (FileId, Vec<Annotation>) {
+    fn check(ra_fixture: &str, expect: Expect) {
         let (analysis, file_id) = fixture::file(ra_fixture);
 
         let annotations: Vec<Annotation> = analysis
-            .annotations(file_id, annotation_config)
+            .annotations(
+                file_id,
+                AnnotationConfig {
+                    binary_target: true,
+                    annotate_runnables: true,
+                    annotate_impls: true,
+                    annotate_references: true,
+                    annotate_method_references: true,
+                    run: true,
+                    debug: true,
+                },
+            )
             .unwrap()
             .into_iter()
-            .map(move |annotation| analysis.resolve_annotation(annotation).unwrap())
+            .map(|annotation| analysis.resolve_annotation(annotation).unwrap())
             .collect();
 
-        if annotations.len() == 0 {
-            panic!("unresolved annotations")
-        }
-
-        (file_id, annotations)
-    }
-
-    macro_rules! check_annotation {
-        ( $ra_fixture:expr, $config:expr, $item_positions:expr, $pattern:pat, $checker:expr ) => {
-            let (file_id, annotations) = get_annotations($ra_fixture, $config);
-
-            annotations.into_iter().for_each(|annotation| {
-                assert!($item_positions.contains(&annotation.range));
-
-                match annotation.kind {
-                    $pattern => $checker(file_id),
-                    _ => panic!("Unexpected annotation kind"),
-                }
-            });
-        };
+        expect.assert_debug_eq(&annotations);
     }
 
     #[test]
     fn const_annotations() {
-        check_annotation!(
+        check(
             r#"
 const DEMO: i32 = 123;
+
+const UNUSED: i32 = 123;
 
 fn main() {
     let hello = DEMO;
 }
             "#,
-            AnnotationConfig {
-                binary_target: false,
-                annotate_runnables: false,
-                annotate_impls: false,
-                annotate_references: true,
-                annotate_method_references: false,
-                run: false,
-                debug: false,
-            },
-            &[TextRange::new(TextSize::from(0), TextSize::from(22))],
-            AnnotationKind::HasReferences { data: Some(ranges), .. },
-            |file_id| assert_eq!(
-                *ranges.first().unwrap(),
-                FileRange {
-                    file_id,
-                    range: TextRange::new(TextSize::from(52), TextSize::from(56))
-                }
-            )
-        );
-    }
-
-    #[test]
-    fn unused_const_annotations() {
-        check_annotation!(
-            r#"
-const DEMO: i32 = 123;
-
-fn main() {}
-            "#,
-            AnnotationConfig {
-                binary_target: false,
-                annotate_runnables: false,
-                annotate_impls: false,
-                annotate_references: true,
-                annotate_method_references: false,
-                run: false,
-                debug: false,
-            },
-            &[TextRange::new(TextSize::from(0), TextSize::from(22))],
-            AnnotationKind::HasReferences { data: Some(ranges), .. },
-            |_| assert_eq!(ranges.len(), 0)
+            expect![[r#"
+                [
+                    Annotation {
+                        range: 50..85,
+                        kind: Runnable {
+                            debug: true,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 50..85,
+                                    focus_range: 53..57,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 50..85,
+                        kind: Runnable {
+                            debug: false,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 50..85,
+                                    focus_range: 53..57,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 0..22,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 6,
+                            },
+                            data: Some(
+                                [
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 78..82,
+                                    },
+                                ],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 24..48,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 30,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 53..57,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 53,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                ]
+            "#]],
         );
     }
 
     #[test]
     fn struct_references_annotations() {
-        check_annotation!(
+        check(
             r#"
 struct Test;
 
@@ -258,30 +298,103 @@ fn main() {
     let test = Test;
 }
             "#,
-            AnnotationConfig {
-                binary_target: false,
-                annotate_runnables: false,
-                annotate_impls: false,
-                annotate_references: true,
-                annotate_method_references: false,
-                run: false,
-                debug: false,
-            },
-            &[TextRange::new(TextSize::from(0), TextSize::from(12))],
-            AnnotationKind::HasReferences { data: Some(ranges), .. },
-            |file_id| assert_eq!(
-                *ranges.first().unwrap(),
-                FileRange {
-                    file_id,
-                    range: TextRange::new(TextSize::from(41), TextSize::from(45))
-                }
-            )
+            expect![[r#"
+                [
+                    Annotation {
+                        range: 14..48,
+                        kind: Runnable {
+                            debug: true,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 14..48,
+                                    focus_range: 17..21,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 14..48,
+                        kind: Runnable {
+                            debug: false,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 14..48,
+                                    focus_range: 17..21,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 0..12,
+                        kind: HasImpls {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 7,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 0..12,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 7,
+                            },
+                            data: Some(
+                                [
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 41..45,
+                                    },
+                                ],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 17..21,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 17,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                ]
+            "#]],
         );
     }
 
     #[test]
     fn struct_and_trait_impls_annotations() {
-        check_annotation!(
+        check(
             r#"
 struct Test;
 
@@ -293,84 +406,229 @@ fn main() {
     let test = Test;
 }
             "#,
-            AnnotationConfig {
-                binary_target: false,
-                annotate_runnables: false,
-                annotate_impls: true,
-                annotate_references: false,
-                annotate_method_references: false,
-                run: false,
-                debug: false,
-            },
-            &[
-                TextRange::new(TextSize::from(0), TextSize::from(12)),
-                TextRange::new(TextSize::from(14), TextSize::from(34))
-            ],
-            AnnotationKind::HasImpls { data: Some(ranges), .. },
-            |_| assert_eq!(
-                ranges.first().unwrap().full_range,
-                TextRange::new(TextSize::from(36), TextSize::from(64))
-            )
+            expect![[r#"
+                [
+                    Annotation {
+                        range: 66..100,
+                        kind: Runnable {
+                            debug: true,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 66..100,
+                                    focus_range: 69..73,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 66..100,
+                        kind: Runnable {
+                            debug: false,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 66..100,
+                                    focus_range: 69..73,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 0..12,
+                        kind: HasImpls {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 7,
+                            },
+                            data: Some(
+                                [
+                                    NavigationTarget {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        full_range: 36..64,
+                                        focus_range: 57..61,
+                                        name: "impl",
+                                        kind: Impl,
+                                    },
+                                ],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 0..12,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 7,
+                            },
+                            data: Some(
+                                [
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 57..61,
+                                    },
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 93..97,
+                                    },
+                                ],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 14..34,
+                        kind: HasImpls {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 20,
+                            },
+                            data: Some(
+                                [
+                                    NavigationTarget {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        full_range: 36..64,
+                                        focus_range: 57..61,
+                                        name: "impl",
+                                        kind: Impl,
+                                    },
+                                ],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 14..34,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 20,
+                            },
+                            data: Some(
+                                [
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 41..52,
+                                    },
+                                ],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 69..73,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 69,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                ]
+            "#]],
         );
     }
 
     #[test]
-    fn run_annotation() {
-        check_annotation!(
+    fn runnable_annotation() {
+        check(
             r#"
 fn main() {}
             "#,
-            AnnotationConfig {
-                binary_target: true,
-                annotate_runnables: true,
-                annotate_impls: false,
-                annotate_references: false,
-                annotate_method_references: false,
-                run: true,
-                debug: false,
-            },
-            &[TextRange::new(TextSize::from(0), TextSize::from(12))],
-            AnnotationKind::Runnable { debug: false, runnable },
-            |_| {
-                assert!(matches!(runnable.kind, RunnableKind::Bin));
-                assert!(runnable.action().run_title.contains("Run"));
-            }
-        );
-    }
-
-    #[test]
-    fn debug_annotation() {
-        check_annotation!(
-            r#"
-fn main() {}
-            "#,
-            AnnotationConfig {
-                binary_target: true,
-                annotate_runnables: true,
-                annotate_impls: false,
-                annotate_references: false,
-                annotate_method_references: false,
-                run: false,
-                debug: true,
-            },
-            &[TextRange::new(TextSize::from(0), TextSize::from(12))],
-            AnnotationKind::Runnable { debug: true, runnable },
-            |_| {
-                assert!(matches!(runnable.kind, RunnableKind::Bin));
-                assert!(runnable.action().debugee);
-            }
+            expect![[r#"
+                [
+                    Annotation {
+                        range: 0..12,
+                        kind: Runnable {
+                            debug: true,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 0..12,
+                                    focus_range: 3..7,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 0..12,
+                        kind: Runnable {
+                            debug: false,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 0..12,
+                                    focus_range: 3..7,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 3..7,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 3,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                ]
+            "#]],
         );
     }
 
     #[test]
     fn method_annotations() {
-        // We actually want to skip `fn main` annotation, as it has no references in it
-        // but just ignoring empty reference slices would lead to false-positive if something
-        // goes wrong in annotation resolving mechanism. By tracking if we iterated before finding
-        // an empty slice we can track if everything is settled.
-        let mut iterated_once = false;
-
-        check_annotation!(
+        check(
             r#"
 struct Test;
 
@@ -382,37 +640,298 @@ fn main() {
     Test.self_by_ref();
 }
             "#,
-            AnnotationConfig {
-                binary_target: false,
-                annotate_runnables: false,
-                annotate_impls: false,
-                annotate_references: false,
-                annotate_method_references: true,
-                run: false,
-                debug: false,
-            },
-            &[
-                TextRange::new(TextSize::from(33), TextSize::from(44)),
-                TextRange::new(TextSize::from(61), TextSize::from(65))
-            ],
-            AnnotationKind::HasReferences { data: Some(ranges), .. },
-            |file_id| {
-                match ranges.as_slice() {
-                    [first, ..] => {
-                        assert_eq!(
-                            *first,
-                            FileRange {
-                                file_id,
-                                range: TextRange::new(TextSize::from(79), TextSize::from(90))
-                            }
-                        );
+            expect![[r#"
+                [
+                    Annotation {
+                        range: 58..95,
+                        kind: Runnable {
+                            debug: true,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 58..95,
+                                    focus_range: 61..65,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 58..95,
+                        kind: Runnable {
+                            debug: false,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 58..95,
+                                    focus_range: 61..65,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 0..12,
+                        kind: HasImpls {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 7,
+                            },
+                            data: Some(
+                                [
+                                    NavigationTarget {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        full_range: 14..56,
+                                        focus_range: 19..23,
+                                        name: "impl",
+                                        kind: Impl,
+                                    },
+                                ],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 0..12,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 7,
+                            },
+                            data: Some(
+                                [
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 19..23,
+                                    },
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 74..78,
+                                    },
+                                ],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 33..44,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 33,
+                            },
+                            data: Some(
+                                [
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 79..90,
+                                    },
+                                ],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 61..65,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 61,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                ]
+            "#]],
+        );
+    }
 
-                        iterated_once = true;
-                    }
-                    [] if iterated_once => {}
-                    [] => panic!("One reference was expected but not found"),
-                }
-            }
+    #[test]
+    fn test_annotations() {
+        check(
+            r#"
+fn main() {}
+
+mod tests {
+    #[test]
+    fn my_cool_test() {}
+}
+            "#,
+            expect![[r#"
+                [
+                    Annotation {
+                        range: 0..12,
+                        kind: Runnable {
+                            debug: true,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 0..12,
+                                    focus_range: 3..7,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 0..12,
+                        kind: Runnable {
+                            debug: false,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 0..12,
+                                    focus_range: 3..7,
+                                    name: "main",
+                                    kind: Function,
+                                },
+                                kind: Bin,
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 14..64,
+                        kind: Runnable {
+                            debug: true,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 14..64,
+                                    focus_range: 18..23,
+                                    name: "tests",
+                                    kind: Module,
+                                },
+                                kind: TestMod {
+                                    path: "tests",
+                                },
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 14..64,
+                        kind: Runnable {
+                            debug: false,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 14..64,
+                                    focus_range: 18..23,
+                                    name: "tests",
+                                    kind: Module,
+                                },
+                                kind: TestMod {
+                                    path: "tests",
+                                },
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 30..62,
+                        kind: Runnable {
+                            debug: true,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 30..62,
+                                    focus_range: 45..57,
+                                    name: "my_cool_test",
+                                    kind: Function,
+                                },
+                                kind: Test {
+                                    test_id: Path(
+                                        "tests::my_cool_test",
+                                    ),
+                                    attr: TestAttr {
+                                        ignore: false,
+                                    },
+                                },
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 30..62,
+                        kind: Runnable {
+                            debug: false,
+                            runnable: Runnable {
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 30..62,
+                                    focus_range: 45..57,
+                                    name: "my_cool_test",
+                                    kind: Function,
+                                },
+                                kind: Test {
+                                    test_id: Path(
+                                        "tests::my_cool_test",
+                                    ),
+                                    attr: TestAttr {
+                                        ignore: false,
+                                    },
+                                },
+                                cfg: None,
+                            },
+                        },
+                    },
+                    Annotation {
+                        range: 3..7,
+                        kind: HasReferences {
+                            position: FilePosition {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 3,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                ]
+            "#]],
         );
     }
 }
