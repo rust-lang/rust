@@ -23,16 +23,16 @@ LL |     let (A(a, _) | B(a), a) = (A(0, 1), 2);
    |                          ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:21:14
+  --> $DIR/already-bound-name.rs:21:15
    |
-LL |     let A(a, a) | B(a) = A(0, 1);
-   |              ^ used in a pattern more than once
+LL |     let (A(a, a) | B(a)) = A(0, 1);
+   |               ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:24:21
+  --> $DIR/already-bound-name.rs:24:22
    |
-LL |     let B(a) | A(a, a) = A(0, 1);
-   |                     ^ used in a pattern more than once
+LL |     let (B(a) | A(a, a)) = A(0, 1);
+   |                      ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
   --> $DIR/already-bound-name.rs:28:21
@@ -41,55 +41,55 @@ LL |         B(a) | A(a, a) => {} // Let's ensure `match` has no funny business.
    |                     ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:32:36
+  --> $DIR/already-bound-name.rs:32:37
    |
-LL |     let B(A(a, _) | B(a)) | A(a, A(a, _) | B(a)) = B(B(1));
-   |                                    ^ used in a pattern more than once
+LL |     let (B(A(a, _) | B(a)) | A(a, A(a, _) | B(a))) = B(B(1));
+   |                                     ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:32:46
+  --> $DIR/already-bound-name.rs:32:47
    |
-LL |     let B(A(a, _) | B(a)) | A(a, A(a, _) | B(a)) = B(B(1));
-   |                                              ^ used in a pattern more than once
+LL |     let (B(A(a, _) | B(a)) | A(a, A(a, _) | B(a))) = B(B(1));
+   |                                               ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:37:36
+  --> $DIR/already-bound-name.rs:37:37
    |
-LL |     let B(_) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
-   |                                    ^ used in a pattern more than once
+LL |     let (B(_) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
+   |                                     ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:37:46
+  --> $DIR/already-bound-name.rs:37:47
    |
-LL |     let B(_) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
-   |                                              ^ used in a pattern more than once
+LL |     let (B(_) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
+   |                                               ^ used in a pattern more than once
 
 error[E0408]: variable `a` is not bound in all patterns
-  --> $DIR/already-bound-name.rs:37:9
+  --> $DIR/already-bound-name.rs:37:10
    |
-LL |     let B(_) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
-   |         ^^^^ pattern doesn't bind `a`        - variable not in all patterns
+LL |     let (B(_) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
+   |          ^^^^ pattern doesn't bind `a`        - variable not in all patterns
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:42:49
+  --> $DIR/already-bound-name.rs:42:50
    |
-LL |     let B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
-   |                                                 ^ used in a pattern more than once
+LL |     let (B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
+   |                                                  ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:42:59
+  --> $DIR/already-bound-name.rs:42:60
    |
-LL |     let B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
-   |                                                           ^ used in a pattern more than once
+LL |     let (B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
+   |                                                            ^ used in a pattern more than once
 
 error[E0308]: mismatched types
-  --> $DIR/already-bound-name.rs:32:31
+  --> $DIR/already-bound-name.rs:32:32
    |
-LL |     let B(A(a, _) | B(a)) | A(a, A(a, _) | B(a)) = B(B(1));
-   |             -                 ^                    ------- this expression has type `E<E<{integer}>>`
-   |             |                 |
-   |             |                 expected integer, found enum `E`
-   |             first introduced with type `{integer}` here
+LL |     let (B(A(a, _) | B(a)) | A(a, A(a, _) | B(a))) = B(B(1));
+   |              -                 ^                     ------- this expression has type `E<E<{integer}>>`
+   |              |                 |
+   |              |                 expected integer, found enum `E`
+   |              first introduced with type `{integer}` here
    |
    = note: expected type `{integer}`
               found type `E<{integer}>`
