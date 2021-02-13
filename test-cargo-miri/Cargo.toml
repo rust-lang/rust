@@ -1,5 +1,5 @@
 [workspace]
-members = ["subcrate"]
+members = ["subcrate", "issue-1567"]
 
 [package]
 name = "cargo-miri-test"
@@ -9,6 +9,7 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.0"
+issue_1567 = { path ="issue-1567" }
 
 [dev-dependencies]
 rand = { version = "0.7", features = ["small_rng"] }
