@@ -9,6 +9,7 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.0"
+rlib-dep.path = "rlib-dep"
 issue_1567 = { path ="issue-1567" }
 
 [dev-dependencies]
