@@ -1131,8 +1131,11 @@ fn make_ret_ty(ctx: &AssistContext, module: hir::Module, fun: &Function) -> Opti
             make::ty_generic(make::name_ref("Option"), iter::once(fun_ty.make_ty(ctx, module)))
         }
         FlowHandler::Try { kind: TryKind::Result { ty: parent_ret_ty } } => {
-            let handler_ty =
-                result_err_ty(parent_ret_ty, ctx, module).unwrap_or_else(make::ty_unit);
+            let handler_ty = parent_ret_ty
+                .type_parameters()
+                .nth(1)
+                .map(|ty| make_ty(&ty, ctx, module))
+                .unwrap_or_else(make::ty_unit);
             make::ty_generic(
                 make::name_ref("Result"),
                 vec![fun_ty.make_ty(ctx, module), handler_ty],
@@ -1159,28 +1162,6 @@ fn make_ret_ty(ctx: &AssistContext, module: hir::Module, fun: &Function) -> Opti
         }
     };
     Some(make::ret_type(ret_ty))
-}
-
-/// Extract `E` type from `Result<T, E>`
-fn result_err_ty(
-    parent_ret_ty: &hir::Type,
-    ctx: &AssistContext,
-    module: hir::Module,
-) -> Option<ast::Type> {
-    // FIXME: use hir to extract argument information
-    //        currently we use `format -> take part -> parse`
-    let path_ty = match make_ty(&parent_ret_ty, ctx, module) {
-        ast::Type::PathType(path_ty) => path_ty,
-        _ => return None,
-    };
-    let arg_list = path_ty.path()?.segment()?.generic_arg_list()?;
-    let err_arg = arg_list.generic_args().nth(1)?;
-    let type_arg = match err_arg {
-        ast::GenericArg::TypeArg(type_arg) => type_arg,
-        _ => return None,
-    };
-
-    type_arg.ty()
 }
 
 fn make_body(
