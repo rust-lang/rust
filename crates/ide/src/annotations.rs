@@ -129,9 +129,10 @@ pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) 
                 result
                     .references
                     .into_iter()
-                    .map(|(_, access)| access.into_iter())
+                    .map(|(file_id, access)| {
+                        access.into_iter().map(move |(range, _)| FileRange { file_id, range })
+                    })
                     .flatten()
-                    .map(|(range, _)| FileRange { file_id: position.file_id, range })
                     .collect()
             });
         }
