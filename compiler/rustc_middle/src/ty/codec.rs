@@ -42,6 +42,15 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for Ty<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::ConstKind<'tcx> {
+    type Variant = ty::ConstKind<'tcx>;
+
+    #[inline]
+    fn variant(&self) -> &Self::Variant {
+        self
+    }
+}
+
 impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::PredicateKind<'tcx> {
     type Variant = ty::PredicateKind<'tcx>;
 
@@ -56,6 +65,7 @@ pub trait TyEncoder<'tcx>: Encoder {
 
     fn position(&self) -> usize;
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize>;
+    fn const_kind_shorthands(&mut self) -> &mut FxHashMap<ty::ConstKind<'tcx>, usize>;
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize>;
     fn encode_alloc_id(&mut self, alloc_id: &AllocId) -> Result<(), Self::Error>;
 }
@@ -117,6 +127,13 @@ where
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Ty<'tcx> {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         encode_with_shorthand(e, self, TyEncoder::type_shorthands)
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Const<'tcx> {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+        self.ty.encode(e)?;
+        encode_with_shorthand(e, &self.val, TyEncoder::const_kind_shorthands)
     }
 }
 
@@ -223,6 +240,25 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
             let tcx = decoder.tcx();
             Ok(tcx.mk_ty(ty::TyKind::decode(decoder)?))
         }
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Const<'tcx> {
+    fn decode(decoder: &mut D) -> Result<ty::Const<'tcx>, D::Error> {
+        let ty = Ty::decode(decoder)?;
+
+        // Handle shorthands first, if we have an usize > 0x80.
+        let val = if decoder.positioned_at_shorthand() {
+            let pos = decoder.read_usize()?;
+            assert!(pos >= SHORTHAND_OFFSET);
+            let shorthand = pos - SHORTHAND_OFFSET;
+
+            decoder.with_position(shorthand, ty::ConstKind::decode)?
+        } else {
+            ty::ConstKind::decode(decoder)?
+        };
+
+        Ok(ty::Const { ty, val })
     }
 }
 

@@ -293,6 +293,7 @@ impl<'sess> OnDiskCache<'sess> {
                 tcx,
                 encoder,
                 type_shorthands: Default::default(),
+                const_kind_shorthands: Default::default(),
                 predicate_shorthands: Default::default(),
                 interpret_allocs: Default::default(),
                 source_map: CachingSourceMapView::new(tcx.sess.source_map()),
@@ -989,6 +990,7 @@ struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
     tcx: TyCtxt<'tcx>,
     encoder: &'a mut E,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
+    const_kind_shorthands: FxHashMap<ty::ConstKind<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
     interpret_allocs: FxIndexSet<interpret::AllocId>,
     source_map: CachingSourceMapView<'tcx>,
@@ -1102,6 +1104,9 @@ where
     }
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
         &mut self.type_shorthands
+    }
+    fn const_kind_shorthands(&mut self) -> &mut FxHashMap<ty::ConstKind<'tcx>, usize> {
+        &mut self.const_kind_shorthands
     }
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize> {
         &mut self.predicate_shorthands
