@@ -6,10 +6,13 @@
 
 use tidy::*;
 
-use crossbeam_utils::thread::scope;
+use crossbeam_utils::thread::{scope, ScopedJoinHandle};
+use std::collections::VecDeque;
 use std::env;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process;
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 fn main() {
@@ -17,6 +20,9 @@ fn main() {
     let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
     let output_directory: PathBuf =
         env::args_os().nth(3).expect("need path to output directory").into();
+    let concurrency: NonZeroUsize =
+        FromStr::from_str(&env::args().nth(4).expect("need concurrency"))
+            .expect("concurrency must be a number");
 
     let src_path = root_path.join("src");
     let library_path = root_path.join("library");
@@ -29,15 +35,23 @@ fn main() {
     let bad = std::sync::Arc::new(AtomicBool::new(false));
 
     scope(|s| {
+        let mut handles: VecDeque<ScopedJoinHandle<'_, ()>> =
+            VecDeque::with_capacity(concurrency.get());
+
         macro_rules! check {
             ($p:ident $(, $args:expr)* ) => {
-                s.spawn(|_| {
+                while handles.len() >= concurrency.get() {
+                    handles.pop_front().unwrap().join().unwrap();
+                }
+
+                let handle = s.spawn(|_| {
                     let mut flag = false;
                     $p::check($($args),* , &mut flag);
                     if (flag) {
                         bad.store(true, Ordering::Relaxed);
                     }
                 });
+                handles.push_back(handle);
             }
         }
 
@@ -74,6 +88,9 @@ fn main() {
         check!(edition, &library_path);
 
         let collected = {
+            while handles.len() >= concurrency.get() {
+                handles.pop_front().unwrap().join().unwrap();
+            }
             let mut flag = false;
             let r = features::check(&src_path, &compiler_path, &library_path, &mut flag, verbose);
             if flag {
