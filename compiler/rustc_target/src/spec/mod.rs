@@ -600,19 +600,28 @@ bitflags::bitflags! {
     }
 }
 
+impl SanitizerSet {
+    /// Return sanitizer's name
+    ///
+    /// Returns none if the flags is a set of sanitizers numbering not exactly one.
+    fn as_str(self) -> Option<&'static str> {
+        Some(match self {
+            SanitizerSet::ADDRESS => "address",
+            SanitizerSet::LEAK => "leak",
+            SanitizerSet::MEMORY => "memory",
+            SanitizerSet::THREAD => "thread",
+            SanitizerSet::HWADDRESS => "hwaddress",
+            _ => return None,
+        })
+    }
+}
+
 /// Formats a sanitizer set as a comma separated list of sanitizers' names.
 impl fmt::Display for SanitizerSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut first = true;
         for s in *self {
-            let name = match s {
-                SanitizerSet::ADDRESS => "address",
-                SanitizerSet::LEAK => "leak",
-                SanitizerSet::MEMORY => "memory",
-                SanitizerSet::THREAD => "thread",
-                SanitizerSet::HWADDRESS => "hwaddress",
-                _ => panic!("unrecognized sanitizer {:?}", s),
-            };
+            let name = s.as_str().unwrap_or_else(|| panic!("unrecognized sanitizer {:?}", s));
             if !first {
                 f.write_str(", ")?;
             }
@@ -628,18 +637,34 @@ impl IntoIterator for SanitizerSet {
     type IntoIter = std::vec::IntoIter<SanitizerSet>;
 
     fn into_iter(self) -> Self::IntoIter {
-        [SanitizerSet::ADDRESS, SanitizerSet::LEAK, SanitizerSet::MEMORY, SanitizerSet::THREAD, SanitizerSet::HWADDRESS]
-            .iter()
-            .copied()
-            .filter(|&s| self.contains(s))
-            .collect::<Vec<_>>()
-            .into_iter()
+        [
+            SanitizerSet::ADDRESS,
+            SanitizerSet::LEAK,
+            SanitizerSet::MEMORY,
+            SanitizerSet::THREAD,
+            SanitizerSet::HWADDRESS,
+        ]
+        .iter()
+        .copied()
+        .filter(|&s| self.contains(s))
+        .collect::<Vec<_>>()
+        .into_iter()
     }
 }
 
 impl<CTX> HashStable<CTX> for SanitizerSet {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.bits().hash_stable(ctx, hasher);
+    }
+}
+
+impl ToJson for SanitizerSet {
+    fn to_json(&self) -> Json {
+        self.into_iter()
+            .map(|v| Some(v.as_str()?.to_json()))
+            .collect::<Option<Vec<_>>>()
+            .unwrap_or(Vec::new())
+            .to_json()
     }
 }
 
@@ -1614,6 +1639,24 @@ impl Target {
                     )),
                 }).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, SanitizerSet) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_array()).and_then(|a| {
+                    for s in a {
+                        base.$key_name |= match s.as_string() {
+                            Some("address") => SanitizerSet::ADDRESS,
+                            Some("leak") => SanitizerSet::LEAK,
+                            Some("memory") => SanitizerSet::MEMORY,
+                            Some("thread") => SanitizerSet::THREAD,
+                            Some("hwaddress") => SanitizerSet::HWADDRESS,
+                            Some(s) => return Some(Err(format!("unknown sanitizer {}", s))),
+                            _ => return Some(Err(format!("not a string: {:?}", s))),
+                        };
+                    }
+                    Some(Ok(()))
+                }).unwrap_or(Ok(()))
+            } );
+
             ($key_name:ident, crt_objects_fallback) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1792,6 +1835,7 @@ impl Target {
         key!(eh_frame_header, bool);
         key!(has_thumb_interworking, bool);
         key!(split_debuginfo, SplitDebuginfo)?;
+        key!(supported_sanitizers, SanitizerSet)?;
 
         // NB: The old name is deprecated, but support for it is retained for
         // compatibility.
@@ -2029,6 +2073,7 @@ impl ToJson for Target {
         target_option_val!(eh_frame_header);
         target_option_val!(has_thumb_interworking);
         target_option_val!(split_debuginfo);
+        target_option_val!(supported_sanitizers);
 
         if default.unsupported_abis != self.unsupported_abis {
             d.insert(
