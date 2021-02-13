@@ -29,6 +29,19 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
+crate fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: hir::HirId) -> bool {
+    while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
+        node = id;
+        if cx.tcx.hir().attrs(node).lists(sym::doc).has_word(sym::hidden) {
+            return true;
+        }
+        if node == hir::CRATE_HIR_ID {
+            break;
+        }
+    }
+    false
+}
+
 // Also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?.
 
@@ -158,19 +171,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om: &mut Module<'tcx>,
         please_inline: bool,
     ) -> bool {
-        fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: hir::HirId) -> bool {
-            while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
-                node = id;
-                if cx.tcx.hir().attrs(node).lists(sym::doc).has_word(sym::hidden) {
-                    return true;
-                }
-                if node == hir::CRATE_HIR_ID {
-                    break;
-                }
-            }
-            false
-        }
-
         debug!("maybe_inline_local res: {:?}", res);
 
         let tcx = self.cx.tcx;
