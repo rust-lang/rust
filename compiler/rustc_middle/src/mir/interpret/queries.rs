@@ -39,6 +39,7 @@ impl<'tcx> TyCtxt<'tcx> {
         promoted: Option<mir::Promoted>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
+        debug!("const_eval_resolve: param_env={:?}", param_env);
         match ty::Instance::resolve_opt_const_arg(self, param_env, def, substs) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted };

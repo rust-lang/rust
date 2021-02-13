@@ -228,6 +228,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
         ct: &'tcx ty::Const<'tcx>,
         vid_is_expected: bool,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        debug!("unify_const_variable: param_env={:?}", param_env);
         let (for_universe, span) = {
             let mut inner = self.inner.borrow_mut();
             let variable_table = &mut inner.const_unification_table();

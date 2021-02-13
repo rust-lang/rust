@@ -353,6 +353,7 @@ impl<'tcx> Instance<'tcx> {
         def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+        debug!("resolve_opt_const_arg: param_env={:?},substs={:?}", param_env, substs);
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
 

@@ -14,6 +14,7 @@ fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+    debug!("resolve_instance: key = {:?}", key);
     let (param_env, (did, substs)) = key.into_parts();
     if let Some(did) = did.as_local() {
         if let Some(param_did) = tcx.opt_const_param_of(did) {
@@ -44,7 +45,7 @@ fn inner_resolve_instance<'tcx>(
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
     let (param_env, (def, substs)) = key.into_parts();
 
-    debug!("resolve(def={:?}, substs={:?})", def.did, substs);
+    debug!("inner_resolve_instance: key={:?}", key);
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def.did) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
         let item = tcx.associated_item(def.did);
@@ -93,7 +94,10 @@ fn inner_resolve_instance<'tcx>(
         };
         Ok(Some(Instance { def, substs }))
     };
-    debug!("resolve(def.did={:?}, substs={:?}) = {:?}", def.did, substs, result);
+    debug!(
+        "inner_resolve_instance: resolve(def.did={:?}, substs={:?}) = {:?}",
+        def.did, substs, result
+    );
     result
 }
 
