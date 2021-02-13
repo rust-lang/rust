@@ -569,7 +569,7 @@ impl char {
     /// assert_eq!(len, tokyo.len());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_char_len_utf", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
     pub const fn len_utf8(self) -> usize {
         len_utf8(self as u32)
@@ -595,7 +595,7 @@ impl char {
     /// assert_eq!(len, 2);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_char_len_utf", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
     pub const fn len_utf16(self) -> usize {
         let ch = self as u32;
@@ -1088,7 +1088,7 @@ impl char {
     /// [`make_ascii_uppercase()`]: #method.make_ascii_uppercase
     /// [`to_uppercase()`]: #method.to_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
     pub const fn to_ascii_uppercase(&self) -> char {
         if self.is_ascii_lowercase() {
@@ -1121,7 +1121,7 @@ impl char {
     /// [`make_ascii_lowercase()`]: #method.make_ascii_lowercase
     /// [`to_lowercase()`]: #method.to_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
     pub const fn to_ascii_lowercase(&self) -> char {
         if self.is_ascii_uppercase() {
@@ -1147,7 +1147,7 @@ impl char {
     /// assert!(!upper_a.eq_ignore_ascii_case(&lower_z));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &char) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
