@@ -67,17 +67,24 @@ struct LeafNode<K, V> {
 }
 
 impl<K, V> LeafNode<K, V> {
-    /// Creates a new `LeafNode`. Unsafe because all nodes should really be hidden behind
+    /// Initializes a new `LeafNode` in-place.
+    unsafe fn init(this: *mut Self) {
+        // As a general policy, we leave fields uninitialized if they can be, as this should
+        // be both slightly faster and easier to track in Valgrind.
+        unsafe {
+            // parent_idx, keys, and vals are all MaybeUninit
+            ptr::addr_of_mut!((*this).parent).write(None);
+            ptr::addr_of_mut!((*this).len).write(0);
+        }
+    }
+
+    /// Creates a new boxed `LeafNode`. Unsafe because all nodes should really be hidden behind
     /// `BoxedNode`, preventing accidental dropping of uninitialized keys and values.
-    unsafe fn new() -> Self {
-        LeafNode {
-            // As a general policy, we leave fields uninitialized if they can be, as this should
-            // be both slightly faster and easier to track in Valgrind.
-            keys: MaybeUninit::uninit_array(),
-            vals: MaybeUninit::uninit_array(),
-            parent: None,
-            parent_idx: MaybeUninit::uninit(),
-            len: 0,
+    unsafe fn new() -> Box<Self> {
+        unsafe {
+            let mut leaf = Box::new_uninit();
+            LeafNode::init(leaf.as_mut_ptr());
+            leaf.assume_init()
         }
     }
 }
@@ -99,15 +106,20 @@ struct InternalNode<K, V> {
 }
 
 impl<K, V> InternalNode<K, V> {
-    /// Creates a new `InternalNode`.
+    /// Creates a new boxed `InternalNode`.
     ///
-    /// This is unsafe for two reasons. First, it returns an `InternalNode` by value, risking
+    /// This is unsafe for two reasons. First, it returns an owned `InternalNode` in a box, risking
     /// dropping of uninitialized fields. Second, an invariant of internal nodes is that `len + 1`
     /// edges are initialized and valid, meaning that even when the node is empty (having a
     /// `len` of 0), there must be one initialized and valid edge. This function does not set up
     /// such an edge.
-    unsafe fn new() -> Self {
-        InternalNode { data: unsafe { LeafNode::new() }, edges: MaybeUninit::uninit_array() }
+    unsafe fn new() -> Box<Self> {
+        unsafe {
+            let mut node = Box::<Self>::new_uninit();
+            // We only need to initialize the data; the edges are MaybeUninit.
+            LeafNode::init(ptr::addr_of_mut!((*node.as_mut_ptr()).data));
+            node.assume_init()
+        }
     }
 }
 
@@ -133,7 +145,7 @@ impl<K, V> Root<K, V> {
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     fn new_leaf() -> Self {
-        Self::from_new_leaf(Box::new(unsafe { LeafNode::new() }))
+        Self::from_new_leaf(unsafe { LeafNode::new() })
     }
 
     fn from_new_leaf(leaf: Box<LeafNode<K, V>>) -> Self {
@@ -143,7 +155,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
     fn new_internal(child: Root<K, V>) -> Self {
-        let mut new_node = Box::new(unsafe { InternalNode::new() });
+        let mut new_node = unsafe { InternalNode::new() };
         new_node.edges[0].write(child.node);
         NodeRef::from_new_internal(new_node, child.height + 1)
     }
@@ -1075,7 +1087,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     ///   allocated node.
     pub fn split(mut self) -> SplitResult<'a, K, V, marker::Leaf> {
         unsafe {
-            let mut new_node = Box::new(LeafNode::new());
+            let mut new_node = LeafNode::new();
 
             let kv = self.split_leaf_data(&mut new_node);
 
@@ -1110,7 +1122,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     pub fn split(mut self) -> SplitResult<'a, K, V, marker::Internal> {
         let old_len = self.node.len();
         unsafe {
-            let mut new_node = Box::new(InternalNode::new());
+            let mut new_node = InternalNode::new();
             let kv = self.split_leaf_data(&mut new_node.data);
             let new_len = usize::from(new_node.data.len);
             move_to_slice(
