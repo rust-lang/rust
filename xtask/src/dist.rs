@@ -59,7 +59,7 @@ fn dist_client(version: &str, release_tag: &str) -> Result<()> {
 
 fn dist_server() -> Result<()> {
     let target = get_target();
-    if target.contains("-linux-gnu") {
+    if target.contains("-linux-gnu") || target.contains("-linux-musl") {
         env::set_var("CC", "clang");
     }
 
