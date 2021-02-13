@@ -1,11 +1,6 @@
-use itertools::Itertools;
-use stdx::format_to;
-use syntax::{
-    ast::{self, AstNode, AttrsOwner, GenericParamsOwner, NameOwner},
-    SmolStr,
-};
+use syntax::ast::{self, AstNode, NameOwner};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{utils::generate_impl_text, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: generate_impl
 //
@@ -36,44 +31,15 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()
         format!("Generate impl for `{}`", name),
         target,
         |edit| {
-            let type_params = nominal.generic_param_list();
             let start_offset = nominal.syntax().text_range().end();
-            let mut buf = String::new();
-            buf.push_str("\n\n");
-            nominal
-                .attrs()
-                .filter(|attr| {
-                    attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false)
-                })
-                .for_each(|attr| buf.push_str(format!("{}\n", attr.to_string()).as_str()));
-
-            buf.push_str("impl");
-            if let Some(type_params) = &type_params {
-                format_to!(buf, "{}", type_params.syntax());
-            }
-            buf.push_str(" ");
-            buf.push_str(name.text());
-            if let Some(type_params) = type_params {
-                let lifetime_params = type_params
-                    .lifetime_params()
-                    .filter_map(|it| it.lifetime())
-                    .map(|it| SmolStr::from(it.text()));
-                let type_params = type_params
-                    .type_params()
-                    .filter_map(|it| it.name())
-                    .map(|it| SmolStr::from(it.text()));
-
-                let generic_params = lifetime_params.chain(type_params).format(", ");
-                format_to!(buf, "<{}>", generic_params)
-            }
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    buf.push_str(" {\n    $0\n}");
-                    edit.insert_snippet(cap, start_offset, buf);
+                    let snippet = generate_impl_text(&nominal, "    $0");
+                    edit.insert_snippet(cap, start_offset, snippet);
                 }
                 None => {
-                    buf.push_str(" {\n}");
-                    edit.insert(start_offset, buf);
+                    let snippet = generate_impl_text(&nominal, "");
+                    edit.insert(start_offset, snippet);
                 }
             }
         },

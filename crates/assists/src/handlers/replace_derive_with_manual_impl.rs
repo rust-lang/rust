@@ -2,8 +2,7 @@ use ide_db::helpers::mod_path_to_ast;
 use ide_db::imports_locator;
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, AstNode},
-    Direction,
+    ast::{self, make, AstNode, NameOwner},
     SyntaxKind::{IDENT, WHITESPACE},
     TextSize,
 };
@@ -11,7 +10,8 @@ use syntax::{
 use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},
     utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, render_snippet, Cursor, DefaultMethods,
+        add_trait_assoc_items_to_impl, filter_assoc_items, generate_trait_impl_text,
+        render_snippet, Cursor, DefaultMethods,
     },
     AssistId, AssistKind,
 };
@@ -57,8 +57,9 @@ pub(crate) fn replace_derive_with_manual_impl(
     let trait_token = ctx.token_at_offset().find(|t| t.kind() == IDENT && t.text() != "derive")?;
     let trait_path = make::path_unqualified(make::path_segment(make::name_ref(trait_token.text())));
 
-    let annotated_name = attr.syntax().siblings(Direction::Next).find_map(ast::Name::cast)?;
-    let insert_pos = annotated_name.syntax().parent()?.text_range().end();
+    let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+    let annotated_name = adt.name()?;
+    let insert_pos = adt.syntax().text_range().end();
 
     let current_module = ctx.sema.scope(annotated_name.syntax()).module()?;
     let current_crate = current_module.krate();
@@ -82,10 +83,10 @@ pub(crate) fn replace_derive_with_manual_impl(
 
     let mut no_traits_found = true;
     for (trait_path, trait_) in found_traits.inspect(|_| no_traits_found = false) {
-        add_assist(acc, ctx, &attr, &trait_path, Some(trait_), &annotated_name, insert_pos)?;
+        add_assist(acc, ctx, &attr, &trait_path, Some(trait_), &adt, &annotated_name, insert_pos)?;
     }
     if no_traits_found {
-        add_assist(acc, ctx, &attr, &trait_path, None, &annotated_name, insert_pos)?;
+        add_assist(acc, ctx, &attr, &trait_path, None, &adt, &annotated_name, insert_pos)?;
     }
     Some(())
 }
@@ -96,6 +97,7 @@ fn add_assist(
     attr: &ast::Attr,
     trait_path: &ast::Path,
     trait_: Option<hir::Trait>,
+    adt: &ast::Adt,
     annotated_name: &ast::Name,
     insert_pos: TextSize,
 ) -> Option<()> {
@@ -112,15 +114,15 @@ fn add_assist(
             let impl_def_with_items =
                 impl_def_from_trait(&ctx.sema, annotated_name, trait_, trait_path);
             update_attribute(builder, &input, &trait_name, &attr);
+            let trait_path = format!("{}", trait_path);
             match (ctx.config.snippet_cap, impl_def_with_items) {
-                (None, _) => builder.insert(
-                    insert_pos,
-                    format!("\n\nimpl {} for {} {{\n\n}}", trait_path, annotated_name),
-                ),
+                (None, _) => {
+                    builder.insert(insert_pos, generate_trait_impl_text(adt, &trait_path, ""))
+                }
                 (Some(cap), None) => builder.insert_snippet(
                     cap,
                     insert_pos,
-                    format!("\n\nimpl {} for {} {{\n    $0\n}}", trait_path, annotated_name),
+                    generate_trait_impl_text(adt, &trait_path, "    $0"),
                 ),
                 (Some(cap), Some((impl_def, first_assoc_item))) => {
                     let mut cursor = Cursor::Before(first_assoc_item.syntax());
