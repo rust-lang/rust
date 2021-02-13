@@ -55,10 +55,10 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                         if comment.text().trim().starts_with("// region:") {
                             regions_starts.push(comment.syntax().text_range().start());
                         } else if comment.text().trim().starts_with("// endregion") {
-                            if !regions_starts.is_empty() {
+                            if let Some(region) = regions_starts.pop() {
                                 res.push(Fold {
                                     range: TextRange::new(
-                                        regions_starts.pop().unwrap(),
+                                        region,
                                         comment.syntax().text_range().end(),
                                     ),
                                     kind: FoldKind::Region,
