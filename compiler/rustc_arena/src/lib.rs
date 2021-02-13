@@ -14,7 +14,6 @@
 #![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
-#![cfg_attr(bootstrap, feature(min_const_generics))]
 #![feature(min_specialization)]
 #![cfg_attr(test, feature(test))]
 

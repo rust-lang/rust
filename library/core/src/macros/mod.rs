@@ -1,25 +1,3 @@
-#[cfg(bootstrap)]
-#[doc(include = "panic.md")]
-#[macro_export]
-#[allow_internal_unstable(core_panic)]
-#[stable(feature = "core", since = "1.6.0")]
-#[rustc_diagnostic_item = "core_panic_macro"]
-macro_rules! panic {
-    () => (
-        $crate::panic!("explicit panic")
-    );
-    ($msg:literal $(,)?) => (
-        $crate::panicking::panic($msg)
-    );
-    ($msg:expr $(,)?) => (
-        $crate::panicking::panic_str($msg)
-    );
-    ($fmt:expr, $($arg:tt)+) => (
-        $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+))
-    );
-}
-
-#[cfg(not(bootstrap))]
 #[doc(include = "panic.md")]
 #[macro_export]
 #[rustc_builtin_macro = "core_panic"]

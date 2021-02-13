@@ -877,8 +877,7 @@ class RustBuild(object):
         target_linker = self.get_toml("linker", build_section)
         if target_linker is not None:
             env["RUSTFLAGS"] += " -C linker=" + target_linker
-        # cfg(bootstrap): Add `-Wsemicolon_in_expressions_from_macros` after the next beta bump
-        env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
+        env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes -Wsemicolon_in_expressions_from_macros"
         if self.get_toml("deny-warnings", "rust") != "false":
             env["RUSTFLAGS"] += " -Dwarnings"
 

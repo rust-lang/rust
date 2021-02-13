@@ -118,7 +118,6 @@
 #![feature(range_bounds_assert_len)]
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
-#![cfg_attr(bootstrap, feature(min_const_generics))]
 #![feature(min_specialization)]
 #![feature(set_ptr_value)]
 #![feature(slice_ptr_get)]

@@ -128,7 +128,6 @@
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]
-#![cfg_attr(bootstrap, feature(min_const_generics))]
 #![feature(min_specialization)]
 #![feature(staged_api)]
 #![feature(std_internals)]
