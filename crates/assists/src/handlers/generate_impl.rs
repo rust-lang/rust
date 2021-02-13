@@ -1,6 +1,6 @@
 use syntax::ast::{self, AstNode, NameOwner};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, utils::generate_impl_text};
+use crate::{utils::generate_impl_text, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: generate_impl
 //

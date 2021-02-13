@@ -380,11 +380,8 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
     let type_params = adt.generic_param_list();
     let mut buf = String::with_capacity(code.len());
     buf.push_str("\n\n");
-    adt
-        .attrs()
-        .filter(|attr| {
-            attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false)
-        })
+    adt.attrs()
+        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false))
         .for_each(|attr| buf.push_str(format!("{}\n", attr.to_string()).as_str()));
     buf.push_str("impl");
     if let Some(type_params) = &type_params {

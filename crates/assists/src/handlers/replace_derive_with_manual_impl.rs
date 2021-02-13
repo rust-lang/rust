@@ -1,9 +1,20 @@
 use ide_db::helpers::mod_path_to_ast;
 use ide_db::imports_locator;
 use itertools::Itertools;
-use syntax::{SyntaxKind::{IDENT, WHITESPACE}, TextSize, ast::{self, AstNode, NameOwner, make}};
+use syntax::{
+    ast::{self, make, AstNode, NameOwner},
+    SyntaxKind::{IDENT, WHITESPACE},
+    TextSize,
+};
 
-use crate::{AssistId, AssistKind, assist_context::{AssistBuilder, AssistContext, Assists}, utils::{Cursor, DefaultMethods, add_trait_assoc_items_to_impl, filter_assoc_items, generate_trait_impl_text, render_snippet}};
+use crate::{
+    assist_context::{AssistBuilder, AssistContext, Assists},
+    utils::{
+        add_trait_assoc_items_to_impl, filter_assoc_items, generate_trait_impl_text,
+        render_snippet, Cursor, DefaultMethods,
+    },
+    AssistId, AssistKind,
+};
 
 // Assist: replace_derive_with_manual_impl
 //
@@ -105,10 +116,9 @@ fn add_assist(
             update_attribute(builder, &input, &trait_name, &attr);
             let trait_path = format!("{}", trait_path);
             match (ctx.config.snippet_cap, impl_def_with_items) {
-                (None, _) => builder.insert(
-                    insert_pos,
-                    generate_trait_impl_text(adt, &trait_path, ""),
-                ),
+                (None, _) => {
+                    builder.insert(insert_pos, generate_trait_impl_text(adt, &trait_path, ""))
+                }
                 (Some(cap), None) => builder.insert_snippet(
                     cap,
                     insert_pos,

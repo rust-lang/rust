@@ -3,7 +3,7 @@ use ide_db::RootDatabase;
 use syntax::ast::{self, AstNode, NameOwner};
 use test_utils::mark;
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, utils::generate_trait_impl_text};
+use crate::{utils::generate_trait_impl_text, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: generate_from_impl_for_enum
 //
