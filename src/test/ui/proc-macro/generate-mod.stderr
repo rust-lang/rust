@@ -6,7 +6,7 @@ LL | generate_mod::check!();
    |
    = note: consider importing this struct:
            FromOutside
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:9:1
@@ -16,7 +16,7 @@ LL | generate_mod::check!();
    |
    = note: consider importing this struct:
            Outer
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:12:1
@@ -26,7 +26,7 @@ LL | #[generate_mod::check_attr]
    |
    = note: consider importing this struct:
            FromOutside
-   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `OuterAttr` in this scope
   --> $DIR/generate-mod.rs:12:1
@@ -36,7 +36,7 @@ LL | #[generate_mod::check_attr]
    |
    = note: consider importing this struct:
            OuterAttr
-   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:16:10
@@ -47,7 +47,7 @@ LL | #[derive(generate_mod::CheckDerive)]
    = note: `#[warn(proc_macro_derive_resolution_fallback)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: cannot find type `OuterDerive` in this scope
   --> $DIR/generate-mod.rs:16:10
@@ -57,7 +57,7 @@ LL | #[derive(generate_mod::CheckDerive)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:23:14
@@ -67,7 +67,7 @@ LL |     #[derive(generate_mod::CheckDerive)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: cannot find type `OuterDerive` in this scope
   --> $DIR/generate-mod.rs:23:14
@@ -77,7 +77,7 @@ LL |     #[derive(generate_mod::CheckDerive)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-   = note: this warning originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors; 4 warnings emitted
 

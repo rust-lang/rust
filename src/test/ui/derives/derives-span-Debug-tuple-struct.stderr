@@ -8,7 +8,7 @@ LL |     Error
    = note: add `#[derive(Debug)]` or manually implement `Debug`
    = note: required because of the requirements on the impl of `Debug` for `&Error`
    = note: required for the cast to the object type `dyn Debug`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

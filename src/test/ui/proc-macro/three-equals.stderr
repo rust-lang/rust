@@ -5,7 +5,7 @@ LL |     three_equals!(==);
    |     ^^^^^^^^^^^^^^^^^^
    |
    = help: input must be: `===`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `three_equals` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected EOF, found `=`.
   --> $DIR/three-equals.rs:15:21

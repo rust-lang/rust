@@ -15,7 +15,7 @@ note: the lint level is defined here
 LL | #![deny(clippy::internal)]
    |         ^^^^^^^^^^^^^^^^
    = note: `#[deny(clippy::lint_without_lint_pass)]` implied by `#[deny(clippy::internal)]`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

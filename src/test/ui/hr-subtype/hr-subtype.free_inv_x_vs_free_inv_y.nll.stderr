@@ -13,7 +13,7 @@ LL | | fn(Inv<'y>)) }
    | |______________- in this macro invocation
    |
    = help: consider adding the following bound: `'x: 'y`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: lifetime may not live long enough
   --> $DIR/hr-subtype.rs:45:13
@@ -30,7 +30,7 @@ LL | | fn(Inv<'y>)) }
    | |______________- in this macro invocation
    |
    = help: consider adding the following bound: `'x: 'y`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -9,7 +9,7 @@ LL |         struct S3(pub $t ());
 LL |     define_struct! { (foo) }
    |     ------------------------ in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `define_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `foo` in this scope
   --> $DIR/test2.rs:11:23

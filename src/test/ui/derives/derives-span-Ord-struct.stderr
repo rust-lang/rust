@@ -5,7 +5,7 @@ LL |     x: Error
    |     ^^^^^^^^ the trait `Ord` is not implemented for `Error`
    |
    = note: required by `std::cmp::Ord::cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

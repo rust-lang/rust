@@ -14,7 +14,7 @@ LL | |         Some(other.cmp(self))
 LL | |     }
 LL | | }
    | |_^
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
   --> $DIR/derive_ord_xor_partial_ord.rs:30:10
@@ -31,7 +31,7 @@ LL | |         Some(other.cmp(self))
 LL | |     }
 LL | | }
    | |_^
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Ord` explicitly but have derived `PartialOrd`
   --> $DIR/derive_ord_xor_partial_ord.rs:42:1
@@ -48,7 +48,7 @@ note: `PartialOrd` implemented here
    |
 LL | #[derive(PartialOrd, PartialEq, Eq)]
    |          ^^^^^^^^^^
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Ord` explicitly but have derived `PartialOrd`
   --> $DIR/derive_ord_xor_partial_ord.rs:62:5
@@ -65,7 +65,7 @@ note: `PartialOrd` implemented here
    |
 LL |     #[derive(PartialOrd, PartialEq, Eq)]
    |              ^^^^^^^^^^
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

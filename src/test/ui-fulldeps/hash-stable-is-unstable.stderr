@@ -42,7 +42,7 @@ LL | #[derive(HashStable)]
    |
    = note: see issue #27812 <https://github.com/rust-lang/rust/issues/27812> for more information
    = help: add `#![feature(rustc_private)]` to the crate attributes to enable
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `HashStable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

@@ -4,7 +4,7 @@ error: cannot glob-import all possible crates
 LL |     gen_glob!();
    |     ^^^^^^^^^^^^
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `gen_glob` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

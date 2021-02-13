@@ -154,7 +154,7 @@ error: asm template must be a string literal
 LL |         asm!(format!("{{{}}}", 0), in(reg) foo);
    |              ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: asm template must be a string literal
   --> $DIR/parse-error.rs:62:21
@@ -162,7 +162,7 @@ error: asm template must be a string literal
 LL |         asm!("{1}", format!("{{{}}}", 0), in(reg) foo, out(reg) bar);
    |                     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/parse-error.rs:37:37

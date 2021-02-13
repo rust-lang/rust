@@ -33,7 +33,7 @@ LL |         const $name: $ty = $e;
 LL | declare_const!(_ONCE: Once = Once::new()); //~ ERROR interior mutable
    | ------------------------------------------ in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `declare_const` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

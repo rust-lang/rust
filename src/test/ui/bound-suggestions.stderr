@@ -5,7 +5,7 @@ LL |     println!("{:?}", t);
    |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
    |
 LL | fn test_impl(t: impl Sized + std::fmt::Debug) {
@@ -18,7 +18,7 @@ LL |     println!("{:?}", t);
    |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |
 LL | fn test_no_bounds<T: std::fmt::Debug>(t: T) {
@@ -31,7 +31,7 @@ LL |     println!("{:?}", t);
    |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
    |
 LL | fn test_one_bound<T: Sized + std::fmt::Debug>(t: T) {
@@ -44,7 +44,7 @@ LL |     println!("{:?} {:?}", x, y);
    |                              ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `Y`
    |
 LL | fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug, Y: std::fmt::Debug {
@@ -57,7 +57,7 @@ LL |     println!("{:?}", x);
    |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
    |
 LL | fn test_one_bound_where<X>(x: X) where X: Sized + std::fmt::Debug {
@@ -70,7 +70,7 @@ LL |     println!("{:?}", x);
    |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required by `std::fmt::Debug::fmt`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `X`
    |
 LL | fn test_many_bounds_where<X>(x: X) where X: Sized, X: Sized, X: std::fmt::Debug {

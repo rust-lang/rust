@@ -14,7 +14,7 @@ note: `bar` could also refer to the macro defined here
    |
 LL | macro_rules! bar { () => {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `define_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

@@ -7,7 +7,7 @@ LL |         extern crate std as core;
 LL | define_other_core!();
    | --------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `Vec` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:13:9
@@ -28,7 +28,7 @@ note: `Vec` could also refer to the struct defined here
    |
 LL |     pub use super::v1::*;
    |             ^^^^^^^^^^^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `define_vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -4,7 +4,7 @@ error: type `fn() -> u32 {foo::bar::f}` is private
 LL |     assert_eq!(intercrate::foo::m!(), 1);
    |                ^^^^^^^^^^^^^^^^^^^^^ private type
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `intercrate::foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

@@ -10,7 +10,7 @@ LL | macro_rules! test { () => { fn foo() -> i32 { 1; } } }
 LL |     test!();
    |     -------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/liveness-return-last-stmt-semi.rs:7:19

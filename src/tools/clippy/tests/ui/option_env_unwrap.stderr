@@ -25,7 +25,7 @@ LL |     let _ = option_env_unwrap!("PATH");
    |             -------------------------- in this macro invocation
    |
    = help: consider using the `env!` macro instead
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `option_env_unwrap` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
   --> $DIR/option_env_unwrap.rs:12:9
@@ -37,7 +37,7 @@ LL |     let _ = option_env_unwrap!("PATH", "environment variable PATH isn't set
    |             ----------------------------------------------------------------- in this macro invocation
    |
    = help: consider using the `env!` macro instead
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `option_env_unwrap` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
   --> $DIR/option_env_unwrap.rs:21:13
@@ -46,7 +46,7 @@ LL |     let _ = option_env_unwrap_external!("PATH");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using the `env!` macro instead
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `option_env_unwrap_external` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
   --> $DIR/option_env_unwrap.rs:22:13
@@ -55,7 +55,7 @@ LL |     let _ = option_env_unwrap_external!("PATH", "environment variable PATH 
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using the `env!` macro instead
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `option_env_unwrap_external` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 

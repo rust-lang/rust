@@ -47,7 +47,7 @@ LL | pub struct BufWriter<W: Write> {
    = note: the following trait bounds were not satisfied:
            `&dyn std::io::Write: std::io::Write`
            which is required by `BufWriter<&dyn std::io::Write>: std::io::Write`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `writeln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 
