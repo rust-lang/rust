@@ -4,7 +4,7 @@ error[E0760]: `async fn` return type cannot contain a projection or `Self` that 
 LL |     async fn new(i: &'a i32) -> Result<Self, ()> {
    |                                 ^^^^^^^----^^^^^
    |                                        |
-   |                                        help: consider spelling out the type instead: `std::result::Result<S<'a>, ()>`
+   |                                        help: consider spelling out the type instead: `S<'a>`
 
 error: aborting due to previous error
 
