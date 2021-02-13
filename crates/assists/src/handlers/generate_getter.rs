@@ -1,10 +1,9 @@
 use stdx::{format_to, to_lower_snake_case};
-use syntax::ast::VisibilityOwner;
-use syntax::ast::{self, AstNode, NameOwner};
+use syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 
 use crate::{
     utils::{find_impl_block_end, find_struct_impl, generate_impl_text},
-    AssistContext, AssistId, AssistKind, Assists,
+    AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
 
 // Assist: generate_getter
@@ -42,7 +41,8 @@ pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let impl_def = find_struct_impl(&ctx, &ast::Adt::Struct(strukt.clone()), fn_name.as_str())?;
 
     let target = field.syntax().text_range();
-    acc.add(
+    acc.add_group(
+        &GroupLabel("Generate getter/setter".to_owned()),
         AssistId("generate_getter", AssistKind::Generate),
         "Generate a getter method",
         target,
