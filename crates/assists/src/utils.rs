@@ -2,6 +2,7 @@
 
 use std::ops;
 
+use ast::TypeBoundsOwner;
 use hir::{Adt, HasSource};
 use ide_db::{helpers::SnippetCap, RootDatabase};
 use itertools::Itertools;
@@ -377,15 +378,30 @@ pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &
 }
 
 fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str) -> String {
-    let type_params = adt.generic_param_list();
+    let generic_params = adt.generic_param_list();
     let mut buf = String::with_capacity(code.len());
     buf.push_str("\n\n");
     adt.attrs()
         .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false))
         .for_each(|attr| buf.push_str(format!("{}\n", attr.to_string()).as_str()));
     buf.push_str("impl");
-    if let Some(type_params) = &type_params {
-        format_to!(buf, "{}", type_params.syntax());
+    if let Some(generic_params) = &generic_params {
+        let lifetimes = generic_params.lifetime_params().map(|lt| format!("{}", lt.syntax()));
+        let type_params = generic_params.type_params().map(|type_param| {
+            let mut buf = String::new();
+            if let Some(it) = type_param.name() {
+                format_to!(buf, "{}", it.syntax());
+            }
+            if let Some(it) = type_param.colon_token() {
+                format_to!(buf, "{} ", it);
+            }
+            if let Some(it) = type_param.type_bound_list() {
+                format_to!(buf, "{}", it.syntax());
+            }
+            buf
+        });
+        let generics = lifetimes.chain(type_params).format(", ");
+        format_to!(buf, "<{}>", generics);
     }
     buf.push(' ');
     if let Some(trait_text) = trait_text {
@@ -393,13 +409,15 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
         buf.push_str(" for ");
     }
     buf.push_str(adt.name().unwrap().text());
-    if let Some(type_params) = type_params {
-        let lifetime_params = type_params
+    if let Some(generic_params) = generic_params {
+        let lifetime_params = generic_params
             .lifetime_params()
             .filter_map(|it| it.lifetime())
             .map(|it| SmolStr::from(it.text()));
-        let type_params =
-            type_params.type_params().filter_map(|it| it.name()).map(|it| SmolStr::from(it.text()));
+        let type_params = generic_params
+            .type_params()
+            .filter_map(|it| it.name())
+            .map(|it| SmolStr::from(it.text()));
         format_to!(buf, "<{}>", lifetime_params.chain(type_params).format(", "))
     }
 
