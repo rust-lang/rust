@@ -804,7 +804,7 @@ fn supported_sanitizers(
         "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "aarch64-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
         "aarch64-unknown-linux-gnu" => {
-            common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan"])
+            common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
         }
         "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "x86_64-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),

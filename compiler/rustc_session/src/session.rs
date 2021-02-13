@@ -1126,7 +1126,8 @@ impl Session {
         self.opts.optimize != config::OptLevel::No
         // AddressSanitizer uses lifetimes to detect use after scope bugs.
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
-        || self.opts.debugging_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY)
+        // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
+        || self.opts.debugging_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
     }
 
     pub fn link_dead_code(&self) -> bool {
@@ -1562,6 +1563,8 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         "x86_64-unknown-freebsd",
         "x86_64-unknown-linux-gnu",
     ];
+    const HWASAN_SUPPORTED_TARGETS: &[&str] =
+        &["aarch64-linux-android", "aarch64-unknown-linux-gnu"];
 
     // Sanitizers can only be used on some tested platforms.
     for s in sess.opts.debugging_opts.sanitizer {
@@ -1570,6 +1573,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             SanitizerSet::LEAK => LSAN_SUPPORTED_TARGETS,
             SanitizerSet::MEMORY => MSAN_SUPPORTED_TARGETS,
             SanitizerSet::THREAD => TSAN_SUPPORTED_TARGETS,
+            SanitizerSet::HWADDRESS => HWASAN_SUPPORTED_TARGETS,
             _ => panic!("unrecognized sanitizer {}", s),
         };
         if !supported_targets.contains(&&*sess.opts.target_triple.triple()) {

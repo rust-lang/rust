@@ -546,9 +546,12 @@ crate fn make_test(
     // compiler.
     if !already_has_extern_crate && !opts.no_crate_inject && cratename != Some("std") {
         if let Some(cratename) = cratename {
-            // Make sure its actually used if not included.
+            // Don't inject `extern crate` if the crate is never used.
+            // NOTE: this is terribly inaccurate because it doesn't actually
+            // parse the source, but only has false positives, not false
+            // negatives.
             if s.contains(cratename) {
-                prog.push_str(&format!("extern crate {};\n", cratename));
+                prog.push_str(&format!("extern crate r#{};\n", cratename));
                 line_offset += 1;
             }
         }
