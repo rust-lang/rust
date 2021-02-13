@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! impl_unary_op_test {
     { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $scalar_fn:expr } => {
         test_helpers::test_lanes! {
@@ -15,6 +16,7 @@ macro_rules! impl_unary_op_test {
     };
 }
 
+#[macro_export]
 macro_rules! impl_binary_op_test {
     { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $scalar_fn:expr } => {
         mod $fn {
@@ -68,6 +70,7 @@ macro_rules! impl_binary_op_test {
     };
 }
 
+#[macro_export]
 macro_rules! impl_binary_checked_op_test {
     { $vector:ty, $scalar:ty, $trait:ident :: $fn:ident, $trait_assign:ident :: $fn_assign:ident, $scalar_fn:expr, $check_fn:expr } => {
         mod $fn {
@@ -121,6 +124,7 @@ macro_rules! impl_binary_checked_op_test {
     };
 }
 
+#[macro_export]
 macro_rules! impl_signed_tests {
     { $vector:ident, $scalar:tt } => {
         mod $scalar {
@@ -151,6 +155,7 @@ macro_rules! impl_signed_tests {
     }
 }
 
+#[macro_export]
 macro_rules! impl_unsigned_tests {
     { $vector:ident, $scalar:tt } => {
         mod $scalar {
@@ -171,16 +176,79 @@ macro_rules! impl_unsigned_tests {
     }
 }
 
-impl_signed_tests! { SimdI8, i8 }
-impl_signed_tests! { SimdI16, i16 }
-impl_signed_tests! { SimdI32, i32 }
-impl_signed_tests! { SimdI64, i64 }
-impl_signed_tests! { SimdI128, i128 }
-impl_signed_tests! { SimdIsize, isize }
+#[macro_export]
+macro_rules! impl_float_tests {
+    { $vector:ident, $scalar:tt, $int_scalar:tt } => {
+        mod $scalar {
+            type Vector<const LANES: usize> = core_simd::$vector<LANES>;
+            type Scalar = $scalar;
+            type IntScalar = $int_scalar;
 
-impl_unsigned_tests! { SimdU8, u8 }
-impl_unsigned_tests! { SimdU16, u16 }
-impl_unsigned_tests! { SimdU32, u32 }
-impl_unsigned_tests! { SimdU64, u64 }
-impl_unsigned_tests! { SimdU128, u128 }
-impl_unsigned_tests! { SimdUsize, usize }
+            impl_unary_op_test!(Vector<LANES>, Scalar, Neg::neg);
+            impl_binary_op_test!(Vector<LANES>, Scalar, Add::add, AddAssign::add_assign);
+            impl_binary_op_test!(Vector<LANES>, Scalar, Sub::sub, SubAssign::sub_assign);
+            impl_binary_op_test!(Vector<LANES>, Scalar, Mul::mul, SubAssign::sub_assign);
+            impl_binary_op_test!(Vector<LANES>, Scalar, Div::div, DivAssign::div_assign);
+            impl_binary_op_test!(Vector<LANES>, Scalar, Rem::rem, RemAssign::rem_assign);
+
+            test_helpers::test_lanes! {
+                fn abs<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::abs,
+                        &Scalar::abs,
+                        &|_| true,
+                    )
+                }
+
+                fn ceil<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::ceil,
+                        &Scalar::ceil,
+                        &|_| true,
+                    )
+                }
+
+                fn floor<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::floor,
+                        &Scalar::floor,
+                        &|_| true,
+                    )
+                }
+
+                fn round_from_int<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::round_from_int,
+                        &|x| x as Scalar,
+                        &|_| true,
+                    )
+                }
+
+                fn to_int_unchecked<const LANES: usize>() {
+                    // The maximum integer that can be represented by the equivalently sized float has
+                    // all of the mantissa digits set to 1, pushed up to the MSB.
+                    const ALL_MANTISSA_BITS: IntScalar = ((1 << <Scalar>::MANTISSA_DIGITS) - 1);
+                    const MAX_REPRESENTABLE_VALUE: Scalar =
+                        (ALL_MANTISSA_BITS << (core::mem::size_of::<Scalar>() * 8 - <Scalar>::MANTISSA_DIGITS as usize - 1)) as Scalar;
+
+                    let mut runner = proptest::test_runner::TestRunner::default();
+                    runner.run(
+                        &test_helpers::array::UniformArrayStrategy::new(-MAX_REPRESENTABLE_VALUE..MAX_REPRESENTABLE_VALUE),
+                        |x| {
+                            let result_1 = unsafe { Vector::from_array(x).to_int_unchecked().to_array() };
+                            let result_2 = {
+                                let mut result = [0; LANES];
+                                for (i, o) in x.iter().zip(result.iter_mut()) {
+                                    *o = unsafe { i.to_int_unchecked() };
+                                }
+                                result
+                            };
+                            test_helpers::prop_assert_biteq!(result_1, result_2);
+                            Ok(())
+                        },
+                    ).unwrap();
+                }
+            }
+        }
+    }
+}
