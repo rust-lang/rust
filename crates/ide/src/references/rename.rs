@@ -183,13 +183,16 @@ fn source_edit_from_references(
 ) -> (FileId, TextEdit) {
     let mut edit = TextEdit::builder();
     for reference in references {
-        let (range, replacement) = if let Some(name_ref) = reference.name.as_name_ref() {
-            source_edit_from_name_ref(name_ref, new_name, def)
-        } else {
-            (None, new_name.to_owned())
+        match reference.name.as_name_ref() {
+            // if the ranges differ then the node is inside a macro call, we can't really attempt
+            // to make special rewrites like shorthand syntax and such, so just rename the node in
+            // the macro input
+            Some(name_ref) if name_ref.syntax().text_range() == reference.range => {
+                let (range, replacement) = source_edit_from_name_ref(name_ref, new_name, def);
+                edit.replace(range, replacement);
+            }
+            _ => edit.replace(reference.range, new_name.to_owned()),
         };
-        // FIXME: Some(range) will be incorrect when we are inside macros
-        edit.replace(range.unwrap_or(reference.range), replacement);
     }
     (file_id, edit.finish())
 }
@@ -198,7 +201,7 @@ fn source_edit_from_name_ref(
     name_ref: &ast::NameRef,
     new_name: &str,
     def: Definition,
-) -> (Option<TextRange>, String) {
+) -> (TextRange, String) {
     if let Some(record_field) = ast::RecordExprField::for_name_ref(name_ref) {
         let rcf_name_ref = record_field.name_ref();
         let rcf_expr = record_field.expr();
@@ -208,20 +211,20 @@ fn source_edit_from_name_ref(
                 if field_name == *name_ref {
                     if init.text() == new_name {
                         mark::hit!(test_rename_field_put_init_shorthand);
-                        // same names, we can use a shorthand here instead
+                        // same names, we can use a shorthand here instead.
                         // we do not want to erase attributes hence this range start
                         let s = field_name.syntax().text_range().start();
                         let e = record_field.syntax().text_range().end();
-                        return (Some(TextRange::new(s, e)), format!("{}", new_name));
+                        return (TextRange::new(s, e), new_name.to_owned());
                     }
                 } else if init == *name_ref {
                     if field_name.text() == new_name {
                         mark::hit!(test_rename_local_put_init_shorthand);
-                        // same names, we can use a shorthand here instead
+                        // same names, we can use a shorthand here instead.
                         // we do not want to erase attributes hence this range start
                         let s = field_name.syntax().text_range().start();
                         let e = record_field.syntax().text_range().end();
-                        return (Some(TextRange::new(s, e)), format!("{}", new_name));
+                        return (TextRange::new(s, e), new_name.to_owned());
                     }
                 }
             }
@@ -233,12 +236,12 @@ fn source_edit_from_name_ref(
                     Definition::Field(_) => {
                         mark::hit!(test_rename_field_in_field_shorthand);
                         let s = name_ref.syntax().text_range().start();
-                        return (Some(TextRange::empty(s)), format!("{}: ", new_name));
+                        return (TextRange::empty(s), format!("{}: ", new_name));
                     }
                     Definition::Local(_) => {
                         mark::hit!(test_rename_local_in_field_shorthand);
                         let s = name_ref.syntax().text_range().end();
-                        return (Some(TextRange::empty(s)), format!(": {}", new_name));
+                        return (TextRange::empty(s), format!(": {}", new_name));
                     }
                     _ => {}
                 }
@@ -255,17 +258,17 @@ fn source_edit_from_name_ref(
                 // field name is being renamed
                 if pat.name().map_or(false, |it| it.text() == new_name) {
                     mark::hit!(test_rename_field_put_init_shorthand_pat);
-                    // same names, we can use a shorthand here instead
+                    // same names, we can use a shorthand here instead/
                     // we do not want to erase attributes hence this range start
                     let s = field_name.syntax().text_range().start();
                     let e = record_field.syntax().text_range().end();
-                    return (Some(TextRange::new(s, e)), format!("{}", new_name));
+                    return (TextRange::new(s, e), new_name.to_owned());
                 }
             }
             _ => {}
         }
     }
-    (None, format!("{}", new_name))
+    (name_ref.syntax().text_range(), new_name.to_owned())
 }
 
 fn rename_mod(
@@ -1681,6 +1684,40 @@ impl Foo {
 struct Foo;
 impl Foo {
     fn foo(self) {}
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_rename_field_in_pat_in_macro_doesnt_shorthand() {
+        // ideally we would be able to make this emit a short hand, but I doubt this is easily possible
+        check(
+            "baz",
+            r#"
+macro_rules! foo {
+    ($pattern:pat) => {
+        let $pattern = loop {};
+    };
+}
+struct Foo {
+    bar$0: u32,
+}
+fn foo() {
+    foo!(Foo { bar: baz });
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($pattern:pat) => {
+        let $pattern = loop {};
+    };
+}
+struct Foo {
+    baz: u32,
+}
+fn foo() {
+    foo!(Foo { baz: baz });
 }
 "#,
         )
