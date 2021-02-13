@@ -26,7 +26,8 @@ where `custom.toml` must be a relative path from the repo root.
 
 The results will then be saved to `lintcheck-logs/custom_logs.toml`.
 
-### configuring the crate sources
+### Configuring the Crate Sources
+
 The sources to check are saved in a `toml` file.  
 There are three types of sources.  
 A crates-io source:
