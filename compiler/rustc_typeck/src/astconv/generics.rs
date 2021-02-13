@@ -24,6 +24,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         tcx: TyCtxt<'_>,
         arg: &GenericArg<'_>,
         param: &GenericParamDef,
+        // DefId of the function
+        //body_def_id: DefId,
         possible_ordering_error: bool,
         help: Option<&str>,
     ) {
@@ -46,19 +48,44 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Specific suggestion set for diagnostics
         match (arg, &param.kind) {
             (
-                GenericArg::Type(hir::Ty { kind: hir::TyKind::Path { .. }, .. }),
-                GenericParamDefKind::Const { .. },
+                GenericArg::Type(hir::Ty {
+                    kind: hir::TyKind::Path(rustc_hir::QPath::Resolved(_, path)),
+                    ..
+                }),
+                GenericParamDefKind::Const,
             ) => {
-                let suggestions = vec![
-                    (arg.span().shrink_to_lo(), String::from("{ ")),
-                    (arg.span().shrink_to_hi(), String::from(" }")),
-                ];
-                err.multipart_suggestion(
-                    "if this generic argument was intended as a const parameter, \
-                try surrounding it with braces:",
-                    suggestions,
-                    Applicability::MaybeIncorrect,
-                );
+                use rustc_hir::def::{DefKind, Res};
+                match path.res {
+                    Res::Err => {}
+                    Res::Def(DefKind::TyParam, src_def_id) => (|| {
+                        let param_hir_id = match param.def_id.as_local() {
+                            Some(x) => tcx.hir().local_def_id_to_hir_id(x),
+                            None => return,
+                        };
+                        let param_name = tcx.hir().ty_param_name(param_hir_id);
+                        let param_type = tcx.type_of(param.def_id);
+                        if param_type.is_suggestable() {
+                            err.span_suggestion(
+                                tcx.def_span(src_def_id),
+                                &format!("try changing to a const-generic parameter:"),
+                                format!("const {}: {}", param_name, param_type),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    })(),
+                    _ => {
+                        let suggestions = vec![
+                            (arg.span().shrink_to_lo(), String::from("{ ")),
+                            (arg.span().shrink_to_hi(), String::from(" }")),
+                        ];
+                        err.multipart_suggestion(
+                            "if this generic argument was intended as a const parameter, \
+                  try surrounding it with braces:",
+                            suggestions,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
             }
             (
                 GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),

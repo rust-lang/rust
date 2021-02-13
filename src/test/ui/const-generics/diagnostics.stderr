@@ -1,0 +1,27 @@
+error[E0412]: cannot find type `N` in this scope
+  --> $DIR/diagnostics.rs:7:16
+   |
+LL | struct A<const N: u8>;
+   | ---------------------- similarly named struct `A` defined here
+LL | trait Foo {}
+LL | impl Foo for A<N> {}
+   |                ^ help: a struct with a similar name exists: `A`
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/diagnostics.rs:7:16
+   |
+LL | impl Foo for A<N> {}
+   |                ^
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/diagnostics.rs:12:19
+   |
+LL | impl<N> Foo for B<N> {}
+   |      -            ^
+   |      |
+   |      help: try changing to a const-generic parameter:: `const N: u8`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0412, E0747.
+For more information about an error, try `rustc --explain E0412`.
