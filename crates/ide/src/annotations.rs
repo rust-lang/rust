@@ -50,25 +50,26 @@ pub(crate) fn annotations(
 
     if config.annotate_runnables {
         for runnable in runnables(db, file_id) {
-            if !matches!(runnable.kind, RunnableKind::Bin) || !config.binary_target {
+            if should_skip_runnable(&runnable.kind, config.binary_target) {
                 continue;
             }
 
             let action = runnable.action();
             let range = runnable.nav.full_range;
 
-            if config.run {
-                annotations.push(Annotation {
-                    range,
-                    // FIXME: This one allocates without reason if run is enabled, but debug is disabled
-                    kind: AnnotationKind::Runnable { debug: false, runnable: runnable.clone() },
-                });
-            }
-
             if action.debugee && config.debug {
                 annotations.push(Annotation {
                     range,
-                    kind: AnnotationKind::Runnable { debug: true, runnable },
+
+                    // FIXME: This one allocates without reason if run is enabled, but debug is disabled
+                    kind: AnnotationKind::Runnable { debug: true, runnable: runnable.clone() },
+                });
+            }
+
+            if config.run {
+                annotations.push(Annotation {
+                    range,
+                    kind: AnnotationKind::Runnable { debug: false, runnable },
                 });
             }
         }
@@ -142,6 +143,13 @@ pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) 
     };
 
     annotation
+}
+
+fn should_skip_runnable(kind: &RunnableKind, binary_target: bool) -> bool {
+    match kind {
+        RunnableKind::Bin => !binary_target,
+        _ => false,
+    }
 }
 
 #[cfg(test)]
