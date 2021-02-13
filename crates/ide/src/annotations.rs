@@ -18,11 +18,13 @@ use crate::{
 //
 // Provides user with annotations above items for looking up references or impl blocks
 // and running/debugging binaries.
+#[derive(Debug)]
 pub struct Annotation {
     pub range: TextRange,
     pub kind: AnnotationKind,
 }
 
+#[derive(Debug)]
 pub enum AnnotationKind {
     Runnable { debug: bool, runnable: Runnable },
     HasImpls { position: FilePosition, data: Option<Vec<NavigationTarget>> },
@@ -140,4 +142,269 @@ pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) 
     };
 
     annotation
+}
+
+#[cfg(test)]
+mod tests {
+    use ide_db::base_db::{FileId, FileRange};
+    use syntax::{TextRange, TextSize};
+
+    use crate::{fixture, Annotation, AnnotationConfig, AnnotationKind, RunnableKind};
+
+    fn get_annotations(
+        ra_fixture: &str,
+        annotation_config: AnnotationConfig,
+    ) -> (FileId, Vec<Annotation>) {
+        let (analysis, file_id) = fixture::file(ra_fixture);
+
+        let annotations: Vec<Annotation> = analysis
+            .annotations(file_id, annotation_config)
+            .unwrap()
+            .into_iter()
+            .map(move |annotation| analysis.resolve_annotation(annotation).unwrap())
+            .collect();
+
+        if annotations.len() == 0 {
+            panic!("unresolved annotations")
+        }
+
+        (file_id, annotations)
+    }
+
+    macro_rules! check_annotation {
+        ( $ra_fixture:expr, $config:expr, $item_positions:expr, $pattern:pat, $checker:expr ) => {
+            let (file_id, annotations) = get_annotations($ra_fixture, $config);
+
+            annotations.into_iter().for_each(|annotation| {
+                assert!($item_positions.contains(&annotation.range));
+
+                match annotation.kind {
+                    $pattern => $checker(file_id),
+                    _ => panic!("Unexpected annotation kind"),
+                }
+            });
+        };
+    }
+
+    #[test]
+    fn const_annotations() {
+        check_annotation!(
+            r#"
+const DEMO: i32 = 123;
+
+fn main() {
+    let hello = DEMO;
+}
+            "#,
+            AnnotationConfig {
+                binary_target: false,
+                annotate_runnables: false,
+                annotate_impls: false,
+                annotate_references: true,
+                annotate_method_references: false,
+                run: false,
+                debug: false,
+            },
+            &[TextRange::new(TextSize::from(0), TextSize::from(22))],
+            AnnotationKind::HasReferences { data: Some(ranges), .. },
+            |file_id| assert_eq!(
+                *ranges.first().unwrap(),
+                FileRange {
+                    file_id,
+                    range: TextRange::new(TextSize::from(52), TextSize::from(56))
+                }
+            )
+        );
+    }
+
+    #[test]
+    fn unused_const_annotations() {
+        check_annotation!(
+            r#"
+const DEMO: i32 = 123;
+
+fn main() {}
+            "#,
+            AnnotationConfig {
+                binary_target: false,
+                annotate_runnables: false,
+                annotate_impls: false,
+                annotate_references: true,
+                annotate_method_references: false,
+                run: false,
+                debug: false,
+            },
+            &[TextRange::new(TextSize::from(0), TextSize::from(22))],
+            AnnotationKind::HasReferences { data: Some(ranges), .. },
+            |_| assert_eq!(ranges.len(), 0)
+        );
+    }
+
+    #[test]
+    fn struct_references_annotations() {
+        check_annotation!(
+            r#"
+struct Test;
+
+fn main() {
+    let test = Test;
+}
+            "#,
+            AnnotationConfig {
+                binary_target: false,
+                annotate_runnables: false,
+                annotate_impls: false,
+                annotate_references: true,
+                annotate_method_references: false,
+                run: false,
+                debug: false,
+            },
+            &[TextRange::new(TextSize::from(0), TextSize::from(12))],
+            AnnotationKind::HasReferences { data: Some(ranges), .. },
+            |file_id| assert_eq!(
+                *ranges.first().unwrap(),
+                FileRange {
+                    file_id,
+                    range: TextRange::new(TextSize::from(41), TextSize::from(45))
+                }
+            )
+        );
+    }
+
+    #[test]
+    fn struct_and_trait_impls_annotations() {
+        check_annotation!(
+            r#"
+struct Test;
+
+trait MyCoolTrait {}
+
+impl MyCoolTrait for Test {}
+
+fn main() {
+    let test = Test;
+}
+            "#,
+            AnnotationConfig {
+                binary_target: false,
+                annotate_runnables: false,
+                annotate_impls: true,
+                annotate_references: false,
+                annotate_method_references: false,
+                run: false,
+                debug: false,
+            },
+            &[
+                TextRange::new(TextSize::from(0), TextSize::from(12)),
+                TextRange::new(TextSize::from(14), TextSize::from(34))
+            ],
+            AnnotationKind::HasImpls { data: Some(ranges), .. },
+            |_| assert_eq!(
+                ranges.first().unwrap().full_range,
+                TextRange::new(TextSize::from(36), TextSize::from(64))
+            )
+        );
+    }
+
+    #[test]
+    fn run_annotation() {
+        check_annotation!(
+            r#"
+fn main() {}
+            "#,
+            AnnotationConfig {
+                binary_target: true,
+                annotate_runnables: true,
+                annotate_impls: false,
+                annotate_references: false,
+                annotate_method_references: false,
+                run: true,
+                debug: false,
+            },
+            &[TextRange::new(TextSize::from(0), TextSize::from(12))],
+            AnnotationKind::Runnable { debug: false, runnable },
+            |_| {
+                assert!(matches!(runnable.kind, RunnableKind::Bin));
+                assert!(runnable.action().run_title.contains("Run"));
+            }
+        );
+    }
+
+    #[test]
+    fn debug_annotation() {
+        check_annotation!(
+            r#"
+fn main() {}
+            "#,
+            AnnotationConfig {
+                binary_target: true,
+                annotate_runnables: true,
+                annotate_impls: false,
+                annotate_references: false,
+                annotate_method_references: false,
+                run: false,
+                debug: true,
+            },
+            &[TextRange::new(TextSize::from(0), TextSize::from(12))],
+            AnnotationKind::Runnable { debug: true, runnable },
+            |_| {
+                assert!(matches!(runnable.kind, RunnableKind::Bin));
+                assert!(runnable.action().debugee);
+            }
+        );
+    }
+
+    #[test]
+    fn method_annotations() {
+        // We actually want to skip `fn main` annotation, as it has no references in it
+        // but just ignoring empty reference slices would lead to false-positive if something
+        // goes wrong in annotation resolving mechanism. By tracking if we iterated before finding
+        // an empty slice we can track if everything is settled.
+        let mut iterated_once = false;
+
+        check_annotation!(
+            r#"
+struct Test;
+
+impl Test {
+    fn self_by_ref(&self) {}
+}
+
+fn main() {
+    Test.self_by_ref();
+}
+            "#,
+            AnnotationConfig {
+                binary_target: false,
+                annotate_runnables: false,
+                annotate_impls: false,
+                annotate_references: false,
+                annotate_method_references: true,
+                run: false,
+                debug: false,
+            },
+            &[
+                TextRange::new(TextSize::from(33), TextSize::from(44)),
+                TextRange::new(TextSize::from(61), TextSize::from(65))
+            ],
+            AnnotationKind::HasReferences { data: Some(ranges), .. },
+            |file_id| {
+                match ranges.as_slice() {
+                    [first, ..] => {
+                        assert_eq!(
+                            *first,
+                            FileRange {
+                                file_id,
+                                range: TextRange::new(TextSize::from(79), TextSize::from(90))
+                            }
+                        );
+
+                        iterated_once = true;
+                    }
+                    [] if iterated_once => {}
+                    [] => panic!("One reference was expected but not found"),
+                }
+            }
+        );
+    }
 }
