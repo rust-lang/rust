@@ -582,18 +582,16 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
     loopContexts[L].maxLimit = LimitVar;
   } else {
     DebugLoc loc = L->getHeader()->begin()->getDebugLoc();
-    for(auto &I : *L->getHeader()) {
-      if (loc) break;
+    for (auto &I : *L->getHeader()) {
+      if (loc)
+        break;
       loc = I.getDebugLoc();
     }
-    EmitWarning("NoLimit",
-            loc,
-            newFunc,
-            L->getHeader(),
-            "SE could not compute loop limit of ",
-            L->getHeader()->getName(), " of ",
-            L->getHeader()->getParent()->getName(),
-            "lim: ", *Limit, " maxlim: ", *MaxIterations);
+    EmitWarning("NoLimit", loc, newFunc, L->getHeader(),
+                "SE could not compute loop limit of ",
+                L->getHeader()->getName(), " of ",
+                L->getHeader()->getParent()->getName(), "lim: ", *Limit,
+                " maxlim: ", *MaxIterations);
 
     LimitVar = createCacheForScope(LimitContext(loopContexts[L].preheader),
                                    CanonicalIV->getType(), "loopLimit",
@@ -650,7 +648,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
   assert(ctx.Block);
   assert(T);
 
-  auto sublimits = getSubLimits(/*inForwardPass*/true, nullptr, ctx);
+  auto sublimits = getSubLimits(/*inForwardPass*/ true, nullptr, ctx);
 
   // List of types stored in the cache for each Loop-Chunk
   // This is stored from innner-most chunk to outermost
@@ -904,8 +902,7 @@ Value *CacheUtility::computeIndexOfChunk(
     }
 
     indices.push_back(var);
-    Value *lim = pair.second; //, v, available,
-                         //UnwrapMode::AttemptFullUnwrapWithLookup);
+    Value *lim = pair.second;
     assert(lim);
     if (limits.size() == 0) {
       limits.push_back(lim);
@@ -937,7 +934,9 @@ Value *CacheUtility::computeIndexOfChunk(
 /// For every loop, this returns pair of the LoopContext and the limit of that
 /// loop Both the vector of Chunks and vector of Loops within a Chunk go from
 /// innermost loop to outermost loop.
-CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass, IRBuilder<> *RB, LimitContext ctx) {
+CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
+                                                      IRBuilder<> *RB,
+                                                      LimitContext ctx) {
   // Given a ``SingleIteration'' Limit Context, return a chunking of
   // one loop with size 1, and header/preheader of the BasicBlock
   // This is done to create a context for a block outside a loop
@@ -1053,7 +1052,6 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass, IRBuil
       }
       assert(limitMinus1 != nullptr);
 
-
       ValueToValueMapTy reverseMap;
       // Iterate from outermost loop down
       for (int j = contexts.size() - 1;; --j) {
@@ -1064,7 +1062,8 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass, IRBuil
         // map
         if (allocationPreheaders[i] != contexts[j].preheader) {
           if (!inForwardPass) {
-            reverseMap[contexts[j].var] = RB->CreateLoad(contexts[j].antivaralloc);
+            reverseMap[contexts[j].var] =
+                RB->CreateLoad(contexts[j].antivaralloc);
           }
         } else {
           break;
@@ -1083,7 +1082,8 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass, IRBuil
       if (inForwardPass)
         limits[i] = LimitCache[cidx];
       else {
-        Value* lim = unwrapM(contexts[i].maxLimit, *RB, reverseMap, UnwrapMode::AttemptFullUnwrapWithLookup);
+        Value *lim = unwrapM(contexts[i].maxLimit, *RB, reverseMap,
+                             UnwrapMode::AttemptFullUnwrapWithLookup);
         if (!lim) {
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << *contexts[i].maxLimit << "\n";
@@ -1111,7 +1111,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass, IRBuil
       size = limits[i];
     } else if (!inForwardPass) {
       size = RB->CreateMul(size, limits[i], "",
-                                        /*NUW*/ true, /*NSW*/ true);
+                           /*NUW*/ true, /*NSW*/ true);
     } else {
       // Otherwise new size = old size * limits[i];
       auto cidx = std::make_tuple(size, limits[i], allocationPreheaders[i]);

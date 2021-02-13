@@ -279,7 +279,8 @@ public:
     //! pass
     if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() &&
         TR.query(&LI).Inner0().isPossiblePointer()) {
-      Instruction *placeholder = cast<Instruction>(gutils->invertedPointers[&LI]);
+      Instruction *placeholder =
+          cast<Instruction>(gutils->invertedPointers[&LI]);
       assert(placeholder->getType() == type);
       gutils->invertedPointers.erase(&LI);
 

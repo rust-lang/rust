@@ -126,8 +126,8 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %1, 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to double*
-; CHECK-NEXT:   %malloccall11 = tail call noalias nonnull dereferenceable(40) dereferenceable_or_null(40) i8* @malloc(i64 40)
-; CHECK-NEXT:   %_malloccache12 = bitcast i8* %malloccall11 to i32*
+; CHECK-NEXT:   %[[malloccall11:.+]] = tail call noalias nonnull dereferenceable(40) dereferenceable_or_null(40) i8* @malloc(i64 40)
+; CHECK-NEXT:   %[[malloccache12:.+]] = bitcast i8* %[[malloccall11:.+]] to i32*
 ; CHECK-NEXT:   br label %for.cond1.preheader
 
 ; CHECK: for.cond1.preheader:                              ; preds = %for.cond.cleanup3, %entry
@@ -138,7 +138,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK: for.body4.lr.ph:                                  ; preds = %for.cond1.preheader
 ; CHECK-NEXT:   %2 = mul nuw nsw i64 %iv, 10
 ; CHECK-NEXT:   %3 = load i32, i32* %N, align 4, !tbaa !2
-; CHECK-NEXT:   %4 = getelementptr inbounds i32, i32* %_malloccache12, i64 %iv
+; CHECK-NEXT:   %4 = getelementptr inbounds i32, i32* %[[malloccache12]], i64 %iv
 ; CHECK-NEXT:   store i32 %3, i32* %4, align 4, !invariant.group !8
 ; CHECK-NEXT:   %5 = sext i32 %3 to i64
 ; CHECK-NEXT:   br label %for.body4
@@ -167,7 +167,7 @@ attributes #9 = { noreturn nounwind }
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.cond1.preheader
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall11)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccall11]])
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.cond1.preheader:                        ; preds = %invertfor.body4, %invertfor.cond.cleanup3
@@ -175,7 +175,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %"mul9'de.0" = phi double [ %"mul9'de.2", %invertfor.cond.cleanup3 ], [ 0.000000e+00, %invertfor.body4 ]
 ; CHECK-NEXT:   %"sum.134'de.0" = phi double [ %"sum.134'de.2", %invertfor.cond.cleanup3 ], [ 0.000000e+00, %invertfor.body4 ]
 ; CHECK-NEXT:   %"add10'de.0" = phi double [ %"add10'de.2", %invertfor.cond.cleanup3 ], [ 0.000000e+00, %invertfor.body4 ]
-; CHECK-NEXT:   %"sum.036'de.0" = phi double [ %"sum.1.lcssa'de.0", %invertfor.cond.cleanup3 ], [ %22, %invertfor.body4 ]
+; CHECK-NEXT:   %"sum.036'de.0" = phi double [ %"sum.1.lcssa'de.0", %invertfor.cond.cleanup3 ], [ %23, %invertfor.body4 ]
 ; CHECK-NEXT:   %11 = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   br i1 %11, label %invertentry, label %incinvertfor.cond1.preheader
 
@@ -187,37 +187,41 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %"'de.1" = phi double [ %"'de.2", %invertfor.cond.cleanup3.loopexit ], [ 0.000000e+00, %incinvertfor.body4 ]
 ; CHECK-NEXT:   %"mul9'de.1" = phi double [ %"mul9'de.2", %invertfor.cond.cleanup3.loopexit ], [ 0.000000e+00, %incinvertfor.body4 ]
 ; CHECK-NEXT:   %"sum.134'de.1" = phi double [ %"sum.134'de.2", %invertfor.cond.cleanup3.loopexit ], [ 0.000000e+00, %incinvertfor.body4 ]
-; CHECK-NEXT:   %"add10'de.1" = phi double [ %26, %invertfor.cond.cleanup3.loopexit ], [ %13, %incinvertfor.body4 ]
-; CHECK-NEXT:   %"iv1'ac.1" = phi i64 [ %_unwrap17, %invertfor.cond.cleanup3.loopexit ], [ %23, %incinvertfor.body4 ]
+; CHECK-NEXT:   %"add10'de.1" = phi double [ %27, %invertfor.cond.cleanup3.loopexit ], [ %13, %incinvertfor.body4 ]
+; CHECK-NEXT:   %"iv1'ac.1" = phi i64 [ %_unwrap20, %invertfor.cond.cleanup3.loopexit ], [ %24, %incinvertfor.body4 ]
 ; CHECK-NEXT:   %_unwrap = mul nuw nsw i64 %"iv'ac.0", 10
 ; CHECK-NEXT:   %_unwrap3 = add nuw nsw i64 %"iv1'ac.1", %_unwrap
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"a'", i64 %_unwrap3
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %13 = fadd fast double %"sum.134'de.1", %"add10'de.1"
 ; CHECK-NEXT:   %14 = fadd fast double %"mul9'de.1", %"add10'de.1"
-; CHECK-NEXT:   %15 = mul nuw nsw i64 %"iv'ac.0", %smax_unwrap
-; CHECK-NEXT:   %16 = add nuw nsw i64 %"iv1'ac.1", %15
-; CHECK-NEXT:   %17 = getelementptr inbounds double, double* %_malloccache, i64 %16
-; CHECK-NEXT:   %18 = load double, double* %17, align 8, !invariant.group !9
-; CHECK-NEXT:   %m0diffe = fmul fast double %14, %18
-; CHECK-NEXT:   %19 = fadd fast double %"'de.1", %m0diffe
-; CHECK-NEXT:   %20 = fadd fast double %19, %m0diffe
-; CHECK-NEXT:   store double %20, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %21 = icmp eq i64 %"iv1'ac.1", 0
-; CHECK-NEXT:   %22 = fadd fast double 0.000000e+00, %13
-; CHECK-NEXT:   br i1 %21, label %invertfor.cond1.preheader, label %incinvertfor.body4
+; CHECK-NEXT:   %15 = load i32, i32* %25, align 4, !invariant.group !8
+; CHECK-NEXT:   %_unwrap12 = sext i32 %15 to i64
+; CHECK-NEXT:   %_unwrap13 = icmp sgt i64 %_unwrap12, 1
+; CHECK-NEXT:   %smax_unwrap14 = select i1 %_unwrap13, i64 %_unwrap12, i64 1
+; CHECK-NEXT:   %16 = mul nuw nsw i64 %"iv'ac.0", %smax_unwrap14
+; CHECK-NEXT:   %17 = add nuw nsw i64 %"iv1'ac.1", %16
+; CHECK-NEXT:   %18 = getelementptr inbounds double, double* %_malloccache, i64 %17
+; CHECK-NEXT:   %19 = load double, double* %18, align 8, !invariant.group !9
+; CHECK-NEXT:   %m0diffe = fmul fast double %14, %19
+; CHECK-NEXT:   %20 = fadd fast double %"'de.1", %m0diffe
+; CHECK-NEXT:   %21 = fadd fast double %20, %m0diffe
+; CHECK-NEXT:   store double %21, double* %"arrayidx'ipg_unwrap", align 8
+; CHECK-NEXT:   %22 = icmp eq i64 %"iv1'ac.1", 0
+; CHECK-NEXT:   %23 = fadd fast double 0.000000e+00, %13
+; CHECK-NEXT:   br i1 %22, label %invertfor.cond1.preheader, label %incinvertfor.body4
 
 ; CHECK: incinvertfor.body4:                               ; preds = %invertfor.body4
-; CHECK-NEXT:   %23 = add nsw i64 %"iv1'ac.1", -1
+; CHECK-NEXT:   %24 = add nsw i64 %"iv1'ac.1", -1
 ; CHECK-NEXT:   br label %invertfor.body4
 
 ; CHECK: invertfor.cond.cleanup3.loopexit:                 ; preds = %invertfor.cond.cleanup3
-; CHECK-NEXT:   %24 = getelementptr inbounds i32, i32* %_malloccache12, i64 %"iv'ac.0"
-; CHECK-NEXT:   %25 = load i32, i32* %24, align 4, !invariant.group !8
-; CHECK-NEXT:   %_unwrap14 = sext i32 %25 to i64
-; CHECK-NEXT:   %_unwrap15 = icmp sgt i64 %_unwrap14, 1
-; CHECK-NEXT:   %smax_unwrap16 = select i1 %_unwrap15, i64 %_unwrap14, i64 1
-; CHECK-NEXT:   %_unwrap17 = add {{(nsw )?}}i64 %smax_unwrap16, -1
+; CHECK-NEXT:   %25 = getelementptr inbounds i32, i32* %[[malloccache12]], i64 %"iv'ac.0"
+; CHECK-NEXT:   %26 = load i32, i32* %25, align 4, !invariant.group !8
+; CHECK-NEXT:   %_unwrap17 = sext i32 %26 to i64
+; CHECK-NEXT:   %_unwrap18 = icmp sgt i64 %_unwrap17, 1
+; CHECK-NEXT:   %smax_unwrap19 = select i1 %_unwrap18, i64 %_unwrap17, i64 1
+; CHECK-NEXT:   %_unwrap20 = add{{( nsw)?}} i64 %smax_unwrap19, -1
 ; CHECK-NEXT:   br label %invertfor.body4
 
 ; CHECK: invertfor.cond.cleanup3:                          ; preds = %for.cond.cleanup, %incinvertfor.cond1.preheader
@@ -227,6 +231,5 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %"add10'de.2" = phi double [ 0.000000e+00, %for.cond.cleanup ], [ %"add10'de.0", %incinvertfor.cond1.preheader ]
 ; CHECK-NEXT:   %"sum.1.lcssa'de.0" = phi double [ %differeturn, %for.cond.cleanup ], [ %"sum.036'de.0", %incinvertfor.cond1.preheader ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ 9, %for.cond.cleanup ], [ %12, %incinvertfor.cond1.preheader ]
-; CHECK-NEXT:   %26 = fadd fast double %"add10'de.2", %"sum.1.lcssa'de.0"
+; CHECK-NEXT:   %27 = fadd fast double %"add10'de.2", %"sum.1.lcssa'de.0"
 ; CHECK-NEXT:   br i1 %cmp233, label %invertfor.cond.cleanup3.loopexit, label %invertfor.cond1.preheader
-; CHECK-NEXT: }

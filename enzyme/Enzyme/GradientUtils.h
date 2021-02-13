@@ -961,13 +961,14 @@ public:
         if (lcssaFixes.find(inst) == lcssaFixes.end()) {
           lcssaFixes[inst][inst->getParent()] = inst;
           SmallPtrSet<BasicBlock *, 4> seen;
-          std::deque<BasicBlock *> todo = { inst->getParent() };
+          std::deque<BasicBlock *> todo = {inst->getParent()};
           while (todo.size()) {
             BasicBlock *cur = todo.front();
             todo.pop_front();
-            if (seen.count(cur)) continue;
+            if (seen.count(cur))
+              continue;
             seen.insert(cur);
-            for(auto Succ : successors(cur)) {
+            for (auto Succ : successors(cur)) {
               todo.push_back(Succ);
             }
           }
@@ -982,8 +983,8 @@ public:
           return lcssaFixes[inst][forwardBlock];
         }
 
-        // TODO replace forwardBlock with the first block dominated by inst, that
-        // dominates (or is) forwardBlock to ensuring maximum reuse
+        // TODO replace forwardBlock with the first block dominated by inst,
+        // that dominates (or is) forwardBlock to ensuring maximum reuse
         IRBuilder<> lcssa(&forwardBlock->front());
         auto lcssaPHI = lcssa.CreatePHI(inst->getType(), 1,
                                         inst->getName() + "!manual_lcssa");
@@ -992,10 +993,11 @@ public:
           Value *val = nullptr;
           if (inst->getParent() == pred || DT.dominates(inst, pred)) {
             val = inst;
-          } 
+          }
           if (val == nullptr) {
             for (const auto &pair : lcssaFixes[inst]) {
-              if (!isa<UndefValue>(pair.second) && (pred == pair.first || DT.dominates(pair.first, pred))) {
+              if (!isa<UndefValue>(pair.second) &&
+                  (pred == pair.first || DT.dominates(pair.first, pred))) {
                 val = pair.second;
                 assert(pair.second->getType() == inst->getType());
                 break;
