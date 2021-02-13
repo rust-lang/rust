@@ -610,6 +610,17 @@ fn test_move_items_zero_sized() {
 }
 
 #[test]
+fn test_drain_empty_vec() {
+    let mut vec: Vec<i32> = vec![];
+    let mut vec2: Vec<i32> = vec![];
+    for i in vec.drain(..) {
+        vec2.push(i);
+    }
+    assert!(vec.is_empty());
+    assert!(vec2.is_empty());
+}
+
+#[test]
 fn test_drain_items() {
     let mut vec = vec![1, 2, 3];
     let mut vec2 = vec![];
