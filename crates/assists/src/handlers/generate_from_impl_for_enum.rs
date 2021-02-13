@@ -21,7 +21,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // impl From<u32> for A {
 //     fn from(v: u32) -> Self {
-//         A::One(v)
+//         Self::One(v)
 //     }
 // }
 // ```
