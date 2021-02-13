@@ -186,44 +186,58 @@ pub fn test_binary_scalar_lhs_elementwise<
 }
 
 #[macro_export]
-#[doc(hidden)]
-macro_rules! test_lanes_impl {
-    {
-        fn $test:ident<const $lanes:ident: usize>() $body:tt
-
-        $($name:ident => $lanes_lit:literal,)*
-    } => {
-        mod $test {
-            use super::*;
-            $(
-                #[test]
-                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-                fn $name() {
-                    const $lanes: usize = $lanes_lit;
-                    $body
-                }
-            )*
-        }
-    }
-}
-
-#[macro_export]
 macro_rules! test_lanes {
     {
         $(fn $test:ident<const $lanes:ident: usize>() $body:tt)*
     } => {
         $(
-        $crate::test_lanes_impl! {
-            fn $test<const $lanes: usize>() $body
+            mod $test {
+                use super::*;
 
-            lanes_1 => 1,
-            lanes_2 => 2,
-            lanes_4 => 4,
-            lanes_8 => 8,
-            lanes_16 => 16,
-            lanes_32 => 32,
-            lanes_64 => 64,
-        }
+                fn implementation<const $lanes: usize>() $body
+
+                #[test]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                fn lanes_1() {
+                    implementation::<1>();
+                }
+
+                #[test]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                fn lanes_2() {
+                    implementation::<2>();
+                }
+
+                #[test]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                fn lanes_4() {
+                    implementation::<4>();
+                }
+
+                #[test]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                fn lanes_8() {
+                    implementation::<8>();
+                }
+
+                #[test]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                fn lanes_16() {
+                    implementation::<16>();
+                }
+
+                #[test]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                fn lanes_32() {
+                    implementation::<32>();
+                }
+
+                #[test]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                fn lanes_64() {
+                    implementation::<64>();
+                }
+            }
         )*
     }
 }
