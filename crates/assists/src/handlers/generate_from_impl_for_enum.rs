@@ -56,7 +56,7 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
 
 impl From<{0}> for {1} {{
     fn from(v: {0}) -> Self {{
-        {1}::{2}(v)
+        Self::{2}(v)
     }}
 }}"#,
                 path.syntax(),
@@ -106,7 +106,7 @@ mod tests {
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
-        A::One(v)
+        Self::One(v)
     }
 }"#,
         );
@@ -121,7 +121,7 @@ impl From<u32> for A {
 
 impl From<foo::bar::baz::Boo> for A {
     fn from(v: foo::bar::baz::Boo) -> Self {
-        A::One(v)
+        Self::One(v)
     }
 }"#,
         );
@@ -157,7 +157,7 @@ enum A { $0One(u32), }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
-        A::One(v)
+        Self::One(v)
     }
 }
 "#,
@@ -183,7 +183,7 @@ pub trait From<T> {
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
-        A::One(v)
+        Self::One(v)
     }
 }
 
