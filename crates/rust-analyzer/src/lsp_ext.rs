@@ -377,3 +377,11 @@ impl Request for OpenCargoToml {
 pub struct OpenCargoTomlParams {
     pub text_document: TextDocumentIdentifier,
 }
+
+/// Information about CodeLens, that is to be resolved.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum CodeLensResolveData {
+    Impls(lsp_types::request::GotoImplementationParams),
+    References(lsp_types::TextDocumentPositionParams),
+}

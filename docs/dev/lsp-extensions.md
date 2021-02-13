@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 8f1ae8530f69e3a3
+lsp_ext.rs hash: 34aec6bfeaeb97a
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this  issue:
@@ -573,3 +573,14 @@ This request is sent from client to server to open the current project's Cargo.t
 ```
 
 `experimental/openCargoToml` returns a single `Link` to the start of the `[package]` keyword.
+
+## CodeLens resolve request
+
+This request is sent from client to server to resolve previously provided CodeLens.
+
+As an alternative to `any` type in `data` field of `CodeLens`, you may use `CodeLensResolveData`:
+```typescript
+interface CodeLensResolveData {
+    data: (DefinitionParams | TextDocumentPositionParams),
+}
+```

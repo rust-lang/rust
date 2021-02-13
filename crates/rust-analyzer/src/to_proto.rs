@@ -5,13 +5,15 @@ use std::{
 };
 
 use ide::{
-    Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
-    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlPunct, HlRange, HlTag, Indel,
-    InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget, ReferenceAccess,
-    RenameError, Runnable, Severity, SourceChange, TextEdit, TextRange, TextSize,
+    Annotation, AnnotationKind, Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind,
+    Documentation, FileId, FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlPunct,
+    HlRange, HlTag, Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup,
+    NavigationTarget, ReferenceAccess, RenameError, Runnable, Severity, SourceChange, TextEdit,
+    TextRange, TextSize,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
+use serde_json::to_value;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec, global_state::GlobalStateSnapshot,
@@ -861,6 +863,141 @@ pub(crate) fn runnable(
             expect_test: None,
         },
     })
+}
+
+pub(crate) fn code_lens(
+    snap: &GlobalStateSnapshot,
+    annotation: Annotation,
+) -> Result<lsp_types::CodeLens> {
+    match annotation.kind {
+        AnnotationKind::Runnable { debug, runnable: run } => {
+            let line_index = snap.analysis.file_line_index(run.nav.file_id)?;
+            let annotation_range = range(&line_index, annotation.range);
+
+            let action = run.action();
+            let r = runnable(&snap, run.nav.file_id, run)?;
+
+            let command = if debug {
+                lsp_types::Command {
+                    title: action.run_title.to_string(),
+                    command: "rust-analyzer.runSingle".into(),
+                    arguments: Some(vec![to_value(r).unwrap()]),
+                }
+            } else {
+                lsp_types::Command {
+                    title: "Debug".into(),
+                    command: "rust-analyzer.debugSingle".into(),
+                    arguments: Some(vec![to_value(r).unwrap()]),
+                }
+            };
+
+            Ok(lsp_types::CodeLens { range: annotation_range, command: Some(command), data: None })
+        }
+        AnnotationKind::HasImpls { position: file_position, data } => {
+            let line_index = snap.analysis.file_line_index(file_position.file_id)?;
+            let annotation_range = range(&line_index, annotation.range);
+            let url = url(snap, file_position.file_id);
+
+            let position = position(&line_index, file_position.offset);
+
+            let id = lsp_types::TextDocumentIdentifier { uri: url.clone() };
+
+            let doc_pos = lsp_types::TextDocumentPositionParams::new(id.clone(), position);
+
+            let goto_params = lsp_types::request::GotoImplementationParams {
+                text_document_position_params: doc_pos.clone(),
+                work_done_progress_params: Default::default(),
+                partial_result_params: Default::default(),
+            };
+
+            let command = data.map(|ranges| {
+                let locations: Vec<lsp_types::Location> = ranges
+                    .into_iter()
+                    .filter_map(|target| {
+                        location(
+                            snap,
+                            FileRange { file_id: target.file_id, range: target.full_range },
+                        )
+                        .ok()
+                    })
+                    .collect();
+
+                show_references_command(
+                    implementation_title(locations.len()),
+                    &url,
+                    position,
+                    locations,
+                )
+            });
+
+            Ok(lsp_types::CodeLens {
+                range: annotation_range,
+                command,
+                data: Some(to_value(lsp_ext::CodeLensResolveData::Impls(goto_params)).unwrap()),
+            })
+        }
+        AnnotationKind::HasReferences { position: file_position, data } => {
+            let line_index = snap.analysis.file_line_index(file_position.file_id)?;
+            let annotation_range = range(&line_index, annotation.range);
+            let url = url(snap, file_position.file_id);
+
+            let position = position(&line_index, file_position.offset);
+
+            let id = lsp_types::TextDocumentIdentifier { uri: url.clone() };
+
+            let doc_pos = lsp_types::TextDocumentPositionParams::new(id, position);
+
+            let command = data.map(|ranges| {
+                let locations: Vec<lsp_types::Location> =
+                    ranges.into_iter().filter_map(|range| location(snap, range).ok()).collect();
+
+                show_references_command(reference_title(locations.len()), &url, position, locations)
+            });
+
+            Ok(lsp_types::CodeLens {
+                range: annotation_range,
+                command,
+                data: Some(to_value(lsp_ext::CodeLensResolveData::References(doc_pos)).unwrap()),
+            })
+        }
+    }
+}
+
+pub(crate) fn show_references_command(
+    title: String,
+    uri: &lsp_types::Url,
+    position: lsp_types::Position,
+    locations: Vec<lsp_types::Location>,
+) -> lsp_types::Command {
+    // We cannot use the 'editor.action.showReferences' command directly
+    // because that command requires vscode types which we convert in the handler
+    // on the client side.
+
+    lsp_types::Command {
+        title,
+        command: "rust-analyzer.showReferences".into(),
+        arguments: Some(vec![
+            to_value(uri).unwrap(),
+            to_value(position).unwrap(),
+            to_value(locations).unwrap(),
+        ]),
+    }
+}
+
+pub(crate) fn implementation_title(count: usize) -> String {
+    if count == 1 {
+        "1 implementation".into()
+    } else {
+        format!("{} implementations", count)
+    }
+}
+
+pub(crate) fn reference_title(count: usize) -> String {
+    if count == 1 {
+        "1 reference".into()
+    } else {
+        format!("{} references", count)
+    }
 }
 
 pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {

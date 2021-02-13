@@ -9,8 +9,9 @@ use std::{
 };
 
 use ide::{
-    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, LineIndex, NavigationTarget,
-    Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, TextEdit,
+    AnnotationConfig, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, LineIndex,
+    NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange,
+    TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -35,7 +36,7 @@ use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::RustfmtConfig,
     diff::diff,
-    from_json, from_proto,
+    from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
     line_endings::LineEndings,
     lsp_ext::{self, InlayHint, InlayHintsParams},
@@ -1078,177 +1079,51 @@ pub(crate) fn handle_code_lens(
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let _p = profile::span("handle_code_lens");
-    let mut lenses: Vec<CodeLens> = Default::default();
 
     let lens_config = snap.config.lens();
     if lens_config.none() {
         // early return before any db query!
-        return Ok(Some(lenses));
+        return Ok(Some(Vec::default()));
     }
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let line_index = snap.analysis.file_line_index(file_id)?;
-    let cargo_spec = CargoTargetSpec::for_file(&snap, file_id)?;
+    let cargo_target_spec = CargoTargetSpec::for_file(&snap, file_id)?;
 
-    if lens_config.runnable() {
-        // Gather runnables
-        for runnable in snap.analysis.runnables(file_id)? {
-            if should_skip_target(&runnable, cargo_spec.as_ref()) {
-                continue;
-            }
-
-            let action = runnable.action();
-            let range = to_proto::range(&line_index, runnable.nav.full_range);
-            let r = to_proto::runnable(&snap, file_id, runnable)?;
-            if lens_config.run {
-                let lens = CodeLens {
-                    range,
-                    command: Some(run_single_command(&r, action.run_title)),
-                    data: None,
-                };
-                lenses.push(lens);
-            }
-
-            if action.debugee && lens_config.debug {
-                let debug_lens =
-                    CodeLens { range, command: Some(debug_single_command(&r)), data: None };
-                lenses.push(debug_lens);
-            }
-        }
-    }
-
-    if lens_config.implementations || lens_config.refs {
-        snap.analysis
-            .file_structure(file_id)?
-            .into_iter()
-            .filter(|it| {
-                matches!(
-                    it.kind,
-                    SymbolKind::Trait | SymbolKind::Struct | SymbolKind::Enum | SymbolKind::Union
-                )
-            })
-            .for_each(|it| {
-                let range = to_proto::range(&line_index, it.node_range);
-                let position = to_proto::position(&line_index, it.navigation_range.start());
-                let doc_pos = lsp_types::TextDocumentPositionParams::new(
-                    params.text_document.clone(),
-                    position,
-                );
-                let goto_params = lsp_types::request::GotoImplementationParams {
-                    text_document_position_params: doc_pos.clone(),
-                    work_done_progress_params: Default::default(),
-                    partial_result_params: Default::default(),
-                };
-
-                if lens_config.implementations {
-                    lenses.push(CodeLens {
-                        range,
-                        command: None,
-                        data: Some(to_value(CodeLensResolveData::Impls(goto_params)).unwrap()),
+    let lenses = snap
+        .analysis
+        .annotations(
+            file_id,
+            AnnotationConfig {
+                binary_target: cargo_target_spec
+                    .map(|spec| {
+                        matches!(
+                            spec.target_kind,
+                            TargetKind::Bin | TargetKind::Example | TargetKind::Test
+                        )
                     })
-                }
-
-                if lens_config.refs {
-                    lenses.push(CodeLens {
-                        range,
-                        command: None,
-                        data: Some(to_value(CodeLensResolveData::References(doc_pos)).unwrap()),
-                    })
-                }
-            });
-    }
-
-    if lens_config.method_refs {
-        lenses.extend(snap.analysis.find_all_methods(file_id)?.into_iter().map(|it| {
-            let range = to_proto::range(&line_index, it.range);
-            let position = to_proto::position(&line_index, it.range.start());
-            let lens_params =
-                lsp_types::TextDocumentPositionParams::new(params.text_document.clone(), position);
-
-            CodeLens {
-                range,
-                command: None,
-                data: Some(to_value(CodeLensResolveData::References(lens_params)).unwrap()),
-            }
-        }));
-    }
+                    .unwrap_or(false),
+                annotate_runnables: lens_config.runnable(),
+                annotate_impls: lens_config.implementations,
+                annotate_references: lens_config.refs,
+                annotate_method_references: lens_config.method_refs,
+                run: lens_config.run,
+                debug: lens_config.debug,
+            },
+        )?
+        .into_iter()
+        .map(|annotation| to_proto::code_lens(&snap, annotation).unwrap())
+        .collect();
 
     Ok(Some(lenses))
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-enum CodeLensResolveData {
-    Impls(lsp_types::request::GotoImplementationParams),
-    References(lsp_types::TextDocumentPositionParams),
 }
 
 pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
     code_lens: CodeLens,
 ) -> Result<CodeLens> {
-    let _p = profile::span("handle_code_lens_resolve");
-    let data = code_lens.data.unwrap();
-    let resolve = from_json::<Option<CodeLensResolveData>>("CodeLensResolveData", data)?;
-    match resolve {
-        Some(CodeLensResolveData::Impls(lens_params)) => {
-            let locations: Vec<Location> =
-                match handle_goto_implementation(snap, lens_params.clone())? {
-                    Some(lsp_types::GotoDefinitionResponse::Scalar(loc)) => vec![loc],
-                    Some(lsp_types::GotoDefinitionResponse::Array(locs)) => locs,
-                    Some(lsp_types::GotoDefinitionResponse::Link(links)) => links
-                        .into_iter()
-                        .map(|link| Location::new(link.target_uri, link.target_selection_range))
-                        .collect(),
-                    _ => vec![],
-                };
+    let annotation = from_proto::annotation(&snap, code_lens)?;
 
-            let title = implementation_title(locations.len());
-            let cmd = show_references_command(
-                title,
-                &lens_params.text_document_position_params.text_document.uri,
-                code_lens.range.start,
-                locations,
-            );
-            Ok(CodeLens { range: code_lens.range, command: Some(cmd), data: None })
-        }
-        Some(CodeLensResolveData::References(doc_position)) => {
-            let position = from_proto::file_position(&snap, doc_position.clone())?;
-            let locations = snap
-                .analysis
-                .find_all_refs(position, None)
-                .unwrap_or(None)
-                .map(|r| {
-                    r.references
-                        .into_iter()
-                        .flat_map(|(file_id, ranges)| {
-                            ranges.into_iter().map(move |(range, _)| FileRange { file_id, range })
-                        })
-                        .filter_map(|frange| to_proto::location(&snap, frange).ok())
-                        .collect_vec()
-                })
-                .unwrap_or_default();
-
-            let title = reference_title(locations.len());
-            let cmd = if locations.is_empty() {
-                Command { title, command: "".into(), arguments: None }
-            } else {
-                show_references_command(
-                    title,
-                    &doc_position.text_document.uri,
-                    code_lens.range.start,
-                    locations,
-                )
-            };
-
-            Ok(CodeLens { range: code_lens.range, command: Some(cmd), data: None })
-        }
-        None => Ok(CodeLens {
-            range: code_lens.range,
-            command: Some(Command { title: "Error".into(), ..Default::default() }),
-            data: None,
-        }),
-    }
+    Ok(to_proto::code_lens(&snap, snap.analysis.resolve_annotation(annotation)?)?)
 }
 
 pub(crate) fn handle_document_highlight(
@@ -1547,43 +1422,6 @@ pub(crate) fn handle_open_cargo_toml(
     Ok(Some(res))
 }
 
-fn implementation_title(count: usize) -> String {
-    if count == 1 {
-        "1 implementation".into()
-    } else {
-        format!("{} implementations", count)
-    }
-}
-
-fn reference_title(count: usize) -> String {
-    if count == 1 {
-        "1 reference".into()
-    } else {
-        format!("{} references", count)
-    }
-}
-
-fn show_references_command(
-    title: String,
-    uri: &lsp_types::Url,
-    position: lsp_types::Position,
-    locations: Vec<lsp_types::Location>,
-) -> Command {
-    // We cannot use the 'editor.action.showReferences' command directly
-    // because that command requires vscode types which we convert in the handler
-    // on the client side.
-
-    Command {
-        title,
-        command: "rust-analyzer.showReferences".into(),
-        arguments: Some(vec![
-            to_value(uri).unwrap(),
-            to_value(position).unwrap(),
-            to_value(locations).unwrap(),
-        ]),
-    }
-}
-
 fn run_single_command(runnable: &lsp_ext::Runnable, title: &str) -> Command {
     Command {
         title: title.to_string(),
@@ -1635,8 +1473,8 @@ fn show_impl_command_link(
                 .into_iter()
                 .filter_map(|nav| to_proto::location_from_nav(snap, nav).ok())
                 .collect();
-            let title = implementation_title(locations.len());
-            let command = show_references_command(title, &uri, position, locations);
+            let title = to_proto::implementation_title(locations.len());
+            let command = to_proto::show_references_command(title, &uri, position, locations);
 
             return Some(lsp_ext::CommandLinkGroup {
                 commands: vec![to_command_link(command, "Go to implementations".into())],

@@ -22,6 +22,7 @@ mod markup;
 mod prime_caches;
 mod display;
 
+mod annotations;
 mod call_hierarchy;
 mod diagnostics;
 mod expand_macro;
@@ -63,6 +64,7 @@ use syntax::SourceFile;
 use crate::display::ToNav;
 
 pub use crate::{
+    annotations::{Annotation, AnnotationConfig, AnnotationKind},
     call_hierarchy::CallItem,
     diagnostics::{Diagnostic, DiagnosticsConfig, Fix, Severity},
     display::navigation_target::NavigationTarget,
@@ -553,6 +555,18 @@ impl Analysis {
             let edits = if parse_only { Default::default() } else { match_finder.edits() };
             Ok(SourceChange::from(edits))
         })
+    }
+
+    pub fn annotations(
+        &self,
+        file_id: FileId,
+        config: AnnotationConfig,
+    ) -> Cancelable<Vec<Annotation>> {
+        self.with_db(|db| annotations::annotations(db, file_id, config))
+    }
+
+    pub fn resolve_annotation(&self, annotation: Annotation) -> Cancelable<Annotation> {
+        self.with_db(|db| annotations::resolve_annotation(db, annotation))
     }
 
     /// Performs an operation on that may be Canceled.
