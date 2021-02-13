@@ -34,10 +34,6 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
         return None;
     }
     let field_type = field_list.fields().next()?.ty()?;
-    let path = match field_type {
-        ast::Type::PathType(it) => it,
-        _ => return None,
-    };
 
     if existing_from_impl(&ctx.sema, &variant).is_some() {
         mark::hit!(test_add_from_impl_already_exists);
@@ -59,7 +55,7 @@ impl From<{0}> for {1} {{
         Self::{2}(v)
     }}
 }}"#,
-                path.syntax(),
+                field_type.syntax(),
                 enum_name,
                 variant_name
             );
@@ -195,6 +191,21 @@ impl From<String> for A {
 
 pub trait From<T> {
     fn from(T) -> Self;
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_add_from_impl_static_str() {
+        check_assist(
+            generate_from_impl_for_enum,
+            "enum A { $0One(&'static str) }",
+            r#"enum A { One(&'static str) }
+
+impl From<&'static str> for A {
+    fn from(v: &'static str) -> Self {
+        Self::One(v)
+    }
 }"#,
         );
     }
