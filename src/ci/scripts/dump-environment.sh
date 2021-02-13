@@ -12,6 +12,10 @@ echo "disk usage:"
 df -h
 echo
 
+echo "mount options:"
+mount
+echo
+
 echo "biggest files in the working dir:"
 set +o pipefail
 du . | sort -nr | head -n100

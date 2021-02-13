@@ -12,4 +12,7 @@ if isLinux; then
     echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' \
         | sudo tee /etc/docker/daemon.json
     sudo service docker restart
+    docker info
 fi
+
+exit 1
