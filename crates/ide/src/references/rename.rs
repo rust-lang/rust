@@ -75,8 +75,7 @@ pub(crate) fn rename_with_semantics(
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
 
-    let def = find_definition(sema, syntax, position)
-        .ok_or_else(|| format_err!("No references found at position"))?;
+    let def = find_definition(sema, syntax, position)?;
     match def {
         Definition::ModuleDef(ModuleDef::Module(module)) => rename_mod(&sema, module, new_name),
         def => rename_reference(sema, def, new_name),
@@ -149,18 +148,30 @@ fn find_definition(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
-) -> Option<Definition> {
-    let def = match find_name_like(sema, syntax, position)? {
-        NameLike::Name(name) => NameClass::classify(sema, &name)?.referenced_or_defined(sema.db),
-        NameLike::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref)?.referenced(sema.db),
+) -> RenameResult<Definition> {
+    match find_name_like(sema, syntax, position)
+        .ok_or_else(|| format_err!("No references found at position"))?
+    {
+        // renaming aliases would rename the item being aliased as the HIR doesn't track aliases yet
+        NameLike::Name(name)
+            if name.syntax().parent().map_or(false, |it| ast::Rename::can_cast(it.kind())) =>
+        {
+            bail!("Renaming aliases is currently unsupported")
+        }
+        NameLike::Name(name) => {
+            NameClass::classify(sema, &name).map(|class| class.referenced_or_defined(sema.db))
+        }
+        NameLike::NameRef(name_ref) => {
+            NameRefClass::classify(sema, &name_ref).map(|class| class.referenced(sema.db))
+        }
         NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
             .map(|class| NameRefClass::referenced(class, sema.db))
             .or_else(|| {
                 NameClass::classify_lifetime(sema, &lifetime)
                     .map(|it| it.referenced_or_defined(sema.db))
-            })?,
-    };
-    Some(def)
+            }),
+    }
+    .ok_or_else(|| format_err!("No references found at position"))
 }
 
 fn source_edit_from_references(
@@ -172,10 +183,10 @@ fn source_edit_from_references(
 ) -> (FileId, TextEdit) {
     let mut edit = TextEdit::builder();
     for reference in references {
-        let (range, replacement) = match &reference.name {
-            NameLike::Name(_) => (None, format!("{}", new_name)),
-            NameLike::NameRef(name_ref) => source_edit_from_name_ref(name_ref, new_name, def),
-            NameLike::Lifetime(_) => (None, format!("{}", new_name)),
+        let (range, replacement) = if let Some(name_ref) = reference.name.as_name_ref() {
+            source_edit_from_name_ref(name_ref, new_name, def)
+        } else {
+            (None, new_name.to_owned())
         };
         // FIXME: Some(range) will be incorrect when we are inside macros
         edit.replace(range.unwrap_or(reference.range), replacement);
