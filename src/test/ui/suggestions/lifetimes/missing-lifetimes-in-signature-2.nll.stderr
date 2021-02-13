@@ -1,0 +1,17 @@
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/missing-lifetimes-in-signature-2.rs:20:5
+   |
+LL | /     foo.bar(move |_| {
+LL | |
+LL | |         t.test();
+LL | |     });
+   | |______^
+   |
+note: the parameter type `T` must be valid for the anonymous lifetime #2 defined on the function body at 19:1...
+  --> $DIR/missing-lifetimes-in-signature-2.rs:19:1
+   |
+LL | fn func<T: Test>(foo: &Foo, t: T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
