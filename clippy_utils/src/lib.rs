@@ -10,6 +10,8 @@
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(control_flow_enum)]
+#![recursion_limit = "512"]
+#![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)

@@ -1,7 +1,7 @@
 use crate::consts::{constant_simple, Constant};
 use crate::{
-    is_expn_of, match_def_path, match_qpath, match_type, method_calls, path_to_res, paths, run_lints, snippet,
-    span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
+    declare_clippy_lint, is_expn_of, match_def_path, match_qpath, match_type, method_calls, path_to_res, paths,
+    run_lints, snippet, span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, NodeId};

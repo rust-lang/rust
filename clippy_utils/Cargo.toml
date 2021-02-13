@@ -22,3 +22,6 @@ rustc-semver="1.1.0"
 url = { version =  "2.1.0", features = ["serde"] }
 quote = "1"
 syn = { version = "1", features = ["full"] }
+
+[features]
+internal-lints = []
