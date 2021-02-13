@@ -98,6 +98,30 @@ mod tests {
                 $0
             }"#,
         );
+
+        check_assist(
+            generate_impl,
+            r#"
+            struct Defaulted<T = i32> {}$0"#,
+            r#"
+            struct Defaulted<T = i32> {}
+
+            impl<T> Defaulted<T> {
+                $0
+            }"#,
+        );
+
+        check_assist(
+            generate_impl,
+            r#"
+            struct Defaulted<'a, 'b: 'a, T: Debug + Clone + 'a + 'b = String> {}$0"#,
+            r#"
+            struct Defaulted<'a, 'b: 'a, T: Debug + Clone + 'a + 'b = String> {}
+
+            impl<'a, 'b: 'a, T: Debug + Clone + 'a + 'b> Defaulted<'a, 'b, T> {
+                $0
+            }"#,
+        );
     }
 
     #[test]
