@@ -30,8 +30,10 @@ DIFF := diff -u --strip-trailing-cr
 # whenever possible. Most developer platforms include `/bin/dash`, but to ensure
 # tests still work when `/bin/dash`, if not available, this `SHELL` override is
 # conditional:
+ifndef IS_WINDOWS # dash interprets backslashes in executable paths incorrectly
 ifneq (,$(wildcard /bin/dash))
 SHELL := /bin/dash
+endif
 endif
 
 # This is the name of the binary we will generate and run; use this
