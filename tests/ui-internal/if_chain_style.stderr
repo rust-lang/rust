@@ -56,7 +56,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__if_chain` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `let` expression should be above the `if_chain!`
   --> $DIR/if_chain_style.rs:40:9
