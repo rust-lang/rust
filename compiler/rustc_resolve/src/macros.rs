@@ -326,7 +326,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
         // nearest closing item - we should try to return the closest parent of the ExpnId
         self.invocation_parents
             .get(&expn_id)
-            .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[*id])
+            .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[id.0])
     }
 
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool {

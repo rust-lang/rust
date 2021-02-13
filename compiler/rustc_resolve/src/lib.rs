@@ -156,6 +156,12 @@ impl<'a> ParentScope<'a> {
     }
 }
 
+#[derive(Copy, Debug, Clone)]
+enum ImplTraitContext {
+    Existential,
+    Universal(LocalDefId),
+}
+
 #[derive(Eq)]
 struct BindingError {
     name: Symbol,
@@ -989,8 +995,9 @@ pub struct Resolver<'a> {
     /// Indices of unnamed struct or variant fields with unresolved attributes.
     placeholder_field_indices: FxHashMap<NodeId, usize>,
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
-    /// we know what parent node that fragment should be attached to thanks to this table.
-    invocation_parents: FxHashMap<ExpnId, LocalDefId>,
+    /// we know what parent node that fragment should be attached to thanks to this table,
+    /// and how the `impl Trait` fragments were introduced.
+    invocation_parents: FxHashMap<ExpnId, (LocalDefId, ImplTraitContext)>,
 
     next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
@@ -1205,7 +1212,7 @@ impl<'a> Resolver<'a> {
         node_id_to_def_id.insert(CRATE_NODE_ID, root);
 
         let mut invocation_parents = FxHashMap::default();
-        invocation_parents.insert(ExpnId::root(), root);
+        invocation_parents.insert(ExpnId::root(), (root, ImplTraitContext::Existential));
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = session
             .opts
