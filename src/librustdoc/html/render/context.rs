@@ -15,9 +15,10 @@ use rustc_span::source_map::FileName;
 use rustc_span::symbol::sym;
 
 use super::cache::{build_index, ExternalLocation};
+use super::print_item::{full_path, item_path, print_item};
 use super::{
-    full_path, item_path, make_item_keywords, print_item, print_sidebar, settings, write_shared,
-    AllTypes, NameDoc, SharedContext, StylePath, BASIC_KEYWORDS, CURRENT_DEPTH, INITIAL_IDS,
+    make_item_keywords, print_sidebar, settings, write_shared, AllTypes, NameDoc, SharedContext,
+    StylePath, BASIC_KEYWORDS, CURRENT_DEPTH, INITIAL_IDS,
 };
 
 use crate::clean::{self, AttributesExt};
