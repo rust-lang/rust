@@ -54,6 +54,7 @@ pub enum Target {
     ForeignTy,
     GenericParam(GenericParamKind),
     MacroDef,
+    Param,
 }
 
 impl Display for Target {
@@ -96,6 +97,7 @@ impl Display for Target {
                     GenericParamKind::Const => "const parameter",
                 },
                 Target::MacroDef => "macro def",
+                Target::Param => "function param",
             }
         )
     }

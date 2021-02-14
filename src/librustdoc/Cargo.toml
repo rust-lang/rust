@@ -14,7 +14,7 @@ minifier = "0.0.33"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-smallvec = "1.0"
+smallvec = "1.6.1"
 tempfile = "3"
 itertools = "0.9"
 regex = "1"

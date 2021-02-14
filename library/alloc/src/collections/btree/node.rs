@@ -181,7 +181,7 @@ impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
-    /// Irreversibly transistions to a reference that offers traversal,
+    /// Irreversibly transitions to a reference that permits traversal and offers
     /// destructive methods and little else.
     pub fn into_dying(self) -> NodeRef<marker::Dying, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }

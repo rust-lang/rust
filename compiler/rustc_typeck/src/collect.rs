@@ -143,6 +143,7 @@ crate fn placeholder_type_error(
     generics: &[hir::GenericParam<'_>],
     placeholder_types: Vec<Span>,
     suggest: bool,
+    hir_ty: Option<&hir::Ty<'_>>,
 ) {
     if placeholder_types.is_empty() {
         return;
@@ -173,12 +174,40 @@ crate fn placeholder_type_error(
     }
 
     let mut err = bad_placeholder_type(tcx, placeholder_types);
+
+    // Suggest, but only if it is not a function in const or static
     if suggest {
-        err.multipart_suggestion(
-            "use type parameters instead",
-            sugg,
-            Applicability::HasPlaceholders,
-        );
+        let mut is_fn = false;
+        let mut is_const = false;
+        let mut is_static = false;
+
+        if let Some(hir_ty) = hir_ty {
+            if let hir::TyKind::BareFn(_) = hir_ty.kind {
+                is_fn = true;
+
+                // Check if parent is const or static
+                let parent_id = tcx.hir().get_parent_node(hir_ty.hir_id);
+                let parent_node = tcx.hir().get(parent_id);
+
+                if let hir::Node::Item(item) = parent_node {
+                    if let hir::ItemKind::Const(_, _) = item.kind {
+                        is_const = true;
+                    } else if let hir::ItemKind::Static(_, _, _) = item.kind {
+                        is_static = true;
+                    }
+                }
+            }
+        }
+
+        // if function is wrapped around a const or static,
+        // then don't show the suggestion
+        if !(is_fn && (is_const || is_static)) {
+            err.multipart_suggestion(
+                "use type parameters instead",
+                sugg,
+                Applicability::HasPlaceholders,
+            );
+        }
     }
     err.emit();
 }
@@ -200,7 +229,14 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
     let mut visitor = PlaceholderHirTyCollector::default();
     visitor.visit_item(item);
 
-    placeholder_type_error(tcx, Some(generics.span), &generics.params[..], visitor.0, suggest);
+    placeholder_type_error(
+        tcx,
+        Some(generics.span),
+        &generics.params[..],
+        visitor.0,
+        suggest,
+        None,
+    );
 }
 
 impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
@@ -682,6 +718,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
     let it = tcx.hir().expect_item(item_id);
     debug!("convert: item {} with id {}", it.ident, it.hir_id);
     let def_id = tcx.hir().local_def_id(item_id);
+
     match it.kind {
         // These don't define types.
         hir::ItemKind::ExternCrate(_)
@@ -787,7 +824,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
             // Account for `const C: _;`.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
-            placeholder_type_error(tcx, None, &[], visitor.0, false);
+            placeholder_type_error(tcx, None, &[], visitor.0, false, None);
         }
 
         hir::TraitItemKind::Type(_, Some(_)) => {
@@ -796,7 +833,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
             // Account for `type T = _;`.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
-            placeholder_type_error(tcx, None, &[], visitor.0, false);
+            placeholder_type_error(tcx, None, &[], visitor.0, false, None);
         }
 
         hir::TraitItemKind::Type(_, None) => {
@@ -805,7 +842,8 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
             // even if there is no concrete type.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
-            placeholder_type_error(tcx, None, &[], visitor.0, false);
+
+            placeholder_type_error(tcx, None, &[], visitor.0, false, None);
         }
     };
 
@@ -826,7 +864,8 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::HirId) {
             // Account for `type T = _;`
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_impl_item(impl_item);
-            placeholder_type_error(tcx, None, &[], visitor.0, false);
+
+            placeholder_type_error(tcx, None, &[], visitor.0, false, None);
         }
         hir::ImplItemKind::Const(..) => {}
     }
@@ -1654,6 +1693,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     &sig.decl,
                     &generics,
                     Some(ident.span),
+                    None,
                 ),
             }
         }
@@ -1663,9 +1703,15 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             ident,
             generics,
             ..
-        }) => {
-            AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl, &generics, Some(ident.span))
-        }
+        }) => AstConv::ty_of_fn(
+            &icx,
+            header.unsafety,
+            header.abi,
+            decl,
+            &generics,
+            Some(ident.span),
+            None,
+        ),
 
         ForeignItem(&hir::ForeignItem {
             kind: ForeignItemKind::Fn(ref fn_decl, _, _),
@@ -2335,6 +2381,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         decl,
         &hir::Generics::empty(),
         Some(ident.span),
+        None,
     );
 
     // Feature gate SIMD types in FFI, since I am not sure that the

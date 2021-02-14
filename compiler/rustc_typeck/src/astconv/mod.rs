@@ -2191,12 +2191,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::BareFn(ref bf) => {
                 require_c_abi_if_c_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
+
                 tcx.mk_fn_ptr(self.ty_of_fn(
                     bf.unsafety,
                     bf.abi,
                     &bf.decl,
                     &hir::Generics::empty(),
                     None,
+                    Some(ast_ty),
                 ))
             }
             hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
@@ -2336,6 +2338,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         decl: &hir::FnDecl<'_>,
         generics: &hir::Generics<'_>,
         ident_span: Option<Span>,
+        hir_ty: Option<&hir::Ty<'_>>,
     ) -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
 
@@ -2367,12 +2370,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // only want to emit an error complaining about them if infer types (`_`) are not
             // allowed. `allow_ty_infer` gates this behavior. We check for the presence of
             // `ident_span` to not emit an error twice when we have `fn foo(_: fn() -> _)`.
+
             crate::collect::placeholder_type_error(
                 tcx,
                 ident_span.map(|sp| sp.shrink_to_hi()),
                 &generics.params[..],
                 visitor.0,
                 true,
+                hir_ty,
             );
         }
 
