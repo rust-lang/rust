@@ -46,7 +46,7 @@ impl LineEndings {
         return (src, LineEndings::Dos);
 
         fn find_crlf(src: &[u8]) -> Option<usize> {
-            src.iter().zip(src.iter().skip(1)).position(|it| it == (&b'\r', &b'\n'))
+            src.windows(2).position(|it| it == b"\r\n")
         }
     }
 }
