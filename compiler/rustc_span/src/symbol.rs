@@ -1604,6 +1604,7 @@ pub mod sym {
     use super::Symbol;
     use std::convert::TryInto;
 
+    #[doc(inline)]
     pub use super::sym_generated::*;
 
     // Used from a macro in `librustc_feature/accepted.rs`
