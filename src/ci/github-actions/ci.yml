@@ -137,6 +137,10 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/collect-cpu-stats.sh
         <<: *step
 
+      - name: remount root filesystem
+        run: src/ci/scripts/tune-rootfs.sh
+        <<: *step
+
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
         <<: *step

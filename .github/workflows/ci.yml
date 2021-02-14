@@ -80,6 +80,9 @@ jobs:
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
+      - name: remount root filesystem
+        run: src/ci/scripts/tune-rootfs.sh
+        if: success() && !env.SKIP_JOB
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
         if: success() && !env.SKIP_JOB
@@ -441,6 +444,9 @@ jobs:
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
+      - name: remount root filesystem
+        run: src/ci/scripts/tune-rootfs.sh
+        if: success() && !env.SKIP_JOB
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
         if: success() && !env.SKIP_JOB
@@ -547,6 +553,9 @@ jobs:
         if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
+        if: success() && !env.SKIP_JOB
+      - name: remount root filesystem
+        run: src/ci/scripts/tune-rootfs.sh
         if: success() && !env.SKIP_JOB
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
