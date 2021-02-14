@@ -145,6 +145,79 @@ pub(crate) fn generate_enum_into_method(acc: &mut Assists, ctx: &AssistContext) 
     )
 }
 
+// Assist: generate_enum_as_method
+//
+// Generate an `as_` method for an enum variant.
+//
+// ```
+// enum Value {
+//  Number(i32),
+//  Text(String)$0,
+// }
+// ```
+// ->
+// ```
+// enum Value {
+//  Number(i32),
+//  Text(String),
+// }
+//
+// impl Value {
+//     fn as_text(&self) -> Option<&String> {
+//         if let Self::Text(v) = self {
+//             Some(v)
+//         } else {
+//             None
+//         }
+//     }
+// }
+// ```
+pub(crate) fn generate_enum_as_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let variant = ctx.find_node_at_offset::<ast::Variant>()?;
+    let variant_name = variant.name()?;
+    let parent_enum = ast::Adt::Enum(variant.parent_enum());
+    let variant_kind = variant_kind(&variant);
+
+    let fn_name = format!("as_{}", &to_lower_snake_case(variant_name.text()));
+
+    // Return early if we've found an existing new fn
+    let impl_def = find_struct_impl(
+        &ctx,
+        &parent_enum,
+        &fn_name,
+    )?;
+
+    let field_type = variant_kind.single_field_type()?;
+    let (pattern_suffix, bound_name) = variant_kind.binding_pattern()?;
+
+    let target = variant.syntax().text_range();
+    acc.add(
+        AssistId("generate_enum_as_method", AssistKind::Generate),
+        "Generate an `as_` method for an enum variant",
+        target,
+        |builder| {
+            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
+            let method = format!(
+                "    {}fn {}(&self) -> Option<&{}> {{
+        if let Self::{}{} = self {{
+            Some({})
+        }} else {{
+            None
+        }}
+    }}",
+                vis,
+                fn_name,
+                field_type.syntax(),
+                variant_name,
+                pattern_suffix,
+                bound_name,
+            );
+
+            add_method_to_adt(builder, &parent_enum, impl_def, &method);
+        },
+    )
+}
+
 fn add_method_to_adt(
     builder: &mut AssistBuilder,
     adt: &ast::Adt,
@@ -521,6 +594,57 @@ impl Value {
 
 impl Value {
     fn into_text(self) -> Option<String> {
+        if let Self::Text { text } = self {
+            Some(text)
+        } else {
+            None
+        }
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_enum_as_tuple_variant() {
+        check_assist(
+            generate_enum_as_method,
+            r#"
+enum Value {
+    Number(i32),
+    Text(String)$0,
+}"#,
+            r#"enum Value {
+    Number(i32),
+    Text(String),
+}
+
+impl Value {
+    fn as_text(&self) -> Option<&String> {
+        if let Self::Text(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_enum_as_record_variant() {
+        check_assist(
+            generate_enum_as_method,
+            r#"enum Value {
+    Number(i32),
+    Text { text: String }$0,
+}"#,
+            r#"enum Value {
+    Number(i32),
+    Text { text: String },
+}
+
+impl Value {
+    fn as_text(&self) -> Option<&String> {
         if let Self::Text { text } = self {
             Some(text)
         } else {
