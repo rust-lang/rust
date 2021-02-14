@@ -3,7 +3,7 @@ fn main() {
   f(|x| dbg!(x)); //~ERROR
   f(|x| match x { tmp => { tmp } }); //~ERROR
   macro_rules! d {
-    ($e:expr) => { match $e { x => { x } } }
+    ($e:expr) => { match $e { x => { x } } } //~ERROR
   }
   f(|x| d!(x)); //~ERROR
 }
