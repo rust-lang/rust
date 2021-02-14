@@ -8,7 +8,7 @@ use crate::{
     AssistContext, AssistId, AssistKind, Assists,
 };
 
-// Assist: generate_enum_match_method
+// Assist: generate_enum_is_method
 //
 // Generate an `is_` method for an enum variant.
 //
@@ -34,7 +34,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let variant_name = variant.name()?;
     let parent_enum = variant.parent_enum();
@@ -55,7 +55,7 @@ pub(crate) fn generate_enum_match_method(acc: &mut Assists, ctx: &AssistContext)
 
     let target = variant.syntax().text_range();
     acc.add(
-        AssistId("generate_enum_match_method", AssistKind::Generate),
+        AssistId("generate_enum_is_method", AssistKind::Generate),
         "Generate an `is_` method for an enum variant",
         target,
         |builder| {
@@ -100,13 +100,13 @@ mod tests {
     use super::*;
 
     fn check_not_applicable(ra_fixture: &str) {
-        check_assist_not_applicable(generate_enum_match_method, ra_fixture)
+        check_assist_not_applicable(generate_enum_is_method, ra_fixture)
     }
 
     #[test]
     fn test_generate_enum_match_from_variant() {
         check_assist(
-            generate_enum_match_method,
+            generate_enum_is_method,
             r#"
 enum Variant {
     Undefined,
@@ -162,7 +162,7 @@ enum Variant {
     #[test]
     fn test_generate_enum_match_from_variant_with_one_variant() {
         check_assist(
-            generate_enum_match_method,
+            generate_enum_is_method,
             r#"enum Variant { Undefi$0ned }"#,
             r#"
 enum Variant { Undefined }
@@ -179,7 +179,7 @@ impl Variant {
     #[test]
     fn test_generate_enum_match_from_variant_with_visibility_marker() {
         check_assist(
-            generate_enum_match_method,
+            generate_enum_is_method,
             r#"
 pub(crate) enum Variant {
     Undefined,
@@ -204,7 +204,7 @@ impl Variant {
     #[test]
     fn test_multiple_generate_enum_match_from_variant() {
         check_assist(
-            generate_enum_match_method,
+            generate_enum_is_method,
             r#"
 enum Variant {
     Undefined,

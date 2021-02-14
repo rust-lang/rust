@@ -483,9 +483,9 @@ struct Point {
 }
 
 #[test]
-fn doctest_generate_enum_match_method() {
+fn doctest_generate_enum_is_method() {
     check_doc_test(
-        "generate_enum_match_method",
+        "generate_enum_is_method",
         r#####"
 enum Version {
  Undefined,
