@@ -521,14 +521,15 @@ crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<De
     }
 }
 
-/// Checks that one attribute is `doc`. For example:
+/// Checks for the existence of `hidden` in the attribute below if `flag` is `sym::hidden`:
 ///
-/// ```text
-/// #[doc(spotlight)]
+/// ```
+/// #[doc(hidden)]
+/// pub fn foo() {}
 /// ```
 ///
-/// This function has to exists because it runs on `hir::Attributes` whereas the other runs on
-/// `clean::Attributes`.
+/// This function exists because it runs on `hir::Attributes` whereas the other is a
+/// `clean::Attributes` method.
 crate fn has_doc_flag(attrs: Attributes<'_>, flag: Symbol) -> bool {
     attrs.iter().any(|attr| {
         attr.has_name(sym::doc)

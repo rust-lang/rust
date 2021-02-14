@@ -245,16 +245,12 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             }
         }
 
-        let tcx = self.tcx;
         // Propagate a trait method's documentation to all implementors of the
         // trait.
         if let clean::TraitItem(ref t) = *item.kind {
             self.cache.traits.entry(item.def_id).or_insert_with(|| clean::TraitWithExtraInfo {
                 trait_: t.clone(),
-                is_spotlight: clean::utils::has_doc_flag(
-                    tcx.get_attrs(item.def_id),
-                    sym::spotlight,
-                ),
+                is_spotlight: item.attrs.has_doc_flag(sym::spotlight),
             });
         }
 
