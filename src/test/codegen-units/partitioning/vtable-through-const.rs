@@ -66,7 +66,7 @@ mod mod1 {
 //~ MONO_ITEM fn start
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    //~ MONO_ITEM fn std::intrinsics::drop_in_place::<u32> - shim(None) @@ vtable_through_const[Internal]
+    //~ MONO_ITEM fn std::ptr::drop_in_place::<u32> - shim(None) @@ vtable_through_const[Internal]
 
     // Since Trait1::do_something() is instantiated via its default implementation,
     // it is considered a generic and is instantiated here only because it is
