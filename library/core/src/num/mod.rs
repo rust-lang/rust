@@ -6,9 +6,6 @@ use crate::intrinsics;
 use crate::mem;
 use crate::str::FromStr;
 
-/// If 6th bit set ascii is upper case.
-const ASCII_CASE_MASK: u8 = 0b0010_0000;
-
 // Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
     ($e:expr) => {
@@ -154,6 +151,9 @@ impl isize {
      "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
      usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
+
+/// If 6th bit set ascii is upper case.
+const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 #[lang = "u8"]
 impl u8 {
