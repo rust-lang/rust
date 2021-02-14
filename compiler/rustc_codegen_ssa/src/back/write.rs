@@ -288,7 +288,7 @@ impl TargetMachineFactoryConfig {
         module_name: &str,
     ) -> TargetMachineFactoryConfig {
         let split_dwarf_file = if cgcx.target_can_use_split_dwarf {
-            cgcx.output_filenames.split_dwarf_filename(cgcx.split_debuginfo, Some(module_name))
+            cgcx.output_filenames.split_dwarf_path(cgcx.split_debuginfo, Some(module_name))
         } else {
             None
         };

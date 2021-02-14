@@ -979,7 +979,7 @@ pub fn compile_unit_metadata(
     // The OSX linker has an idiosyncrasy where it will ignore some debuginfo
     // if multiple object files with the same `DW_AT_name` are linked together.
     // As a workaround we generate unique names for each object file. Those do
-    // not correspond to an actual source file but that should be harmless.
+    // not correspond to an actual source file but that is harmless.
     if tcx.sess.target.is_like_osx {
         name_in_debuginfo.push("@");
         name_in_debuginfo.push(codegen_unit_name);
@@ -992,17 +992,17 @@ pub fn compile_unit_metadata(
     let producer = format!("clang LLVM ({})", rustc_producer);
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
+    let work_dir = tcx.sess.working_dir.0.to_string_lossy();
     let flags = "\0";
-
     let out_dir = &tcx.output_filenames(LOCAL_CRATE).out_directory;
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
         tcx.output_filenames(LOCAL_CRATE)
-            .split_dwarf_filename(tcx.sess.split_debuginfo(), Some(codegen_unit_name))
+            .split_dwarf_path(tcx.sess.split_debuginfo(), Some(codegen_unit_name))
+            .map(|f| out_dir.join(f))
     } else {
         None
     }
     .unwrap_or_default();
-    let out_dir = out_dir.to_str().unwrap();
     let split_name = split_name.to_str().unwrap();
 
     // FIXME(#60020):
@@ -1024,12 +1024,12 @@ pub fn compile_unit_metadata(
     assert!(tcx.sess.opts.debuginfo != DebugInfo::None);
 
     unsafe {
-        let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
+        let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
             debug_context.builder,
             name_in_debuginfo.as_ptr().cast(),
             name_in_debuginfo.len(),
-            out_dir.as_ptr().cast(),
-            out_dir.len(),
+            work_dir.as_ptr().cast(),
+            work_dir.len(),
             llvm::ChecksumKind::None,
             ptr::null(),
             0,
@@ -1038,12 +1038,15 @@ pub fn compile_unit_metadata(
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
             DW_LANG_RUST,
-            file_metadata,
+            compile_unit_file,
             producer.as_ptr().cast(),
             producer.len(),
             tcx.sess.opts.optimize != config::OptLevel::No,
             flags.as_ptr().cast(),
             0,
+            // NB: this doesn't actually have any perceptible effect, it seems. LLVM will instead
+            // put the path supplied to `MCSplitDwarfFile` into the debug info of the final
+            // output(s).
             split_name.as_ptr().cast(),
             split_name.len(),
             kind,

@@ -667,17 +667,6 @@ impl OutputFilenames {
         path
     }
 
-    /// Returns the name of the Split DWARF file - this can differ depending on which Split DWARF
-    /// mode is being used, which is the logic that this function is intended to encapsulate.
-    pub fn split_dwarf_filename(
-        &self,
-        split_debuginfo_kind: SplitDebuginfo,
-        cgu_name: Option<&str>,
-    ) -> Option<PathBuf> {
-        self.split_dwarf_path(split_debuginfo_kind, cgu_name)
-            .map(|path| path.strip_prefix(&self.out_directory).unwrap_or(&path).to_path_buf())
-    }
-
     /// Returns the path for the Split DWARF file - this can differ depending on which Split DWARF
     /// mode is being used, which is the logic that this function is intended to encapsulate.
     pub fn split_dwarf_path(
