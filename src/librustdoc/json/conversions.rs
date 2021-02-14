@@ -2,6 +2,8 @@
 //! the `clean` types but with some fields removed or stringified to simplify the output and not
 //! expose unstable compiler internals.
 
+#![allow(rustc::default_hash_types)]
+
 use std::convert::From;
 
 use rustc_ast::ast;
@@ -16,6 +18,7 @@ use crate::clean;
 use crate::clean::utils::print_const_expr;
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
+use std::collections::HashSet;
 
 impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
@@ -225,15 +228,22 @@ crate fn from_ctor_kind(struct_type: CtorKind) -> StructType {
     }
 }
 
-fn stringify_header(header: &rustc_hir::FnHeader) -> String {
-    let mut s = String::from(header.unsafety.prefix_str());
-    if header.asyncness == rustc_hir::IsAsync::Async {
-        s.push_str("async ")
+crate fn from_fn_header(header: &rustc_hir::FnHeader) -> HashSet<Qualifiers> {
+    let mut v = HashSet::new();
+
+    if let rustc_hir::Unsafety::Unsafe = header.unsafety {
+        v.insert(Qualifiers::Unsafe);
     }
-    if header.constness == rustc_hir::Constness::Const {
-        s.push_str("const ")
+
+    if let rustc_hir::IsAsync::Async = header.asyncness {
+        v.insert(Qualifiers::Async);
     }
-    s
+
+    if let rustc_hir::Constness::Const = header.constness {
+        v.insert(Qualifiers::Const);
+    }
+
+    v
 }
 
 impl From<clean::Function> for Function {
@@ -242,7 +252,7 @@ impl From<clean::Function> for Function {
         Function {
             decl: decl.into(),
             generics: generics.into(),
-            header: stringify_header(&header),
+            header: from_fn_header(&header),
             abi: header.abi.to_string(),
         }
     }
@@ -364,7 +374,13 @@ impl From<clean::BareFunctionDecl> for FunctionPointer {
     fn from(bare_decl: clean::BareFunctionDecl) -> Self {
         let clean::BareFunctionDecl { unsafety, generic_params, decl, abi } = bare_decl;
         FunctionPointer {
-            is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
+            header: if let rustc_hir::Unsafety::Unsafe = unsafety {
+                let mut hs = HashSet::new();
+                hs.insert(Qualifiers::Unsafe);
+                hs
+            } else {
+                HashSet::new()
+            },
             generic_params: generic_params.into_iter().map(Into::into).collect(),
             decl: decl.into(),
             abi: abi.to_string(),
@@ -439,7 +455,7 @@ crate fn from_function_method(function: clean::Function, has_body: bool) -> Meth
     Method {
         decl: decl.into(),
         generics: generics.into(),
-        header: stringify_header(&header),
+        header: from_fn_header(&header),
         abi: header.abi.to_string(),
         has_body,
     }

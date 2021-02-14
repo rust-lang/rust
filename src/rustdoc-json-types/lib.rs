@@ -3,7 +3,7 @@
 //! These types are the public API exposed through the `--output-format json` flag. The [`Crate`]
 //! struct is the root of the JSON blob and all other items are contained within.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -281,11 +281,20 @@ pub enum StructType {
     Unit,
 }
 
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum Qualifiers {
+    Const,
+    Unsafe,
+    Async,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
-    pub header: String,
+    pub header: HashSet<Qualifiers>,
     pub abi: String,
 }
 
@@ -293,7 +302,7 @@ pub struct Function {
 pub struct Method {
     pub decl: FnDecl,
     pub generics: Generics,
-    pub header: String,
+    pub header: HashSet<Qualifiers>,
     pub abi: String,
     pub has_body: bool,
 }
@@ -404,9 +413,9 @@ pub enum Type {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct FunctionPointer {
-    pub is_unsafe: bool,
-    pub generic_params: Vec<GenericParamDef>,
     pub decl: FnDecl,
+    pub generic_params: Vec<GenericParamDef>,
+    pub header: HashSet<Qualifiers>,
     pub abi: String,
 }
 
