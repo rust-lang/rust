@@ -34,6 +34,8 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         completion_provider: Some(CompletionOptions {
             resolve_provider: completions_resolve_provider(client_caps),
             trigger_characters: Some(vec![":".to_string(), ".".to_string()]),
+            all_commit_characters: None,
+            completion_item: None,
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         }),
         signature_help_provider: Some(SignatureHelpOptions {
@@ -58,7 +60,6 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
             more_trigger_character: Some(vec![".".to_string(), ">".to_string()]),
         }),
         selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
-        semantic_highlighting: None,
         folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
         rename_provider: Some(OneOf::Right(RenameOptions {
             prepare_provider: Some(true),

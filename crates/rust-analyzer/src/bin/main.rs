@@ -127,6 +127,7 @@ fn run_server() -> Result<()> {
             name: String::from("rust-analyzer"),
             version: Some(String::from(env!("REV"))),
         }),
+        offset_encoding: None,
     };
 
     let initialize_result = serde_json::to_value(initialize_result).unwrap();
