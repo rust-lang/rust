@@ -1,12 +1,14 @@
-use crate::utils::{is_type_diagnostic_item, match_def_path, paths, snippet, span_lint_and_sugg};
+use crate::utils::{
+    is_type_diagnostic_item, match_def_path, path_to_local, path_to_local_id, paths, snippet, span_lint_and_sugg,
+};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, Local, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Local, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span, Symbol};
+use rustc_span::{symbol::sym, Span};
 use std::convert::TryInto;
 
 declare_clippy_lint! {
@@ -45,8 +47,8 @@ enum VecInitKind {
     WithCapacity(u64),
 }
 struct VecPushSearcher {
+    local_id: HirId,
     init: VecInitKind,
-    name: Symbol,
     lhs_is_local: bool,
     lhs_span: Span,
     err_span: Span,
@@ -81,17 +83,20 @@ impl VecPushSearcher {
 }
 
 impl LateLintPass<'_> for VecInitThenPush {
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
+    fn check_block(&mut self, _: &LateContext<'tcx>, _: &'tcx Block<'tcx>) {
         self.searcher = None;
+    }
+
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         if_chain! {
             if !in_external_macro(cx.sess(), local.span);
             if let Some(init) = local.init;
-            if let PatKind::Binding(BindingAnnotation::Mutable, _, ident, None) = local.pat.kind;
+            if let PatKind::Binding(BindingAnnotation::Mutable, id, _, None) = local.pat.kind;
             if let Some(init_kind) = get_vec_init_kind(cx, init);
             then {
                 self.searcher = Some(VecPushSearcher {
+                        local_id: id,
                         init: init_kind,
-                        name: ident.name,
                         lhs_is_local: true,
                         lhs_span: local.ty.map_or(local.pat.span, |t| local.pat.span.to(t.span)),
                         err_span: local.span,
@@ -106,13 +111,12 @@ impl LateLintPass<'_> for VecInitThenPush {
             if_chain! {
                 if !in_external_macro(cx.sess(), expr.span);
                 if let ExprKind::Assign(left, right, _) = expr.kind;
-                if let ExprKind::Path(QPath::Resolved(_, path)) = left.kind;
-                if let Some(name) = path.segments.get(0);
+                if let Some(id) = path_to_local(left);
                 if let Some(init_kind) = get_vec_init_kind(cx, right);
                 then {
                     self.searcher = Some(VecPushSearcher {
+                        local_id: id,
                         init: init_kind,
-                        name: name.ident.name,
                         lhs_is_local: false,
                         lhs_span: left.span,
                         err_span: expr.span,
@@ -128,10 +132,8 @@ impl LateLintPass<'_> for VecInitThenPush {
             if_chain! {
                 if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind;
                 if let ExprKind::MethodCall(path, _, [self_arg, _], _) = expr.kind;
+                if path_to_local_id(self_arg, searcher.local_id);
                 if path.ident.name.as_str() == "push";
-                if let ExprKind::Path(QPath::Resolved(_, self_path)) = self_arg.kind;
-                if let [self_name] = self_path.segments;
-                if self_name.ident.name == searcher.name;
                 then {
                     self.searcher = Some(VecPushSearcher {
                         found: searcher.found + 1,
