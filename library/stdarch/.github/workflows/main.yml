@@ -77,7 +77,7 @@ jobs:
         - mips64-unknown-linux-gnuabi64
         - mips64el-unknown-linux-gnuabi64
         - s390x-unknown-linux-gnu
-        #- wasm32-wasi
+        - wasm32-wasi
         - i586-unknown-linux-gnu
         - x86_64-linux-android
         - arm-linux-androideabi
@@ -131,8 +131,8 @@ jobs:
           disable_assert_instr: true
         - target: s390x-unknown-linux-gnu
           os: ubuntu-latest
-        #- target: wasm32-wasi
-        #  os: ubuntu-latest
+        - target: wasm32-wasi
+          os: ubuntu-latest
         - target: aarch64-apple-darwin
           os: macos-latest
           norun: true
