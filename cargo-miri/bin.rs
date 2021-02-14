@@ -143,6 +143,18 @@ fn get_arg_flag_value(name: &str) -> Option<String> {
     ArgFlagValueIter::new(name).next()
 }
 
+fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut Command) {
+    cmd.arg("--extern"); // always forward flag, but adjust filename:
+    let path = args.next().expect("`--extern` should be followed by a filename");
+    if let Some(lib) = path.strip_suffix(".rlib") {
+        // If this is an rlib, make it an rmeta.
+        cmd.arg(format!("{}.rmeta", lib));
+    } else {
+        // Some other extern file (e.g. a `.so`). Forward unchanged.
+        cmd.arg(path);
+    }
+}
+
 /// Returns the path to the `miri` binary
 fn find_miri() -> PathBuf {
     if let Some(path) = env::var_os("MIRI") {
@@ -734,21 +746,11 @@ fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
     // but when we run here, cargo does not interpret the JSON any more. `--json`
     // then also nees to be dropped.
     let mut args = info.args.into_iter();
-    let extern_flag = "--extern";
     let error_format_flag = "--error-format";
     let json_flag = "--json";
     while let Some(arg) = args.next() {
-        if arg == extern_flag {
-            cmd.arg(extern_flag); // always forward flag, but adjust filename
-            // `--extern` is always passed as a separate argument by cargo.
-            let next_arg = args.next().expect("`--extern` should be followed by a filename");
-            if let Some(next_lib) = next_arg.strip_suffix(".rlib") {
-                // If this is an rlib, make it an rmeta.
-                cmd.arg(format!("{}.rmeta", next_lib));
-            } else {
-                // Some other extern file (e.g., a `.so`). Forward unchanged.
-                cmd.arg(next_arg);
-            }
+        if arg == "--extern" {
+            forward_patched_extern_arg(&mut args, &mut cmd);
         } else if arg.starts_with(error_format_flag) {
             let suffix = &arg[error_format_flag.len()..];
             assert!(suffix.starts_with('='));
