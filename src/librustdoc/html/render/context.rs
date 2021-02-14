@@ -17,8 +17,8 @@ use rustc_span::symbol::sym;
 use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
 use super::{
-    make_item_keywords, print_sidebar, settings, write_shared, AllTypes, NameDoc, SharedContext,
-    StylePath, BASIC_KEYWORDS, CURRENT_DEPTH, INITIAL_IDS,
+    print_sidebar, settings, AllTypes, NameDoc, SharedContext, StylePath, BASIC_KEYWORDS,
+    CURRENT_DEPTH, INITIAL_IDS,
 };
 
 use crate::clean::{self, AttributesExt};
@@ -609,4 +609,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn cache(&self) -> &Cache {
         &self.cache
     }
+}
+
+fn make_item_keywords(it: &clean::Item) -> String {
+    format!("{}, {}", BASIC_KEYWORDS, it.name.as_ref().unwrap())
 }

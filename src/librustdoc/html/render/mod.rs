@@ -2924,9 +2924,6 @@ fn sidebar_foreign_type(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
 
 crate const BASIC_KEYWORDS: &str = "rust, rustlang, rust-lang";
 
-fn make_item_keywords(it: &clean::Item) -> String {
-    format!("{}, {}", BASIC_KEYWORDS, it.name.as_ref().unwrap())
-}
 
 /// Returns a list of all paths used in the type.
 /// This is used to help deduplicate imported impls
