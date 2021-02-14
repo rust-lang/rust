@@ -84,7 +84,11 @@ impl<'tcx> ConstEvalErr<'tcx> {
     {
         error.print_backtrace();
         let stacktrace = ecx.generate_stacktrace();
-        ConstEvalErr { error: error.kind, stacktrace, span: span.unwrap_or_else(|| ecx.cur_span()) }
+        ConstEvalErr {
+            error: error.into_kind(),
+            stacktrace,
+            span: span.unwrap_or_else(|| ecx.cur_span()),
+        }
     }
 
     pub fn struct_error(

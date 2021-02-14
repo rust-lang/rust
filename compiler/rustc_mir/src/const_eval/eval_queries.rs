@@ -230,7 +230,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
         };
         return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs).map_err(|error| {
             let span = tcx.def_span(def_id);
-            let error = ConstEvalErr { error: error.kind, stacktrace: vec![], span };
+            let error = ConstEvalErr { error: error.into_kind(), stacktrace: vec![], span };
             error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
         });
     }

@@ -40,28 +40,44 @@ pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'
     struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
 }
 
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(InterpErrorInfo<'_>, 8);
+
 /// Packages the kind of error we got from the const code interpreter
 /// up with a Rust-level backtrace of where the error occurred.
 /// Thsese should always be constructed by calling `.into()` on
 /// a `InterpError`. In `librustc_mir::interpret`, we have `throw_err_*`
 /// macros for this.
 #[derive(Debug)]
-pub struct InterpErrorInfo<'tcx> {
-    pub kind: InterpError<'tcx>,
+pub struct InterpErrorInfo<'tcx>(Box<InterpErrorInfoInner<'tcx>>);
+
+#[derive(Debug)]
+struct InterpErrorInfoInner<'tcx> {
+    kind: InterpError<'tcx>,
     backtrace: Option<Box<Backtrace>>,
 }
 
 impl fmt::Display for InterpErrorInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.kind)
+        write!(f, "{}", self.0.kind)
     }
 }
 
-impl InterpErrorInfo<'_> {
+impl InterpErrorInfo<'tcx> {
     pub fn print_backtrace(&self) {
-        if let Some(backtrace) = self.backtrace.as_ref() {
+        if let Some(backtrace) = self.0.backtrace.as_ref() {
             print_backtrace(backtrace);
         }
+    }
+
+    pub fn into_kind(self) -> InterpError<'tcx> {
+        let InterpErrorInfo(box InterpErrorInfoInner { kind, .. }) = self;
+        kind
+    }
+
+    #[inline]
+    pub fn kind(&self) -> &InterpError<'tcx> {
+        &self.0.kind
     }
 }
 
@@ -108,7 +124,7 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
             }
         };
 
-        InterpErrorInfo { kind, backtrace }
+        InterpErrorInfo(Box::new(InterpErrorInfoInner { kind, backtrace }))
     }
 }
 

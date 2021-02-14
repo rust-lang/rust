@@ -11,7 +11,7 @@ use std::ops::RangeInclusive;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_middle::mir::interpret::{InterpError, InterpErrorInfo};
+use rustc_middle::mir::interpret::InterpError;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::symbol::{sym, Symbol};
@@ -83,14 +83,17 @@ macro_rules! try_validation {
             Ok(x) => x,
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            $( $( Err(InterpErrorInfo { kind: $p, .. }) )|+ =>
-                throw_validation_failure!(
-                    $where,
-                    { $( $what_fmt ),+ } $( expected { $( $expected_fmt ),+ } )?
-                ),
-            )+
-            #[allow(unreachable_patterns)]
-            Err(e) => Err::<!, _>(e)?,
+            Err(e) => match e.kind() {
+                $(
+                    $($p)|+ =>
+                       throw_validation_failure!(
+                            $where,
+                            { $( $what_fmt ),+ } $( expected { $( $expected_fmt ),+ } )?
+                        )
+                ),+,
+                #[allow(unreachable_patterns)]
+                _ => Err::<!, _>(e)?,
+            }
         }
     }};
 }
@@ -877,7 +880,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Err(err) => {
                         // For some errors we might be able to provide extra information.
                         // (This custom logic does not fit the `try_validation!` macro.)
-                        match err.kind {
+                        match err.kind() {
                             err_ub!(InvalidUninitBytes(Some(access))) => {
                                 // Some byte was uninitialized, determine which
                                 // element that byte belongs to so we can
@@ -935,10 +938,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match visitor.visit_value(op) {
             Ok(()) => Ok(()),
             // Pass through validation failures.
-            Err(err) if matches!(err.kind, err_ub!(ValidationFailure { .. })) => Err(err),
+            Err(err) if matches!(err.kind(), err_ub!(ValidationFailure { .. })) => Err(err),
             // Also pass through InvalidProgram, those just indicate that we could not
             // validate and each caller will know best what to do with them.
-            Err(err) if matches!(err.kind, InterpError::InvalidProgram(_)) => Err(err),
+            Err(err) if matches!(err.kind(), InterpError::InvalidProgram(_)) => Err(err),
             // Avoid other errors as those do not show *where* in the value the issue lies.
             Err(err) => {
                 err.print_backtrace();
