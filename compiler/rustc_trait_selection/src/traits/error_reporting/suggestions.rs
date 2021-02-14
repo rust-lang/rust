@@ -1885,21 +1885,21 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 err.note(
                     "the `Copy` trait is required because the repeated element will be copied",
                 );
-                if is_const_fn && !self.tcx.sess.is_nightly_build() {
+
+                if is_const_fn {
                     err.help(
                         "consider creating a new `const` item and initializing with the result \
                         of the function call to be used in the repeat position, like \
                         `const VAL: Type = const_fn();` and `let x = [VAL; 42];`",
                     );
-                } else if self.tcx.sess.is_nightly_build() && is_const_fn {
+                }
+
+                if self.tcx.sess.is_nightly_build() && is_const_fn {
                     err.help(
                         "create an inline `const` block, see PR \
                         #2920 <https://github.com/rust-lang/rfcs/pull/2920> \
                         for more information",
                     );
-                } else {
-                    // Don't suggest anything to the user as suggesting the user to make the function `const`
-                    // could lead them down the wrong path.
                 }
             }
             ObligationCauseCode::VariableType(hir_id) => {
