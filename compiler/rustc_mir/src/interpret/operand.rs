@@ -32,6 +32,9 @@ pub enum Immediate<Tag = ()> {
     ScalarPair(ScalarMaybeUninit<Tag>, ScalarMaybeUninit<Tag>),
 }
 
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Immediate, 56);
+
 impl<Tag> From<ScalarMaybeUninit<Tag>> for Immediate<Tag> {
     #[inline(always)]
     fn from(val: ScalarMaybeUninit<Tag>) -> Self {
@@ -91,6 +94,9 @@ pub struct ImmTy<'tcx, Tag = ()> {
     imm: Immediate<Tag>,
     pub layout: TyAndLayout<'tcx>,
 }
+
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
 
 impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -155,6 +161,9 @@ pub struct OpTy<'tcx, Tag = ()> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
 }
+
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(OpTy<'_, ()>, 80);
 
 impl<'tcx, Tag> std::ops::Deref for OpTy<'tcx, Tag> {
     type Target = Operand<Tag>;

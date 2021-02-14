@@ -33,6 +33,9 @@ pub enum MemPlaceMeta<Tag = ()> {
     Poison,
 }
 
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(MemPlaceMeta, 24);
+
 impl<Tag> MemPlaceMeta<Tag> {
     pub fn unwrap_meta(self) -> Scalar<Tag> {
         match self {
@@ -71,6 +74,9 @@ pub struct MemPlace<Tag = ()> {
     pub meta: MemPlaceMeta<Tag>,
 }
 
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(MemPlace, 56);
+
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
 pub enum Place<Tag = ()> {
     /// A place referring to a value allocated in the `Memory` system.
@@ -81,11 +87,17 @@ pub enum Place<Tag = ()> {
     Local { frame: usize, local: mir::Local },
 }
 
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Place, 64);
+
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceTy<'tcx, Tag = ()> {
     place: Place<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
 }
+
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(PlaceTy<'_>, 80);
 
 impl<'tcx, Tag> std::ops::Deref for PlaceTy<'tcx, Tag> {
     type Target = Place<Tag>;
@@ -101,6 +113,9 @@ pub struct MPlaceTy<'tcx, Tag = ()> {
     mplace: MemPlace<Tag>,
     pub layout: TyAndLayout<'tcx>,
 }
+
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 72);
 
 impl<'tcx, Tag> std::ops::Deref for MPlaceTy<'tcx, Tag> {
     type Target = MemPlace<Tag>;
