@@ -3,7 +3,11 @@ use stdx::to_lower_snake_case;
 use syntax::ast::VisibilityOwner;
 use syntax::ast::{self, AstNode, NameOwner};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, assist_context::AssistBuilder, utils::{find_impl_block_end, find_struct_impl, generate_impl_text}};
+use crate::{
+    assist_context::AssistBuilder,
+    utils::{find_impl_block_end, find_struct_impl, generate_impl_text},
+    AssistContext, AssistId, AssistKind, Assists,
+};
 
 // Assist: generate_enum_is_method
 //
@@ -41,11 +45,7 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) ->
     let fn_name = format!("is_{}", &to_lower_snake_case(variant_name.text()));
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(
-        &ctx,
-        &parent_enum,
-        &fn_name,
-    )?;
+    let impl_def = find_struct_impl(&ctx, &parent_enum, &fn_name)?;
 
     let target = variant.syntax().text_range();
     acc.add(
@@ -108,11 +108,7 @@ pub(crate) fn generate_enum_into_method(acc: &mut Assists, ctx: &AssistContext) 
     let fn_name = format!("into_{}", &to_lower_snake_case(variant_name.text()));
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(
-        &ctx,
-        &parent_enum,
-        &fn_name,
-    )?;
+    let impl_def = find_struct_impl(&ctx, &parent_enum, &fn_name)?;
 
     let field_type = variant_kind.single_field_type()?;
     let (pattern_suffix, bound_name) = variant_kind.binding_pattern()?;
@@ -181,11 +177,7 @@ pub(crate) fn generate_enum_as_method(acc: &mut Assists, ctx: &AssistContext) ->
     let fn_name = format!("as_{}", &to_lower_snake_case(variant_name.text()));
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(
-        &ctx,
-        &parent_enum,
-        &fn_name,
-    )?;
+    let impl_def = find_struct_impl(&ctx, &parent_enum, &fn_name)?;
 
     let field_type = variant_kind.single_field_type()?;
     let (pattern_suffix, bound_name) = variant_kind.binding_pattern()?;
@@ -243,7 +235,9 @@ fn add_method_to_adt(
 enum VariantKind {
     Unit,
     /// Tuple with a single field
-    NewtypeTuple { ty: Option<ast::Type> },
+    NewtypeTuple {
+        ty: Option<ast::Type>,
+    },
     /// Tuple with 0 or more than 2 fields
     Tuple,
     /// Record with a single field
@@ -259,36 +253,27 @@ impl VariantKind {
     fn pattern_suffix(&self) -> &'static str {
         match self {
             VariantKind::Unit => "",
-            VariantKind::NewtypeTuple { .. } |
-            VariantKind::Tuple => "(..)",
-            VariantKind::NewtypeRecord { .. } |
-            VariantKind::Record => " { .. }",
+            VariantKind::NewtypeTuple { .. } | VariantKind::Tuple => "(..)",
+            VariantKind::NewtypeRecord { .. } | VariantKind::Record => " { .. }",
         }
     }
 
     fn binding_pattern(&self) -> Option<(String, String)> {
         match self {
-            VariantKind::Unit |
-            VariantKind::Tuple |
-            VariantKind::Record |
-            VariantKind::NewtypeRecord { field_name: None, .. } => None,
-            VariantKind::NewtypeTuple { .. } => {
-                Some(("(v)".to_owned(), "v".to_owned()))
-            }
+            VariantKind::Unit
+            | VariantKind::Tuple
+            | VariantKind::Record
+            | VariantKind::NewtypeRecord { field_name: None, .. } => None,
+            VariantKind::NewtypeTuple { .. } => Some(("(v)".to_owned(), "v".to_owned())),
             VariantKind::NewtypeRecord { field_name: Some(name), .. } => {
-                Some((
-                    format!(" {{ {} }}", name.syntax()),
-                    name.syntax().to_string(),
-                ))
+                Some((format!(" {{ {} }}", name.syntax()), name.syntax().to_string()))
             }
         }
     }
 
     fn single_field_type(&self) -> Option<&ast::Type> {
         match self {
-            VariantKind::Unit |
-            VariantKind::Tuple |
-            VariantKind::Record => None,
+            VariantKind::Unit | VariantKind::Tuple | VariantKind::Record => None,
             VariantKind::NewtypeTuple { ty } => ty.as_ref(),
             VariantKind::NewtypeRecord { field_type, .. } => field_type.as_ref(),
         }
