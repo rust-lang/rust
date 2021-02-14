@@ -107,7 +107,7 @@ macro_rules! vec {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "format_macro"]
+#[cfg_attr(not(test), rustc_diagnostic_item = "format_macro")]
 macro_rules! format {
     ($($arg:tt)*) => {{
         let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
