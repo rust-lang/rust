@@ -685,7 +685,7 @@ fn phase_cargo_rustc(mut args: env::Args) {
                     .expect("the wrapper should have set MIRI_SYSROOT");
                 cmd.arg("--sysroot").arg(sysroot);
             }
-            
+
             // ensure --emit argument for a check-only build is present
             if let Some(i) = env.args.iter().position(|arg| arg.starts_with("--emit=")) {
                 // We need to make sure we're not producing a binary that overwrites the JSON file.
@@ -702,7 +702,7 @@ fn phase_cargo_rustc(mut args: env::Args) {
                 eprintln!("[cargo-miri rustc] captured input:\n{}", std::str::from_utf8(&env.stdin).unwrap());
                 eprintln!("[cargo-miri rustc] {:?}", cmd);
             }
-            
+
             exec_with_pipe(cmd, &env.stdin);
         }
 
@@ -841,11 +841,13 @@ fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
             cmd.arg(arg);
         }
     }
-    // Set sysroot.
-    let sysroot =
-        env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
-    cmd.arg("--sysroot");
-    cmd.arg(sysroot);
+    if env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_none() {
+        // Set sysroot.
+        let sysroot =
+            env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
+        cmd.arg("--sysroot");
+        cmd.arg(sysroot);
+    }
     // Respect `MIRIFLAGS`.
     if let Ok(a) = env::var("MIRIFLAGS") {
         // This code is taken from `RUSTFLAGS` handling in cargo.
@@ -892,7 +894,7 @@ fn phase_cargo_rustdoc(fst_arg: &str, mut args: env::Args) {
     let extern_flag = "--extern";
     assert!(fst_arg != extern_flag);
     cmd.arg(fst_arg);
-    
+
     let runtool_flag = "--runtool";
     let mut crossmode = fst_arg == runtool_flag;
     while let Some(arg) = args.next() {
@@ -917,21 +919,27 @@ fn phase_cargo_rustdoc(fst_arg: &str, mut args: env::Args) {
     // For each doc-test, rustdoc starts two child processes: first the test is compiled,
     // then the produced executable is invoked. We want to reroute both of these to cargo-miri,
     // such that the first time we'll enter phase_cargo_rustc, and phase_cargo_runner second.
-    // 
+    //
     // rustdoc invokes the test-builder by forwarding most of its own arguments, which makes
     // it difficult to determine when phase_cargo_rustc should run instead of phase_cargo_rustdoc.
     // Furthermore, the test code is passed via stdin, rather than a temporary file, so we need
     // to let phase_cargo_rustc know to expect that. We'll use this environment variable as a flag:
     cmd.env("MIRI_CALLED_FROM_RUSTDOC", "1");
-    
+
     // The `--test-builder` and `--runtool` arguments are unstable rustdoc features,
     // which are disabled by default. We first need to enable them explicitly:
     cmd.arg("-Z").arg("unstable-options");
-    
+
+    // Use our custom sysroot.
+    let sysroot =
+        env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
+    cmd.arg("--sysroot");
+    cmd.arg(sysroot);
+
     let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
     cmd.arg("--test-builder").arg(&cargo_miri_path); // invoked by forwarding most arguments
     cmd.arg("--runtool").arg(&cargo_miri_path); // invoked with just a single path argument
-    
+
     if verbose {
         eprintln!("[cargo-miri rustdoc] {:?}", cmd);
     }
