@@ -3,5 +3,5 @@
 /// assert!(cargo_miri_test::make_true());
 /// ```
 pub fn make_true() -> bool {
-    true
+    issue_1691::use_me()
 }
