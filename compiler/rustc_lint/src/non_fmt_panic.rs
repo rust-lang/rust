@@ -69,19 +69,30 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
     let (span, panic) = panic_call(cx, f);
 
-    cx.struct_span_lint(NON_FMT_PANIC, arg.span, |lint| {
+    // Find the span of the argument to `panic!()`, before expansion in the
+    // case of `panic!(some_macro!())`.
+    let mut arg_span = arg.span;
+    while !span.contains(arg_span) {
+        let expn = arg_span.ctxt().outer_expn_data();
+        if expn.is_root() {
+            break;
+        }
+        arg_span = expn.call_site;
+    }
+
+    cx.struct_span_lint(NON_FMT_PANIC, arg_span, |lint| {
         let mut l = lint.build("panic message is not a string literal");
         l.note("this is no longer accepted in Rust 2021");
-        if span.contains(arg.span) {
+        if span.contains(arg_span) {
             l.span_suggestion_verbose(
-                arg.span.shrink_to_lo(),
+                arg_span.shrink_to_lo(),
                 "add a \"{}\" format string to Display the message",
                 "\"{}\", ".into(),
                 Applicability::MaybeIncorrect,
             );
             if panic == sym::std_panic_macro {
                 l.span_suggestion_verbose(
-                    span.until(arg.span),
+                    span.until(arg_span),
                     "or use std::panic::panic_any instead",
                     "std::panic::panic_any(".into(),
                     Applicability::MachineApplicable,
