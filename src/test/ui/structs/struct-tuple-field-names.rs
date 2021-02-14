@@ -6,7 +6,7 @@ fn main() {
     let x = E::S(1, 2.2);
     match x {
         E::S { 0, 1 } => {}
-        //~^ ERROR tuple variant `E::S` uses a bare index in a struct pattern [E0769]
+        //~^ ERROR tuple variant `E::S` written as struct variant [E0769]
     }
     let y = S(1, 2.2);
     match y {

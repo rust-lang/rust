@@ -1253,17 +1253,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     pat.span,
                     E0769,
-                    "tuple variant `{}` uses a bare index in a struct pattern",
+                    "tuple variant `{}` written as struct variant",
                     path
                 );
                 err.span_suggestion(
-                    pat.span,
+                    qpath.span().shrink_to_hi().until(pat.span),
                     "use the tuple variant pattern syntax instead",
-                    format!(
-                        "{}({})",
-                        path,
-                        self.get_suggested_tuple_struct_pattern(fields, variant)
-                    ),
+                    format!("({})", self.get_suggested_tuple_struct_pattern(fields, variant)),
                     Applicability::MaybeIncorrect,
                 );
                 return Some(err);
@@ -1421,9 +1417,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             };
             err.span_suggestion(
-                pat.span,
+                qpath.span().shrink_to_hi().until(pat.span),
                 "use the tuple variant pattern syntax instead",
-                format!("{}({})", path, sugg),
+                format!("({})", sugg),
                 appl,
             );
             return Some(err);
