@@ -3,12 +3,11 @@
 
 use std::fmt;
 
-use ast::AttrsOwner;
 use itertools::Itertools;
 use parser::SyntaxKind;
 
 use crate::{
-    ast::{self, support, AstNode, AstToken, NameOwner, SyntaxNode},
+    ast::{self, support, AstNode, AstToken, AttrsOwner, NameOwner, SyntaxNode},
     SmolStr, SyntaxElement, SyntaxToken, T,
 };
 
@@ -324,7 +323,7 @@ impl ast::RecordPatField {
 
     pub fn for_field_name(field_name: &ast::Name) -> Option<ast::RecordPatField> {
         let candidate =
-            field_name.syntax().ancestors().nth(3).and_then(ast::RecordPatField::cast)?;
+            field_name.syntax().ancestors().nth(2).and_then(ast::RecordPatField::cast)?;
         match candidate.field_name()? {
             NameOrNameRef::Name(name) if name == *field_name => Some(candidate),
             _ => None,

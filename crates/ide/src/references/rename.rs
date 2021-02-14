@@ -75,8 +75,7 @@ pub(crate) fn rename_with_semantics(
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
 
-    let def = find_definition(sema, syntax, position)
-        .ok_or_else(|| format_err!("No references found at position"))?;
+    let def = find_definition(sema, syntax, position)?;
     match def {
         Definition::ModuleDef(ModuleDef::Module(module)) => rename_mod(&sema, module, new_name),
         def => rename_reference(sema, def, new_name),
@@ -149,18 +148,30 @@ fn find_definition(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
-) -> Option<Definition> {
-    let def = match find_name_like(sema, syntax, position)? {
-        NameLike::Name(name) => NameClass::classify(sema, &name)?.referenced_or_defined(sema.db),
-        NameLike::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref)?.referenced(sema.db),
+) -> RenameResult<Definition> {
+    match find_name_like(sema, syntax, position)
+        .ok_or_else(|| format_err!("No references found at position"))?
+    {
+        // renaming aliases would rename the item being aliased as the HIR doesn't track aliases yet
+        NameLike::Name(name)
+            if name.syntax().parent().map_or(false, |it| ast::Rename::can_cast(it.kind())) =>
+        {
+            bail!("Renaming aliases is currently unsupported")
+        }
+        NameLike::Name(name) => {
+            NameClass::classify(sema, &name).map(|class| class.referenced_or_defined(sema.db))
+        }
+        NameLike::NameRef(name_ref) => {
+            NameRefClass::classify(sema, &name_ref).map(|class| class.referenced(sema.db))
+        }
         NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
             .map(|class| NameRefClass::referenced(class, sema.db))
             .or_else(|| {
                 NameClass::classify_lifetime(sema, &lifetime)
                     .map(|it| it.referenced_or_defined(sema.db))
-            })?,
-    };
-    Some(def)
+            }),
+    }
+    .ok_or_else(|| format_err!("No references found at position"))
 }
 
 fn source_edit_from_references(
@@ -173,21 +184,40 @@ fn source_edit_from_references(
     let mut edit = TextEdit::builder();
     for reference in references {
         let (range, replacement) = match &reference.name {
-            NameLike::Name(_) => (None, format!("{}", new_name)),
-            NameLike::NameRef(name_ref) => source_edit_from_name_ref(name_ref, new_name, def),
-            NameLike::Lifetime(_) => (None, format!("{}", new_name)),
-        };
-        // FIXME: Some(range) will be incorrect when we are inside macros
-        edit.replace(range.unwrap_or(reference.range), replacement);
+            // if the ranges differ then the node is inside a macro call, we can't really attempt
+            // to make special rewrites like shorthand syntax and such, so just rename the node in
+            // the macro input
+            NameLike::NameRef(name_ref) if name_ref.syntax().text_range() == reference.range => {
+                source_edit_from_name_ref(name_ref, new_name, def)
+            }
+            NameLike::Name(name) if name.syntax().text_range() == reference.range => {
+                source_edit_from_name(name, new_name)
+            }
+            _ => None,
+        }
+        .unwrap_or_else(|| (reference.range, new_name.to_string()));
+        edit.replace(range, replacement);
     }
     (file_id, edit.finish())
+}
+
+fn source_edit_from_name(name: &ast::Name, new_name: &str) -> Option<(TextRange, String)> {
+    if let Some(_) = ast::RecordPatField::for_field_name(name) {
+        if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
+            return Some((
+                TextRange::empty(ident_pat.syntax().text_range().start()),
+                format!("{}: ", new_name),
+            ));
+        }
+    }
+    None
 }
 
 fn source_edit_from_name_ref(
     name_ref: &ast::NameRef,
     new_name: &str,
     def: Definition,
-) -> (Option<TextRange>, String) {
+) -> Option<(TextRange, String)> {
     if let Some(record_field) = ast::RecordExprField::for_name_ref(name_ref) {
         let rcf_name_ref = record_field.name_ref();
         let rcf_expr = record_field.expr();
@@ -197,45 +227,40 @@ fn source_edit_from_name_ref(
                 if field_name == *name_ref {
                     if init.text() == new_name {
                         mark::hit!(test_rename_field_put_init_shorthand);
-                        // same names, we can use a shorthand here instead
+                        // same names, we can use a shorthand here instead.
                         // we do not want to erase attributes hence this range start
                         let s = field_name.syntax().text_range().start();
                         let e = record_field.syntax().text_range().end();
-                        return (Some(TextRange::new(s, e)), format!("{}", new_name));
+                        return Some((TextRange::new(s, e), new_name.to_owned()));
                     }
                 } else if init == *name_ref {
                     if field_name.text() == new_name {
                         mark::hit!(test_rename_local_put_init_shorthand);
-                        // same names, we can use a shorthand here instead
+                        // same names, we can use a shorthand here instead.
                         // we do not want to erase attributes hence this range start
                         let s = field_name.syntax().text_range().start();
                         let e = record_field.syntax().text_range().end();
-                        return (Some(TextRange::new(s, e)), format!("{}", new_name));
+                        return Some((TextRange::new(s, e), new_name.to_owned()));
                     }
                 }
+                None
             }
             // init shorthand
-            (None, Some(_)) => {
-                // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
-                // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
-                match def {
-                    Definition::Field(_) => {
-                        mark::hit!(test_rename_field_in_field_shorthand);
-                        let s = name_ref.syntax().text_range().start();
-                        return (Some(TextRange::empty(s)), format!("{}: ", new_name));
-                    }
-                    Definition::Local(_) => {
-                        mark::hit!(test_rename_local_in_field_shorthand);
-                        let s = name_ref.syntax().text_range().end();
-                        return (Some(TextRange::empty(s)), format!(": {}", new_name));
-                    }
-                    _ => {}
-                }
+            // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
+            // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
+            (None, Some(_)) if matches!(def, Definition::Field(_)) => {
+                mark::hit!(test_rename_field_in_field_shorthand);
+                let s = name_ref.syntax().text_range().start();
+                Some((TextRange::empty(s), format!("{}: ", new_name)))
             }
-            _ => {}
+            (None, Some(_)) if matches!(def, Definition::Local(_)) => {
+                mark::hit!(test_rename_local_in_field_shorthand);
+                let s = name_ref.syntax().text_range().end();
+                Some((TextRange::empty(s), format!(": {}", new_name)))
+            }
+            _ => None,
         }
-    }
-    if let Some(record_field) = ast::RecordPatField::for_field_name_ref(name_ref) {
+    } else if let Some(record_field) = ast::RecordPatField::for_field_name_ref(name_ref) {
         let rcf_name_ref = record_field.name_ref();
         let rcf_pat = record_field.pat();
         match (rcf_name_ref, rcf_pat) {
@@ -244,17 +269,20 @@ fn source_edit_from_name_ref(
                 // field name is being renamed
                 if pat.name().map_or(false, |it| it.text() == new_name) {
                     mark::hit!(test_rename_field_put_init_shorthand_pat);
-                    // same names, we can use a shorthand here instead
+                    // same names, we can use a shorthand here instead/
                     // we do not want to erase attributes hence this range start
                     let s = field_name.syntax().text_range().start();
                     let e = record_field.syntax().text_range().end();
-                    return (Some(TextRange::new(s, e)), format!("{}", new_name));
+                    Some((TextRange::new(s, e), pat.to_string()))
+                } else {
+                    None
                 }
             }
-            _ => {}
+            _ => None,
         }
+    } else {
+        None
     }
-    (None, format!("{}", new_name))
 }
 
 fn rename_mod(
@@ -1477,7 +1505,7 @@ fn foo(i: i32) -> Foo {
     }
 
     #[test]
-    fn test_struct_field_destructure_into_shorthand() {
+    fn test_struct_field_pat_into_shorthand() {
         mark::check!(test_rename_field_put_init_shorthand_pat);
         check(
             "baz",
@@ -1485,16 +1513,16 @@ fn foo(i: i32) -> Foo {
 struct Foo { i$0: i32 }
 
 fn foo(foo: Foo) {
-    let Foo { i: baz } = foo;
-    let _ = baz;
+    let Foo { i: ref baz @ qux } = foo;
+    let _ = qux;
 }
 "#,
             r#"
 struct Foo { baz: i32 }
 
 fn foo(foo: Foo) {
-    let Foo { baz } = foo;
-    let _ = baz;
+    let Foo { ref baz @ qux } = foo;
+    let _ = qux;
 }
 "#,
         );
@@ -1565,6 +1593,27 @@ fn foo(Foo { i: bar }: foo) -> i32 {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn test_struct_field_complex_ident_pat() {
+        check(
+            "baz",
+            r#"
+struct Foo { i$0: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { ref i } = foo;
+}
+"#,
+            r#"
+struct Foo { baz: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { baz: ref i } = foo;
+}
+"#,
+        );
     }
 
     #[test]
@@ -1670,6 +1719,40 @@ impl Foo {
 struct Foo;
 impl Foo {
     fn foo(self) {}
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_rename_field_in_pat_in_macro_doesnt_shorthand() {
+        // ideally we would be able to make this emit a short hand, but I doubt this is easily possible
+        check(
+            "baz",
+            r#"
+macro_rules! foo {
+    ($pattern:pat) => {
+        let $pattern = loop {};
+    };
+}
+struct Foo {
+    bar$0: u32,
+}
+fn foo() {
+    foo!(Foo { bar: baz });
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($pattern:pat) => {
+        let $pattern = loop {};
+    };
+}
+struct Foo {
+    baz: u32,
+}
+fn foo() {
+    foo!(Foo { baz: baz });
 }
 "#,
         )
