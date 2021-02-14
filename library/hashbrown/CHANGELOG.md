@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Added
 - Added safe `try_insert_no_grow` method to `RawTable`. (#229)
+- Implemented `Default` for `RawTable`. (#237)
 
 ## Changed
 - The minimum Rust version has been bumped to 1.49.0. (#230)
