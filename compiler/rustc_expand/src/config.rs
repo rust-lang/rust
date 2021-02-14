@@ -209,7 +209,7 @@ pub fn features(sess: &Session, mut krate: ast::Crate) -> (ast::Crate, Features)
         None => {
             // The entire crate is unconfigured.
             krate.attrs = Vec::new();
-            krate.module.items = Vec::new();
+            krate.items = Vec::new();
             Features::default()
         }
         Some(attrs) => {

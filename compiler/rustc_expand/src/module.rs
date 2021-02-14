@@ -62,9 +62,8 @@ crate fn parse_external_mod(
 
         // Actually parse the external file as a module.
         let mut parser = new_parser_from_file(&sess.parse_sess, &mp.path, Some(span));
-        let mut module = parser.parse_mod(&token::Eof, unsafety)?;
-        module.0.inline = false;
-        module
+        let (inner_attrs, items, inner) = parser.parse_mod(&token::Eof)?;
+        (Mod { unsafety, inline: false, items, inner }, inner_attrs)
     };
     // (1) ...instead, we return a dummy module.
     let (module, mut new_attrs) = result.map_err(|mut err| err.emit()).unwrap_or_else(|_| {

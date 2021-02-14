@@ -486,8 +486,8 @@ pub struct WhereEqPredicate {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Crate {
-    pub module: Mod,
     pub attrs: Vec<Attribute>,
+    pub items: Vec<P<Item>>,
     pub span: Span,
     /// The order of items in the HIR is unrelated to the order of
     /// items in the AST. However, we generate proc macro harnesses

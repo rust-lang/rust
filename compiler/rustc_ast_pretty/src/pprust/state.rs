@@ -132,7 +132,10 @@ pub fn print_crate<'a>(
         }
     }
 
-    s.print_mod(&krate.module, &krate.attrs);
+    s.print_inner_attributes(&krate.attrs);
+    for item in &krate.items {
+        s.print_item(item);
+    }
     s.print_remaining_comments();
     s.ann.post(&mut s, AnnNode::Crate(krate));
     s.s.eof()
@@ -891,13 +894,6 @@ impl<'a> State<'a> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span)
     }
 
-    pub fn print_mod(&mut self, _mod: &ast::Mod, attrs: &[ast::Attribute]) {
-        self.print_inner_attributes(attrs);
-        for item in &_mod.items {
-            self.print_item(item);
-        }
-    }
-
     crate fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod, attrs: &[ast::Attribute]) {
         self.print_inner_attributes(attrs);
         for item in &nmod.items {
@@ -1149,7 +1145,10 @@ impl<'a> State<'a> {
                 if _mod.inline || self.is_expanded {
                     self.nbsp();
                     self.bopen();
-                    self.print_mod(_mod, &item.attrs);
+                    self.print_inner_attributes(&item.attrs);
+                    for item in &_mod.items {
+                        self.print_item(item);
+                    }
                     self.bclose(item.span);
                 } else {
                     self.s.word(";");

@@ -350,6 +350,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         MacroExpander { cx, monotonic }
     }
 
+    // FIXME: Avoid visiting the crate as a `Mod` item,
+    // make crate a first class expansion target instead.
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         let mut module = ModuleData {
             mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
@@ -362,12 +364,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.root_path = module.directory.clone();
         self.cx.current_expansion.module = Rc::new(module);
 
-        let orig_mod_span = krate.module.inner;
-
         let krate_item = AstFragment::Items(smallvec![P(ast::Item {
             attrs: krate.attrs,
             span: krate.span,
-            kind: ast::ItemKind::Mod(krate.module),
+            kind: ast::ItemKind::Mod(ast::Mod {
+                inner: krate.span,
+                unsafety: Unsafe::No,
+                items: krate.items,
+                inline: true
+            }),
             ident: Ident::invalid(),
             id: ast::DUMMY_NODE_ID,
             vis: ast::Visibility {
@@ -381,26 +386,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         match self.fully_expand_fragment(krate_item).make_items().pop().map(P::into_inner) {
             Some(ast::Item { attrs, kind: ast::ItemKind::Mod(module), .. }) => {
                 krate.attrs = attrs;
-                krate.module = module;
+                krate.items = module.items;
             }
             None => {
                 // Resolution failed so we return an empty expansion
                 krate.attrs = vec![];
-                krate.module = ast::Mod {
-                    inner: orig_mod_span,
-                    unsafety: Unsafe::No,
-                    items: vec![],
-                    inline: true,
-                };
+                krate.items = vec![];
             }
             Some(ast::Item { span, kind, .. }) => {
                 krate.attrs = vec![];
-                krate.module = ast::Mod {
-                    inner: orig_mod_span,
-                    unsafety: Unsafe::No,
-                    items: vec![],
-                    inline: true,
-                };
+                krate.items = vec![];
                 self.cx.span_err(
                     span,
                     &format!(
@@ -1284,7 +1279,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     push_directory(&self.cx.sess, ident, &item.attrs, dir)
                 } else {
                     // We have an outline `mod foo;` so we need to parse the file.
-                    let (new_mod, dir) = parse_external_mod(
+                    let (ast::Mod { unsafety, inline, items, inner }, dir) = parse_external_mod(
                         &self.cx.sess,
                         ident,
                         span,
@@ -1294,17 +1289,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         pushed,
                     );
 
-                    let krate = ast::Crate {
-                        span: new_mod.inner,
-                        module: new_mod,
-                        attrs,
-                        proc_macros: vec![],
-                    };
+                    let krate = ast::Crate { attrs, items, span: inner, proc_macros: vec![] };
                     if let Some(extern_mod_loaded) = self.cx.extern_mod_loaded {
                         extern_mod_loaded(&krate, ident);
                     }
 
-                    *old_mod = krate.module;
+                    *old_mod = ast::Mod { unsafety, inline, items: krate.items, inner };
                     item.attrs = krate.attrs;
                     // File can have inline attributes, e.g., `#![cfg(...)]` & co. => Reconfigure.
                     item = match self.configure(item) {

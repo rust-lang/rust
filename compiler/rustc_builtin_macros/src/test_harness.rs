@@ -89,7 +89,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         noop_visit_crate(c, self);
 
         // Create a main function to run our tests
-        c.module.items.push(mk_main(&mut self.cx));
+        c.items.push(mk_main(&mut self.cx));
     }
 
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
@@ -103,9 +103,13 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(mut module) = item.kind {
+        if let ast::ItemKind::Mod(..) = item.kind {
             let tests = mem::take(&mut self.tests);
-            noop_visit_mod(&mut module, self);
+            noop_visit_item_kind(&mut item.kind, self);
+            let module = match item.kind {
+                ast::ItemKind::Mod(module) => module,
+                _ => unreachable!(),
+            };
             let mut tests = mem::replace(&mut self.tests, tests);
 
             if !tests.is_empty() {
