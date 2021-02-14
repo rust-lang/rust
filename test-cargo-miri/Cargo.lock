@@ -14,8 +14,8 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "issue_1567",
+ "issue_1691",
  "rand",
- "rlib-dep",
  "serde_derive",
 ]
 
@@ -51,6 +51,10 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
 ]
+
+[[package]]
+name = "issue_1691"
+version = "0.1.0"
 
 [[package]]
 name = "libc"
@@ -142,10 +146,6 @@ checksum = "16abd0c1b639e9eb4d7c50c0b8100b0d0f849be2349829c740fe8e6eb4816429"
 dependencies = [
  "rand_core",
 ]
-
-[[package]]
-name = "rlib-dep"
-version = "0.1.0"
 
 [[package]]
 name = "serde_derive"

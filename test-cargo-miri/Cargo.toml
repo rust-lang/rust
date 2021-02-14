@@ -9,8 +9,8 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.0"
-rlib-dep.path = "rlib-dep"
-issue_1567 = { path ="issue-1567" }
+issue_1567 = { path = "issue-1567" }
+issue_1691 = { path = "issue-1691" }
 
 [dev-dependencies]
 rand = { version = "0.7", features = ["small_rng"] }
