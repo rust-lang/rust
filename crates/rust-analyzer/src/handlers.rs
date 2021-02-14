@@ -10,8 +10,7 @@ use std::{
 
 use ide::{
     AnnotationConfig, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, LineIndex,
-    NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange,
-    TextEdit,
+    Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -19,12 +18,12 @@ use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CodeActionKind, CodeLens, Command, CompletionItem, Diagnostic, DiagnosticTag,
-    DocumentFormattingParams, DocumentHighlight, FoldingRange, FoldingRangeParams, HoverContents,
-    Location, NumberOrString, Position, PrepareRenameResponse, Range, RenameParams,
-    SemanticTokensDeltaParams, SemanticTokensFullDeltaResult, SemanticTokensParams,
-    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    SymbolTag, TextDocumentIdentifier, TextDocumentPositionParams, Url, WorkspaceEdit,
+    CodeActionKind, CodeLens, CompletionItem, Diagnostic, DiagnosticTag, DocumentFormattingParams,
+    DocumentHighlight, FoldingRange, FoldingRangeParams, HoverContents, Location, NumberOrString,
+    Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensDeltaParams,
+    SemanticTokensFullDeltaResult, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
+    TextDocumentIdentifier, TextDocumentPositionParams, Url, WorkspaceEdit,
 };
 use project_model::TargetKind;
 use serde::{Deserialize, Serialize};
@@ -1422,40 +1421,7 @@ pub(crate) fn handle_open_cargo_toml(
     Ok(Some(res))
 }
 
-fn run_single_command(runnable: &lsp_ext::Runnable, title: &str) -> Command {
-    Command {
-        title: title.to_string(),
-        command: "rust-analyzer.runSingle".into(),
-        arguments: Some(vec![to_value(runnable).unwrap()]),
-    }
-}
-
-fn debug_single_command(runnable: &lsp_ext::Runnable) -> Command {
-    Command {
-        title: "Debug".into(),
-        command: "rust-analyzer.debugSingle".into(),
-        arguments: Some(vec![to_value(runnable).unwrap()]),
-    }
-}
-
-fn goto_location_command(snap: &GlobalStateSnapshot, nav: &NavigationTarget) -> Option<Command> {
-    let value = if snap.config.location_link() {
-        let link = to_proto::location_link(snap, None, nav.clone()).ok()?;
-        to_value(link).ok()?
-    } else {
-        let range = FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() };
-        let location = to_proto::location(snap, range).ok()?;
-        to_value(location).ok()?
-    };
-
-    Some(Command {
-        title: nav.name.to_string(),
-        command: "rust-analyzer.gotoLocation".into(),
-        arguments: Some(vec![value]),
-    })
-}
-
-fn to_command_link(command: Command, tooltip: String) -> lsp_ext::CommandLink {
+fn to_command_link(command: lsp_types::Command, tooltip: String) -> lsp_ext::CommandLink {
     lsp_ext::CommandLink { tooltip: Some(tooltip), command }
 }
 
@@ -1474,7 +1440,7 @@ fn show_impl_command_link(
                 .filter_map(|nav| to_proto::location_from_nav(snap, nav).ok())
                 .collect();
             let title = to_proto::implementation_title(locations.len());
-            let command = to_proto::show_references_command(title, &uri, position, locations);
+            let command = to_proto::command::show_references(title, &uri, position, locations);
 
             return Some(lsp_ext::CommandLinkGroup {
                 commands: vec![to_command_link(command, "Go to implementations".into())],
@@ -1501,12 +1467,12 @@ fn runnable_action_links(
         let mut group = lsp_ext::CommandLinkGroup::default();
 
         if hover_config.run {
-            let run_command = run_single_command(&r, action.run_title);
+            let run_command = to_proto::command::run_single(&r, action.run_title);
             group.commands.push(to_command_link(run_command, r.label.clone()));
         }
 
         if hover_config.debug {
-            let dbg_command = debug_single_command(&r);
+            let dbg_command = to_proto::command::debug_single(&r);
             group.commands.push(to_command_link(dbg_command, r.label));
         }
 
@@ -1527,7 +1493,7 @@ fn goto_type_action_links(
         commands: nav_targets
             .iter()
             .filter_map(|it| {
-                goto_location_command(snap, &it.nav)
+                to_proto::command::goto_location(snap, &it.nav)
                     .map(|cmd| to_command_link(cmd, it.mod_path.clone()))
             })
             .collect(),

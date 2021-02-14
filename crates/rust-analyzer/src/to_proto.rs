@@ -229,11 +229,7 @@ pub(crate) fn completion_item(
     }
 
     if completion_item.trigger_call_info() {
-        res.command = Some(lsp_types::Command {
-            title: "triggerParameterHints".into(),
-            command: "editor.action.triggerParameterHints".into(),
-            arguments: None,
-        });
+        res.command = Some(command::trigger_parameter_hints());
     }
 
     let mut all_results = match completion_item.ref_match() {
@@ -878,17 +874,10 @@ pub(crate) fn code_lens(
             let r = runnable(&snap, run.nav.file_id, run)?;
 
             let command = if debug {
-                lsp_types::Command {
-                    title: action.run_title.to_string(),
-                    command: "rust-analyzer.runSingle".into(),
-                    arguments: Some(vec![to_value(r).unwrap()]),
-                }
+                command::debug_single(&r)
             } else {
-                lsp_types::Command {
-                    title: "Debug".into(),
-                    command: "rust-analyzer.debugSingle".into(),
-                    arguments: Some(vec![to_value(r).unwrap()]),
-                }
+                let title = action.run_title.to_string();
+                command::run_single(&r, &title)
             };
 
             Ok(lsp_types::CodeLens { range: annotation_range, command: Some(command), data: None })
@@ -922,7 +911,7 @@ pub(crate) fn code_lens(
                     })
                     .collect();
 
-                show_references_command(
+                command::show_references(
                     implementation_title(locations.len()),
                     &url,
                     position,
@@ -951,7 +940,12 @@ pub(crate) fn code_lens(
                 let locations: Vec<lsp_types::Location> =
                     ranges.into_iter().filter_map(|range| location(snap, range).ok()).collect();
 
-                show_references_command(reference_title(locations.len()), &url, position, locations)
+                command::show_references(
+                    reference_title(locations.len()),
+                    &url,
+                    position,
+                    locations,
+                )
             });
 
             Ok(lsp_types::CodeLens {
@@ -963,24 +957,79 @@ pub(crate) fn code_lens(
     }
 }
 
-pub(crate) fn show_references_command(
-    title: String,
-    uri: &lsp_types::Url,
-    position: lsp_types::Position,
-    locations: Vec<lsp_types::Location>,
-) -> lsp_types::Command {
-    // We cannot use the 'editor.action.showReferences' command directly
-    // because that command requires vscode types which we convert in the handler
-    // on the client side.
+pub(crate) mod command {
+    use ide::{FileRange, NavigationTarget};
+    use serde_json::to_value;
 
-    lsp_types::Command {
-        title,
-        command: "rust-analyzer.showReferences".into(),
-        arguments: Some(vec![
-            to_value(uri).unwrap(),
-            to_value(position).unwrap(),
-            to_value(locations).unwrap(),
-        ]),
+    use crate::{
+        global_state::GlobalStateSnapshot,
+        lsp_ext,
+        to_proto::{location, location_link},
+    };
+
+    pub(crate) fn show_references(
+        title: String,
+        uri: &lsp_types::Url,
+        position: lsp_types::Position,
+        locations: Vec<lsp_types::Location>,
+    ) -> lsp_types::Command {
+        // We cannot use the 'editor.action.showReferences' command directly
+        // because that command requires vscode types which we convert in the handler
+        // on the client side.
+
+        lsp_types::Command {
+            title,
+            command: "rust-analyzer.showReferences".into(),
+            arguments: Some(vec![
+                to_value(uri).unwrap(),
+                to_value(position).unwrap(),
+                to_value(locations).unwrap(),
+            ]),
+        }
+    }
+
+    pub(crate) fn run_single(runnable: &lsp_ext::Runnable, title: &str) -> lsp_types::Command {
+        lsp_types::Command {
+            title: title.to_string(),
+            command: "rust-analyzer.runSingle".into(),
+            arguments: Some(vec![to_value(runnable).unwrap()]),
+        }
+    }
+
+    pub(crate) fn debug_single(runnable: &lsp_ext::Runnable) -> lsp_types::Command {
+        lsp_types::Command {
+            title: "Debug".into(),
+            command: "rust-analyzer.debugSingle".into(),
+            arguments: Some(vec![to_value(runnable).unwrap()]),
+        }
+    }
+
+    pub(crate) fn goto_location(
+        snap: &GlobalStateSnapshot,
+        nav: &NavigationTarget,
+    ) -> Option<lsp_types::Command> {
+        let value = if snap.config.location_link() {
+            let link = location_link(snap, None, nav.clone()).ok()?;
+            to_value(link).ok()?
+        } else {
+            let range = FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() };
+            let location = location(snap, range).ok()?;
+            to_value(location).ok()?
+        };
+
+        Some(lsp_types::Command {
+            title: nav.name.to_string(),
+            command: "rust-analyzer.gotoLocation".into(),
+            arguments: Some(vec![value]),
+        })
+    }
+
+    pub(crate) fn trigger_parameter_hints() -> lsp_types::Command {
+        lsp_types::Command {
+            title: "triggerParameterHints".into(),
+            command: "editor.action.triggerParameterHints".into(),
+            arguments: None,
+        }
     }
 }
 
