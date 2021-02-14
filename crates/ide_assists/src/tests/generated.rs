@@ -483,6 +483,35 @@ struct Point {
 }
 
 #[test]
+fn doctest_generate_enum_into_method() {
+    check_doc_test(
+        "generate_enum_into_method",
+        r#####"
+enum Value {
+ Number(i32),
+ Text(String)$0,
+}
+"#####,
+        r#####"
+enum Value {
+ Number(i32),
+ Text(String),
+}
+
+impl Value {
+    fn into_text(self) -> Option<String> {
+        if let Self::Text(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_enum_is_method() {
     check_doc_test(
         "generate_enum_is_method",

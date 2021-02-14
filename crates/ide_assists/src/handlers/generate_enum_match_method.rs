@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
 use syntax::ast::VisibilityOwner;
 use syntax::ast::{self, AstNode, NameOwner};
@@ -88,14 +89,104 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) ->
     )
 }
 
+// Assist: generate_enum_into_method
+//
+// Generate an `into_` method for an enum variant.
+//
+// ```
+// enum Value {
+//  Number(i32),
+//  Text(String)$0,
+// }
+// ```
+// ->
+// ```
+// enum Value {
+//  Number(i32),
+//  Text(String),
+// }
+//
+// impl Value {
+//     fn into_text(self) -> Option<String> {
+//         if let Self::Text(v) = self {
+//             Some(v)
+//         } else {
+//             None
+//         }
+//     }
+// }
+// ```
+pub(crate) fn generate_enum_into_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let variant = ctx.find_node_at_offset::<ast::Variant>()?;
+    let variant_name = variant.name()?;
+    let parent_enum = ast::Adt::Enum(variant.parent_enum());
+    let variant_kind = variant_kind(&variant);
+
+    let fn_name = format!("into_{}", &to_lower_snake_case(variant_name.text()));
+
+    // Return early if we've found an existing new fn
+    let impl_def = find_struct_impl(
+        &ctx,
+        &parent_enum,
+        &fn_name,
+    )?;
+
+    let field_type = variant_kind.single_field_type()?;
+    let (pattern_suffix, bound_name) = variant_kind.binding_pattern()?;
+
+    let target = variant.syntax().text_range();
+    acc.add(
+        AssistId("generate_enum_into_method", AssistKind::Generate),
+        "Generate an `into_` method for an enum variant",
+        target,
+        |builder| {
+            let mut buf = String::with_capacity(512);
+
+            if impl_def.is_some() {
+                buf.push('\n');
+            }
+
+            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
+            format_to!(
+                buf,
+                "    {}fn {}(self) -> Option<{}> {{
+        if let Self::{}{} = self {{
+            Some({})
+        }} else {{
+            None
+        }}
+    }}",
+                vis,
+                fn_name,
+                field_type.syntax(),
+                variant_name,
+                pattern_suffix,
+                bound_name,
+            );
+
+            let start_offset = impl_def
+                .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
+                .unwrap_or_else(|| {
+                    buf = generate_impl_text(&parent_enum, &buf);
+                    parent_enum.syntax().text_range().end()
+                });
+
+            builder.insert(start_offset, buf);
+        },
+    )
+}
+
 enum VariantKind {
     Unit,
     /// Tuple with a single field
-    NewtypeTuple,
+    NewtypeTuple { ty: Option<ast::Type> },
     /// Tuple with 0 or more than 2 fields
     Tuple,
     /// Record with a single field
-    NewtypeRecord { field_name: Option<ast::Name> },
+    NewtypeRecord {
+        field_name: Option<ast::Name>,
+        field_type: Option<ast::Type>,
+    },
     /// Record with 0 or more than 2 fields
     Record,
 }
@@ -104,10 +195,38 @@ impl VariantKind {
     fn pattern_suffix(&self) -> &'static str {
         match self {
             VariantKind::Unit => "",
-            VariantKind::NewtypeTuple |
+            VariantKind::NewtypeTuple { .. } |
             VariantKind::Tuple => "(..)",
             VariantKind::NewtypeRecord { .. } |
             VariantKind::Record => " { .. }",
+        }
+    }
+
+    fn binding_pattern(&self) -> Option<(String, String)> {
+        match self {
+            VariantKind::Unit |
+            VariantKind::Tuple |
+            VariantKind::Record |
+            VariantKind::NewtypeRecord { field_name: None, .. } => None,
+            VariantKind::NewtypeTuple { .. } => {
+                Some(("(v)".to_owned(), "v".to_owned()))
+            }
+            VariantKind::NewtypeRecord { field_name: Some(name), .. } => {
+                Some((
+                    format!(" {{ {} }}", name.syntax()),
+                    name.syntax().to_string(),
+                ))
+            }
+        }
+    }
+
+    fn single_field_type(&self) -> Option<&ast::Type> {
+        match self {
+            VariantKind::Unit |
+            VariantKind::Tuple |
+            VariantKind::Record => None,
+            VariantKind::NewtypeTuple { ty } => ty.as_ref(),
+            VariantKind::NewtypeRecord { field_type, .. } => field_type.as_ref(),
         }
     }
 }
@@ -115,16 +234,18 @@ impl VariantKind {
 fn variant_kind(variant: &ast::Variant) -> VariantKind {
     match variant.kind() {
         ast::StructKind::Record(record) => {
-            if record.fields().count() == 1 {
-                let field_name = record.fields().nth(0).unwrap().name();
-                VariantKind::NewtypeRecord { field_name }
+            if let Some((single_field,)) = record.fields().collect_tuple() {
+                let field_name = single_field.name();
+                let field_type = single_field.ty();
+                VariantKind::NewtypeRecord { field_name, field_type }
             } else {
                 VariantKind::Record
             }
         }
         ast::StructKind::Tuple(tuple) => {
-            if tuple.fields().count() == 1 {
-                VariantKind::NewtypeTuple
+            if let Some((single_field,)) = tuple.fields().collect_tuple() {
+                let ty = single_field.ty();
+                VariantKind::NewtypeTuple { ty }
             } else {
                 VariantKind::Tuple
             }
@@ -139,12 +260,8 @@ mod tests {
 
     use super::*;
 
-    fn check_not_applicable(ra_fixture: &str) {
-        check_assist_not_applicable(generate_enum_is_method, ra_fixture)
-    }
-
     #[test]
-    fn test_generate_enum_match_from_variant() {
+    fn test_generate_enum_is_from_variant() {
         check_assist(
             generate_enum_is_method,
             r#"
@@ -169,8 +286,9 @@ impl Variant {
     }
 
     #[test]
-    fn test_generate_enum_match_already_implemented() {
-        check_not_applicable(
+    fn test_generate_enum_is_already_implemented() {
+        check_assist_not_applicable(
+            generate_enum_is_method,
             r#"
 enum Variant {
     Undefined,
@@ -187,7 +305,7 @@ impl Variant {
     }
 
     #[test]
-    fn test_generate_enum_match_from_tuple_variant() {
+    fn test_generate_enum_is_from_tuple_variant() {
         check_assist(
             generate_enum_is_method,
             r#"
@@ -212,7 +330,7 @@ impl Variant {
     }
 
     #[test]
-    fn test_generate_enum_match_from_record_variant() {
+    fn test_generate_enum_is_from_record_variant() {
         check_assist(
             generate_enum_is_method,
             r#"
@@ -237,7 +355,7 @@ impl Variant {
     }
 
     #[test]
-    fn test_generate_enum_match_from_variant_with_one_variant() {
+    fn test_generate_enum_is_from_variant_with_one_variant() {
         check_assist(
             generate_enum_is_method,
             r#"enum Variant { Undefi$0ned }"#,
@@ -254,7 +372,7 @@ impl Variant {
     }
 
     #[test]
-    fn test_generate_enum_match_from_variant_with_visibility_marker() {
+    fn test_generate_enum_is_from_variant_with_visibility_marker() {
         check_assist(
             generate_enum_is_method,
             r#"
@@ -279,7 +397,7 @@ impl Variant {
     }
 
     #[test]
-    fn test_multiple_generate_enum_match_from_variant() {
+    fn test_multiple_generate_enum_is_from_variant() {
         check_assist(
             generate_enum_is_method,
             r#"
@@ -310,6 +428,113 @@ impl Variant {
     /// Returns `true` if the variant is [`Major`].
     fn is_major(&self) -> bool {
         matches!(self, Self::Major)
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_enum_into_tuple_variant() {
+        check_assist(
+            generate_enum_into_method,
+            r#"
+enum Value {
+    Number(i32),
+    Text(String)$0,
+}"#,
+            r#"enum Value {
+    Number(i32),
+    Text(String),
+}
+
+impl Value {
+    fn into_text(self) -> Option<String> {
+        if let Self::Text(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_enum_into_already_implemented() {
+        check_assist_not_applicable(
+            generate_enum_into_method,
+            r#"enum Value {
+    Number(i32),
+    Text(String)$0,
+}
+
+impl Value {
+    fn into_text(self) -> Option<String> {
+        if let Self::Text(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_enum_into_unit_variant() {
+        check_assist_not_applicable(
+            generate_enum_into_method,
+            r#"enum Value {
+    Number(i32),
+    Text(String),
+    Unit$0,
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_enum_into_record_with_multiple_fields() {
+        check_assist_not_applicable(
+            generate_enum_into_method,
+            r#"enum Value {
+    Number(i32),
+    Text(String),
+    Both { first: i32, second: String }$0,
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_enum_into_tuple_with_multiple_fields() {
+        check_assist_not_applicable(
+            generate_enum_into_method,
+            r#"enum Value {
+    Number(i32),
+    Text(String, String)$0,
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_enum_into_record_variant() {
+        check_assist(
+            generate_enum_into_method,
+            r#"enum Value {
+    Number(i32),
+    Text { text: String }$0,
+}"#,
+            r#"enum Value {
+    Number(i32),
+    Text { text: String },
+}
+
+impl Value {
+    fn into_text(self) -> Option<String> {
+        if let Self::Text { text } = self {
+            Some(text)
+        } else {
+            None
+        }
     }
 }"#,
         );
