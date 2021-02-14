@@ -252,7 +252,6 @@ symbols! {
         allow_fail,
         allow_internal_unsafe,
         allow_internal_unstable,
-        allow_internal_unstable_backcompat_hack,
         allowed,
         always,
         and,
