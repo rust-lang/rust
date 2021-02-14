@@ -608,15 +608,6 @@ fn phase_cargo_rustc(mut args: env::Args) {
     let target_crate = is_target_crate();
     let print = get_arg_flag_value("--print").is_some(); // whether this is cargo passing `--print` to get some infos
 
-    // cdylib is just skipped, we cannot interpret it and do not need it
-    // for the rest of the build either.
-    if get_arg_flag_value("--crate-type").as_deref() == Some("cdylib") {
-        if verbose {
-            eprint!("[cargo-miri rustc] (cdylib skipped)");
-        }
-        return;
-    }
-
     let store_json = |info: CrateRunInfo| {
         let filename = out_filename("", "");
         if verbose {
