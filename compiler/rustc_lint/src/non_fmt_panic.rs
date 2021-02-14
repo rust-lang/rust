@@ -93,12 +93,12 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         if arg_macro.map_or(false, |id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
             l.note("the panic!() macro supports formatting, so there's no need for the format!() macro here");
-            if let Some(inner) = find_inner_span(cx, arg_span) {
+            if let Some((open, close, _)) = find_delimiters(cx, arg_span) {
                 l.multipart_suggestion(
                     "remove the `format!(..)` macro call",
                     vec![
-                        (arg_span.until(inner), "".into()),
-                        (inner.between(arg_span.shrink_to_hi()), "".into()),
+                        (arg_span.until(open.shrink_to_hi()), "".into()),
+                        (close.until(arg_span.shrink_to_hi()), "".into()),
                     ],
                     Applicability::MachineApplicable,
                 );
@@ -111,12 +111,20 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 Applicability::MaybeIncorrect,
             );
             if panic == sym::std_panic_macro {
-                l.span_suggestion_verbose(
-                    span.until(arg_span),
-                    "or use std::panic::panic_any instead",
-                    "std::panic::panic_any(".into(),
-                    Applicability::MachineApplicable,
-                );
+                if let Some((open, close, del)) = find_delimiters(cx, span) {
+                    l.multipart_suggestion(
+                        "or use std::panic::panic_any instead",
+                        if del == '(' {
+                            vec![(span.until(open), "std::panic::panic_any".into())]
+                        } else {
+                            vec![
+                                (span.until(open.shrink_to_hi()), "std::panic::panic_any(".into()),
+                                (close, ")".into()),
+                            ]
+                        },
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         }
         l.emit();
@@ -206,13 +214,23 @@ fn check_panic_str<'tcx>(
     }
 }
 
-/// Given the span of `some_macro!(args)`, gives the span of `args`.
-fn find_inner_span<'tcx>(cx: &LateContext<'tcx>, span: Span) -> Option<Span> {
+/// Given the span of `some_macro!(args);`, gives the span of `(` and `)`,
+/// and the type of (opening) delimiter used.
+fn find_delimiters<'tcx>(cx: &LateContext<'tcx>, span: Span) -> Option<(Span, Span, char)> {
     let snippet = cx.sess().parse_sess.source_map().span_to_snippet(span).ok()?;
-    Some(span.from_inner(InnerSpan {
-        start: snippet.find(&['(', '{', '['][..])? + 1,
-        end: snippet.rfind(&[')', '}', ']'][..])?,
-    }))
+    let (open, open_ch) = snippet.char_indices().find(|&(_, c)| "([{".contains(c))?;
+    let close = snippet.rfind(|c| ")]}".contains(c))?;
+    Some((
+        span.from_inner(InnerSpan {
+            start: open,
+            end: open + 1,
+        }),
+        span.from_inner(InnerSpan {
+            start: close,
+            end: close + 1,
+        }),
+        open_ch,
+    ))
 }
 
 fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, Symbol) {
