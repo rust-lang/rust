@@ -221,6 +221,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     /// As `3 + 4` contains `N` in its substs, this must not succeed.
     ///
     /// See `src/test/ui/const-generics/occurs-check/` for more examples where this is relevant.
+    #[instrument(level = "debug", skip(self))]
     fn unify_const_variable(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -228,7 +229,6 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
         ct: &'tcx ty::Const<'tcx>,
         vid_is_expected: bool,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        debug!("unify_const_variable: param_env={:?}", param_env);
         let (for_universe, span) = {
             let mut inner = self.inner.borrow_mut();
             let variable_table = &mut inner.const_unification_table();

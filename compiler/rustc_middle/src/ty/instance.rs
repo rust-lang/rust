@@ -347,13 +347,13 @@ impl<'tcx> Instance<'tcx> {
     }
 
     // This should be kept up to date with `resolve`.
+    #[instrument(level = "debug", skip(tcx))]
     pub fn resolve_opt_const_arg(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
-        debug!("resolve_opt_const_arg: param_env={:?},substs={:?}", param_env, substs);
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
 
