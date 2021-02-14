@@ -44,6 +44,15 @@ impl ops::Index<Target> for CargoWorkspace {
     }
 }
 
+/// Describes how to set the rustc source directory.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RustcSource {
+    /// Explicit path for the rustc source directory.
+    Path(AbsPathBuf),
+    /// Try to automatically detect where the rustc source directory is.
+    Discover,
+}
+
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CargoConfig {
     /// Do not activate the `default` feature.
@@ -64,7 +73,7 @@ pub struct CargoConfig {
     pub no_sysroot: bool,
 
     /// rustc private crate source
-    pub rustc_source: Option<AbsPathBuf>,
+    pub rustc_source: Option<RustcSource>,
 }
 
 pub type Package = Idx<PackageData>;

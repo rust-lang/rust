@@ -51,9 +51,16 @@ impl Sysroot {
     pub fn discover(cargo_toml: &AbsPath) -> Result<Sysroot> {
         log::debug!("Discovering sysroot for {}", cargo_toml.display());
         let current_dir = cargo_toml.parent().unwrap();
-        let sysroot_src_dir = discover_sysroot_src_dir(current_dir)?;
+        let sysroot_dir = discover_sysroot_dir(current_dir)?;
+        let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir, current_dir)?;
         let res = Sysroot::load(&sysroot_src_dir)?;
         Ok(res)
+    }
+
+    pub fn discover_rustc(cargo_toml: &AbsPath) -> Option<AbsPathBuf> {
+        log::debug!("Discovering rustc source for {}", cargo_toml.display());
+        let current_dir = cargo_toml.parent().unwrap();
+        discover_sysroot_dir(current_dir).ok().and_then(|sysroot_dir| get_rustc_src(&sysroot_dir))
     }
 
     pub fn load(sysroot_src_dir: &AbsPath) -> Result<Sysroot> {
@@ -110,7 +117,18 @@ impl Sysroot {
     }
 }
 
-fn discover_sysroot_src_dir(current_dir: &AbsPath) -> Result<AbsPathBuf> {
+fn discover_sysroot_dir(current_dir: &AbsPath) -> Result<AbsPathBuf> {
+    let mut rustc = Command::new(toolchain::rustc());
+    rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
+    log::debug!("Discovering sysroot by {:?}", rustc);
+    let stdout = utf8_stdout(rustc)?;
+    Ok(AbsPathBuf::assert(PathBuf::from(stdout)))
+}
+
+fn discover_sysroot_src_dir(
+    sysroot_path: &AbsPathBuf,
+    current_dir: &AbsPath,
+) -> Result<AbsPathBuf> {
     if let Ok(path) = env::var("RUST_SRC_PATH") {
         let path = AbsPathBuf::try_from(path.as_str())
             .map_err(|path| format_err!("RUST_SRC_PATH must be absolute: {}", path.display()))?;
@@ -121,14 +139,6 @@ fn discover_sysroot_src_dir(current_dir: &AbsPath) -> Result<AbsPathBuf> {
         }
         log::debug!("RUST_SRC_PATH is set, but is invalid (no core: {:?}), ignoring", core);
     }
-
-    let sysroot_path = {
-        let mut rustc = Command::new(toolchain::rustc());
-        rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
-        log::debug!("Discovering sysroot by {:?}", rustc);
-        let stdout = utf8_stdout(rustc)?;
-        AbsPathBuf::assert(PathBuf::from(stdout))
-    };
 
     get_rust_src(&sysroot_path)
         .or_else(|| {
@@ -147,6 +157,16 @@ try installing the Rust source the same way you installed rustc",
                 sysroot_path.display(),
             )
         })
+}
+
+fn get_rustc_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
+    let rustc_src = sysroot_path.join("lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml");
+    log::debug!("Checking for rustc source code: {}", rustc_src.display());
+    if rustc_src.exists() {
+        Some(rustc_src)
+    } else {
+        None
+    }
 }
 
 fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
