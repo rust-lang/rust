@@ -29,6 +29,12 @@ fn main() {
     fancy_panic::fancy_panic!(S);
     //~^ WARN panic message is not a string literal
 
+    macro_rules! a {
+        () => { 123 };
+    }
+
+    panic!(a!()); //~ WARN panic message is not a string literal
+
     // Check that the lint only triggers for std::panic and core::panic,
     // not any panic macro:
     macro_rules! panic {

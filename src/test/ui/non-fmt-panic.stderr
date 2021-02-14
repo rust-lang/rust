@@ -183,5 +183,21 @@ LL |     fancy_panic::fancy_panic!(S);
    |
    = note: this is no longer accepted in Rust 2021
 
-warning: 14 warnings emitted
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:36:12
+   |
+LL |     panic!(a!());
+   |            ^^^^
+   |
+   = note: this is no longer accepted in Rust 2021
+help: add a "{}" format string to Display the message
+   |
+LL |     panic!("{}", a!());
+   |            ^^^^^
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(a!());
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 15 warnings emitted
 
