@@ -122,6 +122,7 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, else_: &ast::Expr) {
         if let ast::ExprKind::Block(ref block, _) = else_.kind;
         if !block_starts_with_comment(cx, block);
         if let Some(else_) = expr_block(block);
+        if else_.attrs.is_empty();
         if !else_.span.from_expansion();
         if let ast::ExprKind::If(..) = else_.kind;
         then {
@@ -143,16 +144,12 @@ fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &
     if_chain! {
         if !block_starts_with_comment(cx, then);
         if let Some(inner) = expr_block(then);
+        if inner.attrs.is_empty();
         if let ast::ExprKind::If(ref check_inner, ref content, None) = inner.kind;
+        // Prevent triggering on `if c { if let a = b { .. } }`.
+        if !matches!(check_inner.kind, ast::ExprKind::Let(..));
+        if expr.span.ctxt() == inner.span.ctxt();
         then {
-            if let ast::ExprKind::Let(..) = check_inner.kind {
-                // Prevent triggering on `if c { if let a = b { .. } }`.
-                return;
-            }
-
-            if expr.span.ctxt() != inner.span.ctxt() {
-                return;
-            }
             span_lint_and_then(cx, COLLAPSIBLE_IF, expr.span, "this `if` statement can be collapsed", |diag| {
                 let lhs = Sugg::ast(cx, check, "..");
                 let rhs = Sugg::ast(cx, check_inner, "..");
