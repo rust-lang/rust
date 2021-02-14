@@ -42,7 +42,7 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 
 /// Tries to read the `key` from the auxiliary vector.
 fn archauxv(key: usize) -> Result<usize, ()> {
-    use crate::mem;
+    use core::mem;
 
     #[derive(Copy, Clone)]
     #[repr(C)]

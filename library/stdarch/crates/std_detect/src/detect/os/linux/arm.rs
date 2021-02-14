@@ -1,6 +1,6 @@
 //! Run-time feature detection for ARM on Linux.
 
-use super::{auxvec, cpuinfo};
+use super::auxvec;
 use crate::detect::{bit, cache, Feature};
 
 /// Try to read the features from the auxiliary vector, and if that fails, try
@@ -31,7 +31,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
         return value;
     }
 
-    if let Ok(c) = cpuinfo::CpuInfo::new() {
+    #[cfg(feature = "std_detect_file_io")]
+    if let Ok(c) = super::cpuinfo::CpuInfo::new() {
         enable_feature(
             &mut value,
             Feature::neon,
@@ -55,7 +56,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
 /// Is the CPU known to have a broken NEON unit?
 ///
 /// See https://crbug.com/341598.
-fn has_broken_neon(cpuinfo: &cpuinfo::CpuInfo) -> bool {
+#[cfg(feature = "std_detect_file_io")]
+fn has_broken_neon(cpuinfo: &super::cpuinfo::CpuInfo) -> bool {
     cpuinfo.field("CPU implementer") == "0x51"
         && cpuinfo.field("CPU architecture") == "7"
         && cpuinfo.field("CPU variant") == "0x1"

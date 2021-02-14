@@ -1,6 +1,6 @@
 //! Run-time feature detection for Aarch64 on Linux.
 
-use super::{auxvec, cpuinfo};
+use super::auxvec;
 use crate::detect::{bit, cache, Feature};
 
 /// Try to read the features from the auxiliary vector, and if that fails, try
@@ -10,7 +10,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
         let hwcap: AtHwcap = auxv.into();
         return hwcap.cache();
     }
-    if let Ok(c) = cpuinfo::CpuInfo::new() {
+    #[cfg(feature = "std_detect_file_io")]
+    if let Ok(c) = super::cpuinfo::CpuInfo::new() {
         let hwcap: AtHwcap = c.into();
         return hwcap.cache();
     }
@@ -77,9 +78,10 @@ impl From<auxvec::AuxVec> for AtHwcap {
     }
 }
 
-impl From<cpuinfo::CpuInfo> for AtHwcap {
+#[cfg(feature = "std_detect_file_io")]
+impl From<super::cpuinfo::CpuInfo> for AtHwcap {
     /// Reads AtHwcap from /proc/cpuinfo .
-    fn from(c: cpuinfo::CpuInfo) -> Self {
+    fn from(c: super::cpuinfo::CpuInfo) -> Self {
         let f = &c.field("Features");
         AtHwcap {
             // 64-bit names. FIXME: In 32-bit compatibility mode /proc/cpuinfo will

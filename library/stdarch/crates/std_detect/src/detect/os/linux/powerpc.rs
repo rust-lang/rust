@@ -1,6 +1,6 @@
 //! Run-time feature detection for PowerPC on Linux.
 
-use super::{auxvec, cpuinfo};
+use super::auxvec;
 use crate::detect::{cache, Feature};
 
 /// Try to read the features from the auxiliary vector, and if that fails, try
@@ -27,7 +27,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // PowerPC's /proc/cpuinfo lacks a proper Feature field,
     // but `altivec` support is indicated in the `cpu` field.
-    if let Ok(c) = cpuinfo::CpuInfo::new() {
+    #[cfg(feature = "std_detect_file_io")]
+    if let Ok(c) = super::cpuinfo::CpuInfo::new() {
         enable_feature(&mut value, Feature::altivec, c.field("cpu").has("altivec"));
         return value;
     }

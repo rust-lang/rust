@@ -1,8 +1,7 @@
 //! Parses /proc/cpuinfo
 #![cfg_attr(not(target_arch = "arm"), allow(dead_code))]
 
-extern crate std;
-use self::std::{fs::File, io, io::Read, prelude::v1::*};
+use alloc::string::String;
 
 /// cpuinfo
 pub(crate) struct CpuInfo {
@@ -11,11 +10,11 @@ pub(crate) struct CpuInfo {
 
 impl CpuInfo {
     /// Reads /proc/cpuinfo into CpuInfo.
-    pub(crate) fn new() -> Result<Self, io::Error> {
-        let mut file = File::open("/proc/cpuinfo")?;
-        let mut cpui = Self { raw: String::new() };
-        file.read_to_string(&mut cpui.raw)?;
-        Ok(cpui)
+    pub(crate) fn new() -> Result<Self, ()> {
+        let raw = super::read_file("/proc/cpuinfo")?;
+        Ok(Self {
+            raw: String::from_utf8(raw).map_err(|_| ())?,
+        })
     }
     /// Returns the value of the cpuinfo `field`.
     pub(crate) fn field(&self, field: &str) -> CpuInfoField {
@@ -34,7 +33,7 @@ impl CpuInfo {
     }
 
     #[cfg(test)]
-    fn from_str(other: &str) -> Result<Self, ::std::io::Error> {
+    fn from_str(other: &str) -> Result<Self, ()> {
         Ok(Self {
             raw: String::from(other),
         })

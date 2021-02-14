@@ -5,18 +5,18 @@ mod auxvec;
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "aarch64")] {
         mod aarch64;
-        pub use self::aarch64::check_for;
+        pub(crate) use self::aarch64::detect_features;
     } else if #[cfg(target_arch = "arm")] {
         mod arm;
-        pub use self::arm::check_for;
+        pub(crate) use self::arm::detect_features;
     } else if #[cfg(target_arch = "powerpc64")] {
         mod powerpc;
-        pub use self::powerpc::check_for;
+        pub(crate) use self::powerpc::detect_features;
     } else {
-        use crate::arch::detect::Feature;
+        use crate::detect::cache;
         /// Performs run-time feature detection.
-        pub fn check_for(_x: Feature) -> bool {
-            false
+        pub(crate) fn detect_features() -> cache::Initializer {
+            cache::Initializer::default()
         }
     }
 }

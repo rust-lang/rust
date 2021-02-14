@@ -98,10 +98,10 @@ cfg_if! {
         // On x86/x86_64 no OS specific functionality is required.
         #[path = "os/x86.rs"]
         mod os;
-    } else if #[cfg(all(target_os = "linux", feature = "use_std"))] {
+    } else if #[cfg(all(target_os = "linux", feature = "libc"))] {
         #[path = "os/linux/mod.rs"]
         mod os;
-    } else if #[cfg(all(target_os = "freebsd", feature = "use_std"))] {
+    } else if #[cfg(all(target_os = "freebsd", feature = "libc"))] {
         #[cfg(target_arch = "aarch64")]
         #[path = "os/aarch64.rs"]
         mod aarch64;
@@ -140,7 +140,7 @@ pub fn features() -> impl Iterator<Item = (&'static str, bool)> {
             target_arch = "mips64",
         ))] {
             (0_u8..Feature::_last as u8).map(|discriminant: u8| {
-                let f: Feature = unsafe { crate::mem::transmute(discriminant) };
+                let f: Feature = unsafe { core::mem::transmute(discriminant) };
                 let name: &'static str = f.to_str();
                 let enabled: bool = check_for(f);
                 (name, enabled)
