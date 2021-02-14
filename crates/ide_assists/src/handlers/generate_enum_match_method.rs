@@ -1,12 +1,9 @@
 use itertools::Itertools;
-use stdx::{format_to, to_lower_snake_case};
+use stdx::to_lower_snake_case;
 use syntax::ast::VisibilityOwner;
 use syntax::ast::{self, AstNode, NameOwner};
 
-use crate::{
-    utils::{find_impl_block_end, find_struct_impl, generate_impl_text},
-    AssistContext, AssistId, AssistKind, Assists,
-};
+use crate::{AssistContext, AssistId, AssistKind, Assists, assist_context::AssistBuilder, utils::{find_impl_block_end, find_struct_impl, generate_impl_text}};
 
 // Assist: generate_enum_is_method
 //
@@ -56,15 +53,8 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) ->
         "Generate an `is_` method for an enum variant",
         target,
         |builder| {
-            let mut buf = String::with_capacity(512);
-
-            if impl_def.is_some() {
-                buf.push('\n');
-            }
-
             let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
-            format_to!(
-                buf,
+            let method = format!(
                 "    /// Returns `true` if the {} is [`{}`].
     {}fn {}(&self) -> bool {{
         matches!(self, Self::{}{})
@@ -77,14 +67,7 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) ->
                 variant_kind.pattern_suffix(),
             );
 
-            let start_offset = impl_def
-                .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
-                .unwrap_or_else(|| {
-                    buf = generate_impl_text(&parent_enum, &buf);
-                    parent_enum.syntax().text_range().end()
-                });
-
-            builder.insert(start_offset, buf);
+            add_method_to_adt(builder, &parent_enum, impl_def, &method);
         },
     )
 }
@@ -140,15 +123,8 @@ pub(crate) fn generate_enum_into_method(acc: &mut Assists, ctx: &AssistContext) 
         "Generate an `into_` method for an enum variant",
         target,
         |builder| {
-            let mut buf = String::with_capacity(512);
-
-            if impl_def.is_some() {
-                buf.push('\n');
-            }
-
             let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
-            format_to!(
-                buf,
+            let method = format!(
                 "    {}fn {}(self) -> Option<{}> {{
         if let Self::{}{} = self {{
             Some({})
@@ -164,16 +140,31 @@ pub(crate) fn generate_enum_into_method(acc: &mut Assists, ctx: &AssistContext) 
                 bound_name,
             );
 
-            let start_offset = impl_def
-                .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
-                .unwrap_or_else(|| {
-                    buf = generate_impl_text(&parent_enum, &buf);
-                    parent_enum.syntax().text_range().end()
-                });
-
-            builder.insert(start_offset, buf);
+            add_method_to_adt(builder, &parent_enum, impl_def, &method);
         },
     )
+}
+
+fn add_method_to_adt(
+    builder: &mut AssistBuilder,
+    adt: &ast::Adt,
+    impl_def: Option<ast::Impl>,
+    method: &str,
+) {
+    let mut buf = String::with_capacity(method.len() + 2);
+    if impl_def.is_some() {
+        buf.push('\n');
+    }
+    buf.push_str(method);
+
+    let start_offset = impl_def
+        .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
+        .unwrap_or_else(|| {
+            buf = generate_impl_text(&adt, &buf);
+            adt.syntax().text_range().end()
+        });
+
+    builder.insert(start_offset, buf);
 }
 
 enum VariantKind {
