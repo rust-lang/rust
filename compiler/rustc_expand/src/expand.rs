@@ -1614,9 +1614,8 @@ pub struct ExpansionConfig<'feat> {
     pub features: Option<&'feat Features>,
     pub recursion_limit: Limit,
     pub trace_mac: bool,
-    pub should_test: bool, // If false, strip `#[test]` nodes
-    pub keep_macs: bool,
-    pub span_debug: bool, // If true, use verbose debugging for `proc_macro::Span`
+    pub should_test: bool,          // If false, strip `#[test]` nodes
+    pub span_debug: bool,           // If true, use verbose debugging for `proc_macro::Span`
     pub proc_macro_backtrace: bool, // If true, show backtraces for proc-macro panics
 }
 
@@ -1628,7 +1627,6 @@ impl<'feat> ExpansionConfig<'feat> {
             recursion_limit: Limit::new(1024),
             trace_mac: false,
             should_test: false,
-            keep_macs: false,
             span_debug: false,
             proc_macro_backtrace: false,
         }
