@@ -1448,7 +1448,15 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 expected.is_unit(),
                 pointing_at_return_type,
             ) {
-                if cond_expr.span.desugaring_kind().is_none() {
+                // If the block is from a macro, then do not suggest
+                // adding a semicolon, because there's nowhere to put it.
+                // See issue #81943.
+                let hir = fcx.tcx.hir();
+                let body_owner =
+                    hir.body_owner(hir.body_owned_by(hir.enclosing_body_owner(fcx.body_id)));
+                let from_same_crate = cond_expr.span.ctxt().dollar_crate_name()
+                    == hir.span(body_owner).ctxt().dollar_crate_name();
+                if cond_expr.span.desugaring_kind().is_none() && from_same_crate {
                     err.span_label(cond_expr.span, "expected this to be `()`");
                     fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
                 }
