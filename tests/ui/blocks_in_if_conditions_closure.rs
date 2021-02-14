@@ -44,4 +44,13 @@ fn macro_in_closure() {
     }
 }
 
-fn main() {}
+#[rustfmt::skip]
+fn main() {
+    let mut range = 0..10;
+    range.all(|i| {i < 10} );
+
+    let v = vec![1, 2, 3];
+    if v.into_iter().any(|x| {x == 4}) {
+        println!("contains 4!");
+    }
+}
