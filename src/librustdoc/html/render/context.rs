@@ -16,6 +16,7 @@ use rustc_span::symbol::sym;
 
 use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
+use super::write_shared::write_shared;
 use super::{
     print_sidebar, settings, AllTypes, NameDoc, SharedContext, StylePath, BASIC_KEYWORDS,
     CURRENT_DEPTH, INITIAL_IDS,
