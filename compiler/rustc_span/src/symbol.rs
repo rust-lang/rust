@@ -554,6 +554,7 @@ symbols! {
         format_args,
         format_args_capture,
         format_args_nl,
+        format_macro,
         freeze,
         freg,
         frem_fast,

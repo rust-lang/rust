@@ -72,18 +72,38 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
     // Find the span of the argument to `panic!()`, before expansion in the
     // case of `panic!(some_macro!())`.
     let mut arg_span = arg.span;
+    let mut arg_macro = None;
     while !span.contains(arg_span) {
         let expn = arg_span.ctxt().outer_expn_data();
         if expn.is_root() {
             break;
         }
+        arg_macro = expn.macro_def_id;
         arg_span = expn.call_site;
     }
 
     cx.struct_span_lint(NON_FMT_PANIC, arg_span, |lint| {
         let mut l = lint.build("panic message is not a string literal");
         l.note("this is no longer accepted in Rust 2021");
-        if span.contains(arg_span) {
+        if !span.contains(arg_span) {
+            // No clue where this argument is coming from.
+            l.emit();
+            return;
+        }
+        if arg_macro.map_or(false, |id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
+            // A case of `panic!(format!(..))`.
+            l.note("the panic!() macro supports formatting, so there's no need for the format!() macro here");
+            if let Some(inner) = find_inner_span(cx, arg_span) {
+                l.multipart_suggestion(
+                    "remove the `format!(..)` macro call",
+                    vec![
+                        (arg_span.until(inner), "".into()),
+                        (inner.between(arg_span.shrink_to_hi()), "".into()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            }
+        } else {
             l.span_suggestion_verbose(
                 arg_span.shrink_to_lo(),
                 "add a \"{}\" format string to Display the message",
@@ -184,6 +204,15 @@ fn check_panic_str<'tcx>(
             l.emit();
         });
     }
+}
+
+/// Given the span of `some_macro!(args)`, gives the span of `args`.
+fn find_inner_span<'tcx>(cx: &LateContext<'tcx>, span: Span) -> Option<Span> {
+    let snippet = cx.sess().parse_sess.source_map().span_to_snippet(span).ok()?;
+    Some(span.from_inner(InnerSpan {
+        start: snippet.find(&['(', '{', '['][..])? + 1,
+        end: snippet.rfind(&[')', '}', ']'][..])?,
+    }))
 }
 
 fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, Symbol) {
