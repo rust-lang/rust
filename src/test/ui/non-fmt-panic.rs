@@ -37,6 +37,9 @@ fn main() {
 
     panic!(format!("{}", 1)); //~ WARN panic message is not a string literal
 
+    panic![123]; //~ WARN panic message is not a string literal
+    panic!{123}; //~ WARN panic message is not a string literal
+
     // Check that the lint only triggers for std::panic and core::panic,
     // not any panic macro:
     macro_rules! panic {

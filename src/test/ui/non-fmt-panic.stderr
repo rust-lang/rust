@@ -212,5 +212,37 @@ help: remove the `format!(..)` macro call
 LL |     panic!("{}", 1);
    |           --     --
 
-warning: 16 warnings emitted
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:40:12
+   |
+LL |     panic![123];
+   |            ^^^
+   |
+   = note: this is no longer accepted in Rust 2021
+help: add a "{}" format string to Display the message
+   |
+LL |     panic!["{}", 123];
+   |            ^^^^^
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(123);
+   |     ^^^^^^^^^^^^^^^^^^^^^^   ^
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:41:12
+   |
+LL |     panic!{123};
+   |            ^^^
+   |
+   = note: this is no longer accepted in Rust 2021
+help: add a "{}" format string to Display the message
+   |
+LL |     panic!{"{}", 123};
+   |            ^^^^^
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(123);
+   |     ^^^^^^^^^^^^^^^^^^^^^^   ^
+
+warning: 18 warnings emitted
 
