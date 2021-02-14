@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use ide_db::{defs::Definition, search::FileReference};
+use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
@@ -111,7 +110,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                 .collect::<Result<_, _>>()
                 .map(|b| (file_id, b))
         })
-        .collect::<Result<HashMap<_, Vec<_>>, _>>()?;
+        .collect::<Result<FxHashMap<_, Vec<_>>, _>>()?;
 
     let init_str = initializer_expr.syntax().text().to_string();
     let init_in_paren = format!("({})", &init_str);
