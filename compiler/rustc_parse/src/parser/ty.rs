@@ -437,7 +437,7 @@ impl<'a> Parser<'a> {
                 let err = self.struct_span_err(
                     self.token.span,
                     &format!(
-                        "expected one of ';' or ']', found {}",
+                        "expected one of `;` or `]`, found {}",
                         super::token_descr(&self.token)
                     ),
                 );
