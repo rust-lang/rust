@@ -19,7 +19,7 @@ rustc_lexer = { path = "../rustc_lexer" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_target = { path = "../rustc_target" }
 rustc_session = { path = "../rustc_session" }
-smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_span = { path = "../rustc_span" }
