@@ -108,7 +108,9 @@ impl<'a> Parser<'a> {
                 }
             },
             NonterminalKind::Block => {
-                token::NtBlock(self.collect_tokens(|this| this.parse_block())?)
+                // While a block *expression* may have attributes (e.g. `#[my_attr] { ... }`),
+                // the ':block' matcher does not support them
+                token::NtBlock(self.collect_tokens_no_attrs(|this| this.parse_block())?)
             }
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
                 Some(s) => token::NtStmt(s),
@@ -117,7 +119,7 @@ impl<'a> Parser<'a> {
                 }
             },
             NonterminalKind::Pat2018 { .. } | NonterminalKind::Pat2021 { .. } => {
-                token::NtPat(self.collect_tokens(|this| match kind {
+                token::NtPat(self.collect_tokens_no_attrs(|this| match kind {
                     NonterminalKind::Pat2018 { .. } => this.parse_pat(None),
                     NonterminalKind::Pat2021 { .. } => {
                         this.parse_top_pat(GateOr::Yes, RecoverComma::No)
@@ -125,11 +127,33 @@ impl<'a> Parser<'a> {
                     _ => unreachable!(),
                 })?)
             }
-            NonterminalKind::Expr => token::NtExpr(self.collect_tokens(|this| this.parse_expr())?),
-            NonterminalKind::Literal => {
-                token::NtLiteral(self.collect_tokens(|this| this.parse_literal_maybe_minus())?)
+
+            // If there are attributes present, then `parse_expr` will end up collecting tokens,
+            // turning the outer `collect_tokens_no_attrs` into a no-op due to the already present
+            // tokens. If there are *not* attributes present, then the outer
+            // `collect_tokens_no_attrs` will ensure that we will end up collecting tokens for the
+            // expressions.
+            //
+            // This is less efficient than it could be, since the outer `collect_tokens_no_attrs`
+            // still needs to snapshot the `TokenCursor` before calling `parse_expr`, even when
+            // `parse_expr` will end up collecting tokens. Ideally, this would work more like
+            // `parse_item`, and take in a `ForceCollect` parameter. However, this would require
+            // adding a `ForceCollect` parameter in a bunch of places in expression parsing
+            // for little gain. If the perf impact from this turns out to be noticeable, we should
+            // revisit this apporach.
+            NonterminalKind::Expr => {
+                token::NtExpr(self.collect_tokens_no_attrs(|this| this.parse_expr())?)
             }
-            NonterminalKind::Ty => token::NtTy(self.collect_tokens(|this| this.parse_ty())?),
+            NonterminalKind::Literal => {
+                // The `:literal` matcher does not support attributes
+                token::NtLiteral(
+                    self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?,
+                )
+            }
+
+            NonterminalKind::Ty => {
+                token::NtTy(self.collect_tokens_no_attrs(|this| this.parse_ty())?)
+            }
             // this could be handled like a token, since it is one
             NonterminalKind::Ident => {
                 if let Some((ident, is_raw)) = get_macro_ident(&self.token) {
@@ -141,15 +165,15 @@ impl<'a> Parser<'a> {
                     return Err(self.struct_span_err(self.token.span, msg));
                 }
             }
-            NonterminalKind::Path => {
-                token::NtPath(self.collect_tokens(|this| this.parse_path(PathStyle::Type))?)
-            }
+            NonterminalKind::Path => token::NtPath(
+                self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?,
+            ),
             NonterminalKind::Meta => {
-                token::NtMeta(P(self.collect_tokens(|this| this.parse_attr_item(false))?))
+                token::NtMeta(P(self.collect_tokens_no_attrs(|this| this.parse_attr_item(false))?))
             }
             NonterminalKind::TT => token::NtTT(self.parse_token_tree()),
             NonterminalKind::Vis => token::NtVis(
-                self.collect_tokens(|this| this.parse_visibility(FollowedByType::Yes))?,
+                self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?,
             ),
             NonterminalKind::Lifetime => {
                 if self.check_lifetime() {

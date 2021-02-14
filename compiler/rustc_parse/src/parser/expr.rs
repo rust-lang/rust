@@ -1,7 +1,7 @@
 use super::pat::{GateOr, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{BlockMode, Parser, PathStyle, Restrictions, TokenType};
-use super::{SemiColonMode, SeqSep, TokenExpectType};
+use super::{AttrWrapper, BlockMode, ForceCollect, Parser, PathStyle, Restrictions, TokenType};
+use super::{SemiColonMode, SeqSep, TokenExpectType, TrailingToken};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
 use rustc_ast::ptr::P;
@@ -62,16 +62,16 @@ macro_rules! maybe_whole_expr {
 #[derive(Debug)]
 pub(super) enum LhsExpr {
     NotYetParsed,
-    AttributesParsed(AttrVec),
+    AttributesParsed(AttrWrapper),
     AlreadyParsed(P<Expr>),
 }
 
-impl From<Option<AttrVec>> for LhsExpr {
+impl From<Option<AttrWrapper>> for LhsExpr {
     /// Converts `Some(attrs)` into `LhsExpr::AttributesParsed(attrs)`
     /// and `None` into `LhsExpr::NotYetParsed`.
     ///
     /// This conversion does not allocate.
-    fn from(o: Option<AttrVec>) -> Self {
+    fn from(o: Option<AttrWrapper>) -> Self {
         if let Some(attrs) = o { LhsExpr::AttributesParsed(attrs) } else { LhsExpr::NotYetParsed }
     }
 }
@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_expr_res(
         &mut self,
         r: Restrictions,
-        already_parsed_attrs: Option<AttrVec>,
+        already_parsed_attrs: Option<AttrWrapper>,
     ) -> PResult<'a, P<Expr>> {
         self.with_res(r, |this| this.parse_assoc_expr(already_parsed_attrs))
     }
@@ -133,7 +133,10 @@ impl<'a> Parser<'a> {
     /// This parses an expression accounting for associativity and precedence of the operators in
     /// the expression.
     #[inline]
-    fn parse_assoc_expr(&mut self, already_parsed_attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
+    fn parse_assoc_expr(
+        &mut self,
+        already_parsed_attrs: Option<AttrWrapper>,
+    ) -> PResult<'a, P<Expr>> {
         self.parse_assoc_expr_with(0, already_parsed_attrs.into())
     }
 
@@ -439,7 +442,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses prefix-forms of range notation: `..expr`, `..`, `..=expr`.
-    fn parse_prefix_range_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
+    fn parse_prefix_range_expr(&mut self, attrs: Option<AttrWrapper>) -> PResult<'a, P<Expr>> {
         // Check for deprecated `...` syntax.
         if self.token == token::DotDotDot {
             self.err_dotdotdot_syntax(self.token.span);
@@ -456,45 +459,62 @@ impl<'a> Parser<'a> {
             _ => RangeLimits::Closed,
         };
         let op = AssocOp::from_token(&self.token);
+        // FIXME: `parse_prefix_range_expr` is called when the current
+        // token is `DotDot`, `DotDotDot`, or `DotDotEq`. If we haven't already
+        // parsed attributes, then trying to parse them here will always fail.
+        // We should figure out how we want attributes on range expressions to work.
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
-        let lo = self.token.span;
-        self.bump();
-        let (span, opt_end) = if self.is_at_start_of_range_notation_rhs() {
-            // RHS must be parsed with more associativity than the dots.
-            self.parse_assoc_expr_with(op.unwrap().precedence() + 1, LhsExpr::NotYetParsed)
-                .map(|x| (lo.to(x.span), Some(x)))?
-        } else {
-            (lo, None)
-        };
-        Ok(self.mk_expr(span, self.mk_range(None, opt_end, limits)?, attrs))
+        self.collect_tokens_for_expr(attrs, |this, attrs| {
+            let lo = this.token.span;
+            this.bump();
+            let (span, opt_end) = if this.is_at_start_of_range_notation_rhs() {
+                // RHS must be parsed with more associativity than the dots.
+                this.parse_assoc_expr_with(op.unwrap().precedence() + 1, LhsExpr::NotYetParsed)
+                    .map(|x| (lo.to(x.span), Some(x)))?
+            } else {
+                (lo, None)
+            };
+            Ok(this.mk_expr(span, this.mk_range(None, opt_end, limits)?, attrs.into()))
+        })
     }
 
     /// Parses a prefix-unary-operator expr.
-    fn parse_prefix_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
+    fn parse_prefix_expr(&mut self, attrs: Option<AttrWrapper>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
-        // FIXME: Use super::attr::maybe_needs_tokens(&attrs) once we come up
-        // with a good way of passing `force_tokens` through from `parse_nonterminal`.
-        // Checking !attrs.is_empty() is correct, but will cause us to unnecessarily
-        // capture tokens in some circumstances.
-        let needs_tokens = !attrs.is_empty();
-        let do_parse = |this: &mut Parser<'a>| {
-            let lo = this.token.span;
-            // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
-            let (hi, ex) = match this.token.uninterpolate().kind {
-                token::Not => this.parse_unary_expr(lo, UnOp::Not), // `!expr`
-                token::Tilde => this.recover_tilde_expr(lo),        // `~expr`
-                token::BinOp(token::Minus) => this.parse_unary_expr(lo, UnOp::Neg), // `-expr`
-                token::BinOp(token::Star) => this.parse_unary_expr(lo, UnOp::Deref), // `*expr`
-                token::BinOp(token::And) | token::AndAnd => this.parse_borrow_expr(lo),
-                token::Ident(..) if this.token.is_keyword(kw::Box) => this.parse_box_expr(lo),
-                token::Ident(..) if this.is_mistaken_not_ident_negation() => {
-                    this.recover_not_expr(lo)
-                }
-                _ => return this.parse_dot_or_call_expr(Some(attrs)),
-            }?;
-            Ok(this.mk_expr(lo.to(hi), ex, attrs))
-        };
-        if needs_tokens { self.collect_tokens(do_parse) } else { do_parse(self) }
+        let lo = self.token.span;
+
+        macro_rules! make_it {
+            ($this:ident, $attrs:expr, |this, _| $body:expr) => {
+                $this.collect_tokens_for_expr($attrs, |$this, attrs| {
+                    let (hi, ex) = $body?;
+                    Ok($this.mk_expr(lo.to(hi), ex, attrs.into()))
+                })
+            };
+        }
+
+        let this = self;
+
+        // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
+        match this.token.uninterpolate().kind {
+            token::Not => make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Not)), // `!expr`
+            token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)), // `~expr`
+            token::BinOp(token::Minus) => {
+                make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Neg))
+            } // `-expr`
+            token::BinOp(token::Star) => {
+                make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Deref))
+            } // `*expr`
+            token::BinOp(token::And) | token::AndAnd => {
+                make_it!(this, attrs, |this, _| this.parse_borrow_expr(lo))
+            }
+            token::Ident(..) if this.token.is_keyword(kw::Box) => {
+                make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
+            }
+            token::Ident(..) if this.is_mistaken_not_ident_negation() => {
+                make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
+            }
+            _ => return this.parse_dot_or_call_expr(Some(attrs.into())),
+        }
     }
 
     fn parse_prefix_expr_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
@@ -805,18 +825,20 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `a.b` or `a(13)` or `a[4]` or just `a`.
-    fn parse_dot_or_call_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
+    fn parse_dot_or_call_expr(&mut self, attrs: Option<AttrWrapper>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
-        let base = self.parse_bottom_expr();
-        let (span, base) = self.interpolated_or_expr_span(base)?;
-        self.parse_dot_or_call_expr_with(base, span, attrs)
+        self.collect_tokens_for_expr(attrs, |this, attrs| {
+            let base = this.parse_bottom_expr();
+            let (span, base) = this.interpolated_or_expr_span(base)?;
+            this.parse_dot_or_call_expr_with(base, span, attrs)
+        })
     }
 
     pub(super) fn parse_dot_or_call_expr_with(
         &mut self,
         e0: P<Expr>,
         lo: Span,
-        mut attrs: AttrVec,
+        mut attrs: Vec<ast::Attribute>,
     ) -> PResult<'a, P<Expr>> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
@@ -824,7 +846,7 @@ impl<'a> Parser<'a> {
         self.parse_dot_or_call_expr_with_(e0, lo).map(|expr| {
             expr.map(|mut expr| {
                 attrs.extend::<Vec<_>>(expr.attrs.into());
-                expr.attrs = attrs;
+                expr.attrs = attrs.into();
                 expr
             })
         })
@@ -1703,19 +1725,25 @@ impl<'a> Parser<'a> {
     fn parse_fn_block_param(&mut self) -> PResult<'a, Param> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
-        let pat = self.parse_pat(PARAM_EXPECTED)?;
-        let ty = if self.eat(&token::Colon) {
-            self.parse_ty()?
-        } else {
-            self.mk_ty(self.prev_token.span, TyKind::Infer)
-        };
-        Ok(Param {
-            attrs: attrs.into(),
-            ty,
-            pat,
-            span: lo.to(self.token.span),
-            id: DUMMY_NODE_ID,
-            is_placeholder: false,
+        self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
+            let pat = this.parse_pat(PARAM_EXPECTED)?;
+            let ty = if this.eat(&token::Colon) {
+                this.parse_ty()?
+            } else {
+                this.mk_ty(this.prev_token.span, TyKind::Infer)
+            };
+
+            Ok((
+                Param {
+                    attrs: attrs.into(),
+                    ty,
+                    pat,
+                    span: lo.to(this.token.span),
+                    id: DUMMY_NODE_ID,
+                    is_placeholder: false,
+                },
+                TrailingToken::MaybeComma,
+            ))
         })
     }
 
@@ -1731,7 +1759,7 @@ impl<'a> Parser<'a> {
         let thn = if self.eat_keyword(kw::Else) || !cond.returns() {
             self.error_missing_if_cond(lo, cond.span)
         } else {
-            let attrs = self.parse_outer_attributes()?; // For recovery.
+            let attrs = self.parse_outer_attributes()?.take_for_recovery(); // For recovery.
             let not_block = self.token != token::OpenDelim(token::Brace);
             let block = self.parse_block().map_err(|mut err| {
                 if not_block {
@@ -1788,7 +1816,7 @@ impl<'a> Parser<'a> {
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
         let ctx_span = self.prev_token.span; // `else`
-        let attrs = self.parse_outer_attributes()?; // For recovery.
+        let attrs = self.parse_outer_attributes()?.take_for_recovery(); // For recovery.
         let expr = if self.eat_keyword(kw::If) {
             self.parse_if_expr(AttrVec::new())?
         } else {
@@ -1947,85 +1975,91 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
         let attrs = self.parse_outer_attributes()?;
-        let lo = self.token.span;
-        let pat = self.parse_top_pat(GateOr::No, RecoverComma::Yes)?;
-        let guard = if self.eat_keyword(kw::If) {
-            let if_span = self.prev_token.span;
-            let cond = self.parse_expr()?;
-            if let ExprKind::Let(..) = cond.kind {
-                // Remove the last feature gating of a `let` expression since it's stable.
-                self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
-                let span = if_span.to(cond.span);
-                self.sess.gated_spans.gate(sym::if_let_guard, span);
+        self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
+            let lo = this.token.span;
+            let pat = this.parse_top_pat(GateOr::No, RecoverComma::Yes)?;
+            let guard = if this.eat_keyword(kw::If) {
+                let if_span = this.prev_token.span;
+                let cond = this.parse_expr()?;
+                if let ExprKind::Let(..) = cond.kind {
+                    // Remove the last feature gating of a `let` expression since it's stable.
+                    this.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+                    let span = if_span.to(cond.span);
+                    this.sess.gated_spans.gate(sym::if_let_guard, span);
+                }
+                Some(cond)
+            } else {
+                None
+            };
+            let arrow_span = this.token.span;
+            this.expect(&token::FatArrow)?;
+            let arm_start_span = this.token.span;
+
+            let expr = this.parse_expr_res(Restrictions::STMT_EXPR, None).map_err(|mut err| {
+                err.span_label(arrow_span, "while parsing the `match` arm starting here");
+                err
+            })?;
+
+            let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
+                && this.token != token::CloseDelim(token::Brace);
+
+            let hi = this.prev_token.span;
+
+            if require_comma {
+                let sm = this.sess.source_map();
+                this.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)]).map_err(
+                    |mut err| {
+                        match (sm.span_to_lines(expr.span), sm.span_to_lines(arm_start_span)) {
+                            (Ok(ref expr_lines), Ok(ref arm_start_lines))
+                                if arm_start_lines.lines[0].end_col
+                                    == expr_lines.lines[0].end_col
+                                    && expr_lines.lines.len() == 2
+                                    && this.token == token::FatArrow =>
+                            {
+                                // We check whether there's any trailing code in the parse span,
+                                // if there isn't, we very likely have the following:
+                                //
+                                // X |     &Y => "y"
+                                //   |        --    - missing comma
+                                //   |        |
+                                //   |        arrow_span
+                                // X |     &X => "x"
+                                //   |      - ^^ self.token.span
+                                //   |      |
+                                //   |      parsed until here as `"y" & X`
+                                err.span_suggestion_short(
+                                    arm_start_span.shrink_to_hi(),
+                                    "missing a comma here to end this `match` arm",
+                                    ",".to_owned(),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            _ => {
+                                err.span_label(
+                                    arrow_span,
+                                    "while parsing the `match` arm starting here",
+                                );
+                            }
+                        }
+                        err
+                    },
+                )?;
+            } else {
+                this.eat(&token::Comma);
             }
-            Some(cond)
-        } else {
-            None
-        };
-        let arrow_span = self.token.span;
-        self.expect(&token::FatArrow)?;
-        let arm_start_span = self.token.span;
 
-        let expr = self.parse_expr_res(Restrictions::STMT_EXPR, None).map_err(|mut err| {
-            err.span_label(arrow_span, "while parsing the `match` arm starting here");
-            err
-        })?;
-
-        let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
-            && self.token != token::CloseDelim(token::Brace);
-
-        let hi = self.prev_token.span;
-
-        if require_comma {
-            let sm = self.sess.source_map();
-            self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)]).map_err(
-                |mut err| {
-                    match (sm.span_to_lines(expr.span), sm.span_to_lines(arm_start_span)) {
-                        (Ok(ref expr_lines), Ok(ref arm_start_lines))
-                            if arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
-                                && expr_lines.lines.len() == 2
-                                && self.token == token::FatArrow =>
-                        {
-                            // We check whether there's any trailing code in the parse span,
-                            // if there isn't, we very likely have the following:
-                            //
-                            // X |     &Y => "y"
-                            //   |        --    - missing comma
-                            //   |        |
-                            //   |        arrow_span
-                            // X |     &X => "x"
-                            //   |      - ^^ self.token.span
-                            //   |      |
-                            //   |      parsed until here as `"y" & X`
-                            err.span_suggestion_short(
-                                arm_start_span.shrink_to_hi(),
-                                "missing a comma here to end this `match` arm",
-                                ",".to_owned(),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        _ => {
-                            err.span_label(
-                                arrow_span,
-                                "while parsing the `match` arm starting here",
-                            );
-                        }
-                    }
-                    err
+            Ok((
+                ast::Arm {
+                    attrs,
+                    pat,
+                    guard,
+                    body: expr,
+                    span: lo.to(hi),
+                    id: DUMMY_NODE_ID,
+                    is_placeholder: false,
                 },
-            )?;
-        } else {
-            self.eat(&token::Comma);
-        }
-
-        Ok(ast::Arm {
-            attrs,
-            pat,
-            guard,
-            body: expr,
-            span: lo.to(hi),
-            id: DUMMY_NODE_ID,
-            is_placeholder: false,
+                TrailingToken::None,
+            ))
         })
     }
 
@@ -2274,30 +2308,36 @@ impl<'a> Parser<'a> {
 
     /// Parses `ident (COLON expr)?`.
     fn parse_field(&mut self) -> PResult<'a, Field> {
-        let attrs = self.parse_outer_attributes()?.into();
-        let lo = self.token.span;
+        let attrs = self.parse_outer_attributes()?;
+        self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
+            let lo = this.token.span;
 
-        // Check if a colon exists one ahead. This means we're parsing a fieldname.
-        let is_shorthand = !self.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
-        let (ident, expr) = if is_shorthand {
-            // Mimic `x: x` for the `x` field shorthand.
-            let ident = self.parse_ident_common(false)?;
-            let path = ast::Path::from_ident(ident);
-            (ident, self.mk_expr(ident.span, ExprKind::Path(None, path), AttrVec::new()))
-        } else {
-            let ident = self.parse_field_name()?;
-            self.error_on_eq_field_init(ident);
-            self.bump(); // `:`
-            (ident, self.parse_expr()?)
-        };
-        Ok(ast::Field {
-            ident,
-            span: lo.to(expr.span),
-            expr,
-            is_shorthand,
-            attrs,
-            id: DUMMY_NODE_ID,
-            is_placeholder: false,
+            // Check if a colon exists one ahead. This means we're parsing a fieldname.
+            let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
+            let (ident, expr) = if is_shorthand {
+                // Mimic `x: x` for the `x` field shorthand.
+                let ident = this.parse_ident_common(false)?;
+                let path = ast::Path::from_ident(ident);
+                (ident, this.mk_expr(ident.span, ExprKind::Path(None, path), AttrVec::new()))
+            } else {
+                let ident = this.parse_field_name()?;
+                this.error_on_eq_field_init(ident);
+                this.bump(); // `:`
+                (ident, this.parse_expr()?)
+            };
+
+            Ok((
+                ast::Field {
+                    ident,
+                    span: lo.to(expr.span),
+                    expr,
+                    is_shorthand,
+                    attrs: attrs.into(),
+                    id: DUMMY_NODE_ID,
+                    is_placeholder: false,
+                },
+                TrailingToken::MaybeComma,
+            ))
         })
     }
 
@@ -2404,5 +2444,28 @@ impl<'a> Parser<'a> {
             .find(|a| a.style == AttrStyle::Outer)
             .map_or(lhs_span, |a| a.span)
             .to(rhs_span)
+    }
+
+    fn collect_tokens_for_expr(
+        &mut self,
+        attrs: AttrWrapper,
+        f: impl FnOnce(&mut Self, Vec<ast::Attribute>) -> PResult<'a, P<Expr>>,
+    ) -> PResult<'a, P<Expr>> {
+        // FIXME - come up with a nice way to properly forward `ForceCollect`from
+        // the nonterminal parsing code. TThis approach iscorrect, but will cause
+        // us to unnecessarily capture tokens for exprs that have only builtin
+        // attributes. Revisit this before #![feature(stmt_expr_attributes)] is stabilized
+        let force_collect = if attrs.is_empty() { ForceCollect::No } else { ForceCollect::Yes };
+        self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+            let res = f(this, attrs)?;
+            let trailing = if this.restrictions.contains(Restrictions::STMT_EXPR)
+                && this.token.kind == token::Semi
+            {
+                TrailingToken::Semi
+            } else {
+                TrailingToken::None
+            };
+            Ok((res, trailing))
+        })
     }
 }
