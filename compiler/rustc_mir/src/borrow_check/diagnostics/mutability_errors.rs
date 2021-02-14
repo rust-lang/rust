@@ -1,6 +1,7 @@
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_index::vec::Idx;
+use rustc_middle::hir::map::Map;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{
@@ -543,13 +544,24 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     // Attempt to search similar mutable associated items for suggestion.
     // In the future, attempt in all path but initially for RHS of for_loop
     fn suggest_similar_mut_method_for_for_loop(&self, err: &mut DiagnosticBuilder<'_>) {
-        let hir = self.infcx.tcx.hir();
-        let node = hir.item(self.mir_hir_id());
         use hir::{
-            Expr,
+            BodyId, Expr,
             ExprKind::{Block, Call, DropTemps, Match, MethodCall},
+            HirId, ImplItem, ImplItemKind, Item, ItemKind,
         };
-        if let hir::ItemKind::Fn(_, _, body_id) = node.kind {
+
+        fn maybe_body_id_of_fn(hir_map: &Map<'tcx>, id: HirId) -> Option<BodyId> {
+            match hir_map.find(id) {
+                Some(Node::Item(Item { kind: ItemKind::Fn(_, _, body_id), .. }))
+                | Some(Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(_, body_id), .. })) => {
+                    Some(*body_id)
+                }
+                _ => None,
+            }
+        }
+        let hir_map = self.infcx.tcx.hir();
+        let mir_body_hir_id = self.mir_hir_id();
+        if let Some(fn_body_id) = maybe_body_id_of_fn(&hir_map, mir_body_hir_id) {
             if let Block(
                 hir::Block {
                     expr:
@@ -579,7 +591,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ..
                 },
                 _,
-            ) = hir.body(body_id).value.kind
+            ) = hir_map.body(fn_body_id).value.kind
             {
                 let opt_suggestions = path_segment
                     .hir_id
