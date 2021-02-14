@@ -11,11 +11,19 @@ name = "cargo-miri-test"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "cdylib",
  "issue_1567",
  "issue_1691",
  "issue_1705",
  "rand",
  "serde_derive",
+]
+
+[[package]]
+name = "cdylib"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
 ]
 
 [[package]]
