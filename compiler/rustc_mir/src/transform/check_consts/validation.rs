@@ -492,7 +492,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         // Special-case reborrows to be more like a copy of a reference.
         match *rvalue {
             Rvalue::Ref(_, kind, place) => {
-                if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, self.body, place) {
+                if let Some(place_ref) = place_as_reborrow(self.tcx, self.body, place) {
                     let ctx = match kind {
                         BorrowKind::Shared => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
@@ -508,12 +508,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                         }
                     };
                     self.visit_local(&place.local, ctx, location);
-                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
+                    self.visit_projection(place.local, place_ref.projection, ctx, location);
                     return;
                 }
             }
             Rvalue::AddressOf(mutbl, place) => {
-                if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, self.body, place) {
+                if let Some(place_ref) = place_as_reborrow(self.tcx, self.body, place) {
                     let ctx = match mutbl {
                         Mutability::Not => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
@@ -521,7 +521,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
                     self.visit_local(&place.local, ctx, location);
-                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
+                    self.visit_projection(place.local, place_ref.projection, ctx, location);
                     return;
                 }
             }
@@ -1016,7 +1016,7 @@ fn place_as_reborrow(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     place: Place<'tcx>,
-) -> Option<&'a [PlaceElem<'tcx>]> {
+) -> Option<PlaceRef<'tcx>> {
     match place.as_ref().last_projection() {
         Some((place_base, ProjectionElem::Deref)) => {
             // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
@@ -1025,13 +1025,14 @@ fn place_as_reborrow(
                 None
             } else {
                 // Ensure the type being derefed is a reference and not a raw pointer.
-                //
                 // This is sufficient to prevent an access to a `static mut` from being marked as a
                 // reborrow, even if the check above were to disappear.
                 let inner_ty = place_base.ty(body, tcx).ty;
-                match inner_ty.kind() {
-                    ty::Ref(..) => Some(place_base.projection),
-                    _ => None,
+
+                if let ty::Ref(..) = inner_ty.kind() {
+                    return Some(place_base);
+                } else {
+                    return None;
                 }
             }
         }
