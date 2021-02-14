@@ -111,7 +111,7 @@ impl Step for Linkcheck {
 
         builder.info(&format!("Linkcheck ({})", host));
 
-        builder.default_doc(None);
+        builder.default_doc(&[]);
 
         let _time = util::timeit(&builder);
         try_run(
