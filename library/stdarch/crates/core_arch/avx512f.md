@@ -1569,343 +1569,211 @@
   * [ ] [`_mm512_mask_i32loscatter_epi64`] //not in llvm
   * [ ] [`_mm512_i32loscatter_pd`] //not in llvm
   * [ ] [`_mm512_mask_i32loscatter_pd`] //not in llvm
-
-  * [x] [`_mm512_castpd128_pd512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castpd128_pd512&expand=5236)
-  * [x] [`_mm512_castpd256_pd512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castpd256_pd512&expand=5236)
-  * [x] [`_mm512_castpd512_pd128`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castpd512_pd128&expand=5236)
-  * [x] [`_mm512_castpd512_pd256`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castpd512_pd256&expand=5236)
-  * [x] [`_mm512_castpd_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castpd_ps&expand=5236)
-  * [x] [`_mm512_castpd_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castpd_si512&expand=5236)
-  * [x] [`_mm512_castps128_ps512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castps128_ps512&expand=5236)
-  * [x] [`_mm512_castps256_ps512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castps256_ps512&expand=5236)
-  * [x] [`_mm512_castps512_ps128`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castps512_ps128&expand=5236)
-  * [x] [`_mm512_castps512_ps256`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castps512_ps256&expand=5236)
-  * [x] [`_mm512_castps_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castps_pd&expand=5236)
-  * [x] [`_mm512_castps_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castps_si512&expand=5236)
-  * [x] [`_mm512_castsi128_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castsi128_si512&expand=5236)
-  * [x] [`_mm512_castsi256_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castsi256_si512&expand=5236)
-  * [x] [`_mm512_castsi512_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castsi512_pd&expand=5236)
-  * [x] [`_mm512_castsi512_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castsi512_ps&expand=5236)
-  * [x] [`_mm512_castsi512_si128`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castsi512_si128&expand=5236)
-  * [x] [`_mm512_castsi512_si256`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_castsi512_si256&expand=5236)
-  * [x] [`_mm512_cvt_roundepi32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundepi32_ps&expand=5236)
-  * [x] [`_mm512_cvt_roundepu32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundepu32_ps&expand=5236)
-  * [x] [`_mm512_cvt_roundpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundpd_epi32&expand=5236)
-  * [x] [`_mm512_cvt_roundpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundpd_epu32&expand=5236)
-  * [x] [`_mm512_cvt_roundpd_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundpd_ps&expand=5236)
-  * [x] [`_mm512_cvt_roundph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundph_ps&expand=5236)
-  * [x] [`_mm512_cvt_roundps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundps_epi32&expand=5236)
-  * [x] [`_mm512_cvt_roundps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundps_epu32&expand=5236)
-  * [x] [`_mm512_cvt_roundps_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundps_pd&expand=5236)
-  * [x] [`_mm512_cvt_roundps_ph`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundps_ph&expand=5236)
-  * [x] [`_mm512_cvtepi16_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi16_epi32&expand=5236)
-  * [x] [`_mm512_cvtepi16_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi16_epi64&expand=5236)
-  * [x] [`_mm512_cvtepi32_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi32_epi16&expand=5236)
-  * [x] [`_mm512_cvtepi32_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi32_epi64&expand=5236)
-  * [x] [`_mm512_cvtepi32_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi32_epi8&expand=5236)
-  * [x] [`_mm512_cvtepi32_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi32_pd&expand=5236)
-  * [x] [`_mm512_cvtepi32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi32_ps&expand=5236)
-  * [x] [`_mm512_cvtepi32lo_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi32lo_pd&expand=5236)
-  * [x] [`_mm512_cvtepi64_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi64_epi16&expand=5236)
-  * [x] [`_mm512_cvtepi64_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi64_epi32&expand=5236)
-  * [x] [`_mm512_cvtepi64_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi64_epi8&expand=5236)
-  * [x] [`_mm512_cvtepi8_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi8_epi32&expand=5236)
-  * [x] [`_mm512_cvtepi8_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi8_epi64&expand=5236)
-  * [x] [`_mm512_cvtepu16_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu16_epi32&expand=5236)
-  * [x] [`_mm512_cvtepu16_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu16_epi64&expand=5236)
-  * [x] [`_mm512_cvtepu32_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu32_epi64&expand=5236)
-  * [x] [`_mm512_cvtepu32_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu32_pd&expand=5236)
-  * [x] [`_mm512_cvtepu32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu32_ps&expand=5236)
-  * [x] [`_mm512_cvtepu32lo_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu32lo_pd&expand=5236)
-  * [x] [`_mm512_cvtepu8_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu8_epi32&expand=5236)
-  * [x] [`_mm512_cvtepu8_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu8_epi64&expand=5236)
-  * [x] [`_mm512_cvtpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtpd_epi32&expand=5236)
-  * [x] [`_mm512_cvtpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtpd_epu32&expand=5236)
-  * [x] [`_mm512_cvtpd_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtpd_ps&expand=5236)
-  * [x] [`_mm512_cvtpd_pslo`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtpd_pslo&expand=5236)
-  * [x] [`_mm512_cvtph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtph_ps&expand=5236)
-  * [x] [`_mm512_cvtps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtps_epi32&expand=5236)
-  * [x] [`_mm512_cvtps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtps_epu32&expand=5236)
-  * [x] [`_mm512_cvtps_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtps_pd&expand=5236)
-  * [x] [`_mm512_cvtps_ph`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtps_ph&expand=5236)
-  * [x] [`_mm512_cvtpslo_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtpslo_pd&expand=5236)
-  * [x] [`_mm512_cvtsepi32_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtsepi32_epi16&expand=5236)
-  * [x] [`_mm512_cvtsepi32_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtsepi32_epi8&expand=5236)
-  * [x] [`_mm512_cvtsepi64_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtsepi64_epi16&expand=5236)
-  * [x] [`_mm512_cvtsepi64_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtsepi64_epi32&expand=5236)
-  * [x] [`_mm512_cvtsepi64_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtsepi64_epi8&expand=5236)
-  * [x] [`_mm512_cvtt_roundpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtt_roundpd_epi32&expand=5236)
-  * [x] [`_mm512_cvtt_roundpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtt_roundpd_epu32&expand=5236)
-  * [x] [`_mm512_cvtt_roundps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtt_roundps_epi32&expand=5236)
-  * [x] [`_mm512_cvtt_roundps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtt_roundps_epu32&expand=5236)
-  * [x] [`_mm512_cvttpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvttpd_epi32&expand=5236)
-  * [x] [`_mm512_cvttpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvttpd_epu32&expand=5236)
-  * [x] [`_mm512_cvttps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvttps_epi32&expand=5236)
-  * [x] [`_mm512_cvttps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvttps_epu32&expand=5236)
-  * [x] [`_mm512_cvtusepi32_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtusepi32_epi16&expand=5236)
-  * [x] [`_mm512_cvtusepi32_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtusepi32_epi8&expand=5236)
-  * [x] [`_mm512_cvtusepi64_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtusepi64_epi16&expand=5236)
-  * [x] [`_mm512_cvtusepi64_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtusepi64_epi32&expand=5236)
-  * [x] [`_mm512_cvtusepi64_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtusepi64_epi8&expand=5236)
-  * [x] [`_mm512_extractf32x4_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_extractf32x4_ps&expand=5236)
-  * [x] [`_mm512_extractf64x4_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_extractf64x4_pd&expand=5236)
-  * [x] [`_mm512_extracti32x4_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_extracti32x4_epi32&expand=5236)
-  * [x] [`_mm512_extracti64x4_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_extracti64x4_epi64&expand=5236)
-  * [x] [`_mm512_insertf32x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_insertf32x4&expand=5236)
-  * [x] [`_mm512_insertf64x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_insertf64x4&expand=5236)
-  * [x] [`_mm512_inserti32x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_inserti32x4&expand=5236)
-  * [x] [`_mm512_inserti64x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_inserti64x4&expand=5236)
-  * [x] [`_mm512_int2mask`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_int2mask&expand=5236)
-  * [x] [`_mm512_kand`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kand&expand=5236)
-  * [x] [`_mm512_kandn`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kandn&expand=5236)
-  * [x] [`_mm512_kmov`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kmov&expand=5236)
-  * [x] [`_mm512_knot`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_knot&expand=5236)
-  * [x] [`_mm512_kor`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kor&expand=5236)
-  * [x] [`_mm512_kortestc`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kortestc&expand=5236)
-  * [ ] [`_mm512_kortestz`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kortestz&expand=5236)
-  * [x] [`_mm512_kunpackb`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kunpackb&expand=5236)
-  * [x] [`_mm512_kxnor`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kxnor&expand=5236)
-  * [x] [`_mm512_kxor`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kxor&expand=5236)
-  * [x] [`_mm512_load_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_load_epi32&expand=5236)
-  * [x] [`_mm512_load_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_load_epi64&expand=5236)
-  * [x] [`_mm512_load_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_load_pd&expand=5236)
-  * [x] [`_mm512_load_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_load_ps&expand=5236)
-  * [x] [`_mm512_load_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_load_si512&expand=5236)
-  * [x] [`_mm512_loadu_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_loadu_pd&expand=5236)
-  * [x] [`_mm512_loadu_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_loadu_ps&expand=5236)
-  * [x] [`_mm512_loadu_epi32`]
-  * [x] [`_mm512_loadu_epi64`]
-  * [x] [`_mm512_loadu_si512`]
-  * [x] [`_mm512_mask2int`]
+  * [x] [`_mm512_inserti32x4`]
+  * [x] [`_mm512_mask_inserti32x4`]
+  * [x] [`_mm512_maskz_inserti32x4`]
+  * [x] [`_mm256_inserti32x4`]
+  * [x] [`_mm256_mask_inserti32x4`]
+  * [x] [`_mm256_maskz_inserti32x4`]
+  * [x] [`_mm512_inserti64x4`]
+  * [x] [`_mm512_mask_inserti64x4`]
+  * [x] [`_mm512_maskz_inserti64x4`]
+  * [x] [`_mm512_insertf32x4`]
+  * [x] [`_mm512_mask_insertf32x4`]
+  * [x] [`_mm512_maskz_insertf32x4`]
+  * [x] [`_mm256_insertf32x4`]
+  * [x] [`_mm256_mask_insertf32x4`]
+  * [x] [`_mm256_maskz_insertf32x4`]
+  * [x] [`_mm512_insertf64x4`]
+  * [x] [`_mm512_mask_insertf64x4`]
+  * [x] [`_mm512_maskz_insertf64x4`]
+  * [x] [`_mm512_extracti32x4_epi32`]
+  * [x] [`_mm512_mask_extracti32x4_epi32`]
+  * [x] [`_mm512_maskz_extracti32x4_epi32`]
+  * [x] [`_mm256_extracti32x4_epi32`]
+  * [x] [`_mm256_mask_extracti32x4_epi32`]
+  * [x] [`_mm256_maskz_extracti32x4_epi32`]
+  * [x] [`_mm512_extracti64x4_epi64`]
+  * [x] [`_mm512_mask_extracti64x4_epi64`]
+  * [x] [`_mm512_maskz_extracti64x4_epi64`]
+  * [x] [`_mm512_extractf32x4_ps`]
+  * [x] [`_mm512_mask_extractf32x4_ps`]
+  * [x] [`_mm512_maskz_extractf32x4_ps`]
+  * [x] [`_mm256_extractf32x4_ps`]
+  * [x] [`_mm256_mask_extractf32x4_ps`]
+  * [x] [`_mm256_maskz_extractf32x4_ps`]
+  * [x] [`_mm512_extractf64x4_pd`]
+  * [x] [`_mm512_mask_extractf64x4_pd`]
+  * [x] [`_mm512_maskz_extractf64x4_pd`]
+  * [x] [`_mm512_maskz_compress_epi32`]
   * [x] [`_mm512_mask_compress_epi32`]
+  * [x] [`_mm_mask_compress_epi32`]
+  * [x] [`_mm_maskz_compress_epi32`]
+  * [x] [`_mm256_mask_compress_epi32`]
+  * [x] [`_mm256_maskz_compress_epi32`]
   * [x] [`_mm512_mask_compress_epi64`]
-  * [x] [`_mm512_mask_compress_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_compress_pd&expand=5236)
-  * [x] [`_mm512_mask_compress_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_compress_ps&expand=5236)
-  * [ ] [`_mm512_mask_compressstoreu_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_compressstoreu_epi32&expand=5236)
-  * [ ] [`_mm512_mask_compressstoreu_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_compressstoreu_epi64&expand=5236)
-  * [ ] [`_mm512_mask_compressstoreu_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_compressstoreu_pd&expand=5236)
-  * [ ] [`_mm512_mask_compressstoreu_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_compressstoreu_ps&expand=5236)
-  * [x] [`_mm512_mask_cvt_roundepi32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundepi32_ps&expand=5236)
-  * [x] [`_mm512_mask_cvt_roundepu32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundepu32_ps&expand=5236)
-  * [x] [`_mm512_mask_cvt_roundpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundpd_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvt_roundpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundpd_epu32&expand=5236)
-  * [x] [`_mm512_mask_cvt_roundpd_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundpd_ps&expand=5236)
-  * [x] [`_mm512_mask_cvt_roundph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundph_ps&expand=5236)
-  * [x] [`_mm512_mask_cvt_roundps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundps_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvt_roundps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundps_epu32&expand=5236)
-  * [x] [`_mm512_mask_cvt_roundps_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundps_pd&expand=5236)
-  * [x] [`_mm512_mask_cvt_roundps_ph`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundps_ph&expand=5236)
-  * [x] [`_mm512_mask_cvtepi16_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi16_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtepi16_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi16_epi64&expand=5236)
-  * [x] [`_mm512_mask_cvtepi32_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi32_epi16&expand=5236)
-  * [x] [`_mm512_mask_cvtepi32_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi32_epi64&expand=5236)
-  * [x] [`_mm512_mask_cvtepi32_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi32_epi8&expand=5236)
-  * [x] [`_mm512_mask_cvtepi32_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi32_pd&expand=5236)
-  * [x] [`_mm512_mask_cvtepi32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi32_ps&expand=5236)
-  * [ ] [`_mm512_mask_cvtepi32_storeu_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi32_storeu_epi16&expand=5236)
-  * [ ] [`_mm512_mask_cvtepi32_storeu_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi32_storeu_epi8&expand=5236)
-  * [x] [`_mm512_mask_cvtepi32lo_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi32lo_pd&expand=5236)
-  * [x] [`_mm512_mask_cvtepi64_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi64_epi16&expand=5236)
-  * [x] [`_mm512_mask_cvtepi64_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi64_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtepi64_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi64_epi8&expand=5236)
-  * [ ] [`_mm512_mask_cvtepi64_storeu_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi64_storeu_epi16&expand=5236)
-  * [ ] [`_mm512_mask_cvtepi64_storeu_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi64_storeu_epi32&expand=5236)
-  * [ ] [`_mm512_mask_cvtepi64_storeu_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi64_storeu_epi8&expand=5236)
-  * [x] [`_mm512_mask_cvtepi8_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi8_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtepi8_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi8_epi64&expand=5236)
-  * [x] [`_mm512_mask_cvtepu16_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu16_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtepu16_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu16_epi64&expand=5236)
-  * [x] [`_mm512_mask_cvtepu32_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu32_epi64&expand=5236)
-  * [x] [`_mm512_mask_cvtepu32_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu32_pd&expand=5236)
-  * [x] [`_mm512_mask_cvtepu32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu32_ps&expand=5236)
-  * [x] [`_mm512_mask_cvtepu32lo_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu32lo_pd&expand=5236)
-  * [x] [`_mm512_mask_cvtepu8_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu8_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtepu8_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu8_epi64&expand=5236)
-  * [x] [`_mm512_mask_cvtpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtpd_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtpd_epu32&expand=5236)
-  * [x] [`_mm512_mask_cvtpd_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtpd_ps&expand=5236)
-  * [x] [`_mm512_mask_cvtpd_pslo`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtpd_pslo&expand=5236)
-  * [x] [`_mm512_mask_cvtph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtph_ps&expand=5236)
-  * [x] [`_mm512_mask_cvtps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtps_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtps_epu32&expand=5236)
-  * [x] [`_mm512_mask_cvtps_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtps_pd&expand=5236)
-  * [x] [`_mm512_mask_cvtps_ph`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtps_ph&expand=5236)
-  * [x] [`_mm512_mask_cvtpslo_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtpslo_pd&expand=5236)
-  * [x] [`_mm512_mask_cvtsepi32_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtsepi32_epi16&expand=5236)
-  * [x] [`_mm512_mask_cvtsepi32_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtsepi32_epi8&expand=5236)
-  * [ ] [`_mm512_mask_cvtsepi32_storeu_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtsepi32_storeu_epi16&expand=5236)
-  * [ ] [`_mm512_mask_cvtsepi32_storeu_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtsepi32_storeu_epi8&expand=5236)
-  * [x] [`_mm512_mask_cvtsepi64_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtsepi64_epi16&expand=5236)
-  * [x] [`_mm512_mask_cvtsepi64_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtsepi64_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtsepi64_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtsepi64_epi8&expand=5236)
-  * [ ] [`_mm512_mask_cvtsepi64_storeu_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtsepi64_storeu_epi16&expand=5236)
-  * [ ] [`_mm512_mask_cvtsepi64_storeu_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtsepi64_storeu_epi32&expand=5236)
-  * [ ] [`_mm512_mask_cvtsepi64_storeu_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtsepi64_storeu_epi8&expand=5236)
-  * [x] [`_mm512_mask_cvtt_roundpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtt_roundpd_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtt_roundpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtt_roundpd_epu32&expand=5236)
-  * [x] [`_mm512_mask_cvtt_roundps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtt_roundps_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtt_roundps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtt_roundps_epu32&expand=5236)
-  * [x] [`_mm512_mask_cvttpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvttpd_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvttpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvttpd_epu32&expand=5236)
-  * [x] [`_mm512_mask_cvttps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvttps_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvttps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvttps_epu32&expand=5236)
-  * [x] [`_mm512_mask_cvtusepi32_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtusepi32_epi16&expand=5236)
-  * [x] [`_mm512_mask_cvtusepi32_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtusepi32_epi8&expand=5236)
-  * [ ] [`_mm512_mask_cvtusepi32_storeu_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtusepi32_storeu_epi16&expand=5236)
-  * [ ] [`_mm512_mask_cvtusepi32_storeu_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtusepi32_storeu_epi8&expand=5236)
-  * [x] [`_mm512_mask_cvtusepi64_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtusepi64_epi16&expand=5236)
-  * [x] [`_mm512_mask_cvtusepi64_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtusepi64_epi32&expand=5236)
-  * [x] [`_mm512_mask_cvtusepi64_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtusepi64_epi8&expand=5236)
-  * [ ] [`_mm512_mask_cvtusepi64_storeu_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtusepi64_storeu_epi16&expand=5236)
-  * [ ] [`_mm512_mask_cvtusepi64_storeu_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtusepi64_storeu_epi32&expand=5236)
-  * [ ] [`_mm512_mask_cvtusepi64_storeu_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtusepi64_storeu_epi8&expand=5236)
-  * [x] [`_mm512_mask_expand_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expand_epi32&expand=5236)
-  * [x] [`_mm512_mask_expand_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expand_epi64&expand=5236)
-  * [x] [`_mm512_mask_expand_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expand_pd&expand=5236)
-  * [x] [`_mm512_mask_expand_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expand_ps&expand=5236)
-  * [ ] [`_mm512_mask_expandloadu_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expandloadu_epi32&expand=5236)
-  * [ ] [`_mm512_mask_expandloadu_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expandloadu_epi64&expand=5236)
-  * [ ] [`_mm512_mask_expandloadu_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expandloadu_pd&expand=5236)
-  * [ ] [`_mm512_mask_expandloadu_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expandloadu_ps&expand=5236)
-  * [x] [`_mm512_mask_extractf32x4_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_extractf32x4_ps&expand=5236)
-  * [x] [`_mm512_mask_extractf64x4_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_extractf64x4_pd&expand=5236)
-  * [x] [`_mm512_mask_extracti32x4_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_extracti32x4_epi32&expand=5236)
-  * [x] [`_mm512_mask_extracti64x4_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_extracti64x4_epi64&expand=5236)
-  * [x] [`_mm512_mask_insertf32x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_insertf32x4&expand=5236)
-  * [x] [`_mm512_mask_insertf64x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_insertf64x4&expand=5236)
-  * [x] [`_mm512_mask_inserti32x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_inserti32x4&expand=5236)
-  * [x] [`_mm512_mask_inserti64x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_inserti64x4&expand=5236)
-  * [ ] [`_mm512_mask_load_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_load_epi32&expand=5236)
-  * [ ] [`_mm512_mask_load_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_load_epi64&expand=5236)
-  * [ ] [`_mm512_mask_load_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_load_pd&expand=5236)
-  * [ ] [`_mm512_mask_load_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_load_ps&expand=5236)
-  * [ ] [`_mm512_mask_loadu_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_loadu_epi32&expand=5236)
-  * [ ] [`_mm512_mask_loadu_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_loadu_epi64&expand=5236)
-  * [ ] [`_mm512_mask_loadu_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_loadu_pd&expand=5236)
-  * [ ] [`_mm512_mask_loadu_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_loadu_ps&expand=5236)
-  * [x] [`_mm512_mask_set1_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_set1_epi32&expand=5236)
-  * [x] [`_mm512_mask_set1_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_set1_epi64&expand=5236)
-  * [ ] [`_mm512_mask_store_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_store_epi32&expand=5236)
-  * [ ] [`_mm512_mask_store_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_store_epi64&expand=5236)
-  * [ ] [`_mm512_mask_store_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_store_pd&expand=5236)
-  * [ ] [`_mm512_mask_store_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_store_ps&expand=5236)
-  * [ ] [`_mm512_mask_storeu_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_storeu_epi32&expand=5236)
-  * [ ] [`_mm512_mask_storeu_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_storeu_epi64&expand=5236)
-  * [ ] [`_mm512_mask_storeu_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_storeu_pd&expand=5236)
-  * [ ] [`_mm512_mask_storeu_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_storeu_ps&expand=5236)
-  * [x] [`_mm512_mask_ternarylogic_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_ternarylogic_epi32&expand=5236)
-  * [x] [`_mm512_mask_ternarylogic_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_ternarylogic_epi64&expand=5236)
-  * [x] [`_mm512_mask_test_epi32_mask`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_test_epi32_mask&expand=5236)
-  * [x] [`_mm512_mask_test_epi64_mask`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_test_epi64_mask&expand=5236)
-  * [x] [`_mm512_mask_testn_epi32_mask`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_testn_epi32_mask&expand=5236)
-  * [x] [`_mm512_mask_testn_epi64_mask`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_testn_epi64_mask&expand=5236)
-  * [x] [`_mm512_maskz_compress_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_compress_epi32&expand=5236)
-  * [x] [`_mm512_maskz_compress_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_compress_epi64&expand=5236)
-  * [x] [`_mm512_maskz_compress_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_compress_pd&expand=5236)
-  * [x] [`_mm512_maskz_compress_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_compress_ps&expand=5236)
-  * [x] [`_mm512_maskz_cvt_roundepi32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundepi32_ps&expand=5236)
-  * [x] [`_mm512_maskz_cvt_roundepu32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundepu32_ps&expand=5236)
-  * [x] [`_mm512_maskz_cvt_roundpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundpd_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvt_roundpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundpd_epu32&expand=5236)
-  * [x] [`_mm512_maskz_cvt_roundpd_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundpd_ps&expand=5236)
-  * [x] [`_mm512_maskz_cvt_roundph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundph_ps&expand=5236)
-  * [x] [`_mm512_maskz_cvt_roundps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundps_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvt_roundps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundps_epu32&expand=5236)
-  * [x] [`_mm512_maskz_cvt_roundps_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundps_pd&expand=5236)
-  * [x] [`_mm512_maskz_cvt_roundps_ph`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundps_ph&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi16_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi16_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi16_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi16_epi64&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi32_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi32_epi16&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi32_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi32_epi64&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi32_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi32_epi8&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi32_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi32_pd&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi32_ps&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi64_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi64_epi16&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi64_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi64_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi64_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi64_epi8&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi8_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi8_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtepi8_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi8_epi64&expand=5236)
-  * [x] [`_mm512_maskz_cvtepu16_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepu16_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtepu16_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepu16_epi64&expand=5236)
-  * [x] [`_mm512_maskz_cvtepu32_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepu32_epi64&expand=5236)
-  * [x] [`_mm512_maskz_cvtepu32_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepu32_pd&expand=5236)
-  * [x] [`_mm512_maskz_cvtepu32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepu32_ps&expand=5236)
-  * [x] [`_mm512_maskz_cvtepu8_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepu8_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtepu8_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepu8_epi64&expand=5236)
-  * [x] [`_mm512_maskz_cvtpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtpd_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtpd_epu32&expand=5236)
-  * [x] [`_mm512_maskz_cvtpd_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtpd_ps&expand=5236)
-  * [x] [`_mm512_maskz_cvtph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtph_ps&expand=5236)
-  * [x] [`_mm512_maskz_cvtps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtps_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtps_epu32&expand=5236)
-  * [x] [`_mm512_maskz_cvtps_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtps_pd&expand=5236)
-  * [x] [`_mm512_maskz_cvtps_ph`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtps_ph&expand=5236)
-  * [x] [`_mm512_maskz_cvtsepi32_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtsepi32_epi16&expand=5236)
-  * [x] [`_mm512_maskz_cvtsepi32_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtsepi32_epi8&expand=5236)
-  * [x] [`_mm512_maskz_cvtsepi64_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtsepi64_epi16&expand=5236)
-  * [x] [`_mm512_maskz_cvtsepi64_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtsepi64_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtsepi64_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtsepi64_epi8&expand=5236)
-  * [x] [`_mm512_maskz_cvtt_roundpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtt_roundpd_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtt_roundpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtt_roundpd_epu32&expand=5236)
-  * [x] [`_mm512_maskz_cvtt_roundps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtt_roundps_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtt_roundps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtt_roundps_epu32&expand=5236)
-  * [x] [`_mm512_maskz_cvttpd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvttpd_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvttpd_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvttpd_epu32&expand=5236)
-  * [x] [`_mm512_maskz_cvttps_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvttps_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvttps_epu32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvttps_epu32&expand=5236)
-  * [x] [`_mm512_maskz_cvtusepi32_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtusepi32_epi16&expand=5236)
-  * [x] [`_mm512_maskz_cvtusepi32_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtusepi32_epi8&expand=5236)
-  * [x] [`_mm512_maskz_cvtusepi64_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtusepi64_epi16&expand=5236)
-  * [x] [`_mm512_maskz_cvtusepi64_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtusepi64_epi32&expand=5236)
-  * [x] [`_mm512_maskz_cvtusepi64_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtusepi64_epi8&expand=5236)
-  * [x] [`_mm512_maskz_expand_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expand_epi32&expand=5236)
-  * [x] [`_mm512_maskz_expand_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expand_epi64&expand=5236)
-  * [x] [`_mm512_maskz_expand_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expand_pd&expand=5236)
-  * [x] [`_mm512_maskz_expand_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expand_ps&expand=5236)
-  * [ ] [`_mm512_maskz_expandloadu_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expandloadu_epi32&expand=5236)
-  * [ ] [`_mm512_maskz_expandloadu_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expandloadu_epi64&expand=5236)
-  * [ ] [`_mm512_maskz_expandloadu_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expandloadu_pd&expand=5236)
-  * [ ] [`_mm512_maskz_expandloadu_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expandloadu_ps&expand=5236)
-  * [x] [`_mm512_maskz_extractf32x4_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_extractf32x4_ps&expand=5236)
-  * [x] [`_mm512_maskz_extractf64x4_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_extractf64x4_pd&expand=5236)
-  * [x] [`_mm512_maskz_extracti32x4_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_extracti32x4_epi32&expand=5236)
-  * [x] [`_mm512_maskz_extracti64x4_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_extracti64x4_epi64&expand=5236)
-  * [x] [`_mm512_maskz_insertf32x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_insertf32x4&expand=5236)
-  * [x] [`_mm512_maskz_insertf64x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_insertf64x4&expand=5236)
-  * [x] [`_mm512_maskz_inserti32x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_inserti32x4&expand=5236)
-  * [x] [`_mm512_maskz_inserti64x4`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_inserti64x4&expand=5236)
-  * [ ] [`_mm512_maskz_load_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_load_epi32&expand=5236)
-  * [ ] [`_mm512_maskz_load_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_load_epi64&expand=5236)
-  * [ ] [`_mm512_maskz_load_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_load_pd&expand=5236)
-  * [ ] [`_mm512_maskz_load_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_load_ps&expand=5236)
-  * [ ] [`_mm512_maskz_loadu_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_loadu_epi32&expand=5236)
-  * [ ] [`_mm512_maskz_loadu_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_loadu_epi64&expand=5236)
-  * [ ] [`_mm512_maskz_loadu_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_loadu_pd&expand=5236)
-  * [ ] [`_mm512_maskz_loadu_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_loadu_ps&expand=5236)
+  * [x] [`_mm512_maskz_compress_epi64`]
+  * [x] [`_mm_mask_compress_epi64`]
+  * [x] [`_mm_maskz_compress_epi64`]
+  * [x] [`_mm256_mask_compress_epi64`]
+  * [x] [`_mm256_maskz_compress_epi64`]
+  * [x] [`_mm512_mask_compress_ps`]
+  * [x] [`_mm512_maskz_compress_ps`]
+  * [x] [`_mm_mask_compress_ps`]
+  * [x] [`_mm_maskz_compress_ps`]
+  * [x] [`_mm256_mask_compress_ps`]
+  * [x] [`_mm256_maskz_compress_ps`]
+  * [x] [`_mm512_mask_compress_pd`]
+  * [x] [`_mm512_maskz_compress_pd`]
+  * [x] [`_mm_mask_compress_pd`]
+  * [x] [`_mm_maskz_compress_pd`]
+  * [x] [`_mm256_mask_compress_pd`]
+  * [x] [`_mm256_maskz_compress_pd`]
+  * [ ] [`_mm512_mask_compressstoreu_epi32`] //need i1
+  * [_] [`_mm_mask_compressstoreu_epi32`] //need i1
+  * [_] [`_mm256_mask_compressstoreu_epi32`] //need i1
+  * [ ] [`_mm512_mask_compressstoreu_epi64`] //need i1
+  * [_] [`_mm_mask_compressstoreu_epi64`] //need i1
+  * [_] [`_mm256_mask_compressstoreu_epi64`] //need i1
+  * [ ] [`_mm512_mask_compressstoreu_ps`] //need i1
+  * [_] [`_mm_mask_compressstoreu_ps`] //need i1
+  * [_] [`_mm256_mask_compressstoreu_ps`] //need i1
+  * [ ] [`_mm512_mask_compressstoreu_pd`] //need i1
+  * [_] [`_mm_mask_compressstoreu_pd`] //need i1
+  * [_] [`_mm256_mask_compressstoreu_pd`] //need i1
+  * [x] [`_mm512_mask_expand_epi32`]
+  * [x] [`_mm512_maskz_expand_epi32`]
+  * [x] [`_mm_mask_expand_epi32`]
+  * [x] [`_mm_maskz_expand_epi32`]
+  * [x] [`_mm256_mask_expand_epi32`]
+  * [x] [`_mm256_maskz_expand_epi32`]
+  * [x] [`_mm512_mask_expand_epi64`]
+  * [x] [`_mm512_maskz_expand_epi64`]
+  * [x] [`_mm_mask_expand_epi64`]
+  * [x] [`_mm_maskz_expand_epi64`]
+  * [x] [`_mm256_mask_expand_epi64`]
+  * [x] [`_mm256_maskz_expand_epi64`]
+  * [x] [`_mm512_mask_expand_ps`]
+  * [x] [`_mm512_maskz_expand_ps`]
+  * [x] [`_mm_mask_expand_ps`]
+  * [x] [`_mm_maskz_expand_ps`]
+  * [x] [`_mm256_mask_expand_ps`]
+  * [x] [`_mm256_maskz_expand_ps`]
+  * [x] [`_mm512_mask_expand_pd`]
+  * [x] [`_mm512_maskz_expand_pd`]
+  * [x] [`_mm_mask_expand_pd`]
+  * [x] [`_mm_maskz_expand_pd`]
+  * [x] [`_mm256_mask_expand_pd`]
+  * [x] [`_mm256_maskz_expand_pd`]
+  * [ ] [`_mm512_mask_expandloadu_epi32`] //need i1
+  * [ ] [`_mm512_maskz_expandloadu_epi32`] //need i1
+  * [_] [`_mm_mask_expandloadu_epi32`] //need i1
+  * [_] [`_mm_maskz_expandloadu_epi32`] //need i1
+  * [_] [`_mm256_mask_expandloadu_epi32`] //need i1
+  * [_] [`_mm256_maskz_expandloadu_epi32`] //need i1
+  * [ ] [`_mm512_mask_expandloadu_epi64`] //need i1
+  * [ ] [`_mm512_maskz_expandloadu_epi64`] //need i1
+  * [_] [`_mm_mask_expandloadu_epi64`] //need i1
+  * [_] [`_mm_maskz_expandloadu_epi64`] //need i1
+  * [_] [`_mm256_mask_expandloadu_epi64`] //need i1
+  * [_] [`_mm256_maskz_expandloadu_epi64`] //need i1
+  * [ ] [`_mm512_mask_expandloadu_ps`] //need i1
+  * [ ] [`_mm512_maskz_expandloadu_ps`] //need i1
+  * [_] [`_mm_mask_expandloadu_ps`] //need i1
+  * [_] [`_mm_maskz_expandloadu_ps`] //need i1
+  * [_] [`_mm256_mask_expandloadu_ps`] //need i1
+  * [_] [`_mm256_maskz_expandloadu_ps`] //need i1
+  * [ ] [`_mm512_mask_expandloadu_pd`] //need i1
+  * [ ] [`_mm512_maskz_expandloadu_pd`] //need i1
+  * [_] [`_mm_mask_expandloadu_pd`] //need i1
+  * [_] [`_mm_maskz_expandloadu_pd`] //need i1
+  * [_] [`_mm256_mask_expandloadu_pd`] //need i1
+  * [_] [`_mm256_maskz_expandloadu_pd`] //need i1
+  * [x] [`_mm512_zextpd128_pd512`]
+  * [x] [`_mm512_zextpd256_pd512`]
+  * [x] [`_mm512_zextps128_ps512`]
+  * [x] [`_mm512_zextps256_ps512`]
+  * [x] [`_mm512_zextsi128_si512`]
+  * [x] [`_mm512_zextsi256_si512`]
+  * [x] [`_mm512_undefined_epi32`]
+  * [x] [`_mm512_undefined_pd`]
+  * [x] [`_mm512_undefined_ps`]
+  * [x] [`_mm512_undefined`]
+  * [ ] [`_mm512_svml_round_pd`] //not in llvm
+  * [x] [`_mm512_ternarylogic_epi32`]
+  * [x] [`_mm512_mask_ternarylogic_epi32`]
+  * [x] [`_mm512_maskz_ternarylogic_epi32`]
+  * [x] [`_mm_mask_ternarylogic_epi32`]
+  * [x] [`_mm_maskz_ternarylogic_epi32`]
+  * [x] [`_mm_ternarylogic_epi32`]
+  * [x] [`_mm256_mask_ternarylogic_epi32`]
+  * [x] [`_mm256_maskz_ternarylogic_epi32`]
+  * [x] [`_mm256_ternarylogic_epi32`]
+  * [x] [`_mm512_ternarylogic_epi64`]
+  * [x] [`_mm512_mask_ternarylogic_epi64`]
+  * [x] [`_mm512_maskz_ternarylogic_epi64`]
+  * [x] [`_mm_mask_ternarylogic_epi64`]
+  * [x] [`_mm_maskz_ternarylogic_epi64`]
+  * [x] [`_mm_ternarylogic_epi64`]
+  * [x] [`_mm256_mask_ternarylogic_epi64`]
+  * [x] [`_mm256_maskz_ternarylogic_epi64`]
+  * [x] [`_mm256_ternarylogic_epi64`]
+  * [x] [`_mm512_test_epi32_mask`]
+  * [x] [`_mm512_mask_test_epi32_mask`]
+  * [x] [`_mm_mask_test_epi32_mask`]
+  * [x] [`_mm_test_epi32_mask`]
+  * [x] [`_mm256_mask_test_epi32_mask`]
+  * [x] [`_mm256_test_epi32_mask`]
+  * [x] [`_mm512_test_epi64_mask`]
+  * [x] [`_mm512_mask_test_epi64_mask`]
+  * [x] [`_mm_mask_test_epi64_mask`]
+  * [x] [`_mm_test_epi64_mask`]
+  * [x] [`_mm256_mask_test_epi64_mask`]
+  * [x] [`_mm256_test_epi64_mask`]
+  * [x] [`_mm512_testn_epi32_mask`]
+  * [x] [`_mm512_mask_testn_epi32_mask`]
+  * [x] [`_mm_mask_testn_epi32_mask`]
+  * [x] [`_mm_testn_epi32_mask`]
+  * [x] [`_mm256_mask_testn_epi32_mask`]
+  * [x] [`_mm256_testn_epi32_mask`]
+  * [x] [`_mm512_testn_epi64_mask`]
+  * [x] [`_mm512_mask_testn_epi64_mask`]
+  * [x] [`_mm_mask_testn_epi64_mask`]
+  * [x] [`_mm_testn_epi64_mask`]
+  * [x] [`_mm256_mask_testn_epi64_mask`]
+  * [x] [`_mm256_testn_epi64_mask`]
+  * [x] [`_mm512_set1_epi8`]
+  * [x] [`_mm512_set1_epi16`]
+  * [x] [`_mm512_set1_epi32`]
+  * [x] [`_mm512_mask_set1_epi32`]
   * [x] [`_mm512_maskz_set1_epi32`]
+  * [x] [`_mm_mask_set1_epi32`]
+  * [x] [`_mm_maskz_set1_epi32`]
+  * [x] [`_mm256_mask_set1_epi32`]
+  * [x] [`_mm256_maskz_set1_epi32`]
+  * [x] [`_mm512_set1_epi64`]
+  * [x] [`_mm512_mask_set1_epi64`]
   * [x] [`_mm512_maskz_set1_epi64`]
-  * [x] [`_mm512_maskz_ternarylogic_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_ternarylogic_epi32&expand=5236)
-  * [x] [`_mm512_maskz_ternarylogic_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_ternarylogic_epi64&expand=5236)
-  * [x] [`_mm512_set1_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set1_epi16&expand=5236)
-  * [x] [`_mm512_set1_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set1_epi32&expand=5236)
-  * [x] [`_mm512_set1_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set1_epi64&expand=5236)
-  * [x] [`_mm512_set1_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set1_epi8&expand=5236)
-  * [x] [`_mm512_set1_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set1_pd&expand=5236)
-  * [x] [`_mm512_set1_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set1_ps&expand=5236)
-  * [x] [`_mm512_set4_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set4_epi32&expand=5236)
-  * [x] [`_mm512_set4_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set4_epi64&expand=5236)
-  * [x] [`_mm512_set4_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set4_pd&expand=5236)
-  * [x] [`_mm512_set4_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set4_ps&expand=5236)
-  * [x] [`_mm512_set_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set_epi16&expand=5236)
-  * [x] [`_mm512_set_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set_epi32&expand=5236)
-  * [x] [`_mm512_set_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set_epi64&expand=5236)
-  * [x] [`_mm512_set_epi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set_epi8&expand=5236)
-  * [x] [`_mm512_set_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set_pd&expand=5236)
-  * [x] [`_mm512_set_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set_ps&expand=5236)
-  * [x] [`_mm512_setr4_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_setr4_epi32&expand=5236)
-  * [x] [`_mm512_setr4_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_setr4_epi64&expand=5236)
-  * [x] [`_mm512_setr4_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_setr4_pd&expand=5236)
-  * [x] [`_mm512_setr4_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_setr4_ps&expand=5236)
+  * [x] [`_mm_mask_set1_epi64`]
+  * [x] [`_mm_maskz_set1_epi64`]
+  * [x] [`_mm256_mask_set1_epi64`]
+  * [x] [`_mm256_maskz_set1_epi64`]
+  * [x] [`_mm512_set1_ps`]
+  * [x] [`_mm512_set1_pd`]
+  * [x] [`_mm512_set4_epi32`]
+  * [x] [`_mm512_set4_epi64`]
+  * [x] [`_mm512_set4_pd`]
+  * [x] [`_mm512_set4_ps`]
+  * [x] [`_mm512_set_epi16`]
+  * [x] [`_mm512_set_epi32`]
+  * [x] [`_mm512_set_epi64`]
+  * [x] [`_mm512_set_epi8`]
+  * [x] [`_mm512_set_pd`]
+  * [x] [`_mm512_set_ps`]
+  * [x] [`_mm512_setr4_epi32`]
+  * [x] [`_mm512_setr4_epi64`]
+  * [x] [`_mm512_setr4_pd`]
+  * [x] [`_mm512_setr4_ps`]
   * [x] [`_mm512_setr_epi32`]
   * [x] [`_mm512_setr_epi64`]
   * [x] [`_mm512_setr_pd`]
@@ -1915,37 +1783,407 @@
   * [x] [`_mm512_setzero_ps`]
   * [x] [`_mm512_setzero_si512`]
   * [x] [`_mm512_setzero`]
-  * [x] [`_mm512_store_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_store_epi32&expand=5236)
-  * [x] [`_mm512_store_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_store_epi64&expand=5236)
-  * [x] [`_mm512_store_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_store_pd&expand=5236)
-  * [x] [`_mm512_store_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_store_ps&expand=5236)
-  * [x] [`_mm512_store_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_store_si512&expand=5236)
-  * [x] [`_mm512_storeu_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_storeu_pd&expand=5236)
-  * [x] [`_mm512_storeu_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_storeu_ps&expand=5236)
+  * [x] [`_mm512_load_epi32`]
+  * [ ] [`_mm512_mask_load_epi32`] //need i1
+  * [ ] [`_mm512_maskz_load_epi32`] //need i1
+  * [x] [`_mm_load_epi32`]
+  * [_] [`_mm_mask_load_epi32`] //need i1
+  * [_] [`_mm_maskz_load_epi32`] //need i1
+  * [x] [`_mm256_load_epi32`]
+  * [_] [`_mm256_mask_load_epi32`] //need i1
+  * [_] [`_mm256_maskz_load_epi32`] //need i1
+  * [x] [`_mm512_load_epi64`]
+  * [ ] [`_mm512_mask_load_epi64`] //need i1
+  * [ ] [`_mm512_maskz_load_epi64`] //need i1
+  * [x] [`_mm_load_epi64`] //need i1
+  * [_] [`_mm_mask_load_epi64`] //need i1
+  * [_] [`_mm_maskz_load_epi64`] //need i1
+  * [x] [`_mm256_load_epi64`] //need i1
+  * [_] [`_mm256_mask_load_epi64`] //need i1
+  * [_] [`_mm256_maskz_load_epi64`] //need i1
+  * [x] [`_mm512_load_ps`]
+  * [ ] [`_mm512_mask_load_ps`] //need i1
+  * [ ] [`_mm512_maskz_load_ps`] //need i1
+  * [_] [`_mm_maskz_load_ps`] //need i
+  * [_] [`_mm_mask_load_ps`] //need i1
+  * [_] [`_mm_maskz_load_ps`] //need i1
+  * [_] [`_mm256_mask_load_ps`] //need i1
+  * [_] [`_mm256_maskz_load_ps`] //need i1
+  * [x] [`_mm512_load_pd`]
+  * [ ] [`_mm512_mask_load_pd`] //need i1
+  * [ ] [`_mm512_maskz_load_pd`] //need i1
+  * [_] [`_mm_mask_load_pd`] //need i1
+  * [_] [`_mm_maskz_load_pd`] //need i1
+  * [_] [`_mm256_mask_load_pd`] //need i1
+  * [_] [`_mm256_maskz_load_pd`] //need i1
+  * [x] [`_mm512_load_si512`]
+  * [x] [`_mm512_loadu_epi32`]
+  * [ ] [`_mm512_mask_loadu_epi32`] //need i1
+  * [x] [`_mm_loadu_epi32`]
+  * [_] [`_mm_mask_loadu_epi32`] //need i1
+  * [_] [`_mm_maskz_loadu_epi32`] //need i1
+  * [ ] [`_mm512_maskz_loadu_epi32`] //need i1
+  * [x] [`_mm256_loadu_epi32`]
+  * [_] [`_mm256_mask_loadu_epi32`] //need i1
+  * [_] [`_mm256_maskz_loadu_epi32`] //need i1
+  * [x] [`_mm512_loadu_epi64`]
+  * [ ] [`_mm512_mask_loadu_epi64`] //need i1
+  * [ ] [`_mm512_maskz_loadu_epi64`] //need i1
+  * [x] [`_mm_loadu_epi64`]
+  * [_] [`_mm_mask_loadu_epi64`] //need i1
+  * [_] [`_mm_maskz_loadu_epi64`] //need i1
+  * [x] [`_mm256_loadu_epi64`]
+  * [_] [`_mm256_mask_loadu_epi64`] //need i1
+  * [_] [`_mm256_maskz_loadu_epi64`] //need i1
+  * [x] [`_mm512_loadu_ps`]
+  * [ ] [`_mm512_mask_loadu_ps`] //need i1
+  * [ ] [`_mm512_maskz_loadu_ps`] //need i1
+  * [_] [`_mm_mask_loadu_ps`] //need i1
+  * [_] [`_mm_maskz_loadu_ps`] //need i1
+  * [_] [`_mm256_mask_loadu_ps`] //need i1
+  * [_] [`_mm256_maskz_loadu_ps`] //need i1
+  * [x] [`_mm512_loadu_pd`]
+  * [ ] [`_mm512_mask_loadu_pd`] //need i1
+  * [ ] [`_mm512_maskz_loadu_pd`] //need i1
+  * [_] [`_mm_mask_loadu_pd`] //need i1
+  * [_] [`_mm_maskz_loadu_pd`] //need i1
+  * [_] [`_mm256_mask_loadu_pd`] //need i1
+  * [_] [`_mm256_maskz_loadu_pd`] //need i1
+  * [x] [`_mm512_loadu_si512`]
+  * [x] [`_mm512_store_epi32`]
+  * [ ] [`_mm512_mask_store_epi32`] //need i1
+  * [_] [`_mm_mask_store_epi32`] //need i1
+  * [x] [`_mm_store_epi32`]
+  * [_] [`_mm256_mask_store_epi32`] //need i1
+  * [x] [`_mm256_store_epi32`]
+  * [x] [`_mm512_store_epi64`]
+  * [ ] [`_mm512_mask_store_epi64`] //need i1
+  * [_] [`_mm_mask_store_epi64`] //need i1
+  * [x] [`_mm_store_epi64`]
+  * [_] [`_mm256_mask_store_epi64`] //need i1
+  * [x] [`_mm256_store_epi64`]
+  * [x] [`_mm512_store_ps`]
+  * [ ] [`_mm512_mask_store_ps`] //need i1
+  * [_] [`_mm_mask_store_ps`] //need i1
+  * [_] [`_mm256_mask_store_ps`] //need i1
+  * [x] [`_mm512_store_pd`]
+  * [ ] [`_mm512_mask_store_pd`] //need i1
+  * [_] [`_mm_mask_store_pd`] //need i1
+  * [_] [`_mm256_mask_store_pd`] //need i1
+  * [x] [`_mm512_store_si512`]
   * [x] [`_mm512_storeu_epi32`]
+  * [ ] [`_mm512_mask_storeu_epi32`] //need i1
+  * [_] [`_mm_mask_storeu_epi32`] //need i1
+  * [x] [`_mm_storeu_epi32`]
+  * [_] [`_mm256_mask_storeu_epi32`] //need i1
+  * [x] [`_mm256_storeu_epi32`]
   * [x] [`_mm512_storeu_epi64`]
-  * [x] [`_mm512_storeu_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_storeu_si512&expand=5236)
-  * [ ] [`_mm512_stream_load_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_stream_load_si512&expand=5236)
-  * [x] [`_mm512_stream_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_stream_pd&expand=5236)
-  * [x] [`_mm512_stream_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_stream_ps&expand=5236)
-  * [x] [`_mm512_stream_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_stream_si512&expand=5236)
-  * [ ] [`_mm512_svml_round_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_svml_round_pd&expand=5236)
-  * [x] [`_mm512_ternarylogic_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_ternarylogic_epi32&expand=5236)
-  * [x] [`_mm512_ternarylogic_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_ternarylogic_epi64&expand=5236)
-  * [x] [`_mm512_test_epi32_mask`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_test_epi32_mask&expand=5236)
-  * [x] [`_mm512_test_epi64_mask`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_test_epi64_mask&expand=5236)
-  * [x] [`_mm512_testn_epi32_mask`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_testn_epi32_mask&expand=5236)
-  * [x] [`_mm512_testn_epi64_mask`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_testn_epi64_mask&expand=5236)
-  * [x] [`_mm512_undefined_epi32`]
-  * [x] [`_mm512_undefined_pd`]
-  * [x] [`_mm512_undefined_ps`]
-  * [x] [`_mm512_undefined`]
-  * [x] [`_mm512_zextpd128_pd512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_zextpd128_pd512&expand=5236)
-  * [x] [`_mm512_zextpd256_pd512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_zextpd256_pd512&expand=5236)
-  * [x] [`_mm512_zextps128_ps512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_zextps128_ps512&expand=5236)
-  * [x] [`_mm512_zextps256_ps512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_zextps256_ps512&expand=5236)
-  * [x] [`_mm512_zextsi128_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_zextsi128_si512&expand=5236)
-  * [x] [`_mm512_zextsi256_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_zextsi256_si512&expand=5236)
+  * [ ] [`_mm512_mask_storeu_epi64`] //need i1
+  * [_] [`_mm_mask_storeu_epi64`] //need i1
+  * [x] [`_mm_storeu_epi64`]
+  * [_] [`_mm256_mask_storeu_epi64`] //need i1
+  * [x] [`_mm256_storeu_epi64`]
+  * [x] [`_mm512_storeu_ps`]
+  * [ ] [`_mm512_mask_storeu_ps`] //need i1
+  * [_] [`_mm_mask_storeu_ps`] //need i1
+  * [_] [`_mm256_mask_storeu_ps`] //need i1
+  * [x] [`_mm512_storeu_pd`]
+  * [ ] [`_mm512_mask_storeu_pd`] //need i1
+  * [_] [`_mm_mask_storeu_pd`] //need i1
+  * [_] [`_mm256_mask_storeu_pd`] //need i1
+  * [x] [`_mm512_storeu_si512`]
+  * [ ] [`_mm512_stream_load_si512`] //stream_load_si256, ... not implment yet
+  * [x] [`_mm512_stream_pd`]
+  * [x] [`_mm512_stream_ps`]
+  * [x] [`_mm512_stream_si512`]
+  * [x] [`_mm512_castpd128_pd512`]
+  * [x] [`_mm512_castpd256_pd512`]
+  * [x] [`_mm512_castpd512_pd128`]
+  * [x] [`_mm512_castpd512_pd256`]
+  * [x] [`_mm512_castpd_ps`]
+  * [x] [`_mm512_castpd_si512`]
+  * [x] [`_mm512_castps128_ps512`]
+  * [x] [`_mm512_castps256_ps512`]
+  * [x] [`_mm512_castps512_ps128`]
+  * [x] [`_mm512_castps512_ps256`]
+  * [x] [`_mm512_castps_pd`]
+  * [x] [`_mm512_castps_si512`]
+  * [x] [`_mm512_castsi128_si512`]
+  * [x] [`_mm512_castsi256_si512`]
+  * [x] [`_mm512_castsi512_pd`]
+  * [x] [`_mm512_castsi512_ps`]
+  * [x] [`_mm512_castsi512_si128`]
+  * [x] [`_mm512_castsi512_si256`]
+  * [x] [`_mm512_cvt_roundps_ph`]
+  * [x] [`_mm512_mask_cvt_roundps_ph`]
+  * [x] [`_mm512_maskz_cvt_roundps_ph`]
+  * [x] [`_mm_mask_cvt_roundps_ph`]
+  * [x] [`_mm_maskz_cvt_roundps_ph`]
+  * [x] [`_mm256_mask_cvt_roundps_ph`]
+  * [x] [`_mm256_maskz_cvt_roundps_ph`]
+  * [x] [`_mm512_cvtepi16_epi32`]
+  * [x] [`_mm512_mask_cvtepi16_epi32`]
+  * [x] [`_mm512_maskz_cvtepi16_epi32`]
+  * [x] [`_mm_mask_cvtepi16_epi32`]
+  * [x] [`_mm_maskz_cvtepi16_epi32`]
+  * [x] [`_mm256_mask_cvtepi16_epi32`]
+  * [x] [`_mm256_maskz_cvtepi16_epi32`]
+  * [x] [`_mm512_cvtepi16_epi64`]
+  * [x] [`_mm512_mask_cvtepi16_epi64`]
+  * [x] [`_mm512_maskz_cvtepi16_epi64`]
+  * [x] [`_mm_mask_cvtepi16_epi64`]
+  * [x] [`_mm_maskz_cvtepi16_epi64`]
+  * [x] [`_mm256_mask_cvtepi16_epi64`]
+  * [x] [`_mm256_maskz_cvtepi16_epi64`]
+  * [x] [`_mm512_cvtepi32_epi16`]
+  * [x] [`_mm512_mask_cvtepi32_epi16`]
+  * [x] [`_mm512_maskz_cvtepi32_epi16`]
+  * [x] [`_mm512_mask_cvtepi32_storeu_epi16`]
+  * [x] [`_mm_mask_cvtepi32_storeu_epi16`]
+  * [x] [`_mm256_mask_cvtepi32_storeu_epi16`]
+  * [x] [`_mm_cvtepi32_epi16`]
+  * [x] [`_mm_mask_cvtepi32_epi16`]
+  * [x] [`_mm_maskz_cvtepi32_epi16`]
+  * [x] [`_mm256_cvtepi32_epi16`]
+  * [x] [`_mm256_mask_cvtepi32_epi16`]
+  * [x] [`_mm256_maskz_cvtepi32_epi16`]
+  * [x] [`_mm512_cvtepi32_epi64`]
+  * [x] [`_mm512_mask_cvtepi32_epi64`]
+  * [x] [`_mm512_maskz_cvtepi32_epi64`]
+  * [x] [`_mm_mask_cvtepi32_epi64`]
+  * [x] [`_mm_maskz_cvtepi32_epi64`]
+  * [x] [`_mm256_mask_cvtepi32_epi64`]
+  * [x] [`_mm256_maskz_cvtepi32_epi64`]
+  * [x] [`_mm512_cvtepi32_epi8`]
+  * [x] [`_mm512_mask_cvtepi32_epi8`]
+  * [x] [`_mm512_maskz_cvtepi32_epi8`]
+  * [x] [`_mm512_mask_cvtepi32_storeu_epi8`]
+  * [x] [`_mm_mask_cvtepi32_storeu_epi8`]
+  * [x] [`_mm256_mask_cvtepi32_storeu_epi8`]
+  * [x] [`_mm_cvtepi32_epi8`]
+  * [x] [`_mm_mask_cvtepi32_epi8`]
+  * [x] [`_mm_maskz_cvtepi32_epi8`]
+  * [x] [`_mm256_cvtepi32_epi8`]
+  * [x] [`_mm256_mask_cvtepi32_epi8`]
+  * [x] [`_mm256_maskz_cvtepi32_epi8`]
+  * [x] [`_mm512_cvtepi32_ps`]
+  * [x] [`_mm512_mask_cvtepi32_ps`]
+  * [x] [`_mm512_maskz_cvtepi32_ps`]
+  * [x] [`_mm_mask_cvtepi32_ps`]
+  * [x] [`_mm_maskz_cvtepi32_ps`]
+  * [x] [`_mm256_mask_cvtepi32_ps`]
+  * [x] [`_mm256_maskz_cvtepi32_ps`]
+  * [x] [`_mm512_cvtepi32_pd`]
+  * [x] [`_mm512_mask_cvtepi32_pd`]
+  * [x] [`_mm512_maskz_cvtepi32_pd`]
+  * [x] [`_mm_mask_cvtepi32_pd`]
+  * [x] [`_mm_maskz_cvtepi32_pd`]
+  * [x] [`_mm256_mask_cvtepi32_pd`]
+  * [x] [`_mm256_maskz_cvtepi32_pd`]
+  * [x] [`_mm512_cvtepi32lo_pd`]
+  * [x] [`_mm512_mask_cvtepi32lo_pd`]
+  * [x] [`_mm512_cvtepi64_epi16`]
+  * [x] [`_mm512_mask_cvtepi64_epi16`]
+  * [x] [`_mm512_maskz_cvtepi64_epi16`]
+  * [x] [`_mm_cvtepi64_epi16`]
+  * [x] [`_mm_mask_cvtepi64_epi16`]
+  * [x] [`_mm_maskz_cvtepi64_epi16`]
+  * [x] [`_mm256_cvtepi64_epi16`]
+  * [x] [`_mm256_mask_cvtepi64_epi16`]
+  * [x] [`_mm256_maskz_cvtepi64_epi16`]
+  * [x] [`_mm512_mask_cvtepi64_storeu_epi16`]
+  * [x] [`_mm_mask_cvtepi64_storeu_epi16`]
+  * [x] [`_mm256_mask_cvtepi64_storeu_epi16`]
+  * [x] [`_mm512_cvtepi64_epi8`]
+  * [x] [`_mm512_mask_cvtepi64_epi8`]
+  * [x] [`_mm512_maskz_cvtepi64_epi8`]
+  * [x] [`_mm_cvtepi64_epi8`]
+  * [x] [`_mm_mask_cvtepi64_epi8`]
+  * [x] [`_mm_maskz_cvtepi64_epi8`]
+  * [x] [`_mm256_cvtepi64_epi8`]
+  * [x] [`_mm256_mask_cvtepi64_epi8`]
+  * [x] [`_mm256_maskz_cvtepi64_epi8`]
+  * [x] [`_mm512_mask_cvtepi64_storeu_epi8`]
+  * [x] [`_mm_mask_cvtepi64_storeu_epi8`]
+  * [x] [`_mm256_mask_cvtepi64_storeu_epi8`]
+  * [x] [`_mm512_cvtepi64_epi32`]
+  * [x] [`_mm512_mask_cvtepi64_epi32`]
+  * [x] [`_mm512_maskz_cvtepi64_epi32`]
+  * [x] [`_mm_cvtepi64_epi32`]
+  * [x] [`_mm_mask_cvtepi64_epi32`]
+  * [x] [`_mm_maskz_cvtepi64_epi32`]
+  * [x] [`_mm256_cvtepi64_epi32`]
+  * [x] [`_mm256_mask_cvtepi64_epi32`]
+  * [x] [`_mm256_maskz_cvtepi64_epi32`]
+  * [x] [`_mm512_mask_cvtepi64_storeu_epi32`]
+  * [x] [`_mm_mask_cvtepi64_storeu_epi32`]
+  * [x] [`_mm256_mask_cvtepi64_storeu_epi32`]
+  * [x] [`_mm512_cvtepi8_epi32`]
+  * [x] [`_mm512_mask_cvtepi8_epi32`]
+  * [x] [`_mm512_maskz_cvtepi8_epi32`]
+  * [x] [`_mm_mask_cvtepi8_epi32`]
+  * [x] [`_mm_maskz_cvtepi8_epi32`]
+  * [x] [`_mm256_mask_cvtepi8_epi32`]
+  * [x] [`_mm256_maskz_cvtepi8_epi32`]
+
+  * [x] [`_mm512_mask_cvtsepi64_epi32`]
+  * [x] [`_mm512_mask_cvtsepi64_epi8`]
+  * [ ] [`_mm512_mask_cvtsepi64_storeu_epi16`]
+  * [ ] [`_mm512_mask_cvtsepi64_storeu_epi32`]
+  * [ ] [`_mm512_mask_cvtsepi64_storeu_epi8`]
+  * [x] [`_mm512_cvt_roundepi32_ps`]
+  * [x] [`_mm512_cvt_roundepu32_ps`]
+  * [x] [`_mm512_cvt_roundpd_epi32`]
+  * [x] [`_mm512_cvt_roundpd_epu32`]
+  * [x] [`_mm512_cvt_roundpd_ps`]
+  * [x] [`_mm512_cvt_roundph_ps`]
+  * [x] [`_mm512_cvt_roundps_epi32`]
+  * [x] [`_mm512_cvt_roundps_epu32`]
+  * [x] [`_mm512_cvt_roundps_pd`]
+
+  * [x] [`_mm512_mask_cvtsepi64_epi16`]
+  * [x] [`_mm512_cvtepi8_epi64`]
+  * [x] [`_mm512_cvtepu16_epi32`]
+  * [x] [`_mm512_cvtepu16_epi64`]
+  * [x] [`_mm512_cvtepu32_epi64`]
+  * [x] [`_mm512_cvtepu32_pd`]
+  * [x] [`_mm512_cvtepu32_ps`]
+  * [x] [`_mm512_cvtepu32lo_pd`]
+  * [x] [`_mm512_cvtepu8_epi32`]
+  * [x] [`_mm512_cvtepu8_epi64`]
+  * [x] [`_mm512_cvtpd_epi32`]
+  * [x] [`_mm512_cvtpd_epu32`]
+  * [x] [`_mm512_cvtpd_ps`]
+  * [x] [`_mm512_cvtpd_pslo`]
+  * [x] [`_mm512_cvtph_ps`]
+  * [x] [`_mm512_cvtps_epi32`]
+  * [x] [`_mm512_cvtps_epu32`]
+  * [x] [`_mm512_cvtps_pd`]
+  * [x] [`_mm512_cvtps_ph`]
+  * [x] [`_mm512_cvtpslo_pd`]
+  * [x] [`_mm512_cvtsepi32_epi16`]
+  * [x] [`_mm512_cvtsepi32_epi8`]
+  * [x] [`_mm512_cvtsepi64_epi16`]
+  * [x] [`_mm512_cvtsepi64_epi32`]
+  * [x] [`_mm512_cvtsepi64_epi8`]
+  * [x] [`_mm512_cvtt_roundpd_epi32`]
+  * [x] [`_mm512_cvtt_roundpd_epu32`]
+  * [x] [`_mm512_cvtt_roundps_epi32`]
+  * [x] [`_mm512_cvtt_roundps_epu32`]
+  * [x] [`_mm512_cvttpd_epi32`]
+  * [x] [`_mm512_cvttpd_epu32`]
+  * [x] [`_mm512_cvttps_epi32`]
+  * [x] [`_mm512_cvttps_epu32`]
+  * [x] [`_mm512_cvtusepi32_epi16`]
+  * [x] [`_mm512_cvtusepi32_epi8`]
+  * [x] [`_mm512_cvtusepi64_epi16`]
+  * [x] [`_mm512_cvtusepi64_epi32`]
+  * [x] [`_mm512_cvtusepi64_epi8`]
+  * [x] [`_mm512_int2mask`]
+  * [x] [`_mm512_kand`]
+  * [x] [`_mm512_kandn`]
+  * [x] [`_mm512_kmov`]
+  * [x] [`_mm512_knot`]
+  * [x] [`_mm512_kor`]
+  * [x] [`_mm512_kortestc`]
+  * [ ] [`_mm512_kortestz`]
+  * [x] [`_mm512_kunpackb`]
+  * [x] [`_mm512_kxnor`]
+  * [x] [`_mm512_kxor`]
+  * [x] [`_mm512_mask2int`]
+  * [x] [`_mm512_mask_cvt_roundepi32_ps`]
+  * [x] [`_mm512_mask_cvt_roundepu32_ps`]
+  * [x] [`_mm512_mask_cvt_roundpd_epi32`]
+  * [x] [`_mm512_mask_cvt_roundpd_epu32`]
+  * [x] [`_mm512_mask_cvt_roundpd_ps`]
+  * [x] [`_mm512_mask_cvt_roundph_ps`]
+  * [x] [`_mm512_mask_cvt_roundps_epi32`]
+  * [x] [`_mm512_mask_cvt_roundps_epu32`]
+  * [x] [`_mm512_mask_cvt_roundps_pd`]
+  * [x] [`_mm512_mask_cvtepi8_epi64`]
+  * [x] [`_mm512_mask_cvtepu16_epi32`]
+  * [x] [`_mm512_mask_cvtepu16_epi64`]
+  * [x] [`_mm512_mask_cvtepu32_epi64`]
+  * [x] [`_mm512_mask_cvtepu32_pd`]
+  * [x] [`_mm512_mask_cvtepu32_ps`]
+  * [x] [`_mm512_mask_cvtepu32lo_pd`]
+  * [x] [`_mm512_mask_cvtepu8_epi32`]
+  * [x] [`_mm512_mask_cvtepu8_epi64`]
+  * [x] [`_mm512_mask_cvtpd_epi32`]
+  * [x] [`_mm512_mask_cvtpd_epu32`]
+  * [x] [`_mm512_mask_cvtpd_ps`]
+  * [x] [`_mm512_mask_cvtpd_pslo`]
+  * [x] [`_mm512_mask_cvtph_ps`]
+  * [x] [`_mm512_mask_cvtps_epi32`]
+  * [x] [`_mm512_mask_cvtps_epu32`]
+  * [x] [`_mm512_mask_cvtps_pd`]
+  * [x] [`_mm512_mask_cvtps_ph`]
+  * [x] [`_mm512_mask_cvtpslo_pd`]
+  * [x] [`_mm512_mask_cvtsepi32_epi16`]
+  * [x] [`_mm512_mask_cvtsepi32_epi8`]
+  * [ ] [`_mm512_mask_cvtsepi32_storeu_epi16`]
+  * [ ] [`_mm512_mask_cvtsepi32_storeu_epi8`]
+  * [x] [`_mm512_mask_cvtt_roundpd_epi32`]
+  * [x] [`_mm512_mask_cvtt_roundpd_epu32`]
+  * [x] [`_mm512_mask_cvtt_roundps_epi32`]
+  * [x] [`_mm512_mask_cvtt_roundps_epu32`]
+  * [x] [`_mm512_mask_cvttpd_epi32`]
+  * [x] [`_mm512_mask_cvttpd_epu32`]
+  * [x] [`_mm512_mask_cvttps_epi32`]
+  * [x] [`_mm512_mask_cvttps_epu32`]
+  * [x] [`_mm512_mask_cvtusepi32_epi16`]
+  * [x] [`_mm512_mask_cvtusepi32_epi8`]
+  * [ ] [`_mm512_mask_cvtusepi32_storeu_epi16`]
+  * [ ] [`_mm512_mask_cvtusepi32_storeu_epi8`]
+  * [x] [`_mm512_mask_cvtusepi64_epi16`]
+  * [x] [`_mm512_mask_cvtusepi64_epi32`]
+  * [x] [`_mm512_mask_cvtusepi64_epi8`]
+  * [ ] [`_mm512_mask_cvtusepi64_storeu_epi16`]
+  * [ ] [`_mm512_mask_cvtusepi64_storeu_epi32`]
+  * [ ] [`_mm512_mask_cvtusepi64_storeu_epi8`]
+  * [x] [`_mm512_maskz_cvt_roundepi32_ps`]
+  * [x] [`_mm512_maskz_cvt_roundepu32_ps`]
+  * [x] [`_mm512_maskz_cvt_roundpd_epi32`]
+  * [x] [`_mm512_maskz_cvt_roundpd_epu32`]
+  * [x] [`_mm512_maskz_cvt_roundpd_ps`]
+  * [x] [`_mm512_maskz_cvt_roundph_ps`]
+  * [x] [`_mm512_maskz_cvt_roundps_epi32`]
+  * [x] [`_mm512_maskz_cvt_roundps_epu32`]
+  * [x] [`_mm512_maskz_cvt_roundps_pd`]
+  * [x] [`_mm512_maskz_cvtepi8_epi64`]
+  * [x] [`_mm512_maskz_cvtepu16_epi32`]
+  * [x] [`_mm512_maskz_cvtepu16_epi64`]
+  * [x] [`_mm512_maskz_cvtepu32_epi64`]
+  * [x] [`_mm512_maskz_cvtepu32_pd`]
+  * [x] [`_mm512_maskz_cvtepu32_ps`]
+  * [x] [`_mm512_maskz_cvtepu8_epi32`]
+  * [x] [`_mm512_maskz_cvtepu8_epi64`]
+  * [x] [`_mm512_maskz_cvtpd_epi32`]
+  * [x] [`_mm512_maskz_cvtpd_epu32`]
+  * [x] [`_mm512_maskz_cvtpd_ps`]
+  * [x] [`_mm512_maskz_cvtph_ps`]
+  * [x] [`_mm512_maskz_cvtps_epi32`]
+  * [x] [`_mm512_maskz_cvtps_epu32`]
+  * [x] [`_mm512_maskz_cvtps_pd`]
+  * [x] [`_mm512_maskz_cvtps_ph`]
+  * [x] [`_mm512_maskz_cvtsepi32_epi16`]
+  * [x] [`_mm512_maskz_cvtsepi32_epi8`]
+  * [x] [`_mm512_maskz_cvtsepi64_epi16`]
+  * [x] [`_mm512_maskz_cvtsepi64_epi32`]
+  * [x] [`_mm512_maskz_cvtsepi64_epi8`]
+  * [x] [`_mm512_maskz_cvtt_roundpd_epi32`]
+  * [x] [`_mm512_maskz_cvtt_roundpd_epu32`]
+  * [x] [`_mm512_maskz_cvtt_roundps_epi32`]
+  * [x] [`_mm512_maskz_cvtt_roundps_epu32`]
+  * [x] [`_mm512_maskz_cvttpd_epi32`]
+  * [x] [`_mm512_maskz_cvttpd_epu32`]
+  * [x] [`_mm512_maskz_cvttps_epi32`]
+  * [x] [`_mm512_maskz_cvttps_epu32`]
+  * [x] [`_mm512_maskz_cvtusepi32_epi16`]
+  * [x] [`_mm512_maskz_cvtusepi32_epi8`]
+  * [x] [`_mm512_maskz_cvtusepi64_epi16`]
+  * [x] [`_mm512_maskz_cvtusepi64_epi32`]
+  * [x] [`_mm512_maskz_cvtusepi64_epi8`]
   * [x] [`_mm_add_round_sd`]
   * [x] [`_mm_add_round_ss`]
   * [x] [`_mm_cmp_round_sd_mask`]

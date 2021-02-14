@@ -356,6 +356,7 @@ mod tests {
         let b: __m128 = transmute(b_array);
         let c: __m128bh = _mm_cvtne2ps_pbh(a, b);
         let result: [u16; 8] = transmute(c.as_u16x8());
+        #[rustfmt::skip]
         let expected_result: [u16; 8] = [
             0b1_10000110_0110010,
             0b1_10000010_0101000,
@@ -373,6 +374,7 @@ mod tests {
     unsafe fn test_mm_mask_cvtne2ps_pbh() {
         let a_array = [178.125_f32, 10.5_f32, 3.75_f32, 50.25_f32];
         let b_array = [-178.125_f32, -10.5_f32, -3.75_f32, -50.25_f32];
+        #[rustfmt::skip]
         let src_array: [u16; 8] = [
             0b0_10000110_0110010,
             0b0_10000010_0101000,
@@ -389,6 +391,7 @@ mod tests {
         let k: __mmask8 = 0b1111_1111;
         let c: __m128bh = _mm_mask_cvtne2ps_pbh(src, k, a, b);
         let result: [u16; 8] = transmute(c.as_u16x8());
+        #[rustfmt::skip]
         let expected_result: [u16; 8] = [
             0b1_10000110_0110010,
             0b1_10000010_0101000,
@@ -416,6 +419,7 @@ mod tests {
         let k: __mmask8 = 0b1111_1111;
         let c: __m128bh = _mm_maskz_cvtne2ps_pbh(k, a, b);
         let result: [u16; 8] = transmute(c.as_u16x8());
+        #[rustfmt::skip]
         let expected_result: [u16; 8] = [
             0b1_10000110_0110010,
             0b1_10000010_0101000,
@@ -430,6 +434,7 @@ mod tests {
         let k = 0b0011_1100;
         let c = _mm_maskz_cvtne2ps_pbh(k, a, b);
         let result: [u16; 8] = transmute(c.as_u16x8());
+        #[rustfmt::skip]
         let expected_result: [u16; 8] = [
             0,
             0,
@@ -445,6 +450,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
     unsafe fn test_mm256_cvtne2ps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -469,6 +475,7 @@ mod tests {
         let b: __m256 = transmute(b_array);
         let c: __m256bh = _mm256_cvtne2ps_pbh(a, b);
         let result: [u16; 16] = transmute(c.as_u16x16());
+        #[rustfmt::skip]
         let expected_result: [u16; 16] = [
             0b1_10000110_0110010,
             0b1_10000010_0101000,
@@ -492,6 +499,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
     unsafe fn test_mm256_mask_cvtne2ps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -536,6 +544,7 @@ mod tests {
         let k: __mmask16 = 0xffff;
         let c: __m256bh = _mm256_mask_cvtne2ps_pbh(src, k, a, b);
         let result: [u16; 16] = transmute(c.as_u16x16());
+        #[rustfmt::skip]
         let expected_result: [u16; 16] = [
             0b1_10000110_0110010,
             0b1_10000010_0101000,
@@ -564,6 +573,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
     unsafe fn test_mm256_maskz_cvtne2ps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -589,6 +599,7 @@ mod tests {
         let k: __mmask16 = 0xffff;
         let c: __m256bh = _mm256_maskz_cvtne2ps_pbh(k, a, b);
         let result: [u16; 16] = transmute(c.as_u16x16());
+        #[rustfmt::skip]
         let expected_result: [u16; 16] = [
             0b1_10000110_0110010,
             0b1_10000010_0101000,
@@ -611,6 +622,7 @@ mod tests {
         let k: __mmask16 = 0b0110_1100_0011_0110;
         let c: __m256bh = _mm256_maskz_cvtne2ps_pbh(k, a, b);
         let result: [u16; 16] = transmute(c.as_u16x16());
+        #[rustfmt::skip]
         let expected_result: [u16; 16] = [
             0,
             0b1_10000010_0101000,
@@ -634,6 +646,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512f")]
     unsafe fn test_mm512_cvtne2ps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -674,6 +687,7 @@ mod tests {
         let b: __m512 = transmute(b_array);
         let c: __m512bh = _mm512_cvtne2ps_pbh(a, b);
         let result: [u16; 32] = transmute(c.as_u16x32());
+        #[rustfmt::skip]
         let expected_result: [u16; 32] = [
             0b1_10000110_0110010,
             0b1_10000010_0101000,
@@ -713,6 +727,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512f")]
     unsafe fn test_mm512_mask_cvtne2ps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -789,6 +804,7 @@ mod tests {
         let k: __mmask32 = 0xffffffff;
         let c: __m512bh = _mm512_mask_cvtne2ps_pbh(src, k, a, b);
         let result: [u16; 32] = transmute(c.as_u16x32());
+        #[rustfmt::skip]
         let expected_result: [u16; 32] = [
             0b1_10000110_0110010,
             0b1_10000010_0101000,
@@ -833,6 +849,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512f")]
     unsafe fn test_mm512_maskz_cvtne2ps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -874,6 +891,7 @@ mod tests {
         let k: __mmask32 = 0xffffffff;
         let c: __m512bh = _mm512_maskz_cvtne2ps_pbh(k, a, b);
         let result: [u16; 32] = transmute(c.as_u16x32());
+        #[rustfmt::skip]
         let expected_result: [u16; 32] = [
             0b1_10000110_0110010,
             0b1_10000010_0101000,
@@ -912,6 +930,7 @@ mod tests {
         let k: __mmask32 = 0b1100_1010_1001_0110_1010_0011_0101_0110;
         let c: __m512bh = _mm512_maskz_cvtne2ps_pbh(k, a, b);
         let result: [u16; 32] = transmute(c.as_u16x32());
+        #[rustfmt::skip]
         let expected_result: [u16; 32] = [
             0,
             0b1_10000010_0101000,
@@ -951,6 +970,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
     unsafe fn test_mm256_cvtneps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -964,6 +984,7 @@ mod tests {
         let a: __m256 = transmute(a_array);
         let c: __m128bh = _mm256_cvtneps_pbh(a);
         let result: [u16; 8] = transmute(c.as_u16x8());
+        #[rustfmt::skip]
         let expected_result: [u16; 8] = [
             0b0_10000110_0110010,
             0b0_10000010_0101000,
@@ -979,6 +1000,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
     unsafe fn test_mm256_mask_cvtneps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -1004,6 +1026,7 @@ mod tests {
         let k: __mmask8 = 0xff;
         let b = _mm256_mask_cvtneps_pbh(src, k, a);
         let result: [u16; 8] = transmute(b.as_u16x8());
+        #[rustfmt::skip]
         let expected_result: [u16; 8] = [
             0b0_10000110_0110010,
             0b0_10000010_0101000,
@@ -1024,6 +1047,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
     unsafe fn test_mm256_maskz_cvtneps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -1038,6 +1062,7 @@ mod tests {
         let k: __mmask8 = 0xff;
         let b = _mm256_maskz_cvtneps_pbh(k, a);
         let result: [u16; 8] = transmute(b.as_u16x8());
+        #[rustfmt::skip]
         let expected_result: [u16; 8] = [
             0b0_10000110_0110010,
             0b0_10000010_0101000,
@@ -1059,6 +1084,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512f")]
     unsafe fn test_mm512_cvtneps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -1080,6 +1106,7 @@ mod tests {
         let a: __m512 = transmute(a_array);
         let c: __m256bh = _mm512_cvtneps_pbh(a);
         let result: [u16; 16] = transmute(c.as_u16x16());
+        #[rustfmt::skip]
         let expected_result: [u16; 16] = [
             0b0_10000110_0110010,
             0b0_10000010_0101000,
@@ -1103,6 +1130,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512f")]
     unsafe fn test_mm512_mask_cvtneps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -1144,6 +1172,7 @@ mod tests {
         let k: __mmask16 = 0xffff;
         let c: __m256bh = _mm512_mask_cvtneps_pbh(src, k, a);
         let result: [u16; 16] = transmute(c.as_u16x16());
+        #[rustfmt::skip]
         let expected_result: [u16; 16] = [
             0b0_10000110_0110010,
             0b0_10000010_0101000,
@@ -1172,6 +1201,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512f")]
     unsafe fn test_mm512_maskz_cvtneps_pbh() {
+        #[rustfmt::skip]
         let a_array = [
             178.125_f32,
             10.5_f32,
@@ -1194,6 +1224,7 @@ mod tests {
         let k: __mmask16 = 0xffff;
         let c: __m256bh = _mm512_maskz_cvtneps_pbh(k, a);
         let result: [u16; 16] = transmute(c.as_u16x16());
+        #[rustfmt::skip]
         let expected_result: [u16; 16] = [
             0b0_10000110_0110010,
             0b0_10000010_0101000,
@@ -1216,6 +1247,7 @@ mod tests {
         let k: __mmask16 = 0x653a;
         let c: __m256bh = _mm512_maskz_cvtneps_pbh(k, a);
         let result: [u16; 16] = transmute(c.as_u16x16());
+        #[rustfmt::skip]
         let expected_result: [u16; 16] = [
             0,
             0b0_10000010_0101000,
@@ -1306,6 +1338,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
     unsafe fn test_mm256_dpbf16_ps() {
+        #[rustfmt::skip]
         let a_array = [
             8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32, 8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32,
         ];
@@ -1314,6 +1347,7 @@ mod tests {
         ];
         let a1: __m256 = transmute(a_array);
         let b1: __m256 = transmute(b_array);
+        #[rustfmt::skip]
         let src: __m256 = transmute([
             1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32,
         ]);
@@ -1321,6 +1355,7 @@ mod tests {
         let b: __m256bh = _mm256_cvtne2ps_pbh(b1, b1);
         let c: __m256 = _mm256_dpbf16_ps(src, a, b);
         let result: [f32; 8] = transmute(c.as_f32x8());
+        #[rustfmt::skip]
         let expected_result: [f32; 8] = [
             -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32, -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32,
         ];
@@ -1329,6 +1364,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
     unsafe fn test_mm256_mask_dpbf16_ps() {
+        #[rustfmt::skip]
         let a_array = [
             8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32, 8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32,
         ];
@@ -1338,6 +1374,7 @@ mod tests {
         let a1: __m256 = transmute(a_array);
         let b1: __m256 = transmute(b_array);
         let k: __mmask8 = 0x33;
+        #[rustfmt::skip]
         let src: __m256 = transmute([
             1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32,
         ]);
@@ -1345,6 +1382,7 @@ mod tests {
         let b: __m256bh = _mm256_cvtne2ps_pbh(b1, b1);
         let c: __m256 = _mm256_mask_dpbf16_ps(src, k, a, b);
         let result: [f32; 8] = transmute(c.as_f32x8());
+        #[rustfmt::skip]
         let expected_result: [f32; 8] = [
             -18.0_f32, -52.0_f32, 3.0_f32, 4.0_f32, -18.0_f32, -52.0_f32, 3.0_f32, 4.0_f32,
         ];
@@ -1352,6 +1390,7 @@ mod tests {
         let k: __mmask8 = 0xff;
         let c: __m256 = _mm256_mask_dpbf16_ps(src, k, a, b);
         let result: [f32; 8] = transmute(c.as_f32x8());
+        #[rustfmt::skip]
         let expected_result: [f32; 8] = [
             -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32, -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32,
         ];
@@ -1359,6 +1398,7 @@ mod tests {
         let k: __mmask8 = 0;
         let c: __m256 = _mm256_mask_dpbf16_ps(src, k, a, b);
         let result: [f32; 8] = transmute(c.as_f32x8());
+        #[rustfmt::skip]
         let expected_result: [f32; 8] = [
             1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32,
         ];
@@ -1367,6 +1407,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
     unsafe fn test_mm256_maskz_dpbf16_ps() {
+        #[rustfmt::skip]
         let a_array = [
             8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32, 8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32,
         ];
@@ -1376,6 +1417,7 @@ mod tests {
         let a1: __m256 = transmute(a_array);
         let b1: __m256 = transmute(b_array);
         let k: __mmask8 = 0x33;
+        #[rustfmt::skip]
         let src: __m256 = transmute([
             1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32,
         ]);
@@ -1383,6 +1425,7 @@ mod tests {
         let b: __m256bh = _mm256_cvtne2ps_pbh(b1, b1);
         let c: __m256 = _mm256_maskz_dpbf16_ps(k, src, a, b);
         let result: [f32; 8] = transmute(c.as_f32x8());
+        #[rustfmt::skip]
         let expected_result: [f32; 8] = [
             -18.0_f32, -52.0_f32, 0.0, 0.0, -18.0_f32, -52.0_f32, 0.0, 0.0,
         ];
@@ -1390,6 +1433,7 @@ mod tests {
         let k: __mmask8 = 0xff;
         let c: __m256 = _mm256_maskz_dpbf16_ps(k, src, a, b);
         let result: [f32; 8] = transmute(c.as_f32x8());
+        #[rustfmt::skip]
         let expected_result: [f32; 8] = [
             -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32, -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32,
         ];
@@ -1403,6 +1447,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512f")]
     unsafe fn test_mm512_dpbf16_ps() {
+        #[rustfmt::skip]
         let a_array = [
             8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32, 8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32,
             8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32, 8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32,
@@ -1421,6 +1466,7 @@ mod tests {
         let b: __m512bh = _mm512_cvtne2ps_pbh(b1, b1);
         let c: __m512 = _mm512_dpbf16_ps(src, a, b);
         let result: [f32; 16] = transmute(c.as_f32x16());
+        #[rustfmt::skip]
         let expected_result: [f32; 16] = [
             -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32, -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32,
             -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32, -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32,
@@ -1430,6 +1476,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512f")]
     unsafe fn test_mm512_mask_dpbf16_ps() {
+        #[rustfmt::skip]
         let a_array = [
             8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32, 8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32,
             8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32, 8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32,
@@ -1441,6 +1488,7 @@ mod tests {
         let a1: __m512 = transmute(a_array);
         let b1: __m512 = transmute(b_array);
         let k: __mmask16 = 0x3333;
+        #[rustfmt::skip]
         let src: __m512 = transmute([
             1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32,
             2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32,
@@ -1449,6 +1497,7 @@ mod tests {
         let b: __m512bh = _mm512_cvtne2ps_pbh(b1, b1);
         let c: __m512 = _mm512_mask_dpbf16_ps(src, k, a, b);
         let result: [f32; 16] = transmute(c.as_f32x16());
+        #[rustfmt::skip]
         let expected_result: [f32; 16] = [
             -18.0_f32, -52.0_f32, 3.0_f32, 4.0_f32, -18.0_f32, -52.0_f32, 3.0_f32, 4.0_f32,
             -18.0_f32, -52.0_f32, 3.0_f32, 4.0_f32, -18.0_f32, -52.0_f32, 3.0_f32, 4.0_f32,
@@ -1457,6 +1506,7 @@ mod tests {
         let k: __mmask16 = 0xffff;
         let c: __m512 = _mm512_mask_dpbf16_ps(src, k, a, b);
         let result: [f32; 16] = transmute(c.as_f32x16());
+        #[rustfmt::skip]
         let expected_result: [f32; 16] = [
             -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32, -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32,
             -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32, -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32,
@@ -1465,6 +1515,7 @@ mod tests {
         let k: __mmask16 = 0;
         let c: __m512 = _mm512_mask_dpbf16_ps(src, k, a, b);
         let result: [f32; 16] = transmute(c.as_f32x16());
+        #[rustfmt::skip]
         let expected_result: [f32; 16] = [
             1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32,
             2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32,
@@ -1474,6 +1525,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16,avx512f")]
     unsafe fn test_mm512_maskz_dpbf16_ps() {
+        #[rustfmt::skip]
         let a_array = [
             8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32, 8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32,
             8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32, 8.5_f32, 10.5_f32, 3.75_f32, 50.25_f32,
@@ -1485,6 +1537,7 @@ mod tests {
         let a1: __m512 = transmute(a_array);
         let b1: __m512 = transmute(b_array);
         let k: __mmask16 = 0x3333;
+        #[rustfmt::skip]
         let src: __m512 = transmute([
             1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32,
             2.0_f32, 3.0_f32, 4.0_f32, 1.0_f32, 2.0_f32, 3.0_f32, 4.0_f32,
@@ -1493,6 +1546,7 @@ mod tests {
         let b: __m512bh = _mm512_cvtne2ps_pbh(b1, b1);
         let c: __m512 = _mm512_maskz_dpbf16_ps(k, src, a, b);
         let result: [f32; 16] = transmute(c.as_f32x16());
+        #[rustfmt::skip]
         let expected_result: [f32; 16] = [
             -18.0_f32, -52.0_f32, 0.0, 0.0, -18.0_f32, -52.0_f32, 0.0, 0.0, -18.0_f32, -52.0_f32,
             0.0, 0.0, -18.0_f32, -52.0_f32, 0.0, 0.0,
@@ -1501,6 +1555,7 @@ mod tests {
         let k: __mmask16 = 0xffff;
         let c: __m512 = _mm512_maskz_dpbf16_ps(k, src, a, b);
         let result: [f32; 16] = transmute(c.as_f32x16());
+        #[rustfmt::skip]
         let expected_result: [f32; 16] = [
             -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32, -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32,
             -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32, -18.0_f32, -52.0_f32, -16.0_f32, -50.0_f32,
@@ -1509,6 +1564,7 @@ mod tests {
         let k: __mmask16 = 0;
         let c: __m512 = _mm512_maskz_dpbf16_ps(k, src, a, b);
         let result: [f32; 16] = transmute(c.as_f32x16());
+        #[rustfmt::skip]
         let expected_result: [f32; 16] = [
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         ];
