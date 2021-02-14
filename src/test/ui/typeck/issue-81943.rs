@@ -5,5 +5,5 @@ fn main() {
   macro_rules! d {
     ($e:expr) => { match $e { x => { x } } } //~ERROR
   }
-  f(|x| d!(x)); //~ERROR
+  f(|x| d!(x));
 }
