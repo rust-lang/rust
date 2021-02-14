@@ -1587,6 +1587,13 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
     }
 }
 
+impl<T, A: Allocator + Clone + Default> Default for RawTable<T, A> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Self::new_in(Default::default())
+    }
+}
+
 #[cfg(feature = "nightly")]
 unsafe impl<#[may_dangle] T, A: Allocator + Clone> Drop for RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
