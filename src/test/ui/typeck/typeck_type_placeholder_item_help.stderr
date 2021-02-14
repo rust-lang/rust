@@ -29,10 +29,7 @@ error[E0121]: the type placeholder `_` is not allowed within types on item signa
   --> $DIR/typeck_type_placeholder_item_help.rs:13:22
    |
 LL | const TEST4: fn() -> _ = 42;
-   |                      ^
-   |                      |
-   |                      not allowed in type signatures
-   |                      help: use type parameters instead: `T`
+   |                      ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item_help.rs:17:18

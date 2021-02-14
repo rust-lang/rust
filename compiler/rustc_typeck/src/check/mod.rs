@@ -502,6 +502,7 @@ fn typeck_with_fallback<'tcx>(
                     decl,
                     &hir::Generics::empty(),
                     None,
+                    None,
                 )
             } else {
                 tcx.fn_sig(def_id)
