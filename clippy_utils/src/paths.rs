@@ -5,6 +5,8 @@
 //! See <https://github.com/rust-lang/rust-clippy/issues/5393> for more information.
 
 pub const ANY_TRAIT: [&str; 3] = ["core", "any", "Any"];
+#[cfg(feature = "metadata-collector-lint")]
+pub const APPLICABILITY: [&str; 2] = ["rustc_lint_defs", "Applicability"];
 pub const ARC_PTR_EQ: [&str; 4] = ["alloc", "sync", "Arc", "ptr_eq"];
 pub const ASMUT_TRAIT: [&str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];

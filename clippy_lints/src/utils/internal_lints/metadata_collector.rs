@@ -2,10 +2,14 @@
 //! file and then used to generate the [clippy lint list](https://rust-lang.github.io/rust-clippy/master/index.html)
 //!
 //! This module and therefor the entire lint is guarded by a feature flag called
-//! `internal_metadata_lint`
+//! `metadata-collector-lint`
+//!
+//! The module transforms all lint names to ascii lowercase to ensure that we don't have mismatches
+//! during any comparison or mapping. (Please take care of this, it's not fun to spend time on such
+//! a simple mistake)
 //!
 //! The metadata currently contains:
-//! - [ ] TODO The lint declaration line for [#1303](https://github.com/rust-lang/rust-clippy/issues/1303)
+//! - [x] TODO The lint declaration line for [#1303](https://github.com/rust-lang/rust-clippy/issues/1303)
 //!   and [#6492](https://github.com/rust-lang/rust-clippy/issues/6492)
 //! - [ ] TODO The Applicability for each lint for [#4310](https://github.com/rust-lang/rust-clippy/issues/4310)
 
@@ -17,19 +21,33 @@
 // - TODO xFrednet 2021-02-13: Collect depreciations and maybe renames
 
 use if_chain::if_chain;
-use rustc_hir::{ExprKind, Item, ItemKind, Mutability};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::{self as hir, ExprKind, Item, ItemKind, Mutability};
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, Loc, Span};
+use rustc_span::{sym, Loc, Span, Symbol};
 use serde::Serialize;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 
 use crate::utils::internal_lints::is_lint_ref_type;
-use crate::utils::span_lint;
+use crate::utils::{last_path_segment, match_function_call, match_type, paths, span_lint, walk_ptrs_ty_depth};
 
+/// This is the output file of the lint collector.
 const OUTPUT_FILE: &str = "metadata_collection.json";
+/// These lints are excluded from the export.
 const BLACK_LISTED_LINTS: [&str; 2] = ["lint_author", "deep_code_inspection"];
+
+// TODO xFrednet 2021-02-15: `span_lint_and_then` & `span_lint_hir_and_then` requires special
+// handling
+#[rustfmt::skip]
+const LINT_EMISSION_FUNCTIONS: [&[&str]; 5] = [
+    &["clippy_lints", "utils", "diagnostics", "span_lint"],
+    &["clippy_lints", "utils", "diagnostics", "span_lint_and_help"],
+    &["clippy_lints", "utils", "diagnostics", "span_lint_and_note"],
+    &["clippy_lints", "utils", "diagnostics", "span_lint_hir"],
+    &["clippy_lints", "utils", "diagnostics", "span_lint_and_sugg"],
+];
 
 declare_clippy_lint! {
     /// **What it does:** Collects metadata about clippy lints for the website.
@@ -66,12 +84,21 @@ impl_lint_pass!(MetadataCollector => [INTERNAL_METADATA_COLLECTOR]);
 #[derive(Debug, Clone, Default)]
 pub struct MetadataCollector {
     lints: Vec<LintMetadata>,
+    applicability_into: FxHashMap<String, ApplicabilityInfo>,
 }
 
 impl Drop for MetadataCollector {
+    /// You might ask: How hacky is this?
+    /// My answer:     YES
     fn drop(&mut self) {
-        // You might ask: How hacky is this?
-        // My answer:     YES
+        let mut applicability_info = std::mem::take(&mut self.applicability_into);
+
+        // Mapping the final data
+        self.lints
+            .iter_mut()
+            .for_each(|x| x.applicability = applicability_info.remove(&x.id));
+
+        // Outputting
         let mut file = OpenOptions::new().write(true).create(true).open(OUTPUT_FILE).unwrap();
         writeln!(file, "{}", serde_json::to_string_pretty(&self.lints).unwrap()).unwrap();
     }
@@ -83,6 +110,21 @@ struct LintMetadata {
     id_span: SerializableSpan,
     group: String,
     docs: String,
+    /// This field is only used in the output and will only be
+    /// mapped shortly before the actual output.
+    applicability: Option<ApplicabilityInfo>,
+}
+
+impl LintMetadata {
+    fn new(id: String, id_span: SerializableSpan, group: String, docs: String) -> Self {
+        Self {
+            id,
+            id_span,
+            group,
+            docs,
+            applicability: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -101,12 +143,31 @@ impl SerializableSpan {
 
         Self {
             path: format!("{}", loc.file.name),
-            line: 1,
+            line: loc.line,
         }
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize)]
+struct ApplicabilityInfo {
+    /// Indicates if any of the lint emissions uses multiple spans. This is related to
+    /// [rustfix#141](https://github.com/rust-lang/rustfix/issues/141) as such suggestions can
+    /// currently not be applied automatically.
+    has_multi_suggestion: bool,
+    /// These are all the available applicability values for the lint suggestions
+    applicabilities: FxHashSet<String>,
+}
+
 impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
+    /// Collecting lint declarations like:
+    /// ```rust, ignore
+    /// declare_clippy_lint! {
+    ///     /// **What it does:** Something IDK.
+    ///     pub SOME_LINT,
+    ///     internal,
+    ///     "Who am I?"
+    /// }
+    /// ```
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if_chain! {
             if let ItemKind::Static(ref ty, Mutability::Not, body_id) = item.kind;
@@ -115,7 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
             if let ExprKind::AddrOf(_, _, ref inner_exp) = expr.kind;
             if let ExprKind::Struct(_, _, _) = inner_exp.kind;
             then {
-                let lint_name = item.ident.name.as_str().to_string().to_ascii_lowercase();
+                let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
                 if BLACK_LISTED_LINTS.contains(&lint_name.as_str()) {
                     return;
                 }
@@ -126,11 +187,11 @@ impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
                     if let Some(group_some) = get_lint_group(cx, lint_lst[0]) {
                         group = group_some;
                     } else {
-                        lint_collection_error(cx, item, "Unable to determine lint group");
+                        lint_collection_error_item(cx, item, "Unable to determine lint group");
                         return;
                     }
                 } else {
-                    lint_collection_error(cx, item, "Unable to find lint in lint_store");
+                    lint_collection_error_item(cx, item, "Unable to find lint in lint_store");
                     return;
                 }
 
@@ -138,19 +199,36 @@ impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
                 if let Some(docs_some) = extract_attr_docs(item) {
                     docs = docs_some;
                 } else {
-                    lint_collection_error(cx, item, "could not collect the lint documentation");
+                    lint_collection_error_item(cx, item, "could not collect the lint documentation");
                     return;
                 };
 
-                self.lints.push(LintMetadata {
-                    id: lint_name,
-                    id_span: SerializableSpan::from_item(cx, item),
+                self.lints.push(LintMetadata::new(
+                    lint_name,
+                    SerializableSpan::from_item(cx, item),
                     group,
                     docs,
-                });
+                ));
             }
         }
     }
+
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
+        if let Some(args) = match_simple_lint_emission(cx, expr) {
+            if let Some((lint_name, mut applicability)) = extract_emission_info(cx, args) {
+                let app_info = self.applicability_into.entry(lint_name).or_default();
+                applicability.drain(..).for_each(|x| {
+                    app_info.applicabilities.insert(x);
+                });
+            } else {
+                lint_collection_error_span(cx, expr.span, "I found this but I can't get the lint or applicability");
+            }
+        }
+    }
+}
+
+fn sym_to_string(sym: Symbol) -> String {
+    sym.as_str().to_string()
 }
 
 /// This function collects all documentation that has been added to an item using
@@ -166,23 +244,11 @@ impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
 fn extract_attr_docs(item: &Item<'_>) -> Option<String> {
     item.attrs
         .iter()
-        .filter_map(|ref x| x.doc_str())
-        .fold(None, |acc, sym| {
-            let mut doc_str = sym.as_str().to_string();
-            doc_str.push('\n');
-
-            #[allow(clippy::option_if_let_else)] // See clippy#6737
-            if let Some(mut x) = acc {
-                x.push_str(&doc_str);
-                Some(x)
-            } else {
-                Some(doc_str)
-            }
-
-            // acc.map_or(Some(doc_str), |mut x| {
-            //     x.push_str(&doc_str);
-            //     Some(x)
-            // })
+        .filter_map(|ref x| x.doc_str().map(|sym| sym.as_str().to_string()))
+        .reduce(|mut acc, sym| {
+            acc.push_str(&sym);
+            acc.push('\n');
+            acc
         })
 }
 
@@ -196,11 +262,57 @@ fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
     None
 }
 
-fn lint_collection_error(cx: &LateContext<'_>, item: &Item<'_>, message: &str) {
+fn lint_collection_error_item(cx: &LateContext<'_>, item: &Item<'_>, message: &str) {
     span_lint(
         cx,
         INTERNAL_METADATA_COLLECTOR,
         item.ident.span,
         &format!("Metadata collection error for `{}`: {}", item.ident.name, message),
     );
+}
+
+fn lint_collection_error_span(cx: &LateContext<'_>, span: Span, message: &str) {
+    span_lint(
+        cx,
+        INTERNAL_METADATA_COLLECTOR,
+        span,
+        &format!("Metadata collection error: {}", message),
+    );
+}
+
+fn match_simple_lint_emission<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'_>,
+) -> Option<&'tcx [hir::Expr<'tcx>]> {
+    LINT_EMISSION_FUNCTIONS
+        .iter()
+        .find_map(|emission_fn| match_function_call(cx, expr, emission_fn).map(|args| args))
+}
+
+/// This returns the lint name and the possible applicability of this emission
+fn extract_emission_info<'tcx>(cx: &LateContext<'tcx>, args: &[hir::Expr<'_>]) -> Option<(String, Vec<String>)> {
+    let mut lint_name = None;
+    let mut applicability = None;
+
+    for arg in args {
+        let (arg_ty, _) = walk_ptrs_ty_depth(cx.typeck_results().expr_ty(&arg));
+
+        if match_type(cx, arg_ty, &paths::LINT) {
+            // If we found the lint arg, extract the lint name
+            if let ExprKind::Path(ref lint_path) = arg.kind {
+                lint_name = Some(last_path_segment(lint_path).ident.name)
+            }
+        } else if match_type(cx, arg_ty, &paths::APPLICABILITY) {
+            if let ExprKind::Path(ref path) = arg.kind {
+                applicability = Some(last_path_segment(path).ident.name)
+            }
+        }
+    }
+
+    lint_name.map(|lint_name| {
+        (
+            sym_to_string(lint_name).to_ascii_lowercase(),
+            applicability.map(sym_to_string).map_or_else(Vec::new, |x| vec![x]),
+        )
+    })
 }
