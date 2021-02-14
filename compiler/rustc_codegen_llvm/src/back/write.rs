@@ -11,6 +11,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
+use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
     TargetMachineFactoryFn,
@@ -879,9 +880,7 @@ pub(crate) unsafe fn codegen(
 
                 if !config.emit_bc {
                     debug!("removing_bitcode {:?}", bc_out);
-                    if let Err(e) = fs::remove_file(&bc_out) {
-                        diag_handler.err(&format!("failed to remove bitcode: {}", e));
-                    }
+                    ensure_removed(diag_handler, &bc_out);
                 }
             }
 
