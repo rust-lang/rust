@@ -62,7 +62,7 @@ struct ClippyWarning {
     column: String,
     linttype: String,
     message: String,
-    ice: bool,
+    is_ice: bool,
 }
 
 impl std::fmt::Display for ClippyWarning {
@@ -309,7 +309,7 @@ fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
             .into(),
         linttype: jmsg["message"]["code"]["code"].to_string().trim_matches('"').into(),
         message: jmsg["message"]["message"].to_string().trim_matches('"').into(),
-        ice: json_message.contains("internal compiler error: "),
+        is_ice: json_message.contains("internal compiler error: "),
     }
 }
 
@@ -379,7 +379,7 @@ pub fn run(clap_config: &ArgMatches) {
     // grab crashes/ICEs, save the crate name and the ice message
     let ices: Vec<(&String, &String)> = clippy_warnings
         .iter()
-        .filter(|warning| warning.ice)
+        .filter(|warning| warning.is_ice)
         .map(|w| (&w.crate_name, &w.message))
         .collect();
 
