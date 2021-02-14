@@ -221,14 +221,8 @@ fn find_delimiters<'tcx>(cx: &LateContext<'tcx>, span: Span) -> Option<(Span, Sp
     let (open, open_ch) = snippet.char_indices().find(|&(_, c)| "([{".contains(c))?;
     let close = snippet.rfind(|c| ")]}".contains(c))?;
     Some((
-        span.from_inner(InnerSpan {
-            start: open,
-            end: open + 1,
-        }),
-        span.from_inner(InnerSpan {
-            start: close,
-            end: close + 1,
-        }),
+        span.from_inner(InnerSpan { start: open, end: open + 1 }),
+        span.from_inner(InnerSpan { start: close, end: close + 1 }),
         open_ch,
     ))
 }
