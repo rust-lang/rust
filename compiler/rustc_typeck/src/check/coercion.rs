@@ -1448,7 +1448,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 expected.is_unit(),
                 pointing_at_return_type,
             ) {
-                // If the block is from a macro, then do not suggest
+                // If the block is from an external macro, then do not suggest
                 // adding a semicolon, because there's nowhere to put it.
                 // See issue #81943.
                 let hir = fcx.tcx.hir();
