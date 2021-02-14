@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, subst::SubstsRef, InstanceDef, TyCtxt};
 
 // FIXME: check whether it is cheaper to precompute the entire call graph instead of invoking
 // this query riddiculously often.
-#[instrument(skip(tcx, root, target))]
+#[instrument(level = "debug", skip(tcx, root, target))]
 crate fn mir_callgraph_reachable(
     tcx: TyCtxt<'tcx>,
     (root, target): (ty::Instance<'tcx>, LocalDefId),
@@ -27,7 +27,10 @@ crate fn mir_callgraph_reachable(
         !tcx.is_constructor(root.def_id()),
         "you should not call `mir_callgraph_reachable` on enum/struct constructor functions"
     );
-    #[instrument(skip(tcx, param_env, target, stack, seen, recursion_limiter, caller))]
+    #[instrument(
+        level = "debug",
+        skip(tcx, param_env, target, stack, seen, recursion_limiter, caller)
+    )]
     fn process(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
