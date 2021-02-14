@@ -3,7 +3,7 @@
 set -e
 
 unamestr=$(uname)
-if [[ "$unamestr" == 'Linux' ]]; then
+if [[ "$unamestr" == 'Linux' || "$unamestr" == 'FreeBSD' ]]; then
    dylib_ext='so'
 elif [[ "$unamestr" == 'Darwin' ]]; then
    dylib_ext='dylib'
